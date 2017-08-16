@@ -46,6 +46,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.LLVMLivenessAnalysis.LLVMLivenessAnalysisResult;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
+import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute.Kind;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute.KnownAttribute;
@@ -95,9 +96,12 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         SourceSection sourceSection = runtime.getSourceSection(method);
 
         boolean isLVIEnabled = false;
-        if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
-            frame.findOrAddFrameSlot(LLVMDebugValueContainerType.FRAMESLOT_NAME, FrameSlotKind.Object);
-            isLVIEnabled = true;
+        if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI) && method.getSourceFunction() != null) {
+            final SourceModel.Function sourceFunction = method.getSourceFunction();
+            if (!sourceFunction.getGlobals().isEmpty() || !sourceFunction.getLocals().isEmpty()) {
+                frame.findOrAddFrameSlot(LLVMDebugValueContainerType.FRAMESLOT_NAME, FrameSlotKind.Object);
+                isLVIEnabled = true;
+            }
         }
 
         LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(frame, context, phis, method);

@@ -97,7 +97,7 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         if (addGlobalVISlot) {
             FrameSlot debugSlot = frame.findFrameSlot(LLVMDebugValueContainerType.FRAMESLOT_NAME);
             final SourceModel.Function sourceFunction = function.getSourceFunction();
-            if (sourceFunction != null && (!sourceFunction.getGlobals().isEmpty() || !sourceFunction.getLocals().isEmpty())) {
+            if (sourceFunction != null) {
                 for (SourceModel.Variable var : sourceFunction.getGlobals()) {
                     if (var.getSymbol() instanceof GlobalValueSymbol) {
                         LLVMExpressionNode readNode = runtime.getGlobalAddress(symbols, (GlobalValueSymbol) var.getSymbol());
