@@ -397,8 +397,9 @@ public abstract class Launcher {
         return verbose;
     }
 
+    @SuppressWarnings("fallthrough")
     final boolean runPolyglotAction() {
-        OptionCategory maxCategory = helpDebug ? OptionCategory.DEBUG : (helpExpert ? OptionCategory.EXPERT : OptionCategory.USER);
+        OptionCategory helpCategory = helpDebug ? OptionCategory.DEBUG : (helpExpert ? OptionCategory.EXPERT : OptionCategory.USER);
 
         switch (versionAction) {
             case PrintAndContinue:
@@ -412,7 +413,7 @@ public abstract class Launcher {
         }
         boolean printDefaultHelp = help || ((helpExpert || helpDebug) && !helpTools && !helpLanguages);
         if (printDefaultHelp) {
-            printHelp(maxCategory);
+            printHelp(helpCategory);
             // @formatter:off
             System.out.println();
             System.out.println("Runtime Options:");
@@ -436,7 +437,7 @@ public abstract class Launcher {
                 if (!descriptor.getName().startsWith("engine.") && !descriptor.getName().startsWith("compiler.")) {
                     continue;
                 }
-                if (descriptor.getCategory().ordinal() <= maxCategory.ordinal()) {
+                if (descriptor.getCategory().ordinal() == helpCategory.ordinal()) {
                     engineOptions.add(asPrintableOption(descriptor));
                 }
             }
@@ -446,11 +447,11 @@ public abstract class Launcher {
         }
 
         if (helpLanguages) {
-            printLanguageOptions(getTempEngine(), maxCategory);
+            printLanguageOptions(getTempEngine(), helpCategory);
         }
 
         if (helpTools) {
-            printInstrumentOptions(getTempEngine(), maxCategory);
+            printInstrumentOptions(getTempEngine(), helpCategory);
         }
 
         if (printDefaultHelp || helpLanguages || helpTools) {
@@ -461,13 +462,13 @@ public abstract class Launcher {
         return false;
     }
 
-    private static void printInstrumentOptions(Engine engine, OptionCategory maxCategory) {
+    private static void printInstrumentOptions(Engine engine, OptionCategory optionCategory) {
         Map<Instrument, List<PrintableOption>> instrumentsOptions = new HashMap<>();
         List<Instrument> instruments = sortedInstruments(engine);
         for (Instrument instrument : instruments) {
             List<PrintableOption> options = new ArrayList<>();
             for (OptionDescriptor descriptor : instrument.getOptions()) {
-                if (descriptor.getCategory().ordinal() <= maxCategory.ordinal()) {
+                if (descriptor.getCategory().ordinal() == optionCategory.ordinal()) {
                     options.add(asPrintableOption(descriptor));
                 }
             }
@@ -487,13 +488,13 @@ public abstract class Launcher {
         }
     }
 
-    private static void printLanguageOptions(Engine engine, OptionCategory maxCategory) {
+    private static void printLanguageOptions(Engine engine, OptionCategory optionCategory) {
         Map<Language, List<PrintableOption>> languagesOptions = new HashMap<>();
         List<Language> languages = sortedLanguages(engine);
         for (Language language : languages) {
             List<PrintableOption> options = new ArrayList<>();
             for (OptionDescriptor descriptor : language.getOptions()) {
-                if (descriptor.getCategory().ordinal() <= maxCategory.ordinal()) {
+                if (descriptor.getCategory().ordinal() == optionCategory.ordinal()) {
                     options.add(asPrintableOption(descriptor));
                 }
             }
@@ -691,8 +692,8 @@ public abstract class Launcher {
         return instruments;
     }
 
-    static void printOption(OptionCategory maxCategory, OptionDescriptor descriptor) {
-        if (descriptor.getCategory().ordinal() <= maxCategory.ordinal()) {
+    static void printOption(OptionCategory optionCategory, OptionDescriptor descriptor) {
+        if (descriptor.getCategory().ordinal() == optionCategory.ordinal()) {
             printOption(asPrintableOption(descriptor));
         }
     }
