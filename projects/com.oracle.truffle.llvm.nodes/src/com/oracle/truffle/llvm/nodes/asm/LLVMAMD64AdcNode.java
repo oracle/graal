@@ -50,7 +50,7 @@ public abstract class LLVMAMD64AdcNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected byte executeI16(VirtualFrame frame, byte left, byte right, boolean cf) {
+        protected byte executeI8(VirtualFrame frame, byte left, byte right, boolean cf) {
             byte c = (byte) (cf ? 1 : 0);
             byte result = (byte) (left + right + c);
             boolean overflow = (result < 0 && left > 0 && right > 0) || (result > 0 && left < 0 && right < 0);

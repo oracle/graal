@@ -49,7 +49,7 @@ public abstract class LLVMAMD64IncNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected byte executeI16(VirtualFrame frame, byte value) {
+        protected byte executeI8(VirtualFrame frame, byte value) {
             byte result = (byte) (value + 1);
             boolean of = value == Byte.MAX_VALUE;
             flags.execute(frame, of, result);

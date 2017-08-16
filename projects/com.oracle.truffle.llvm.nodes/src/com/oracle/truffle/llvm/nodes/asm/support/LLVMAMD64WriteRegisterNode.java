@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nodes.asm.support;
 
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -50,6 +51,26 @@ public abstract class LLVMAMD64WriteRegisterNode extends Node {
         return slot;
     }
 
+    public static class LLVMAMD64WriteI8RegisterNode extends LLVMAMD64WriteRegisterNode {
+        @Child LLVMExpressionNode register;
+        private final int shift;
+        private final long mask;
+
+        public LLVMAMD64WriteI8RegisterNode(FrameSlot slot, int shift, LLVMExpressionNode register) {
+            super(slot);
+            this.shift = shift;
+            this.register = register;
+            this.mask = ~((long) LLVMExpressionNode.I8_MASK << shift);
+        }
+
+        public void execute(VirtualFrame frame, byte value) {
+            long reg = register.executeI64(frame);
+            long val = (reg & mask) | (Byte.toUnsignedLong(value) << shift);
+            getSlot().setKind(FrameSlotKind.Long);
+            frame.setLong(getSlot(), val);
+        }
+    }
+
     public static class LLVMAMD64WriteI16RegisterNode extends LLVMAMD64WriteRegisterNode {
         @Child LLVMExpressionNode register;
 
@@ -61,36 +82,31 @@ public abstract class LLVMAMD64WriteRegisterNode extends Node {
         public void execute(VirtualFrame frame, short value) {
             long reg = register.executeI64(frame);
             long val = (reg & MASK_16) | Short.toUnsignedLong(value);
+            getSlot().setKind(FrameSlotKind.Long);
             frame.setLong(getSlot(), val);
         }
-
     }
 
     public static class LLVMAMD64WriteI32RegisterNode extends LLVMAMD64WriteRegisterNode {
-        @Child LLVMExpressionNode register;
-
-        public LLVMAMD64WriteI32RegisterNode(FrameSlot slot, LLVMExpressionNode register) {
+        public LLVMAMD64WriteI32RegisterNode(FrameSlot slot) {
             super(slot);
-            this.register = register;
         }
 
         public void execute(VirtualFrame frame, int value) {
-            long reg = register.executeI64(frame);
-            long val = (reg & MASK_32) | Integer.toUnsignedLong(value);
+            long val = Integer.toUnsignedLong(value);
+            getSlot().setKind(FrameSlotKind.Long);
             frame.setLong(getSlot(), val);
         }
-
     }
 
     public static class LLVMAMD64WriteI64RegisterNode extends LLVMAMD64WriteRegisterNode {
-
         public LLVMAMD64WriteI64RegisterNode(FrameSlot slot) {
             super(slot);
         }
 
         public void execute(VirtualFrame frame, long value) {
+            getSlot().setKind(FrameSlotKind.Long);
             frame.setLong(getSlot(), value);
         }
-
     }
 }

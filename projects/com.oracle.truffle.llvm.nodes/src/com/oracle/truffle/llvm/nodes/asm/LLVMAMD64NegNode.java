@@ -49,7 +49,7 @@ public abstract class LLVMAMD64NegNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected byte executeI16(VirtualFrame frame, byte value) {
+        protected byte executeI8(VirtualFrame frame, byte value) {
             byte result = (byte) -value;
             boolean cf = value != 0;
             boolean of = false;

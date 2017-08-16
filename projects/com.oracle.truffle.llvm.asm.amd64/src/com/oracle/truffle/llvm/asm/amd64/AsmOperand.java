@@ -29,5 +29,8 @@
  */
 package com.oracle.truffle.llvm.asm.amd64;
 
+import com.oracle.truffle.llvm.runtime.types.Type;
+
 interface AsmOperand {
+    Type getType();
 }

@@ -34,35 +34,39 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.nodes.asm.support.LongDivision;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI16RegisterNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI32RegisterNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI64RegisterNode;
-import com.oracle.truffle.llvm.nodes.asm.support.LongDivision;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public abstract class LLVMAMD64IdivNode extends LLVMExpressionNode {
+public abstract class LLVMAMD64DivNode extends LLVMExpressionNode {
     public static final String DIV_BY_ZERO = "division by zero";
     public static final String QUOTIENT_TOO_LARGE = "quotient too large";
 
     @NodeChildren({@NodeChild(value = "left", type = LLVMExpressionNode.class), @NodeChild(value = "right", type = LLVMExpressionNode.class)})
-    public abstract static class LLVMAMD64IdivbNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64DivbNode extends LLVMExpressionNode {
         @Specialization
         protected short executeI8(short left, byte right) {
             if (right == 0) {
                 CompilerDirectives.transferToInterpreter();
                 throw new ArithmeticException(DIV_BY_ZERO);
             }
-            byte quotient = (byte) (left / right);
-            byte remainder = (byte) (left % right);
+            int quotient = Short.toUnsignedInt(left) / Byte.toUnsignedInt(right);
+            int remainder = Short.toUnsignedInt(left) % Byte.toUnsignedInt(right);
+            if (quotient > 0xFF) {
+                CompilerDirectives.transferToInterpreter();
+                throw new ArithmeticException(QUOTIENT_TOO_LARGE);
+            }
             return (short) ((quotient & LLVMExpressionNode.I8_MASK) | ((remainder & LLVMExpressionNode.I8_MASK) << LLVMExpressionNode.I8_SIZE_IN_BITS));
         }
     }
 
     @NodeChildren({@NodeChild("high"), @NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64IdivwNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64DivwNode extends LLVMExpressionNode {
         private final LLVMAMD64WriteI16RegisterNode rem;
 
-        public LLVMAMD64IdivwNode(LLVMAMD64WriteI16RegisterNode rem) {
+        public LLVMAMD64DivwNode(LLVMAMD64WriteI16RegisterNode rem) {
             this.rem = rem;
         }
 
@@ -73,18 +77,22 @@ public abstract class LLVMAMD64IdivNode extends LLVMExpressionNode {
                 throw new ArithmeticException(DIV_BY_ZERO);
             }
             int value = Short.toUnsignedInt(high) << LLVMExpressionNode.I16_SIZE_IN_BITS | Short.toUnsignedInt(left);
-            short quotient = (short) (value / right);
-            short remainder = (short) (value % right);
-            rem.execute(frame, remainder);
-            return quotient;
+            int quotient = Integer.divideUnsigned(value, Short.toUnsignedInt(right));
+            int remainder = Integer.remainderUnsigned(value, Short.toUnsignedInt(right));
+            if (quotient > 0xFFFF) {
+                CompilerDirectives.transferToInterpreter();
+                throw new ArithmeticException(QUOTIENT_TOO_LARGE);
+            }
+            rem.execute(frame, (short) remainder);
+            return (short) quotient;
         }
     }
 
     @NodeChildren({@NodeChild("high"), @NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64IdivlNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64DivlNode extends LLVMExpressionNode {
         private final LLVMAMD64WriteI32RegisterNode rem;
 
-        public LLVMAMD64IdivlNode(LLVMAMD64WriteI32RegisterNode rem) {
+        public LLVMAMD64DivlNode(LLVMAMD64WriteI32RegisterNode rem) {
             this.rem = rem;
         }
 
@@ -95,29 +103,32 @@ public abstract class LLVMAMD64IdivNode extends LLVMExpressionNode {
                 throw new ArithmeticException(DIV_BY_ZERO);
             }
             long value = Integer.toUnsignedLong(high) << LLVMExpressionNode.I32_SIZE_IN_BITS | Integer.toUnsignedLong(left);
-            int quotient = (int) (value / right);
-            int remainder = (int) (value % right);
-            rem.execute(frame, remainder);
-            return quotient;
+            long quotient = Long.divideUnsigned(value, Integer.toUnsignedLong(right));
+            long remainder = Long.remainderUnsigned(value, Integer.toUnsignedLong(right));
+            if (quotient > 0xFFFFFFFFL) {
+                CompilerDirectives.transferToInterpreter();
+                throw new ArithmeticException(QUOTIENT_TOO_LARGE);
+            }
+            rem.execute(frame, (int) remainder);
+            return (int) quotient;
         }
     }
 
     @NodeChildren({@NodeChild("high"), @NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64IdivqNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64DivqNode extends LLVMExpressionNode {
         private final LLVMAMD64WriteI64RegisterNode rem;
 
-        public LLVMAMD64IdivqNode(LLVMAMD64WriteI64RegisterNode rem) {
+        public LLVMAMD64DivqNode(LLVMAMD64WriteI64RegisterNode rem) {
             this.rem = rem;
         }
 
-        // FIXME: implement properly
         @Specialization
         protected long executeI64(VirtualFrame frame, long high, long left, long right) {
             if (right == 0) {
                 CompilerDirectives.transferToInterpreter();
                 throw new ArithmeticException(DIV_BY_ZERO);
             }
-            LongDivision.Result result = LongDivision.divs128by64(high, left, right);
+            LongDivision.Result result = LongDivision.divu128by64(high, left, right);
             // TODO: error on quotient too large
             long quotient = result.quotient;
             long remainder = result.remainder;

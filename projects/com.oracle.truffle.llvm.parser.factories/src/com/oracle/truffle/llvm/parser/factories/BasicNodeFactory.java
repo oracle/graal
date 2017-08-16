@@ -466,7 +466,7 @@ public class BasicNodeFactory implements NodeFactory {
             retOffsets = alloca.getOffsets();
         }
 
-        Parser asmParser = new Parser(asmExpression, asmFlags, argTypes, retType, retTypes, retOffsets);
+        Parser asmParser = new Parser(asmExpression, asmFlags, argTypes, retType, retTypes, retOffsets, sourceSection);
         LLVMInlineAssemblyRootNode assemblyRoot = asmParser.Parse();
         LLVMFunctionDescriptor asm = LLVMFunctionDescriptor.createDescriptor(runtime.getContext(), "<asm>", new FunctionType(MetaType.UNKNOWN, new Type[0], false), -1);
         asm.declareInSulong(Truffle.getRuntime().createCallTarget(assemblyRoot), false);
@@ -582,9 +582,9 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createLLVMBuiltin(LLVMParserRuntime runtime, Symbol target, LLVMExpressionNode[] args, int callerArgumentCount, SourceSection sourceSection) {
         /*
-         * This LLVM Builtins are *not* function intrinsics. Builtins replace statements that look
-         * like function calls but are actually LLVM intrinsics. An example is llvm.stackpointer.
-         * Also, it is not possible to retrieve the functionpointer of such pseudo-call-targets.
+         * This LLVM Builtins are *not* function intrinsics. Builtins replace statements that look like
+         * function calls but are actually LLVM intrinsics. An example is llvm.stackpointer. Also, it is not
+         * possible to retrieve the functionpointer of such pseudo-call-targets.
          *
          * This builtins shall not be used for regular function intrinsification!
          */

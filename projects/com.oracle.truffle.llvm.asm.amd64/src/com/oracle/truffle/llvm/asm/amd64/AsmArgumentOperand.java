@@ -29,15 +29,50 @@
  */
 package com.oracle.truffle.llvm.asm.amd64;
 
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+
 class AsmArgumentOperand implements AsmOperand {
     private final int index;
+    private final int size;
+    private final int shift;
 
     AsmArgumentOperand(int index) {
+        this(index, -1, -1);
+    }
+
+    AsmArgumentOperand(int index, int size, int shift) {
         this.index = index;
+        this.size = size;
+        this.shift = shift;
     }
 
     public int getIndex() {
         return index;
+    }
+
+    public int getSize() {
+        return size;
+    }
+
+    public int getShift() {
+        return shift;
+    }
+
+    @Override
+    public Type getType() {
+        switch (size) {
+            case 8:
+                return PrimitiveType.I8;
+            case 16:
+                return PrimitiveType.I16;
+            case 32:
+                return PrimitiveType.I32;
+            case 64:
+                return PrimitiveType.I64;
+            default:
+                return null;
+        }
     }
 
     @Override

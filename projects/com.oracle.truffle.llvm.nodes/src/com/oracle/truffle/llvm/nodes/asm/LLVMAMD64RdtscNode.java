@@ -37,9 +37,9 @@ import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVM
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMAMD64RdtscNode extends LLVMExpressionNode {
-    private final LLVMAMD64WriteI64RegisterNode low;
-    private final LLVMAMD64WriteI64RegisterNode high;
-    private final LLVMExpressionNode rdtsc;
+    @Child private LLVMAMD64WriteI64RegisterNode low;
+    @Child private LLVMAMD64WriteI64RegisterNode high;
+    @Child private LLVMExpressionNode rdtsc;
 
     public LLVMAMD64RdtscNode(LLVMAMD64WriteI64RegisterNode low, LLVMAMD64WriteI64RegisterNode high) {
         this.low = low;

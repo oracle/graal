@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,41 +29,71 @@
  */
 package com.oracle.truffle.llvm.nodes.asm;
 
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
+import java.security.SecureRandom;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteBooleanNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public abstract class LLVMAMD64SarNode extends LLVMExpressionNode {
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64SarbNode extends LLVMExpressionNode {
+public abstract class LLVMAMD64RdRandNode extends LLVMExpressionNode {
+    private final SecureRandom rng = new SecureRandom();
+
+    @Child protected LLVMAMD64WriteBooleanNode cf;
+
+    // TODO: OF, SF, ZF, AF, PF = 0
+
+    @TruffleBoundary
+    protected int nextInt() {
+        return rng.nextInt();
+    }
+
+    @TruffleBoundary
+    protected long nextLong() {
+        return rng.nextLong();
+    }
+
+    public LLVMAMD64RdRandNode(LLVMAMD64WriteBooleanNode cf) {
+        this.cf = cf;
+    }
+
+    public abstract static class LLVMAMD64RdRandwNode extends LLVMAMD64RdRandNode {
+        public LLVMAMD64RdRandwNode(LLVMAMD64WriteBooleanNode cf) {
+            super(cf);
+        }
+
+        @Override
         @Specialization
-        protected byte executeI8(byte left, byte right) {
-            return (byte) (left >> right);
+        public short executeI16(VirtualFrame frame) {
+            cf.execute(frame, true);
+            return (short) nextInt();
         }
     }
 
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64SarwNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64RdRandlNode extends LLVMAMD64RdRandNode {
+        public LLVMAMD64RdRandlNode(LLVMAMD64WriteBooleanNode cf) {
+            super(cf);
+        }
+
+        @Override
         @Specialization
-        protected short executeI16(short left, byte right) {
-            return (short) (left >> right);
+        public int executeI32(VirtualFrame frame) {
+            cf.execute(frame, true);
+            return nextInt();
         }
     }
 
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64SarlNode extends LLVMExpressionNode {
-        @Specialization
-        protected int executeI32(int left, byte right) {
-            return left >> right;
+    public abstract static class LLVMAMD64RdRandqNode extends LLVMAMD64RdRandNode {
+        public LLVMAMD64RdRandqNode(LLVMAMD64WriteBooleanNode cf) {
+            super(cf);
         }
-    }
 
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64SarqNode extends LLVMExpressionNode {
+        @Override
         @Specialization
-        protected long executeI64(long left, byte right) {
-            return left >> right;
+        public long executeI64(VirtualFrame frame) {
+            cf.execute(frame, true);
+            return nextLong();
         }
     }
 }

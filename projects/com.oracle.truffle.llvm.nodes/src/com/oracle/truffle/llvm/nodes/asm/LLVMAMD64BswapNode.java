@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,40 +30,22 @@
 package com.oracle.truffle.llvm.nodes.asm;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public abstract class LLVMAMD64SarNode extends LLVMExpressionNode {
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64SarbNode extends LLVMExpressionNode {
+@NodeChild("data")
+public abstract class LLVMAMD64BswapNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64BswaplNode extends LLVMAMD64BswapNode {
         @Specialization
-        protected byte executeI8(byte left, byte right) {
-            return (byte) (left >> right);
+        protected int executeI32(int data) {
+            return Integer.reverseBytes(data);
         }
     }
 
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64SarwNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64BswapqNode extends LLVMAMD64BswapNode {
         @Specialization
-        protected short executeI16(short left, byte right) {
-            return (short) (left >> right);
-        }
-    }
-
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64SarlNode extends LLVMExpressionNode {
-        @Specialization
-        protected int executeI32(int left, byte right) {
-            return left >> right;
-        }
-    }
-
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64SarqNode extends LLVMExpressionNode {
-        @Specialization
-        protected long executeI64(long left, byte right) {
-            return left >> right;
+        protected long executeI64(long data) {
+            return Long.reverseBytes(data);
         }
     }
 }

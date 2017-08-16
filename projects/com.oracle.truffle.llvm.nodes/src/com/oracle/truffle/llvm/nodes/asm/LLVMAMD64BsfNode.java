@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,66 +33,66 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteBooleanNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChildren({@NodeChild("left"), @NodeChild("right")})
-public abstract class LLVMAMD64AndNode extends LLVMExpressionNode {
-    @Child LLVMAMD64UpdateFlagsNode flags;
+@NodeChildren({@NodeChild("src"), @NodeChild("dst")})
+public abstract class LLVMAMD64BsfNode extends LLVMExpressionNode {
+    @Child protected LLVMAMD64WriteBooleanNode zf;
 
-    private LLVMAMD64AndNode(LLVMAMD64UpdateFlagsNode flags) {
-        this.flags = flags;
+    public LLVMAMD64BsfNode(LLVMAMD64WriteBooleanNode zf) {
+        this.zf = zf;
     }
 
-    public abstract static class LLVMAMD64AndbNode extends LLVMAMD64AndNode {
-        public LLVMAMD64AndbNode(LLVMAMD64UpdateFlagsNode flags) {
-            super(flags);
+    public abstract static class LLVMAMD64BsfwNode extends LLVMAMD64BsfNode {
+        public LLVMAMD64BsfwNode(LLVMAMD64WriteBooleanNode zf) {
+            super(zf);
         }
 
         @Specialization
-        protected byte executeI8(VirtualFrame frame, byte left, byte right) {
-            byte result = (byte) (left & right);
-            flags.execute(frame, result);
-            return result;
+        protected short executeI16(VirtualFrame frame, short src, short dst) {
+            if (src == 0) {
+                zf.execute(frame, true);
+                return dst;
+            } else {
+                zf.execute(frame, false);
+                int val = Short.toUnsignedInt(src);
+                return (short) Integer.numberOfTrailingZeros(val);
+            }
         }
     }
 
-    public abstract static class LLVMAMD64AndwNode extends LLVMAMD64AndNode {
-        public LLVMAMD64AndwNode(LLVMAMD64UpdateFlagsNode flags) {
-            super(flags);
+    public abstract static class LLVMAMD64BsflNode extends LLVMAMD64BsfNode {
+        public LLVMAMD64BsflNode(LLVMAMD64WriteBooleanNode zf) {
+            super(zf);
         }
 
         @Specialization
-        protected short executeI16(VirtualFrame frame, short left, short right) {
-            short result = (short) (left & right);
-            flags.execute(frame, result);
-            return result;
+        protected int executeI32(VirtualFrame frame, int src, int dst) {
+            if (src == 0) {
+                zf.execute(frame, true);
+                return dst;
+            } else {
+                zf.execute(frame, false);
+                return Integer.numberOfTrailingZeros(src);
+            }
         }
     }
 
-    public abstract static class LLVMAMD64AndlNode extends LLVMAMD64AndNode {
-        public LLVMAMD64AndlNode(LLVMAMD64UpdateFlagsNode flags) {
-            super(flags);
+    public abstract static class LLVMAMD64BsfqNode extends LLVMAMD64BsfNode {
+        public LLVMAMD64BsfqNode(LLVMAMD64WriteBooleanNode zf) {
+            super(zf);
         }
 
         @Specialization
-        protected int executeI32(VirtualFrame frame, int left, int right) {
-            int result = left & right;
-            flags.execute(frame, result);
-            return result;
-        }
-    }
-
-    public abstract static class LLVMAMD64AndqNode extends LLVMAMD64AndNode {
-        public LLVMAMD64AndqNode(LLVMAMD64UpdateFlagsNode flags) {
-            super(flags);
-        }
-
-        @Specialization
-        protected long executeI64(VirtualFrame frame, long left, long right) {
-            long result = left & right;
-            flags.execute(frame, result);
-            return result;
+        protected long executeI64(VirtualFrame frame, long src, long dst) {
+            if (src == 0) {
+                zf.execute(frame, true);
+                return dst;
+            } else {
+                zf.execute(frame, false);
+                return Long.numberOfTrailingZeros(src);
+            }
         }
     }
 }

@@ -33,6 +33,19 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMAMD64ImmNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64I1Node extends LLVMExpressionNode {
+        private final boolean value;
+
+        public LLVMAMD64I1Node(boolean value) {
+            this.value = value;
+        }
+
+        @Specialization
+        public boolean executeI1() {
+            return value;
+        }
+    }
+
     public abstract static class LLVMAMD64I8Node extends LLVMExpressionNode {
         private final byte value;
 

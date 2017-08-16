@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,66 +33,67 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI16RegisterNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI32RegisterNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI64RegisterNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI8RegisterNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-public abstract class LLVMAMD64AndNode extends LLVMExpressionNode {
-    @Child LLVMAMD64UpdateFlagsNode flags;
+public abstract class LLVMAMD64XchgNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64XchgbNode extends LLVMAMD64XchgNode {
+        @Child private LLVMAMD64WriteI8RegisterNode out2;
 
-    private LLVMAMD64AndNode(LLVMAMD64UpdateFlagsNode flags) {
-        this.flags = flags;
-    }
-
-    public abstract static class LLVMAMD64AndbNode extends LLVMAMD64AndNode {
-        public LLVMAMD64AndbNode(LLVMAMD64UpdateFlagsNode flags) {
-            super(flags);
+        public LLVMAMD64XchgbNode(LLVMAMD64WriteI8RegisterNode out2) {
+            this.out2 = out2;
         }
 
         @Specialization
-        protected byte executeI8(VirtualFrame frame, byte left, byte right) {
-            byte result = (byte) (left & right);
-            flags.execute(frame, result);
-            return result;
+        protected byte executeI8(VirtualFrame frame, byte a, byte b) {
+            out2.execute(frame, a);
+            return b;
         }
     }
 
-    public abstract static class LLVMAMD64AndwNode extends LLVMAMD64AndNode {
-        public LLVMAMD64AndwNode(LLVMAMD64UpdateFlagsNode flags) {
-            super(flags);
+    public abstract static class LLVMAMD64XchgwNode extends LLVMAMD64XchgNode {
+        @Child private LLVMAMD64WriteI16RegisterNode out2;
+
+        public LLVMAMD64XchgwNode(LLVMAMD64WriteI16RegisterNode out2) {
+            this.out2 = out2;
         }
 
         @Specialization
-        protected short executeI16(VirtualFrame frame, short left, short right) {
-            short result = (short) (left & right);
-            flags.execute(frame, result);
-            return result;
+        protected short executeI16(VirtualFrame frame, short a, short b) {
+            out2.execute(frame, a);
+            return b;
         }
     }
 
-    public abstract static class LLVMAMD64AndlNode extends LLVMAMD64AndNode {
-        public LLVMAMD64AndlNode(LLVMAMD64UpdateFlagsNode flags) {
-            super(flags);
+    public abstract static class LLVMAMD64XchglNode extends LLVMAMD64XchgNode {
+        @Child private LLVMAMD64WriteI32RegisterNode out2;
+
+        public LLVMAMD64XchglNode(LLVMAMD64WriteI32RegisterNode out2) {
+            this.out2 = out2;
         }
 
         @Specialization
-        protected int executeI32(VirtualFrame frame, int left, int right) {
-            int result = left & right;
-            flags.execute(frame, result);
-            return result;
+        protected int executeI32(VirtualFrame frame, int a, int b) {
+            out2.execute(frame, a);
+            return b;
         }
     }
 
-    public abstract static class LLVMAMD64AndqNode extends LLVMAMD64AndNode {
-        public LLVMAMD64AndqNode(LLVMAMD64UpdateFlagsNode flags) {
-            super(flags);
+    public abstract static class LLVMAMD64XchgqNode extends LLVMAMD64XchgNode {
+        @Child private LLVMAMD64WriteI64RegisterNode out2;
+
+        public LLVMAMD64XchgqNode(LLVMAMD64WriteI64RegisterNode out2) {
+            this.out2 = out2;
         }
 
         @Specialization
-        protected long executeI64(VirtualFrame frame, long left, long right) {
-            long result = left & right;
-            flags.execute(frame, result);
-            return result;
+        protected long executeI64(VirtualFrame frame, long a, long b) {
+            out2.execute(frame, a);
+            return b;
         }
     }
 }

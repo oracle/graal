@@ -299,7 +299,8 @@ class AsmRegisterOperand implements AsmOperand {
         return getBaseRegister(getRegister());
     }
 
-    public Type getWidth() {
+    @Override
+    public Type getType() {
         return getWidth(getRegister());
     }
 

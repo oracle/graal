@@ -38,16 +38,18 @@ public class LLVMAMD64UpdateFlagsNode extends Node {
     // flags
     private final FrameSlot cf;
     private final FrameSlot pf;
+    private final FrameSlot af;
     private final FrameSlot zf;
     private final FrameSlot sf;
     private final FrameSlot of;
 
-    public LLVMAMD64UpdateFlagsNode(FrameSlot cf, FrameSlot pf, FrameSlot zf, FrameSlot sf, FrameSlot of) {
+    public LLVMAMD64UpdateFlagsNode(FrameSlot cf, FrameSlot pf, FrameSlot af, FrameSlot zf, FrameSlot sf, FrameSlot of) {
         this.cf = cf;
         this.pf = pf;
-        this.of = of;
+        this.af = af;
         this.zf = zf;
         this.sf = sf;
+        this.of = of;
     }
 
     public void execute(VirtualFrame frame, byte value) {
@@ -134,7 +136,43 @@ public class LLVMAMD64UpdateFlagsNode extends Node {
         frame.setBoolean(pf, getParity((byte) value));
     }
 
-    private static boolean getParity(byte value) {
+    public void execute(VirtualFrame frame, boolean overflow, boolean carry, boolean adjust, byte value) {
+        frame.setBoolean(of, overflow);
+        frame.setBoolean(cf, carry);
+        frame.setBoolean(af, adjust);
+        frame.setBoolean(sf, value < 0);
+        frame.setBoolean(zf, value == 0);
+        frame.setBoolean(pf, getParity(value));
+    }
+
+    public void execute(VirtualFrame frame, boolean overflow, boolean carry, boolean adjust, short value) {
+        frame.setBoolean(of, overflow);
+        frame.setBoolean(cf, carry);
+        frame.setBoolean(af, adjust);
+        frame.setBoolean(sf, value < 0);
+        frame.setBoolean(zf, value == 0);
+        frame.setBoolean(pf, getParity((byte) value));
+    }
+
+    public void execute(VirtualFrame frame, boolean overflow, boolean carry, boolean adjust, int value) {
+        frame.setBoolean(of, overflow);
+        frame.setBoolean(cf, carry);
+        frame.setBoolean(af, adjust);
+        frame.setBoolean(sf, value < 0);
+        frame.setBoolean(zf, value == 0);
+        frame.setBoolean(pf, getParity((byte) value));
+    }
+
+    public void execute(VirtualFrame frame, boolean overflow, boolean carry, boolean adjust, long value) {
+        frame.setBoolean(of, overflow);
+        frame.setBoolean(cf, carry);
+        frame.setBoolean(af, adjust);
+        frame.setBoolean(sf, value < 0);
+        frame.setBoolean(zf, value == 0);
+        frame.setBoolean(pf, getParity((byte) value));
+    }
+
+    public static boolean getParity(byte value) {
         boolean result = true;
         for (int i = 0; i < LLVMExpressionNode.I8_SIZE_IN_BITS; i++) {
             if ((value & (1 << i)) != 0) {

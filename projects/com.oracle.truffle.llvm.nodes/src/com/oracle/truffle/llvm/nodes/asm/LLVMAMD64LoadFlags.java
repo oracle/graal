@@ -36,11 +36,11 @@ import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64Flags;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMAMD64LoadFlags extends LLVMExpressionNode {
-    @NodeChildren({@NodeChild(value = "cf", type = LLVMExpressionNode.class), @NodeChild(value = "pf", type = LLVMExpressionNode.class), @NodeChild(value = "zf", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "sf", type = LLVMExpressionNode.class)})
+    @NodeChildren({@NodeChild(value = "cf", type = LLVMExpressionNode.class), @NodeChild(value = "pf", type = LLVMExpressionNode.class), @NodeChild(value = "af", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "zf", type = LLVMExpressionNode.class), @NodeChild(value = "sf", type = LLVMExpressionNode.class)})
     public abstract static class LLVMAMD64LahfNode extends LLVMAMD64LoadFlags {
         @Specialization
-        protected byte executeI8(boolean cf, boolean pf, boolean zf, boolean sf) {
+        protected byte executeI8(boolean cf, boolean pf, boolean af, boolean zf, boolean sf) {
             byte flags = 0;
             if (cf) {
                 flags |= (byte) (1 << LLVMAMD64Flags.CF);
@@ -48,11 +48,42 @@ public abstract class LLVMAMD64LoadFlags extends LLVMExpressionNode {
             if (pf) {
                 flags |= (byte) (1 << LLVMAMD64Flags.PF);
             }
+            if (af) {
+                flags |= (byte) (1 << LLVMAMD64Flags.AF);
+            }
             if (zf) {
                 flags |= (byte) (1 << LLVMAMD64Flags.ZF);
             }
             if (sf) {
                 flags |= (byte) (1 << LLVMAMD64Flags.SF);
+            }
+            return flags;
+        }
+    }
+
+    @NodeChildren({@NodeChild(value = "cf", type = LLVMExpressionNode.class), @NodeChild(value = "pf", type = LLVMExpressionNode.class), @NodeChild(value = "af", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "zf", type = LLVMExpressionNode.class), @NodeChild(value = "sf", type = LLVMExpressionNode.class), @NodeChild(value = "of", type = LLVMExpressionNode.class)})
+    public abstract static class LLVMAMD64ReadFlagswNode extends LLVMAMD64LoadFlags {
+        @Specialization
+        protected short executeI16(boolean cf, boolean pf, boolean af, boolean zf, boolean sf, boolean of) {
+            short flags = 0;
+            if (cf) {
+                flags |= (short) (1 << LLVMAMD64Flags.CF);
+            }
+            if (pf) {
+                flags |= (short) (1 << LLVMAMD64Flags.PF);
+            }
+            if (af) {
+                flags |= (short) (1 << LLVMAMD64Flags.AF);
+            }
+            if (zf) {
+                flags |= (short) (1 << LLVMAMD64Flags.ZF);
+            }
+            if (sf) {
+                flags |= (short) (1 << LLVMAMD64Flags.SF);
+            }
+            if (of) {
+                flags |= (short) (1 << LLVMAMD64Flags.OF);
             }
             return flags;
         }

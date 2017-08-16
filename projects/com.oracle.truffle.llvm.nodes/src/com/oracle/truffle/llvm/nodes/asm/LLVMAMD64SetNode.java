@@ -42,31 +42,71 @@ public abstract class LLVMAMD64SetNode {
     public abstract static class LLVMAMD64SetaNode extends LLVMExpressionNode {
         @Specialization
         protected byte executeI8(boolean cf, boolean zf) {
-            return (!cf && !zf) ? ONE : ZERO;
+            return !cf && !zf ? ONE : ZERO;
         }
     }
 
-    @NodeChildren({@NodeChild("cf")})
-    public abstract static class LLVMAMD64SetaeNode extends LLVMExpressionNode {
+    @NodeChildren({@NodeChild("zf")})
+    public abstract static class LLVMAMD64SetzNode extends LLVMExpressionNode {
         @Specialization
-        protected byte executeI8(boolean cf) {
-            return !cf ? ONE : ZERO;
+        protected byte executeI8(boolean zf) {
+            return zf ? ONE : ZERO;
         }
     }
 
-    @NodeChildren({@NodeChild("cf")})
-    public abstract static class LLVMAMD64SetbNode extends LLVMExpressionNode {
+    @NodeChildren({@NodeChild("zf")})
+    public abstract static class LLVMAMD64SetnzNode extends LLVMExpressionNode {
         @Specialization
-        protected byte executeI8(boolean cf) {
-            return cf ? ONE : ZERO;
+        protected byte executeI8(boolean zf) {
+            return zf ? ONE : ZERO;
         }
     }
 
     @NodeChildren({@NodeChild("cf"), @NodeChild("zf")})
-    public abstract static class LLVMAMD64SetbeNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64SetorNode extends LLVMExpressionNode {
         @Specialization
         protected byte executeI8(boolean cf, boolean zf) {
-            return (cf || zf) ? ONE : ZERO;
+            return cf || zf ? ONE : ZERO;
+        }
+    }
+
+    @NodeChildren({@NodeChild("zf"), @NodeChild("sf"), @NodeChild("of")})
+    public abstract static class LLVMAMD64SetgNode extends LLVMExpressionNode {
+        @Specialization
+        protected byte executeI8(boolean zf, boolean sf, boolean of) {
+            return !zf && sf == of ? ONE : ZERO;
+        }
+    }
+
+    @NodeChildren({@NodeChild("sf"), @NodeChild("of")})
+    public abstract static class LLVMAMD64SeteqNode extends LLVMExpressionNode {
+        @Specialization
+        protected byte executeI8(boolean sf, boolean of) {
+            return sf == of ? ONE : ZERO;
+        }
+    }
+
+    @NodeChildren({@NodeChild("sf"), @NodeChild("of")})
+    public abstract static class LLVMAMD64SetneNode extends LLVMExpressionNode {
+        @Specialization
+        protected byte executeI8(boolean sf, boolean of) {
+            return sf != of ? ONE : ZERO;
+        }
+    }
+
+    @NodeChildren({@NodeChild("zf"), @NodeChild("sf"), @NodeChild("of")})
+    public abstract static class LLVMAMD64SetleNode extends LLVMExpressionNode {
+        @Specialization
+        protected byte executeI8(boolean zf, boolean sf, boolean of) {
+            return zf || sf != of ? ONE : ZERO;
+        }
+    }
+
+    @NodeChildren({@NodeChild("cf"), @NodeChild("zf")})
+    public abstract static class LLVMAMD64SetandNode extends LLVMExpressionNode {
+        @Specialization
+        protected byte executeI8(boolean cf, boolean zf) {
+            return cf && zf ? ONE : ZERO;
         }
     }
 }

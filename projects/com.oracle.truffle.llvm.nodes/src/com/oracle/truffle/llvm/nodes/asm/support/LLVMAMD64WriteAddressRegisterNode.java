@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,43 +27,54 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.asm;
+package com.oracle.truffle.llvm.nodes.asm.support;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public abstract class LLVMAMD64SarNode extends LLVMExpressionNode {
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64SarbNode extends LLVMExpressionNode {
-        @Specialization
-        protected byte executeI8(byte left, byte right) {
-            return (byte) (left >> right);
-        }
+@NodeChild("value")
+@NodeField(name = "slot", type = FrameSlot.class)
+public abstract class LLVMAMD64WriteAddressRegisterNode extends LLVMExpressionNode {
+    public abstract FrameSlot getSlot();
+
+    @Specialization
+    protected Object executeI8(VirtualFrame frame, byte value) {
+        getSlot().setKind(FrameSlotKind.Long);
+        frame.setLong(getSlot(), value);
+        return null;
     }
 
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64SarwNode extends LLVMExpressionNode {
-        @Specialization
-        protected short executeI16(short left, byte right) {
-            return (short) (left >> right);
-        }
+    @Specialization
+    protected Object executeI16(VirtualFrame frame, short value) {
+        getSlot().setKind(FrameSlotKind.Long);
+        frame.setLong(getSlot(), value);
+        return null;
     }
 
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64SarlNode extends LLVMExpressionNode {
-        @Specialization
-        protected int executeI32(int left, byte right) {
-            return left >> right;
-        }
+    @Specialization
+    protected Object executeI32(VirtualFrame frame, int value) {
+        getSlot().setKind(FrameSlotKind.Long);
+        frame.setLong(getSlot(), value);
+        return null;
     }
 
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64SarqNode extends LLVMExpressionNode {
-        @Specialization
-        protected long executeI64(long left, byte right) {
-            return left >> right;
-        }
+    @Specialization
+    protected Object executeI64(VirtualFrame frame, long value) {
+        getSlot().setKind(FrameSlotKind.Long);
+        frame.setLong(getSlot(), value);
+        return null;
+    }
+
+    @Specialization
+    protected Object executeAddress(VirtualFrame frame, LLVMAddress value) {
+        getSlot().setKind(FrameSlotKind.Object);
+        frame.setObject(getSlot(), value);
+        return null;
     }
 }

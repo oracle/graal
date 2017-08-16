@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,19 +34,26 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI16RegisterNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI32RegisterNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI64RegisterNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI8RegisterNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-public abstract class LLVMAMD64AddNode extends LLVMExpressionNode {
+public abstract class LLVMAMD64XaddNode extends LLVMExpressionNode {
     @Child LLVMAMD64UpdateFlagsNode flags;
 
-    private LLVMAMD64AddNode(LLVMAMD64UpdateFlagsNode flags) {
+    private LLVMAMD64XaddNode(LLVMAMD64UpdateFlagsNode flags) {
         this.flags = flags;
     }
 
-    public abstract static class LLVMAMD64AddbNode extends LLVMAMD64AddNode {
-        public LLVMAMD64AddbNode(LLVMAMD64UpdateFlagsNode flags) {
+    public abstract static class LLVMAMD64XaddbNode extends LLVMAMD64XaddNode {
+        @Child LLVMAMD64WriteI8RegisterNode src;
+
+        public LLVMAMD64XaddbNode(LLVMAMD64UpdateFlagsNode flags, LLVMAMD64WriteI8RegisterNode src) {
             super(flags);
+            this.src = src;
         }
 
         @Specialization
@@ -55,13 +62,17 @@ public abstract class LLVMAMD64AddNode extends LLVMExpressionNode {
             boolean overflow = (result < 0 && left > 0 && right > 0) || (result > 0 && left < 0 && right < 0);
             boolean carry = ((left < 0 || right < 0) && result > 0) || (left < 0 && right < 0);
             flags.execute(frame, overflow, carry, result);
+            src.execute(frame, right);
             return result;
         }
     }
 
-    public abstract static class LLVMAMD64AddwNode extends LLVMAMD64AddNode {
-        public LLVMAMD64AddwNode(LLVMAMD64UpdateFlagsNode flags) {
+    public abstract static class LLVMAMD64XaddwNode extends LLVMAMD64XaddNode {
+        @Child LLVMAMD64WriteI16RegisterNode src;
+
+        public LLVMAMD64XaddwNode(LLVMAMD64UpdateFlagsNode flags, LLVMAMD64WriteI16RegisterNode src) {
             super(flags);
+            this.src = src;
         }
 
         @Specialization
@@ -70,13 +81,17 @@ public abstract class LLVMAMD64AddNode extends LLVMExpressionNode {
             boolean overflow = (result < 0 && left > 0 && right > 0) || (result > 0 && left < 0 && right < 0);
             boolean carry = ((left < 0 || right < 0) && result > 0) || (left < 0 && right < 0);
             flags.execute(frame, overflow, carry, result);
+            src.execute(frame, right);
             return result;
         }
     }
 
-    public abstract static class LLVMAMD64AddlNode extends LLVMAMD64AddNode {
-        public LLVMAMD64AddlNode(LLVMAMD64UpdateFlagsNode flags) {
+    public abstract static class LLVMAMD64XaddlNode extends LLVMAMD64XaddNode {
+        @Child LLVMAMD64WriteI32RegisterNode src;
+
+        public LLVMAMD64XaddlNode(LLVMAMD64UpdateFlagsNode flags, LLVMAMD64WriteI32RegisterNode src) {
             super(flags);
+            this.src = src;
         }
 
         @Specialization
@@ -85,13 +100,17 @@ public abstract class LLVMAMD64AddNode extends LLVMExpressionNode {
             boolean overflow = (result < 0 && left > 0 && right > 0) || (result > 0 && left < 0 && right < 0);
             boolean carry = ((left < 0 || right < 0) && result > 0) || (left < 0 && right < 0);
             flags.execute(frame, overflow, carry, result);
+            src.execute(frame, right);
             return result;
         }
     }
 
-    public abstract static class LLVMAMD64AddqNode extends LLVMAMD64AddNode {
-        public LLVMAMD64AddqNode(LLVMAMD64UpdateFlagsNode flags) {
+    public abstract static class LLVMAMD64XaddqNode extends LLVMAMD64XaddNode {
+        @Child LLVMAMD64WriteI64RegisterNode src;
+
+        public LLVMAMD64XaddqNode(LLVMAMD64UpdateFlagsNode flags, LLVMAMD64WriteI64RegisterNode src) {
             super(flags);
+            this.src = src;
         }
 
         @Specialization
@@ -100,6 +119,7 @@ public abstract class LLVMAMD64AddNode extends LLVMExpressionNode {
             boolean overflow = (result < 0 && left > 0 && right > 0) || (result > 0 && left < 0 && right < 0);
             boolean carry = ((left < 0 || right < 0) && result > 0) || (left < 0 && right < 0);
             flags.execute(frame, overflow, carry, result);
+            src.execute(frame, right);
             return result;
         }
     }
