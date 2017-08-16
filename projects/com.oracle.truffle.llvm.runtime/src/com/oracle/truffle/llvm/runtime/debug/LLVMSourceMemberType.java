@@ -29,62 +29,83 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
-public final class LLVMDebugBasicType extends LLVMDebugType {
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
-    private final Kind kind;
+public final class LLVMSourceMemberType extends LLVMSourceType {
 
-    public LLVMDebugBasicType(String name, long size, long align, long offset, Kind kind) {
+    @CompilationFinal private LLVMSourceType elementType;
+
+    public LLVMSourceMemberType(String name, long size, long align, long offset) {
+        this(name, size, align, offset, LLVMSourceType.UNKNOWN_TYPE);
+    }
+
+    private LLVMSourceMemberType(String name, long size, long align, long offset, LLVMSourceType elementType) {
         super(() -> name, size, align, offset);
-        this.kind = kind;
+        this.elementType = elementType;
     }
 
-    public Kind getKind() {
-        return kind;
+    public LLVMSourceType getElementType() {
+        return elementType;
+    }
+
+    public void setElementType(LLVMSourceType elementType) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.elementType = elementType;
+    }
+
+    /**
+     * Return the element type with the offset of this type.
+     *
+     * @return the element type with the offset of this type
+     */
+    LLVMSourceType getOffsetElementType() {
+        return elementType != null ? elementType.getOffset(getOffset()) : null;
     }
 
     @Override
-    public LLVMDebugType getOffset(long newOffset) {
-        return new LLVMDebugBasicType(getName(), getSize(), getAlign(), newOffset, kind);
-    }
-
-    @Override
+    @TruffleBoundary
     public String toString() {
-        return getName();
+        return String.format("%s: %s", getName(), elementType != null ? elementType.getName() : null);
+    }
+
+    @Override
+    public LLVMSourceType getOffset(long newOffset) {
+        return this;
     }
 
     @Override
     public boolean isAggregate() {
-        return false;
+        return true;
     }
 
     @Override
     public int getElementCount() {
-        return 0;
+        return 1;
     }
 
     @Override
     public String getElementName(long i) {
+        if (i == 0) {
+            return getName();
+        }
         return null;
     }
 
     @Override
-    public LLVMDebugType getElementType(long i) {
+    public LLVMSourceType getElementType(long i) {
+        if (i == 0) {
+            return getOffsetElementType();
+        }
         return null;
     }
 
     @Override
-    public LLVMDebugType getElementType(String name) {
+    public LLVMSourceType getElementType(String name) {
+        if (name != null && name.equals(getName())) {
+            return getOffsetElementType();
+        }
         return null;
-    }
-
-    public enum Kind {
-        UNKNOWN,
-        ADDRESS,
-        BOOLEAN,
-        FLOATING,
-        SIGNED,
-        SIGNED_CHAR,
-        UNSIGNED,
-        UNSIGNED_CHAR;
     }
 }

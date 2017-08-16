@@ -46,6 +46,7 @@ import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.enums.AsmDialect;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.InlineAsmConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
@@ -285,32 +286,49 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         createFrameWrite(nodeFactory.createCompareExchangeInstruction(runtime, cmpxchg.getType(), elementType, ptrNode, cmpNode, newNode), cmpxchg);
     }
 
-    private boolean visitDebugDeclaration(VoidCallInstruction call) {
-        if (!runtime.getContext().getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI) || call.getArgumentCount() < 1) {
-            return false;
-        }
+    private void insertDebugTypeInformation(Symbol valueSymbol, Symbol sourceVariableSymbol) {
+        final FrameSlot valueSlot;
+        if (valueSymbol instanceof ValueInstruction) {
+            valueSlot = frame.findFrameSlot(((ValueInstruction) valueSymbol).getName());
 
-        final Symbol symbol = call.getArgument(0);
-        final ValueInstruction value;
-        if (symbol instanceof ValueInstruction) {
-            value = (ValueInstruction) symbol;
+        } else if (valueSymbol instanceof FunctionParameter) {
+            valueSlot = frame.findFrameSlot(((FunctionParameter) valueSymbol).getName());
+
         } else {
-            return false;
+            return;
         }
 
-        final SourceModel.Variable var = value.getSourceVariable();
-        if (var == null) {
-            return false;
+        SourceModel.Variable var;
+        if (sourceVariableSymbol instanceof SourceModel.Variable) {
+            var = (SourceModel.Variable) sourceVariableSymbol;
+        } else {
+            return;
+        }
+
+        final LLVMExpressionNode typeNode = nodeFactory.registerDebugType(valueSlot, var.getSourceType());
+        if (typeNode != null) {
+            addInstructionUnchecked(typeNode);
+        }
+    }
+
+    private void visitDebugDeclaration(Symbol valueSymbol, Symbol sourceVariableSymbol) {
+        if (!runtime.getContext().getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
+            return;
+        }
+
+        final LLVMExpressionNode valueRead;
+        final SourceModel.Variable var;
+
+        if (valueSymbol instanceof AllocateInstruction && sourceVariableSymbol instanceof SourceModel.Variable) {
+            valueRead = symbols.resolve(valueSymbol);
+            var = (SourceModel.Variable) sourceVariableSymbol;
+        } else {
+            return;
         }
 
         FrameSlot sourceValuesContainerSlot = frame.findOrAddFrameSlot(LLVMDebugValueContainerType.FRAMESLOT_NAME, FrameSlotKind.Object);
-        LLVMExpressionNode valueRead = symbols.resolve(symbol);
-        addInstruction(nodeFactory.createDebugDeclaration(var.getName(), var.getDebugType(), valueRead, sourceValuesContainerSlot));
-        return true;
+        addInstructionUnchecked(nodeFactory.createDebugDeclaration(var.getName(), var.getSourceType(), valueRead, sourceValuesContainerSlot));
     }
-
-    private static final String LLVM_DEBUG_DECLARE = "@llvm.dbg.declare";
-    private static final String LLVM_DEBUG_VALUE = "@llvm.dbg.value";
 
     @Override
     public void visit(VoidCallInstruction call) {
@@ -318,17 +336,23 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         if (target instanceof FunctionDeclaration) {
             final String name = ((FunctionDeclaration) target).getName();
-            if (LLVM_DEBUG_DECLARE.equals(name)) {
-                if (!visitDebugDeclaration(call)) {
+            switch (name) {
+                case SourceModel.LLVM_DBG_DECLARE_NAME: {
+                    final Symbol sourceVariable = call.getArgument(SourceModel.LLVM_DBG_DECLARE_LOCALREF_ARGINDEX);
+                    final Symbol valueSymbol = call.getArgument(SourceModel.LLVM_DBG_INTRINSICS_VALUE_ARGINDEX);
+                    visitDebugDeclaration(valueSymbol, sourceVariable);
+                    insertDebugTypeInformation(valueSymbol, sourceVariable);
                     handleNullerInfo();
+                    return;
                 }
-                return;
 
-            } else if (LLVM_DEBUG_VALUE.equals(name)) {
-                // these intrinsics are debug information and should be resolved during parsing, not
-                // at runtime
-                handleNullerInfo();
-                return;
+                case SourceModel.LLVM_DBG_VALUE_NAME: {
+                    final Symbol sourceVariable = call.getArgument(SourceModel.LLVM_DBG_VALUE_LOCALREF_ARGINDEX);
+                    final Symbol valueSymbol = call.getArgument(SourceModel.LLVM_DBG_INTRINSICS_VALUE_ARGINDEX);
+                    insertDebugTypeInformation(valueSymbol, sourceVariable);
+                    handleNullerInfo();
+                    return;
+                }
             }
         }
 

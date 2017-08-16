@@ -30,44 +30,91 @@
 package com.oracle.truffle.llvm.runtime.debug;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.Supplier;
 
-public final class LLVMDebugEnumLikeType extends LLVMDebugType {
+public abstract class LLVMSourceType {
 
-    private final Map<Long, String> values;
+    public static final LLVMSourceType UNKNOWN_TYPE = new LLVMSourceType(() -> "<unknown>", 0, 0, 0) {
+
+        @Override
+        public LLVMSourceType getOffset(long newOffset) {
+            return this;
+        }
+    };
+
+    private final long size;
+    private final long align;
+    private final long offset;
+    @CompilationFinal private Supplier<String> nameSupplier;
+
+    public LLVMSourceType(Supplier<String> nameSupplier, long size, long align, long offset) {
+        this.nameSupplier = nameSupplier;
+        this.size = size;
+        this.align = align;
+        this.offset = offset;
+    }
+
+    LLVMSourceType(long size, long align, long offset) {
+        this(UNKNOWN_TYPE::getName, size, align, offset);
+    }
 
     @TruffleBoundary
-    public LLVMDebugEnumLikeType(Supplier<String> nameSupplier, long size, long align, long offset) {
-        this(nameSupplier, size, align, offset, new HashMap<>());
+    public String getName() {
+        return nameSupplier.get();
     }
 
-    private LLVMDebugEnumLikeType(Supplier<String> nameSupplier, long size, long align, long offset, Map<Long, String> values) {
-        super(nameSupplier, size, align, offset);
-        this.values = values;
-    }
-
-    public void addValue(long id, String representation) {
+    public void setName(Supplier<String> nameSupplier) {
         CompilerAsserts.neverPartOfCompilation();
-        values.put(id, representation);
+        this.nameSupplier = nameSupplier;
     }
 
-    @Override
-    @TruffleBoundary
-    public String getElementName(long i) {
-        return values.get(i);
+    public long getSize() {
+        return size;
     }
 
-    @Override
-    public LLVMDebugType getOffset(long newOffset) {
-        return new LLVMDebugEnumLikeType(this::getName, getSize(), getAlign(), getOffset(), values);
+    public long getAlign() {
+        return align;
     }
 
-    @Override
+    public long getOffset() {
+        return offset;
+    }
+
+    public abstract LLVMSourceType getOffset(long newOffset);
+
+    public boolean isPointer() {
+        return false;
+    }
+
+    public boolean isAggregate() {
+        return false;
+    }
+
     public boolean isEnum() {
-        return true;
+        return false;
+    }
+
+    public int getElementCount() {
+        return 0;
+    }
+
+    public String getElementName(@SuppressWarnings("unused") long i) {
+        return null;
+    }
+
+    public LLVMSourceType getElementType(@SuppressWarnings("unused") long i) {
+        return null;
+    }
+
+    public LLVMSourceType getElementType(@SuppressWarnings("unused") String name) {
+        return null;
+    }
+
+    @Override
+    public String toString() {
+        return getName();
     }
 }

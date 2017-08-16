@@ -38,7 +38,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueContainerType;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
@@ -48,11 +48,11 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMDebugDeclaration extends LLVMExpressionNode {
 
     private final String varName;
-    private final LLVMDebugType varType;
+    private final LLVMSourceType varType;
 
     private final FrameSlot containerSlot;
 
-    public LLVMDebugDeclaration(String varName, LLVMDebugType varType, FrameSlot containerSlot) {
+    public LLVMDebugDeclaration(String varName, LLVMSourceType varType, FrameSlot containerSlot) {
         this.varName = varName;
         this.varType = varType;
         this.containerSlot = containerSlot;

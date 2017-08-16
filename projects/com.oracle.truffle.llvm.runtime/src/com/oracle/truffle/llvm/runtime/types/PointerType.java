@@ -80,6 +80,13 @@ public final class PointerType extends AggregateType {
     }
 
     @Override
+    public Type shallowCopy() {
+        final PointerType copy = new PointerType(pointeeType);
+        copy.setSourceType(getSourceType());
+        return copy;
+    }
+
+    @Override
     public int getOffsetOf(int index, DataSpecConverter targetDataLayout) {
         return pointeeType.getSize(targetDataLayout) * index;
     }

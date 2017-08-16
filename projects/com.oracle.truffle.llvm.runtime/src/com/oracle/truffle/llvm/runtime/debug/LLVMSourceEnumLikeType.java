@@ -30,82 +30,44 @@
 package com.oracle.truffle.llvm.runtime.debug;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
-public final class LLVMDebugMemberType extends LLVMDebugType {
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Supplier;
 
-    @CompilationFinal private LLVMDebugType elementType;
+public final class LLVMSourceEnumLikeType extends LLVMSourceType {
 
-    public LLVMDebugMemberType(String name, long size, long align, long offset) {
-        this(name, size, align, offset, LLVMDebugType.UNKNOWN_TYPE);
+    private final Map<Long, String> values;
+
+    @TruffleBoundary
+    public LLVMSourceEnumLikeType(Supplier<String> nameSupplier, long size, long align, long offset) {
+        this(nameSupplier, size, align, offset, new HashMap<>());
     }
 
-    private LLVMDebugMemberType(String name, long size, long align, long offset, LLVMDebugType elementType) {
-        super(() -> name, size, align, offset);
-        this.elementType = elementType;
+    private LLVMSourceEnumLikeType(Supplier<String> nameSupplier, long size, long align, long offset, Map<Long, String> values) {
+        super(nameSupplier, size, align, offset);
+        this.values = values;
     }
 
-    public LLVMDebugType getElementType() {
-        return elementType;
-    }
-
-    public void setElementType(LLVMDebugType elementType) {
+    public void addValue(long id, String representation) {
         CompilerAsserts.neverPartOfCompilation();
-        this.elementType = elementType;
-    }
-
-    /**
-     * Return the element type with the offset of this type.
-     *
-     * @return the element type with the offset of this type
-     */
-    LLVMDebugType getOffsetElementType() {
-        return elementType != null ? elementType.getOffset(getOffset()) : null;
+        values.put(id, representation);
     }
 
     @Override
     @TruffleBoundary
-    public String toString() {
-        return String.format("%s: %s", getName(), elementType != null ? elementType.getName() : null);
-    }
-
-    @Override
-    public LLVMDebugType getOffset(long newOffset) {
-        return this;
-    }
-
-    @Override
-    public boolean isAggregate() {
-        return true;
-    }
-
-    @Override
-    public int getElementCount() {
-        return 1;
-    }
-
-    @Override
     public String getElementName(long i) {
-        if (i == 0) {
-            return getName();
-        }
-        return null;
+        return values.get(i);
     }
 
     @Override
-    public LLVMDebugType getElementType(long i) {
-        if (i == 0) {
-            return getOffsetElementType();
-        }
-        return null;
+    public LLVMSourceType getOffset(long newOffset) {
+        return new LLVMSourceEnumLikeType(this::getName, getSize(), getAlign(), getOffset(), values);
     }
 
     @Override
-    public LLVMDebugType getElementType(String name) {
-        if (name != null && name.equals(getName())) {
-            return getOffsetElementType();
-        }
-        return null;
+    public boolean isEnum() {
+        return true;
     }
 }

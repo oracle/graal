@@ -34,16 +34,16 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import java.util.function.Supplier;
 
-public final class LLVMDebugArrayLikeType extends LLVMDebugType {
+public final class LLVMSourceArrayLikeType extends LLVMSourceType {
 
-    private Supplier<LLVMDebugType> baseType;
+    private Supplier<LLVMSourceType> baseType;
     private Supplier<Long> length;
 
-    public LLVMDebugArrayLikeType(long size, long align, long offset) {
-        this(LLVMDebugType.UNKNOWN_TYPE::getName, size, align, offset, () -> LLVMDebugType.UNKNOWN_TYPE, () -> -1L);
+    public LLVMSourceArrayLikeType(long size, long align, long offset) {
+        this(LLVMSourceType.UNKNOWN_TYPE::getName, size, align, offset, () -> LLVMSourceType.UNKNOWN_TYPE, () -> -1L);
     }
 
-    private LLVMDebugArrayLikeType(Supplier<String> name, long size, long align, long offset, Supplier<LLVMDebugType> baseType, Supplier<Long> length) {
+    private LLVMSourceArrayLikeType(Supplier<String> name, long size, long align, long offset, Supplier<LLVMSourceType> baseType, Supplier<Long> length) {
         super(size, align, offset);
         setName(name);
         this.baseType = baseType;
@@ -51,11 +51,11 @@ public final class LLVMDebugArrayLikeType extends LLVMDebugType {
     }
 
     @TruffleBoundary
-    public LLVMDebugType getBaseType() {
+    public LLVMSourceType getBaseType() {
         return baseType.get();
     }
 
-    public void setBaseType(Supplier<LLVMDebugType> baseType) {
+    public void setBaseType(Supplier<LLVMSourceType> baseType) {
         CompilerAsserts.neverPartOfCompilation();
         this.baseType = baseType;
     }
@@ -71,8 +71,8 @@ public final class LLVMDebugArrayLikeType extends LLVMDebugType {
     }
 
     @Override
-    public LLVMDebugType getOffset(long newOffset) {
-        return new LLVMDebugArrayLikeType(this::getName, getSize(), getAlign(), newOffset, this::getBaseType, length);
+    public LLVMSourceType getOffset(long newOffset) {
+        return new LLVMSourceArrayLikeType(this::getName, getSize(), getAlign(), newOffset, this::getBaseType, length);
     }
 
     @Override
@@ -96,9 +96,9 @@ public final class LLVMDebugArrayLikeType extends LLVMDebugType {
 
     @Override
     @TruffleBoundary
-    public LLVMDebugType getElementType(long i) {
+    public LLVMSourceType getElementType(long i) {
         if (0 <= i && i < getLength()) {
-            final LLVMDebugType resolvedBaseType = baseType.get();
+            final LLVMSourceType resolvedBaseType = baseType.get();
             return resolvedBaseType.getOffset(i * resolvedBaseType.getSize());
         }
         return null;
@@ -106,7 +106,7 @@ public final class LLVMDebugArrayLikeType extends LLVMDebugType {
 
     @Override
     @TruffleBoundary
-    public LLVMDebugType getElementType(String name) {
+    public LLVMSourceType getElementType(String name) {
         int i;
         try {
             i = Integer.parseInt(name);

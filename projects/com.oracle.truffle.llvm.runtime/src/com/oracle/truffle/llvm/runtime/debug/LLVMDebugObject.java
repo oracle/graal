@@ -56,9 +56,9 @@ public abstract class LLVMDebugObject implements TruffleObject {
 
     protected final LLVMDebugValueProvider value;
 
-    protected final LLVMDebugType type;
+    protected final LLVMSourceType type;
 
-    private LLVMDebugObject(LLVMDebugValueProvider value, long offset, LLVMDebugType type) {
+    private LLVMDebugObject(LLVMDebugValueProvider value, long offset, LLVMSourceType type) {
         this.value = value;
         this.offset = offset;
         this.type = type;
@@ -119,7 +119,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
 
     private static final class Enum extends LLVMDebugObject {
 
-        Enum(LLVMDebugValueProvider value, long offset, LLVMDebugType type) {
+        Enum(LLVMDebugValueProvider value, long offset, LLVMSourceType type) {
             super(value, offset, type);
         }
 
@@ -157,7 +157,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
 
         private final Map<Object, LLVMDebugObject> members;
 
-        Structured(LLVMDebugValueProvider value, long offset, LLVMDebugType type, Object[] memberIdentifiers, Map<Object, LLVMDebugObject> members) {
+        Structured(LLVMDebugValueProvider value, long offset, LLVMSourceType type, Object[] memberIdentifiers, Map<Object, LLVMDebugObject> members) {
             super(value, offset, type);
             this.memberIdentifiers = memberIdentifiers;
             this.members = members;
@@ -182,7 +182,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
 
     private static final class Primitive extends LLVMDebugObject {
 
-        Primitive(LLVMDebugValueProvider value, long offset, LLVMDebugType type) {
+        Primitive(LLVMDebugValueProvider value, long offset, LLVMSourceType type) {
             super(value, offset, type);
         }
 
@@ -204,9 +204,9 @@ public abstract class LLVMDebugObject implements TruffleObject {
                 return cannotRead();
             }
 
-            LLVMDebugType actualType = this.type;
-            if (actualType instanceof LLVMDebugDecoratorType) {
-                actualType = ((LLVMDebugDecoratorType) actualType).getTrueBaseType();
+            LLVMSourceType actualType = this.type;
+            if (actualType instanceof LLVMSourceDecoratorType) {
+                actualType = ((LLVMSourceDecoratorType) actualType).getTrueBaseType();
             }
 
             if (actualType.isPointer()) {
@@ -217,8 +217,8 @@ public abstract class LLVMDebugObject implements TruffleObject {
                 return actualType.getName();
             }
 
-            if (actualType instanceof LLVMDebugBasicType) {
-                switch (((LLVMDebugBasicType) actualType).getKind()) {
+            if (actualType instanceof LLVMSourceBasicType) {
+                switch (((LLVMSourceBasicType) actualType).getKind()) {
                     case ADDRESS:
                         return value.readAddress(offset);
 
@@ -270,17 +270,17 @@ public abstract class LLVMDebugObject implements TruffleObject {
 
     private static final class Pointer extends LLVMDebugObject {
 
-        private final LLVMDebugPointerType pointerType;
+        private final LLVMSourcePointerType pointerType;
 
-        Pointer(LLVMDebugValueProvider value, long offset, LLVMDebugType type) {
+        Pointer(LLVMDebugValueProvider value, long offset, LLVMSourceType type) {
             super(value, offset, type);
 
-            LLVMDebugType actualType = this.type;
-            if (type instanceof LLVMDebugDecoratorType) {
-                actualType = ((LLVMDebugDecoratorType) actualType).getTrueBaseType();
+            LLVMSourceType actualType = this.type;
+            if (type instanceof LLVMSourceDecoratorType) {
+                actualType = ((LLVMSourceDecoratorType) actualType).getTrueBaseType();
             }
-            if (actualType instanceof LLVMDebugPointerType) {
-                this.pointerType = (LLVMDebugPointerType) actualType;
+            if (actualType instanceof LLVMSourcePointerType) {
+                this.pointerType = (LLVMSourcePointerType) actualType;
             } else {
                 this.pointerType = null;
             }
@@ -332,7 +332,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
         return builder.toString();
     }
 
-    public static LLVMDebugObject instantiate(LLVMDebugType type, long baseOffset, LLVMDebugValueProvider value) {
+    public static LLVMDebugObject instantiate(LLVMSourceType type, long baseOffset, LLVMDebugValueProvider value) {
         if (type.isAggregate()) {
             return instantiateAggregate(type, baseOffset, value);
 
@@ -348,11 +348,11 @@ public abstract class LLVMDebugObject implements TruffleObject {
     }
 
     @TruffleBoundary
-    private static LLVMDebugObject instantiateAggregate(LLVMDebugType type, long baseOffset, LLVMDebugValueProvider value) {
+    private static LLVMDebugObject instantiateAggregate(LLVMSourceType type, long baseOffset, LLVMDebugValueProvider value) {
         final Map<Object, LLVMDebugObject> members = new HashMap<>(type.getElementCount());
         final Object[] memberIdentifiers = new Object[type.getElementCount()];
         for (int i = 0; i < type.getElementCount(); i++) {
-            final LLVMDebugType elementType = type.getElementType(i);
+            final LLVMSourceType elementType = type.getElementType(i);
             final String elementName = type.getElementName(i);
             final long newOffset = baseOffset + elementType.getOffset();
 

@@ -145,9 +145,8 @@ public final class FunctionDefinition extends IRScope implements Constant, Value
     }
 
     public void createParameter(Type t) {
-        final int index = parameters.size();
-        final AttributesGroup attrGroup = paramAttr.getParameterAttributesGroup(index);
-        final FunctionParameter parameter = new FunctionParameter(t, index, attrGroup);
+        final AttributesGroup attrGroup = paramAttr.getParameterAttributesGroup(parameters.size());
+        final FunctionParameter parameter = new FunctionParameter(t, attrGroup);
         addSymbol(parameter, t);
         parameters.add(parameter);
     }

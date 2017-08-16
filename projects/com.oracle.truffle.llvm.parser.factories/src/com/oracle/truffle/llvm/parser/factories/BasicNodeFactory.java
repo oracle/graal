@@ -156,6 +156,7 @@ import com.oracle.truffle.llvm.nodes.memory.LLVMFenceNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNode.LLVMAddressArrayLiteralNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMStaticInitsBlockNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnreachableNode;
+import com.oracle.truffle.llvm.nodes.vars.LLVMSetInteropTypeNode;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
@@ -183,7 +184,7 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReaso
 import com.oracle.truffle.llvm.runtime.NativeAllocator;
 import com.oracle.truffle.llvm.runtime.NativeIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.NativeResolver;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
@@ -902,8 +903,13 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createDebugDeclaration(String varName, LLVMDebugType type, LLVMExpressionNode valueProvider, FrameSlot sourceValuesContainerSlot) {
+    public LLVMExpressionNode createDebugDeclaration(String varName, LLVMSourceType type, LLVMExpressionNode valueProvider, FrameSlot sourceValuesContainerSlot) {
         final LLVMExpressionNode containerProvider = LLVMFrameReadWriteFactory.createFrameRead(MetaType.DEBUG, sourceValuesContainerSlot);
         return LLVMDebugDeclarationNodeGen.create(varName, type, sourceValuesContainerSlot, containerProvider, valueProvider);
+    }
+
+    @Override
+    public LLVMExpressionNode registerDebugType(FrameSlot valueSlot, LLVMSourceType type) {
+        return new LLVMSetInteropTypeNode(valueSlot, type);
     }
 }

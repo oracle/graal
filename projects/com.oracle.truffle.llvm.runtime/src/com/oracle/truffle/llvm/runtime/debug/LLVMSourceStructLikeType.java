@@ -36,30 +36,30 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
-public final class LLVMDebugStructLikeType extends LLVMDebugType {
+public final class LLVMSourceStructLikeType extends LLVMSourceType {
 
-    private final List<LLVMDebugMemberType> members;
+    private final List<LLVMSourceMemberType> members;
 
     @TruffleBoundary
-    public LLVMDebugStructLikeType(long size, long align, long offset) {
+    public LLVMSourceStructLikeType(long size, long align, long offset) {
         super(size, align, offset);
         this.members = new ArrayList<>();
     }
 
-    private LLVMDebugStructLikeType(Supplier<String> name, long size, long align, long offset, List<LLVMDebugMemberType> members) {
+    private LLVMSourceStructLikeType(Supplier<String> name, long size, long align, long offset, List<LLVMSourceMemberType> members) {
         super(size, align, offset);
         setName(name);
         this.members = members;
     }
 
-    public void addMember(LLVMDebugMemberType member) {
+    public void addMember(LLVMSourceMemberType member) {
         CompilerAsserts.neverPartOfCompilation();
         members.add(member);
     }
 
     @Override
-    public LLVMDebugType getOffset(long newOffset) {
-        return new LLVMDebugStructLikeType(this::getName, getSize(), getAlign(), newOffset, members);
+    public LLVMSourceType getOffset(long newOffset) {
+        return new LLVMSourceStructLikeType(this::getName, getSize(), getAlign(), newOffset, members);
     }
 
     @Override
@@ -84,7 +84,7 @@ public final class LLVMDebugStructLikeType extends LLVMDebugType {
 
     @Override
     @TruffleBoundary
-    public LLVMDebugType getElementType(long i) {
+    public LLVMSourceType getElementType(long i) {
         if (0 <= i && i < members.size()) {
             return members.get((int) i).getOffsetElementType();
         }
@@ -93,11 +93,11 @@ public final class LLVMDebugStructLikeType extends LLVMDebugType {
 
     @Override
     @TruffleBoundary
-    public LLVMDebugType getElementType(String name) {
+    public LLVMSourceType getElementType(String name) {
         if (name == null) {
             return null;
         }
-        for (final LLVMDebugMemberType member : members) {
+        for (final LLVMSourceMemberType member : members) {
             if (name.equals(member.getName())) {
                 return member.getOffsetElementType();
             }

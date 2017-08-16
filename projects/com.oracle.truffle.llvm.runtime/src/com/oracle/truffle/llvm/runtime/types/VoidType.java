@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class VoidType extends Type {
@@ -64,6 +65,15 @@ public final class VoidType extends Type {
     @Override
     public String toString() {
         return "void";
+    }
+
+    @Override
+    public Type shallowCopy() {
+        return this;
+    }
+
+    @Override
+    public void setSourceType(LLVMSourceType sourceType) {
     }
 
     @Override

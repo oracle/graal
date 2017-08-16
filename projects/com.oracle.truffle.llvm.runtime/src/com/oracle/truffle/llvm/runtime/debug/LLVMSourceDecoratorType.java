@@ -35,22 +35,22 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public final class LLVMDebugDecoratorType extends LLVMDebugType {
+public final class LLVMSourceDecoratorType extends LLVMSourceType {
 
-    private Supplier<LLVMDebugType> baseType;
+    private Supplier<LLVMSourceType> baseType;
 
     private final Function<String, String> nameDecorator;
 
     private final Function<Long, Long> sizeDecorator;
 
-    public LLVMDebugDecoratorType(long size, long align, long offset, Function<String, String> nameDecorator, Function<Long, Long> sizeDecorator) {
+    public LLVMSourceDecoratorType(long size, long align, long offset, Function<String, String> nameDecorator, Function<Long, Long> sizeDecorator) {
         super(size, align, offset);
         this.nameDecorator = nameDecorator;
-        this.baseType = () -> LLVMDebugType.UNKNOWN_TYPE;
+        this.baseType = () -> LLVMSourceType.UNKNOWN_TYPE;
         this.sizeDecorator = sizeDecorator;
     }
 
-    private LLVMDebugDecoratorType(Supplier<String> nameSupplier, long size, long align, long offset, Supplier<LLVMDebugType> baseType, Function<String, String> nameDecorator,
+    private LLVMSourceDecoratorType(Supplier<String> nameSupplier, long size, long align, long offset, Supplier<LLVMSourceType> baseType, Function<String, String> nameDecorator,
                     Function<Long, Long> sizeDecorator) {
         super(nameSupplier, size, align, offset);
         this.baseType = baseType;
@@ -58,16 +58,16 @@ public final class LLVMDebugDecoratorType extends LLVMDebugType {
         this.sizeDecorator = sizeDecorator;
     }
 
-    public void setBaseType(Supplier<LLVMDebugType> baseType) {
+    public void setBaseType(Supplier<LLVMSourceType> baseType) {
         CompilerAsserts.neverPartOfCompilation();
         this.baseType = baseType;
     }
 
     @TruffleBoundary
-    public LLVMDebugType getTrueBaseType() {
-        final LLVMDebugType resolvedBaseType = baseType.get();
-        if (resolvedBaseType instanceof LLVMDebugDecoratorType) {
-            return ((LLVMDebugDecoratorType) resolvedBaseType).getTrueBaseType();
+    public LLVMSourceType getTrueBaseType() {
+        final LLVMSourceType resolvedBaseType = baseType.get();
+        if (resolvedBaseType instanceof LLVMSourceDecoratorType) {
+            return ((LLVMSourceDecoratorType) resolvedBaseType).getTrueBaseType();
         } else {
             return resolvedBaseType;
         }
@@ -135,13 +135,13 @@ public final class LLVMDebugDecoratorType extends LLVMDebugType {
 
     @Override
     @TruffleBoundary
-    public LLVMDebugType getElementType(long i) {
+    public LLVMSourceType getElementType(long i) {
         return baseType.get().getElementType(i);
     }
 
     @Override
     @TruffleBoundary
-    public LLVMDebugType getElementType(String name) {
+    public LLVMSourceType getElementType(String name) {
         return baseType.get().getElementType(name);
     }
 
@@ -153,8 +153,8 @@ public final class LLVMDebugDecoratorType extends LLVMDebugType {
 
     @Override
     @TruffleBoundary
-    public LLVMDebugType getOffset(long newOffset) {
-        final LLVMDebugType offsetBaseType = baseType.get().getOffset(newOffset);
-        return new LLVMDebugDecoratorType(this::getName, getSize(), getAlign(), getOffset(), () -> offsetBaseType, nameDecorator, sizeDecorator);
+    public LLVMSourceType getOffset(long newOffset) {
+        final LLVMSourceType offsetBaseType = baseType.get().getOffset(newOffset);
+        return new LLVMSourceDecoratorType(this::getName, getSize(), getAlign(), getOffset(), () -> offsetBaseType, nameDecorator, sizeDecorator);
     }
 }

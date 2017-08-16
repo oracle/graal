@@ -38,6 +38,7 @@ import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.MetadataConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
@@ -48,7 +49,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruc
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
@@ -57,6 +58,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class SourceModel {
+
+    public static final int LLVM_DBG_INTRINSICS_VALUE_ARGINDEX = 0;
+
+    public static final String LLVM_DBG_DECLARE_NAME = "@llvm.dbg.declare";
+    public static final int LLVM_DBG_DECLARE_LOCALREF_ARGINDEX = 1;
+
+    public static final String LLVM_DBG_VALUE_NAME = "@llvm.dbg.value";
+    public static final int LLVM_DBG_VALUE_LOCALREF_ARGINDEX = 2;
 
     public static SourceModel generate(ModelModule irModel) {
         final Parser parser = new Parser(irModel.getMetadata());
@@ -94,9 +103,9 @@ public final class SourceModel {
 
         private final Symbol symbol;
 
-        private final LLVMDebugType type;
+        private final LLVMSourceType type;
 
-        private Variable(String name, Symbol symbol, LLVMDebugType type) {
+        private Variable(String name, Symbol symbol, LLVMSourceType type) {
             this.name = name;
             this.symbol = symbol;
             this.type = type;
@@ -110,7 +119,7 @@ public final class SourceModel {
             return symbol;
         }
 
-        public LLVMDebugType getDebugType() {
+        public LLVMSourceType getSourceType() {
             return type;
         }
 
@@ -190,34 +199,63 @@ public final class SourceModel {
 
         @Override
         public void visit(VoidCallInstruction call) {
-            if (!(call.getCallTarget() instanceof FunctionDeclaration && "@llvm.dbg.declare".equals(((FunctionDeclaration) call.getCallTarget()).getName()) && call.getArgumentCount() >= 2)) {
+            final Symbol callTarget = call.getCallTarget();
+            if (callTarget instanceof FunctionDeclaration) {
+                int mdlocalArgumentIndex = -1;
+                switch (((FunctionDeclaration) callTarget).getName()) {
+                    case LLVM_DBG_DECLARE_NAME:
+                        if (call.getArgumentCount() >= LLVM_DBG_DECLARE_LOCALREF_ARGINDEX) {
+                            mdlocalArgumentIndex = LLVM_DBG_DECLARE_LOCALREF_ARGINDEX;
+                            break;
+                        }
+                        return;
+
+                    case LLVM_DBG_VALUE_NAME:
+                        if (call.getArgumentCount() >= LLVM_DBG_VALUE_LOCALREF_ARGINDEX) {
+                            mdlocalArgumentIndex = LLVM_DBG_VALUE_LOCALREF_ARGINDEX;
+                            break;
+                        }
+                        return;
+
+                    default:
+                        return;
+                }
+
+                handleDebugIntrinsic(call, mdlocalArgumentIndex);
+            }
+        }
+
+        private static final int LLVM_DBG_INTRINSICS_VALUEINDEX = 0;
+
+        private void handleDebugIntrinsic(VoidCallInstruction call, int mdlocalArgumentIndex) {
+            Symbol value = call.getArgument(LLVM_DBG_INTRINSICS_VALUEINDEX);
+            if (value instanceof MetadataConstant) {
+                // the first argument should reference the allocation site of the variable
+                final long mdIndex = ((MetadataConstant) value).getValue();
+                value = MDSymbolExtractor.getSymbol(currentFunction.definition.getMetadata().getMDRef(mdIndex));
+            }
+
+            if (value instanceof ValueInstruction) {
+                ((ValueInstruction) value).setSourceVariable(true);
+            } else if (value instanceof FunctionParameter) {
+                ((FunctionParameter) value).setSourceVariable(true);
+            } else {
                 return;
             }
 
-            Symbol alloca = call.getArgument(0);
-            if (alloca instanceof MetadataConstant) {
-                // the first argument should reference the allocation site of the variable
-                final long mdIndex = ((MetadataConstant) alloca).getValue();
-                alloca = MDSymbolExtractor.getSymbol(currentFunction.definition.getMetadata().getMDRef(mdIndex));
-            }
+            final Symbol mdLocalMDRef = call.getArgument(mdlocalArgumentIndex);
+            if (mdLocalMDRef instanceof MetadataConstant) {
+                final long mdIndex = ((MetadataConstant) mdLocalMDRef).getValue();
+                final MDBaseNode mdLocal = currentFunction.definition.getMetadata().getMDRef(mdIndex);
+                final LLVMSourceType type = typeExtractor.parseType(mdLocal);
+                final String varName = MDNameExtractor.getName(mdLocal);
+                final Variable var = new Variable(varName, value, type);
+                currentFunction.locals.add(var);
 
-            if (alloca instanceof ValueInstruction) {
-                Symbol mdLocalMDRef = call.getArgument(1);
-                if (mdLocalMDRef instanceof MetadataConstant) {
-
-                    // ensure that lifetime analysis does not kill the variable before it is used in
-                    // the call
-                    call.replace(call.getArgument(0), alloca);
-
-                    final long mdIndex = ((MetadataConstant) mdLocalMDRef).getValue();
-                    final MDBaseNode mdLocal = currentFunction.definition.getMetadata().getMDRef(mdIndex);
-                    LLVMDebugType type = typeExtractor.parseType(mdLocal);
-                    String varName = MDNameExtractor.getName(mdLocal);
-                    final Variable var = new Variable(varName, alloca, type);
-                    ((ValueInstruction) alloca).setSourceVariable(var);
-                    call.replace(call.getArgument(1), var);
-                    currentFunction.locals.add(var);
-                }
+                // ensure that lifetime analysis does not kill the variable before it is used in
+                // the call
+                call.replace(call.getArgument(LLVM_DBG_INTRINSICS_VALUEINDEX), value);
+                call.replace(mdLocalMDRef, var);
             }
         }
 
@@ -233,7 +271,7 @@ public final class SourceModel {
             if (symbol == null) {
                 return;
             }
-            LLVMDebugType type = typeExtractor.parseType(mdGlobal.getType());
+            LLVMSourceType type = typeExtractor.parseType(mdGlobal.getType());
             Variable globalVar = new Variable(name, symbol, type);
             sourceModel.globals.add(globalVar);
         }

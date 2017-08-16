@@ -76,6 +76,13 @@ public final class ArrayType extends AggregateType {
     }
 
     @Override
+    public Type shallowCopy() {
+        final ArrayType copy = new ArrayType(elementType, length);
+        copy.setSourceType(getSourceType());
+        return copy;
+    }
+
+    @Override
     public int getOffsetOf(int index, DataSpecConverter targetDataLayout) {
         return getElementType().getSize(targetDataLayout) * index;
     }

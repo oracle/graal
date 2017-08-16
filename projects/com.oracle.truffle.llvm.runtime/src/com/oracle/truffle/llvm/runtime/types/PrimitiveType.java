@@ -121,6 +121,13 @@ public final class PrimitiveType extends Type {
     }
 
     @Override
+    public Type shallowCopy() {
+        final PrimitiveType copy = new PrimitiveType(kind, constant);
+        copy.setSourceType(getSourceType());
+        return copy;
+    }
+
+    @Override
     public String toString() {
         if (Type.isIntegerType(this)) {
             return String.format("i%d", getBitSize());

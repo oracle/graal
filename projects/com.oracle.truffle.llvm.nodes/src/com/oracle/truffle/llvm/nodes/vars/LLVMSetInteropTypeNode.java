@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,57 +27,30 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.functions;
+package com.oracle.truffle.llvm.nodes.vars;
 
-import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
-import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
-public final class FunctionParameter implements ValueSymbol {
+public final class LLVMSetInteropTypeNode extends LLVMExpressionNode {
 
-    private final Type type;
+    private final FrameSlot frameSlot;
 
-    private String name = LLVMIdentifier.UNKNOWN;
+    private final LLVMSourceType sourceType;
 
-    private final AttributesGroup parameterAttribute;
-
-    private boolean isSourceVariable = false;
-
-    FunctionParameter(Type type, AttributesGroup parameterAttribute) {
-        this.type = type;
-        this.parameterAttribute = parameterAttribute;
+    public LLVMSetInteropTypeNode(FrameSlot frameSlot, LLVMSourceType sourceType) {
+        this.frameSlot = frameSlot;
+        this.sourceType = sourceType;
     }
 
     @Override
-    public String getName() {
-        return name;
+    public Object executeGeneric(VirtualFrame frame) {
+        final Type type = (Type) frameSlot.getInfo();
+        type.setSourceType(sourceType);
+        return null;
     }
 
-    @Override
-    public void setName(String name) {
-        this.name = LLVMIdentifier.toLocalIdentifier(name);
-    }
-
-    @Override
-    public Type getType() {
-        return type;
-    }
-
-    public AttributesGroup getParameterAttribute() {
-        return parameterAttribute;
-    }
-
-    public boolean isSourceVariable() {
-        return isSourceVariable;
-    }
-
-    public void setSourceVariable(boolean isSourceVariable) {
-        this.isSourceVariable = isSourceVariable;
-    }
-
-    @Override
-    public String toString() {
-        return String.format("Parameter %s (%s)", name, type);
-    }
 }

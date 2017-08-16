@@ -35,17 +35,17 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import java.util.function.Supplier;
 
-public final class LLVMDebugPointerType extends LLVMDebugType {
+public final class LLVMSourcePointerType extends LLVMSourceType {
 
     private final boolean isSafeToDereference;
 
-    @CompilationFinal private Supplier<LLVMDebugType> baseType;
+    @CompilationFinal private Supplier<LLVMSourceType> baseType;
 
-    public LLVMDebugPointerType(long size, long align, long offset, boolean isSafeToDereference) {
-        this(LLVMDebugType.UNKNOWN_TYPE::getName, size, align, offset, () -> LLVMDebugType.UNKNOWN_TYPE, isSafeToDereference);
+    public LLVMSourcePointerType(long size, long align, long offset, boolean isSafeToDereference) {
+        this(LLVMSourceType.UNKNOWN_TYPE::getName, size, align, offset, () -> LLVMSourceType.UNKNOWN_TYPE, isSafeToDereference);
     }
 
-    private LLVMDebugPointerType(Supplier<String> nameSupplier, long size, long align, long offset, Supplier<LLVMDebugType> baseType, boolean isSafeToDereference) {
+    private LLVMSourcePointerType(Supplier<String> nameSupplier, long size, long align, long offset, Supplier<LLVMSourceType> baseType, boolean isSafeToDereference) {
         super(nameSupplier, size, align, offset);
         this.baseType = baseType;
         this.isSafeToDereference = isSafeToDereference;
@@ -56,18 +56,18 @@ public final class LLVMDebugPointerType extends LLVMDebugType {
     }
 
     @TruffleBoundary
-    public LLVMDebugType getBaseType() {
+    public LLVMSourceType getBaseType() {
         return baseType.get();
     }
 
-    public void setBaseType(Supplier<LLVMDebugType> baseType) {
+    public void setBaseType(Supplier<LLVMSourceType> baseType) {
         CompilerAsserts.neverPartOfCompilation();
         this.baseType = baseType;
     }
 
     @Override
-    public LLVMDebugType getOffset(long newOffset) {
-        return new LLVMDebugPointerType(this::getName, getSize(), getAlign(), newOffset, this::getBaseType, isSafeToDereference);
+    public LLVMSourceType getOffset(long newOffset) {
+        return new LLVMSourcePointerType(this::getName, getSize(), getAlign(), newOffset, this::getBaseType, isSafeToDereference);
     }
 
     @Override
@@ -91,12 +91,12 @@ public final class LLVMDebugPointerType extends LLVMDebugType {
     }
 
     @Override
-    public LLVMDebugType getElementType(long i) {
+    public LLVMSourceType getElementType(long i) {
         return getBaseType().getElementType(i);
     }
 
     @Override
-    public LLVMDebugType getElementType(String name) {
+    public LLVMSourceType getElementType(String name) {
         return getBaseType().getElementType(name);
     }
 }

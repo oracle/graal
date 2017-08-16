@@ -263,6 +263,11 @@ public final class Types implements ParserListener, Iterable<Type> {
         }
 
         @Override
+        public Type shallowCopy() {
+            return this;
+        }
+
+        @Override
         public int hashCode() {
             final int prime = 31;
             int result = 1;
@@ -337,6 +342,11 @@ public final class Types implements ParserListener, Iterable<Type> {
         public int getSize(DataSpecConverter targetDataLayout) {
             // This is a private type only required for resolving
             throw new IllegalStateException();
+        }
+
+        @Override
+        public Type shallowCopy() {
+            return this;
         }
 
         @Override
