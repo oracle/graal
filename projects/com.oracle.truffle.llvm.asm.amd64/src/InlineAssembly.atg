@@ -63,7 +63,7 @@ PRODUCTIONS
 
 InlineAssembly<> =
   "\""
-  [ ( Prefix
+  [ ( Prefix [ ";" ]
     |							(. factory.setPrefix(null); .)
     )
     AssemblyInstruction
