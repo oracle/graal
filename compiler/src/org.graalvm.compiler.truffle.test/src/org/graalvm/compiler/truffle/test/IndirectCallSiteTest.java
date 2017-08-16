@@ -227,13 +227,17 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
             Assert.assertEquals("Global state not updated!", LOREM_IPSUM, globalState[0]);
 
             assertCompiled(targetWithIndirectCall);
-            assertNotDeoptimized(targetWithIndirectCall);
+            // Has to deoptimize to check the assumption of saveArgumentToGlobalState
+            assertDeoptimized(targetWithIndirectCall);
+
             // targetWithDirectCall is unaffected due to inlining
             assertCompiled(targetWithDirectCall);
             assertNotDeoptimized(targetWithDirectCall);
-            // saveArgumentToGlobalState gets recompiled after invalidation
-            assertCompiled(saveArgumentToGlobalState);
-            assertDeoptimized(saveArgumentToGlobalState);
+
+            // saveArgumentToGlobalState compilation is delayed by the invalidation
+            assertNotCompiled(saveArgumentToGlobalState);
+            assertNotDeoptimized(saveArgumentToGlobalState);
+            Assert.assertEquals("saveArgumentToGlobalState was not invlidated!", 1, saveArgumentToGlobalState.getCompilationProfile().getInvalidationCount());
         }
     }
 
@@ -250,11 +254,11 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
             final OptimizedCallTarget saveArgumentToGlobalState = (OptimizedCallTarget) runtime.createCallTarget(new WritesToGlobalState());
             final OptimizedCallTarget targetWithDirectCall = (OptimizedCallTarget) runtime.createCallTarget(new DirectlyCallsTargetWithArguments(saveArgumentToGlobalState, new Object[]{1}));
             final OptimizedCallTarget dummyInnerTarget = (OptimizedCallTarget) runtime.createCallTarget(new DummyTarget());
-            final OptimizedCallTarget targetWithIndirectCall = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+            final OptimizedCallTarget targetWithIndirectCall = (OptimizedCallTarget) runtime.createCallTarget(new DeoptimizeAwareRootNode() {
                 @Child OptimizedIndirectCallNode indirectCallNode = (OptimizedIndirectCallNode) runtime.createIndirectCallNode();
 
                 @Override
-                public Object execute(VirtualFrame frame) {
+                public Object doExecute(VirtualFrame frame) {
                     if (frame.getArguments().length == 0) {
                         return indirectCallNode.call(dummyInnerTarget, new Object[0]);
                     } else {
@@ -278,23 +282,28 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
             assertNotDeoptimized(saveArgumentToGlobalState);
 
             for (int i = 0; i < compilationThreshold; i++) {
-                targetWithIndirectCall.call(new Object[]{dummyInnerTarget});
+                targetWithIndirectCall.call(new Object[]{});
             }
             assertCompiled(targetWithIndirectCall);
             assertNotDeoptimized(targetWithIndirectCall);
 
             globalState[0] = 0;
-            targetWithIndirectCall.call(new Object[]{saveArgumentToGlobalState});
+            targetWithIndirectCall.call(new Object[]{null});
             Assert.assertEquals("Global state not updated!", LOREM_IPSUM, globalState[0]);
 
             assertCompiled(targetWithIndirectCall);
+            // Does not have to deoptimize because the target with the assumption is an argument, so
+            // it's not Partially Evaluated.
             assertNotDeoptimized(targetWithIndirectCall);
+
             // targetWithDirectCall is unaffected due to inlining
             assertCompiled(targetWithDirectCall);
             assertNotDeoptimized(targetWithDirectCall);
-            // saveArgumentToGlobalState gets recompiled after invalidation
-            assertCompiled(saveArgumentToGlobalState);
-            assertDeoptimized(saveArgumentToGlobalState);
+
+            // saveArgumentToGlobalState compilation is delayed by the invalidation
+            assertNotCompiled(saveArgumentToGlobalState);
+            assertNotDeoptimized(saveArgumentToGlobalState);
+            Assert.assertEquals("saveArgumentToGlobalState was not invlidated!", 1, saveArgumentToGlobalState.getCompilationProfile().getInvalidationCount());
         }
     }
 }
