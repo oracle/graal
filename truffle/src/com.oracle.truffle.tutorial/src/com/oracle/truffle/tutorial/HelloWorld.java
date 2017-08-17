@@ -52,7 +52,6 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Value;
  *
  * @since 0.23
  */
-@Deprecated
 public final class HelloWorld {
     private  HelloWorld() {
     }
