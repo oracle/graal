@@ -104,8 +104,7 @@ public final class CompilerDirectives {
      * compilation.
      *
      * @return {@code false} when executed in the interpreter or in an inlined {@link CallTarget},
-     *         {@code true} in compiled code and the root of compilation i.e. root of the inline
-     *         graph.
+     *         {@code true} when in non-inlined compiled code.
      * @since 0.28 or earlier
      */
     public static boolean inCompilationRoot() {
