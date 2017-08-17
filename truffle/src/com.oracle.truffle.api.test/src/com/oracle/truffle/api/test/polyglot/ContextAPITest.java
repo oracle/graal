@@ -44,7 +44,7 @@ public class ContextAPITest {
         try {
             context.eval(LanguageSPITestLanguage.ID, "");
             fail();
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalStateException e) {
         }
         assertInternalNotAccessible(context);
         context.close();
@@ -54,18 +54,18 @@ public class ContextAPITest {
         try {
             context.eval(ContextAPITestInternalLanguage.ID, "");
             fail();
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalStateException e) {
         }
         try {
             context.initialize(ContextAPITestInternalLanguage.ID);
             fail();
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalStateException e) {
         }
 
         try {
             context.lookup(ContextAPITestInternalLanguage.ID, "foobar");
             fail();
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalStateException e) {
         }
         assertFalse(context.getEngine().getLanguages().containsKey(ContextAPITestInternalLanguage.ID));
     }

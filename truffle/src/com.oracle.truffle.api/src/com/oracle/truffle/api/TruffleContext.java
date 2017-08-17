@@ -35,11 +35,13 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 
 /**
- * An inner language environment/context {@link Env#newContextBuilder() created} by a Truffle
- * language. A {@link TruffleContext context} consists of a
- * {@link TruffleLanguage#createContext(Env) language context} instance for each
- * {@link Env#getLanguages() installed language}. The current language context is
- * {@link TruffleLanguage#createContext(Env) created} eagerly and can be accessed using a
+ * A handle on a context of a set of Truffle languages. This context handle is designed to be used
+ * by Truffle guest language implementations. The Truffle context can be used to create inner
+ * contexts for isolated execution of guest language code.
+ * <p>
+ * A {@link TruffleContext context} consists of a {@link TruffleLanguage#createContext(Env) language
+ * context} instance for each {@link Env#getLanguages() installed language}. The current language
+ * context is {@link TruffleLanguage#createContext(Env) created} eagerly and can be accessed using a
  * {@link ContextReference context reference} or statically with
  * {@link TruffleLanguage#getCurrentContext(Class)} after the context was
  * {@link TruffleContext#enter() entered}.

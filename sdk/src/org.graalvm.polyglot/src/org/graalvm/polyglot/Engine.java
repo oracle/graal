@@ -56,9 +56,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
  * By default every context creates its own {@link Engine engine} instance implicitly when
  * {@link Context.Builder#build() instantiated}. Multiple contexts can use an
  * {@link Context.Builder#engine(Engine) explicit engine} when using a context builder. If contexts
- * share the same engine instance then they share instruments and its configuration. Also,
- * {@link Value value} instances can only be exchanged between contexts that are associated with
- * same engine.
+ * share the same engine instance then they share instruments and their configuration.
  * <p>
  * It can be useful to {@link Engine#create() create} an engine instance without a context to only
  * access meta-data for installed languages, instruments and their available options.

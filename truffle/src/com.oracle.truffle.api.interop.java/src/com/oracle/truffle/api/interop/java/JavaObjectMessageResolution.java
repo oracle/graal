@@ -54,7 +54,12 @@ class JavaObjectMessageResolution {
             if (obj == null) {
                 return 0;
             }
-            return Array.getLength(obj);
+            try {
+                return Array.getLength(obj);
+            } catch (IllegalArgumentException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw UnsupportedMessageException.raise(Message.GET_SIZE);
+            }
         }
 
     }

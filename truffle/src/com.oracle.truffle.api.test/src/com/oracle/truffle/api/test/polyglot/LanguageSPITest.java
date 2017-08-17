@@ -135,51 +135,25 @@ public class LanguageSPITest {
         assertEquals(1, langContext.disposeCalled);
     }
 
-    @Test
-    public void testAccessContextFromOtherThread() {
-        langContext = null;
-        Context context = Context.newBuilder().build();
-        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
-            public Object apply(Env env) {
-                return LanguageSPITestLanguage.getContext();
-            }
-        };
-        LanguageContext initLangContext = context.eval(LanguageSPITestLanguage.ID, "initialize").asHostObject();
-        assertSame(initLangContext, langContext);
-
-        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
-            public Object apply(Env env) {
-                Object[] result = new Object[1];
-                // Simulate a new thread created by the guest language
-                Thread thread = new Thread(() -> {
-                    result[0] = LanguageSPITestLanguage.getContext();
-                });
-                thread.start();
-                try {
-                    thread.join();
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-                return result[0];
-            }
-        };
-        LanguageContext langContextFromOtherThread = context.eval(LanguageSPITestLanguage.ID, "accessContextFromOtherThread").asHostObject();
-        assertSame(langContextFromOtherThread, langContext);
-        context.close();
-        assertEquals(1, langContext.disposeCalled);
+    private static Value eval(Context context, Function<Env, Object> f) {
+        LanguageSPITestLanguage.runinside = f;
+        try {
+            return context.eval(LanguageSPITestLanguage.ID, "");
+        } finally {
+            LanguageSPITestLanguage.runinside = null;
+        }
     }
 
     @Test
     public void testContextCloseInsideFromSameThread() {
         langContext = null;
         Context context = Context.newBuilder(LanguageSPITestLanguage.ID).build();
-        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
+        eval(context, new Function<Env, Object>() {
             public Object apply(Env t) {
                 context.close();
                 return null;
             }
-        };
-        context.eval(LanguageSPITestLanguage.ID, "");
+        });
         context.close();
         assertEquals(1, langContext.disposeCalled);
     }
@@ -189,13 +163,12 @@ public class LanguageSPITest {
         Engine engine = Engine.create();
         langContext = null;
         Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
-        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
+        eval(context, new Function<Env, Object>() {
             public Object apply(Env t) {
                 context.close(true);
                 return null;
             }
-        };
-        context.eval(LanguageSPITestLanguage.ID, "");
+        });
         engine.close();
         assertEquals(1, langContext.disposeCalled);
     }
@@ -205,13 +178,12 @@ public class LanguageSPITest {
         Engine engine = Engine.create();
         langContext = null;
         Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
-        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
+        eval(context, new Function<Env, Object>() {
             public Object apply(Env t) {
                 engine.close();
                 return null;
             }
-        };
-        context.eval(LanguageSPITestLanguage.ID, "");
+        });
         assertEquals(1, langContext.disposeCalled);
         engine.close();
     }
@@ -221,13 +193,12 @@ public class LanguageSPITest {
         Engine engine = Engine.create();
         langContext = null;
         Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
-        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
+        eval(context, new Function<Env, Object>() {
             public Object apply(Env t) {
                 engine.close(true);
                 return null;
             }
-        };
-        context.eval(LanguageSPITestLanguage.ID, "");
+        });
         assertEquals(1, langContext.disposeCalled);
         engine.close();
     }
@@ -254,7 +225,7 @@ public class LanguageSPITest {
             CountDownLatch beforeSleep = new CountDownLatch(1);
             CountDownLatch interrupt = new CountDownLatch(1);
             AtomicInteger gotInterrupt = new AtomicInteger(0);
-            LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
+            Function<Env, Object> f = new Function<Env, Object>() {
                 public Object apply(Env t) {
                     try {
                         beforeSleep.countDown();
@@ -267,7 +238,7 @@ public class LanguageSPITest {
                     return null;
                 }
             };
-            Future<Value> future = service.submit(() -> context.eval(LanguageSPITestLanguage.ID, ""));
+            Future<Value> future = service.submit(() -> eval(context, f));
             beforeSleep.await(10000, TimeUnit.MILLISECONDS);
             context.close(true);
 
@@ -320,12 +291,11 @@ public class LanguageSPITest {
     @Test
     public void testLookupHost() {
         Context context = Context.newBuilder().allowHostAccess(true).build();
-        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
+        Value value = eval(context, new Function<Env, Object>() {
             public Object apply(Env t) {
                 return t.lookupHostSymbol("java.util.HashMap");
             }
-        };
-        Value value = context.eval(LanguageSPITestLanguage.ID, "");
+        });
         assertTrue(value.isHostObject());
         Object map = value.asHostObject();
         assertSame(map, HashMap.class);
@@ -335,13 +305,12 @@ public class LanguageSPITest {
     @Test
     public void testLookupHostDisabled() {
         Context context = Context.newBuilder().allowHostAccess(false).build();
-        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
-            public Object apply(Env t) {
-                return t.lookupHostSymbol("java.util.HashMap");
-            }
-        };
         try {
-            context.eval(LanguageSPITestLanguage.ID, "");
+            eval(context, new Function<Env, Object>() {
+                public Object apply(Env t) {
+                    return t.lookupHostSymbol("java.util.HashMap");
+                }
+            });
             fail();
         } catch (PolyglotException e) {
             assertTrue(!e.isInternalError());
@@ -352,28 +321,18 @@ public class LanguageSPITest {
     @Test
     public void testIsHostAccessAllowed() {
         Context context = Context.newBuilder().allowHostAccess(false).build();
-        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
-            public Object apply(Env t) {
-                return t.isHostLookupAllowed();
-            }
-        };
-        assertTrue(!context.eval(LanguageSPITestLanguage.ID, "").asBoolean());
+        assertTrue(!eval(context, env -> env.isHostLookupAllowed()).asBoolean());
         context.close();
 
         context = Context.newBuilder().allowHostAccess(true).build();
-        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
-            public Object apply(Env t) {
-                return t.isHostLookupAllowed();
-            }
-        };
-        assertTrue(context.eval(LanguageSPITestLanguage.ID, "").asBoolean());
+        assertTrue(eval(context, env -> env.isHostLookupAllowed()).asBoolean());
         context.close();
     }
 
     @Test
     public void testInnerContext() {
         Context context = Context.create();
-        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
+        Function<Env, Object> f = new Function<Env, Object>() {
             public Object apply(Env env) {
                 LanguageContext outerLangContext = LanguageSPITestLanguage.getContext();
                 Object config = new Object();
@@ -419,18 +378,17 @@ public class LanguageSPITest {
                 return null;
             }
         };
-        context.eval(LanguageSPITestLanguage.ID, "");
+        eval(context, f);
 
         // ensure we are not yet closed
-        context.eval(LanguageSPITestLanguage.ID, "");
-
+        eval(context, f);
         context.close();
     }
 
     @Test
     public void testCloseInnerContextWithParent() {
         Context context = Context.create();
-        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
+        LanguageContext returnedInnerContext = eval(context, new Function<Env, Object>() {
             public Object apply(Env env) {
                 TruffleContext innerContext = env.newContextBuilder().build();
                 Object p = innerContext.enter();
@@ -438,11 +396,10 @@ public class LanguageSPITest {
                 innerContext.leave(p);
                 return innerLangContext;
             }
-        };
-        LanguageContext innerContext = context.eval(LanguageSPITestLanguage.ID, "").asHostObject();
+        }).asHostObject();
         context.close();
         // inner context automatically closed
-        assertEquals(1, innerContext.disposeCalled);
+        assertEquals(1, returnedInnerContext.disposeCalled);
     }
 
 }

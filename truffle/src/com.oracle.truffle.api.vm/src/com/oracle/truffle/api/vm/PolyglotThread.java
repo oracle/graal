@@ -24,27 +24,36 @@
  */
 package com.oracle.truffle.api.vm;
 
-import static com.oracle.truffle.api.vm.VMAccessor.NODES;
+final class PolyglotThread extends Thread {
 
-import com.oracle.truffle.api.TruffleLanguage;
+    private final PolyglotLanguageContext languageContext;
 
-@SuppressWarnings("deprecation")
-final class PolyglotFindContextNode<C> extends com.oracle.truffle.api.impl.FindContextNode<C> {
-    private final PolyglotLanguage polyglotLanguage;
+    Object context;
 
-    PolyglotFindContextNode(PolyglotLanguage polyglotLanguage) {
-        this.polyglotLanguage = polyglotLanguage;
+    PolyglotThread(PolyglotLanguageContext languageContext, Runnable runnable) {
+        super(runnable, createDefaultName(languageContext));
+        this.languageContext = languageContext;
     }
 
-    @SuppressWarnings("unchecked")
+    static String createDefaultName(PolyglotLanguageContext creator) {
+        return "Polyglot-" + creator.language.getId() + "-" + nextThreadNum();
+    }
+
     @Override
-    public C executeFindContext() {
-        return (C) polyglotLanguage.getCurrentContext();
+    public void run() {
+        Object prev = languageContext.enterThread(this);
+        assert prev == null;
+        try {
+            super.run();
+        } finally {
+            languageContext.leaveThread(prev, this);
+        }
     }
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public TruffleLanguage<C> getTruffleLanguage() {
-        return (TruffleLanguage<C>) NODES.getLanguageSpi(polyglotLanguage.info);
+    private static int threadInitNumber;
+
+    private static synchronized int nextThreadNum() {
+        return threadInitNumber++;
     }
+
 }
