@@ -138,7 +138,7 @@ public final class LLVMFrameNullerUtil {
                     } else if (type instanceof VectorType && ((VectorType) type).getElementType() instanceof PrimitiveType) {
                         nullVector(frame, frameSlot, ((PrimitiveType) ((VectorType) type).getElementType()).getPrimitiveKind());
                     } else if (type instanceof VectorType && ((VectorType) type).getElementType() instanceof PointerType) {
-                        frame.setObject(frameSlot, LLVMAddressVector.create(null));
+                        frame.setObject(frameSlot, LLVMAddressVector.createNullVector());
                     } else if (type instanceof VariableBitWidthType) {
                         nullIVarBit(frame, frameSlot);
                     } else if (type instanceof PrimitiveType && ((PrimitiveType) type).getPrimitiveKind() == PrimitiveKind.X86_FP80) {

@@ -44,8 +44,9 @@ public abstract class LLVMX86_ConversionNode {
 
         @Specialization
         public int executeIntrinsic(LLVMFloatVector vector) {
-            if (vector.getLength() != 4)
+            if (vector.getLength() != 4) {
                 throw new AssertionError("cvtss2si requires a float[4] as parameter");
+            }
 
             return Math.round(vector.getValues()[0]);
         }
@@ -56,8 +57,9 @@ public abstract class LLVMX86_ConversionNode {
 
         @Specialization
         public int executeIntrinsic(LLVMDoubleVector vector) {
-            if (vector.getLength() != 2)
+            if (vector.getLength() != 2) {
                 throw new AssertionError("cvtsd2si requires a double[2] as parameter");
+            }
 
             // returns an int instead of a long,
             // causes an exception in one OpenCV test application when returning a long
