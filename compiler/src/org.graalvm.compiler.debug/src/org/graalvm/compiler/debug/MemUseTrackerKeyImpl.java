@@ -35,6 +35,11 @@ class MemUseTrackerKeyImpl extends AccumulatedKey implements MemUseTrackerKey {
     @Override
     public DebugCloseable start(DebugContext debug) {
         if (debug.isMemUseTrackerEnabled(this)) {
+            try {
+                Class.forName("java.lang.management.ThreadMXBean");
+            } catch (ClassNotFoundException ex) {
+                throw new IllegalArgumentException("TrackMemUse option requires java.management JDK9 module");
+            }
             CloseableCounter result = new MemUseCloseableCounterImpl(this, debug);
             debug.currentMemUseTracker = result;
             return result;
