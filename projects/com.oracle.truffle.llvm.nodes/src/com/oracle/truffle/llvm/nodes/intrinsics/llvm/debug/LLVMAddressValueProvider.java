@@ -219,6 +219,16 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
         return readBigInt(bitOffset, bitSize, true);
     }
 
+    @Override
+    public LLVMDebugValueProvider dereferencePointer(long bitOffset) {
+        if (!canRead(bitOffset, LLVMAddress.WORD_LENGTH_BIT) || !isByteAligned(bitOffset)) {
+            return null;
+        }
+
+        final LLVMAddress address = LLVMMemory.getAddress(baseAddress.increment(bitOffset / Byte.SIZE));
+        return new LLVMAddressValueProvider(address);
+    }
+
     private BigInteger readBigInt(long bitOffset, int bitSize, boolean signed) {
         final int paddingBefore = (int) (bitOffset % Byte.SIZE);
         int totalBitSize = bitSize + paddingBefore;

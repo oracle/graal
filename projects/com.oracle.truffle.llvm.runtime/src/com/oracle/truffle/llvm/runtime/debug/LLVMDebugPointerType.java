@@ -37,15 +37,22 @@ import java.util.function.Supplier;
 
 public final class LLVMDebugPointerType extends LLVMDebugType {
 
+    private final boolean isSafeToDereference;
+
     @CompilationFinal private Supplier<LLVMDebugType> baseType;
 
-    public LLVMDebugPointerType(long size, long align, long offset) {
-        this(LLVMDebugType.UNKNOWN_TYPE::getName, size, align, offset, () -> LLVMDebugType.UNKNOWN_TYPE);
+    public LLVMDebugPointerType(long size, long align, long offset, boolean isSafeToDereference) {
+        this(LLVMDebugType.UNKNOWN_TYPE::getName, size, align, offset, () -> LLVMDebugType.UNKNOWN_TYPE, isSafeToDereference);
     }
 
-    private LLVMDebugPointerType(Supplier<String> nameSupplier, long size, long align, long offset, Supplier<LLVMDebugType> baseType) {
+    private LLVMDebugPointerType(Supplier<String> nameSupplier, long size, long align, long offset, Supplier<LLVMDebugType> baseType, boolean isSafeToDereference) {
         super(nameSupplier, size, align, offset);
         this.baseType = baseType;
+        this.isSafeToDereference = isSafeToDereference;
+    }
+
+    public boolean isSafeToDereference() {
+        return isSafeToDereference;
     }
 
     @TruffleBoundary
@@ -60,7 +67,7 @@ public final class LLVMDebugPointerType extends LLVMDebugType {
 
     @Override
     public LLVMDebugType getOffset(long newOffset) {
-        return new LLVMDebugPointerType(this::getName, getSize(), getAlign(), newOffset, this::getBaseType);
+        return new LLVMDebugPointerType(this::getName, getSize(), getAlign(), newOffset, this::getBaseType, isSafeToDereference);
     }
 
     @Override
@@ -80,16 +87,16 @@ public final class LLVMDebugPointerType extends LLVMDebugType {
 
     @Override
     public String getElementName(long i) {
-        return "target";
+        return getBaseType().getElementName(i);
     }
 
     @Override
     public LLVMDebugType getElementType(long i) {
-        return getBaseType();
+        return getBaseType().getElementType(i);
     }
 
     @Override
     public LLVMDebugType getElementType(String name) {
-        return getBaseType();
+        return getBaseType().getElementType(name);
     }
 }

@@ -36,6 +36,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 
 import java.math.BigInteger;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -57,7 +58,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
 
     protected final LLVMDebugType type;
 
-    protected LLVMDebugObject(LLVMDebugValueProvider value, long offset, LLVMDebugType type) {
+    private LLVMDebugObject(LLVMDebugValueProvider value, long offset, LLVMDebugType type) {
         this.value = value;
         this.offset = offset;
         this.type = type;
@@ -116,9 +117,9 @@ public abstract class LLVMDebugObject implements TruffleObject {
         return LLVMDebugObjectMessageResolutionForeign.ACCESS;
     }
 
-    public static final class Enum extends LLVMDebugObject {
+    private static final class Enum extends LLVMDebugObject {
 
-        public Enum(LLVMDebugValueProvider value, long offset, LLVMDebugType type) {
+        Enum(LLVMDebugValueProvider value, long offset, LLVMDebugType type) {
             super(value, offset, type);
         }
 
@@ -149,14 +150,14 @@ public abstract class LLVMDebugObject implements TruffleObject {
         }
     }
 
-    public static final class Structured extends LLVMDebugObject {
+    private static final class Structured extends LLVMDebugObject {
 
         // in the order of their actual declaration in the containing type
         private final Object[] memberIdentifiers;
 
         private final Map<Object, LLVMDebugObject> members;
 
-        public Structured(LLVMDebugValueProvider value, long offset, LLVMDebugType type, Object[] memberIdentifiers, Map<Object, LLVMDebugObject> members) {
+        Structured(LLVMDebugValueProvider value, long offset, LLVMDebugType type, Object[] memberIdentifiers, Map<Object, LLVMDebugObject> members) {
             super(value, offset, type);
             this.memberIdentifiers = memberIdentifiers;
             this.members = members;
@@ -179,9 +180,9 @@ public abstract class LLVMDebugObject implements TruffleObject {
         }
     }
 
-    public static final class Primitive extends LLVMDebugObject {
+    private static final class Primitive extends LLVMDebugObject {
 
-        public Primitive(LLVMDebugValueProvider value, long offset, LLVMDebugType type) {
+        Primitive(LLVMDebugValueProvider value, long offset, LLVMDebugType type) {
             super(value, offset, type);
         }
 
@@ -267,6 +268,59 @@ public abstract class LLVMDebugObject implements TruffleObject {
         }
     }
 
+    private static final class Pointer extends LLVMDebugObject {
+
+        private final LLVMDebugPointerType pointerType;
+
+        Pointer(LLVMDebugValueProvider value, long offset, LLVMDebugType type) {
+            super(value, offset, type);
+
+            LLVMDebugType actualType = this.type;
+            if (type instanceof LLVMDebugDecoratorType) {
+                actualType = ((LLVMDebugDecoratorType) actualType).getTrueBaseType();
+            }
+            if (actualType instanceof LLVMDebugPointerType) {
+                this.pointerType = (LLVMDebugPointerType) actualType;
+            } else {
+                this.pointerType = null;
+            }
+        }
+
+        @Override
+        public Object[] getKeys() {
+            final LLVMDebugObject target = dereference();
+            return target == null ? null : target.getKeys();
+        }
+
+        @Override
+        public Object getMember(Object identifier) {
+            final LLVMDebugObject target = dereference();
+            return target == null ? "Cannot dereference pointer!" : target.getMember(identifier);
+        }
+
+        @Override
+        protected Object getValue() {
+            if (!value.canRead(offset, (int) type.getSize())) {
+                return cannotRead();
+            }
+
+            return value.readAddress(offset);
+        }
+
+        private LLVMDebugObject dereference() {
+            // the pointer may change at runtime, so we cannot just cache the dereferenced object
+            if (pointerType == null || !pointerType.isSafeToDereference() || !value.canRead(offset, (int) type.getSize())) {
+                return null;
+            }
+
+            final LLVMDebugValueProvider targetValue = value.dereferencePointer(offset);
+            if (targetValue == null) {
+                return null;
+            }
+            return instantiate(pointerType.getBaseType(), 0L, targetValue);
+        }
+    }
+
     @TruffleBoundary
     private static String toHexString(BigInteger value) {
         final byte[] bytes = value.toByteArray();
@@ -276,5 +330,36 @@ public abstract class LLVMDebugObject implements TruffleObject {
             builder.append(String.format("%02x", b));
         }
         return builder.toString();
+    }
+
+    public static LLVMDebugObject instantiate(LLVMDebugType type, long baseOffset, LLVMDebugValueProvider value) {
+        if (type.isAggregate()) {
+            return instantiateAggregate(type, baseOffset, value);
+
+        } else if (type.isPointer()) {
+            return new Pointer(value, baseOffset, type);
+
+        } else if (type.isEnum()) {
+            return new Enum(value, baseOffset, type);
+
+        } else {
+            return new Primitive(value, baseOffset, type);
+        }
+    }
+
+    @TruffleBoundary
+    private static LLVMDebugObject instantiateAggregate(LLVMDebugType type, long baseOffset, LLVMDebugValueProvider value) {
+        final Map<Object, LLVMDebugObject> members = new HashMap<>(type.getElementCount());
+        final Object[] memberIdentifiers = new Object[type.getElementCount()];
+        for (int i = 0; i < type.getElementCount(); i++) {
+            final LLVMDebugType elementType = type.getElementType(i);
+            final String elementName = type.getElementName(i);
+            final long newOffset = baseOffset + elementType.getOffset();
+
+            final LLVMDebugObject member = instantiate(elementType, newOffset, value);
+            memberIdentifiers[i] = elementName;
+            members.put(elementName, member);
+        }
+        return new Structured(value, baseOffset, type, memberIdentifiers, members);
     }
 }

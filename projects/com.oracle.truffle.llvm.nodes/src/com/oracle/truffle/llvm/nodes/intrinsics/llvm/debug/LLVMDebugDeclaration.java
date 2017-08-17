@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
@@ -38,16 +37,12 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueContainerType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueContainerType;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @NodeChildren({@NodeChild(value = "container", type = LLVMExpressionNode.class), @NodeChild(value = "value", type = LLVMExpressionNode.class)})
 public abstract class LLVMDebugDeclaration extends LLVMExpressionNode {
@@ -70,7 +65,7 @@ public abstract class LLVMDebugDeclaration extends LLVMExpressionNode {
 
     @Specialization
     public Object readAddress(DynamicObject container, LLVMAddress address) {
-        final LLVMDebugObject object = instantiate(varType, 0L, new LLVMAddressValueProvider(address));
+        final LLVMDebugObject object = LLVMDebugObject.instantiate(varType, 0L, new LLVMAddressValueProvider(address));
         container.define(varName, object);
         return null;
     }
@@ -78,7 +73,7 @@ public abstract class LLVMDebugDeclaration extends LLVMExpressionNode {
     @Specialization
     public Object readGlobal(DynamicObject container, LLVMGlobalVariable global, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         final LLVMAddress address = globalAccess.getNativeLocation(global);
-        final LLVMDebugObject object = instantiate(varType, 0L, new LLVMAddressValueProvider(address));
+        final LLVMDebugObject object = LLVMDebugObject.instantiate(varType, 0L, new LLVMAddressValueProvider(address));
         final DynamicObject globalsContainer = LLVMDebugValueContainerType.findOrAddGlobalsContainer(container);
         globalsContainer.define(varName, object);
         return null;
@@ -97,33 +92,5 @@ public abstract class LLVMDebugDeclaration extends LLVMExpressionNode {
         final DynamicObject container = LLVMDebugValueContainerType.createContainer();
         frame.setObject(containerSlot, container);
         return readGlobal(container, global, globalAccess);
-    }
-
-    private static LLVMDebugObject instantiate(LLVMDebugType type, long baseOffset, LLVMDebugValueProvider value) {
-        if (type.isAggregate()) {
-            return instantiateAggregate(type, baseOffset, value);
-
-        } else if (type.isEnum()) {
-            return new LLVMDebugObject.Enum(value, baseOffset, type);
-
-        } else {
-            return new LLVMDebugObject.Primitive(value, baseOffset, type);
-        }
-    }
-
-    @TruffleBoundary
-    private static LLVMDebugObject instantiateAggregate(LLVMDebugType type, long baseOffset, LLVMDebugValueProvider value) {
-        final Map<Object, LLVMDebugObject> members = new HashMap<>(type.getElementCount());
-        final Object[] memberIdentifiers = new Object[type.getElementCount()];
-        for (int i = 0; i < type.getElementCount(); i++) {
-            final LLVMDebugType elementType = type.getElementType(i);
-            final String elementName = type.getElementName(i);
-            final long newOffset = baseOffset + elementType.getOffset();
-
-            final LLVMDebugObject member = instantiate(elementType, newOffset, value);
-            memberIdentifiers[i] = elementName;
-            members.put(elementName, member);
-        }
-        return new LLVMDebugObject.Structured(value, baseOffset, type, memberIdentifiers, members);
     }
 }

@@ -270,7 +270,8 @@ final class MDTypeExtractor implements MetadataVisitor {
                 }
 
                 case DW_TAG_POINTER_TYPE: {
-                    final LLVMDebugPointerType type = new LLVMDebugPointerType(size, align, offset);
+                    final boolean isSafeToDereference = Flags.OBJECT_POINTER.isSetIn(mdType.getFlags());
+                    final LLVMDebugPointerType type = new LLVMDebugPointerType(size, align, offset, isSafeToDereference);
                     parsedTypes.put(mdType, type);
 
                     final MDReference mdBaseType = mdType.getBaseType();
@@ -388,10 +389,20 @@ final class MDTypeExtractor implements MetadataVisitor {
         if (!parsedTypes.containsKey(mdLocal)) {
             final MDReference typeRef = mdLocal.getType();
             typeRef.accept(this);
-            final LLVMDebugType type = parsedTypes.get(typeRef);
-            if (type != null) {
-                parsedTypes.put(mdLocal, type);
+            LLVMDebugType type = parsedTypes.get(typeRef);
+            if (type == null) {
+                return;
+
+            } else if (Flags.OBJECT_POINTER.isSetIn(mdLocal.getFlags()) && type instanceof LLVMDebugPointerType) {
+                // llvm does not set the objectpointer flag on this pointer type even though it sets
+                // it on the pointer type that is used in the function type descriptor
+                final LLVMDebugPointerType oldPointer = (LLVMDebugPointerType) type;
+                final LLVMDebugPointerType newPointer = new LLVMDebugPointerType(oldPointer.getSize(), oldPointer.getAlign(), oldPointer.getOffset(), true);
+                newPointer.setBaseType(oldPointer::getBaseType);
+                newPointer.setName(oldPointer::getName);
+                type = newPointer;
             }
+            parsedTypes.put(mdLocal, type);
         }
     }
 
