@@ -80,11 +80,6 @@ final class TimerKeyImpl extends AccumulatedKey implements TimerKey {
     @Override
     public DebugCloseable start(DebugContext debug) {
         if (debug.isTimerEnabled(this)) {
-            try {
-                Class.forName("java.lang.management.ThreadMXBean");
-            } catch (ClassNotFoundException ex) {
-                throw new IllegalArgumentException("Time option requires java.management JDK9 module");
-            }
             Timer result = new Timer(this, debug);
             debug.currentTimer = result;
             return result;
