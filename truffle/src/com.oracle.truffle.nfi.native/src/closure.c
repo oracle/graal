@@ -44,8 +44,7 @@ struct closure_data {
     int envArgIdx;
     int skippedArgCount;
 
-    jobject callTarget;
-    jobject signature;
+    jweak callTarget; // weak to break reference cycle, see comment in ClosureNativePointer.java
 
     enum closure_arg_type argTypes[0];
 };
@@ -231,10 +230,7 @@ jobject prepare_closure(JNIEnv *env, jlong context, jobject signature, jobject c
 
     void *code;
     struct closure_data *data = (struct closure_data *) ffi_closure_alloc(sizeof(struct closure_data) + cif->nargs * sizeof(enum closure_arg_type), &code);
-    data->callTarget = (*env)->NewGlobalRef(env, callTarget);
-
-    // keep signature from being garbage collected as long as the closure is alive
-    data->signature = (*env)->NewGlobalRef(env, signature);
+    data->callTarget = (*env)->NewWeakGlobalRef(env, callTarget);
 
     data->context = ctx;
     data->envArgIdx = -1;
@@ -259,7 +255,7 @@ jobject prepare_closure(JNIEnv *env, jlong context, jobject signature, jobject c
 
     ffi_prep_closure_loc(&data->closure, cif, invoke_closure, data, code);
 
-    return (*env)->CallObjectMethod(env, ctx->NFIContext, ctx->NFIContext_createClosureNativePointer, (jlong) data, (jlong) code);
+    return (*env)->CallObjectMethod(env, ctx->NFIContext, ctx->NFIContext_createClosureNativePointer, (jlong) data, (jlong) code, callTarget, signature);
 }
 
 JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_NFIContext_allocateClosureObjectRet(JNIEnv *env, jclass self, jlong nativeContext, jobject signature, jobject callTarget) {
@@ -281,7 +277,6 @@ JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_NFIContext_allocateClosure
 
 JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_ClosureNativePointer_freeClosure(JNIEnv *env, jclass self, jlong ptr) {
     struct closure_data *data = (struct closure_data *) ptr;
-    (*env)->DeleteGlobalRef(env, data->callTarget);
-    (*env)->DeleteGlobalRef(env, data->signature);
+    (*env)->DeleteWeakGlobalRef(env, data->callTarget);
     ffi_closure_free(data);
 }
