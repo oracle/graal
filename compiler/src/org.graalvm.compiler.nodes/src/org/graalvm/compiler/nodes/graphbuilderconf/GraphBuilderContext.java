@@ -295,4 +295,8 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     default void notifyReplacedCall(ResolvedJavaMethod targetMethod, ConstantNode node) {
 
     }
+
+    default int countOccurrencesOnStack(ResolvedJavaMethod method) {
+        return -1;
+    }
 }

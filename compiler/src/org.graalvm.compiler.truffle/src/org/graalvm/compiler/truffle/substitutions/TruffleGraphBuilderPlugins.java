@@ -116,10 +116,10 @@ public class TruffleGraphBuilderPlugins {
     }
 
     public static void registerInvocationPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification,
-                    ConstantReflectionProvider constantReflection, KnownTruffleFields knownFields) {
+                    ConstantReflectionProvider constantReflection, KnownTruffleFields knownFields, ResolvedJavaMethod truffleDelimiter) {
         registerOptimizedAssumptionPlugins(plugins, knownFields);
         registerExactMathPlugins(plugins);
-        registerCompilerDirectivesPlugins(plugins, canDelayIntrinsification);
+        registerCompilerDirectivesPlugins(plugins, canDelayIntrinsification, truffleDelimiter);
         registerCompilerAssertsPlugins(plugins, canDelayIntrinsification);
         registerOptimizedCallTargetPlugins(plugins, canDelayIntrinsification, knownFields);
 
@@ -184,7 +184,7 @@ public class TruffleGraphBuilderPlugins {
         }
     }
 
-    public static void registerCompilerDirectivesPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {
+    public static void registerCompilerDirectivesPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, ResolvedJavaMethod truffleDelimiter) {
         Registration r = new Registration(plugins, CompilerDirectives.class);
         r.register0("inInterpreter", new InvocationPlugin() {
             @Override
@@ -203,9 +203,12 @@ public class TruffleGraphBuilderPlugins {
         r.register0("inCompilationRoot", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                // TODO check if it really is a compilation root.
-                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
-                return true;
+                int occurrencesOnStack = b.countOccurrencesOnStack(truffleDelimiter);
+                if (occurrencesOnStack >= 0) {
+                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(occurrencesOnStack == 0));
+                    return true;
+                }
+                return false;
             }
         });
         r.register0("transferToInterpreter", new InvocationPlugin() {

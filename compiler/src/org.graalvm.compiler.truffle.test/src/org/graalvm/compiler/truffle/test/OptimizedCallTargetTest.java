@@ -42,12 +42,14 @@ import java.util.stream.IntStream;
 import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.OptimizedOSRLoopNode;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleOptionsOverrideScope;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.ConstantTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
+import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -402,5 +404,94 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
             OptimizedCallTarget osrTarget = findOSRTarget(loop);
             assertCompiled(osrTarget);
         }
+    }
+
+    @Test
+    public void testInCompilationRootDirective() {
+        final int compilationThreshold = TruffleCompilerOptions.getValue(TruffleCompilationThreshold);
+
+        int[] outerExecute = {0};
+        int[] outerMethod = {0};
+        int[] outerBoundary = {0};
+
+        int[] innerExecute = {0};
+        int[] innerMethod = {0};
+        int[] innerBoundary = {0};
+
+        final OptimizedCallTarget innerTarget = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                // FALSE
+                if (CompilerDirectives.inCompilationRoot()) {
+                    innerExecute[0]++;
+                }
+                innerMethod();
+                return null;
+            }
+
+            @CompilerDirectives.TruffleBoundary
+            void innerMethod() {
+                // FALSE
+                if (CompilerDirectives.inCompilationRoot()) {
+                    innerMethod[0]++;
+                }
+            }
+
+            @CompilerDirectives.TruffleBoundary
+            void innerBoundary() {
+                // FALSE
+                if (CompilerDirectives.inCompilationRoot()) {
+                    innerBoundary[0] = 1;
+                }
+            }
+        });
+        final OptimizedCallTarget outerTarget = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+
+            @Child private OptimizedDirectCallNode child = (OptimizedDirectCallNode) runtime.createDirectCallNode(innerTarget);
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                // TRUE
+                if (CompilerDirectives.inCompilationRoot()) {
+                    outerExecute[0]++;
+                }
+                outterMethod();
+                return child.call(new Object[0]);
+            }
+
+            void outterMethod() {
+                // TRUE
+                if (CompilerDirectives.inCompilationRoot()) {
+                    outerMethod[0]++;
+                    outerBoundary();
+                }
+            }
+
+            @CompilerDirectives.TruffleBoundary
+            void outerBoundary() {
+                // TRUE
+                if (CompilerDirectives.inCompilationRoot()) {
+                    outerBoundary[0]++;
+                }
+            }
+        });
+
+        for (int i = 0; i < compilationThreshold; i++) {
+            outerTarget.call();
+        }
+        assertCompiled(outerTarget);
+        final int executionCount = 10;
+        for (int i = 0; i < executionCount; i++) {
+            outerTarget.call();
+        }
+
+        Assert.assertEquals(executionCount, outerExecute[0]);
+        Assert.assertEquals(executionCount, outerMethod[0]);
+        Assert.assertEquals(0, outerBoundary[0]);
+
+        Assert.assertEquals(0, innerExecute[0]);
+        Assert.assertEquals(0, innerMethod[0]);
+        Assert.assertEquals(0, innerBoundary[0]);
     }
 }
