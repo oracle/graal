@@ -25,10 +25,12 @@
 # ----------------------------------------------------------------------------------------------------
 
 import os
-from os.path import join, exists, getmtime
+from os.path import join, exists, getmtime, basename, isdir
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import re
+import stat
 import zipfile
+import tarfile
 import subprocess
 import tempfile
 import shutil
@@ -853,7 +855,7 @@ def java_base_unittest(args):
     if not exists(jlink):
         raise mx.JDKConfigException('jlink tool does not exist: ' + jlink)
     basejdk_dir = join(_suite.get_output_root(), 'jdkbase')
-    basemodules = 'java.base,jdk.internal.vm.ci,jdk.unsupported,java.management,jdk.management'
+    basemodules = 'java.base,jdk.internal.vm.ci,jdk.unsupported'
     if exists(basejdk_dir):
         shutil.rmtree(basejdk_dir)
     mx.run([jlink, '--output', basejdk_dir, '--add-modules', basemodules, '--module-path', join(jdk.home, 'jmods')])
@@ -887,6 +889,92 @@ def microbench(*args):
 def javadoc(args):
     mx.javadoc(args)
 
+def create_archive(srcdir, arcpath, prefix):
+    """
+    Creates a compressed archive of a given directory.
+
+    :param str srcdir: directory to archive
+    :param str arcpath: path of file to contain the archive. The extension of `path`
+           specifies the type of archive to create
+    :param str prefix: the prefix to apply to each entry in the archive
+    """
+
+    def _taradd(arc, filename, arcname):
+        arc.add(name=f, arcname=arcname, recursive=False)
+    def _zipadd(arc, filename, arcname):
+        arc.write(filename, arcname)
+
+    if arcpath.endswith('.zip'):
+        arc = zipfile.ZipFile(arcpath, 'w', zipfile.ZIP_DEFLATED)
+        add = _zipadd
+    elif arcpath.endswith('.tar'):
+        arc = tarfile.open(arcpath, 'w')
+        add = _taradd
+    elif arcpath.endswith('.tgz') or arcpath.endswith('.tar.gz'):
+        arc = tarfile.open(arcpath, 'w:gz')
+        add = _taradd
+    else:
+        mx.abort('unsupported archive kind: ' + arcpath)
+
+    for root, _, filenames in os.walk(srcdir):
+        for name in filenames:
+            f = join(root, name)
+            # Make sure files in the image are readable by everyone
+            file_mode = os.stat(f).st_mode
+            mode = stat.S_IRGRP | stat.S_IROTH | file_mode
+            if isdir(f) or (file_mode & stat.S_IXUSR):
+                mode = mode | stat.S_IXGRP | stat.S_IXOTH
+            os.chmod(f, mode)
+            arcname = prefix + os.path.relpath(f, srcdir)
+            add(arc, f, arcname)
+    arc.close()
+
+def makegraaljdk(args):
+    """make a JDK with Graal as the default top level JIT"""
+    parser = ArgumentParser(prog='mx makegraaljdk')
+    parser.add_argument('-f', '--force', action='store_true', help='overwrite existing GraalJDK')
+    parser.add_argument('-a', '--archive', action='store', help='name of archive to create', metavar='<path>')
+    parser.add_argument('dest', help='destination directory for GraalJDK', metavar='<path>')
+    args = parser.parse_args(args)
+    if isJDK8:
+        dstJdk = os.path.abspath(args.dest)
+        srcJdk = jdk.home
+        if exists(dstJdk):
+            if args.force:
+                shutil.rmtree(dstJdk)
+            else:
+                mx.abort('Use --force to overwrite existing directory ' + dstJdk)
+        mx.log('Creating {} from {}'.format(dstJdk, srcJdk))
+        shutil.copytree(srcJdk, dstJdk)
+
+        bootDir = mx.ensure_dir_exists(join(dstJdk, 'jre', 'lib', 'boot'))
+        jvmciDir = join(dstJdk, 'jre', 'lib', 'jvmci')
+        assert exists(jvmciDir), jvmciDir + ' does not exist'
+        with open(join(jvmciDir, 'compiler-name'), 'w') as fp:
+            print >> fp, 'graal'
+        for e in _jvmci_classpath:
+            src = basename(e.get_path())
+            mx.log('Copying {} to {}'.format(src, jvmciDir))
+            with open(join(dstJdk, 'release'), 'a') as fp:
+                d = e.dist()
+                s = d.suite
+                print >> fp, '{}={}'.format(d.name, s.vc.parent(s.dir))
+            shutil.copyfile(e.get_path(), join(jvmciDir, src))
+        for e in _bootclasspath_appends:
+            src = basename(e.classpath_repr())
+            mx.log('Copying {} to {}'.format(src, bootDir))
+            with open(join(dstJdk, 'release'), 'a') as fp:
+                s = e.suite
+                print >> fp, '{}={}'.format(e.name, s.vc.parent(s.dir))
+            shutil.copyfile(e.classpath_repr(), join(bootDir, src))
+        exe = join(dstJdk, 'bin', mx.exe_suffix('java'))
+        mx.run([exe, '-XX:+BootstrapJVMCI', '-version'])
+        if args.archive:
+            mx.log('Archiving {}'.format(args.archive))
+            create_archive(dstJdk, args.archive, basename(args.dest) + '/')
+    else:
+        mx.abort('Can only make GraalJDK for JDK 8 currently')
+
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
     'vm': [run_vm, '[-options] class [args...]'],
@@ -896,6 +984,7 @@ mx.update_commands(_suite, {
     'java_base_unittest' : [java_base_unittest, 'Runs unittest on JDK9 java.base "only" module(s)'],
     'microbench': [microbench, ''],
     'javadoc': [javadoc, ''],
+    'makegraaljdk': [makegraaljdk, '[options]'],
 })
 
 def mx_post_parse_cmd_line(opts):

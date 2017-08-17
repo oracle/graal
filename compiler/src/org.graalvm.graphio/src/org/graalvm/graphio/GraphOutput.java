@@ -42,7 +42,7 @@ public final class GraphOutput<G, M> implements Closeable {
 
     /**
      * Creates new builder to configure a future instance of {@link GraphOutput}.
-     * 
+     *
      * @param <G> the type of the graph
      * @param <N> the type of the nodes
      * @param <C> the type of the node classes

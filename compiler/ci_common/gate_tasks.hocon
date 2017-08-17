@@ -13,9 +13,9 @@ builds += [
   ${gateTest}          ${labsjdk9EA}     ${gateLinuxAMD64}   {name: "gate-compiler-test-9EA-linux-amd64"}
   ${gateTestCTW}       ${openjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-ctw-8-linux-amd64"}
   ${gateTestCTW}       ${labsjdk9}       ${gateLinuxAMD64}   {name: "gate-compiler-ctw-9-linux-amd64", targets : [weekly]}
-  ${gateTest}          ${openjdk8Debug}  ${gateLinuxAMD64}   {name: "gate-compiler-test-8-linux-amd64-fastdebug", targets : [weekly]}
+  ${gateTest}          ${labsjdk8Debug}  ${gateLinuxAMD64}   {name: "gate-compiler-test-8-linux-amd64-fastdebug", targets : [weekly]}
   ${gateTestBenchmark} ${openjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-benchmarktest-8-linux-amd64"}
-  ${gateTestBenchmark} ${openjdk8Debug}  ${gateLinuxAMD64}   {name: "gate-compiler-benchmarktest-8-linux-amd64-fastdebug", targets : [weekly]}
+  ${gateTestBenchmark} ${labsjdk8Debug}  ${gateLinuxAMD64}   {name: "gate-compiler-benchmarktest-8-linux-amd64-fastdebug", targets : [weekly]}
   ${gateStyle}         ${openjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-style-linux-amd64"}
 
   # Solaris SPARC
@@ -28,7 +28,7 @@ builds += [
 # ${gateTestBenchmark} ${labsjdk8Debug}  ${gateSolarisSPARC} {name: "gate-compiler-benchmarktest-8-solaris-sparcv9-fastdebug", timelimit: "1:00:00"}
 
   # Linux SPARC
-  ${gateTest}          ${labsjdk8}       ${gateLinuxSPARC}   {name: "gate-compiler-test-8-linux-sparcv9",                      timelimit: "1:00:00"}
+  ${gateTest}          ${labsjdk8}       ${gateLinuxSPARC}   {name: "gate-compiler-test-8-linux-sparcv9",                      timelimit: "1:00:00", targets : [weekly]}
 
   # TraceRA
   ${gateTest}          ${openjdk8}       ${gateLinuxAMD64TraceRA} {name: "gate-compiler-test-8-linux-amd64-tracera", targets : [weekly]}

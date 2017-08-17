@@ -199,6 +199,8 @@ public abstract class Accessor {
         public abstract Env createEnv(Object vmObject, LanguageInfo info, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
                         String[] applicationArguments);
 
+        public abstract Object createEnvContext(Env localEnv);
+
         public abstract void postInitEnv(Env env);
 
         public abstract Object evalInContext(String code, Node node, MaterializedFrame frame);

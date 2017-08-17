@@ -69,7 +69,8 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NFIContext_initializeNativeC
 
     jclass NFIContext = (*env)->FindClass(env, "com/oracle/truffle/nfi/NFIContext");
     ret->NFIContext_getNativeEnv = (*env)->GetMethodID(env, NFIContext, "getNativeEnv", "()J");
-    ret->NFIContext_createClosureNativePointer = (*env)->GetMethodID(env, NFIContext, "createClosureNativePointer", "(JJ)Lcom/oracle/truffle/nfi/ClosureNativePointer;");
+    ret->NFIContext_createClosureNativePointer = (*env)->GetMethodID(env, NFIContext, "createClosureNativePointer",
+            "(JJLcom/oracle/truffle/api/CallTarget;Lcom/oracle/truffle/nfi/LibFFISignature;)Lcom/oracle/truffle/nfi/ClosureNativePointer;");
     ret->NFIContext_newClosureRef = (*env)->GetMethodID(env, NFIContext, "newClosureRef", "(J)V");
     ret->NFIContext_releaseClosureRef = (*env)->GetMethodID(env, NFIContext, "releaseClosureRef", "(J)V");
     ret->NFIContext_getClosureObject = (*env)->GetMethodID(env, NFIContext, "getClosureObject", "(J)Lcom/oracle/truffle/api/interop/TruffleObject;");

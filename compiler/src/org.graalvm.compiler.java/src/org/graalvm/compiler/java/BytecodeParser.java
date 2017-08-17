@@ -3059,7 +3059,7 @@ public class BytecodeParser implements GraphBuilderContext {
         ConstantNode falseValue = graph.unique(ConstantNode.forInt(falseBlockInt));
         ValueNode conditionalNode = ConditionalNode.create(condition, trueValue, falseValue);
         if (conditionalNode.graph() == null) {
-            conditionalNode = graph.addOrUnique(conditionalNode);
+            conditionalNode = graph.addOrUniqueWithInputs(conditionalNode);
         }
         if (genReturn) {
             JavaKind returnKind = method.getSignature().getReturnKind().getStackKind();
