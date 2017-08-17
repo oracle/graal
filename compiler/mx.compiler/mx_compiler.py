@@ -884,6 +884,9 @@ def microbench(*args):
     mx.abort("`mx microbench` is deprecated.\n" +
              "Use `mx benchmark jmh-whitebox:*` and `mx benchmark jmh-dist:*` instead!")
 
+def javadoc(args):
+    mx.javadoc(args)
+
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
     'vm': [run_vm, '[-options] class [args...]'],
@@ -892,6 +895,7 @@ mx.update_commands(_suite, {
     'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],
     'java_base_unittest' : [java_base_unittest, 'Runs unittest on JDK9 java.base "only" module(s)'],
     'microbench': [microbench, ''],
+    'javadoc': [javadoc, ''],
 })
 
 def mx_post_parse_cmd_line(opts):
