@@ -44,16 +44,19 @@ import org.junit.BeforeClass;
  */
 public abstract class TestWithSynchronousCompiling {
 
-    private static TruffleOptionsOverrideScope scope;
+    private static TruffleOptionsOverrideScope backgroundCompilationScope;
+    private static TruffleOptionsOverrideScope compilationThresholdScope;
 
     @BeforeClass
     public static void before() {
-        scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleBackgroundCompilation, false);
+        backgroundCompilationScope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleBackgroundCompilation, false);
+        compilationThresholdScope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleCompilationThreshold, 10);
     }
 
     @AfterClass
     public static void after() {
-        scope.close();
+        backgroundCompilationScope.close();
+        compilationThresholdScope.close();
     }
 
     protected static void assertCompiled(OptimizedCallTarget target) {
