@@ -56,14 +56,14 @@ public final class LLVMGlobalVariable {
         this.container = new UninitializedContainer(type, resolver);
     }
 
-    Container getContainer() {
+    public Container getContainer() {
         if (!assumption.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
         }
         return container;
     }
 
-    void setContainer(Container value) {
+    public void setContainer(Container value) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         this.assumption.invalidate();
         this.assumption = Truffle.getRuntime().createAssumption();

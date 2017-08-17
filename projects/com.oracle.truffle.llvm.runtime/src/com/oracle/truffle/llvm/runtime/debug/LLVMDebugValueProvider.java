@@ -54,4 +54,8 @@ public interface LLVMDebugValueProvider {
     BigInteger readSignedInteger(long bitOffset, int bitSize);
 
     LLVMDebugValueProvider dereferencePointer(long bitOffset);
+
+    boolean isInteropValue();
+
+    Object asInteropValue();
 }

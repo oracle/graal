@@ -42,7 +42,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-abstract class Container {
+public abstract class Container {
     private static final int CACHING_TRIES_BEFORE_SWITCHING_TO_GENERIC = 2;
 
     protected final Type type;

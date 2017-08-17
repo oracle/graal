@@ -229,7 +229,17 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
         return new LLVMAddressValueProvider(address);
     }
 
-    private BigInteger readBigInt(long bitOffset, int bitSize, boolean signed) {
+    @Override
+    public boolean isInteropValue() {
+        return false;
+    }
+
+    @Override
+    public Object asInteropValue() {
+        return null;
+    }
+
+    BigInteger readBigInt(long bitOffset, int bitSize, boolean signed) {
         final int paddingBefore = (int) (bitOffset % Byte.SIZE);
         int totalBitSize = bitSize + paddingBefore;
 
