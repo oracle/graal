@@ -36,8 +36,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableFactory;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
@@ -129,7 +131,11 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
         CompilerAsserts.neverPartOfCompilation();
         SourceSection s = null;
         for (int j = i; j >= 0; j--) {
-            s = statements[j].getSourceSection();
+            Node node = statements[j];
+            if (node instanceof InstrumentableFactory.WrapperNode) {
+                node = ((InstrumentableFactory.WrapperNode) node).getDelegateNode();
+            }
+            s = node.getSourceSection();
             if (s != null) {
                 break;
             }
