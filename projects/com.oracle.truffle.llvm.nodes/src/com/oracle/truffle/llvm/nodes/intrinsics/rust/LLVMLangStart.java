@@ -56,7 +56,31 @@ public abstract class LLVMLangStart extends LLVMIntrinsic {
                     @Cached("main") LLVMAddress cachedMain,
                     @Cached("getMainDescriptor(cachedMain)") LLVMFunctionDescriptor mainDescriptor,
                     @Cached("getDispatchNode(mainDescriptor)") LLVMDispatchNode dispatchNode) {
-        dispatchNode.executeDispatch(frame, mainDescriptor, new Object[]{stackPointer, argc, argv});
+        dispatchNode.executeDispatch(frame, mainDescriptor, new Object[]{stackPointer});
+        return 0;
+    }
+
+    @Specialization
+    @SuppressWarnings("unused")
+    public long executeGeneric(VirtualFrame frame, long stackPointer, LLVMAddress main, long argc, LLVMAddress argv, @Cached("getLookupDispatchNode(main)") LLVMLookupDispatchNode dispatchNode) {
+        dispatchNode.executeDispatch(frame, LLVMFunctionHandle.createHandle(main.getVal()), new Object[]{stackPointer});
+        return 0;
+    }
+
+    @Specialization(guards = "main.getFunctionId() == cachedMain.getFunctionId()")
+    @SuppressWarnings("unused")
+    public long executeIntrinsic(VirtualFrame frame, long stackPointer, LLVMFunctionDescriptor main, long argc, LLVMAddress argv,
+                    @Cached("main") LLVMFunctionDescriptor cachedMain,
+                    @Cached("getDispatchNode(main)") LLVMDispatchNode dispatchNode) {
+        dispatchNode.executeDispatch(frame, main, new Object[]{stackPointer});
+        return 0;
+    }
+
+    @Specialization
+    @SuppressWarnings("unused")
+    public long executeGeneric(VirtualFrame frame, long stackPointer, LLVMFunctionDescriptor main, long argc, LLVMAddress argv,
+                    @Cached("getDispatchNode(main)") LLVMDispatchNode dispatchNode) {
+        dispatchNode.executeDispatch(frame, main, new Object[]{stackPointer});
         return 0;
     }
 
@@ -74,12 +98,6 @@ public abstract class LLVMLangStart extends LLVMIntrinsic {
         CompilerAsserts.neverPartOfCompilation();
         FunctionType functionType = getContext().getFunctionDescriptor(LLVMFunctionHandle.createHandle(main.getVal())).getType();
         return LLVMLookupDispatchNodeGen.create(functionType);
-    }
-
-    @Specialization
-    public long executeGeneric(VirtualFrame frame, long stackPointer, LLVMAddress main, long argc, LLVMAddress argv, @Cached("getLookupDispatchNode(main)") LLVMLookupDispatchNode dispatch) {
-        dispatch.executeDispatch(frame, LLVMFunctionHandle.createHandle(main.getVal()), new Object[]{stackPointer, argc, argv});
-        return 0;
     }
 
 }
