@@ -769,7 +769,6 @@ public final class Function implements ParserListener {
         } else {
             vectorType = function.getValueType(vector);
         }
-        Type type = ((VectorType) vectorType).getElementType();
         int index = getIndex(args[i]);
 
         final Type elementType = ((VectorType) vectorType).getElementType();
