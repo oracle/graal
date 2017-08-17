@@ -100,7 +100,13 @@ public final class CompilerDirectives {
     }
 
     /**
-     * TODO
+     * Returns a boolean value indicating whether the method is executed in the root of a Truffle
+     * compilation.
+     *
+     * @return {@code false} when executed in the interpreter or in an inlined {@link CallTarget},
+     *         {@code true} in compiled code and the root of compilation i.e. root of the inline
+     *         graph.
+     * @since 0.28 or earlier
      */
     public static boolean inCompilationRoot() {
         return false;
