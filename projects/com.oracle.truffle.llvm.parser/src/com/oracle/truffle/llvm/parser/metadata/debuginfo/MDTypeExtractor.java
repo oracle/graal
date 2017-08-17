@@ -40,8 +40,10 @@ import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDNode;
 import com.oracle.truffle.llvm.parser.metadata.MDOldNode;
 import com.oracle.truffle.llvm.parser.metadata.MDReference;
+import com.oracle.truffle.llvm.parser.metadata.MDString;
 import com.oracle.truffle.llvm.parser.metadata.MDSubrange;
 import com.oracle.truffle.llvm.parser.metadata.MDTypedValue;
+import com.oracle.truffle.llvm.parser.metadata.MetadataList;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugBasicType;
@@ -59,6 +61,8 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import static com.oracle.truffle.llvm.runtime.debug.LLVMDebugType.UNKNOWN_TYPE;
+
 final class MDTypeExtractor implements MetadataVisitor {
 
     private static final String COUNT_NAME = "<count>";
@@ -68,17 +72,25 @@ final class MDTypeExtractor implements MetadataVisitor {
             return null;
         }
         mdType.accept(this);
-        return parsedTypes.getOrDefault(mdType, LLVMDebugType.UNKNOWN_TYPE);
+        return parsedTypes.getOrDefault(mdType, UNKNOWN_TYPE);
     }
 
     private final Map<MDBaseNode, LLVMDebugType> parsedTypes = new HashMap<>();
 
+    private final Map<String, MDCompositeType> identifiedTypes = new HashMap<>();
+
+    private MetadataList scopeMetadata;
+
     MDTypeExtractor() {
+    }
+
+    void setScopeMetadata(MetadataList currentMetadata) {
+        this.scopeMetadata = currentMetadata;
     }
 
     @Override
     public void ifVisitNotOverwritten(MDBaseNode md) {
-        parsedTypes.put(md, LLVMDebugType.UNKNOWN_TYPE);
+        parsedTypes.put(md, UNKNOWN_TYPE);
     }
 
     @Override
@@ -141,7 +153,7 @@ final class MDTypeExtractor implements MetadataVisitor {
                     mdBaseType.accept(this);
                     LLVMDebugType baseType = parsedTypes.get(mdBaseType);
                     if (baseType == null) {
-                        baseType = LLVMDebugType.UNKNOWN_TYPE;
+                        baseType = UNKNOWN_TYPE;
                     }
 
                     final List<LLVMDebugType> members = new ArrayList<>(1);
@@ -234,7 +246,7 @@ final class MDTypeExtractor implements MetadataVisitor {
 
                 default:
                     // TODO parse other kinds and remove this
-                    parsedTypes.put(mdType, LLVMDebugType.UNKNOWN_TYPE);
+                    parsedTypes.put(mdType, UNKNOWN_TYPE);
             }
         }
     }
@@ -257,7 +269,7 @@ final class MDTypeExtractor implements MetadataVisitor {
                     mdBaseType.accept(this);
                     LLVMDebugType baseType = parsedTypes.get(mdBaseType);
                     if (baseType == null) {
-                        baseType = LLVMDebugType.UNKNOWN_TYPE;
+                        baseType = UNKNOWN_TYPE;
                     }
                     if (Flags.BITFIELD.isSetIn(mdType.getFlags())) {
                         LLVMDebugDecoratorType decorator = new LLVMDebugDecoratorType(size, align, offset, Function.identity(), l -> size);
@@ -278,7 +290,7 @@ final class MDTypeExtractor implements MetadataVisitor {
                     mdBaseType.accept(this);
                     LLVMDebugType baseType = parsedTypes.get(mdBaseType);
                     if (baseType == null) {
-                        baseType = LLVMDebugType.UNKNOWN_TYPE;
+                        baseType = UNKNOWN_TYPE;
                     }
                     final LLVMDebugType finalBaseType = baseType; // to be used in lambdas
                     type.setBaseType(() -> finalBaseType);
@@ -311,7 +323,7 @@ final class MDTypeExtractor implements MetadataVisitor {
                     mdBaseType.accept(this);
                     LLVMDebugType baseType = parsedTypes.get(mdBaseType);
                     if (baseType == null) {
-                        baseType = LLVMDebugType.UNKNOWN_TYPE;
+                        baseType = UNKNOWN_TYPE;
                     }
                     final LLVMDebugType finalBaseType = baseType; // to be used in lambdas
                     type.setBaseType(() -> finalBaseType);
@@ -324,7 +336,7 @@ final class MDTypeExtractor implements MetadataVisitor {
 
                     final MDReference mdBaseType = mdType.getBaseType();
                     mdBaseType.accept(this);
-                    final LLVMDebugType baseType = parsedTypes.getOrDefault(mdBaseType, LLVMDebugType.UNKNOWN_TYPE);
+                    final LLVMDebugType baseType = parsedTypes.getOrDefault(mdBaseType, UNKNOWN_TYPE);
                     type.setElementType(baseType);
                     type.setName(() -> String.format("super (%s)", baseType.getName()));
 
@@ -333,7 +345,7 @@ final class MDTypeExtractor implements MetadataVisitor {
 
                 default:
                     // TODO parse other kinds and remove this
-                    parsedTypes.put(mdType, LLVMDebugType.UNKNOWN_TYPE);
+                    parsedTypes.put(mdType, UNKNOWN_TYPE);
             }
         }
     }
@@ -369,6 +381,30 @@ final class MDTypeExtractor implements MetadataVisitor {
     public void visit(MDNode mdTypeList) {
         for (MDBaseNode member : mdTypeList) {
             member.accept(this);
+        }
+    }
+
+    @Override
+    public void visit(MDString mdString) {
+        if (parsedTypes.containsKey(mdString)) {
+            return;
+
+        } else if (!identifiedTypes.containsKey(mdString.getString())) {
+            scopeMetadata.accept(new MDFollowRefVisitor() {
+
+                @Override
+                public void visit(MDCompositeType mdCompositeType) {
+                    final String identifier = getIdentifier(mdCompositeType);
+                    identifiedTypes.put(identifier, mdCompositeType);
+                }
+
+            });
+        }
+
+        final MDCompositeType referencedType = identifiedTypes.get(mdString.getString());
+        if (referencedType != null) {
+            referencedType.accept(this);
+            parsedTypes.put(mdString, parsedTypes.getOrDefault(referencedType, UNKNOWN_TYPE));
         }
     }
 
@@ -418,7 +454,7 @@ final class MDTypeExtractor implements MetadataVisitor {
                 if (elemNode != MDReference.VOID && elemNode instanceof MDReference) {
                     elemNode.accept(this);
                     final LLVMDebugType elemType = parsedTypes.get(((MDReference) elemNode).get());
-                    if (elemType != LLVMDebugType.UNKNOWN_TYPE) {
+                    if (elemType != UNKNOWN_TYPE) {
                         elemTypes.add(elemType);
                     }
                 }
@@ -430,12 +466,23 @@ final class MDTypeExtractor implements MetadataVisitor {
                     MDReference elementReference = (MDReference) elemNode;
                     elementReference.accept(this);
                     final LLVMDebugType elemType = parsedTypes.get(elementReference.get());
-                    if (elemType != LLVMDebugType.UNKNOWN_TYPE) {
+                    if (elemType != UNKNOWN_TYPE) {
                         elemTypes.add(elemType);
                     }
                 }
             }
         }
+    }
+
+    private static String getIdentifier(MDCompositeType type) {
+        MDBaseNode id = type.getIdentifier();
+        if (id != MDReference.VOID) {
+            id = ((MDReference) id).get();
+            if (id instanceof MDString) {
+                return ((MDString) id).getString();
+            }
+        }
+        return null;
     }
 
     private static final class IntermediaryType extends LLVMDebugType {

@@ -33,6 +33,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
+import com.oracle.truffle.llvm.parser.metadata.MetadataList;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
@@ -58,7 +59,7 @@ import java.util.List;
 public final class SourceModel {
 
     public static SourceModel generate(ModelModule irModel) {
-        final Parser parser = new Parser();
+        final Parser parser = new Parser(irModel.getMetadata());
         irModel.getMetadata().accept(parser);
         irModel.accept(parser);
         return parser.sourceModel;
@@ -131,6 +132,8 @@ public final class SourceModel {
 
     private static final class Parser implements ModelVisitor, MDFollowRefVisitor, FunctionVisitor, InstructionVisitorAdapter {
 
+        private final MetadataList moduleMetadata;
+
         private final SourceModel sourceModel;
 
         private Function currentFunction = null;
@@ -139,15 +142,18 @@ public final class SourceModel {
 
         private final MDTypeExtractor typeExtractor = new MDTypeExtractor();
 
-        private Parser() {
-            sourceModel = new SourceModel();
+        private Parser(MetadataList moduleMetadata) {
+            this.moduleMetadata = moduleMetadata;
+            this.sourceModel = new SourceModel();
         }
 
         @Override
         public void visit(FunctionDefinition function) {
             currentFunction = new Function(function, sourceModel.globals);
+            typeExtractor.setScopeMetadata(function.getMetadata());
             function.accept(this);
             function.setSourceFunction(currentFunction);
+            typeExtractor.setScopeMetadata(moduleMetadata);
             currentFunction = null;
         }
 
