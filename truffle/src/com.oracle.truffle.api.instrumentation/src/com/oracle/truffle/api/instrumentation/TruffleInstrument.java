@@ -532,16 +532,22 @@ public abstract class TruffleInstrument {
         /**
          * A custom machine identifier for this instrument. If not defined then the fully qualified
          * class name is used.
+         * 
+         * @since 0.12
          */
         String id() default "";
 
         /**
          * The name of the instrument in an arbitrary format for humans.
+         * 
+         * @since 0.12
          */
         String name() default "";
 
         /**
          * The version for instrument in an arbitrary format.
+         * 
+         * @since 0.12
          */
         String version() default "";
 

@@ -49,6 +49,7 @@ public @interface AcceptMessage {
      *
      * @return string identification of an inter-operability message
      * @see Message#valueOf(java.lang.String)
+     * @since 0.11
      */
     String value();
 
@@ -59,6 +60,7 @@ public @interface AcceptMessage {
      * {@link TruffleObject} can use to implement {@link TruffleObject#getForeignAccess()}.
      *
      * @return class of the receiver object
+     * @since 0.11
      */
     Class<?> receiverType();
 
@@ -66,6 +68,7 @@ public @interface AcceptMessage {
      * The language the message implementation belongs to.
      *
      * @return class of the language object
+     * @since 0.11
      */
     Class<? extends TruffleLanguage<?>> language();
 }

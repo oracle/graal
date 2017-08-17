@@ -125,6 +125,8 @@ public @interface Specialization {
      * specializations are partly declared in the super class and partly declared in a derived
      * class. By default all specializations declared in the derived class are appended to those in
      * the super class. This attribute can be used to override the default behavior.
+     * 
+     * @since 0.8 or earlier
      */
     String insertBefore() default "";
 
@@ -167,12 +169,14 @@ public @interface Specialization {
      * </p>
      *
      * @see Math#addExact(int, int)
+     * @since 0.8 or earlier
      */
     Class<? extends Throwable>[] rewriteOn() default {};
 
     /**
      * @see #replaces()
      * @deprecated renamed to {@link #replaces()} since 0.22
+     * @since 0.8 or earlier
      */
     @Deprecated
     String[] contains() default {};
@@ -255,6 +259,7 @@ public @interface Specialization {
      *
      * @see Cached
      * @see ImportStatic
+     * @since 0.8 or earlier
      */
     String[] guards() default {};
 
@@ -298,6 +303,7 @@ public @interface Specialization {
      *
      * @see Cached
      * @see ImportStatic
+     * @since 0.8 or earlier
      */
     String[] assumptions() default {};
 
@@ -343,6 +349,7 @@ public @interface Specialization {
      * @see #replaces()
      * @see Cached
      * @see ImportStatic
+     * @since 0.8 or earlier
      */
     String limit() default "";
 

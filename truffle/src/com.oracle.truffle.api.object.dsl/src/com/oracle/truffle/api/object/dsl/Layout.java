@@ -218,11 +218,13 @@ import java.util.concurrent.atomic.AtomicReference;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.SOURCE)
 public @interface Layout {
-
+    /** @since 0.12 */
     Class<? extends ObjectType> objectTypeSuperclass() default ObjectType.class;
 
+    /** @since 0.12 */
     boolean implicitCastIntToLong() default false;
 
+    /** @since 0.12 */
     boolean implicitCastIntToDouble() default false;
 
 }

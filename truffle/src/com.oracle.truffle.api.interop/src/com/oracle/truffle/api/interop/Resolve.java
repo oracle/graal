@@ -58,6 +58,7 @@ public @interface Resolve {
      *
      * @return string identification of an inter-operability message
      * @see Message#valueOf(java.lang.String)
+     * @since 0.13
      */
     String message();
 }
