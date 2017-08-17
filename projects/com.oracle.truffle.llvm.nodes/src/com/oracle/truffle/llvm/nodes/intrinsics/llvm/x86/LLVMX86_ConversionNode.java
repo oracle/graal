@@ -40,7 +40,8 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 public abstract class LLVMX86_ConversionNode {
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMX86_ConversionFloatToIntNode extends LLVMBuiltin { // implements cvtss2si
+    public abstract static class LLVMX86_ConversionFloatToIntNode extends LLVMBuiltin { // implements
+                                                                                        // cvtss2si
 
         @Specialization
         public int executeIntrinsic(LLVMFloatVector vector) {
@@ -53,7 +54,8 @@ public abstract class LLVMX86_ConversionNode {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMX86_ConversionDoubleToIntNode extends LLVMBuiltin { // implements cvtsd2si
+    public abstract static class LLVMX86_ConversionDoubleToIntNode extends LLVMBuiltin { // implements
+                                                                                         // cvtsd2si
 
         @Specialization
         public int executeIntrinsic(LLVMDoubleVector vector) {

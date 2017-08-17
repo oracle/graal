@@ -145,7 +145,8 @@ public final class LLVMFrameNullerUtil {
                         null80BitFloat(frame, frameSlot);
                     } else {
                         /*
-                         * This is a best effort approach. It could still be that LLVMAddress and LLVMGlobalVariable clash.
+                         * This is a best effort approach. It could still be that LLVMAddress and
+                         * LLVMGlobalVariable clash.
                          */
                         nullAddress(frame, frameSlot);
                     }
