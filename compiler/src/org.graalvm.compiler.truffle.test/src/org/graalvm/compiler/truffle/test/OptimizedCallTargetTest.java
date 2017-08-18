@@ -456,11 +456,11 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
                 if (CompilerDirectives.inCompilationRoot()) {
                     outerExecute[0]++;
                 }
-                outterMethod();
+                outerMethod();
                 return child.call(new Object[0]);
             }
 
-            void outterMethod() {
+            void outerMethod() {
                 // TRUE
                 if (CompilerDirectives.inCompilationRoot()) {
                     outerMethod[0]++;
