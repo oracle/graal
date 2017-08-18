@@ -160,8 +160,8 @@ final class LLVMCastsFactory {
         if (hasJavaCastSemantics()) {
             if (targetType == PrimitiveType.I64) {
                 return LLVMToI64NoZeroExtNodeGen.create(fromNode);
-            } else if (targetType instanceof VectorType) {
-                switch (((VectorType) targetType).getElementType().getPrimitiveKind()) {
+            } else if (targetType instanceof VectorType && ((VectorType) targetType).getElementType() instanceof PrimitiveType) {
+                switch (((PrimitiveType) ((VectorType) targetType).getElementType()).getPrimitiveKind()) {
                     case I1:
                         return LLVMToI1VectorNoZeroExtNodeGen.create(fromNode);
                     case I8:
@@ -205,19 +205,24 @@ final class LLVMCastsFactory {
                         throw new AssertionError(targetType);
                 }
             } else if (targetType instanceof VectorType) {
-                switch (((VectorType) targetType).getElementType().getPrimitiveKind()) {
-                    case I1:
-                        return LLVMToI1VectorBitNodeGen.create(fromNode);
-                    case I8:
-                        return LLVMToI8VectorBitNodeGen.create(fromNode);
-                    case I16:
-                        return LLVMToI16VectorBitNodeGen.create(fromNode);
-                    case I32:
-                        return LLVMToI32VectorBitNodeGen.create(fromNode);
-                    case I64:
-                        return LLVMToI64VectorBitNodeGen.create(fromNode);
-                    default:
-                        throw new AssertionError(targetType);
+                Type elemType = ((VectorType) targetType).getElementType();
+                if (elemType instanceof PrimitiveType) {
+                    switch (((PrimitiveType) elemType).getPrimitiveKind()) {
+                        case I1:
+                            return LLVMToI1VectorBitNodeGen.create(fromNode);
+                        case I8:
+                            return LLVMToI8VectorBitNodeGen.create(fromNode);
+                        case I16:
+                            return LLVMToI16VectorBitNodeGen.create(fromNode);
+                        case I32:
+                            return LLVMToI32VectorBitNodeGen.create(fromNode);
+                        case I64:
+                            return LLVMToI64VectorBitNodeGen.create(fromNode);
+                        default:
+                            throw new AssertionError(targetType);
+                    }
+                } else {
+                    throw new AssertionError(targetType + " " + elemType + " " + conv);
                 }
             } else {
                 throw new AssertionError(targetType + " " + conv);
@@ -294,15 +299,20 @@ final class LLVMCastsFactory {
                     throw new AssertionError(targetType);
             }
         } else if (conv == LLVMConversionType.BITCAST && targetType instanceof VectorType) {
-            switch (((VectorType) targetType).getElementType().getPrimitiveKind()) {
-                case I1:
-                    return LLVMToI1VectorBitNodeGen.create(fromNode);
-                case I8:
-                    return LLVMToI8VectorBitNodeGen.create(fromNode);
-                case I16:
-                    return LLVMToI16VectorBitNodeGen.create(fromNode);
-                default:
-                    throw new AssertionError(targetType + " " + conv);
+            Type elemType = ((VectorType) targetType).getElementType();
+            if (elemType instanceof PrimitiveType) {
+                switch (((PrimitiveType) elemType).getPrimitiveKind()) {
+                    case I1:
+                        return LLVMToI1VectorBitNodeGen.create(fromNode);
+                    case I8:
+                        return LLVMToI8VectorBitNodeGen.create(fromNode);
+                    case I16:
+                        return LLVMToI16VectorBitNodeGen.create(fromNode);
+                    default:
+                        throw new AssertionError(targetType + " " + conv);
+                }
+            } else {
+                throw new AssertionError(targetType + " " + elemType + " " + conv);
             }
         } else {
             throw new AssertionError(targetType);
@@ -345,19 +355,24 @@ final class LLVMCastsFactory {
             }
         } else if (conv == LLVMConversionType.BITCAST) {
             if (targetType instanceof VectorType) {
-                switch (((VectorType) targetType).getElementType().getPrimitiveKind()) {
-                    case I1:
-                        return LLVMToI1VectorBitNodeGen.create(fromNode);
-                    case I8:
-                        return LLVMToI8VectorBitNodeGen.create(fromNode);
-                    case I16:
-                        return LLVMToI16VectorBitNodeGen.create(fromNode);
-                    case I32:
-                        return LLVMToI32VectorBitNodeGen.create(fromNode);
-                    case I64:
-                        return LLVMToI64VectorBitNodeGen.create(fromNode);
-                    default:
-                        throw new AssertionError(targetType + " " + conv);
+                Type elemType = ((VectorType) targetType).getElementType();
+                if (elemType instanceof PrimitiveType) {
+                    switch (((PrimitiveType) elemType).getPrimitiveKind()) {
+                        case I1:
+                            return LLVMToI1VectorBitNodeGen.create(fromNode);
+                        case I8:
+                            return LLVMToI8VectorBitNodeGen.create(fromNode);
+                        case I16:
+                            return LLVMToI16VectorBitNodeGen.create(fromNode);
+                        case I32:
+                            return LLVMToI32VectorBitNodeGen.create(fromNode);
+                        case I64:
+                            return LLVMToI64VectorBitNodeGen.create(fromNode);
+                        default:
+                            throw new AssertionError(targetType + " " + conv);
+                    }
+                } else {
+                    throw new AssertionError(targetType + " " + elemType + " " + conv);
                 }
             } else if (targetType == PrimitiveType.I32) {
                 return LLVMToI32BitNodeGen.create(fromNode);
@@ -418,16 +433,21 @@ final class LLVMCastsFactory {
                 throw new AssertionError(targetType + " " + conv);
             }
         } else if (conv == LLVMConversionType.BITCAST && targetType instanceof VectorType) {
-            switch (((VectorType) targetType).getElementType().getPrimitiveKind()) {
-                case I1:
-                    return LLVMToI1VectorBitNodeGen.create(fromNode);
-                case I8:
-                    return LLVMToI8VectorBitNodeGen.create(fromNode);
-                case I16:
-                    return LLVMToI16VectorBitNodeGen.create(fromNode);
-                default:
-                    System.err.println("targetType: " + ((VectorType) targetType).getElementType().getPrimitiveKind());
-                    throw new AssertionError(targetType);
+            Type elemType = ((VectorType) targetType).getElementType();
+            if (elemType instanceof PrimitiveType) {
+                switch (((PrimitiveType) elemType).getPrimitiveKind()) {
+                    case I1:
+                        return LLVMToI1VectorBitNodeGen.create(fromNode);
+                    case I8:
+                        return LLVMToI8VectorBitNodeGen.create(fromNode);
+                    case I16:
+                        return LLVMToI16VectorBitNodeGen.create(fromNode);
+                    default:
+                        System.err.println("targetType: " + ((PrimitiveType) elemType).getPrimitiveKind());
+                        throw new AssertionError(targetType);
+                }
+            } else {
+                throw new AssertionError(targetType + " " + elemType + " " + conv);
             }
         }
         throw new AssertionError(targetType + " " + conv);
@@ -517,20 +537,25 @@ final class LLVMCastsFactory {
                         throw new AssertionError(targetType);
                 }
             } else if (targetType instanceof VectorType) {
-                switch (((VectorType) targetType).getElementType().getPrimitiveKind()) {
-                    case I1:
-                        return LLVMToI1VectorBitNodeGen.create(fromNode);
-                    case I8:
-                        return LLVMToI8VectorBitNodeGen.create(fromNode);
-                    case I16:
-                        return LLVMToI16VectorBitNodeGen.create(fromNode);
-                    case I32:
-                        return LLVMToI32VectorBitNodeGen.create(fromNode);
-                    case I64:
-                        return LLVMToI64VectorBitNodeGen.create(fromNode);
-                    default:
-                        System.err.println("targetType: " + ((VectorType) targetType).getElementType().getPrimitiveKind());
-                        throw new AssertionError(targetType);
+                Type elemType = ((VectorType) targetType).getElementType();
+                if (elemType instanceof PrimitiveType) {
+                    switch (((PrimitiveType) elemType).getPrimitiveKind()) {
+                        case I1:
+                            return LLVMToI1VectorBitNodeGen.create(fromNode);
+                        case I8:
+                            return LLVMToI8VectorBitNodeGen.create(fromNode);
+                        case I16:
+                            return LLVMToI16VectorBitNodeGen.create(fromNode);
+                        case I32:
+                            return LLVMToI32VectorBitNodeGen.create(fromNode);
+                        case I64:
+                            return LLVMToI64VectorBitNodeGen.create(fromNode);
+                        default:
+                            System.err.println("targetType: " + ((PrimitiveType) elemType).getPrimitiveKind());
+                            throw new AssertionError(targetType);
+                    }
+                } else {
+                    throw new AssertionError(targetType + " " + elemType + " " + conv);
                 }
             }
         }
@@ -586,14 +611,19 @@ final class LLVMCastsFactory {
                 throw new AssertionError(targetType + " " + conv);
             }
         } else if (conv == LLVMConversionType.BITCAST && targetType instanceof VectorType) {
-            switch (((VectorType) targetType).getElementType().getPrimitiveKind()) {
-                case I1:
-                    return LLVMToI1VectorBitNodeGen.create(fromNode);
-                case I8:
-                    return LLVMToI8VectorBitNodeGen.create(fromNode);
-                default:
-                    System.err.println("targetType: " + ((VectorType) targetType).getElementType().getPrimitiveKind());
-                    throw new AssertionError(targetType);
+            Type elemType = ((VectorType) targetType).getElementType();
+            if (elemType instanceof PrimitiveType) {
+                switch (((PrimitiveType) elemType).getPrimitiveKind()) {
+                    case I1:
+                        return LLVMToI1VectorBitNodeGen.create(fromNode);
+                    case I8:
+                        return LLVMToI8VectorBitNodeGen.create(fromNode);
+                    default:
+                        System.err.println("targetType: " + ((PrimitiveType) elemType).getPrimitiveKind());
+                        throw new AssertionError(targetType);
+                }
+            } else {
+                throw new AssertionError(targetType + " " + elemType + " " + conv);
             }
         }
         throw new AssertionError(targetType + " " + conv);
@@ -622,19 +652,24 @@ final class LLVMCastsFactory {
             }
         } else if (conv == LLVMConversionType.BITCAST) {
             if (targetType instanceof VectorType) {
-                switch (((VectorType) targetType).getElementType().getPrimitiveKind()) {
-                    case I1:
-                        return LLVMToI1VectorBitNodeGen.create(fromNode);
-                    case I8:
-                        return LLVMToI8VectorBitNodeGen.create(fromNode);
-                    case I16:
-                        return LLVMToI16VectorBitNodeGen.create(fromNode);
-                    case I32:
-                        return LLVMToI32VectorBitNodeGen.create(fromNode);
-                    case I64:
-                        return LLVMToI64VectorBitNodeGen.create(fromNode);
-                    default:
-                        throw new AssertionError(targetType + " " + conv);
+                Type elemType = ((VectorType) targetType).getElementType();
+                if (elemType instanceof PrimitiveType) {
+                    switch (((PrimitiveType) elemType).getPrimitiveKind()) {
+                        case I1:
+                            return LLVMToI1VectorBitNodeGen.create(fromNode);
+                        case I8:
+                            return LLVMToI8VectorBitNodeGen.create(fromNode);
+                        case I16:
+                            return LLVMToI16VectorBitNodeGen.create(fromNode);
+                        case I32:
+                            return LLVMToI32VectorBitNodeGen.create(fromNode);
+                        case I64:
+                            return LLVMToI64VectorBitNodeGen.create(fromNode);
+                        default:
+                            throw new AssertionError(targetType + " " + conv);
+                    }
+                } else {
+                    throw new AssertionError(targetType + " " + elemType + " " + conv);
                 }
             } else if (targetType == PrimitiveType.I64) {
                 return LLVMToI64BitNodeGen.create(fromNode);
@@ -715,18 +750,23 @@ final class LLVMCastsFactory {
                         throw new AssertionError(targetType + " " + conv);
                 }
             } else if (targetType instanceof VectorType) {
-                switch (((VectorType) targetType).getElementType().getPrimitiveKind()) {
-                    case I1:
-                        return LLVMToI1VectorBitNodeGen.create(fromNode);
-                    case I8:
-                        return LLVMToI8VectorBitNodeGen.create(fromNode);
-                    case I16:
-                        return LLVMToI16VectorBitNodeGen.create(fromNode);
-                    case I32:
-                        return LLVMToI32VectorBitNodeGen.create(fromNode);
-                    default:
-                        System.err.println("targetType: " + ((VectorType) targetType).getElementType().getPrimitiveKind());
-                        throw new AssertionError(targetType);
+                Type elemType = ((VectorType) targetType).getElementType();
+                if (elemType instanceof PrimitiveType) {
+                    switch (((PrimitiveType) elemType).getPrimitiveKind()) {
+                        case I1:
+                            return LLVMToI1VectorBitNodeGen.create(fromNode);
+                        case I8:
+                            return LLVMToI8VectorBitNodeGen.create(fromNode);
+                        case I16:
+                            return LLVMToI16VectorBitNodeGen.create(fromNode);
+                        case I32:
+                            return LLVMToI32VectorBitNodeGen.create(fromNode);
+                        default:
+                            System.err.println("targetType: " + ((PrimitiveType) elemType).getPrimitiveKind());
+                            throw new AssertionError(targetType);
+                    }
+                } else {
+                    throw new AssertionError(targetType + " " + elemType + " " + conv);
                 }
             } else {
                 throw new AssertionError(targetType + " " + conv);
@@ -774,12 +814,17 @@ final class LLVMCastsFactory {
                 throw new AssertionError(targetType + " " + conv);
             }
         } else if (conv == LLVMConversionType.BITCAST && targetType instanceof VectorType) {
-            switch (((VectorType) targetType).getElementType().getPrimitiveKind()) {
-                case I1:
-                    return LLVMToI1VectorBitNodeGen.create(fromNode);
-                default:
-                    System.err.println("targetType: " + ((VectorType) targetType).getElementType().getPrimitiveKind());
-                    throw new AssertionError(targetType);
+            Type elemType = ((VectorType) targetType).getElementType();
+            if (elemType instanceof PrimitiveType) {
+                switch (((PrimitiveType) elemType).getPrimitiveKind()) {
+                    case I1:
+                        return LLVMToI1VectorBitNodeGen.create(fromNode);
+                    default:
+                        System.err.println("targetType: " + ((PrimitiveType) elemType).getPrimitiveKind());
+                        throw new AssertionError(targetType);
+                }
+            } else {
+                throw new AssertionError(targetType + " " + elemType + " " + conv);
             }
         }
         throw new AssertionError(targetType + " " + conv);

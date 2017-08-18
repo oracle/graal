@@ -38,6 +38,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -164,6 +165,23 @@ public class LLVMLoadVectorNode {
         @Specialization
         public LLVMDoubleVector executeDoubleVector(LLVMAddress addr) {
             return LLVMMemory.getDoubleVector(addr, getSize());
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeField(name = "size", type = int.class)
+    public abstract static class LLVMLoadAddressVectorNode extends LLVMExpressionNode {
+
+        public abstract int getSize();
+
+        @Specialization
+        public LLVMAddressVector executeAddressVector(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            return LLVMMemory.getAddressVector(globalAccess.getNativeLocation(addr), getSize());
+        }
+
+        @Specialization
+        public LLVMAddressVector executeAddressVector(LLVMAddress addr) {
+            return LLVMMemory.getAddressVector(addr, getSize());
         }
     }
 

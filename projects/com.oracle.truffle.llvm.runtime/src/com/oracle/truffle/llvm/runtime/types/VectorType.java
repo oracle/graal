@@ -33,7 +33,7 @@ import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public class VectorType extends AggregateType {
 
-    private final PrimitiveType elementType;
+    private final Type elementType;
     private final int length;
 
     public VectorType(PrimitiveType elementType, int length) {
@@ -41,7 +41,12 @@ public class VectorType extends AggregateType {
         this.length = length;
     }
 
-    public PrimitiveType getElementType() {
+    public VectorType(PointerType elementType, int length) {
+        this.elementType = elementType;
+        this.length = length;
+    }
+
+    public Type getElementType() {
         return elementType;
     }
 

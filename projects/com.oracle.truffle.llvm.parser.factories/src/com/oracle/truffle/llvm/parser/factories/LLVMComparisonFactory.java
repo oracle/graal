@@ -45,6 +45,16 @@ import com.oracle.truffle.llvm.nodes.op.compare.LLVM80BitFloatCompareNodeFactory
 import com.oracle.truffle.llvm.nodes.op.compare.LLVM80BitFloatCompareNodeFactory.LLVM80BitFloatUneNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVM80BitFloatCompareNodeFactory.LLVM80BitFloatUnoNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressCompareNode;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressVectorCompareNodeFactory.LLVMAddressVectorEqNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressVectorCompareNodeFactory.LLVMAddressVectorNeNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressVectorCompareNodeFactory.LLVMAddressVectorSgeNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressVectorCompareNodeFactory.LLVMAddressVectorSgtNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressVectorCompareNodeFactory.LLVMAddressVectorSleNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressVectorCompareNodeFactory.LLVMAddressVectorSltNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressVectorCompareNodeFactory.LLVMAddressVectorUgeNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressVectorCompareNodeFactory.LLVMAddressVectorUgtNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressVectorCompareNodeFactory.LLVMAddressVectorUleNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressVectorCompareNodeFactory.LLVMAddressVectorUltNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMDoubleCompareNodeFactory.LLVMDoubleOeqNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMDoubleCompareNodeFactory.LLVMDoubleOgeNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMDoubleCompareNodeFactory.LLVMDoubleOgtNodeGen;
@@ -287,8 +297,8 @@ final class LLVMComparisonFactory {
     }
 
     private static LLVMExpressionNode createVectorComparison(LLVMExpressionNode left, LLVMExpressionNode right, Type llvmType, LLVMIntegerComparisonType condition) {
-        if (llvmType instanceof VectorType) {
-            final PrimitiveType elementType = ((VectorType) llvmType).getElementType();
+        if (llvmType instanceof VectorType && ((VectorType) llvmType).getElementType() instanceof PrimitiveType) {
+            final PrimitiveType elementType = (PrimitiveType) ((VectorType) llvmType).getElementType();
             switch (elementType.getPrimitiveKind()) {
                 case I1:
                     return visitI1VectorComparison(left, right, condition);
@@ -303,6 +313,8 @@ final class LLVMComparisonFactory {
                 default:
                     throw new AssertionError(llvmType);
             }
+        } else if (llvmType instanceof VectorType && ((VectorType) llvmType).getElementType() instanceof PointerType) {
+            return visitAddressVectorComparison(left, right, condition);
         } else {
             throw new AssertionError(llvmType);
         }
@@ -729,6 +741,33 @@ final class LLVMComparisonFactory {
                 return LLVMI64VectorSltNodeGen.create(left, right);
             case SIGNED_LESS_EQUALS:
                 return LLVMI64VectorSleNodeGen.create(left, right);
+            default:
+                throw new AssertionError(condition);
+        }
+    }
+
+    private static LLVMExpressionNode visitAddressVectorComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMIntegerComparisonType condition) {
+        switch (condition) {
+            case EQUALS:
+                return LLVMAddressVectorEqNodeGen.create(left, right);
+            case NOT_EQUALS:
+                return LLVMAddressVectorNeNodeGen.create(left, right);
+            case UNSIGNED_GREATER_THAN:
+                return LLVMAddressVectorUgtNodeGen.create(left, right);
+            case UNSIGNED_GREATER_EQUALS:
+                return LLVMAddressVectorUgeNodeGen.create(left, right);
+            case UNSIGNED_LESS_THAN:
+                return LLVMAddressVectorUltNodeGen.create(left, right);
+            case UNSIGNED_LESS_EQUALS:
+                return LLVMAddressVectorUleNodeGen.create(left, right);
+            case SIGNED_GREATER_THAN:
+                return LLVMAddressVectorSgtNodeGen.create(left, right);
+            case SIGNED_GREATER_EQUALS:
+                return LLVMAddressVectorSgeNodeGen.create(left, right);
+            case SIGNED_LESS_THAN:
+                return LLVMAddressVectorSltNodeGen.create(left, right);
+            case SIGNED_LESS_EQUALS:
+                return LLVMAddressVectorSleNodeGen.create(left, right);
             default:
                 throw new AssertionError(condition);
         }

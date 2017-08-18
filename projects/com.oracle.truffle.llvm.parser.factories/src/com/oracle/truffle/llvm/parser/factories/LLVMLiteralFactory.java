@@ -43,6 +43,7 @@ import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMI32Liter
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMI64LiteralNode;
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMI8LiteralNode;
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMIVarBitLiteralNode;
+import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorAddressLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorDoubleLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorFloatLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI16LiteralNodeGen;
@@ -190,55 +191,76 @@ final class LLVMLiteralFactory {
         return i1ZeroInits;
     }
 
+    private static LLVMExpressionNode[] createNullAddressLiteralNodes(int nrElements) {
+        LLVMExpressionNode[] addressZeroInits = new LLVMExpressionNode[nrElements];
+        for (int i = 0; i < nrElements; i++) {
+            addressZeroInits[i] = new LLVMAddressLiteralNode(LLVMAddress.nullPointer());
+        }
+        return addressZeroInits;
+    }
+
     static LLVMExpressionNode createVectorLiteralNode(List<LLVMExpressionNode> listValues, VectorType type) {
         LLVMExpressionNode[] vals = listValues.toArray(new LLVMExpressionNode[listValues.size()]);
-        PrimitiveType vectorElementType = type.getElementType();
-        switch (vectorElementType.getPrimitiveKind()) {
-            case I1:
-                return LLVMVectorI1LiteralNodeGen.create(vals);
-            case I8:
-                return LLVMVectorI8LiteralNodeGen.create(vals);
-            case I16:
-                return LLVMVectorI16LiteralNodeGen.create(vals);
-            case I32:
-                return LLVMVectorI32LiteralNodeGen.create(vals);
-            case I64:
-                return LLVMVectorI64LiteralNodeGen.create(vals);
-            case FLOAT:
-                return LLVMVectorFloatLiteralNodeGen.create(vals);
-            case DOUBLE:
-                return LLVMVectorDoubleLiteralNodeGen.create(vals);
-            default:
-                throw new AssertionError();
+        Type llvmType = type.getElementType();
+        if (llvmType instanceof PrimitiveType) {
+            switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
+                case I1:
+                    return LLVMVectorI1LiteralNodeGen.create(vals);
+                case I8:
+                    return LLVMVectorI8LiteralNodeGen.create(vals);
+                case I16:
+                    return LLVMVectorI16LiteralNodeGen.create(vals);
+                case I32:
+                    return LLVMVectorI32LiteralNodeGen.create(vals);
+                case I64:
+                    return LLVMVectorI64LiteralNodeGen.create(vals);
+                case FLOAT:
+                    return LLVMVectorFloatLiteralNodeGen.create(vals);
+                case DOUBLE:
+                    return LLVMVectorDoubleLiteralNodeGen.create(vals);
+                default:
+                    throw new AssertionError();
+            }
+        } else if (llvmType instanceof PointerType) {
+            return LLVMVectorAddressLiteralNodeGen.create(vals);
+        } else {
+            throw new AssertionError(llvmType + " not yet supported");
         }
     }
 
     static LLVMExpressionNode createZeroVectorInitializer(int nrElements, VectorType type) {
-        PrimitiveType llvmType = type.getElementType();
-        switch (llvmType.getPrimitiveKind()) {
-            case I1:
-                LLVMExpressionNode[] i1Vals = createI1LiteralNodes(nrElements, false);
-                return LLVMVectorI1LiteralNodeGen.create(i1Vals);
-            case I8:
-                LLVMExpressionNode[] i8Vals = createI8LiteralNodes(nrElements, (byte) 0);
-                return LLVMVectorI8LiteralNodeGen.create(i8Vals);
-            case I16:
-                LLVMExpressionNode[] i16Vals = createI16LiteralNodes(nrElements, (short) 0);
-                return LLVMVectorI16LiteralNodeGen.create(i16Vals);
-            case I32:
-                LLVMExpressionNode[] i32Vals = createI32LiteralNodes(nrElements, 0);
-                return LLVMVectorI32LiteralNodeGen.create(i32Vals);
-            case I64:
-                LLVMExpressionNode[] i64Vals = createI64LiteralNodes(nrElements, 0);
-                return LLVMVectorI64LiteralNodeGen.create(i64Vals);
-            case FLOAT:
-                LLVMExpressionNode[] floatVals = createFloatLiteralNodes(nrElements, 0.0f);
-                return LLVMVectorFloatLiteralNodeGen.create(floatVals);
-            case DOUBLE:
-                LLVMExpressionNode[] doubleVals = createDoubleLiteralNodes(nrElements, 0.0f);
-                return LLVMVectorDoubleLiteralNodeGen.create(doubleVals);
-            default:
-                throw new AssertionError(llvmType);
+        Type llvmType = type.getElementType();
+        if (llvmType instanceof PrimitiveType) {
+            switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
+                case I1:
+                    LLVMExpressionNode[] i1Vals = createI1LiteralNodes(nrElements, false);
+                    return LLVMVectorI1LiteralNodeGen.create(i1Vals);
+                case I8:
+                    LLVMExpressionNode[] i8Vals = createI8LiteralNodes(nrElements, (byte) 0);
+                    return LLVMVectorI8LiteralNodeGen.create(i8Vals);
+                case I16:
+                    LLVMExpressionNode[] i16Vals = createI16LiteralNodes(nrElements, (short) 0);
+                    return LLVMVectorI16LiteralNodeGen.create(i16Vals);
+                case I32:
+                    LLVMExpressionNode[] i32Vals = createI32LiteralNodes(nrElements, 0);
+                    return LLVMVectorI32LiteralNodeGen.create(i32Vals);
+                case I64:
+                    LLVMExpressionNode[] i64Vals = createI64LiteralNodes(nrElements, 0);
+                    return LLVMVectorI64LiteralNodeGen.create(i64Vals);
+                case FLOAT:
+                    LLVMExpressionNode[] floatVals = createFloatLiteralNodes(nrElements, 0.0f);
+                    return LLVMVectorFloatLiteralNodeGen.create(floatVals);
+                case DOUBLE:
+                    LLVMExpressionNode[] doubleVals = createDoubleLiteralNodes(nrElements, 0.0f);
+                    return LLVMVectorDoubleLiteralNodeGen.create(doubleVals);
+                default:
+                    throw new AssertionError(llvmType);
+            }
+        } else if (llvmType instanceof PointerType) {
+            LLVMExpressionNode[] addressVals = createNullAddressLiteralNodes(nrElements);
+            return LLVMVectorAddressLiteralNodeGen.create(addressVals);
+        } else {
+            throw new AssertionError(llvmType + " not yet supported");
         }
     }
 

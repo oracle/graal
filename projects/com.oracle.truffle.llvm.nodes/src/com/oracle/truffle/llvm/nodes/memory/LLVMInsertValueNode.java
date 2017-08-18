@@ -109,6 +109,44 @@ public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
         }
     }
 
+    public static class LLVMInsertI8ValueNode extends LLVMInsertValueNode {
+
+        @Child private LLVMExpressionNode element;
+
+        public LLVMInsertI8ValueNode(LLVMExpressionNode sourceAggregate, LLVMExpressionNode targetAggregate, int sourceAggregateSize, int offset,
+                        LLVMExpressionNode element) {
+            super(sourceAggregate, targetAggregate, sourceAggregateSize, offset);
+            this.element = element;
+        }
+
+        @Override
+        public LLVMAddress executeLLVMAddress(VirtualFrame frame) {
+            LLVMAddress targetAggr = super.executeLLVMAddress(frame);
+            byte value = element.executeI8(frame);
+            LLVMMemory.putI8(targetAggr.getVal() + offset, value);
+            return targetAggr;
+        }
+    }
+
+    public static class LLVMInsertI16ValueNode extends LLVMInsertValueNode {
+
+        @Child private LLVMExpressionNode element;
+
+        public LLVMInsertI16ValueNode(LLVMExpressionNode sourceAggregate, LLVMExpressionNode targetAggregate, int sourceAggregateSize, int offset,
+                        LLVMExpressionNode element) {
+            super(sourceAggregate, targetAggregate, sourceAggregateSize, offset);
+            this.element = element;
+        }
+
+        @Override
+        public LLVMAddress executeLLVMAddress(VirtualFrame frame) {
+            LLVMAddress targetAggr = super.executeLLVMAddress(frame);
+            short value = element.executeI16(frame);
+            LLVMMemory.putI16(targetAggr.getVal() + offset, value);
+            return targetAggr;
+        }
+    }
+
     public static class LLVMInsertI32ValueNode extends LLVMInsertValueNode {
 
         @Child private LLVMExpressionNode element;

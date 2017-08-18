@@ -59,7 +59,10 @@ final class LLVMVectorFactory {
 
     static LLVMExpressionNode createInsertElement(VectorType resultType, LLVMExpressionNode vector, LLVMExpressionNode element,
                     LLVMExpressionNode index) {
-        switch (resultType.getElementType().getPrimitiveKind()) {
+        if (!(resultType.getElementType() instanceof PrimitiveType)) {
+            throw new AssertionError(resultType);
+        }
+        switch (((PrimitiveType) resultType.getElementType()).getPrimitiveKind()) {
             case I1:
                 return LLVMI1InsertElementNodeGen.create(vector, element, index);
             case I8:
@@ -101,7 +104,10 @@ final class LLVMVectorFactory {
     }
 
     static LLVMExpressionNode createShuffleVector(VectorType resultType, LLVMExpressionNode vector1, LLVMExpressionNode vector2, LLVMExpressionNode mask) {
-        switch (resultType.getElementType().getPrimitiveKind()) {
+        if (!(resultType.getElementType() instanceof PrimitiveType)) {
+            throw new AssertionError(resultType);
+        }
+        switch (((PrimitiveType) resultType.getElementType()).getPrimitiveKind()) {
             case I8:
                 return LLVMShuffleI8VectorNodeGen.create(vector1, vector2, mask);
             case I32:

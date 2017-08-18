@@ -156,8 +156,8 @@ final class LLVMArithmeticFactory {
             return handlePrimitive(left, right, llvmType, type);
         } else if (llvmType instanceof VariableBitWidthType) {
             return visitBinaryIVarInstruction(type, left, right);
-        } else if (llvmType instanceof VectorType) {
-            switch (((VectorType) llvmType).getElementType().getPrimitiveKind()) {
+        } else if (llvmType instanceof VectorType && ((VectorType) llvmType).getElementType() instanceof PrimitiveType) {
+            switch (((PrimitiveType) ((VectorType) llvmType).getElementType()).getPrimitiveKind()) {
                 case I1:
                     return visitBinaryI1VectorInstruction(type, left, right);
                 case I8:
