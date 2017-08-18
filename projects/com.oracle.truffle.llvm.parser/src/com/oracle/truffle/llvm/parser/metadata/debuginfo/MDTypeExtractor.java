@@ -71,8 +71,7 @@ final class MDTypeExtractor implements MetadataVisitor {
         if (mdType == null) {
             return null;
         }
-        mdType.accept(this);
-        return parsedTypes.getOrDefault(mdType, UNKNOWN_TYPE);
+        return resolve(mdType);
     }
 
     private final Map<MDBaseNode, LLVMSourceType> parsedTypes = new HashMap<>();
@@ -93,14 +92,25 @@ final class MDTypeExtractor implements MetadataVisitor {
         parsedTypes.put(md, UNKNOWN_TYPE);
     }
 
+    private LLVMSourceType resolve(MDBaseNode node) {
+        LLVMSourceType parsedType = parsedTypes.get(node);
+        if (parsedType != null) {
+            return parsedType;
+        }
+
+        node.accept(this);
+        parsedType = parsedTypes.get(node);
+        return parsedType != null ? parsedType : UNKNOWN_TYPE;
+    }
+
     @Override
     public void visit(MDBasicType mdType) {
         if (!parsedTypes.containsKey(mdType)) {
 
-            String name = MDNameExtractor.getName(mdType.getName());
-            long size = mdType.getSize();
-            long align = mdType.getAlign();
-            long offset = mdType.getOffset();
+            final String name = MDNameExtractor.getName(mdType.getName());
+            final long size = mdType.getSize();
+            final long align = mdType.getAlign();
+            final long offset = mdType.getOffset();
 
             LLVMSourceBasicType.Kind kind;
             switch (mdType.getEncoding()) {
@@ -149,25 +159,20 @@ final class MDTypeExtractor implements MetadataVisitor {
                     final LLVMSourceArrayLikeType type = new LLVMSourceArrayLikeType(size, align, offset);
                     parsedTypes.put(mdType, type);
 
-                    final MDReference mdBaseType = mdType.getDerivedFrom();
-                    mdBaseType.accept(this);
-                    LLVMSourceType baseType = parsedTypes.get(mdBaseType);
-                    if (baseType == null) {
-                        baseType = UNKNOWN_TYPE;
-                    }
+                    LLVMSourceType baseType = resolve(mdType.getDerivedFrom());
 
                     final List<LLVMSourceType> members = new ArrayList<>(1);
                     getElements(mdType.getMemberDescriptors(), members);
 
                     for (int i = members.size() - 1; i > 0; i--) {
                         final LLVMSourceType count = members.get(i);
-                        final long tmpSize = count.getSize() * baseType.getSize(); // TODO alignment
+                        final long tmpSize = count.getSize() * baseType.getSize();
                         final LLVMSourceArrayLikeType tmp = new LLVMSourceArrayLikeType(tmpSize, align, 0L);
 
                         if (COUNT_NAME.equals(count.getName())) {
                             tmp.setLength(count.getSize());
                             final LLVMSourceType finalBaseType = baseType;
-                            tmp.setBaseType(() -> finalBaseType);
+                            tmp.setBaseType(finalBaseType);
                             if (mdType.getTag() == MDCompositeType.Tag.DW_TAG_VECTOR_TYPE) {
                                 tmp.setName(() -> String.format("%s<%d>", finalBaseType.getName(), tmp.getLength()));
                             } else {
@@ -183,7 +188,7 @@ final class MDTypeExtractor implements MetadataVisitor {
                     if (COUNT_NAME.equals(count.getName())) {
                         type.setLength(count.getSize());
                         final LLVMSourceType finalBaseType = baseType;
-                        type.setBaseType(() -> finalBaseType);
+                        type.setBaseType(finalBaseType);
                         if (mdType.getTag() == MDCompositeType.Tag.DW_TAG_VECTOR_TYPE) {
                             type.setName(() -> String.format("%s<%d>", finalBaseType.getName(), type.getLength()));
                         } else {
@@ -200,17 +205,14 @@ final class MDTypeExtractor implements MetadataVisitor {
                 case DW_TAG_CLASS_TYPE:
                 case DW_TAG_UNION_TYPE:
                 case DW_TAG_STRUCTURE_TYPE: {
-                    final LLVMSourceStructLikeType type = new LLVMSourceStructLikeType(size, align, offset);
-                    final String parsedName = MDNameExtractor.getName(mdType.getName());
-
-                    if (mdType.getTag() == MDCompositeType.Tag.DW_TAG_CLASS_TYPE) {
-                        type.setName(() -> parsedName);
-                    } else if (mdType.getTag() == MDCompositeType.Tag.DW_TAG_STRUCTURE_TYPE) {
-                        type.setName(() -> String.format("struct %s", parsedName));
-                    } else {
-                        type.setName(() -> String.format("union %s", parsedName));
+                    String name = MDNameExtractor.getName(mdType.getName());
+                    if (mdType.getTag() == MDCompositeType.Tag.DW_TAG_STRUCTURE_TYPE) {
+                        name = String.format("struct %s", name);
+                    } else if (mdType.getTag() == MDCompositeType.Tag.DW_TAG_UNION_TYPE) {
+                        name = String.format("union %s", name);
                     }
 
+                    final LLVMSourceStructLikeType type = new LLVMSourceStructLikeType(name, size, align, offset);
                     parsedTypes.put(mdType, type);
 
                     final List<LLVMSourceType> members = new ArrayList<>();
@@ -219,21 +221,14 @@ final class MDTypeExtractor implements MetadataVisitor {
                         if (member instanceof LLVMSourceMemberType) {
                             type.addMember((LLVMSourceMemberType) member);
 
-                        } else {
-                            // we should never get here because the offsets will be wrong, but this
-                            // is still better than crashing outright and for testing it at least
-                            // does not fail silently
-                            final LLVMSourceMemberType namedMember = new LLVMSourceMemberType("<unknown>", member.getSize(), member.getAlign(), member.getOffset());
-                            namedMember.setElementType(member);
-                            type.addMember(namedMember);
                         }
                     }
                     break;
                 }
 
                 case DW_TAG_ENUMERATION_TYPE: {
-                    final String parsedName = MDNameExtractor.getName(mdType.getName());
-                    final LLVMSourceEnumLikeType type = new LLVMSourceEnumLikeType(() -> String.format("enum %s", parsedName), size, align, offset);
+                    final String name = String.format("enum %s", MDNameExtractor.getName(mdType.getName()));
+                    final LLVMSourceEnumLikeType type = new LLVMSourceEnumLikeType(() -> name, size, align, offset);
                     parsedTypes.put(mdType, type);
 
                     final List<LLVMSourceType> members = new ArrayList<>();
@@ -265,16 +260,10 @@ final class MDTypeExtractor implements MetadataVisitor {
                     final LLVMSourceMemberType type = new LLVMSourceMemberType(name, size, align, offset);
                     parsedTypes.put(mdType, type);
 
-                    final MDReference mdBaseType = mdType.getBaseType();
-                    mdBaseType.accept(this);
-                    LLVMSourceType baseType = parsedTypes.get(mdBaseType);
-                    if (baseType == null) {
-                        baseType = UNKNOWN_TYPE;
-                    }
+                    LLVMSourceType baseType = resolve(mdType.getBaseType());
                     if (Flags.BITFIELD.isSetIn(mdType.getFlags()) || (baseType != UNKNOWN_TYPE && baseType.getSize() != size)) {
-                        LLVMSourceDecoratorType decorator = new LLVMSourceDecoratorType(size, align, offset, Function.identity(), l -> size);
-                        final LLVMSourceType finalBaseType = baseType;
-                        decorator.setBaseType(() -> finalBaseType);
+                        LLVMSourceDecoratorType decorator = new LLVMSourceDecoratorType(size, align, offset, Function.identity());
+                        decorator.setBaseType(baseType);
                         baseType = decorator;
                     }
                     type.setElementType(baseType);
@@ -286,15 +275,9 @@ final class MDTypeExtractor implements MetadataVisitor {
                     final LLVMSourcePointerType type = new LLVMSourcePointerType(size, align, offset, isSafeToDereference);
                     parsedTypes.put(mdType, type);
 
-                    final MDReference mdBaseType = mdType.getBaseType();
-                    mdBaseType.accept(this);
-                    LLVMSourceType baseType = parsedTypes.get(mdBaseType);
-                    if (baseType == null) {
-                        baseType = UNKNOWN_TYPE;
-                    }
-                    final LLVMSourceType finalBaseType = baseType; // to be used in lambdas
-                    type.setBaseType(() -> finalBaseType);
-                    type.setName(() -> String.format("*%s", finalBaseType.getName()));
+                    final LLVMSourceType baseType = resolve(mdType.getBaseType());
+                    type.setBaseType(baseType);
+                    type.setName(() -> String.format("*%s", baseType.getName()));
                     break;
                 }
 
@@ -317,26 +300,19 @@ final class MDTypeExtractor implements MetadataVisitor {
                         default:
                             decorator = Function.identity();
                     }
-                    final LLVMSourceDecoratorType type = new LLVMSourceDecoratorType(size, align, offset, decorator, Function.identity());
+                    final LLVMSourceDecoratorType type = new LLVMSourceDecoratorType(size, align, offset, decorator);
                     parsedTypes.put(mdType, type);
-                    final MDReference mdBaseType = mdType.getBaseType();
-                    mdBaseType.accept(this);
-                    LLVMSourceType baseType = parsedTypes.get(mdBaseType);
-                    if (baseType == null) {
-                        baseType = UNKNOWN_TYPE;
-                    }
-                    final LLVMSourceType finalBaseType = baseType; // to be used in lambdas
-                    type.setBaseType(() -> finalBaseType);
+
+                    LLVMSourceType baseType = resolve(mdType.getBaseType());
+                    type.setBaseType(baseType);
+                    type.setSize(baseType.getSize());
                     break;
                 }
 
                 case DW_TAG_INHERITANCE: {
-                    final LLVMSourceMemberType type = new LLVMSourceMemberType("super" + mdType.toString(), size, align, offset);
+                    final LLVMSourceMemberType type = new LLVMSourceMemberType("super " + mdType.toString(), size, align, offset);
                     parsedTypes.put(mdType, type);
-
-                    final MDReference mdBaseType = mdType.getBaseType();
-                    mdBaseType.accept(this);
-                    final LLVMSourceType baseType = parsedTypes.getOrDefault(mdBaseType, UNKNOWN_TYPE);
+                    final LLVMSourceType baseType = resolve(mdType.getBaseType());
                     type.setElementType(baseType);
                     type.setName(() -> String.format("super (%s)", baseType.getName()));
 
@@ -352,14 +328,11 @@ final class MDTypeExtractor implements MetadataVisitor {
 
     @Override
     public void visit(MDReference mdRef) {
-        if (mdRef != MDReference.VOID) {
-            if (!parsedTypes.containsKey(mdRef)) {
-                final MDBaseNode target = mdRef.get();
-                target.accept(this);
-                final LLVMSourceType parsedType = parsedTypes.get(target);
-                if (parsedType != null) {
-                    parsedTypes.put(mdRef, parsedType);
-                }
+        if (!parsedTypes.containsKey(mdRef)) {
+            if (mdRef != MDReference.VOID) {
+                parsedTypes.put(mdRef, resolve(mdRef.get()));
+            } else {
+                parsedTypes.put(mdRef, UNKNOWN_TYPE);
             }
         }
     }
@@ -403,30 +376,24 @@ final class MDTypeExtractor implements MetadataVisitor {
 
         final MDCompositeType referencedType = identifiedTypes.get(mdString.getString());
         if (referencedType != null) {
-            referencedType.accept(this);
-            parsedTypes.put(mdString, parsedTypes.getOrDefault(referencedType, UNKNOWN_TYPE));
+            final LLVMSourceType type = resolve(referencedType);
+            parsedTypes.put(mdString, type);
         }
     }
 
     @Override
     public void visit(MDGlobalVariable mdGlobal) {
         if (!parsedTypes.containsKey(mdGlobal)) {
-            final MDReference typeRef = mdGlobal.getType();
-            typeRef.accept(this);
-            final LLVMSourceType type = parsedTypes.get(typeRef);
-            if (type != null) {
-                parsedTypes.put(mdGlobal, type);
-            }
+            final LLVMSourceType type = resolve(mdGlobal.getType());
+            parsedTypes.put(mdGlobal, type);
         }
     }
 
     @Override
     public void visit(MDLocalVariable mdLocal) {
         if (!parsedTypes.containsKey(mdLocal)) {
-            final MDReference typeRef = mdLocal.getType();
-            typeRef.accept(this);
-            LLVMSourceType type = parsedTypes.get(typeRef);
-            if (type == null) {
+            LLVMSourceType type = resolve(mdLocal.getType());
+            if (type == UNKNOWN_TYPE) {
                 return;
 
             } else if (Flags.OBJECT_POINTER.isSetIn(mdLocal.getFlags()) && type instanceof LLVMSourcePointerType) {
@@ -434,7 +401,7 @@ final class MDTypeExtractor implements MetadataVisitor {
                 // it on the pointer type that is used in the function type descriptor
                 final LLVMSourcePointerType oldPointer = (LLVMSourcePointerType) type;
                 final LLVMSourcePointerType newPointer = new LLVMSourcePointerType(oldPointer.getSize(), oldPointer.getAlign(), oldPointer.getOffset(), true);
-                newPointer.setBaseType(oldPointer::getBaseType);
+                newPointer.setBaseType(oldPointer.getBaseType());
                 newPointer.setName(oldPointer::getName);
                 type = newPointer;
             }
@@ -447,25 +414,20 @@ final class MDTypeExtractor implements MetadataVisitor {
             return;
         }
 
-        MDBaseNode elemList = elemRef.get();
+        final MDBaseNode elemList = elemRef.get();
         if (elemList instanceof MDNode) {
-            MDNode elemListNode = (MDNode) elemList;
-            for (MDBaseNode elemNode : elemListNode) {
-                if (elemNode != MDReference.VOID && elemNode instanceof MDReference) {
-                    elemNode.accept(this);
-                    final LLVMSourceType elemType = parsedTypes.get(((MDReference) elemNode).get());
-                    if (elemType != UNKNOWN_TYPE) {
-                        elemTypes.add(elemType);
-                    }
+            final MDNode elemListNode = (MDNode) elemList;
+            for (MDReference elemNode : elemListNode) {
+                final LLVMSourceType elemType = resolve(elemNode);
+                if (elemType != UNKNOWN_TYPE) {
+                    elemTypes.add(elemType);
                 }
             }
         } else if (elemList instanceof MDOldNode) {
-            MDOldNode elemListNode = (MDOldNode) elemList;
+            final MDOldNode elemListNode = (MDOldNode) elemList;
             for (MDTypedValue elemNode : elemListNode) {
                 if (elemNode != MDReference.VOID && elemNode instanceof MDReference) {
-                    MDReference elementReference = (MDReference) elemNode;
-                    elementReference.accept(this);
-                    final LLVMSourceType elemType = parsedTypes.get(elementReference.get());
+                    final LLVMSourceType elemType = resolve((MDReference) elemNode);
                     if (elemType != UNKNOWN_TYPE) {
                         elemTypes.add(elemType);
                     }

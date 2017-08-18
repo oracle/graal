@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.debug;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import java.util.function.Supplier;
 
@@ -39,13 +38,13 @@ public final class LLVMSourcePointerType extends LLVMSourceType {
 
     private final boolean isSafeToDereference;
 
-    @CompilationFinal private Supplier<LLVMSourceType> baseType;
+    @CompilationFinal private LLVMSourceType baseType;
 
     public LLVMSourcePointerType(long size, long align, long offset, boolean isSafeToDereference) {
-        this(LLVMSourceType.UNKNOWN_TYPE::getName, size, align, offset, () -> LLVMSourceType.UNKNOWN_TYPE, isSafeToDereference);
+        this(LLVMSourceType.UNKNOWN_TYPE::getName, size, align, offset, LLVMSourceType.UNKNOWN_TYPE, isSafeToDereference);
     }
 
-    private LLVMSourcePointerType(Supplier<String> nameSupplier, long size, long align, long offset, Supplier<LLVMSourceType> baseType, boolean isSafeToDereference) {
+    private LLVMSourcePointerType(Supplier<String> nameSupplier, long size, long align, long offset, LLVMSourceType baseType, boolean isSafeToDereference) {
         super(nameSupplier, size, align, offset);
         this.baseType = baseType;
         this.isSafeToDereference = isSafeToDereference;
@@ -55,19 +54,18 @@ public final class LLVMSourcePointerType extends LLVMSourceType {
         return isSafeToDereference;
     }
 
-    @TruffleBoundary
     public LLVMSourceType getBaseType() {
-        return baseType.get();
+        return baseType;
     }
 
-    public void setBaseType(Supplier<LLVMSourceType> baseType) {
+    public void setBaseType(LLVMSourceType baseType) {
         CompilerAsserts.neverPartOfCompilation();
         this.baseType = baseType;
     }
 
     @Override
     public LLVMSourceType getOffset(long newOffset) {
-        return new LLVMSourcePointerType(this::getName, getSize(), getAlign(), newOffset, this::getBaseType, isSafeToDereference);
+        return new LLVMSourcePointerType(this::getName, getSize(), getAlign(), newOffset, baseType, isSafeToDereference);
     }
 
     @Override

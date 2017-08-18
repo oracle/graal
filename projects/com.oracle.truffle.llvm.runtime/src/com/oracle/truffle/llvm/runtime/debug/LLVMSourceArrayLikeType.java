@@ -30,49 +30,48 @@
 package com.oracle.truffle.llvm.runtime.debug;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import java.util.function.Supplier;
 
 public final class LLVMSourceArrayLikeType extends LLVMSourceType {
 
-    private Supplier<LLVMSourceType> baseType;
-    private Supplier<Long> length;
+    @CompilationFinal private LLVMSourceType baseType;
+    @CompilationFinal private long length;
 
     public LLVMSourceArrayLikeType(long size, long align, long offset) {
-        this(LLVMSourceType.UNKNOWN_TYPE::getName, size, align, offset, () -> LLVMSourceType.UNKNOWN_TYPE, () -> -1L);
+        this(LLVMSourceType.UNKNOWN_TYPE::getName, size, align, offset, LLVMSourceType.UNKNOWN_TYPE, 1L);
     }
 
-    private LLVMSourceArrayLikeType(Supplier<String> name, long size, long align, long offset, Supplier<LLVMSourceType> baseType, Supplier<Long> length) {
+    private LLVMSourceArrayLikeType(Supplier<String> name, long size, long align, long offset, LLVMSourceType baseType, long length) {
         super(size, align, offset);
         setName(name);
         this.baseType = baseType;
         this.length = length;
     }
 
-    @TruffleBoundary
     public LLVMSourceType getBaseType() {
-        return baseType.get();
+        return baseType;
     }
 
-    public void setBaseType(Supplier<LLVMSourceType> baseType) {
+    public void setBaseType(LLVMSourceType baseType) {
         CompilerAsserts.neverPartOfCompilation();
         this.baseType = baseType;
     }
 
-    @TruffleBoundary
     public long getLength() {
-        return length.get();
+        return length;
     }
 
     public void setLength(long length) {
         CompilerAsserts.neverPartOfCompilation();
-        this.length = () -> length;
+        this.length = length;
     }
 
     @Override
     public LLVMSourceType getOffset(long newOffset) {
-        return new LLVMSourceArrayLikeType(this::getName, getSize(), getAlign(), newOffset, this::getBaseType, length);
+        return new LLVMSourceArrayLikeType(this::getName, getSize(), getAlign(), newOffset, baseType, length);
     }
 
     @Override
@@ -95,11 +94,9 @@ public final class LLVMSourceArrayLikeType extends LLVMSourceType {
     }
 
     @Override
-    @TruffleBoundary
     public LLVMSourceType getElementType(long i) {
         if (0 <= i && i < getLength()) {
-            final LLVMSourceType resolvedBaseType = baseType.get();
-            return resolvedBaseType.getOffset(i * resolvedBaseType.getSize());
+            return baseType.getOffset(i * baseType.getSize());
         }
         return null;
     }

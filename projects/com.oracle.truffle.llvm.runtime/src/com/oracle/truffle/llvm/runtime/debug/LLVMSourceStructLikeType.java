@@ -41,14 +41,13 @@ public final class LLVMSourceStructLikeType extends LLVMSourceType {
     private final List<LLVMSourceMemberType> members;
 
     @TruffleBoundary
-    public LLVMSourceStructLikeType(long size, long align, long offset) {
-        super(size, align, offset);
+    public LLVMSourceStructLikeType(String name, long size, long align, long offset) {
+        super(() -> name, size, align, offset);
         this.members = new ArrayList<>();
     }
 
     private LLVMSourceStructLikeType(Supplier<String> name, long size, long align, long offset, List<LLVMSourceMemberType> members) {
-        super(size, align, offset);
-        setName(name);
+        super(name, size, align, offset);
         this.members = members;
     }
 

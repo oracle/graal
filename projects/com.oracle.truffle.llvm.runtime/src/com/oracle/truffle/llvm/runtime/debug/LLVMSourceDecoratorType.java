@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.debug;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import java.util.function.Function;
@@ -37,124 +38,114 @@ import java.util.function.Supplier;
 
 public final class LLVMSourceDecoratorType extends LLVMSourceType {
 
-    private Supplier<LLVMSourceType> baseType;
-
     private final Function<String, String> nameDecorator;
 
-    private final Function<Long, Long> sizeDecorator;
+    @CompilationFinal private LLVMSourceType baseType;
 
-    public LLVMSourceDecoratorType(long size, long align, long offset, Function<String, String> nameDecorator, Function<Long, Long> sizeDecorator) {
+    @CompilationFinal private long size;
+
+    public LLVMSourceDecoratorType(long size, long align, long offset, Function<String, String> nameDecorator) {
         super(size, align, offset);
         this.nameDecorator = nameDecorator;
-        this.baseType = () -> LLVMSourceType.UNKNOWN_TYPE;
-        this.sizeDecorator = sizeDecorator;
+        this.baseType = LLVMSourceType.UNKNOWN_TYPE;
+        this.size = size;
     }
 
-    private LLVMSourceDecoratorType(Supplier<String> nameSupplier, long size, long align, long offset, Supplier<LLVMSourceType> baseType, Function<String, String> nameDecorator,
-                    Function<Long, Long> sizeDecorator) {
+    private LLVMSourceDecoratorType(Supplier<String> nameSupplier, long size, long align, long offset, LLVMSourceType baseType, Function<String, String> nameDecorator) {
         super(nameSupplier, size, align, offset);
         this.baseType = baseType;
         this.nameDecorator = nameDecorator;
-        this.sizeDecorator = sizeDecorator;
+        this.size = size;
     }
 
-    public void setBaseType(Supplier<LLVMSourceType> baseType) {
+    public void setBaseType(LLVMSourceType baseType) {
         CompilerAsserts.neverPartOfCompilation();
         this.baseType = baseType;
     }
 
-    @TruffleBoundary
     public LLVMSourceType getTrueBaseType() {
-        final LLVMSourceType resolvedBaseType = baseType.get();
-        if (resolvedBaseType instanceof LLVMSourceDecoratorType) {
-            return ((LLVMSourceDecoratorType) resolvedBaseType).getTrueBaseType();
+        if (baseType instanceof LLVMSourceDecoratorType) {
+            return ((LLVMSourceDecoratorType) baseType).getTrueBaseType();
         } else {
-            return resolvedBaseType;
+            return baseType;
         }
     }
 
     @Override
     @TruffleBoundary
     public String getName() {
-        return nameDecorator.apply(baseType.get().getName());
+        return nameDecorator.apply(baseType.getName());
     }
 
     @Override
     public void setName(Supplier<String> nameSupplier) {
         CompilerAsserts.neverPartOfCompilation();
-        baseType.get().setName(nameSupplier);
+        baseType.setName(nameSupplier);
+    }
+
+    public void setSize(long size) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.size = size;
     }
 
     @Override
-    @TruffleBoundary
     public long getSize() {
-        return sizeDecorator.apply(baseType.get().getSize());
+        return size;
     }
 
     @Override
-    @TruffleBoundary
     public long getAlign() {
-        return baseType.get().getAlign();
+        return baseType.getAlign();
     }
 
     @Override
-    @TruffleBoundary
     public long getOffset() {
-        return baseType.get().getOffset();
+        return baseType.getOffset();
     }
 
     @Override
-    @TruffleBoundary
     public boolean isPointer() {
-        return baseType.get().isPointer();
+        return baseType.isPointer();
     }
 
     @Override
-    @TruffleBoundary
     public boolean isAggregate() {
-        return baseType.get().isAggregate();
+        return baseType.isAggregate();
     }
 
     @Override
-    @TruffleBoundary
     public boolean isEnum() {
-        return baseType.get().isEnum();
+        return baseType.isEnum();
     }
 
     @Override
-    @TruffleBoundary
     public int getElementCount() {
-        return baseType.get().getElementCount();
+        return baseType.getElementCount();
     }
 
     @Override
-    @TruffleBoundary
     public String getElementName(long i) {
-        return baseType.get().getElementName(i);
+        return baseType.getElementName(i);
     }
 
     @Override
-    @TruffleBoundary
     public LLVMSourceType getElementType(long i) {
-        return baseType.get().getElementType(i);
+        return baseType.getElementType(i);
     }
 
     @Override
-    @TruffleBoundary
     public LLVMSourceType getElementType(String name) {
-        return baseType.get().getElementType(name);
+        return baseType.getElementType(name);
     }
 
     @Override
-    @TruffleBoundary
     public String toString() {
         return getName();
     }
 
     @Override
-    @TruffleBoundary
     public LLVMSourceType getOffset(long newOffset) {
-        final LLVMSourceType offsetBaseType = baseType.get().getOffset(newOffset);
-        return new LLVMSourceDecoratorType(this::getName, getSize(), getAlign(), getOffset(), () -> offsetBaseType, nameDecorator, sizeDecorator);
+        final LLVMSourceType offsetBaseType = baseType.getOffset(newOffset);
+        return new LLVMSourceDecoratorType(this::getName, getSize(), getAlign(), getOffset(), offsetBaseType, nameDecorator);
     }
 }
