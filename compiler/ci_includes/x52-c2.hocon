@@ -1,5 +1,5 @@
 
-x52.c2 : ${openjdk8} {
+x52.c2 : ${labsjdk8} {
   capabilities: [linux, x52, no_frequency_scaling]
   environment : {
     XMX          : "64g"

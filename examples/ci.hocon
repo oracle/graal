@@ -13,7 +13,7 @@ examplesGate : ${examplesCommon} {
 }
 
 builds += [
-  ${linux-amd64}     ${openjdk8} ${examplesGate} ${eclipse} ${jdt} { name: "gate-examples-linux-8"   },
+  ${linux-amd64}     ${labsjdk8} ${examplesGate} ${eclipse} ${jdt} { name: "gate-examples-linux-8"   },
   ${linux-amd64}     ${labsjdk9} ${examplesGate} ${eclipse}        { name: "gate-examples-linux-9"   },
   ${solaris-sparcv9} ${labsjdk8} ${examplesGate}                   { name: "gate-examples-solaris-8" },
   ${darwin-amd64}    ${labsjdk8} ${examplesGate}                   { name: "gate-examples-darwin-8"  },
