@@ -133,11 +133,6 @@ public abstract class Launcher {
             this.exitCode = exitCode;
         }
 
-        AbortException(int exitCode) {
-            super(null, null);
-            this.exitCode = exitCode;
-        }
-
         int getExitCode() {
             return exitCode;
         }
@@ -190,6 +185,7 @@ public abstract class Launcher {
      *            null, nothing will be printed.
      * @param exitCode the exit code of the launcher process.
      */
+    @SuppressWarnings("static-method")
     protected final AbortException abort(String message, int exitCode) {
         throw new AbortException(message, exitCode);
     }
@@ -258,7 +254,7 @@ public abstract class Launcher {
                 throw abort(message + " (" + e.getClass().getSimpleName() + ")", exitCode);
             }
         }
-        throw abort(e);
+        throw abort((Throwable) e, exitCode);
     }
 
     /**

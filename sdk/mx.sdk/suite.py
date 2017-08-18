@@ -142,6 +142,7 @@ GraalVM removes the isolation between programming languages and enables interope
       "distDependencies" : [
         "GRAAL_SDK",
       ],
+      "maven": False,
     },
   },
 }
