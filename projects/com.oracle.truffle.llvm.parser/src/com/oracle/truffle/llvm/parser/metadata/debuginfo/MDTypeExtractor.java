@@ -271,7 +271,7 @@ final class MDTypeExtractor implements MetadataVisitor {
                     if (baseType == null) {
                         baseType = UNKNOWN_TYPE;
                     }
-                    if (Flags.BITFIELD.isSetIn(mdType.getFlags())) {
+                    if (Flags.BITFIELD.isSetIn(mdType.getFlags()) || (baseType != UNKNOWN_TYPE && baseType.getSize() != size)) {
                         LLVMSourceDecoratorType decorator = new LLVMSourceDecoratorType(size, align, offset, Function.identity(), l -> size);
                         final LLVMSourceType finalBaseType = baseType;
                         decorator.setBaseType(() -> finalBaseType);

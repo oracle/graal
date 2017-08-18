@@ -238,7 +238,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
                         return value.readUnsignedInteger(offset, size);
 
                     case UNSIGNED_CHAR:
-                        return (char) Byte.toUnsignedInt(value.readSignedInteger(offset, size).byteValue());
+                        return (char) Byte.toUnsignedInt(value.readUnsignedInteger(offset, size).byteValue());
                 }
             }
 
