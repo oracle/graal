@@ -4,11 +4,12 @@ overlay = d7d8755e92c891ace88cdc197e08671bf8665f07
 # labsjdk* are JDKs based on OracleJDK binaries
 # openjdk* are JDKs based on OpenJDK binaries
 jdks: {
-  openjdk8 : {name : openjdk, version : "8u141-jvmci-0.32", platformspecific: true}
-  labsjdk8 : {name : labsjdk, version : "8u141-jvmci-0.32", platformspecific: true}
+# GR-5675
+# openjdk8 : {name : openjdk, version : "8u141-jvmci-0.32", platformspecific: true}
+  labsjdk8 : {name : labsjdk, version : "8u141-jvmci-0.33-dev", platformspecific: true}
   labsjdk9 : {name : labsjdk, version : "9-20170810-210536", platformspecific: true}
   labsjdk9EA : {name : labsjdk, version : "9+181", platformspecific: true}
-  labsjdk8Debug : {name : labsjdk, version : "8u141-jvmci-0.32-fastdebug", platformspecific: true}
+  labsjdk8Debug : {name : labsjdk, version : "8u141-jvmci-0.33-dev-fastdebug", platformspecific: true}
 }
 
 # Overlay placeholder for pinning mx to a specific revision
@@ -17,7 +18,8 @@ mx : {}
 labsjdk8 :      { downloads : { JAVA_HOME : ${jdks.labsjdk8} }}
 labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug} }}
 
-openjdk8 :      { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
+# GR-5675
+# openjdk8 :      { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
 labsjdk9 :      { downloads : { JAVA_HOME : ${jdks.labsjdk9},   EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
 labsjdk9EA :    { downloads : { JAVA_HOME : ${jdks.labsjdk9EA}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
