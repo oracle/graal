@@ -6,9 +6,9 @@ builds += [
   ${gateBootstrapLite}       ${labsjdk9}   ${gateDarwinAMD64Bootstrap}  {name: "gate-compiler-bootstraplite-9-darwin-amd64", targets : [weekly]}
 
   # Linux AMD64
-  ${gateBootstrap}           ${openjdk8}   ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-8-linux-amd64"}
-  ${gateBootstrap}           ${openjdk8}   ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-labsjdk8-linux-amd64", targets : [weekly]}
-  ${gateBootstrapFullVerify} ${openjdk8}   ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrapfullverify-8-linux-amd64"}
+  ${gateBootstrap}           ${labsjdk8}   ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-8-linux-amd64"}
+  ${gateBootstrap}           ${labsjdk8}   ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-labsjdk8-linux-amd64", targets : [weekly]}
+  ${gateBootstrapFullVerify} ${labsjdk8}   ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrapfullverify-8-linux-amd64"}
   ${gateBootstrap}           ${labsjdk9}   ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-9-linux-amd64"}
   ${gateBootstrap}           ${labsjdk9EA} ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-9EA-linux-amd64", targets : [weekly]}
 
@@ -22,8 +22,8 @@ builds += [
   ${gateBootstrap}           ${labsjdk8}   ${gateLinuxSPARCBootstrap} {name: "gate-compiler-bootstrap-labsjdk8-linux-sparcv9", timelimit: "1:00:00", targets : [weekly]}
 
   # Linux AMD64 TraceRA
-  ${gateBootstrapFullVerify} ${openjdk8}   ${gateLinuxAMD64TraceRABootstrap} {name: "gate-compiler-bootstrapfullverify-8-linux-amd64-tracera", targets : [weekly]}
+  ${gateBootstrapFullVerify} ${labsjdk8}   ${gateLinuxAMD64TraceRABootstrap} {name: "gate-compiler-bootstrapfullverify-8-linux-amd64-tracera", targets : [weekly]}
 
   # Linux AMD64 TraceRA-BU
-  ${gateBootstrap}           ${openjdk8}   ${gateLinuxAMD64TraceRABUBootstrap} {name: "gate-compiler-bootstrap-8-linux-amd64-tracera-bu", targets : [weekly]}
+  ${gateBootstrap}           ${labsjdk8}   ${gateLinuxAMD64TraceRABUBootstrap} {name: "gate-compiler-bootstrap-8-linux-amd64-tracera-bu", targets : [weekly]}
 ]
