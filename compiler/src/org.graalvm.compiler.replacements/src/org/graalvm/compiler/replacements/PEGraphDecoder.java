@@ -198,7 +198,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             int count = 0;
             PEGraphDecoder.PEMethodScope scope = methodScope;
             while (scope != null) {
-                if (scope.method == method) {
+                if (scope.method.equals(method)) {
                     count++;
                 }
                 scope = scope.caller;
