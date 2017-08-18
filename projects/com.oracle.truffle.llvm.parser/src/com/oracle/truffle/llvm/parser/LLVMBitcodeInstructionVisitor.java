@@ -305,7 +305,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             return;
         }
 
-        final LLVMExpressionNode typeNode = nodeFactory.registerDebugType(valueSlot, var.getSourceType());
+        final LLVMExpressionNode typeNode = nodeFactory.registerSourceType(valueSlot, var.getSourceType());
         if (typeNode != null) {
             addInstructionUnchecked(typeNode);
         }

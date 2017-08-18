@@ -909,7 +909,7 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode registerDebugType(FrameSlot valueSlot, LLVMSourceType type) {
+    public LLVMExpressionNode registerSourceType(FrameSlot valueSlot, LLVMSourceType type) {
         return new LLVMSetInteropTypeNode(valueSlot, type);
     }
 }
