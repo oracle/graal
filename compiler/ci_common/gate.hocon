@@ -73,7 +73,7 @@ gateStyle : ${eclipse} ${jdt} {
     EXTRA_VM_ARGS : ""
   }
   run : [
-    ${gateCmd} ["style,fullbuild"]
+    ${gateCmd} ["style,fullbuild,javadoc"]
   ]
 }
 
