@@ -204,10 +204,8 @@ public final class DebugContext implements AutoCloseable {
             this.unscopedTimers = parseUnscopedMetricSpec(Timers.getValue(options), "".equals(timeValue), true);
             this.unscopedMemUseTrackers = parseUnscopedMetricSpec(MemUseTrackers.getValue(options), "".equals(trackMemUseValue), true);
 
-            if (unscopedTimers == null ||
-                            !unscopedTimers.isEmpty() ||
-                            unscopedMemUseTrackers == null ||
-                            !unscopedMemUseTrackers.isEmpty() ||
+            if (unscopedTimers != null ||
+                            unscopedMemUseTrackers != null ||
                             timeValue != null ||
                             trackMemUseValue != null) {
                 try {
