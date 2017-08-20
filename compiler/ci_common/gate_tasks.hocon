@@ -4,13 +4,11 @@ builds += [
   # Darwin AMD64
   ${gateTest}           ${labsjdk8}   ${gateDarwinAMD64}  {name: "gate-compiler-test-8-darwin-amd64", targets : [weekly]}
   ${gateTest}           ${labsjdk9}   ${gateDarwinAMD64}  {name: "gate-compiler-test-9-darwin-amd64", targets : [weekly]}
-  ${gateTest}           ${labsjdk9EA} ${gateDarwinAMD64}  {name: "gate-compiler-test-9EA-darwin-amd64", targets : [weekly]}
 # ${gateTestBenchmark}  ${labsjdk8}   ${gateDarwinAMD64}  {name: "gate-compiler-benchmarktest-8-darwin-amd64", targets : [weekly]}
 
   # Linux AMD64
   ${gateTest}          ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-test-8-linux-amd64"}
   ${gateTest}          ${labsjdk9}       ${gateLinuxAMD64}   {name: "gate-compiler-test-9-linux-amd64"}
-  ${gateTest}          ${labsjdk9EA}     ${gateLinuxAMD64}   {name: "gate-compiler-test-9EA-linux-amd64"}
   ${gateTestCTW}       ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-ctw-8-linux-amd64"}
   ${gateTestCTW}       ${labsjdk9}       ${gateLinuxAMD64}   {name: "gate-compiler-ctw-9-linux-amd64", targets : [weekly]}
   ${gateTest}          ${labsjdk8Debug}  ${gateLinuxAMD64}   {name: "gate-compiler-test-8-linux-amd64-fastdebug", targets : [weekly]}
