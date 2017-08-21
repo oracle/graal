@@ -73,5 +73,5 @@ public @interface CEntryPoint {
     /**
      * Method documentation to be displayed in the the header file.
      */
-    String documentation() default "";
+    String[] documentation() default "";
 }
