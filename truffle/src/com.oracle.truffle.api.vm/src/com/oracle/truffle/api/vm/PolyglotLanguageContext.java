@@ -30,7 +30,6 @@ import static com.oracle.truffle.api.vm.VMAccessor.JAVAINTEROP;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -56,7 +55,7 @@ final class PolyglotLanguageContext implements VMObject {
     final PolyglotContextImpl context;
     final PolyglotLanguage language;
     final Map<Object, CallTarget> sourceCache = new ConcurrentHashMap<>();
-    final Map<Class<?>, PolyglotValue> valueCache = new HashMap<>();
+    final Map<Class<?>, PolyglotValue> valueCache = new ConcurrentHashMap<>();
     final Map<String, Object> config;
     final PolyglotValue defaultValueCache;
     final OptionValuesImpl optionValues;
