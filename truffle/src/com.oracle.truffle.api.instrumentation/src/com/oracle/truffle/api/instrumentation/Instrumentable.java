@@ -106,6 +106,8 @@ public @interface Instrumentable {
      *     public abstract Object execute(VirtualFrame frame);
      * }
      * </pre>
+     * 
+     * @since 0.12
      */
     Class<? extends InstrumentableFactory<? extends Node>> factory();
 

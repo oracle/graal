@@ -44,6 +44,7 @@ public @interface NodeInfo {
      * Short name representing the node that can be used for debugging.
      *
      * @return the short name
+     * @since 0.8 or earlier
      */
     String shortName() default "";
 
@@ -53,6 +54,7 @@ public @interface NodeInfo {
      *
      * @see Node#getCost()
      * @see NodeCost
+     * @since 0.8 or earlier
      */
     NodeCost cost() default NodeCost.MONOMORPHIC;
 
@@ -61,6 +63,7 @@ public @interface NodeInfo {
      * for debugging or visualization purposes.
      *
      * @return the description
+     * @since 0.8 or earlier
      */
     String description() default "";
 
@@ -70,6 +73,7 @@ public @interface NodeInfo {
      * information is set only in an abstract base node for the language implementation.
      *
      * @return the description
+     * @since 0.8 or earlier
      */
     String language() default "";
 }

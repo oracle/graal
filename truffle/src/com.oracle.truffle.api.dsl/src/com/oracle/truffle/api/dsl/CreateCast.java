@@ -38,7 +38,9 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD})
 public @interface CreateCast {
-
+    /**
+     * @since 0.8 or earlier
+     */
     String[] value();
 
 }

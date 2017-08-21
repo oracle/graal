@@ -87,6 +87,8 @@ public @interface TypeSystem {
 
     /**
      * The list of types as child elements of the {@link TypeSystem}. Each precedes its super type.
+     * 
+     * @since 0.8 or earlier
      */
     Class<?>[] value() default {};
 

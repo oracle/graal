@@ -232,6 +232,7 @@ public @interface Cached {
      * Defines the initializer expression of the cached parameter value.
      *
      * @see Cached
+     * @since 0.8 or earlier
      */
     String value();
 

@@ -42,9 +42,10 @@ import com.oracle.truffle.api.nodes.Node;
 @Target({ElementType.TYPE})
 @Repeatable(NodeChildren.class)
 public @interface NodeChild {
-
+    /** @since 0.8 or earlier */
     String value() default "";
 
+    /** @since 0.8 or earlier */
     Class<?> type() default Node.class;
 
     /**
@@ -55,6 +56,8 @@ public @interface NodeChild {
      * number of {@link #executeWith()} arguments that are defined. For example if this child is
      * executed with one argument, the {@link #type()} attribute must define a node which publicly
      * declares a method with the signature <code>Object execute*(VirtualFrame, Object)</code>.
+     * 
+     * @since 0.8 or earlier
      */
     String[] executeWith() default {};
 }

@@ -33,7 +33,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.TYPE})
 public @interface NodeChildren {
-
+    /** @since 0.8 or earlier */
     NodeChild[] value() default {};
 
 }
