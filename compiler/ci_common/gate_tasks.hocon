@@ -11,7 +11,7 @@ builds += [
   ${gateTest}          ${labsjdk9}       ${gateLinuxAMD64}   {name: "gate-compiler-test-9-linux-amd64"}
   ${gateTestCTW}       ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-ctw-8-linux-amd64"}
   ${gateTestCTW}       ${labsjdk9}       ${gateLinuxAMD64}   {name: "gate-compiler-ctw-9-linux-amd64", targets : [weekly]}
-  ${gateTest}          ${labsjdk8Debug}  ${gateLinuxAMD64}   {name: "gate-compiler-test-8-linux-amd64-fastdebug", targets : [weekly]}
+  ${gateTest}          ${labsjdk8Debug}  ${gateLinuxAMD64}   {name: "gate-compiler-test-8-linux-amd64-fastdebug", timelimit: "1:00:00", targets : [weekly]}
   ${gateTestBenchmark} ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-benchmarktest-8-linux-amd64"}
   ${gateTestBenchmark} ${labsjdk8Debug}  ${gateLinuxAMD64}   {name: "gate-compiler-benchmarktest-8-linux-amd64-fastdebug", targets : [weekly]}
   ${gateStyle}         ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-style-linux-amd64"}
