@@ -30,7 +30,6 @@ import org.graalvm.compiler.truffle.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.OptimizedIndirectCallNode;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -85,6 +84,7 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
     abstract class DeoptimizeAwareRootNode extends RootNode {
 
         boolean deoptimized;
+        boolean wasValid;
 
         protected DeoptimizeAwareRootNode() {
             super(null);
@@ -92,7 +92,7 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            boolean wasValid = CompilerDirectives.inCompiledCode();
+            wasValid = CompilerDirectives.inCompiledCode();
             Object returnValue = doExecute(frame);
             deoptimized = wasValid && CompilerDirectives.inInterpreter();
             return returnValue;
@@ -138,7 +138,7 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
 
         @Override
         public Object doExecute(VirtualFrame frame) {
-            boolean wasValid = CompilerDirectives.inCompiledCode();
+            wasValid = CompilerDirectives.inCompiledCode();
             directCallNode.call(arguments);
             deoptimized = wasValid && CompilerDirectives.inInterpreter();
             return null;
@@ -246,7 +246,6 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
      * Same as previous but has the indirectCallNode explicitly call it's target.
      */
     @Test
-    @Ignore("Unexplainable pass. Ignore while investigating.")
     public void testIndirectCallNodeDoesNotDeopOnTypeChangeWithInlining2() {
         try (TruffleCompilerOptions.TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleFunctionInlining, true)) {
             final int compilationThreshold = TruffleCompilerOptions.getValue(TruffleCompilationThreshold);
@@ -292,8 +291,6 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
             Assert.assertEquals("Global state not updated!", LOREM_IPSUM, globalState[0]);
 
             assertCompiled(targetWithIndirectCall);
-            // This does not deoptimize because the call to saveArgumentToGlobalState with string
-            // arguments somehow gets inlined by graal.
             assertDeoptimized(targetWithIndirectCall);
 
             // targetWithDirectCall is unaffected due to inlining
