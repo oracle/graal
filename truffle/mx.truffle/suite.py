@@ -662,7 +662,7 @@ suite = {
         "com.oracle.truffle.api.object.dsl",
       ],
       "distDependencies" : [
-	    "sdk:GRAAL_SDK"
+        "sdk:GRAAL_SDK"
       ],
       "description" : """Truffle is a multi-language framework for executing dynamic languages
         that achieves high performance when combined with Graal.""",
