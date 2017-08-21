@@ -140,7 +140,8 @@ public final class Context implements AutoCloseable {
      *         the result might represent a {@link Value#isNull() null} guest language value.
      * @throws PolyglotException in case parsing or evaluation of the guest language code failed.
      * @throws IllegalStateException if the context is already closed, the current thread is not
-     *             allowed to access or if the language of the given source is not installed.
+     *             allowed to access this context or if the language of the given source is not
+     *             installed.
      * @since 1.0
      */
     public Value eval(Source source) {
@@ -156,7 +157,7 @@ public final class Context implements AutoCloseable {
      * @return result of the evaluation wrapped in a non-null {@link Value}
      * @throws PolyglotException in case parsing or evaluation of the guest language code failed.
      * @throws IllegalStateException if the context is already closed, the current thread is not
-     *             allowed to access or if the given language is not installed.
+     *             allowed to access this context or if the given language is not installed.
      * @since 1.0
      */
     public Value eval(String languageId, CharSequence source) {
@@ -172,7 +173,7 @@ public final class Context implements AutoCloseable {
      * @return result of the evaluation wrapped in a non-null {@link Value}
      * @throws PolyglotException in case the lookup failed due to a guest language error.
      * @throws IllegalStateException if the context is already closed, the current thread is not
-     *             allowed to access or if the given language is not installed.
+     *             allowed to access this context or if the given language is not installed.
      * @since 1.0
      */
     public Value lookup(String languageId, String symbol) {
@@ -191,7 +192,7 @@ public final class Context implements AutoCloseable {
      *         returned instance is is never <code>null</code>, but the result might represent a
      *         {@link Value#isNull() null} guest language value.
      * @throws IllegalStateException if the context is already closed or the current thread is not
-     *             allowed to access.
+     *             allowed to access this context.
      * @since 1.0
      */
     public Value importSymbol(String name) {
@@ -227,7 +228,7 @@ public final class Context implements AutoCloseable {
      *         was already initialized.
      * @throws PolyglotException in case the initialization failed due to a guest language error.
      * @throws IllegalStateException if the context is already closed, the current thread is not
-     *             allowed to access or if the given language is not installed.
+     *             allowed to access this context or if the given language is not installed.
      * @since 1.0
      */
     public boolean initialize(String languageId) {
