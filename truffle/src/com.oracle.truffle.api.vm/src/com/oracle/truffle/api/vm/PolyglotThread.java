@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.vm;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 final class PolyglotThread extends Thread {
 
     private final PolyglotLanguageContext languageContext;
@@ -36,7 +38,7 @@ final class PolyglotThread extends Thread {
     }
 
     static String createDefaultName(PolyglotLanguageContext creator) {
-        return "Polyglot-" + creator.language.getId() + "-" + nextThreadNum();
+        return "Polyglot-" + creator.language.getId() + "-" + THREAD_INIT_NUMBER.getAndIncrement();
     }
 
     @Override
@@ -50,10 +52,6 @@ final class PolyglotThread extends Thread {
         }
     }
 
-    private static int threadInitNumber;
-
-    private static synchronized int nextThreadNum() {
-        return threadInitNumber++;
-    }
+    private static final AtomicInteger THREAD_INIT_NUMBER = new AtomicInteger(0);
 
 }
