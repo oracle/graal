@@ -205,6 +205,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         PolyglotThreadInfo tinfo = this.lastThread;
         assert tinfo != null;
 
+        // double checked locking
         PolyglotContextImpl context;
         if (tinfo.thread == Thread.currentThread()) {
             // fast-path -> same thread
@@ -229,12 +230,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         }
 
         Thread current = Thread.currentThread();
-        assert Thread.holdsLock(this);
-        assert current != null;
         PolyglotThreadInfo threadInfo = this.lastThread;
         assert threadInfo != null;
 
-        // double checked locking
         if (threadInfo.thread != current) {
             boolean needsInitialization = false;
             threadInfo = threads.get(current);
@@ -246,7 +244,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
             boolean transitionToMultiThreading = singleThreaded.isValid() && hasActiveOtherThread(true);
             if (transitionToMultiThreading) {
                 // recheck all thread accesses
-                checkAllThreadAccesses(false);
+                checkAllThreadAccesses();
             }
 
             if (needsInitialization) {
@@ -281,7 +279,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         }
     }
 
-    private void checkAllThreadAccesses(boolean single) {
+    private void checkAllThreadAccesses() {
         Thread current = Thread.currentThread();
         List<PolyglotLanguage> deniedLanguages = null;
         for (PolyglotLanguageContext context : contexts) {
@@ -289,12 +287,12 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                 continue;
             }
             boolean accessAllowed = true;
-            if (!LANGUAGE.isThreadAccessAllowed(context.language.info, current, single)) {
+            if (!LANGUAGE.isThreadAccessAllowed(context.language.info, current, false)) {
                 accessAllowed = false;
             }
             if (accessAllowed) {
                 for (PolyglotThreadInfo seenThread : threads.values()) {
-                    if (!LANGUAGE.isThreadAccessAllowed(context.language.info, seenThread.thread, single)) {
+                    if (!LANGUAGE.isThreadAccessAllowed(context.language.info, seenThread.thread, false)) {
                         accessAllowed = false;
                         break;
                     }
@@ -329,8 +327,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
 
     @TruffleBoundary
     synchronized PolyglotThreadInfo leaveThreadChanged(Thread current) {
-        assert Thread.holdsLock(this);
-        assert current != null;
         PolyglotThreadInfo threadInfo = this.lastThread;
         assert threadInfo != null;
         if (threadInfo.thread != current) {

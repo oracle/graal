@@ -56,7 +56,8 @@ final class PolyglotThreadInfo {
     }
 
     boolean isLastActive() {
-        return thread != null && enteredCount <= 1 && !cancelled;
+        assert Thread.currentThread() == thread;
+        return thread != null && enteredCount == 1 && !cancelled;
     }
 
     boolean isActive() {
