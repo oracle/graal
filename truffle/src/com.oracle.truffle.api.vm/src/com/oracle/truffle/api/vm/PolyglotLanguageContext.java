@@ -319,6 +319,12 @@ final class PolyglotLanguageContext implements VMObject {
 
     }
 
+    final static class Generic {
+        private Generic() {
+            throw new AssertionError("no instances");
+        }
+    }
+
     final class ToGuestValueNode {
 
         @CompilationFinal private Class<?> cachedClass;
@@ -332,17 +338,17 @@ final class PolyglotLanguageContext implements VMObject {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 if (receiver == null) {
                     // directly go to slow path for null
-                    cachedClass = ToGuestValueNode.class;
+                    cachedClass = Generic.class;
                 } else {
                     cachedClass = receiver.getClass();
                 }
             }
-            if (cachedClass != ToGuestValueNode.class) {
+            if (cachedClass != Generic.class) {
                 if (cachedClass.isInstance(receiver)) {
                     return toGuestValue(cachedClass.cast(receiver));
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    cachedClass = ToGuestValueNode.class; // switch to generic
+                    cachedClass = Generic.class; // switch to generic
                 }
             }
             return slowPath(receiver);
@@ -436,7 +442,7 @@ final class PolyglotLanguageContext implements VMObject {
                     cache = cachedFallbackValue;
                 }
                 return apiAccess.newValue(receiver, cache);
-            } else if (cachedClass != ToHostValueNode.class) {
+            } else if (cachedClass != Generic.class) {
                 if (cachedClass.isInstance(value)) {
                     receiver = cachedClass.cast(receiver);
                     PolyglotValue cache = cachedValue;
@@ -446,14 +452,14 @@ final class PolyglotLanguageContext implements VMObject {
                             cache = cachedFallbackValue;
                         } else {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            cachedClass = ToHostValueNode.class;
+                            cachedClass = Generic.class;
                             cache = lookupValueCache(receiver.getClass());
                         }
                     }
                     return apiAccess.newValue(receiver, cache);
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    cachedClass = ToHostValueNode.class; // switch to generic
+                    cachedClass = Generic.class; // switch to generic
                     // fall through to generic
                 }
             }
