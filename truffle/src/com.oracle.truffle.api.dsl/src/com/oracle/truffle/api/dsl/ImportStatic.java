@@ -42,7 +42,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface ImportStatic {
-
+    /** @since 0.8 or earlier */
     Class<?>[] value();
 
 }

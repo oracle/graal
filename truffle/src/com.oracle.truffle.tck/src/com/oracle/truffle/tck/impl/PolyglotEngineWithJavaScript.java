@@ -437,7 +437,6 @@ public class PolyglotEngineWithJavaScript {
 
 
     @Test
-    @SuppressWarnings("deprecation")
     public void testHelloWorld() {
         com.oracle.truffle.tutorial.HelloWorld.runTests();
     }

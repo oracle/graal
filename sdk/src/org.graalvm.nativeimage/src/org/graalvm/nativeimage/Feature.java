@@ -25,6 +25,7 @@
 package org.graalvm.nativeimage;
 
 import java.lang.reflect.Field;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
@@ -226,6 +227,12 @@ public interface Feature {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     interface AfterImageWriteAccess extends FeatureAccess {
+        /**
+         * A path to the created native-image file.
+         *
+         * @return the path to the created native-image file (includes the native-image file name)
+         */
+        Path getImagePath();
     }
 
     /**

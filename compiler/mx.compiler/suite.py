@@ -1568,7 +1568,6 @@ suite = {
         "org.graalvm.compiler.truffle.bench",
       ],
       "distDependencies" : [
-        "GRAAL",
         "GRAAL_TEST",
       ],
     },

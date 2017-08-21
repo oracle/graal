@@ -217,6 +217,7 @@ public abstract class TruffleLanguage<C> {
          * as group identifier for options of the language.
          *
          * @return identifier of your language
+         * @since 0.8 or earlier
          */
         String id() default "";
 
@@ -225,6 +226,7 @@ public abstract class TruffleLanguage<C> {
          * {@link com.oracle.truffle.api.vm.PolyglotEngine.Language#getName()} getter.
          *
          * @return identifier of your language
+         * @since 0.8 or earlier
          */
         String name();
 
@@ -232,6 +234,7 @@ public abstract class TruffleLanguage<C> {
          * Unique name of your language implementation.
          *
          * @return the implementation name of your language
+         * @since 0.8 or earlier
          */
         String implementationName() default "";
 
@@ -240,6 +243,7 @@ public abstract class TruffleLanguage<C> {
          * the {@link com.oracle.truffle.api.vm.PolyglotEngine.Language#getVersion()} getter.
          *
          * @return version of your language
+         * @since 0.8 or earlier
          */
         String version();
 
@@ -250,6 +254,7 @@ public abstract class TruffleLanguage<C> {
          * executing} their code snippets or their {@link Source files}.
          *
          * @return array of MIME types assigned to your language files
+         * @since 0.8 or earlier
          */
         String[] mimeType();
 
