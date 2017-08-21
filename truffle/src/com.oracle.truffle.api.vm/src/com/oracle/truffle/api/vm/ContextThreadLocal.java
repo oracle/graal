@@ -130,7 +130,7 @@ final class ContextThreadLocal extends ThreadLocal<Object> {
             PolyglotThread polyglotThread = ((PolyglotThread) current);
             Object context = polyglotThread.context;
             if (context == null && firstThread == current) {
-                polyglotThread.context = firstContext;
+                context = polyglotThread.context = firstContext;
                 firstContext = null;
                 firstThread = null;
             }
@@ -138,11 +138,6 @@ final class ContextThreadLocal extends ThreadLocal<Object> {
         } else {
             return super.get();
         }
-    }
-
-    @TruffleBoundary
-    private void setTL(Object context) {
-        super.set(context);
     }
 
     @TruffleBoundary
