@@ -42,7 +42,6 @@ import java.util.stream.IntStream;
 import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.OptimizedOSRLoopNode;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleOptionsOverrideScope;
