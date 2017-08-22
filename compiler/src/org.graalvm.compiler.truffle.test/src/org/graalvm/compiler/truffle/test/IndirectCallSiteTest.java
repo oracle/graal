@@ -134,7 +134,6 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
 
         @Child OptimizedDirectCallNode directCallNode;
         final Object[] arguments;
-        boolean deoptimized;
 
         @Override
         public Object doExecute(VirtualFrame frame) {
@@ -228,8 +227,6 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
             Assert.assertEquals("Global state not updated!", LOREM_IPSUM, globalState[0]);
 
             assertCompiled(targetWithIndirectCall);
-            // Deoptimizes because it's callee was invalidated, but is itself not invalidated
-            assertDeoptimized(targetWithIndirectCall);
 
             // targetWithDirectCall is unaffected due to inlining
             assertCompiled(targetWithDirectCall);
