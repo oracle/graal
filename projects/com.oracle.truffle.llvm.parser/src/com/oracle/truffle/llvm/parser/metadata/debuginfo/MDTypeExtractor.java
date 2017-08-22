@@ -92,6 +92,11 @@ final class MDTypeExtractor implements MetadataVisitor {
         parsedTypes.put(md, UNKNOWN_TYPE);
     }
 
+    private LLVMSourceType resolve(MDBaseNode node, LLVMSourceType defaultValue) {
+        final LLVMSourceType resolved = resolve(node);
+        return resolved != UNKNOWN_TYPE ? resolved : defaultValue;
+    }
+
     private LLVMSourceType resolve(MDBaseNode node) {
         LLVMSourceType parsedType = parsedTypes.get(node);
         if (parsedType != null) {
@@ -275,7 +280,7 @@ final class MDTypeExtractor implements MetadataVisitor {
                     final LLVMSourcePointerType type = new LLVMSourcePointerType(size, align, offset, isSafeToDereference);
                     parsedTypes.put(mdType, type);
 
-                    final LLVMSourceType baseType = resolve(mdType.getBaseType());
+                    final LLVMSourceType baseType = resolve(mdType.getBaseType(), LLVMSourceType.VOID_TYPE);
                     type.setBaseType(baseType);
                     type.setName(() -> {
                         final String baseName = baseType.getName();

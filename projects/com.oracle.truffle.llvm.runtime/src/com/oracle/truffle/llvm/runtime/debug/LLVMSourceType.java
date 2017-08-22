@@ -45,6 +45,13 @@ public abstract class LLVMSourceType {
         }
     };
 
+    public static final LLVMSourceType VOID_TYPE = new LLVMSourceType(() -> "void", 0, 0, 0) {
+        @Override
+        public LLVMSourceType getOffset(long newOffset) {
+            return this;
+        }
+    };
+
     private final long size;
     private final long align;
     private final long offset;
