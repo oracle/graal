@@ -448,7 +448,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         });
         final OptimizedCallTarget outerTarget = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
 
-            @Child private OptimizedDirectCallNode child = (OptimizedDirectCallNode) runtime.createDirectCallNode(innerTarget);
+            @Child private DirectCallNode child = runtime.createDirectCallNode(innerTarget);
 
             @Override
             public Object execute(VirtualFrame frame) {
