@@ -29,38 +29,46 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
 
-@MessageResolution(receiverType = LLVMDebugValueContainerType.class)
-public class LLVMDebugValueContainerTypeMessageResolution {
+@MessageResolution(receiverType = LLVMDebugValueContainer.class)
+public class LLVMDebugValueContainerMessageResolution {
 
     @Resolve(message = "KEYS")
     public abstract static class LLVMDebugObjectPropertiesNode extends Node {
 
-        @CompilerDirectives.TruffleBoundary
-        private static Object obtainKeys(DynamicObject receiver) {
-            Object[] keys = receiver.getShape().getKeyList().toArray();
+        @TruffleBoundary
+        private static Object obtainKeys(LLVMDebugValueContainer receiver) {
+            final Object[] keys = receiver.getKeys();
             return JavaInterop.asTruffleObject(keys);
         }
 
-        public Object access(DynamicObject receiver) {
+        public Object access(LLVMDebugValueContainer receiver) {
             return obtainKeys(receiver);
+        }
+    }
+
+    @Resolve(message = "KEY_INFO")
+    public abstract static class LLVMDebugObjectPropertiesInfoNode extends Node {
+
+        public int access(LLVMDebugValueContainer receiver, Object key) {
+            if (receiver.getElement(key) != null) {
+                return 0b11;
+            } else {
+                return 0;
+            }
         }
     }
 
     @Resolve(message = "READ")
     public abstract static class LLVMDebugObjectForeignReadNode extends Node {
 
-        public Object access(DynamicObject receiver, Object name) {
-            if (receiver.containsKey(name)) {
-                return receiver.get(name);
-            }
-            return null;
+        public Object access(LLVMDebugValueContainer receiver, Object key) {
+            return receiver.getElement(key);
         }
     }
 }

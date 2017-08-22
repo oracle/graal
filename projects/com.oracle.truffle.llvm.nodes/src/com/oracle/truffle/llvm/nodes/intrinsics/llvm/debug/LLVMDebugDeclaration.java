@@ -35,11 +35,10 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueContainer;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueContainerType;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -64,24 +63,24 @@ public abstract class LLVMDebugDeclaration extends LLVMExpressionNode {
     }
 
     @Specialization
-    public Object readAddress(DynamicObject container, LLVMAddress address) {
+    public Object readAddress(LLVMDebugValueContainer container, LLVMAddress address) {
         final LLVMDebugObject object = LLVMDebugObject.instantiate(varType, 0L, new LLVMAddressValueProvider(address));
-        container.define(varName, object);
+        container.addElement(varName, object);
         return null;
     }
 
     @Specialization
-    public Object readGlobal(DynamicObject container, LLVMGlobalVariable global, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    public Object readGlobal(LLVMDebugValueContainer container, LLVMGlobalVariable global, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         final LLVMAddress address = globalAccess.getNativeLocation(global);
         final LLVMDebugObject object = LLVMDebugObject.instantiate(varType, 0L, new LLVMAddressValueProvider(address));
-        final DynamicObject globalsContainer = LLVMDebugValueContainerType.findOrAddGlobalsContainer(container);
-        globalsContainer.define(varName, object);
+        final LLVMDebugValueContainer globalsContainer = LLVMDebugValueContainer.findOrAddGlobalsContainer(container);
+        globalsContainer.addElement(varName, object);
         return null;
     }
 
     @Specialization
     public Object initializeOnAddress(VirtualFrame frame, @SuppressWarnings("unused") Object defaultValue, LLVMAddress address) {
-        final DynamicObject container = LLVMDebugValueContainerType.createContainer();
+        final LLVMDebugValueContainer container = LLVMDebugValueContainer.createContainer();
         frame.setObject(containerSlot, container);
         return readAddress(container, address);
     }
@@ -89,7 +88,7 @@ public abstract class LLVMDebugDeclaration extends LLVMExpressionNode {
     @Specialization
     public Object initializeOnGlobal(VirtualFrame frame, @SuppressWarnings("unused") Object defaultValue, LLVMGlobalVariable global,
                     @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        final DynamicObject container = LLVMDebugValueContainerType.createContainer();
+        final LLVMDebugValueContainer container = LLVMDebugValueContainer.createContainer();
         frame.setObject(containerSlot, container);
         return readGlobal(container, global, globalAccess);
     }

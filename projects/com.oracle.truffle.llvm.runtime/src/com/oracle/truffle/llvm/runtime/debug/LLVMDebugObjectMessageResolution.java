@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.java.JavaInterop;
@@ -41,14 +41,26 @@ public class LLVMDebugObjectMessageResolution {
     @Resolve(message = "KEYS")
     public abstract static class LLVMDebugObjectPropertiesNode extends Node {
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         private static Object obtainKeys(LLVMDebugObject receiver) {
-            Object[] keys = receiver.getKeys();
+            final Object[] keys = receiver.getKeys();
             return JavaInterop.asTruffleObject(keys);
         }
 
         public Object access(LLVMDebugObject receiver) {
             return obtainKeys(receiver);
+        }
+    }
+
+    @Resolve(message = "KEY_INFO")
+    public abstract static class LLVMDebugObjectPropertiesInfoNode extends Node {
+
+        public int access(LLVMDebugObject receiver, Object key) {
+            if (receiver.getMember(key) != null) {
+                return 0b11;
+            } else {
+                return 0;
+            }
         }
     }
 
