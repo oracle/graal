@@ -54,7 +54,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD})
 public @interface TypeCheck {
-
+    /** @since 0.8 or earlier */
     Class<?> value();
 
 }

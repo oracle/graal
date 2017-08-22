@@ -24,9 +24,15 @@ gateTestCTW : {
 gateTestBenchmark : {
   environment : {
     EXTRA_VM_ARGS : ""
+    JVM_CONFIG    : ${jvm-config.default}
+    JVM           : "server"
   }
   run : [
     ${gateCmd} ["build,benchmarktest"]
+    # blackbox jmh test
+    ["mx", "benchmark", "jmh-dist:*", "--", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}", "--", ".*TestJMH.*" ]
+    # whitebox jmh test
+    ["mx", "benchmark", "jmh-whitebox:*", "--", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}", "--", ".*TestJMH.*" ]
   ]
 }
 
@@ -67,7 +73,7 @@ gateStyle : ${eclipse} ${jdt} {
     EXTRA_VM_ARGS : ""
   }
   run : [
-    ${gateCmd} ["style,fullbuild"]
+    ${gateCmd} ["style,fullbuild,javadoc"]
   ]
 }
 

@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,23 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.dsl;
+package micro.benchmarks;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Warmup;
 
+@Warmup(iterations = 1)
+@Measurement(iterations = 1)
+@Fork(1)
 /**
- * @since 0.8 or earlier
- * @deprecated deprecated without replacement since 0.22. Implement short circuits by manually
- *             executing child nodes.
- **/
-@Retention(RetentionPolicy.CLASS)
-@Target({ElementType.METHOD})
-@Deprecated
-public @interface ShortCircuit {
-    /** @since 0.8 or earlier */
-    String value();
+ * This dummy class is used to verify that the JMH microbenchmarking environment is set up properly.
+ */
+public class TestJMHBlackbox {
+
+    @Benchmark
+    public void testJMH() {
+        // This method was intentionally left blank.
+    }
 
 }

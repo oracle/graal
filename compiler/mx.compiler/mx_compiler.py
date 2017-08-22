@@ -396,6 +396,7 @@ class GraalTags:
     test = ['test', 'fulltest']
     benchmarktest = ['benchmarktest', 'fulltest']
     ctw = ['ctw', 'fulltest']
+    doc = ['javadoc']
 
 def _remove_empty_entries(a):
     """Removes empty entries. Return value is always a list."""
@@ -525,6 +526,9 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     # ensure -Xcomp still works
     with Task('XCompMode:product', tasks, tags=GraalTags.test) as t:
         if t: run_vm(_remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
+
+    with Task('Javadoc', tasks, tags=GraalTags.doc) as t:
+        if t: mx.javadoc([])
 
 graal_unit_test_runs = [
     UnitTestRun('UnitTests', [], tags=GraalTags.test),
@@ -882,6 +886,9 @@ def microbench(*args):
     mx.abort("`mx microbench` is deprecated.\n" +
              "Use `mx benchmark jmh-whitebox:*` and `mx benchmark jmh-dist:*` instead!")
 
+def javadoc(args):
+    mx.javadoc(args)
+
 def create_archive(srcdir, arcpath, prefix):
     """
     Creates a compressed archive of a given directory.
@@ -976,6 +983,7 @@ mx.update_commands(_suite, {
     'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],
     'java_base_unittest' : [java_base_unittest, 'Runs unittest on JDK9 java.base "only" module(s)'],
     'microbench': [microbench, ''],
+    'javadoc': [javadoc, ''],
     'makegraaljdk': [makegraaljdk, '[options]'],
 })
 

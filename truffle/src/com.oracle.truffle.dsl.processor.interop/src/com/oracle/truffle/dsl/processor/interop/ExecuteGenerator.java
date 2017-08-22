@@ -112,8 +112,8 @@ final class ExecuteGenerator extends MessageGenerator {
         appendHandleUnsupportedTypeException(w);
         w.append(indent).append("            }\n");
         w.append(indent).append("        }\n");
-        w.append("\n");
         w.append(indent).append("    }\n");
+        w.append("\n");
     }
 
     @Override

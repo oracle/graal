@@ -28,9 +28,9 @@ benchCommon: ${linux-amd64} ${labsjdk8} {
 }
 
 builds += [
-  ${linux-amd64} ${openjdk8} ${truffleCommon} ${eclipse} ${jdt} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-8"},
+  ${linux-amd64} ${labsjdk8} ${truffleCommon} ${eclipse} ${jdt} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-8"},
   ${linux-amd64} ${labsjdk9} ${truffleCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-9"},
-  ${linux-amd64} ${openjdk8} ${truffleCommon} {
+  ${linux-amd64} ${labsjdk8} ${truffleCommon} {
     run : [
         ["mx", "build"],
         ["mx", "javadoc"],
@@ -55,7 +55,7 @@ builds += [
     targets : [ weekly ],
     name: "gate-truffle-mac-lite-9"
   }
-  ${linux-amd64} ${openjdk8} ${truffleCommon} {
+  ${linux-amd64} ${labsjdk8} ${truffleCommon} {
     run : [
         ["mx", "build"],
         ["mx", "javadoc"],

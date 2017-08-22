@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.90.02",
+  "mxversion" : "5.124.5",
   "name" : "sdk",
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/graalvm/graal",
@@ -79,16 +79,23 @@ suite = {
       "url" : "http://opensource.org/licenses/UPL",
     }
   },
-    # ------------- Distributions -------------
+  # ------------- Distributions -------------
   "distributions" : {
     "GRAAL_SDK" : {
       "subDir" : "src",
-      "moduleName" : "org.graalvm.sdk",
+      "moduleName" : "org.graalvm.graal_sdk",
       "dependencies" : [
         "org.graalvm.polyglot",
         "org.graalvm.nativeimage",
       ],
       "distDependencies" : [],
+      "maven" : {
+        "groupId" : "org.graalvm",
+        "artifactId" : "graal-sdk"
+      },
+      "javadocType": "api",
+      "description" : """GraalVM is an ecosystem for compiling and running applications written in multiple languages.
+GraalVM removes the isolation between programming languages and enables interoperability in a shared runtime.""",
     },
     "WORD_API" : {
       "subDir" : "src",
@@ -101,6 +108,7 @@ suite = {
       "overlaps" : [
         "GRAAL_SDK",
       ],
+      "maven" : False,
     },
  },
 }

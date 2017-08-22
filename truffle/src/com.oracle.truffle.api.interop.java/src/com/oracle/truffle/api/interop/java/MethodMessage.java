@@ -83,6 +83,7 @@ public @interface MethodMessage {
      * 
      * @return string identification of an inter-operability message
      * @see Message#valueOf(java.lang.String)
+     * @since 0.9
      */
     String message();
 }
