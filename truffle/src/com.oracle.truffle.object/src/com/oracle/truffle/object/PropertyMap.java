@@ -40,7 +40,11 @@ public abstract class PropertyMap implements ImmutableMap<Object, Property> {
 
     /** @since 0.17 or earlier */
     public static PropertyMap empty() {
-        return ConsListPropertyMap.empty();
+        if (ObjectStorageOptions.TriePropertyMap) {
+            return TriePropertyMap.empty();
+        } else {
+            return ConsListPropertyMap.empty();
+        }
     }
 
     /** @since 0.17 or earlier */
@@ -68,7 +72,10 @@ public abstract class PropertyMap implements ImmutableMap<Object, Property> {
     public abstract PropertyMap removeCopy(Property value);
 
     /** @since 0.17 or earlier */
-    public abstract PropertyMap getParentMap();
+    @Deprecated
+    public PropertyMap getParentMap() {
+        throw new UnsupportedOperationException();
+    }
 
     /** @since 0.17 or earlier */
     @Override

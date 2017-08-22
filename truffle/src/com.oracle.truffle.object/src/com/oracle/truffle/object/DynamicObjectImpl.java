@@ -22,13 +22,14 @@
  */
 package com.oracle.truffle.object;
 
+import java.util.Iterator;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.LocationFactory;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.object.Locations.ValueLocation;
 
 /** @since 0.17 or earlier */
 public abstract class DynamicObjectImpl extends DynamicObject implements Cloneable {
@@ -173,29 +174,29 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     /** @since 0.17 or earlier */
     protected abstract void reshape(ShapeImpl newShape);
 
-    /** @since 0.17 or earlier */
+    /**
+     * @param ancestor common ancestor shape between from and to object shapes
+     * @since 0.17 or earlier
+     */
     public final void copyProperties(DynamicObject fromObject, Shape ancestor) {
+        copyProperties(fromObject);
+    }
+
+    private void copyProperties(DynamicObject fromObject) {
         ShapeImpl fromShape = (ShapeImpl) fromObject.getShape();
         ShapeImpl toShape = getShape();
-        assert toShape.isRelated(ancestor);
+        assert toShape.isRelated(fromShape);
         assert toShape.isValid();
-        assert ancestor.isValid();
         assert !fromShape.isShared();
-        PropertyMap ancestorMap = ((ShapeImpl) ancestor).getPropertyMap();
         PropertyMap fromMap = fromShape.getPropertyMap();
-        for (PropertyMap toMap = toShape.getPropertyMap(); !toMap.isEmpty() && toMap != ancestorMap; toMap = toMap.getParentMap()) {
-            Property toProperty = toMap.getLastProperty();
+        for (Iterator<Property> toMapIt = toShape.getPropertyMap().reverseOrderedValueIterator(); toMapIt.hasNext();) {
+            Property toProperty = toMapIt.next();
             Property fromProperty = fromMap.get(toProperty.getKey());
 
             // copy only if property has a location and it's not the same as the source location
-            if (toProperty.getLocation() != null && !(toProperty.getLocation() instanceof ValueLocation) && !toProperty.getLocation().equals(fromProperty.getLocation())) {
+            if (!toProperty.getLocation().isValue() && !toProperty.getLocation().equals(fromProperty.getLocation())) {
                 toProperty.setInternal(this, fromProperty.get(fromObject, false));
                 assert toShape.isValid();
-            }
-
-            if (fromProperty == fromMap.getLastProperty()) {
-                // no property is looked up twice, so we can skip over to parent
-                fromMap = fromMap.getParentMap();
             }
         }
     }
