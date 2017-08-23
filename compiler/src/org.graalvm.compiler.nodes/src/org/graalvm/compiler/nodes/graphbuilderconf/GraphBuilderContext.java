@@ -297,12 +297,11 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     }
 
     /**
-     * Counts the number of times a given method shows up on the call graph formed during graph
-     * building.
+     * Counts the number of frames corresponding to {@code method} on the current parse stack.
      *
-     * @param method The method to look for on the stack.
+     * @param method the method to look for on the stack
      *
-     * @return Number of times the method shows up on the stack. -1 if unable to perform the count.
+     * @return number of times the method shows up on the stack or -1 if unable to perform the count
      */
     default int countOccurrencesOnStack(ResolvedJavaMethod method) {
         return -1;
