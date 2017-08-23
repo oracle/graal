@@ -1015,12 +1015,39 @@ public abstract class TruffleLanguage<C> {
          *
          * @param runnable the runnable to run on this thread.
          * @throws IllegalStateException if thread creation is not {@link #isCreateThreadAllowed()
-         *             allowed}>.
+         *             allowed}.
          * @since 0.28
          */
         @TruffleBoundary
         public Thread createThread(Runnable runnable) {
-            return AccessAPI.engineAccess().createThread(vmObject, runnable);
+            return createThread(runnable, null);
+        }
+
+        /**
+         * Creates a new thread that has access to given inner context. A thread is
+         * {@link TruffleLanguage#initializeThread(Object, Thread) initialized} when it is
+         * {@link Thread#start() started} and {@link TruffleLanguage#disposeThread(Object, Thread)
+         * disposed} as soon as the thread finished the execution.
+         * <p>
+         * It is recommended to set an
+         * {@link Thread#setUncaughtExceptionHandler(java.lang.Thread.UncaughtExceptionHandler)
+         * uncaught exception handler} for the created thread. For example the thread can throw an
+         * uncaught exception if one of the initialized language contexts don't support execution on
+         * this thread.
+         * <p>
+         * The language that created and started the thread is responsible to complete all running
+         * or waiting threads when the context is {@link TruffleLanguage#disposeContext(Object)
+         * disposed}.
+         *
+         * @param runnable the runnable to run on this thread
+         * @param context the context to enter and leave when the thread is started.
+         * @throws IllegalStateException if thread creation is not {@link #isCreateThreadAllowed()
+         *             allowed}.
+         * @since 0.28
+         */
+        @TruffleBoundary
+        public Thread createThread(Runnable runnable, TruffleContext context) {
+            return AccessAPI.engineAccess().createThread(vmObject, runnable, context != null ? context.impl : null);
         }
 
         /**

@@ -1796,7 +1796,7 @@ public class PolyglotEngine {
         }
 
         @Override
-        public Thread createThread(Object vmObject, Runnable runnable) {
+        public Thread createThread(Object vmObject, Runnable runnable, Object context) {
             throw new IllegalStateException("createThread is not supported.");
         }
 

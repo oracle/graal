@@ -63,7 +63,7 @@ public final class TruffleContext implements AutoCloseable {
     static final TruffleContext EMPTY = new TruffleContext();
 
     private static ThreadLocal<List<Object>> assertStack;
-    private final Object impl;
+    final Object impl;
 
     TruffleContext(TruffleLanguage.Env env, Map<String, Object> config) {
         this.impl = AccessAPI.engineAccess().createInternalContext(env.getVMObject(), config);

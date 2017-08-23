@@ -570,13 +570,13 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         PolyglotLanguage language = requirePublicLanguage(languageId);
         PolyglotLanguageContext languageContext = this.contexts[language.index];
         languageContext.checkAccess();
-        Object prev = enter();
+        Object prev = languageContext.enter();
         try {
             return languageContext.ensureInitialized();
         } catch (Throwable t) {
             throw wrapGuestException(languageContext, t);
         } finally {
-            leave(prev);
+            languageContext.leave(prev);
         }
     }
 
@@ -682,7 +682,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         // send enters and leaves into a lock by setting the lastThread to null.
         this.lastThread = PolyglotThreadInfo.NULL;
         for (PolyglotThreadInfo otherInfo : threads.values()) {
-            if (!includePolyglotThread && otherInfo.isPolyglotThread()) {
+            if (!includePolyglotThread && otherInfo.isPolyglotThread(this)) {
                 continue;
             }
             if (!otherInfo.isCurrent() && otherInfo.isActive()) {
@@ -734,20 +734,23 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
 
             Object prev = enter();
             try {
-                for (PolyglotContextImpl childContext : childContexts) {
+                for (PolyglotContextImpl childContext : childContexts.toArray(new PolyglotContextImpl[0])) {
                     childContext.closeImpl(cancelIfExecuting, waitForPolyglotThreads);
                 }
 
                 for (PolyglotLanguageContext context : contexts) {
+                    if (!context.isInitialized()) {
+                        continue;
+                    }
                     try {
                         context.dispose();
                     } catch (Exception | Error ex) {
                         throw wrapGuestException(context, ex);
                     }
                 }
+                assert childContexts.isEmpty();
             } finally {
                 leave(prev);
-                assert childContexts.isEmpty();
                 if (parent != null) {
                     synchronized (parent) {
                         parent.childContexts.remove(this);

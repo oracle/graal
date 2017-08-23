@@ -29,8 +29,16 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -326,7 +334,7 @@ public class MultiThreadedLanguageTest {
     }
 
     @Test
-    public void testAccessContextFromOtherThread() throws Throwable {
+    public void testAccessTruffleContextPolyglotThread() throws Throwable {
         MultiThreadedLanguage.isThreadAccessAllowed = (req) -> {
             return true;
         };
@@ -361,6 +369,7 @@ public class MultiThreadedLanguageTest {
                         return MultiThreadedLanguage.getContext();
                     }));
                 }
+
                 try {
                     for (Future<LanguageContext> future : futures) {
                         assertSame(MultiThreadedLanguage.getContext(), future.get());
@@ -382,7 +391,7 @@ public class MultiThreadedLanguageTest {
                 service.shutdown();
                 /*
                  * We need to join all threads as unfortunately the executor service does not
-                 * guarantee that all threads are imediatly shutdown.
+                 * guarantee that all threads are immediately shutdown.
                  */
                 try {
                     for (Thread t : createdThreads) {
@@ -399,6 +408,86 @@ public class MultiThreadedLanguageTest {
             throw seenError.get();
         }
         engine.close();
+    }
+
+    @Test
+    public void testAccessTruffleContextFromExclusivePolyglotThread() throws Throwable {
+        // don't allow multi-threading in this test as every context
+        // is used exclusively by one thread.
+        MultiThreadedLanguage.isThreadAccessAllowed = (req) -> {
+            return req.singleThreaded;
+        };
+        final int iterations = 10;
+        final int innerIterations = 10;
+
+        AtomicReference<Throwable> lastError = new AtomicReference<>();
+        UncaughtExceptionHandler uncaughtHandler = (run, e) -> lastError.set(e);
+        Context polyglotContext = Context.newBuilder().allowCreateThread(true).build();
+        ConcurrentHashMap<LanguageContext, String> seenContexts = new ConcurrentHashMap<>();
+        eval(polyglotContext, new Function<Env, Object>() {
+            @SuppressWarnings("hiding")
+            public Object apply(Env env) {
+                List<Thread> threads = new ArrayList<>();
+                List<TruffleContext> contexts = new ArrayList<>();
+                for (int i = 0; i < iterations; i++) {
+                    TruffleContext context = env.newContextBuilder().build();
+                    Thread thread = env.createThread(() -> {
+                        assertUniqueContext();
+                        List<Thread> innerThreads = new ArrayList<>();
+                        List<TruffleContext> innerContexts = new ArrayList<>();
+                        for (int j = 0; j < innerIterations; j++) {
+                            TruffleContext innerContext = env.newContextBuilder().build();
+                            Thread innerThread = env.createThread(() -> {
+                                assertUniqueContext();
+                            }, innerContext);
+                            innerThread.setUncaughtExceptionHandler(uncaughtHandler);
+                            innerThread.start();
+
+                            innerThreads.add(innerThread);
+                            innerContexts.add(innerContext);
+                        }
+                        for (Thread innerThread : innerThreads) {
+                            try {
+                                innerThread.join();
+                            } catch (InterruptedException e) {
+                            }
+                        }
+                        for (TruffleContext innerContext : innerContexts) {
+                            innerContext.close();
+                        }
+
+                    }, context);
+                    thread.setUncaughtExceptionHandler(uncaughtHandler);
+                    thread.start();
+                    threads.add(thread);
+                }
+                for (Thread thread : threads) {
+                    try {
+                        thread.join();
+                    } catch (InterruptedException e) {
+                    }
+                }
+                for (TruffleContext context : contexts) {
+                    context.close();
+                }
+                return null;
+            }
+
+            private LanguageContext assertUniqueContext() {
+                LanguageContext languageContext = MultiThreadedLanguage.getContext();
+                Assert.assertNotNull(languageContext);
+                Assert.assertFalse(seenContexts.containsKey(languageContext));
+                seenContexts.put(languageContext, "");
+                return languageContext;
+            }
+        });
+        if (lastError.get() != null) {
+            throw lastError.get();
+        }
+        polyglotContext.close();
+        Assert.assertEquals(221, initializeCount.get());
+        Assert.assertEquals(initializeCount.get(), disposeCount.get());
+        Assert.assertEquals(0, initializeMultiThreadingCount.get());
     }
 
     @Test
@@ -486,6 +575,7 @@ public class MultiThreadedLanguageTest {
     volatile AtomicInteger initializeMultiThreadingCount;
     volatile AtomicReference<ThreadRequest> lastInitializeRequest;
     volatile AtomicReference<ThreadRequest> lastDisposeRequest;
+    private final Map<Object, Set<Thread>> initializedThreadsPerContext = Collections.synchronizedMap(new HashMap<>());
 
     @Before
     public void setup() {
@@ -501,6 +591,11 @@ public class MultiThreadedLanguageTest {
             initializeCount.incrementAndGet();
             lastInitializeRequest.set(req);
             Assert.assertSame(req.context, MultiThreadedLanguage.getContext());
+            Set<Thread> threadsPerContext = initializedThreadsPerContext.computeIfAbsent(req.context, (e) -> Collections.synchronizedSet(new HashSet<Thread>()));
+            if (threadsPerContext.contains(req.thread)) {
+                throw new AssertionError("Thread initialized twice for context " + req.context + " thread " + req.thread);
+            }
+            threadsPerContext.add(req.thread);
             return null;
         };
 
@@ -508,6 +603,12 @@ public class MultiThreadedLanguageTest {
             disposeCount.incrementAndGet();
             lastDisposeRequest.set(req);
             Assert.assertSame(req.context, MultiThreadedLanguage.getContext());
+            Set<Thread> threadsPerContext = initializedThreadsPerContext.get(req.context);
+            if (!threadsPerContext.contains(req.thread)) {
+                throw new AssertionError("Not initialized but disposed thread " + req.thread);
+            }
+            // should not be able to dispose twice.
+            threadsPerContext.remove(req.thread);
             return null;
         };
     }
@@ -518,6 +619,7 @@ public class MultiThreadedLanguageTest {
         initializeMultiThreadingCount = new AtomicInteger(0);
         lastInitializeRequest = new AtomicReference<>(null);
         lastDisposeRequest = new AtomicReference<>(null);
+        initializedThreadsPerContext.clear();
     }
 
     @After
@@ -527,6 +629,11 @@ public class MultiThreadedLanguageTest {
             assertTrue(executor.shutdownNow().isEmpty());
         }
         executors.clear();
+        for (Entry<Object, Set<Thread>> entry : initializedThreadsPerContext.entrySet()) {
+            if (!entry.getValue().isEmpty()) {
+                throw new AssertionError("Threads initialized but not disposed for context " + entry.getKey() + ": " + entry.getValue());
+            }
+        }
     }
 
     private ExecutorService createExecutor(int noThreads) {

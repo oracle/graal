@@ -38,6 +38,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
@@ -193,7 +194,7 @@ public abstract class Accessor {
 
         public abstract boolean isCreateThreadAllowed(Object vmObject);
 
-        public abstract Thread createThread(Object vmObject, Runnable runnable);
+        public abstract Thread createThread(Object vmObject, Runnable runnable, Object context);
 
     }
 
