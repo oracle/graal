@@ -103,10 +103,6 @@ def runParserTortureSuite(vmArgs):
     compileSuite(['parserTorture'])
     return run(vmArgs + ['-Dpolyglot.llvm.parseOnly=true'], "com.oracle.truffle.llvm.test.alpha.ParserTortureSuite")
 
-def runPolyglotTests(vmArgs):
-    """runs the Polyglot test suite"""
-    return run(vmArgs, "com.oracle.truffle.llvm.test.TestPolyglotEngine")
-
 def runTypeTests(vmArgs):
     """runs the Type test suite"""
     return run(vmArgs, "com.oracle.truffle.llvm.types.floating.test")
@@ -190,7 +186,6 @@ testSuites = {
     'gcc38' : (compileV38GCCSuite, runGCCSuite38),
     'shootout' : (compileShootoutSuite, runShootoutSuite),
     'parserTorture' : (compileParserTurtureSuite, runParserTortureSuite),
-    'polyglot' : (None, runPolyglotTests),
     'type' : (None, runTypeTests),
     'pipe' : (None, runPipeTests),
 }
