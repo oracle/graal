@@ -65,7 +65,7 @@ public abstract class LLVMDebugDeclaration extends LLVMExpressionNode {
     @Specialization
     public Object readAddress(LLVMDebugValueContainer container, LLVMAddress address) {
         final LLVMDebugObject object = LLVMDebugObject.instantiate(varType, 0L, new LLVMAddressValueProvider(address));
-        container.addElement(varName, object);
+        container.addMember(varName, object);
         return null;
     }
 
@@ -74,7 +74,7 @@ public abstract class LLVMDebugDeclaration extends LLVMExpressionNode {
         final LLVMAddress address = globalAccess.getNativeLocation(global);
         final LLVMDebugObject object = LLVMDebugObject.instantiate(varType, 0L, new LLVMAddressValueProvider(address));
         final LLVMDebugValueContainer globalsContainer = LLVMDebugValueContainer.findOrAddGlobalsContainer(container);
-        globalsContainer.addElement(varName, object);
+        globalsContainer.addMember(varName, object);
         return null;
     }
 

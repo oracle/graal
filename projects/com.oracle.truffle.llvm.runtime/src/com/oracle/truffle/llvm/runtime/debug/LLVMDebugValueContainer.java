@@ -30,63 +30,61 @@
 package com.oracle.truffle.llvm.runtime.debug;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public final class LLVMDebugValueContainer implements TruffleObject {
+public final class LLVMDebugValueContainer extends LLVMDebugObject {
 
     public static final String FRAMESLOT_NAME = "\tSource-Level Values";
     private static final String GLOBALS_CONTAINER_NAME = "\tGlobal Variables";
+    private static final LLVMSourceType TYPE = new LLVMSourceType(() -> "", 0, 0, 0) {
+        @Override
+        public LLVMSourceType getOffset(long newOffset) {
+            return this;
+        }
+    };
 
-    private final Map<Object, Object> elements;
+    private final Map<Object, Object> members;
 
     @TruffleBoundary
     private LLVMDebugValueContainer() {
-        elements = new HashMap<>();
+        super(null, 0, TYPE);
+        members = new HashMap<>();
+    }
+
+    @TruffleBoundary
+    public void addMember(Object key, Object element) {
+        members.put(key, element);
+    }
+
+    @Override
+    @TruffleBoundary
+    public Object[] getKeys() {
+        return members.keySet().toArray();
+    }
+
+    @Override
+    @TruffleBoundary
+    public Object getMember(Object identifier) {
+        return members.get(identifier);
+    }
+
+    @Override
+    protected Object getValue() {
+        return "";
     }
 
     public static LLVMDebugValueContainer createContainer() {
         return new LLVMDebugValueContainer();
     }
 
-    @TruffleBoundary
-    public void addElement(Object key, Object value) {
-        elements.put(key, value);
-    }
-
-    @TruffleBoundary
-    public Object getElement(Object key) {
-        return elements.get(key);
-    }
-
-    @TruffleBoundary
-    public Object[] getKeys() {
-        return elements.keySet().toArray();
-    }
-
     public static LLVMDebugValueContainer findOrAddGlobalsContainer(LLVMDebugValueContainer container) {
-        LLVMDebugValueContainer globalsContainer = (LLVMDebugValueContainer) container.getElement(GLOBALS_CONTAINER_NAME);
+        LLVMDebugValueContainer globalsContainer = (LLVMDebugValueContainer) container.getMember(GLOBALS_CONTAINER_NAME);
         if (globalsContainer == null) {
             globalsContainer = new LLVMDebugValueContainer();
-            container.addElement(GLOBALS_CONTAINER_NAME, globalsContainer);
+            container.addMember(GLOBALS_CONTAINER_NAME, globalsContainer);
         }
         return globalsContainer;
-    }
-
-    public static boolean isInstance(TruffleObject obj) {
-        return obj instanceof LLVMDebugValueContainer;
-    }
-
-    @Override
-    public String toString() {
-        return "";
-    }
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return LLVMDebugValueContainerMessageResolutionForeign.ACCESS;
     }
 }

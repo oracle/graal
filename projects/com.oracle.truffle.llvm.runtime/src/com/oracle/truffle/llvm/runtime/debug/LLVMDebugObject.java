@@ -58,7 +58,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
 
     protected final LLVMSourceType type;
 
-    private LLVMDebugObject(LLVMDebugValueProvider value, long offset, LLVMSourceType type) {
+    LLVMDebugObject(LLVMDebugValueProvider value, long offset, LLVMSourceType type) {
         this.value = value;
         this.offset = offset;
         this.type = type;
