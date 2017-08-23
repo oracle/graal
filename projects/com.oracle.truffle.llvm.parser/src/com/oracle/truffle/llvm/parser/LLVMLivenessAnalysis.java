@@ -375,7 +375,7 @@ public final class LLVMLivenessAnalysis {
     }
 
     private static int resolve(FrameDescriptor frame, Symbol symbol) {
-        if (symbol.hasName() && !(symbol instanceof GlobalValueSymbol || symbol instanceof FunctionDefinition || symbol instanceof FunctionDeclaration)) {
+        if (symbol instanceof ValueSymbol && !(symbol instanceof GlobalValueSymbol || symbol instanceof FunctionDefinition || symbol instanceof FunctionDeclaration)) {
             String name = ((ValueSymbol) symbol).getName();
             assert name != null;
             FrameSlot frameSlot = frame.findFrameSlot(name);

@@ -38,10 +38,18 @@ public final class MetaType extends Type {
     public static MetaType METADATA = new MetaType();
     public static MetaType X86MMX = new MetaType();
 
+    // this type is only used to enter debug information into the truffle ast
+    public static MetaType DEBUG = new MetaType();
+
     private final Object identity;
 
     private MetaType() {
         this.identity = new Object();
+    }
+
+    @Override
+    public Type shallowCopy() {
+        return this;
     }
 
     @Override

@@ -145,15 +145,11 @@ public final class Types implements ParserListener, Iterable<Type> {
                 type = new ArrayType(get(args[1]), (int) args[0]);
                 break;
 
-            case VECTOR:
-                if (get(args[1]) instanceof PrimitiveType) {
-                    type = new VectorType((PrimitiveType) get(args[1]), (int) args[0]);
-                } else if (get(args[1]) instanceof PointerType) {
-                    type = new VectorType((PointerType) get(args[1]), (int) args[0]);
-                } else {
-                    throw new AssertionError("Vectors of type " + get(args[1]) + " not supported");
-                }
+            case VECTOR: {
+                final Type baseType = get(args[1]);
+                type = new VectorType(baseType, (int) args[0]);
                 break;
+            }
 
             case X86_FP80:
                 type = PrimitiveType.X86_FP80;
@@ -263,6 +259,11 @@ public final class Types implements ParserListener, Iterable<Type> {
         }
 
         @Override
+        public Type shallowCopy() {
+            return this;
+        }
+
+        @Override
         public int hashCode() {
             final int prime = 31;
             int result = 1;
@@ -337,6 +338,11 @@ public final class Types implements ParserListener, Iterable<Type> {
         public int getSize(DataSpecConverter targetDataLayout) {
             // This is a private type only required for resolving
             throw new IllegalStateException();
+        }
+
+        @Override
+        public Type shallowCopy() {
+            return this;
         }
 
         @Override

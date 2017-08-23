@@ -31,6 +31,8 @@ package com.oracle.truffle.llvm.parser.metadata;
 
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 
+import java.util.Objects;
+
 public abstract class MDReference extends MDTypedValue implements MDBaseNode {
 
     private static final class MDRef extends MDReference {
@@ -52,6 +54,22 @@ public abstract class MDReference extends MDTypedValue implements MDBaseNode {
         @Override
         public String toString() {
             return String.format("!%d", index);
+        }
+
+        @Override
+        public int hashCode() {
+            return (md.hashCode() << 8) | index;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            } else if (obj instanceof MDRef) {
+                MDRef other = (MDRef) obj;
+                return other.index == this.index && Objects.equals(other.md, this.md);
+            }
+            return false;
         }
     }
 

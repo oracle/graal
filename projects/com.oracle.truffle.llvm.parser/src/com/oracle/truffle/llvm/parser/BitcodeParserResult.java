@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser;
 
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 
@@ -64,6 +65,9 @@ public final class BitcodeParserResult {
 
     public static BitcodeParserResult getFromSource(Source source) {
         final ModelModule model = LLVMScanner.parse(source);
+
+        // set ValueInstruction#sourceVariable
+        SourceModel.generate(model);
 
         final LLVMPhiManager phis = LLVMPhiManager.generate(model);
         final StackAllocation stackAllocation = StackAllocation.generate(model);

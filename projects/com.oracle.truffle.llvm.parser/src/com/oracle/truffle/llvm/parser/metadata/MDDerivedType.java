@@ -92,6 +92,7 @@ public final class MDDerivedType extends MDType implements MDBaseNode {
         DW_TAG_POINTER_TYPE(15),
         DW_TAG_REFERENCE_TYPE(16),
         DW_TAG_TYPEDEF(22),
+        DW_TAG_INHERITANCE(28),
         DW_TAG_CONST_TYPE(38),
         DW_TAG_VOLATILE_TYPE(53),
         DW_TAG_RESTRICT_TYPE(55),

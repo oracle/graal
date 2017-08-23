@@ -84,6 +84,13 @@ public final class FunctionType extends Type {
     }
 
     @Override
+    public Type shallowCopy() {
+        final FunctionType copy = new FunctionType(returnType, argumentTypes, isVarargs);
+        copy.setSourceType(getSourceType());
+        return copy;
+    }
+
+    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
 

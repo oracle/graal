@@ -39,10 +39,5 @@ public interface ValueSymbol extends Symbol {
         return LLVMIdentifier.UNKNOWN;
     }
 
-    @Override
-    default boolean hasName() {
-        return true;
-    }
-
     void setName(String name);
 }

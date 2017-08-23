@@ -40,11 +40,6 @@ public abstract class AbstractConstant implements Constant {
     }
 
     @Override
-    public boolean hasName() {
-        return false;
-    }
-
-    @Override
     public Type getType() {
         return type;
     }

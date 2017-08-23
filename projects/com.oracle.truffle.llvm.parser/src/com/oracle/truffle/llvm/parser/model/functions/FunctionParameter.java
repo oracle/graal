@@ -38,15 +38,14 @@ public final class FunctionParameter implements ValueSymbol {
 
     private final Type type;
 
-    private final int index;
-
     private String name = LLVMIdentifier.UNKNOWN;
 
     private final AttributesGroup parameterAttribute;
 
-    FunctionParameter(Type type, int index, AttributesGroup parameterAttribute) {
+    private boolean isSourceVariable = false;
+
+    FunctionParameter(Type type, AttributesGroup parameterAttribute) {
         this.type = type;
-        this.index = index;
         this.parameterAttribute = parameterAttribute;
     }
 
@@ -69,8 +68,16 @@ public final class FunctionParameter implements ValueSymbol {
         return parameterAttribute;
     }
 
+    public boolean isSourceVariable() {
+        return isSourceVariable;
+    }
+
+    public void setSourceVariable(boolean isSourceVariable) {
+        this.isSourceVariable = isSourceVariable;
+    }
+
     @Override
     public String toString() {
-        return "FunctionParameter [type=" + type + ", index=" + index + ", name=" + name + "]";
+        return String.format("Parameter %s (%s)", name, type);
     }
 }

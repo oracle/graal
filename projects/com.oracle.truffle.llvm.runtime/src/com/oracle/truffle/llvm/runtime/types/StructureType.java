@@ -110,6 +110,14 @@ public final class StructureType extends AggregateType {
     }
 
     @Override
+    public Type shallowCopy() {
+        final StructureType copy = new StructureType(isPacked, types);
+        copy.name = this.name;
+        copy.setSourceType(getSourceType());
+        return copy;
+    }
+
+    @Override
     public int getOffsetOf(int index, DataSpecConverter targetDataLayout) {
         int offset = 0;
         for (int i = 0; i < index; i++) {

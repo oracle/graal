@@ -93,6 +93,10 @@ public final class SulongEngineOption {
     public static final String PARSE_ONLY_NAME = "llvm.parseOnly";
     public static final String PARSE_ONLY_INFO = "Only parses a bc file; execution is not possible.";
 
+    public static final OptionKey<Boolean> ENABLE_LVI = new OptionKey<>(false);
+    public static final String ENABLE_LVI_NAME = "llvm.enableLVI";
+    public static final String ENABLE_LVI_INFO = "Enable source-level inspection of local variables.";
+
     public static List<OptionDescriptor> describeOptions() {
         ArrayList<OptionDescriptor> options = new ArrayList<>();
         options.add(OptionDescriptor.newBuilder(SulongEngineOption.CONFIGURATION, SulongEngineOption.CONFIGURATION_NAME).help(SulongEngineOption.CONFIGURATION_INFO).category(
@@ -119,6 +123,7 @@ public final class SulongEngineOption {
         options.add(OptionDescriptor.newBuilder(SulongEngineOption.PARSE_ONLY, SulongEngineOption.PARSE_ONLY_NAME).help(
                         SulongEngineOption.PARSE_ONLY_INFO).category(
                                         OptionCategory.EXPERT).build());
+        options.add(OptionDescriptor.newBuilder(SulongEngineOption.ENABLE_LVI, SulongEngineOption.ENABLE_LVI_NAME).help(SulongEngineOption.ENABLE_LVI_INFO).category(OptionCategory.DEBUG).build());
         return options;
     }
 

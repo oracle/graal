@@ -27,48 +27,17 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata;
+package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.parser.metadata.MDReference;
+import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 
-public final class DebugInfoGenerator {
+interface MDFollowRefVisitor extends MetadataVisitor {
 
-    public static String getSourceFunctionName(FunctionDefinition function) {
-        if (function.hasAttachedMetadata()) {
-            final MDBaseNode attachment = function.getMetadataAttachment(MDKind.DBG_NAME);
-            if (attachment != null) {
-                final DIVisitor visitor = new DIVisitor();
-                attachment.accept(visitor);
-                return visitor.getFunctionName();
-            }
-        }
-        return null;
-    }
-
-    private static final class DIVisitor implements MetadataVisitor {
-
-        private String diName = null;
-
-        @Override
-        public void visit(MDSubprogram md) {
-            md.getName().accept(this);
-        }
-
-        @Override
-        public void visit(MDReference md) {
-            if (md != MDReference.VOID) {
-                md.get().accept(this);
-            }
-        }
-
-        @Override
-        public void visit(MDString md) {
-            diName = md.getString();
-        }
-
-        String getFunctionName() {
-            return diName;
+    @Override
+    default void visit(MDReference ref) {
+        if (ref != MDReference.VOID) {
+            ref.get().accept(this);
         }
     }
-
 }

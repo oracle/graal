@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public class VectorType extends AggregateType {
@@ -36,12 +37,11 @@ public class VectorType extends AggregateType {
     private final Type elementType;
     private final int length;
 
-    public VectorType(PrimitiveType elementType, int length) {
-        this.elementType = elementType;
-        this.length = length;
-    }
-
-    public VectorType(PointerType elementType, int length) {
+    public VectorType(Type elementType, int length) {
+        if (!(elementType instanceof PrimitiveType || elementType instanceof PointerType)) {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("Invalid ElementType of Vector: " + elementType);
+        }
         this.elementType = elementType;
         this.length = length;
     }
@@ -63,6 +63,7 @@ public class VectorType extends AggregateType {
     @Override
     public Type getElementType(int index) {
         if (index >= length) {
+            CompilerDirectives.transferToInterpreter();
             throw new ArrayIndexOutOfBoundsException();
         }
         return elementType;
@@ -81,6 +82,13 @@ public class VectorType extends AggregateType {
     @Override
     public int getSize(DataSpecConverter targetDataLayout) {
         return getElementType().getSize(targetDataLayout) * length;
+    }
+
+    @Override
+    public Type shallowCopy() {
+        final VectorType copy = new VectorType(elementType, length);
+        copy.setSourceType(getSourceType());
+        return copy;
     }
 
     @Override

@@ -121,4 +121,11 @@ public final class VariableBitWidthType extends Type {
         return targetDataLayout.getSize(this);
     }
 
+    @Override
+    public Type shallowCopy() {
+        final VariableBitWidthType copy = new VariableBitWidthType(bitWidth, constant);
+        copy.setSourceType(getSourceType());
+        return copy;
+    }
+
 }

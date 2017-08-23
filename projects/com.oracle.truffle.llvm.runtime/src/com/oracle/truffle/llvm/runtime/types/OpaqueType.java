@@ -70,6 +70,14 @@ public class OpaqueType extends Type {
     }
 
     @Override
+    public Type shallowCopy() {
+        final OpaqueType shallowCopy = new OpaqueType();
+        shallowCopy.name = this.name;
+        shallowCopy.setSourceType(getSourceType());
+        return shallowCopy;
+    }
+
+    @Override
     public String toString() {
         if (name.equals(LLVMIdentifier.UNKNOWN)) {
             return "opaque";

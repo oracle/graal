@@ -37,6 +37,7 @@ import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
+import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
@@ -60,6 +61,7 @@ public final class FunctionDefinition extends IRScope implements Constant, Value
     private final Linkage linkage;
 
     private List<MDAttachment> mdAttachments = null;
+    private SourceModel.Function sourceFunction = null;
 
     private InstructionBlock[] blocks = new InstructionBlock[0];
     private int currentBlock = 0;
@@ -91,11 +93,6 @@ public final class FunctionDefinition extends IRScope implements Constant, Value
 
     public Linkage getLinkage() {
         return linkage;
-    }
-
-    @Override
-    public boolean hasName() {
-        return name != null;
     }
 
     @Override
@@ -148,9 +145,8 @@ public final class FunctionDefinition extends IRScope implements Constant, Value
     }
 
     public void createParameter(Type t) {
-        final int index = parameters.size();
-        final AttributesGroup attrGroup = paramAttr.getParameterAttributesGroup(index);
-        final FunctionParameter parameter = new FunctionParameter(t, index, attrGroup);
+        final AttributesGroup attrGroup = paramAttr.getParameterAttributesGroup(parameters.size());
+        final FunctionParameter parameter = new FunctionParameter(t, attrGroup);
         addSymbol(parameter, t);
         parameters.add(parameter);
     }
@@ -226,5 +222,13 @@ public final class FunctionDefinition extends IRScope implements Constant, Value
         CompilerAsserts.neverPartOfCompilation();
         final String formalArgs = parameters.stream().map(FunctionParameter::getName).collect(Collectors.joining(", "));
         return String.format("FunctionDefinition %s(%s) {%d blocks}", name, formalArgs, blocks == null ? 0 : blocks.length);
+    }
+
+    public SourceModel.Function getSourceFunction() {
+        return sourceFunction;
+    }
+
+    public void setSourceFunction(SourceModel.Function sourceFunction) {
+        this.sourceFunction = sourceFunction;
     }
 }

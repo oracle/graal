@@ -61,6 +61,7 @@ public final class MDLocalVariable extends MDVariable implements MDBaseNode {
         return String.format("LocalVariable (scope=%s, name=%s, file=%s, line=%d, arg=%d, type=%s, flags=%d)", getScope(), getName(), getFile(), getLine(), arg, getType(), flags);
     }
 
+    private static final int ARGINDEX_38_TAG_ALIGNMENT = 0;
     private static final int ARGINDEX_38_SCOPE = 1;
     private static final int ARGINDEX_38_NAME = 2;
     private static final int ARGINDEX_38_FILE = 3;
@@ -69,10 +70,11 @@ public final class MDLocalVariable extends MDVariable implements MDBaseNode {
     private static final int ARGINDEX_38_ARG = 6;
     private static final int ARGINDEX_38_FLAGS = 7;
     private static final int OFFSET_INDICATOR = 8;
+    private static final int ALIGNMENT_INDICATOR = 2;
 
     public static MDLocalVariable create38(long[] args, MetadataList md) {
         // this apparently exists for historical reasons...
-        final int argOffset = args.length > OFFSET_INDICATOR ? 1 : 0;
+        final int argOffset = (args.length > OFFSET_INDICATOR && ((args[ARGINDEX_38_TAG_ALIGNMENT] & ALIGNMENT_INDICATOR) == 0)) ? 1 : 0;
 
         final MDReference scope = md.getMDRefOrNullRef(args[ARGINDEX_38_SCOPE + argOffset]);
         final MDReference name = md.getMDRefOrNullRef(args[ARGINDEX_38_NAME + argOffset]);

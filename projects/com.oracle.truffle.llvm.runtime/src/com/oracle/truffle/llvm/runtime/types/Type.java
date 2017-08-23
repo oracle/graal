@@ -30,10 +30,13 @@
 package com.oracle.truffle.llvm.runtime.types;
 
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public abstract class Type {
+
+    private LLVMSourceType sourceType = null;
 
     public abstract int getBitSize();
 
@@ -43,11 +46,21 @@ public abstract class Type {
 
     public abstract int getSize(DataSpecConverter targetDataLayout);
 
+    public abstract Type shallowCopy();
+
     @Override
     public abstract boolean equals(Object obj);
 
     @Override
     public abstract int hashCode();
+
+    public LLVMSourceType getSourceType() {
+        return sourceType;
+    }
+
+    public void setSourceType(LLVMSourceType sourceType) {
+        this.sourceType = sourceType;
+    }
 
     public static Type getIntegerType(int size) {
         switch (size) {
