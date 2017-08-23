@@ -83,6 +83,9 @@ public final class MetadataList {
     }
 
     MDBaseNode getFromRef(int index) {
+        if (index >= metadata.size()) {
+            return MDReference.VOID;
+        }
         return metadata.get(index);
     }
 

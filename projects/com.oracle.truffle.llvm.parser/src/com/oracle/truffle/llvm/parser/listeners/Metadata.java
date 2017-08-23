@@ -187,7 +187,7 @@ public final class Metadata implements ParserListener {
                 break;
 
             case SUBPROGRAM:
-                metadata.add(MDSubprogram.create38(args, metadata, this::getSymbolReference));
+                metadata.add(MDSubprogram.create38(args, metadata));
                 break;
 
             case SUBROUTINE_TYPE:
@@ -317,15 +317,6 @@ public final class Metadata implements ParserListener {
             } else {
                 container.attachMetadata(attachment);
             }
-        }
-    }
-
-    private MDSymbolReference getSymbolReference(long index) {
-        if (index > 0) {
-            return new MDSymbolReference(types.get(index), () -> container.getSymbols().getOrNull((int) index));
-
-        } else {
-            return MDSymbolReference.VOID;
         }
     }
 
