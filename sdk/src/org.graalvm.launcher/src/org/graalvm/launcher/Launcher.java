@@ -866,11 +866,14 @@ public abstract class Launcher {
                     vmType = VMType.JVM;
                     if (arg.startsWith("--jvm.")) {
                         String jvmArg = arg.substring("--jvm.".length());
-                        if (jvmArg.startsWith("classpath")) {
+                        if (jvmArg.equals("classpath")) {
+                            throw abort("--jvm.classpath argument must be of the form --jvm.classpath=<classpath>, not two separate arguments");
+                        }
+                        if (jvmArg.equals("cp")) {
+                            throw abort("--jvm.cp argument must be of the form --jvm.cp=<classpath>, not two separate arguments");
+                        }
+                        if (jvmArg.startsWith("classpath=") || jvmArg.startsWith("cp=")) {
                             int eqIndex = jvmArg.indexOf('=');
-                            if (eqIndex < 0) {
-                                throw abort("--jvm.classpath argument must be of the form --jvm.classpath=<classpath>");
-                            }
                             jvmArgs.add('-' + jvmArg.substring(0, eqIndex));
                             jvmArgs.add(jvmArg.substring(eqIndex + 1));
                         } else {
