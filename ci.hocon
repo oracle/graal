@@ -87,7 +87,7 @@ requireJDT: {
 sulongSuite : {
     run: [
         [mx, build],
-        [mx, unittest, SulongSuite],
+        [mx, unittest, SulongSuite, --enable-timing],
         [mx, test, nwcc],
         [mx, test, llvm],
     ]
