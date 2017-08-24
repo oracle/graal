@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.types;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
@@ -68,6 +69,7 @@ public final class StructureType extends AggregateType {
         if (isPacked) {
             return Arrays.stream(types).mapToInt(Type::getBitSize).sum();
         } else {
+            CompilerDirectives.transferToInterpreter();
             throw new UnsupportedOperationException("TargetDataLayout is necessary to compute Padding information!");
         }
     }
