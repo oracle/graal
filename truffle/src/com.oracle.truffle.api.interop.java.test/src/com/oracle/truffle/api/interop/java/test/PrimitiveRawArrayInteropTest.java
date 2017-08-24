@@ -34,6 +34,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
+import static org.junit.Assert.fail;
 
 public class PrimitiveRawArrayInteropTest {
     private Object[] objArr;
@@ -66,8 +67,20 @@ public class PrimitiveRawArrayInteropTest {
                 return charArr;
             case 8:
                 return boolArr;
+            case 666:
+                throw new SimulatedDeath();
             default:
-                throw new IllegalStateException("type: " + type);
+                throw new WrongArgument(type);
+        }
+    }
+
+    public static final class WrongArgument extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        final int type;
+
+        public WrongArgument(int type) {
+            this.type = type;
         }
     }
 
@@ -95,6 +108,28 @@ public class PrimitiveRawArrayInteropTest {
         assertNull(interop.arr(6));
         assertNull(interop.arr(7));
         assertNull(interop.arr(8));
+    }
+
+    @Test
+    public void exceptionIsPropagated() {
+        try {
+            assertNull(interop.arr(30));
+        } catch (WrongArgument ex) {
+            assertEquals(30, ex.type);
+            return;
+        }
+        fail("WrongArgument should have been thrown");
+    }
+
+    @Test
+    public void errorIsPropagated() {
+        try {
+            assertNull(interop.arr(666));
+        } catch (ThreadDeath ex) {
+            assertEquals("simulation", ex.getMessage());
+            return;
+        }
+        fail("SimulatedDeath should have been thrown");
     }
 
     @Test
@@ -224,5 +259,14 @@ public class PrimitiveRawArrayInteropTest {
             }
         }
         assertEquals(msg, expected, v, 0.05);
+    }
+
+    private static class SimulatedDeath extends ThreadDeath {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public String getMessage() {
+            return "simulation";
+        }
     }
 }
