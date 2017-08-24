@@ -29,21 +29,17 @@ import com.oracle.truffle.object.ObjectStorageOptions;
 import com.oracle.truffle.object.ShapeImpl;
 import com.oracle.truffle.object.basic.BasicLocations.SimpleLongFieldLocation;
 import com.oracle.truffle.object.basic.BasicLocations.SimpleObjectFieldLocation;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
 
 public class DynamicObjectBasic extends DynamicObjectImpl {
-    @Retention(RetentionPolicy.RUNTIME)
-    public @interface DynamicField {
-    }
 
-    @DynamicField private long primitive1;
-    @DynamicField private long primitive2;
-    @DynamicField private long primitive3;
-    @DynamicField private Object object1;
-    @DynamicField private Object object2;
-    @DynamicField private Object object3;
-    @DynamicField private Object object4;
+    private long primitive1;
+    private long primitive2;
+    private long primitive3;
+    private Object object1;
+    private Object object2;
+    private Object object3;
+    private Object object4;
+
     private Object[] objext;
     private long[] primext;
 
