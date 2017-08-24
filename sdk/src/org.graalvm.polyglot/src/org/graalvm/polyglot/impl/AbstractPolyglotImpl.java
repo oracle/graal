@@ -143,9 +143,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract int getLength(Object impl);
 
-        public abstract String getCode(Object impl);
+        public abstract CharSequence getCode(Object impl);
 
-        public abstract String getCode(Object impl, int lineNumber);
+        public abstract CharSequence getCode(Object impl, int lineNumber);
 
         public abstract int getLineCount(Object impl);
 
@@ -192,7 +192,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract int getCharEndIndex(Object impl);
 
-        public abstract String getCode(Object impl);
+        public abstract CharSequence getCode(Object impl);
 
         public abstract String toString(Object impl);
 

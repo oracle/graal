@@ -73,13 +73,13 @@ final class TextMap {
      * Constructs map permitting translation between 0-based character offsets and 1-based
      * lines/columns.
      */
-    public static TextMap fromString(String text) {
+    public static TextMap fromCharSequence(CharSequence text) {
         final int textLength = text.length();
         final ArrayList<Integer> lines = new ArrayList<>();
         lines.add(0);
         int offset = 0;
-        while (offset < text.length()) {
-            final int nlIndex = text.indexOf('\n', offset);
+        while (offset < textLength) {
+            final int nlIndex = indexOf(text, '\n', offset);
             if (nlIndex >= 0) {
                 offset = nlIndex + 1;
                 lines.add(offset);
@@ -94,6 +94,34 @@ final class TextMap {
         }
         final boolean finalNL = textLength > 0 && (textLength == nlOffsets[nlOffsets.length - 2]);
         return new TextMap(nlOffsets, textLength, finalNL);
+    }
+
+    private static int indexOf(CharSequence seq, int ch, int fromIndex) {
+        if (seq instanceof String) {
+            return ((String) seq).indexOf(ch, fromIndex);
+        }
+        final int max = seq.length();
+        int localFromIndex = fromIndex;
+        if (localFromIndex < 0) {
+            localFromIndex = 0;
+        } else if (fromIndex >= max) {
+            // Note: fromIndex might be near -1>>>1.
+            return -1;
+        }
+
+        if (ch >= Character.MIN_SUPPLEMENTARY_CODE_POINT) {
+            // not needed here
+            throw new UnsupportedOperationException();
+        }
+
+        // handle most cases here (ch is a BMP code point or a
+        // negative value (invalid code point))
+        for (int i = localFromIndex; i < max; i++) {
+            if (seq.charAt(i) == ch) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /**

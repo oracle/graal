@@ -24,11 +24,9 @@
  */
 package com.oracle.truffle.api.source;
 
-import com.oracle.truffle.api.source.impl.SourceAccessor;
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
-import java.io.StringReader;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
@@ -36,6 +34,8 @@ import java.nio.file.Path;
 import java.nio.file.spi.FileTypeDetector;
 import java.util.Collection;
 import java.util.ServiceLoader;
+
+import com.oracle.truffle.api.source.impl.SourceAccessor;
 
 final class FileSourceImpl extends Content implements Content.CreateURI {
     private static final boolean AOT = SourceAccessor.isAOT();
@@ -61,7 +61,7 @@ final class FileSourceImpl extends Content implements Content.CreateURI {
     }
 
     @Override
-    String getCode() {
+    CharSequence getCode() {
         return code;
     }
 
@@ -87,7 +87,7 @@ final class FileSourceImpl extends Content implements Content.CreateURI {
 
     @Override
     public Reader getReader() {
-        return new StringReader(code);
+        return new CharSequenceReader(code);
     }
 
     @Override

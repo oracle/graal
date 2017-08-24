@@ -75,8 +75,8 @@ final class SubSourceImpl extends Content {
     }
 
     @Override
-    public String getCode() {
-        return base.getCode(baseIndex, subLength);
+    public CharSequence getCode() {
+        return base.getCodeSequence().subSequence(baseIndex, baseIndex + subLength);
     }
 
     @Override

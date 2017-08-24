@@ -99,6 +99,7 @@ public final class LineLocation implements Comparable<LineLocation> {
     }
 
     /** @since 0.8 or earlier */
+    @SuppressWarnings("deprecation")
     @Override
     public int compareTo(LineLocation o) {
         int sourceResult = 0;

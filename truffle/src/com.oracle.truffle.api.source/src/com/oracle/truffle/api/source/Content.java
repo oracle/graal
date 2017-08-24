@@ -35,14 +35,14 @@ abstract class Content {
 
     private static final String URI_SCHEME = "truffle";
 
-    String code;
+    CharSequence code;
     private volatile URI uri;
 
     abstract String findMimeType() throws IOException;
 
     abstract Reader getReader() throws IOException;
 
-    abstract String getCode();
+    abstract CharSequence getCode();
 
     abstract String getName();
 
@@ -82,10 +82,6 @@ abstract class Content {
             }
         }
         return uri;
-    }
-
-    protected final URI getNamedURI(String name) {
-        return getNamedURI(name, null, 0, 0);
     }
 
     protected final URI getNamedURI(String name, byte[] bytes) {
