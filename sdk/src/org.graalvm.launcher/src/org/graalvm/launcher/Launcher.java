@@ -1070,7 +1070,7 @@ public abstract class Launcher {
 
         private int execv(String executable, String[] argv) {
             try (CTypeConversion.CCharPointerHolder pathHolder = CTypeConversion.toCString(executable);
-                            NativeInterface.CCharPointerPointerHolder argvHolder = NativeInterface.toCStrings(argv)) {
+                            CTypeConversion.CCharPointerPointerHolder argvHolder = CTypeConversion.toCStrings(argv)) {
                 return NativeInterface.execv(pathHolder.get(), argvHolder.get());
             }
         }
