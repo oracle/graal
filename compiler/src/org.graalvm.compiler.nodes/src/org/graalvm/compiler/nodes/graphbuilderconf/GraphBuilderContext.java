@@ -306,4 +306,13 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     default int countOccurrencesOnStack(ResolvedJavaMethod method) {
         return -1;
     }
+
+    interface ExternalInliningContext {
+        int getInlinedDepth();
+    }
+
+    default ExternalInliningContext getExternalInliningContext() {
+        return null;
+    }
+
 }
