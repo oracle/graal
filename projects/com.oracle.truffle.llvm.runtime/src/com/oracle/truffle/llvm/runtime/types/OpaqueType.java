@@ -36,17 +36,18 @@ import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public class OpaqueType extends Type {
 
-    private String name = LLVMIdentifier.UNKNOWN;
+    private final String name;
 
     public OpaqueType() {
+        this(LLVMIdentifier.UNKNOWN);
+    }
+
+    public OpaqueType(String name) {
+        this.name = name;
     }
 
     public String getName() {
         return name;
-    }
-
-    public void setName(String name) {
-        this.name = LLVMIdentifier.toLocalIdentifier(name);
     }
 
     @Override
@@ -71,8 +72,7 @@ public class OpaqueType extends Type {
 
     @Override
     public Type shallowCopy() {
-        final OpaqueType shallowCopy = new OpaqueType();
-        shallowCopy.name = this.name;
+        final OpaqueType shallowCopy = new OpaqueType(name);
         shallowCopy.setSourceType(getSourceType());
         return shallowCopy;
     }

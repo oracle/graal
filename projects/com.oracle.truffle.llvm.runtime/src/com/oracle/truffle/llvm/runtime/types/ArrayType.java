@@ -29,16 +29,23 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class ArrayType extends AggregateType {
 
-    private final Type elementType;
+    @CompilationFinal private Type elementType;
     private final int length;
 
     public ArrayType(Type type, int length) {
         this.elementType = type;
         this.length = length;
+    }
+
+    public void setElementType(Type elementType) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.elementType = elementType;
     }
 
     @Override
@@ -125,5 +132,4 @@ public final class ArrayType extends AggregateType {
         }
         return true;
     }
-
 }
