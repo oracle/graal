@@ -155,9 +155,12 @@ public class ProcessUtil {
         }
         try {
             Process process = Runtime.getRuntime().exec(command);
-            process.waitFor(PROCESS_WAIT_TIMEOUT, TimeUnit.MILLISECONDS);
+            boolean success = process.waitFor(PROCESS_WAIT_TIMEOUT, TimeUnit.MILLISECONDS);
             String readError = readStreamAndClose(process.getErrorStream());
             String inputStream = readStreamAndClose(process.getInputStream());
+            if (!success) {
+                throw new AssertionError("timeout running command: " + command);
+            }
             int llvmResult = process.exitValue();
             process.destroyForcibly();
             return new ProcessResult(command, llvmResult, readError, inputStream);
