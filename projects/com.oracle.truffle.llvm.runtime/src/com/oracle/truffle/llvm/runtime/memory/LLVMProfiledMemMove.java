@@ -44,7 +44,6 @@ public class LLVMProfiledMemMove {
                 long targetPointer = target.getVal();
                 long sourcePointer = source.getVal();
 
-                assert targetPointer >= 0 && sourcePointer >= 0;
                 if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, targetPointer == sourcePointer)) {
                     // nothing todo
                 } else if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, Long.compareUnsigned(targetPointer - sourcePointer, length) >= 0)) {

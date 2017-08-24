@@ -72,7 +72,6 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
     private final BranchProfile blockEntered = BranchProfile.create();
 
     @CompilationFinal(dimensions = 1) private final long[] successorExecutionCount;
-    @CompilationFinal private long totalExecutionCount = 0;
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
@@ -200,13 +199,31 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
      * @param successorIndex
      * @return the probability between 0 and 1
      */
+    @ExplodeLoop
     public double getBranchProbability(int successorIndex) {
         assert termInstruction.needsBranchProfiling();
         double successorBranchProbability;
-        long succCount = successorExecutionCount[successorIndex];
+
+        /*
+         * It is possible to get race conditions (compiler and AST interpeter thread). This avoids a
+         * probability > 1.
+         *
+         * We make sure that we read each element only once. We also make sure that the compiler
+         * reduces the conditions to constants.
+         */
+        long succCount = 0;
+        long totalExecutionCount = 0;
+        for (int i = 0; i < successorExecutionCount.length; i++) {
+            long v = successorExecutionCount[i];
+            if (successorIndex == i) {
+                succCount = v;
+            }
+            totalExecutionCount += v;
+        }
         if (succCount == 0) {
             successorBranchProbability = 0;
         } else {
+            assert totalExecutionCount > 0;
             successorBranchProbability = (double) succCount / totalExecutionCount;
         }
         assert !Double.isNaN(successorBranchProbability) && successorBranchProbability >= 0 && successorBranchProbability <= 1;
@@ -222,9 +239,6 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
 
     private void incrementCountAtIndex(int successorIndex) {
         assert termInstruction.needsBranchProfiling();
-        if (totalExecutionCount != Long.MAX_VALUE) {
-            totalExecutionCount++;
-            successorExecutionCount[successorIndex]++;
-        }
+        successorExecutionCount[successorIndex]++;
     }
 }
