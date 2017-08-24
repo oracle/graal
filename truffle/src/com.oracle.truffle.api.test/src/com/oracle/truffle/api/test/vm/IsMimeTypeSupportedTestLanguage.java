@@ -41,7 +41,7 @@ public class IsMimeTypeSupportedTestLanguage extends TruffleLanguage<Env> {
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
         final Source code = request.getSource();
-        final String mimeType = code.getCode();
+        final String mimeType = code.getCodeSequence().toString();
         return Truffle.getRuntime().createCallTarget(new RootNode(this) {
             @Override
             public Object execute(VirtualFrame frame) {

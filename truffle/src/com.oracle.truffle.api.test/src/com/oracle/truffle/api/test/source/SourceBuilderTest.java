@@ -54,7 +54,7 @@ public class SourceBuilderTest {
         Source s1 = builder.mimeType("content/unknown").build();
         assertEquals("No mime type assigned", "content/unknown", s1.getMimeType());
         Source s2 = builder.mimeType("text/x-c").build();
-        assertEquals("They have the same content", s1.getCode(), s2.getCode());
+        assertEquals("They have the same content", s1.getCodeSequence(), s2.getCodeSequence());
         assertNotEquals("But different type", s1.getMimeType(), s2.getMimeType());
         assertNotEquals("So they are different", s1, s2);
         assertNotNull("Every source must have URI", s1.getURI());
@@ -68,8 +68,8 @@ public class SourceBuilderTest {
         Source s1 = builder.name("Hello").mimeType("text/plain").build();
         assertEquals("Base type assigned", "text/plain", s1.getMimeType());
         Source s2 = builder.mimeType("text/x-c").build();
-        assertEquals("They have the same content", s1.getCode(), s2.getCode());
-        assertEquals("// Hello", s1.getCode());
+        assertEquals("They have the same content", s1.getCodeSequence(), s2.getCodeSequence());
+        assertEquals("// Hello", s1.getCodeSequence());
         assertNotEquals("But different type", s1.getMimeType(), s2.getMimeType());
         assertNotEquals("So they are different", s1, s2);
         assertNotNull("Every source must have URI", s1.getURI());
@@ -99,8 +99,8 @@ public class SourceBuilderTest {
         assertEquals("Name is short", file.getName(), s1.getName());
         assertEquals("Recognized as Java", "text/x-java", s1.getMimeType());
         Source s2 = builder.mimeType("text/x-c").build();
-        assertEquals("They have the same content", s1.getCode(), s2.getCode());
-        assertEquals("// Hello", s1.getCode());
+        assertEquals("They have the same content", s1.getCodeSequence(), s2.getCodeSequence());
+        assertEquals("// Hello", s1.getCodeSequence());
         assertNotEquals("But different type", s1.getMimeType(), s2.getMimeType());
         assertNotEquals("So they are different", s1, s2);
         assertEquals("File URI is used from cannonicalized form", file.toURI(), s1.getURI());
@@ -190,8 +190,8 @@ public class SourceBuilderTest {
         Source s1 = builder.build();
         assertEquals("Recognized as Java", "text/x-java", s1.getMimeType());
         Source s2 = builder.mimeType("text/x-c").build();
-        assertEquals("They have the same content", s1.getCode(), s2.getCode());
-        assertEquals("// Hello", s1.getCode());
+        assertEquals("They have the same content", s1.getCodeSequence(), s2.getCodeSequence());
+        assertEquals("// Hello", s1.getCodeSequence());
         assertNotEquals("But different type", s1.getMimeType(), s2.getMimeType());
         assertNotEquals("So they are different", s1, s2);
         assertEquals("File URI", file.toURI(), s1.getURI());
@@ -205,7 +205,7 @@ public class SourceBuilderTest {
         String text = "// Hello";
 
         Source source = Source.newBuilder(file).content(text).build();
-        assertEquals("The content has been changed", text, source.getCode());
+        assertEquals("The content has been changed", text, source.getCodeSequence());
         assertNotNull("Mime type specified", source.getMimeType());
         assertTrue("Recognized as JavaScript", source.getMimeType().endsWith("/javascript"));
         assertEquals("some.js", source.getName());
@@ -218,7 +218,7 @@ public class SourceBuilderTest {
         String text = "// Hello";
 
         Source source = Source.newBuilder(text).uri(file.toURI()).mimeType("plain/text").name("another.js").build();
-        assertEquals("The content has been changed", text, source.getCode());
+        assertEquals("The content has been changed", text, source.getCodeSequence());
         assertNotNull("Mime type specified", source.getMimeType());
         assertEquals("Assigned MIME type", "plain/text", source.getMimeType());
         assertEquals("another.js", source.getName());
@@ -240,8 +240,8 @@ public class SourceBuilderTest {
         Source s1 = builder.build();
         assertEquals("Recognized as Java", "text/x-java", s1.getMimeType());
         Source s2 = builder.mimeType("text/x-c").build();
-        assertEquals("They have the same content", s1.getCode(), s2.getCode());
-        assertEquals("// Hello", s1.getCode());
+        assertEquals("They have the same content", s1.getCodeSequence(), s2.getCodeSequence());
+        assertEquals("// Hello", s1.getCodeSequence());
         assertNotEquals("But different type", s1.getMimeType(), s2.getMimeType());
         assertNotEquals("So they are different", s1, s2);
         assertEquals("File URI", file.toURI(), s1.getURI());
@@ -254,7 +254,7 @@ public class SourceBuilderTest {
         final String description = "test description";
         final Source literal = Source.newBuilder(code).name(description).mimeType("content/unknown").build();
         assertEquals(literal.getName(), description);
-        assertEquals(literal.getCode(), code);
+        assertEquals(literal.getCodeSequence(), code);
         assertNull(literal.getURL());
         assertNotNull("Every source must have URI", literal.getURI());
         final char[] buffer = new char[code.length()];
@@ -268,10 +268,10 @@ public class SourceBuilderTest {
         final String code1 = "test\ntest";
         final String code2 = "test\ntest\nlonger\ntest";
         final Source source1 = Source.newBuilder(new File(path)).content(code1).mimeType("content/unknown").build();
-        assertEquals(source1.getCode(), code1);
+        assertEquals(source1.getCodeSequence(), code1);
         assertEquals(source1.getLineNumber(code1.length() - 1), 2);
         final Source source2 = Source.newBuilder(new File(path)).content(code2).mimeType("content/unknown").build();
-        assertEquals(source2.getCode(), code2);
+        assertEquals(source2.getCodeSequence(), code2);
         assertEquals(source2.getLineNumber(code2.length() - 1), 4);
         assertEquals("File URI", new File(path).toURI(), source1.getURI());
         assertEquals("File sources with different content have the same URI", source1.getURI(), source2.getURI());
@@ -283,10 +283,10 @@ public class SourceBuilderTest {
         final String code1 = "test\ntest";
         final String code2 = "test\ntest\nlonger\ntest";
         final Source source1 = Source.newBuilder(new File(path)).content(code1).mimeType("x-application/input").build();
-        assertEquals(source1.getCode(), code1);
+        assertEquals(source1.getCodeSequence(), code1);
         assertEquals(source1.getLineNumber(code1.length() - 1), 2);
         final Source source2 = Source.newBuilder(new File(path)).content(code2).mimeType("x-application/input").build();
-        assertEquals(source2.getCode(), code2);
+        assertEquals(source2.getCodeSequence(), code2);
         assertEquals(source2.getLineNumber(code2.length() - 1), 4);
         assertEquals("File URI", new File("test.input").getAbsoluteFile().toURI(), source1.getURI());
         assertEquals("File sources with different content have the same URI", source1.getURI(), source2.getURI());
@@ -306,7 +306,7 @@ public class SourceBuilderTest {
         assertNotNull("Resource found", resource);
         assertEquals("JAR protocol", "jar", resource.getProtocol());
         Source s = Source.newBuilder(resource).build();
-        assertEquals("Hi!", s.getCode());
+        assertEquals("Hi!", s.getCodeSequence());
         assertEquals("x.js", s.getName());
 
         sample.delete();
@@ -317,7 +317,7 @@ public class SourceBuilderTest {
         StringReader r = new StringReader("Hi!");
         Source source = Source.newBuilder(r).name("almostEmpty").mimeType("text/plain").build();
 
-        assertEquals("Hi!", source.getCode());
+        assertEquals("Hi!", source.getCodeSequence());
         assertEquals("almostEmpty", source.getName());
         assertNull(source.getPath());
         assertNotNull(source.getURI());
@@ -339,7 +339,7 @@ public class SourceBuilderTest {
         }
 
         Source original = Source.newBuilder(file).build();
-        assertEquals(text, original.getCode());
+        assertEquals(text, original.getCodeSequence());
 
         String newText;
         try (FileWriter w = new FileWriter(file)) {
@@ -349,9 +349,9 @@ public class SourceBuilderTest {
 
         Source reloaded = Source.newBuilder(file).build();
         assertNotEquals(original, reloaded);
-        assertEquals("New source has the new text", newText, reloaded.getCode());
+        assertEquals("New source has the new text", newText, reloaded.getCodeSequence());
 
-        assertEquals("Old source1 remains unchanged", text, original.getCode());
+        assertEquals("Old source1 remains unchanged", text, original.getCodeSequence());
     }
 
     @Test
@@ -386,7 +386,7 @@ public class SourceBuilderTest {
         Source twoSnd = src.subSource(4, 3);
         Source threeSnd = src.subSource(8, src.getLength() - 8);
 
-        assertNotEquals("One: " + one.getCode() + " two: " + two.getCode(), one, two);
+        assertNotEquals("One: " + one.getCodeSequence() + " two: " + two.getCodeSequence(), one, two);
         assertNotEquals(three, two);
         assertNotEquals(one, three);
 
@@ -422,13 +422,13 @@ public class SourceBuilderTest {
         Source s2 = Source.newBuilder(f2).build();
 
         assertNotEquals("Different sources", s1, s2);
-        assertEquals("But same content", s1.getCode(), s2.getCode());
+        assertEquals("But same content", s1.getCodeSequence(), s2.getCodeSequence());
 
         Source sub1 = s1.subSource(0, 8);
         Source sub2 = s2.subSource(0, 8);
 
         assertNotEquals("Different sub sources", sub1, sub2);
-        assertEquals("with the same content", sub1.getCode(), sub2.getCode());
+        assertEquals("with the same content", sub1.getCodeSequence(), sub2.getCodeSequence());
         assertNotEquals("and different hash", sub1.hashCode(), sub2.hashCode());
 
         assertEquals(f1.toURI(), s1.getURI());

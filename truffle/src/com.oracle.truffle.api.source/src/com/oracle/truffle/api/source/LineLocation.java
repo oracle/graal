@@ -99,7 +99,6 @@ public final class LineLocation implements Comparable<LineLocation> {
     }
 
     /** @since 0.8 or earlier */
-    @SuppressWarnings("deprecation")
     @Override
     public int compareTo(LineLocation o) {
         int sourceResult = 0;
@@ -108,7 +107,7 @@ public final class LineLocation implements Comparable<LineLocation> {
         final String otherPath = o.getSource().getPath();
 
         if (thisPath == null || otherPath == null) {
-            sourceResult = thisSource.getCode().compareTo(o.getSource().getCode());
+            sourceResult = thisSource.getCodeSequence().toString().compareTo(o.getSource().getCodeSequence().toString());
         } else {
             final String thatPath = otherPath;
             sourceResult = thisPath.compareTo(thatPath);

@@ -99,7 +99,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> implements Scop
                 sep = ",";
             }
             sb.append(") { return ");
-            sb.append(request.getSource().getCode());
+            sb.append(request.getSource().getCodeSequence());
             sb.append(";}");
             Source decoratedSource = Source.newBuilder(sb.toString()).mimeType(request.getSource().getMimeType()).name(request.getSource().getName()).build();
             functions = Parser.parseSL(this, decoratedSource);

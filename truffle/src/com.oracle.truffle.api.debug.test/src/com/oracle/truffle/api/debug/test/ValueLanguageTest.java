@@ -267,7 +267,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
         }
 
         private BlockNode parse(Source source) {
-            String code = source.getCode();
+            String code = source.getCodeSequence().toString();
             String[] variables = code.split("\\s");
             int n = variables.length;
             VarNode[] nodes = new VarNode[n];

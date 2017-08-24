@@ -528,7 +528,7 @@ public class EngineTest {
 
         @Override
         protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
-            final boolean boxed = request.getSource().getCode().equals("boxed");
+            final boolean boxed = request.getSource().getCodeSequence().equals("boxed");
             final CachingLanguageChannel channel = getContextReference().get();
             RootNode root = new RootNode(this) {
                 @Override

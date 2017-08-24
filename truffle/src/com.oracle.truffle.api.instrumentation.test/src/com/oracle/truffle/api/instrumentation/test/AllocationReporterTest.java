@@ -630,7 +630,7 @@ public class AllocationReporterTest {
             final Source code = request.getSource();
             return Truffle.getRuntime().createCallTarget(new RootNode(this) {
 
-                @Node.Child private AllocNode alloc = parse(code.getCode());
+                @Node.Child private AllocNode alloc = parse(code.getCodeSequence().toString());
 
                 @Override
                 public Object execute(VirtualFrame frame) {

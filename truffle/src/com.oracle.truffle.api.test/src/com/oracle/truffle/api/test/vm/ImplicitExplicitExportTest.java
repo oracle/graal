@@ -218,8 +218,8 @@ public class ImplicitExplicitExportTest {
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             Source code = request.getSource();
-            if (code.getCode().startsWith("parse=")) {
-                throw new IOException(code.getCode().substring(6));
+            if (code.getCodeSequence().toString().startsWith("parse=")) {
+                throw new IOException(code.getCodeSequence().toString().substring(6));
             }
             return Truffle.getRuntime().createCallTarget(new ValueRootNode(code, this));
         }
