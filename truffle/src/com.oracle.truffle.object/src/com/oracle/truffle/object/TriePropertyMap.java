@@ -28,7 +28,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Predicate;
 
 import com.oracle.truffle.api.object.Property;
 
@@ -139,20 +138,22 @@ final class TriePropertyMap extends PropertyMap implements LinkedImmutableMap<Ob
     }
 
     private boolean verify() {
-        assert root.count() == size : root.count() + " != " + size;
         assert (size == 0 && head == null && tail == null) || (size != 0 && head != null && tail != null) : "size=" + size + ", head=" + head + ", tail=" + tail;
         assert head == null || head == getEntry(head.getKey());
         assert tail == null || tail == getEntry(tail.getKey());
         if (VERIFY) {
+            assert root.count() == size : root.count() + " != " + size;
             assert root.verify(0);
-            assert entrySet().stream().count() == size : "size=" + size + ", entries=" + entrySet();
-            assert entrySet().stream().allMatch(new Predicate<Map.Entry<Object, Property>>() {
-                public boolean test(Map.Entry<Object, Property> e) {
-                    return e == getEntry(e.getKey());
-                }
-            });
+            int count = 0;
+            for (Iterator<Map.Entry<Object, Property>> iterator = orderedEntryIterator(); iterator.hasNext();) {
+                Map.Entry<Object, Property> e = iterator.next();
+                assert e == getEntry(e.getKey());
+                count++;
+            }
+            assert count == size : count + " != " + size;
         }
         return true;
+
     }
 
     public static TriePropertyMap empty() {

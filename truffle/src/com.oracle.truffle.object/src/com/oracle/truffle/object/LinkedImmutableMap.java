@@ -25,7 +25,6 @@ package com.oracle.truffle.object;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Objects;
 
 /**
  * Immutable map with linked entries.
@@ -43,75 +42,6 @@ interface LinkedImmutableMap<K, V> extends ImmutableMap<K, V> {
         LinkedEntry<K, V> withPrevKey(K prevKey);
 
         LinkedEntry<K, V> withNextKey(K nextKey);
-    }
-
-    @SuppressWarnings("hiding")
-    final class LinkedEntryImpl<K, V> implements LinkedEntry<K, V> {
-        private final K key;
-        private final V value;
-        private final K prevKey;
-        private final K nextKey;
-
-        LinkedEntryImpl(K key, V value, K prevKey, K nextKey) {
-            this.key = key;
-            this.value = value;
-            this.prevKey = prevKey;
-            this.nextKey = nextKey;
-        }
-
-        @Override
-        public K getKey() {
-            return key;
-        }
-
-        @Override
-        public V getValue() {
-            return value;
-        }
-
-        @Override
-        public V setValue(V value) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public int hashCode() {
-            return key.hashCode() ^ value.hashCode();
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (!(obj instanceof LinkedEntryImpl)) {
-                return false;
-            }
-            LinkedEntryImpl<?, ?> other = (LinkedEntryImpl<?, ?>) obj;
-            return this.key.equals(other.key) && Objects.equals(this.value, other.value) && Objects.equals(this.prevKey, other.prevKey) && Objects.equals(this.nextKey, other.nextKey);
-        }
-
-        @Override
-        public K getPrevKey() {
-            return prevKey;
-        }
-
-        @Override
-        public K getNextKey() {
-            return nextKey;
-        }
-
-        @Override
-        public LinkedEntry<K, V> withValue(V value) {
-            return new LinkedEntryImpl<>(key, value, prevKey, nextKey);
-        }
-
-        @Override
-        public LinkedEntryImpl<K, V> withPrevKey(K prevKey) {
-            return new LinkedEntryImpl<>(key, value, prevKey, nextKey);
-        }
-
-        @Override
-        public LinkedEntry<K, V> withNextKey(K nextKey) {
-            return new LinkedEntryImpl<>(key, value, prevKey, nextKey);
-        }
     }
 
     abstract class LinkedIterator<K, V> {

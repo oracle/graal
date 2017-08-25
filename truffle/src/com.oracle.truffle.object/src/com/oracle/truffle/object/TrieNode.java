@@ -25,9 +25,6 @@ package com.oracle.truffle.object;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.stream.Stream;
 
 abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
 
@@ -142,15 +139,6 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
             }
         });
         return true;
-    }
-
-    @SuppressWarnings("unchecked")
-    final Stream<E> streamEntries() {
-        return Arrays.stream(entries()).filter(Predicate.isEqual(null).negate()).flatMap(new Function<Object, Stream<E>>() {
-            public Stream<E> apply(Object e) {
-                return (e instanceof TrieNode ? ((TrieNode<K, V, E>) e).streamEntries() : Stream.of((E) e));
-            }
-        });
     }
 
     @Override
