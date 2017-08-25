@@ -30,7 +30,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 
 /**
  * Represents a polyglot value. Polyglot values can either result from a {@link #isHostObject()
- * host} or guest language.
+ * host} or guest language. Polyglot values are bound to a {@link Context context}.
  *
  * @since 1.0
  */

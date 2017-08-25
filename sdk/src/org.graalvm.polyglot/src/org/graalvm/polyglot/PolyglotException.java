@@ -45,6 +45,9 @@ public final class PolyglotException extends RuntimeException {
         super(message);
         this.impl = impl;
         impl.onCreate(this);
+        // we need to materialize the stack if this exception is printed as cause of another error.
+        // unfortunately we cannot detect this easily
+        super.setStackTrace(getStackTrace());
     }
 
     /**

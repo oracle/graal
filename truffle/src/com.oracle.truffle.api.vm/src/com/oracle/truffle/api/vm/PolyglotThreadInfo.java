@@ -24,27 +24,56 @@
  */
 package com.oracle.truffle.api.vm;
 
-import static com.oracle.truffle.api.vm.VMAccessor.NODES;
+final class PolyglotThreadInfo {
 
-import com.oracle.truffle.api.TruffleLanguage;
+    static final PolyglotThreadInfo NULL = new PolyglotThreadInfo(null);
 
-@SuppressWarnings("deprecation")
-final class PolyglotFindContextNode<C> extends com.oracle.truffle.api.impl.FindContextNode<C> {
-    private final PolyglotLanguage polyglotLanguage;
+    final Thread thread;
 
-    PolyglotFindContextNode(PolyglotLanguage polyglotLanguage) {
-        this.polyglotLanguage = polyglotLanguage;
+    private int enteredCount;
+    volatile boolean cancelled;
+
+    PolyglotThreadInfo(Thread thread) {
+        this.thread = thread;
     }
 
-    @SuppressWarnings("unchecked")
+    boolean isCurrent() {
+        return thread == Thread.currentThread();
+    }
+
+    void enter() {
+        assert Thread.currentThread() == thread;
+        enteredCount++;
+    }
+
+    boolean isPolyglotThread(PolyglotContextImpl context) {
+        if (thread instanceof PolyglotThread) {
+            return ((PolyglotThread) thread).isOwner(context);
+        }
+        return false;
+    }
+
+    void leave() {
+        assert Thread.currentThread() == thread;
+        --enteredCount;
+    }
+
+    boolean isLastActive() {
+        assert Thread.currentThread() == thread;
+        return thread != null && enteredCount == 1 && !cancelled;
+    }
+
+    boolean isActive() {
+        return thread != null && enteredCount > 0 && !cancelled;
+    }
+
+    Thread getThread() {
+        return thread;
+    }
+
     @Override
-    public C executeFindContext() {
-        return (C) polyglotLanguage.getCurrentContext();
+    public String toString() {
+        return super.toString() + "[thread=" + thread + ", enteredCount=" + enteredCount + ", cancelled=" + cancelled + "]";
     }
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public TruffleLanguage<C> getTruffleLanguage() {
-        return (TruffleLanguage<C>) NODES.getLanguageSpi(polyglotLanguage.info);
-    }
 }

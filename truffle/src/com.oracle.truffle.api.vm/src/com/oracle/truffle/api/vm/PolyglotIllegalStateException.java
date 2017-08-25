@@ -24,27 +24,11 @@
  */
 package com.oracle.truffle.api.vm;
 
-import static com.oracle.truffle.api.vm.VMAccessor.NODES;
+@SuppressWarnings("serial")
+class PolyglotIllegalStateException extends IllegalStateException {
 
-import com.oracle.truffle.api.TruffleLanguage;
-
-@SuppressWarnings("deprecation")
-final class PolyglotFindContextNode<C> extends com.oracle.truffle.api.impl.FindContextNode<C> {
-    private final PolyglotLanguage polyglotLanguage;
-
-    PolyglotFindContextNode(PolyglotLanguage polyglotLanguage) {
-        this.polyglotLanguage = polyglotLanguage;
+    PolyglotIllegalStateException(String message) {
+        super(message);
     }
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public C executeFindContext() {
-        return (C) polyglotLanguage.getCurrentContext();
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public TruffleLanguage<C> getTruffleLanguage() {
-        return (TruffleLanguage<C>) NODES.getLanguageSpi(polyglotLanguage.info);
-    }
 }

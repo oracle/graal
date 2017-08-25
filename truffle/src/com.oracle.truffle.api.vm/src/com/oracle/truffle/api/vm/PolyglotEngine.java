@@ -1065,8 +1065,8 @@ public class PolyglotEngine {
          * evaluate} guest language code that produces the desired language element and then use
          * this method to create a Java object of the appropriate type for Java access to the
          * result. The tutorial <a href=
-         * "{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html" > "Embedding
-         * Truffle Languages in Java"</a> contains examples.
+         * "{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html" >
+         * "Embedding Truffle Languages in Java"</a> contains examples.
          *
          * @param <T> the type of the requested view
          * @param representation an interface describing the requested access (must be an interface)
@@ -1151,8 +1151,8 @@ public class PolyglotEngine {
          * evaluate} guest language code that produces the desired language element. If that element
          * is a guest language function, this method allows direct execution without giving the
          * function a Java type. The tutorial <a href=
-         * "{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html" > "Embedding
-         * Truffle Languages in Java"</a> contains examples.
+         * "{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html" >
+         * "Embedding Truffle Languages in Java"</a> contains examples.
          *
          * @param args arguments to pass when executing the value
          * @return result of the execution wrapped in a non-null {@link Value}
@@ -1788,6 +1788,16 @@ public class PolyglotEngine {
         @Override
         public void leaveInternalContext(Object impl, Object prev) {
             throw new UnsupportedOperationException("Internal contexts are not supported within PolygotEngine.");
+        }
+
+        @Override
+        public boolean isCreateThreadAllowed(Object vmObject) {
+            return false;
+        }
+
+        @Override
+        public Thread createThread(Object vmObject, Runnable runnable, Object context) {
+            throw new IllegalStateException("createThread is not supported.");
         }
 
     }

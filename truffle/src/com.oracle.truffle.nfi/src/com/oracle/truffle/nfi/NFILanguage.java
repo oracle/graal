@@ -54,6 +54,12 @@ public class NFILanguage extends TruffleLanguage<NFIContext> {
         context.dispose();
     }
 
+    @Override
+    protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+        // the NFI is fully thread-safe
+        return true;
+    }
+
     private static class LoadLibraryNode extends RootNode {
 
         private final String name;
