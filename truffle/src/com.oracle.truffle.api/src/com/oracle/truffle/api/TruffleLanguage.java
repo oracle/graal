@@ -1046,7 +1046,7 @@ public abstract class TruffleLanguage<C> {
          * @since 0.28
          */
         @TruffleBoundary
-        public Thread createThread(Runnable runnable, TruffleContext context) {
+        public Thread createThread(Runnable runnable, @SuppressWarnings("hiding") TruffleContext context) {
             return AccessAPI.engineAccess().createThread(vmObject, runnable, context != null ? context.impl : null);
         }
 
