@@ -47,7 +47,9 @@ import com.oracle.truffle.llvm.parser.metadata.MDNamedNode;
 import com.oracle.truffle.llvm.parser.metadata.MDOldNode;
 import com.oracle.truffle.llvm.parser.metadata.MDReference;
 import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
+import com.oracle.truffle.llvm.parser.metadata.MDSymbolReference;
 import com.oracle.truffle.llvm.parser.metadata.MDTypedValue;
+import com.oracle.truffle.llvm.parser.metadata.MDValue;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Call;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
@@ -266,8 +268,17 @@ final class SourceSectionGenerator {
 
         @Override
         public void visit(MDSubprogram md) {
-            if (search.equals(md.getFunction().get())) {
-                found = md;
+            final MDReference valueRef = md.getFunction();
+            if (valueRef == MDReference.VOID) {
+                return;
+            }
+
+            final MDBaseNode valueNode = valueRef.get();
+            if (valueNode instanceof MDValue) {
+                final MDSymbolReference value = ((MDValue) valueNode).getValue();
+                if (value.isPresent() && search.equals(value.get())) {
+                    found = md;
+                }
             }
         }
     }

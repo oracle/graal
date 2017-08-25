@@ -93,7 +93,7 @@ Build Dependencies
 Sulong is mostly implemented in Java. However, parts of Sulong are
 implemented in C/C++ and will be compiled to a shared library or a bitcode
 file. For a successful build you need to have LLVM (incl. `CLANG` and `OPT`
-tool) v3.2 - v4.0 installed. Sulong also depends on `libc++` and `libc++abi`
+tool) 3.8 - v4.0 installed. Sulong also depends on `libc++` and `libc++abi`
 (on Ubuntu, install `libc++1`, `libc++abi1`, `libc++-dev`, `libc++abi-dev`).
 For a full list of external dependencies on Ubuntu you can look at our
 Travis configuration.

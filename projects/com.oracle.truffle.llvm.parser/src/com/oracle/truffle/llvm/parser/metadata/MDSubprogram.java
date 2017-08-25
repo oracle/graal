@@ -31,8 +31,6 @@ package com.oracle.truffle.llvm.parser.metadata;
 
 import com.oracle.truffle.llvm.parser.metadata.subtypes.MDName;
 
-import java.util.function.Function;
-
 public final class MDSubprogram extends MDName implements MDBaseNode {
 
     private final MDReference scope;
@@ -69,11 +67,11 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
 
     private final MDReference variables;
 
-    private final MDSymbolReference function;
+    private final MDReference function;
 
     private MDSubprogram(MDReference scope, MDReference name, MDReference displayName, MDReference linkageName, MDReference file, long line, MDReference type, boolean isLocalToUnit,
                     boolean isDefinedInCompileUnit, long scopeLine, MDReference containingType, long virtuality, long virtualIndex, long flags, boolean isOptimized,
-                    MDReference templateParams, MDReference declaration, MDReference variables, MDSymbolReference function) {
+                    MDReference templateParams, MDReference declaration, MDReference variables, MDReference function) {
         super(name);
         this.scope = scope;
         this.displayName = displayName;
@@ -168,7 +166,7 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
         return scope;
     }
 
-    public MDSymbolReference getFunction() {
+    public MDReference getFunction() {
         return function;
     }
 
@@ -201,7 +199,7 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
     private static final int ARGINDEX_38_VARIABLES = 17;
     private static final int OFFSET_INDICATOR = 19;
 
-    public static MDSubprogram create38(long[] args, MetadataList md, Function<Long, MDSymbolReference> symbolMapper) {
+    public static MDSubprogram create38(long[] args, MetadataList md) {
         final int fnOffset = args.length == OFFSET_INDICATOR ? 1 : 0;
 
         final MDReference scope = md.getMDRefOrNullRef(args[ARGINDEX_38_SCOPE]);
@@ -222,11 +220,11 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
         final MDReference declaration = md.getMDRefOrNullRef(args[ARGINDEX_38_DECLARATION + fnOffset]);
         final MDReference variables = md.getMDRefOrNullRef(args[ARGINDEX_38_VARIABLES + fnOffset]);
 
-        final MDSymbolReference function;
+        final MDReference function;
         if (fnOffset != 0 && args[ARGINDEX_38_FN] != 0) {
-            function = symbolMapper.apply(args[ARGINDEX_38_FN]);
+            function = md.getMDRefOrNullRef(args[ARGINDEX_38_FN]);
         } else {
-            function = MDSymbolReference.VOID;
+            function = MDReference.VOID;
         }
 
         return new MDSubprogram(scope, name, MDReference.VOID, linkageName, file, line, type, localToCompileUnit, definedInCompileUnit, scopeLine, containingType, virtuality, virtualIndex, flags,
@@ -268,7 +266,7 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
         final MDReference containingType = ParseUtil.getReference(args[ARGINDEX_32_CONTAININGTYPE]);
         final long flags = ParseUtil.asInt32(args[ARGINDEX_32_FLAGS]);
         final boolean optimized = ParseUtil.asInt1(args[ARGINDEX_3_OPTIMIZED]);
-        final MDSymbolReference function = ParseUtil.getSymbolReference(args[ARGINDEX_32_FN]);
+        final MDReference function = MDReference.fromSymbolRef(ParseUtil.getSymbolReference(args[ARGINDEX_32_FN]));
 
         final MDReference templateParams = ParseUtil.getReferenceIfPresent(args, ARGINDEX_32_TEMPLATEPARAMS);
         final MDReference declaration = ParseUtil.getReferenceIfPresent(args, ARGINDEX_32_DECLARATION);
