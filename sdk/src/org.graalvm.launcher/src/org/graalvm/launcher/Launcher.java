@@ -845,7 +845,7 @@ public abstract class Launcher {
         }
     }
 
-    private static final String CLASSPATH = System.getProperty("com.oracle.graalvm.launcher.classpath");
+    private static final String CLASSPATH = System.getProperty("org.graalvm.launcher.classpath");
     private static final String GRAALVM_VERSION_PROPERTY = "graalvm.version";
     private static final String GRAALVM_VERSION = System.getProperty(GRAALVM_VERSION_PROPERTY);
 
