@@ -230,7 +230,7 @@ class PolyglotSource extends AbstractSourceImpl {
             builder = com.oracle.truffle.api.source.Source.newBuilder((File) origin);
         } else if (origin instanceof CharSequence) {
             // TODO add support for real CharSequence sources.
-            builder = com.oracle.truffle.api.source.Source.newBuilder(((CharSequence) origin).toString());
+            builder = com.oracle.truffle.api.source.Source.newBuilder(((CharSequence) origin));
             needsName = true;
         } else if (origin instanceof Reader) {
             builder = com.oracle.truffle.api.source.Source.newBuilder((Reader) origin);
