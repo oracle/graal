@@ -95,6 +95,10 @@ public abstract class Launcher {
         return seenPolyglot;
     }
 
+    final void setPolyglot(boolean polyglot) {
+        seenPolyglot = polyglot;
+    }
+
     private Engine getTempEngine() {
         if (tempEngine == null) {
             tempEngine = Engine.create();
@@ -921,6 +925,9 @@ public abstract class Launcher {
                 vmType = defaultVmType;
             }
             if (vmType == VMType.JVM) {
+                if (!isPolyglot && polyglot) {
+                    remainingArgs.add(0, "--polyglot");
+                }
                 execJVM(jvmArgs, remainingArgs, polyglotOptions);
             } else if (!isPolyglot && polyglot) {
                 assert jvmArgs.isEmpty();

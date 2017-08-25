@@ -221,6 +221,7 @@ public final class PolyglotLauncher extends Launcher {
         }
         try {
             AbstractLanguageLauncher launcher = launcherClass.newInstance();
+            launcher.setPolyglot(true);
             launcher.launch(args, options);
         } catch (IllegalAccessException | InstantiationException e) {
             throw new RuntimeException("Failed to instanciate launcher class " + launcherName, e);
