@@ -62,16 +62,11 @@ import sun.misc.SignalHandler;
 public abstract class LLVMSignal extends LLVMExpressionNode {
 
     @Specialization
-    public LLVMFunction doSignal(int signal, LLVMFunctionDescriptor handler, @Cached("getContext()") LLVMContext context) {
+    public LLVMFunction doSignal(int signal, LLVMFunction handler, @Cached("getContext()") LLVMContext context) {
         return setSignalHandler(context, signal, handler);
     }
 
-    @Specialization
-    public LLVMFunction doSignal(int signal, LLVMFunctionHandle handler, @Cached("getContext()") LLVMContext context) {
-        return setSignalHandler(context, signal, context.getFunctionDescriptor(handler));
-    }
-
-    private static LLVMFunction setSignalHandler(LLVMContext context, int signalId, LLVMFunctionDescriptor function) {
+    private static LLVMFunction setSignalHandler(LLVMContext context, int signalId, LLVMFunction function) {
         try {
             Signals decodedSignal = Signals.decode(signalId);
             return setSignalHandler(context, decodedSignal.signal(), function);
@@ -92,7 +87,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
     }
 
     @TruffleBoundary
-    private static LLVMFunction setSignalHandler(LLVMContext context, Signal signal, LLVMFunctionDescriptor function) {
+    private static LLVMFunction setSignalHandler(LLVMContext context, Signal signal, LLVMFunction function) {
         int signalId = signal.getNumber();
         LLVMFunction returnFunction = context.getSigDfl();
 
@@ -141,32 +136,32 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
 
         private final Signal signal;
         private final LLVMContext context;
-        private final LLVMFunctionDescriptor handler;
+        private final LLVMFunction handler;
 
         private final Lock lock = new ReentrantLock();
         private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
         @TruffleBoundary
-        private LLVMSignalHandler(LLVMContext context, Signal signal, LLVMFunctionDescriptor function) throws IllegalArgumentException {
+        private LLVMSignalHandler(LLVMContext context, Signal signal, LLVMFunction function) throws IllegalArgumentException {
             this.signal = signal;
-            this.handler = function;
             this.context = context;
 
             lock.lock();
             try {
-                if (function.equals(context.getSigDfl())) {
+                if (function.getFunctionPointer() == context.getSigDfl().getFunctionPointer()) {
+                    this.handler = function;
                     Signal.handle(signal, SignalHandler.SIG_DFL);
-                    isRunning.set(true);
-                    context.registerThread(this);
-                    return;
-                } else if (function.equals(context.getSigIgn())) {
+                } else if (function.getFunctionPointer() == context.getSigIgn().getFunctionPointer()) {
+                    this.handler = function;
                     Signal.handle(signal, SignalHandler.SIG_IGN);
-                    isRunning.set(true);
-                    context.registerThread(this);
-                    return;
+                } else {
+                    if (function instanceof LLVMFunctionDescriptor) {
+                        this.handler = function;
+                    } else {
+                        this.handler = context.getFunctionDescriptor((LLVMFunctionHandle) function);
+                    }
+                    Signal.handle(signal, this);
                 }
-
-                Signal.handle(signal, this);
 
                 isRunning.set(true);
                 context.registerThread(this);
@@ -211,7 +206,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
             try {
                 if (isRunning.get()) {
                     try {
-                        ForeignAccess.sendExecute(Message.createExecute(1).createNode(), handler, signal.getNumber());
+                        ForeignAccess.sendExecute(Message.createExecute(1).createNode(), (LLVMFunctionDescriptor) handler, signal.getNumber());
                     } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                         throw new AssertionError(e);
                     }
