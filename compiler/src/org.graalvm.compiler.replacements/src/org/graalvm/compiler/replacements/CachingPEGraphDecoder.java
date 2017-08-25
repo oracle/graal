@@ -61,11 +61,11 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     private final EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache;
 
     public CachingPEGraphDecoder(Architecture architecture, StructuredGraph graph, Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
-                    AllowAssumptions allowAssumptions, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins,
-                    ParameterPlugin parameterPlugin,
-                    NodePlugin[] nodePlugins) {
+                                 AllowAssumptions allowAssumptions, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins,
+                                 ParameterPlugin parameterPlugin,
+                                 NodePlugin[] nodePlugins, ResolvedJavaMethod callInlinedMethod) {
         super(architecture, graph, providers.getMetaAccess(), providers.getConstantReflection(), providers.getConstantFieldProvider(), providers.getStampProvider(), loopExplosionPlugin,
-                        invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins);
+                        invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins, callInlinedMethod);
 
         this.providers = providers;
         this.graphBuilderConfig = graphBuilderConfig;

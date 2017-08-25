@@ -116,10 +116,10 @@ public class TruffleGraphBuilderPlugins {
     }
 
     public static void registerInvocationPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification,
-                    ConstantReflectionProvider constantReflection, KnownTruffleFields knownFields, ResolvedJavaMethod truffleDelimiter) {
+                    ConstantReflectionProvider constantReflection, KnownTruffleFields knownFields) {
         registerOptimizedAssumptionPlugins(plugins, knownFields);
         registerExactMathPlugins(plugins);
-        registerCompilerDirectivesPlugins(plugins, canDelayIntrinsification, truffleDelimiter);
+        registerCompilerDirectivesPlugins(plugins, canDelayIntrinsification);
         registerCompilerAssertsPlugins(plugins, canDelayIntrinsification);
         registerOptimizedCallTargetPlugins(plugins, canDelayIntrinsification, knownFields);
 
@@ -184,7 +184,7 @@ public class TruffleGraphBuilderPlugins {
         }
     }
 
-    public static void registerCompilerDirectivesPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, ResolvedJavaMethod truffleDelimiter) {
+    public static void registerCompilerDirectivesPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {
         Registration r = new Registration(plugins, CompilerDirectives.class);
         r.register0("inInterpreter", new InvocationPlugin() {
             @Override
@@ -203,9 +203,9 @@ public class TruffleGraphBuilderPlugins {
         r.register0("inCompilationRoot", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                int occurrencesOnStack = b.countOccurrencesOnStack(truffleDelimiter);
-                if (occurrencesOnStack >= 0) {
-                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(occurrencesOnStack == 0));
+                GraphBuilderContext.ExternalInliningContext inliningContext = b.getExternalInliningContext();
+                if (inliningContext != null) {
+                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(inliningContext.getInlinedDepth() == 0));
                     return true;
                 }
                 return false;
