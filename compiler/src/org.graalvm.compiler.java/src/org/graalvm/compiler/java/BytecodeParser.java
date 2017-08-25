@@ -934,7 +934,12 @@ public class BytecodeParser implements GraphBuilderContext {
      */
     protected void handleUnresolvedLoadConstant(JavaType type) {
         assert !graphBuilderConfig.unresolvedIsError();
-        append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+        /*
+         * Track source position for deopt nodes even if
+         * GraphBuilderConfiguration.trackNodeSourcePosition is not set.
+         */
+        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
     }
 
     /**
@@ -955,6 +960,7 @@ public class BytecodeParser implements GraphBuilderContext {
         assert !graphBuilderConfig.unresolvedIsError();
         AbstractBeginNode successor = graph.add(new BeginNode());
         DeoptimizeNode deopt = graph.add(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
         append(new IfNode(graph.addOrUniqueWithInputs(IsNullNode.create(object)), successor, deopt, 1));
         lastInstr = successor;
         frameState.push(JavaKind.Int, appendConstant(JavaConstant.INT_0));
@@ -965,7 +971,8 @@ public class BytecodeParser implements GraphBuilderContext {
      */
     protected void handleUnresolvedNewInstance(JavaType type) {
         assert !graphBuilderConfig.unresolvedIsError();
-        append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
     }
 
     /**
@@ -974,7 +981,8 @@ public class BytecodeParser implements GraphBuilderContext {
      */
     protected void handleUnresolvedNewObjectArray(JavaType type, ValueNode length) {
         assert !graphBuilderConfig.unresolvedIsError();
-        append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
     }
 
     /**
@@ -983,7 +991,8 @@ public class BytecodeParser implements GraphBuilderContext {
      */
     protected void handleUnresolvedNewMultiArray(JavaType type, ValueNode[] dims) {
         assert !graphBuilderConfig.unresolvedIsError();
-        append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
     }
 
     /**
@@ -992,7 +1001,8 @@ public class BytecodeParser implements GraphBuilderContext {
      */
     protected void handleUnresolvedLoadField(JavaField field, ValueNode receiver) {
         assert !graphBuilderConfig.unresolvedIsError();
-        append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
     }
 
     /**
@@ -1002,7 +1012,8 @@ public class BytecodeParser implements GraphBuilderContext {
      */
     protected void handleUnresolvedStoreField(JavaField field, ValueNode value, ValueNode receiver) {
         assert !graphBuilderConfig.unresolvedIsError();
-        append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
     }
 
     /**
@@ -1010,7 +1021,8 @@ public class BytecodeParser implements GraphBuilderContext {
      */
     protected void handleUnresolvedExceptionType(JavaType type) {
         assert !graphBuilderConfig.unresolvedIsError();
-        append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
     }
 
     /**
@@ -1019,7 +1031,8 @@ public class BytecodeParser implements GraphBuilderContext {
      */
     protected void handleUnresolvedInvoke(JavaMethod javaMethod, InvokeKind invokeKind) {
         assert !graphBuilderConfig.unresolvedIsError();
-        append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
     }
 
     private AbstractBeginNode handleException(ValueNode exceptionObject, int bci) {
@@ -2534,7 +2547,9 @@ public class BytecodeParser implements GraphBuilderContext {
     private FixedNode createTarget(double probability, BciBlock block, FrameStateBuilder stateAfter) {
         assert probability >= 0 && probability <= 1.01 : probability;
         if (isNeverExecutedCode(probability)) {
-            return graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+            DeoptimizeNode deopt = graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+            deopt.updateNodeSourcePosition(() -> createBytecodePosition());
+            return deopt;
         } else {
             assert block != null;
             return createTarget(block, stateAfter);
@@ -2750,7 +2765,8 @@ public class BytecodeParser implements GraphBuilderContext {
                     if (skippedType.isAssignableFrom(checkedCatchType.getType())) {
                         BciBlock nextBlock = block.getSuccessorCount() == 1 ? blockMap.getUnwindBlock() : block.getSuccessor(1);
                         ValueNode exception = frameState.stack[0];
-                        FixedNode trueSuccessor = graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+                        DeoptimizeNode trueSuccessor = graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+                        trueSuccessor.updateNodeSourcePosition(() -> createBytecodePosition());
                         FixedNode nextDispatch = createTarget(nextBlock, frameState);
                         append(new IfNode(graph.addOrUniqueWithInputs(createInstanceOf(checkedCatchType, exception)), trueSuccessor, nextDispatch, 0));
                         return;
