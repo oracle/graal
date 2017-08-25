@@ -50,7 +50,7 @@ import jline.console.history.History;
 import jline.console.history.MemoryHistory;
 import jline.internal.NonBlockingInputStream;
 
-public class MultiLanguageShell {
+class MultiLanguageShell {
 
     private static final String VERSION = System.getProperty("graalvm.version");
     private final Map<Language, History> histories = new HashMap<>();

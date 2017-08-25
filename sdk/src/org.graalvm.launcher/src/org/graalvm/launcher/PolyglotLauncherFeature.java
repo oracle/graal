@@ -26,7 +26,7 @@ package org.graalvm.launcher;
 
 import org.graalvm.nativeimage.Feature;
 
-public class PolyglotLauncherFeature implements Feature {
+class PolyglotLauncherFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         PolyglotLauncher.AOT_LAUNCHER_CLASSES.values().forEach(access::registerForReflectiveInstantiation);
