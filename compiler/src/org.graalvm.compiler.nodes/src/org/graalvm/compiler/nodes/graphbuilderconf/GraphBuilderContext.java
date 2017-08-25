@@ -296,17 +296,6 @@ public interface GraphBuilderContext extends GraphBuilderTool {
 
     }
 
-    /**
-     * Counts the number of frames corresponding to {@code method} on the current parse stack.
-     *
-     * @param method the method to look for on the stack
-     *
-     * @return number of times the method shows up on the stack or -1 if unable to perform the count
-     */
-    default int countOccurrencesOnStack(ResolvedJavaMethod method) {
-        return -1;
-    }
-
     interface ExternalInliningContext {
         int getInlinedDepth();
     }

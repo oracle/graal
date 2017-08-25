@@ -194,19 +194,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         protected final Invoke invoke;
 
         @Override
-        public int countOccurrencesOnStack(ResolvedJavaMethod method) {
-            int count = 0;
-            PEGraphDecoder.PEMethodScope scope = methodScope;
-            while (scope != null) {
-                if (scope.method.equals(method)) {
-                    count++;
-                }
-                scope = scope.caller;
-            }
-            return count;
-        }
-
-        @Override
         public ExternalInliningContext getExternalInliningContext() {
             return new ExternalInliningContext() {
                 @Override
