@@ -53,14 +53,15 @@ final class CharSequenceReader extends Reader {
     public int read() throws IOException {
         synchronized (lock) {
             ensureOpen();
-            if (next >= length)
+            if (next >= length) {
                 return -1;
+            }
             return seq.charAt(next++);
         }
     }
 
     @Override
-    public int read(char cbuf[], int off, int len) throws IOException {
+    public int read(char[] cbuf, int off, int len) throws IOException {
         synchronized (lock) {
             ensureOpen();
             if ((off < 0) || (off > cbuf.length) || (len < 0) ||
