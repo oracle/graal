@@ -363,7 +363,7 @@ public abstract class Launcher {
 
     private static final Path FORCE_GRAAL_HOME;
     static {
-        String forcedHome = System.getProperty("com.oracle.graalvm.launcher.home");
+        String forcedHome = System.getProperty("org.graalvm.launcher.home");
         if (forcedHome != null) {
             FORCE_GRAAL_HOME = Paths.get(forcedHome);
         } else {
