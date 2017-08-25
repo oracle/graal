@@ -194,8 +194,8 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     GraphBuilderContext getParent();
 
     /**
-     * Gets the first ancestor parsing context that is not parsing a {@linkplain #parsingIntrinsic()
-     * intrinsic}.
+     * Gets the first ancestor parsing context that is not parsing a
+     * {@linkplain #parsingIntrinsic() intrinsic}.
      */
     default GraphBuilderContext getNonIntrinsicAncestor() {
         GraphBuilderContext ancestor = getParent();
@@ -296,6 +296,13 @@ public interface GraphBuilderContext extends GraphBuilderTool {
 
     }
 
+    /**
+     * Interface whose instances hold inlining information about the current context, in a wider
+     * sense. The wider sense in this case concerns graph building approaches that don't necessarily
+     * keep a chain of {@link GraphBuilderContext} instances normally available through
+     * {@linkplain #getParent()}. Examples of such approaches are partial evaluation and incremental
+     * inlining.
+     */
     interface ExternalInliningContext {
         int getInlinedDepth();
     }
