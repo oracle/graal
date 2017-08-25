@@ -29,16 +29,31 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class ArrayType extends AggregateType {
 
-    private final Type elementType;
+    @CompilationFinal private Assumption assumption;
+    @CompilationFinal private Type elementType;
     private final int length;
 
     public ArrayType(Type type, int length) {
+        this.assumption = Truffle.getRuntime().createAssumption();
         this.elementType = type;
         this.length = length;
+    }
+
+    public void setElementType(Type elementType) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.assumption.invalidate();
+        this.assumption = Truffle.getRuntime().createAssumption();
+        this.elementType = elementType;
     }
 
     @Override
@@ -52,6 +67,9 @@ public final class ArrayType extends AggregateType {
     }
 
     public Type getElementType() {
+        if (!assumption.isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
         return elementType;
     }
 
@@ -62,7 +80,7 @@ public final class ArrayType extends AggregateType {
 
     @Override
     public Type getElementType(int index) {
-        return elementType;
+        return getElementType();
     }
 
     @Override
@@ -77,7 +95,7 @@ public final class ArrayType extends AggregateType {
 
     @Override
     public Type shallowCopy() {
-        final ArrayType copy = new ArrayType(elementType, length);
+        final ArrayType copy = new ArrayType(getElementType(), length);
         copy.setSourceType(getSourceType());
         return copy;
     }
@@ -88,6 +106,7 @@ public final class ArrayType extends AggregateType {
     }
 
     @Override
+    @TruffleBoundary
     public String toString() {
         return String.format("[%d x %s]", getNumberOfElements(), getElementType());
     }
@@ -96,7 +115,7 @@ public final class ArrayType extends AggregateType {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((elementType == null) ? 0 : elementType.hashCode());
+        result = prime * result + ((getElementType() == null) ? 0 : getElementType().hashCode());
         result = prime * result + length;
         return result;
     }
@@ -113,11 +132,11 @@ public final class ArrayType extends AggregateType {
             return false;
         }
         ArrayType other = (ArrayType) obj;
-        if (elementType == null) {
-            if (other.elementType != null) {
+        if (getElementType() == null) {
+            if (other.getElementType() != null) {
                 return false;
             }
-        } else if (!elementType.equals(other.elementType)) {
+        } else if (!getElementType().equals(other.getElementType())) {
             return false;
         }
         if (length != other.length) {
@@ -125,5 +144,4 @@ public final class ArrayType extends AggregateType {
         }
         return true;
     }
-
 }

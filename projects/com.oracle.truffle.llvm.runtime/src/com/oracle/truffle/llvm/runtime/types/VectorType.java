@@ -29,19 +29,26 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
-public class VectorType extends AggregateType {
+public final class VectorType extends AggregateType {
 
-    private final Type elementType;
+    @CompilationFinal private Assumption assumption;
+    @CompilationFinal private Type elementType;
     private final int length;
 
     public VectorType(Type elementType, int length) {
-        if (!(elementType instanceof PrimitiveType || elementType instanceof PointerType)) {
+        if (elementType != null && !(elementType instanceof PrimitiveType || elementType instanceof PointerType)) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Invalid ElementType of Vector: " + elementType);
         }
+        this.assumption = Truffle.getRuntime().createAssumption();
         this.elementType = elementType;
         this.length = length;
     }
@@ -60,13 +67,23 @@ public class VectorType extends AggregateType {
         return length;
     }
 
+    public void setElementType(Type elementType) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (elementType == null || !(elementType instanceof PrimitiveType || elementType instanceof PointerType)) {
+            throw new AssertionError("Invalid ElementType of Vector: " + elementType);
+        }
+        this.assumption.invalidate();
+        this.assumption = Truffle.getRuntime().createAssumption();
+        this.elementType = elementType;
+    }
+
     @Override
     public Type getElementType(int index) {
         if (index >= length) {
             CompilerDirectives.transferToInterpreter();
             throw new ArrayIndexOutOfBoundsException();
         }
-        return elementType;
+        return getElementType();
     }
 
     @Override
@@ -86,7 +103,7 @@ public class VectorType extends AggregateType {
 
     @Override
     public Type shallowCopy() {
-        final VectorType copy = new VectorType(elementType, length);
+        final VectorType copy = new VectorType(getElementType(), length);
         copy.setSourceType(getSourceType());
         return copy;
     }
@@ -97,6 +114,7 @@ public class VectorType extends AggregateType {
     }
 
     @Override
+    @TruffleBoundary
     public String toString() {
         return String.format("<%d x %s>", getNumberOfElements(), getElementType());
     }
@@ -105,7 +123,7 @@ public class VectorType extends AggregateType {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((elementType == null) ? 0 : elementType.hashCode());
+        result = prime * result + ((getElementType() == null) ? 0 : getElementType().hashCode());
         result = prime * result + length;
         return result;
     }
@@ -122,11 +140,11 @@ public class VectorType extends AggregateType {
             return false;
         }
         VectorType other = (VectorType) obj;
-        if (elementType == null) {
-            if (other.elementType != null) {
+        if (getElementType() == null) {
+            if (other.getElementType() != null) {
                 return false;
             }
-        } else if (!elementType.equals(other.elementType)) {
+        } else if (!getElementType().equals(other.getElementType())) {
             return false;
         }
         if (length != other.length) {

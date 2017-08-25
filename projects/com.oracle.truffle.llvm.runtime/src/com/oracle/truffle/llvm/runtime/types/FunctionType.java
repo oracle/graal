@@ -31,17 +31,25 @@ package com.oracle.truffle.llvm.runtime.types;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class FunctionType extends Type {
 
-    private final Type returnType;
+    @CompilationFinal private Assumption assumption;
+    @CompilationFinal private Type returnType;
 
     private final Type[] argumentTypes;
     private final boolean isVarargs;
 
     public FunctionType(Type returnType, Type[] argumentTypes, boolean isVarargs) {
+        this.assumption = Truffle.getRuntime().createAssumption();
         this.returnType = returnType;
         this.argumentTypes = argumentTypes;
         this.isVarargs = isVarargs;
@@ -52,7 +60,17 @@ public final class FunctionType extends Type {
     }
 
     public Type getReturnType() {
+        if (!assumption.isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
         return returnType;
+    }
+
+    public void setReturnType(Type returnType) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.assumption.invalidate();
+        this.assumption = Truffle.getRuntime().createAssumption();
+        this.returnType = returnType;
     }
 
     public boolean isVarargs() {
@@ -85,12 +103,13 @@ public final class FunctionType extends Type {
 
     @Override
     public Type shallowCopy() {
-        final FunctionType copy = new FunctionType(returnType, argumentTypes, isVarargs);
+        final FunctionType copy = new FunctionType(getReturnType(), argumentTypes, isVarargs);
         copy.setSourceType(getSourceType());
         return copy;
     }
 
     @Override
+    @TruffleBoundary
     public String toString() {
         StringBuilder sb = new StringBuilder();
 
@@ -120,7 +139,7 @@ public final class FunctionType extends Type {
         int result = 1;
         result = prime * result + Arrays.hashCode(argumentTypes);
         result = prime * result + (isVarargs ? 1231 : 1237);
-        result = prime * result + ((returnType == null) ? 0 : returnType.hashCode());
+        result = prime * result + ((getReturnType() == null) ? 0 : getReturnType().hashCode());
         return result;
     }
 
@@ -142,11 +161,11 @@ public final class FunctionType extends Type {
         if (isVarargs != other.isVarargs) {
             return false;
         }
-        if (returnType == null) {
-            if (other.returnType != null) {
+        if (getReturnType() == null) {
+            if (other.getReturnType() != null) {
                 return false;
             }
-        } else if (!returnType.equals(other.returnType)) {
+        } else if (!getReturnType().equals(other.getReturnType())) {
             return false;
         }
         return true;

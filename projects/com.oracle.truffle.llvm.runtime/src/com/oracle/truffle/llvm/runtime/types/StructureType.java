@@ -31,19 +31,25 @@ package com.oracle.truffle.llvm.runtime.types;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class StructureType extends AggregateType {
 
-    private String name = LLVMIdentifier.UNKNOWN;
+    private final String name;
     private final boolean isPacked;
     private final Type[] types;
 
-    public StructureType(boolean isPacked, Type[] types) {
+    public StructureType(String name, boolean isPacked, Type[] types) {
+        this.name = name;
         this.isPacked = isPacked;
         this.types = types;
+    }
+
+    public StructureType(boolean isPacked, Type[] types) {
+        this(LLVMIdentifier.UNKNOWN, isPacked, types);
     }
 
     public Type[] getElementTypes() {
@@ -58,15 +64,12 @@ public final class StructureType extends AggregateType {
         return name;
     }
 
-    public void setName(String name) {
-        this.name = LLVMIdentifier.toLocalIdentifier(name);
-    }
-
     @Override
     public int getBitSize() {
         if (isPacked) {
             return Arrays.stream(types).mapToInt(Type::getBitSize).sum();
         } else {
+            CompilerDirectives.transferToInterpreter();
             throw new UnsupportedOperationException("TargetDataLayout is necessary to compute Padding information!");
         }
     }
@@ -111,8 +114,7 @@ public final class StructureType extends AggregateType {
 
     @Override
     public Type shallowCopy() {
-        final StructureType copy = new StructureType(isPacked, types);
-        copy.name = this.name;
+        final StructureType copy = new StructureType(name, isPacked, types);
         copy.setSourceType(getSourceType());
         return copy;
     }

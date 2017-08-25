@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class PrimitiveType extends Type {
@@ -128,6 +129,7 @@ public final class PrimitiveType extends Type {
     }
 
     @Override
+    @TruffleBoundary
     public String toString() {
         if (Type.isIntegerType(this)) {
             return String.format("i%d", getBitSize());
