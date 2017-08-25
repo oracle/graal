@@ -467,6 +467,17 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     for r in unit_test_runs:
         r.run(suites, tasks, ['-XX:-UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments))
 
+    # Ensure makegraaljdk works
+    with Task('MakeGraalJDK', tasks, tags=GraalTags.test) as t:
+        if t and isJDK8:
+            try:
+                makegraaljdk(['-a', 'graaljdk.tar', 'graaljdk'])
+            finally:
+                if exists('graaljdk'):
+                    shutil.rmtree('graaljdk')
+                if exists('graaljdk.tar'):
+                    os.unlink('graaljdk.tar')
+
     # Run ctw against rt.jar on hosted
     with Task('CTW:hosted', tasks, tags=GraalTags.ctw) as t:
         if t:
@@ -950,8 +961,17 @@ def makegraaljdk(args):
         bootDir = mx.ensure_dir_exists(join(dstJdk, 'jre', 'lib', 'boot'))
         jvmciDir = join(dstJdk, 'jre', 'lib', 'jvmci')
         assert exists(jvmciDir), jvmciDir + ' does not exist'
+
+        if mx.get_os() == 'darwin' or mx.get_os() == 'windows':
+            jvmlibDir = join(dstJdk, 'jre', 'lib', 'server')
+        else:
+            jvmlibDir = join(dstJdk, 'jre', 'lib', mx.get_arch(), 'server')
+        jvmlib = join(jvmlibDir, mx.add_lib_prefix(mx.add_lib_suffix('jvm')))
+        assert exists(jvmlib), jvmlib + ' does not exist'
+
         with open(join(jvmciDir, 'compiler-name'), 'w') as fp:
             print >> fp, 'graal'
+        vmName = 'Graal'
         for e in _jvmci_classpath:
             src = basename(e.get_path())
             mx.log('Copying {} to {}'.format(src, jvmciDir))
@@ -959,6 +979,7 @@ def makegraaljdk(args):
                 d = e.dist()
                 s = d.suite
                 print >> fp, '{}={}'.format(d.name, s.vc.parent(s.dir))
+                vmName = vmName + ':' + s.name + '_' + s.version()
             shutil.copyfile(e.get_path(), join(jvmciDir, src))
         for e in _bootclasspath_appends:
             src = basename(e.classpath_repr())
@@ -967,6 +988,25 @@ def makegraaljdk(args):
                 s = e.suite
                 print >> fp, '{}={}'.format(e.name, s.vc.parent(s.dir))
             shutil.copyfile(e.classpath_repr(), join(bootDir, src))
+
+        out = mx.LinesOutputCapture()
+        mx.run([jdk.java, '-version'], err=out)
+        line = None
+        pattern = re.compile(r'(.* )(?:Server|Graal) VM \(build.*')
+        for line in out.lines:
+            m = pattern.match(line)
+            if m:
+                with open(join(jvmlibDir, 'vm.properties'), 'w') as fp:
+                    # Modify VM name in `java -version` to be Graal along
+                    # with a suffix denoting the commit of each Graal jar.
+                    # For example:
+                    # Java HotSpot(TM) 64-Bit Graal:compiler_88847fb25d1a62977a178331a5e78fa5f8fcbb1a (build 25.71-b01-internal-jvmci-0.34, mixed mode)
+                    print >> fp, 'name=' + m.group(1) + vmName
+                line = True
+                break
+        if line is not True:
+            mx.abort('Could not find "{}" in output of `java -version`:\n{}'.format(pattern.pattern, os.linesep.join(out.lines)))
+
         exe = join(dstJdk, 'bin', mx.exe_suffix('java'))
         mx.run([exe, '-XX:+BootstrapJVMCI', '-version'])
         if args.archive:
