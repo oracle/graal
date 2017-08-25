@@ -92,7 +92,7 @@ public final class NativeLookup {
                 handles.add(lib);
             } catch (UnsatisfiedLinkError e) {
                 System.err.println(library + " not found!\n" + e.getMessage());
-                e.printStackTrace(System.err);
+                throw e;
             }
         }
         return handles;
