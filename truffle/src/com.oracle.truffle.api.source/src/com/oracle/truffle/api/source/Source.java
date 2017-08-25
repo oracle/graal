@@ -438,9 +438,9 @@ public abstract class Source {
      * they are loaded lazily.
      *
      * @since 0.8 or earlier
-     * @deprecated use {@link #getCodeSequence()
-     *             getCodeSequence()}.{@link CharSequence#subSequence(int, int)}
-     *             subSequence(charIndex, charIndex + charLength)
+     * @deprecated use {@link #getCodeSequence() getCodeSequence()}.
+     *             {@link CharSequence#subSequence(int, int)} subSequence(charIndex, charIndex +
+     *             charLength)
      */
     @Deprecated
     public String getCode(int charIndex, int charLength) {

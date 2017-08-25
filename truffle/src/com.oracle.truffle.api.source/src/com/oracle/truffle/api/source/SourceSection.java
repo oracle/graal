@@ -67,8 +67,8 @@ public final class SourceSection {
     /**
      * Returns whether the source section is in bounds of the {@link #getSource() source}
      * {@link Source#getCodeSequence() code}. Please note that calling this method causes the
-     * {@link Source#getCodeSequence() code} of the {@link #getSource() source} to be loaded if it was not
-     * yet loaded.
+     * {@link Source#getCodeSequence() code} of the {@link #getSource() source} to be loaded if it
+     * was not yet loaded.
      */
     boolean isValid() {
         return isAvailable() ? (charIndex + charLength <= getSource().getCodeSequence().length()) : false;
@@ -124,8 +124,8 @@ public final class SourceSection {
 
     /**
      * Gets a representation of the {@link #getStartLine() first line} of the section, suitable for
-     * a hash key. Please note that calling this method causes the {@link Source#getCodeSequence() code} of
-     * the {@link #getSource() source} to be loaded if it was not yet loaded.
+     * a hash key. Please note that calling this method causes the {@link Source#getCodeSequence()
+     * code} of the {@link #getSource() source} to be loaded if it was not yet loaded.
      *
      * @return first line of the section
      * @since 0.8 or earlier
@@ -181,9 +181,9 @@ public final class SourceSection {
     /**
      * Returns the 0-based index of the first character in this section. Returns <code>0</code> for
      * {@link #isAvailable() unavailable} source sections. Please note that calling this method does
-     * not cause the {@link Source#getCodeSequence() code} of the {@link #getSource() source} to be loaded.
-     * The returned index might be out of bounds of the source code if assertions (-ea) are not
-     * enabled.
+     * not cause the {@link Source#getCodeSequence() code} of the {@link #getSource() source} to be
+     * loaded. The returned index might be out of bounds of the source code if assertions (-ea) are
+     * not enabled.
      *
      * @return the starting character index
      * @since 0.8 or earlier
@@ -195,9 +195,9 @@ public final class SourceSection {
     /**
      * Returns the length of this section in characters. Returns <code>0</code> for
      * {@link #isAvailable() unavailable} source sections. Please note that calling this method does
-     * not cause the {@link Source#getCodeSequence() code} of the {@link #getSource() source} to be loaded.
-     * The returned length might be out of bounds of the source code if assertions (-ea) are not
-     * enabled.
+     * not cause the {@link Source#getCodeSequence() code} of the {@link #getSource() source} to be
+     * loaded. The returned length might be out of bounds of the source code if assertions (-ea) are
+     * not enabled.
      *
      * @return the number of characters in the section
      * @since 0.8 or earlier
@@ -212,9 +212,9 @@ public final class SourceSection {
     /**
      * Returns the index of the text position immediately following the last character in the
      * section. Returns <code>0</code> for {@link #isAvailable() unavailable} source sections.
-     * Please note that calling this method does not cause the {@link Source#getCodeSequence() code} of the
-     * {@link #getSource() source} to be loaded. The returned index might be out of bounds of the
-     * source code if assertions (-ea) are not enabled.
+     * Please note that calling this method does not cause the {@link Source#getCodeSequence() code}
+     * of the {@link #getSource() source} to be loaded. The returned index might be out of bounds of
+     * the source code if assertions (-ea) are not enabled.
      *
      * @return the end position of the section
      * @since 0.8 or earlier
