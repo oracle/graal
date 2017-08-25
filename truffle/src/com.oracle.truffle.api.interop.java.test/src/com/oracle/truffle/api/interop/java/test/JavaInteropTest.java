@@ -630,6 +630,14 @@ public class JavaInteropTest {
     }
 
     @Test
+    public void notUnboxable() {
+        Node unboxNode = Message.UNBOX.createNode();
+        assertThrowsExceptionWithCause(() -> ForeignAccess.sendUnbox(unboxNode, JavaInterop.asTruffleObject(null)), UnsupportedMessageException.class);
+        assertThrowsExceptionWithCause(() -> ForeignAccess.sendUnbox(unboxNode, JavaInterop.asTruffleObject(new Object())), UnsupportedMessageException.class);
+        assertThrowsExceptionWithCause(() -> ForeignAccess.sendUnbox(unboxNode, JavaInterop.asTruffleObject(Object.class)), UnsupportedMessageException.class);
+    }
+
+    @Test
     public void keyInfoDefaults() {
         TruffleObject noKeys = new NoKeysObject();
         int keyInfo = JavaInterop.getKeyInfo(noKeys, "p1");
