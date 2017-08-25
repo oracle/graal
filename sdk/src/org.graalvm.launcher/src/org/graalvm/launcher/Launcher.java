@@ -391,7 +391,7 @@ public abstract class Launcher {
     /**
      * Returns true if the current launcher was compiled ahead-of-time to native code.
      */
-    protected boolean isAOT() {
+    protected final boolean isAOT() {
         return IS_AOT;
     }
 
@@ -762,7 +762,7 @@ public abstract class Launcher {
         }
     }
 
-    protected enum OS {
+    enum OS {
         Darwin,
         Linux,
         Solaris;
