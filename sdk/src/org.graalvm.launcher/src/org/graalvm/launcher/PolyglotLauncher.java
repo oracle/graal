@@ -92,11 +92,6 @@ public final class PolyglotLauncher extends Launcher {
         printPolyglotVersions();
     }
 
-    @Override
-    protected String getMainClass() {
-        return PolyglotLauncher.class.getName();
-    }
-
     private void launch(String[] args) {
         List<String> arguments = new ArrayList<>(Arrays.asList(args));
         if (isAOT()) {

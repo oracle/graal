@@ -384,7 +384,9 @@ public abstract class Launcher {
      * return MyLauncher.class.getName();
      * </pre>
      */
-    protected abstract String getMainClass();
+    protected String getMainClass() {
+        return this.getClass().getName();
+    }
 
     /**
      * Returns true if the current launcher was compiled ahead-of-time to native code.
