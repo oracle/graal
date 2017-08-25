@@ -111,27 +111,6 @@ suite = {
 
   "projects" : {
 
-    # ------------- NFI -------------
-
-    "com.oracle.nfi" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "1.8",
-    },
-
-    "com.oracle.nfi.test" : {
-      "subDir" : "src",
-      "sourceDirs" : ["test"],
-      "dependencies" : [
-        "com.oracle.nfi",
-        "JVMCI_API",
-        "mx:JUNIT",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "1.8",
-    },
-
     # ------------- Graal -------------
 
     "org.graalvm.compiler.serviceprovider" : {
@@ -1206,13 +1185,11 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.truffle",
         "org.graalvm.compiler.hotspot",
-        "com.oracle.nfi",
       ],
       "uses" : [
         "org.graalvm.compiler.hotspot.HotSpotBackendFactory",
         "org.graalvm.compiler.nodes.graphbuilderconf.NodeIntrinsicPluginFactory",
         "org.graalvm.compiler.truffle.hotspot.OptimizedCallTargetInstrumentationFactory",
-        "org.graalvm.compiler.truffle.hotspot.nfi.RawNativeCallNodeFactory",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
@@ -1221,18 +1198,6 @@ suite = {
         "GRAAL_SERVICEPROVIDER_PROCESSOR"
       ],
       "workingSets" : "Graal,Truffle",
-    },
-
-    "org.graalvm.compiler.truffle.hotspot.test" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.truffle.hotspot",
-        "org.graalvm.compiler.truffle.test",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "1.8",
-      "workingSets" : "Graal,Truffle,Test",
     },
 
     "org.graalvm.compiler.truffle.hotspot.amd64" : {
@@ -1268,7 +1233,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.truffle.hotspot",
-        "org.graalvm.compiler.hotspot.aarch64",
+        "org.graalvm.compiler.asm.aarch64",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
@@ -1424,9 +1389,7 @@ suite = {
         "org.graalvm.compiler.nodes.test",
         "org.graalvm.compiler.phases.common.test",
         "org.graalvm.compiler.truffle.test",
-        "org.graalvm.compiler.truffle.hotspot.test",
         "org.graalvm.util.test",
-        "com.oracle.nfi.test",
         "org.graalvm.compiler.loop.test",
       ],
       "distDependencies" : [
