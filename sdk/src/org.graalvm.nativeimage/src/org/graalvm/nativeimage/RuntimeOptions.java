@@ -24,10 +24,8 @@
  */
 package org.graalvm.nativeimage;
 
-import java.util.Map;
-
 import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
-import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
 
 /**
  * Used for manipulating options at run time.
@@ -56,7 +54,7 @@ public final class RuntimeOptions {
         return ImageSingletons.lookup(RuntimeOptionsSupport.class).get(optionName);
     }
 
-    public static Map<String, OptionDescriptor> getOptions() {
+    public static OptionDescriptors getOptions() {
         return ImageSingletons.lookup(RuntimeOptionsSupport.class).getOptions();
     }
 }

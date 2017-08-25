@@ -43,6 +43,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -943,12 +945,13 @@ public abstract class Launcher {
 
         private void printNativeHelp() {
             System.out.println("Native VM options:");
-            Map<String, OptionDescriptor> options = RuntimeOptions.getOptions();
-            List<String> optionNames = new ArrayList<>(options.keySet());
-            Collections.sort(optionNames);
-            for (String optionName : optionNames) {
-                OptionDescriptor descriptor = options.get(optionName);
-                printOption("--native." + optionName, descriptor.getHelp());
+            OptionDescriptors options = RuntimeOptions.getOptions();
+            SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
+            for (OptionDescriptor descriptor : options) {
+                sortedOptions.put(descriptor.getName(), descriptor);
+            }
+            for (Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
+                printOption("--native." + entry.getKey(), entry.getValue().getHelp());
             }
         }
 

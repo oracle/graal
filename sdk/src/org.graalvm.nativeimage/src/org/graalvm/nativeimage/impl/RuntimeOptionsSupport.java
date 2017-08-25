@@ -24,14 +24,12 @@
  */
 package org.graalvm.nativeimage.impl;
 
-import java.util.Map;
-
-import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
 
 public interface RuntimeOptionsSupport {
     void set(String optionName, Object value);
 
     <T> T get(String optionName);
 
-    Map<String, OptionDescriptor> getOptions();
+    OptionDescriptors getOptions();
 }
