@@ -630,6 +630,14 @@ public class JavaInteropTest {
     }
 
     @Test
+    public void notUnboxable() {
+        Node unboxNode = Message.UNBOX.createNode();
+        assertThrowsExceptionWithCause(() -> ForeignAccess.sendUnbox(unboxNode, JavaInterop.asTruffleObject(null)), UnsupportedMessageException.class);
+        assertThrowsExceptionWithCause(() -> ForeignAccess.sendUnbox(unboxNode, JavaInterop.asTruffleObject(new Object())), UnsupportedMessageException.class);
+        assertThrowsExceptionWithCause(() -> ForeignAccess.sendUnbox(unboxNode, JavaInterop.asTruffleObject(Object.class)), UnsupportedMessageException.class);
+    }
+
+    @Test
     public void keyInfoDefaults() {
         TruffleObject noKeys = new NoKeysObject();
         int keyInfo = JavaInterop.getKeyInfo(noKeys, "p1");
@@ -805,6 +813,15 @@ public class JavaInteropTest {
         Object hashMap = ForeignAccess.sendNew(Message.createNew(0).createNode(), hashMapClass);
         assertThat(hashMap, CoreMatchers.instanceOf(TruffleObject.class));
         assertTrue(JavaInterop.isJavaObject(HashMap.class, (TruffleObject) hashMap));
+    }
+
+    @Test
+    public void testNewArray() throws InteropException {
+        TruffleObject longArrayClass = JavaInterop.asTruffleObject(long[].class);
+        Object longArray = ForeignAccess.sendNew(Message.createNew(1).createNode(), longArrayClass, 4);
+        assertThat(longArray, CoreMatchers.instanceOf(TruffleObject.class));
+        assertTrue(JavaInterop.isJavaObject(long[].class, (TruffleObject) longArray));
+        assertEquals(4, message(Message.GET_SIZE, (TruffleObject) longArray));
     }
 
     public static final class TestJavaObject {
