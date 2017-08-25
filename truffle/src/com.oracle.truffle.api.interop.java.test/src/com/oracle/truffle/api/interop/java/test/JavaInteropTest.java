@@ -807,6 +807,15 @@ public class JavaInteropTest {
         assertTrue(JavaInterop.isJavaObject(HashMap.class, (TruffleObject) hashMap));
     }
 
+    @Test
+    public void testNewArray() throws InteropException {
+        TruffleObject longArrayClass = JavaInterop.asTruffleObject(long[].class);
+        Object longArray = ForeignAccess.sendNew(Message.createNew(1).createNode(), longArrayClass, 4);
+        assertThat(longArray, CoreMatchers.instanceOf(TruffleObject.class));
+        assertTrue(JavaInterop.isJavaObject(long[].class, (TruffleObject) longArray));
+        assertEquals(4, message(Message.GET_SIZE, (TruffleObject) longArray));
+    }
+
     public static final class TestJavaObject {
         public int aField = 10;
     }
