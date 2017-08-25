@@ -133,7 +133,7 @@ GraalVM removes the isolation between programming languages and enables interope
       ],
       "maven" : False,
     },
-    "LAUNCHER" : {
+    "LAUNCHER_COMMON" : {
       "subDir" : "src",
       "moduleName" : "org.graalvm.launcher",
       "dependencies" : [
