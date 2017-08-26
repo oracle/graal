@@ -38,7 +38,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 import org.graalvm.compiler.core.common.Fields;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
@@ -596,15 +595,6 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         this.sourcePosition = sourcePosition;
         if (sourcePosition != null && graph != null && !graph.seenNodeSourcePosition) {
             graph.seenNodeSourcePosition = true;
-        }
-    }
-
-    /**
-     * Update the source position only if it is null.
-     */
-    public void updateNodeSourcePosition(Supplier<NodeSourcePosition> sourcePositionSupp) {
-        if (this.sourcePosition == null) {
-            setNodeSourcePosition(sourcePositionSupp.get());
         }
     }
 
