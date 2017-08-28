@@ -121,12 +121,12 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMReallocNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexDiv;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexMul;
+import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMLangStartNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMPanicNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMProcessExitNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunConstructorFunctionsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunDestructorFunctionsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunGlobalVariableInitalizationNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMLangStartNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMProcessExitNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMPanicNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;

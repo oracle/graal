@@ -80,7 +80,14 @@ public abstract class LLVMDispatchNode extends LLVMNode {
      * Function is defined in the user program (available as LLVM IR)
      */
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function.getFunctionId() == cachedFunction.getFunctionId()", "cachedFunction.isLLVMIRFunction()"})
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function == cachedFunction", "cachedFunction.isLLVMIRFunction()"})
+    protected static Object doDirectReferenceCache(LLVMFunctionDescriptor function, Object[] arguments,
+                    @Cached("function") LLVMFunctionDescriptor cachedFunction,
+                    @Cached("create(cachedFunction.getLLVMIRFunction())") DirectCallNode callNode) {
+        return callNode.call(arguments);
+    }
+
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function.getFunctionId() == cachedFunction.getFunctionId()", "cachedFunction.isLLVMIRFunction()"}, replaces = "doDirectReferenceCache")
     protected static Object doDirect(LLVMFunctionDescriptor function, Object[] arguments,
                     @Cached("function") LLVMFunctionDescriptor cachedFunction,
                     @Cached("create(cachedFunction.getLLVMIRFunction())") DirectCallNode callNode) {
