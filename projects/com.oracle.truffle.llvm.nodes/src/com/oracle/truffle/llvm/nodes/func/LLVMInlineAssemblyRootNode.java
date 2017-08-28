@@ -48,7 +48,7 @@ public class LLVMInlineAssemblyRootNode extends RootNode {
 
     private final LLVMExpressionNode result;
 
-    public LLVMInlineAssemblyRootNode(SourceSection sourceSection, LLVMLanguage language, FrameDescriptor frameDescriptor,
+    public LLVMInlineAssemblyRootNode(LLVMLanguage language, SourceSection sourceSection, FrameDescriptor frameDescriptor,
                     LLVMExpressionNode[] statements, List<LLVMExpressionNode> writeNodes, LLVMExpressionNode result) {
         super(language, frameDescriptor);
         this.sourceSection = sourceSection;

@@ -27,16 +27,15 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <complex.h>
+package com.oracle.truffle.llvm.nodes.asm.syscall;
 
-__attribute__((weak)) complex double conj(complex double z) {
-  double a = creal(z);
-  double b = cimag(z);
-  return a + -b * I;
-}
+import java.nio.file.Paths;
 
-__attribute__((weak)) complex float conjf(complex float z) {
-  float a = crealf(z);
-  float b = cimagf(z);
-  return a + -b * I;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
+public class LLVMPath {
+    @TruffleBoundary
+    public static String getcwd() {
+        return Paths.get(".").toAbsolutePath().normalize().toString();
+    }
 }

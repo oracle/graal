@@ -27,16 +27,21 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <complex.h>
+#include <stdint.h>
+#include <stdarg.h>
+#include <errno.h>
+#include "syscall.h"
 
-__attribute__((weak)) complex double conj(complex double z) {
-  double a = creal(z);
-  double b = cimag(z);
-  return a + -b * I;
-}
-
-__attribute__((weak)) complex float conjf(complex float z) {
-  float a = crealf(z);
-  float b = cimagf(z);
-  return a + -b * I;
+__attribute__((weak)) int64_t syscall(int64_t n, ...) {
+  va_list ap;
+  int64_t a, b, c, d, e, f;
+  va_start(ap, n);
+  a = va_arg(ap, int64_t);
+  b = va_arg(ap, int64_t);
+  c = va_arg(ap, int64_t);
+  d = va_arg(ap, int64_t);
+  e = va_arg(ap, int64_t);
+  f = va_arg(ap, int64_t);
+  va_end(ap);
+  __SYSCALL_6P(n, a, b, c, d, e, f);
 }

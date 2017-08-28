@@ -27,16 +27,24 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <complex.h>
+package com.oracle.truffle.llvm.nodes.asm.syscall;
 
-__attribute__((weak)) complex double conj(complex double z) {
-  double a = creal(z);
-  double b = cimag(z);
-  return a + -b * I;
-}
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
-__attribute__((weak)) complex float conjf(complex float z) {
-  float a = crealf(z);
-  float b = cimagf(z);
-  return a + -b * I;
+public abstract class LLVMAMD64SyscallRtSigprocmaskNode extends LLVMAMD64SyscallOperationNode {
+    public LLVMAMD64SyscallRtSigprocmaskNode() {
+        super("rt_sigprocmask");
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization
+    protected long executeI64(long how, LLVMAddress set, LLVMAddress oldset, long sigsetsize) {
+        return -LLVMAMD64Error.ENOSYS;
+    }
+
+    @Specialization
+    protected long executeI64(long how, long set, long oldset, long sigsetsize) {
+        return executeI64(how, LLVMAddress.fromLong(set), LLVMAddress.fromLong(oldset), sigsetsize);
+    }
 }

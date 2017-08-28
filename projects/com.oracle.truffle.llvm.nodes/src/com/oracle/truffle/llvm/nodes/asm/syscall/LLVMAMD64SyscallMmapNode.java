@@ -27,16 +27,32 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <complex.h>
+package com.oracle.truffle.llvm.nodes.asm.syscall;
 
-__attribute__((weak)) complex double conj(complex double z) {
-  double a = creal(z);
-  double b = cimag(z);
-  return a + -b * I;
-}
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
-__attribute__((weak)) complex float conjf(complex float z) {
-  float a = crealf(z);
-  float b = cimagf(z);
-  return a + -b * I;
+public abstract class LLVMAMD64SyscallMmapNode extends LLVMAMD64SyscallOperationNode {
+    public LLVMAMD64SyscallMmapNode() {
+        super("mmap");
+    }
+
+    private final ConditionProfile mapAnonymousProfile = ConditionProfile.createCountingProfile();
+
+    @SuppressWarnings("unused")
+    @Specialization
+    protected long execute(LLVMAddress addr, long len, long prot, long flags, long fildes, long off) {
+        if (mapAnonymousProfile.profile((flags & LLVMAMD64Memory.MAP_ANONYMOUS) != 0)) {
+            LLVMAddress ptr = LLVMMemory.allocateMemory(len);
+            return ptr.getVal();
+        }
+        return -LLVMAMD64Error.ENOMEM;
+    }
+
+    @Specialization
+    protected long execute(long addr, long len, long prot, long flags, long fildes, long off) {
+        return execute(LLVMAddress.fromLong(addr), len, prot, flags, fildes, off);
+    }
 }

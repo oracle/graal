@@ -27,16 +27,70 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <complex.h>
+package com.oracle.truffle.llvm.nodes.asm.syscall;
 
-__attribute__((weak)) complex double conj(complex double z) {
-  double a = creal(z);
-  double b = cimag(z);
-  return a + -b * I;
-}
+import com.oracle.truffle.api.CompilerAsserts;
 
-__attribute__((weak)) complex float conjf(complex float z) {
-  float a = crealf(z);
-  float b = cimagf(z);
-  return a + -b * I;
+public class LLVMProcessStat {
+    private final String stat;
+
+    private final long pid;
+    private final String comm;
+    private final char state;
+    private final long ppid;
+    private final long pgrp;
+    private final long session;
+    private final long ttyNr;
+    private final long tpgid;
+
+    public LLVMProcessStat(String stat) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.stat = stat;
+        String[] fields = stat.split(" ");
+        pid = Long.parseLong(fields[0]);
+        comm = fields[1];
+        state = fields[2].charAt(0);
+        ppid = Long.parseLong(fields[3]);
+        pgrp = Long.parseLong(fields[4]);
+        session = Long.parseLong(fields[5]);
+        ttyNr = Long.parseLong(fields[6]);
+        tpgid = Long.parseLong(fields[7]);
+    }
+
+    public long getPid() {
+        return pid;
+    }
+
+    public String getComm() {
+        return comm;
+    }
+
+    public char getState() {
+        return state;
+    }
+
+    public long getPpid() {
+        return ppid;
+    }
+
+    public long getPgrp() {
+        return pgrp;
+    }
+
+    public long getSession() {
+        return session;
+    }
+
+    public long getTTYNr() {
+        return ttyNr;
+    }
+
+    public long getTpgid() {
+        return tpgid;
+    }
+
+    @Override
+    public String toString() {
+        return stat;
+    }
 }
