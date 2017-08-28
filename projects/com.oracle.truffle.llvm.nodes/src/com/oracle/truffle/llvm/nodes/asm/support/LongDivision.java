@@ -31,6 +31,8 @@ package com.oracle.truffle.llvm.nodes.asm.support;
 
 import java.math.BigInteger;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 public class LongDivision {
     public static class Result {
         private static final long INVALID = 0x8000000000000000L;
@@ -72,6 +74,7 @@ public class LongDivision {
         }
     }
 
+    @TruffleBoundary
     public static Result divu128by64(long a1, long a0, long b) {
         if (a1 == 0 && a0 > 0 && b > 0) {
             return new Result(a0 / b, a0 % b);
@@ -90,6 +93,7 @@ public class LongDivision {
         }
     }
 
+    @TruffleBoundary
     public static Result divs128by64(long a1, long a0, long b) {
         if (a1 == 0 && a0 > 0) {
             return new Result(a0 / b, a0 % b);

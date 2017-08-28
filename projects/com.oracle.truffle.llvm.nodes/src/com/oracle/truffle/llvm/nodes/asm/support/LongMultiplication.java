@@ -31,6 +31,8 @@ package com.oracle.truffle.llvm.nodes.asm.support;
 
 import java.math.BigInteger;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 /*
  * This functionality is in the standard class library since Java 9:
  * https://bugs.openjdk.java.net/browse/JDK-5100935
@@ -41,6 +43,7 @@ public class LongMultiplication {
         return hi.longValue();
     }
 
+    @TruffleBoundary
     public static long multiplyHigh(long u, long v) {
         BigInteger x = BigInteger.valueOf(u);
         BigInteger y = BigInteger.valueOf(v);
