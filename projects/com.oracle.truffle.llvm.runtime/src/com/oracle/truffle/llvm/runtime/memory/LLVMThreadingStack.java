@@ -86,21 +86,20 @@ public final class LLVMThreadingStack {
         }
     }
 
-    public void checkThread() {
-        if (singleThreading.isValid()) {
-            Thread currentThread = Thread.currentThread();
-            if (currentThread != defaultThread) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                synchronized (this) {
-                    // recheck under lock as a race condition can still happen
-                    if (singleThreading.isValid()) {
-                        singleThreading.invalidate();
+    public Thread getDefaultThread() {
+        return defaultThread;
+    }
 
-                        Thread stackGC = new Thread(new StackGCThread(), "sulongStackGC");
-                        stackGC.setDaemon(true);
-                        stackGC.start();
-                    }
-                }
+    public void initializeThread() {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        synchronized (this) {
+            // recheck under lock as a race condition can still happen
+            if (singleThreading.isValid()) {
+                singleThreading.invalidate();
+
+                Thread stackGC = new Thread(new StackGCThread(), "sulongStackGC");
+                stackGC.setDaemon(true);
+                stackGC.start();
             }
         }
     }
