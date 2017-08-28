@@ -27,6 +27,7 @@ package com.oracle.truffle.api.interop.java.test;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 
 import org.junit.BeforeClass;
@@ -64,10 +65,13 @@ public class JavaInteropDocumentationTest {
 
         Method m = INTEROP_SNIPPETS.getDeclaredMethod("isNullValue", TruffleObject.class);
         m.setAccessible(true);
+        Constructor<?> constructor = INTEROP_SNIPPETS.getDeclaredConstructor();
+        constructor.setAccessible(true);
 
-        assertTrue("Yes, it is null", (boolean) m.invoke(null, JavaInterop.asTruffleObject(null)));
+        Object interopSnippets = constructor.newInstance();
+        assertTrue("Yes, it is null", (boolean) m.invoke(interopSnippets, JavaInterop.asTruffleObject(null)));
 
         TruffleObject nonNullValue = JavaInterop.asTruffleObject(this);
-        assertFalse("No, it is not null", (boolean) m.invoke(null, nonNullValue));
+        assertFalse("No, it is not null", (boolean) m.invoke(interopSnippets, nonNullValue));
     }
 }

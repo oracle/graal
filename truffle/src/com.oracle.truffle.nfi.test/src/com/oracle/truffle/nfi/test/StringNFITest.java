@@ -24,6 +24,13 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
+
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -31,17 +38,11 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.test.interop.BoxedPrimitive;
 import com.oracle.truffle.nfi.test.interop.TestCallback;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.is;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
 
 @RunWith(TruffleRunner.class)
 public class StringNFITest extends NFITest {
@@ -107,8 +108,8 @@ public class StringNFITest extends NFITest {
         Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
         TruffleObject obj = (TruffleObject) ret;
 
-        Assert.assertTrue("isBoxed", JavaInterop.isBoxed(obj));
-        Assert.assertEquals("return value", "Hello, World!", JavaInterop.unbox(obj));
+        Assert.assertTrue("isBoxed", isBoxed(obj));
+        Assert.assertEquals("return value", "Hello, World!", unbox(obj));
     }
 
     public static class StringRetDynamicNode extends NFITestRootNode {
@@ -140,8 +141,8 @@ public class StringNFITest extends NFITest {
             Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
             TruffleObject obj = (TruffleObject) ret;
 
-            Assert.assertTrue("isBoxed", JavaInterop.isBoxed(obj));
-            Assert.assertEquals("return value", "42", JavaInterop.unbox(obj));
+            Assert.assertTrue("isBoxed", isBoxed(obj));
+            Assert.assertEquals("return value", "42", unbox(obj));
         }
 
     }
@@ -213,7 +214,7 @@ public class StringNFITest extends NFITest {
         Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
         TruffleObject obj = (TruffleObject) ret;
 
-        Assert.assertTrue("isBoxed", JavaInterop.isBoxed(obj));
-        Assert.assertEquals("return value", "same", JavaInterop.unbox(obj));
+        Assert.assertTrue("isBoxed", isBoxed(obj));
+        Assert.assertEquals("return value", "same", unbox(obj));
     }
 }

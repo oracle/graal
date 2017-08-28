@@ -493,18 +493,18 @@ public class JavaInteropTest {
 
     @Test
     public void isNull() {
-        assertTrue(JavaInterop.isNull(null));
-        assertFalse(JavaInterop.isNull(JavaInterop.asTruffleObject(new Object())));
-        assertTrue(JavaInterop.isNull(JavaInterop.asTruffleObject(null)));
+        assertTrue(isNull(null));
+        assertFalse(isNull(JavaInterop.asTruffleObject(new Object())));
+        assertTrue(isNull(JavaInterop.asTruffleObject(null)));
     }
 
     @Test
     public void isArray() {
-        assertFalse(JavaInterop.isArray(null));
-        assertFalse(JavaInterop.isNull(JavaInterop.asTruffleObject(new Object())));
+        assertFalse(isArray(null));
+        assertFalse(isNull(JavaInterop.asTruffleObject(new Object())));
         int[] a = new int[]{1, 2, 3};
         TruffleObject truffleArray = JavaInterop.asTruffleObject(a);
-        assertTrue(JavaInterop.isArray(truffleArray));
+        assertTrue(isArray(truffleArray));
     }
 
     @Test
@@ -599,34 +599,34 @@ public class JavaInteropTest {
 
     @Test
     public void isBoxed() {
-        assertFalse(JavaInterop.isBoxed(null));
-        assertFalse(JavaInterop.isBoxed(JavaInterop.asTruffleObject(new Object())));
-        assertTrue(JavaInterop.isBoxed(JavaInterop.asTruffleObject(42)));
-        assertTrue(JavaInterop.isBoxed(JavaInterop.asTruffleObject((byte) 0x42)));
-        assertTrue(JavaInterop.isBoxed(JavaInterop.asTruffleObject((short) 42)));
-        assertTrue(JavaInterop.isBoxed(JavaInterop.asTruffleObject(4242424242424242L)));
-        assertTrue(JavaInterop.isBoxed(JavaInterop.asTruffleObject(42.42f)));
-        assertTrue(JavaInterop.isBoxed(JavaInterop.asTruffleObject(42.42)));
-        assertTrue(JavaInterop.isBoxed(JavaInterop.asTruffleObject("42")));
-        assertTrue(JavaInterop.isBoxed(JavaInterop.asTruffleObject('4')));
-        assertTrue(JavaInterop.isBoxed(JavaInterop.asTruffleObject(true)));
-        assertTrue(JavaInterop.isBoxed(JavaInterop.asTruffleObject(false)));
+        assertFalse(isBoxed(null));
+        assertFalse(isBoxed(JavaInterop.asTruffleObject(new Object())));
+        assertTrue(isBoxed(JavaInterop.asTruffleObject(42)));
+        assertTrue(isBoxed(JavaInterop.asTruffleObject((byte) 0x42)));
+        assertTrue(isBoxed(JavaInterop.asTruffleObject((short) 42)));
+        assertTrue(isBoxed(JavaInterop.asTruffleObject(4242424242424242L)));
+        assertTrue(isBoxed(JavaInterop.asTruffleObject(42.42f)));
+        assertTrue(isBoxed(JavaInterop.asTruffleObject(42.42)));
+        assertTrue(isBoxed(JavaInterop.asTruffleObject("42")));
+        assertTrue(isBoxed(JavaInterop.asTruffleObject('4')));
+        assertTrue(isBoxed(JavaInterop.asTruffleObject(true)));
+        assertTrue(isBoxed(JavaInterop.asTruffleObject(false)));
     }
 
     @Test
     public void unbox() {
-        assertNull(JavaInterop.unbox(null));
-        assertNull(JavaInterop.unbox(JavaInterop.asTruffleObject(new Object())));
-        assertEquals(42, JavaInterop.unbox(JavaInterop.asTruffleObject(42)));
-        assertEquals((byte) 42, JavaInterop.unbox(JavaInterop.asTruffleObject((byte) 42)));
-        assertEquals((short) 42, JavaInterop.unbox(JavaInterop.asTruffleObject((short) 42)));
-        assertEquals(4242424242424242L, JavaInterop.unbox(JavaInterop.asTruffleObject(4242424242424242L)));
-        assertEquals(42.42f, JavaInterop.unbox(JavaInterop.asTruffleObject(42.42f)));
-        assertEquals(42.42, JavaInterop.unbox(JavaInterop.asTruffleObject(42.42)));
-        assertEquals("42", JavaInterop.unbox(JavaInterop.asTruffleObject("42")));
-        assertEquals('4', JavaInterop.unbox(JavaInterop.asTruffleObject('4')));
-        assertEquals(true, JavaInterop.unbox(JavaInterop.asTruffleObject(true)));
-        assertEquals(false, JavaInterop.unbox(JavaInterop.asTruffleObject(false)));
+        assertNull(unbox(null));
+        assertNull(unbox(JavaInterop.asTruffleObject(new Object())));
+        assertEquals(42, unbox(JavaInterop.asTruffleObject(42)));
+        assertEquals((byte) 42, unbox(JavaInterop.asTruffleObject((byte) 42)));
+        assertEquals((short) 42, unbox(JavaInterop.asTruffleObject((short) 42)));
+        assertEquals(4242424242424242L, unbox(JavaInterop.asTruffleObject(4242424242424242L)));
+        assertEquals(42.42f, unbox(JavaInterop.asTruffleObject(42.42f)));
+        assertEquals(42.42, unbox(JavaInterop.asTruffleObject(42.42)));
+        assertEquals("42", unbox(JavaInterop.asTruffleObject("42")));
+        assertEquals('4', unbox(JavaInterop.asTruffleObject('4')));
+        assertEquals(true, unbox(JavaInterop.asTruffleObject(true)));
+        assertEquals(false, unbox(JavaInterop.asTruffleObject(false)));
     }
 
     @Test
@@ -640,60 +640,60 @@ public class JavaInteropTest {
     @Test
     public void keyInfoDefaults() {
         TruffleObject noKeys = new NoKeysObject();
-        int keyInfo = JavaInterop.getKeyInfo(noKeys, "p1");
+        int keyInfo = getKeyInfo(noKeys, "p1");
         assertEquals(0, keyInfo);
 
         TruffleObject nkio = new NoKeyInfoObject();
-        keyInfo = JavaInterop.getKeyInfo(nkio, "p1");
+        keyInfo = getKeyInfo(nkio, "p1");
         assertEquals(0b111, keyInfo);
-        keyInfo = JavaInterop.getKeyInfo(nkio, "p6");
+        keyInfo = getKeyInfo(nkio, "p6");
         assertEquals(0b111, keyInfo);
-        keyInfo = JavaInterop.getKeyInfo(nkio, "p7");
+        keyInfo = getKeyInfo(nkio, "p7");
         assertEquals(0, keyInfo);
     }
 
     @Test
     public void keyInfo() {
         TruffleObject ipobj = new InternalPropertiesObject(-1, -1, 0, 0);
-        int keyInfo = JavaInterop.getKeyInfo(ipobj, "p1");
+        int keyInfo = getKeyInfo(ipobj, "p1");
         assertTrue(KeyInfo.isReadable(keyInfo));
         assertTrue(KeyInfo.isWritable(keyInfo));
         assertFalse(KeyInfo.isInvocable(keyInfo));
         assertFalse(KeyInfo.isInternal(keyInfo));
-        keyInfo = JavaInterop.getKeyInfo(ipobj, "p6");
+        keyInfo = getKeyInfo(ipobj, "p6");
         assertTrue(KeyInfo.isReadable(keyInfo));
         assertTrue(KeyInfo.isWritable(keyInfo));
         assertFalse(KeyInfo.isInvocable(keyInfo));
         assertFalse(KeyInfo.isInternal(keyInfo));
-        keyInfo = JavaInterop.getKeyInfo(ipobj, "p7");
+        keyInfo = getKeyInfo(ipobj, "p7");
         assertEquals(0, keyInfo);
 
         ipobj = new InternalPropertiesObject(0b0100010, 0b0100100, 0b0011000, 0);
-        keyInfo = JavaInterop.getKeyInfo(ipobj, "p1");
+        keyInfo = getKeyInfo(ipobj, "p1");
         assertTrue(KeyInfo.isReadable(keyInfo));
         assertFalse(KeyInfo.isWritable(keyInfo));
         assertFalse(KeyInfo.isInvocable(keyInfo));
-        keyInfo = JavaInterop.getKeyInfo(ipobj, "p2");
+        keyInfo = getKeyInfo(ipobj, "p2");
         assertFalse(KeyInfo.isReadable(keyInfo));
         assertTrue(KeyInfo.isWritable(keyInfo));
         assertFalse(KeyInfo.isInvocable(keyInfo));
-        keyInfo = JavaInterop.getKeyInfo(ipobj, "p3");
+        keyInfo = getKeyInfo(ipobj, "p3");
         assertFalse(KeyInfo.isReadable(keyInfo));
         assertFalse(KeyInfo.isWritable(keyInfo));
         assertTrue(KeyInfo.isInvocable(keyInfo));
-        keyInfo = JavaInterop.getKeyInfo(ipobj, "p4");
+        keyInfo = getKeyInfo(ipobj, "p4");
         assertFalse(KeyInfo.isReadable(keyInfo));
         assertFalse(KeyInfo.isWritable(keyInfo));
         assertTrue(KeyInfo.isInvocable(keyInfo));
-        keyInfo = JavaInterop.getKeyInfo(ipobj, "p5");
+        keyInfo = getKeyInfo(ipobj, "p5");
         assertTrue(KeyInfo.isReadable(keyInfo));
         assertTrue(KeyInfo.isWritable(keyInfo));
         assertFalse(KeyInfo.isInvocable(keyInfo));
-        keyInfo = JavaInterop.getKeyInfo(ipobj, "p6");
+        keyInfo = getKeyInfo(ipobj, "p6");
         assertFalse(KeyInfo.isReadable(keyInfo));
         assertFalse(KeyInfo.isWritable(keyInfo));
         assertFalse(KeyInfo.isInvocable(keyInfo));
-        keyInfo = JavaInterop.getKeyInfo(ipobj, "p7");
+        keyInfo = getKeyInfo(ipobj, "p7");
         assertEquals(0, keyInfo);
 
         TruffleObject aobj = new ArrayTruffleObject(100);
@@ -705,23 +705,23 @@ public class JavaInteropTest {
     private static void testArrayObject(TruffleObject array, int length) {
         int keyInfo;
         for (int i = 0; i < length; i++) {
-            keyInfo = JavaInterop.getKeyInfo(array, i);
+            keyInfo = getKeyInfo(array, i);
             assertTrue(KeyInfo.isReadable(keyInfo));
             assertTrue(KeyInfo.isWritable(keyInfo));
             assertFalse(KeyInfo.isInvocable(keyInfo));
             assertFalse(KeyInfo.isInternal(keyInfo));
-            keyInfo = JavaInterop.getKeyInfo(array, (long) i);
+            keyInfo = getKeyInfo(array, (long) i);
             assertTrue(KeyInfo.isReadable(keyInfo));
-            keyInfo = JavaInterop.getKeyInfo(array, (double) i);
+            keyInfo = getKeyInfo(array, (double) i);
             assertTrue(KeyInfo.isReadable(keyInfo));
         }
-        assertEquals(0, JavaInterop.getKeyInfo(array, length));
-        assertEquals(0, JavaInterop.getKeyInfo(array, 1.12));
-        assertEquals(0, JavaInterop.getKeyInfo(array, -1));
-        assertEquals(0, JavaInterop.getKeyInfo(array, 10L * length));
-        assertEquals(0, JavaInterop.getKeyInfo(array, Double.NEGATIVE_INFINITY));
-        assertEquals(0, JavaInterop.getKeyInfo(array, Double.NaN));
-        assertEquals(0, JavaInterop.getKeyInfo(array, Double.POSITIVE_INFINITY));
+        assertEquals(0, getKeyInfo(array, length));
+        assertEquals(0, getKeyInfo(array, 1.12));
+        assertEquals(0, getKeyInfo(array, -1));
+        assertEquals(0, getKeyInfo(array, 10L * length));
+        assertEquals(0, getKeyInfo(array, Double.NEGATIVE_INFINITY));
+        assertEquals(0, getKeyInfo(array, Double.NaN));
+        assertEquals(0, getKeyInfo(array, Double.POSITIVE_INFINITY));
     }
 
     @Test
@@ -731,54 +731,54 @@ public class JavaInteropTest {
         InternalPropertiesObject ipobj = new InternalPropertiesObject(0);
         Map map = JavaInterop.asJavaObject(Map.class, ipobj);
         checkInternalKeys(map, "[p1, p2, p3, p4, p5, p6]");
-        assertFalse(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p1")));
-        assertFalse(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p6")));
+        assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p1")));
+        assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p6")));
         // All internal
         ipobj = new InternalPropertiesObject(-1);
         map = JavaInterop.asJavaObject(Map.class, ipobj);
         checkInternalKeys(map, "[]");
-        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p1")));
-        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p6")));
+        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p1")));
+        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p6")));
         // Combinations:
         ipobj = new InternalPropertiesObject(0b1101000);
         map = JavaInterop.asJavaObject(Map.class, ipobj);
         checkInternalKeys(map, "[p1, p2, p4]");
-        assertFalse(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p1")));
-        assertFalse(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p2")));
-        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p3")));
-        assertFalse(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p4")));
-        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p5")));
-        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p6")));
+        assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p1")));
+        assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p2")));
+        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p3")));
+        assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p4")));
+        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p5")));
+        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p6")));
         ipobj = new InternalPropertiesObject(0b1001110);
         map = JavaInterop.asJavaObject(Map.class, ipobj);
         checkInternalKeys(map, "[p4, p5]");
-        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p1")));
-        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p3")));
-        assertFalse(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p4")));
-        assertFalse(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p5")));
-        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p6")));
+        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p1")));
+        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p3")));
+        assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p4")));
+        assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p5")));
+        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p6")));
         ipobj = new InternalPropertiesObject(0b0101010);
         map = JavaInterop.asJavaObject(Map.class, ipobj);
         checkInternalKeys(map, "[p2, p4, p6]");
-        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p1")));
-        assertFalse(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p2")));
-        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p3")));
-        assertFalse(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p4")));
-        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p5")));
-        assertFalse(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p6")));
+        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p1")));
+        assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p2")));
+        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p3")));
+        assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p4")));
+        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p5")));
+        assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p6")));
     }
 
     @Test
     public void keyInfoJavaObject() {
         TruffleObject d = JavaInterop.asTruffleObject(new TestJavaObject());
-        int keyInfo = JavaInterop.getKeyInfo(d, "nnoonnee");
+        int keyInfo = getKeyInfo(d, "nnoonnee");
         assertFalse(KeyInfo.isExisting(keyInfo));
-        keyInfo = JavaInterop.getKeyInfo(d, "aField");
+        keyInfo = getKeyInfo(d, "aField");
         assertTrue(KeyInfo.isExisting(keyInfo));
         assertTrue(KeyInfo.isReadable(keyInfo));
         assertTrue(KeyInfo.isWritable(keyInfo));
         assertFalse(KeyInfo.isInvocable(keyInfo));
-        keyInfo = JavaInterop.getKeyInfo(d, "toString");
+        keyInfo = getKeyInfo(d, "toString");
         assertTrue(KeyInfo.isExisting(keyInfo));
         assertTrue(KeyInfo.isReadable(keyInfo));
         assertTrue(KeyInfo.isWritable(keyInfo));
@@ -864,6 +864,42 @@ public class JavaInteropTest {
         Node n = m.createNode();
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(n, receiver));
         return callTarget.call(arr);
+    }
+
+    static int getKeyInfo(TruffleObject foreignObject, Object propertyName) {
+        return ForeignAccess.sendKeyInfo(Message.KEY_INFO.createNode(), foreignObject, propertyName);
+    }
+
+    static boolean isArray(TruffleObject foreignObject) {
+        if (foreignObject == null) {
+            return false;
+        }
+        return ForeignAccess.sendHasSize(Message.HAS_SIZE.createNode(), foreignObject);
+    }
+
+    static boolean isNull(TruffleObject foreignObject) {
+        if (foreignObject == null) {
+            return true;
+        }
+        return ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), foreignObject);
+    }
+
+    static boolean isBoxed(TruffleObject foreignObject) {
+        if (foreignObject == null) {
+            return false;
+        }
+        return ForeignAccess.sendIsBoxed(Message.IS_BOXED.createNode(), foreignObject);
+    }
+
+    static Object unbox(TruffleObject foreignObject) {
+        if (foreignObject == null) {
+            return null;
+        }
+        try {
+            return ForeignAccess.sendUnbox(Message.UNBOX.createNode(), foreignObject);
+        } catch (UnsupportedMessageException e) {
+            return null;
+        }
     }
 
     private static class TemporaryRoot extends RootNode {

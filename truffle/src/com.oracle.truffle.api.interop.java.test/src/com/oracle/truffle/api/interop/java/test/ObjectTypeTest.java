@@ -29,7 +29,6 @@ import static org.junit.Assert.assertFalse;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.ObjectType;
@@ -47,7 +46,7 @@ public class ObjectTypeTest {
             }
         });
         final DynamicObject obj = rootShape.newInstance();
-        final boolean is = JavaInterop.isBoxed(obj);
+        final boolean is = JavaInteropTest.isBoxed(obj);
         assertFalse("It is not boxed", is);
     }
 
@@ -61,7 +60,7 @@ public class ObjectTypeTest {
             }
         });
         final DynamicObject obj = rootShape.newInstance();
-        final boolean is = JavaInterop.isNull(obj);
+        final boolean is = JavaInteropTest.isNull(obj);
         assertFalse("It is not null", is);
     }
 
@@ -75,7 +74,7 @@ public class ObjectTypeTest {
             }
         });
         final DynamicObject obj = rootShape.newInstance();
-        final boolean is = JavaInterop.isArray(obj);
+        final boolean is = JavaInteropTest.isArray(obj);
         assertFalse("It is not array", is);
     }
 

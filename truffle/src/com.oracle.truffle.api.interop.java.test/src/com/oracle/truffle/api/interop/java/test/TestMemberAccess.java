@@ -52,24 +52,20 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 
-// Checkstyle: stop line length check
-@SuppressWarnings("all")
 public class TestMemberAccess {
 
-    private final String TEST_CLASS = TestClass.class.getName();
-
-    private final Node CREATE_NEW_NODE = Message.createNew(0).createNode();
-    private final Node EXEC_NODE = Message.createExecute(0).createNode();
-    private final Node UNBOX_NODE = Message.UNBOX.createNode();
-    private final Node IS_BOXED_NODE = Message.IS_BOXED.createNode();
-    private final Node IS_NULL_NODE = Message.IS_NULL.createNode();
-    private final Node IS_EXEC_NODE = Message.IS_EXECUTABLE.createNode();
-    private final Node READ_NODE = Message.READ.createNode();
-    private final Node KEYS_NODE = Message.KEYS.createNode();
-    private final Node KEY_INFO_NODE = Message.KEY_INFO.createNode();
+    private final Node newNode = Message.createNew(0).createNode();
+    private final Node executeNode = Message.createExecute(0).createNode();
+    private final Node unboxNode = Message.UNBOX.createNode();
+    private final Node isBoxedNode = Message.IS_BOXED.createNode();
+    private final Node isNullNode = Message.IS_NULL.createNode();
+    private final Node isExecutableNode = Message.IS_EXECUTABLE.createNode();
+    private final Node readNode = Message.READ.createNode();
+    private final Node keysNode = Message.KEYS.createNode();
+    private final Node keyInfoNode = Message.KEY_INFO.createNode();
 
     @Test
-    public void testFields() throws IllegalAccessException, ClassNotFoundException, InteropException {
+    public void testFields() throws IllegalAccessException, InteropException {
         TestClass t = new TestClass();
         Field[] fields = t.getClass().getDeclaredFields();
         for (Field f : fields) {
@@ -94,7 +90,7 @@ public class TestMemberAccess {
     }
 
     @Test
-    public void testMethods() throws InvocationTargetException, IllegalAccessException, ClassNotFoundException, InteropException {
+    public void testMethods() throws InvocationTargetException, IllegalAccessException, InteropException {
         TestClass t = new TestClass();
         Method[] methods = t.getClass().getDeclaredMethods();
         for (Method m : methods) {
@@ -121,13 +117,13 @@ public class TestMemberAccess {
     }
 
     @Test
-    public void testAllTypes() throws ClassNotFoundException, InteropException {
+    public void testAllTypes() throws InteropException {
         getValueForAllTypesMethod("allTypesMethod");
         getValueForAllTypesMethod("allTypesStaticMethod");
     }
 
     @Test
-    public void testNullParameter() throws ClassNotFoundException, InteropException {
+    public void testNullParameter() throws InteropException {
         Object bo = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_Boolean_2", JavaInterop.asTruffleObject(null));
         assertEquals("Boolean parameter method executed", Boolean.class.getName(), bo);
         Object by = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_Byte_2", JavaInterop.asTruffleObject(null));
@@ -179,13 +175,13 @@ public class TestMemberAccess {
     }
 
     private void assertKeys(TruffleObject obj) throws UnsupportedMessageException {
-        List<?> keys = JavaInterop.asJavaObject(List.class, ForeignAccess.sendKeys(KEYS_NODE, obj));
+        List<?> keys = JavaInterop.asJavaObject(List.class, ForeignAccess.sendKeys(keysNode, obj));
         Set<String> foundKeys = new HashSet<>();
         for (Object key : keys) {
             assertTrue("Is string" + key, key instanceof String);
             String keyName = (String) key;
             assertEquals("No __ in " + keyName, -1, keyName.indexOf("__"));
-            int info = ForeignAccess.sendKeyInfo(KEY_INFO_NODE, obj, keyName);
+            int info = ForeignAccess.sendKeyInfo(keyInfoNode, obj, keyName);
             if (!KeyInfo.isInvocable(info)) {
                 continue;
             }
@@ -193,11 +189,11 @@ public class TestMemberAccess {
         }
 
         Set<String> foundInternalKeys = new HashSet<>();
-        List<?> internalKeys = JavaInterop.asJavaObject(List.class, ForeignAccess.sendKeys(KEYS_NODE, obj, true));
+        List<?> internalKeys = JavaInterop.asJavaObject(List.class, ForeignAccess.sendKeys(keysNode, obj, true));
         for (Object key : internalKeys) {
             assertTrue("Is string" + key, key instanceof String);
             String keyName = (String) key;
-            int info = ForeignAccess.sendKeyInfo(KEY_INFO_NODE, obj, keyName);
+            int info = ForeignAccess.sendKeyInfo(keyInfoNode, obj, keyName);
 
             if (!keyName.contains("__")) {
                 if (!KeyInfo.isInvocable(info)) {
@@ -234,112 +230,112 @@ public class TestMemberAccess {
     }
 
     @Test
-    public void testOverloaded1() throws ClassNotFoundException, InteropException {
+    public void testOverloaded1() throws InteropException {
         assertEquals("boolean", getValueFromMember("isOverloaded", true));
     }
 
     @Test
-    public void testOverloaded2() throws ClassNotFoundException, InteropException {
+    public void testOverloaded2() throws InteropException {
         assertEquals(Boolean.class.getName(), getValueFromMember(TestClass2.class, "isOverloaded", Boolean.TRUE));
     }
 
     @Test
-    public void testOverloaded3() throws ClassNotFoundException, InteropException {
+    public void testOverloaded3() throws InteropException {
         assertEquals(byte.class.getName(), getValueFromMember(TestClass2.class, "isOverloaded", Byte.MAX_VALUE));
     }
 
     @Test
-    public void testOverloaded4() throws ClassNotFoundException, InteropException {
+    public void testOverloaded4() throws InteropException {
         assertEquals(Byte.class.getName(), getValueFromMember("isOverloaded", new Byte(Byte.MAX_VALUE)));
     }
 
     @Test
-    public void testOverloaded5() throws ClassNotFoundException, InteropException {
+    public void testOverloaded5() throws InteropException {
         assertEquals(char.class.getName(), getValueFromMember("isOverloaded", 'a'));
     }
 
     @Test
-    public void testOverloaded6() throws ClassNotFoundException, InteropException {
+    public void testOverloaded6() throws InteropException {
         assertEquals(Character.class.getName(), getValueFromMember(TestClass2.class, "isOverloaded", new Character('a')));
     }
 
     @Test
-    public void testOverloaded7() throws ClassNotFoundException, InteropException {
+    public void testOverloaded7() throws InteropException {
         assertEquals(float.class.getName(), getValueFromMember(TestClass2.class, "isOverloaded", Float.MAX_VALUE));
     }
 
     @Test
-    public void testOverloaded8() throws ClassNotFoundException, InteropException {
+    public void testOverloaded8() throws InteropException {
         assertEquals(Float.class.getName(), getValueFromMember("isOverloaded", new Float(Float.MAX_VALUE)));
     }
 
     @Test
-    public void testOverloaded9() throws ClassNotFoundException, InteropException {
+    public void testOverloaded9() throws InteropException {
         assertEquals(double.class.getName(), getValueFromMember(TestClass2.class, "isOverloaded", Double.MAX_VALUE));
     }
 
     @Test
-    public void testOverloaded10() throws ClassNotFoundException, InteropException {
+    public void testOverloaded10() throws InteropException {
         assertEquals(Double.class.getName(), getValueFromMember("isOverloaded", new Double(Double.MAX_VALUE)));
     }
 
     @Test
-    public void testOverloaded11() throws ClassNotFoundException, InteropException {
+    public void testOverloaded11() throws InteropException {
         assertEquals(int.class.getName(), getValueFromMember(TestClass2.class, "isOverloaded", Integer.MAX_VALUE));
     }
 
     @Test
-    public void testOverloaded12() throws ClassNotFoundException, InteropException {
+    public void testOverloaded12() throws InteropException {
         assertEquals(Integer.class.getName(), getValueFromMember("isOverloaded", Integer.MAX_VALUE));
     }
 
     @Test
-    public void testOverloaded13() throws ClassNotFoundException, InteropException {
+    public void testOverloaded13() throws InteropException {
         assertEquals(long.class.getName(), getValueFromMember(TestClass2.class, "isOverloaded", Long.MAX_VALUE));
     }
 
     @Test
-    public void testOverloaded14() throws ClassNotFoundException, InteropException {
+    public void testOverloaded14() throws InteropException {
         assertEquals(Long.class.getName(), getValueFromMember("isOverloaded", Long.MAX_VALUE));
     }
 
     @Test
-    public void testOverloaded15() throws ClassNotFoundException, InteropException {
+    public void testOverloaded15() throws InteropException {
         assertEquals(short.class.getName(), getValueFromMember(TestClass2.class, "isOverloaded", Short.MAX_VALUE));
     }
 
     @Test
-    public void testOverloaded16() throws ClassNotFoundException, InteropException {
+    public void testOverloaded16() throws InteropException {
         assertEquals(Short.class.getName(), getValueFromMember("isOverloaded", Short.MAX_VALUE));
     }
 
     @Test
-    public void testOverloaded17() throws ClassNotFoundException, InteropException {
+    public void testOverloaded17() throws InteropException {
         assertEquals(String.class.getName(), getValueFromMember("isOverloaded", "testString"));
     }
 
     @Test
-    public void testClassAsArg() throws ClassNotFoundException, InteropException {
+    public void testClassAsArg() throws InteropException {
         TruffleObject clazz = JavaInterop.asTruffleObject(String.class);
         assertEquals(String.class.getName(), getValueFromMember("classAsArg", clazz));
     }
 
     @Test
-    public void testNewArray() throws ClassNotFoundException, InteropException {
+    public void testNewArray() throws InteropException {
         TruffleObject arrayClass = JavaInterop.asTruffleObject(Array.class);
-        TruffleObject newInstanceMethod = (TruffleObject) ForeignAccess.send(READ_NODE, arrayClass, "newInstance");
-        TruffleObject stringArray = (TruffleObject) ForeignAccess.sendExecute(EXEC_NODE, newInstanceMethod, JavaInterop.asTruffleObject(String.class), 2);
-        assertTrue(JavaInterop.isArray(stringArray));
+        TruffleObject newInstanceMethod = (TruffleObject) ForeignAccess.send(readNode, arrayClass, "newInstance");
+        TruffleObject stringArray = (TruffleObject) ForeignAccess.sendExecute(executeNode, newInstanceMethod, JavaInterop.asTruffleObject(String.class), 2);
+        assertTrue(JavaInteropTest.isArray(stringArray));
     }
 
     @Test
     public void testArrayOutOfBoundsAccess() throws InteropException {
         Object[] array = new Object[1];
         TruffleObject arrayObject = JavaInterop.asTruffleObject(array);
-        assertTrue(JavaInterop.isArray(arrayObject));
-        ForeignAccess.sendRead(READ_NODE, arrayObject, 0);
+        assertTrue(JavaInteropTest.isArray(arrayObject));
+        ForeignAccess.sendRead(readNode, arrayObject, 0);
         try {
-            ForeignAccess.sendRead(READ_NODE, arrayObject, 1);
+            ForeignAccess.sendRead(readNode, arrayObject, 1);
             fail();
         } catch (UnknownIdentifierException e) {
         }
@@ -349,7 +345,7 @@ public class TestMemberAccess {
     public void testObjectReadIndex() throws InteropException {
         TruffleObject arrayObject = JavaInterop.asTruffleObject(new TestClass());
         try {
-            ForeignAccess.sendRead(READ_NODE, arrayObject, 0);
+            ForeignAccess.sendRead(readNode, arrayObject, 0);
             fail();
         } catch (UnknownIdentifierException e) {
         }
@@ -359,12 +355,12 @@ public class TestMemberAccess {
     public void testOverloadedConstructor1() throws InteropException {
         TruffleObject testClass = JavaInterop.asTruffleObject(TestConstructor.class);
         TruffleObject testObj;
-        testObj = (TruffleObject) ForeignAccess.sendNew(CREATE_NEW_NODE, testClass);
-        assertEquals(void.class.getName(), ForeignAccess.sendRead(READ_NODE, testObj, "ctor"));
-        testObj = (TruffleObject) ForeignAccess.sendNew(CREATE_NEW_NODE, testClass, 42);
-        assertEquals(int.class.getName(), ForeignAccess.sendRead(READ_NODE, testObj, "ctor"));
-        testObj = (TruffleObject) ForeignAccess.sendNew(CREATE_NEW_NODE, testClass, 4.2f);
-        assertEquals(float.class.getName(), ForeignAccess.sendRead(READ_NODE, testObj, "ctor"));
+        testObj = (TruffleObject) ForeignAccess.sendNew(newNode, testClass);
+        assertEquals(void.class.getName(), ForeignAccess.sendRead(readNode, testObj, "ctor"));
+        testObj = (TruffleObject) ForeignAccess.sendNew(newNode, testClass, 42);
+        assertEquals(int.class.getName(), ForeignAccess.sendRead(readNode, testObj, "ctor"));
+        testObj = (TruffleObject) ForeignAccess.sendNew(newNode, testClass, 4.2f);
+        assertEquals(float.class.getName(), ForeignAccess.sendRead(readNode, testObj, "ctor"));
     }
 
     @Test
@@ -372,7 +368,7 @@ public class TestMemberAccess {
         TruffleObject testClass = JavaInterop.asTruffleObject(TestConstructor.class);
         // TODO support conversion from double to float (preferred over double to int)
         try {
-            TruffleObject testObj = (TruffleObject) ForeignAccess.sendNew(CREATE_NEW_NODE, testClass, 4.2);
+            ForeignAccess.sendNew(newNode, testClass, 4.2);
             fail();
         } catch (IllegalArgumentException e) {
         }
@@ -392,13 +388,13 @@ public class TestMemberAccess {
         l.add("one");
         l.add("two");
         TruffleObject listObject = JavaInterop.asTruffleObject(l);
-        TruffleObject itFunction = (TruffleObject) ForeignAccess.sendRead(READ_NODE, listObject, "iterator");
-        TruffleObject it = (TruffleObject) ForeignAccess.sendExecute(EXEC_NODE, itFunction);
-        TruffleObject hasNextFunction = (TruffleObject) ForeignAccess.sendRead(READ_NODE, it, "hasNext");
+        TruffleObject itFunction = (TruffleObject) ForeignAccess.sendRead(readNode, listObject, "iterator");
+        TruffleObject it = (TruffleObject) ForeignAccess.sendExecute(executeNode, itFunction);
+        TruffleObject hasNextFunction = (TruffleObject) ForeignAccess.sendRead(readNode, it, "hasNext");
         List<Object> returned = new ArrayList<>();
-        while ((boolean) ForeignAccess.sendExecute(EXEC_NODE, hasNextFunction)) {
-            TruffleObject nextFunction = (TruffleObject) ForeignAccess.sendRead(READ_NODE, it, "next");
-            Object element = ForeignAccess.sendExecute(EXEC_NODE, nextFunction);
+        while ((boolean) ForeignAccess.sendExecute(executeNode, hasNextFunction)) {
+            TruffleObject nextFunction = (TruffleObject) ForeignAccess.sendRead(readNode, it, "next");
+            Object element = ForeignAccess.sendExecute(executeNode, nextFunction);
             returned.add(element);
         }
         assertEquals(l.size(), returned.size());
@@ -407,42 +403,42 @@ public class TestMemberAccess {
     }
 
     @Test
-    public void testMethodThrowsIOException() throws ClassNotFoundException, InteropException {
+    public void testMethodThrowsIOException() {
         JavaInteropTest.assertThrowsExceptionWithCause(() -> getValueFromMember(TestClass2.class, "methodThrowsIOException"), IOException.class);
     }
 
-    private void testForValue(String name, Object value) throws ClassNotFoundException, InteropException {
+    private void testForValue(String name, Object value) throws InteropException {
         Object o = getValueFromMember(name);
         if (value == null) {
-            if (o == null || (o instanceof TruffleObject && ForeignAccess.sendIsNull(IS_NULL_NODE, (TruffleObject) o))) {
+            if (o == null || (o instanceof TruffleObject && ForeignAccess.sendIsNull(isNullNode, (TruffleObject) o))) {
                 return;
             }
         }
         assertEquals(value, o);
     }
 
-    private Object getValueFromMember(String name, Object... parameters) throws ClassNotFoundException, InteropException {
-        return getValueFromMember(Class.forName(TEST_CLASS), name, parameters);
+    private Object getValueFromMember(String name, Object... parameters) throws InteropException {
+        return getValueFromMember(TestClass.class, name, parameters);
     }
 
-    private Object getValueFromMember(Class<?> javaClazz, String name, Object... parameters) throws ClassNotFoundException, InteropException {
+    private Object getValueFromMember(Class<?> javaClazz, String name, Object... parameters) throws InteropException {
         TruffleObject clazz = JavaInterop.asTruffleObject(javaClazz);
-        Object o = ForeignAccess.sendNew(CREATE_NEW_NODE, clazz);
+        Object o = ForeignAccess.sendNew(newNode, clazz);
         try {
-            o = ForeignAccess.sendRead(READ_NODE, (TruffleObject) o, name);
+            o = ForeignAccess.sendRead(readNode, (TruffleObject) o, name);
         } catch (UnknownIdentifierException e) {
-            o = ForeignAccess.sendRead(READ_NODE, clazz, name);
+            o = ForeignAccess.sendRead(readNode, clazz, name);
         }
-        if (o instanceof TruffleObject && ForeignAccess.sendIsExecutable(IS_EXEC_NODE, (TruffleObject) o)) {
-            o = ForeignAccess.sendExecute(EXEC_NODE, (TruffleObject) o, parameters);
+        if (o instanceof TruffleObject && ForeignAccess.sendIsExecutable(isExecutableNode, (TruffleObject) o)) {
+            o = ForeignAccess.sendExecute(executeNode, (TruffleObject) o, parameters);
         }
-        if (o instanceof TruffleObject && ForeignAccess.sendIsBoxed(IS_BOXED_NODE, (TruffleObject) o)) {
-            o = ForeignAccess.sendUnbox(UNBOX_NODE, (TruffleObject) o);
+        if (o instanceof TruffleObject && ForeignAccess.sendIsBoxed(isBoxedNode, (TruffleObject) o)) {
+            o = ForeignAccess.sendUnbox(unboxNode, (TruffleObject) o);
         }
         return o;
     }
 
-    private void getValueForAllTypesMethod(String method) throws ClassNotFoundException, InteropException {
+    private void getValueForAllTypesMethod(String method) throws InteropException {
         boolean bo = true;
         byte bt = 127;
         char c = 'a';
@@ -456,6 +452,7 @@ public class TestMemberAccess {
         assertEquals("" + bo + bt + c + sh + i + l + d + f + s, o);
     }
 
+    @SuppressWarnings("unused")
     public static class TestClass {
 
         public static boolean fieldStaticBoolean = true;
@@ -825,6 +822,7 @@ public class TestMemberAccess {
         }
     }
 
+    @SuppressWarnings({"unused", "static-method"})
     public static final class TestClass2 {
         public String isOverloaded(Integer c) {
             return Integer.class.getName();
@@ -871,6 +869,7 @@ public class TestMemberAccess {
         }
     }
 
+    @SuppressWarnings({"unused"})
     public static final class TestConstructor {
         private int i;
         private float f;
@@ -891,6 +890,7 @@ public class TestMemberAccess {
         }
     }
 
+    @SuppressWarnings({"unused"})
     public static class TestConstructorException {
         public TestConstructorException(String s) throws IOException {
             throw new IOException();
@@ -900,9 +900,11 @@ public class TestMemberAccess {
         }
     }
 
-    public static interface CallUnderscore {
-        public Object create__Lcom_oracle_truffle_api_interop_java_test_Test_1Underscore_2();
+    public interface CallUnderscore {
+        // Checkstyle: stop
+        Object create__Lcom_oracle_truffle_api_interop_java_test_Test_1Underscore_2();
 
-        public Object copy__Lcom_oracle_truffle_api_interop_java_test_Test_1Underscore_2Lcom_oracle_truffle_api_interop_java_test_Test_1Underscore_2(Object orig);
+        Object copy__Lcom_oracle_truffle_api_interop_java_test_Test_1Underscore_2Lcom_oracle_truffle_api_interop_java_test_Test_1Underscore_2(Object orig);
+        // Checkstyle: resume
     }
 }
