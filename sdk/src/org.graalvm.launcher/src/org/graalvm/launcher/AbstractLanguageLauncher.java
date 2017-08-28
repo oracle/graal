@@ -66,13 +66,13 @@ public abstract class AbstractLanguageLauncher extends Launcher {
             polyglotOptions = new HashMap<>();
         }
 
+        List<String> unrecognizedArgs = preprocessArguments(args, polyglotOptions);
+
         if (isAOT()) {
             assert nativeAccess != null;
             nativeAccess.maybeExec(args, false, polyglotOptions, VMType.Native);
             nativeAccess.setGraalVMProperties();
         }
-
-        List<String> unrecognizedArgs = preprocessArguments(args, polyglotOptions);
 
         for (String arg : unrecognizedArgs) {
             if (!parsePolyglotOption(getLanguageId(), polyglotOptions, arg)) {
@@ -113,6 +113,9 @@ public abstract class AbstractLanguageLauncher extends Launcher {
      * Process command line arguments by either saving the necessary state or adding it to the
      * {@code polyglotOptions}. Any unrecognized arguments should be accumulated and returned as a
      * list.
+     *
+     * Arguments that are translated to polyglot options should be removed from the list. Other
+     * arguments should not be removed.
      * 
      * @param arguments the command line arguments that were passed to the launcher.
      * @param polyglotOptions a map where polyglot options can be set. These will be uses when
