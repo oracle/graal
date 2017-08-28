@@ -243,6 +243,10 @@ public class CompilationResult {
         this.isImmutablePIC = isImmutablePIC;
     }
 
+    public CompilationResult(String name) {
+        this(null, name);
+    }
+
     @Override
     public int hashCode() {
         // CompilationResult instances should not be used as hash map keys
