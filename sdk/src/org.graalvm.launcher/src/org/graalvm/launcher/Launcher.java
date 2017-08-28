@@ -940,7 +940,18 @@ public abstract class Launcher {
         }
 
         private void printJvmHelp() {
-            System.out.println("TODO: print JVM options help");
+            System.out.print("JVM options:");
+            printOption("--jvm.classpath <...>", "A " + File.pathSeparator + " separated list of classpath entries that will be added to the JVM's classpath");
+            printOption("--jvm.D<name>=<value>", "Set a system property");
+            printOption("--jvm.esa", "Enable system assertions");
+            printOption("--jvm.ea[:<packagename>...|:<classname>]", "Enable assertions with specified granularity");
+            printOption("--jvm.agentlib:<libname>[=<options>]", "Load native agent library <libname>");
+            printOption("--jvm.agentpath:<pathname>[=<options>]", "Load native agent library by full pathname");
+            printOption("--jvm.javaagent:<jarpath>[=<options>]", "Load Java programming language agent");
+            printOption("--jvm.Xbootclasspath/a:<...>", "A " + File.pathSeparator + " separated list of classpath entries that will be added to the JVM's boot classpath");
+            printOption("--jvm.Xmx<size>", "Set maximum Java heap size");
+            printOption("--jvm.Xms<size>", "Set initial Java heap size");
+            printOption("--jvm.Xss<size>", "Set java thread stack size");
         }
 
         private void printNativeHelp() {
@@ -951,7 +962,7 @@ public abstract class Launcher {
                 sortedOptions.put(descriptor.getName(), descriptor);
             }
             for (Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
-                printOption("--native." + entry.getKey(), entry.getValue().getHelp());
+                printOption("--native." + entry.getKey() + "=<value>", entry.getValue().getHelp());
             }
         }
 
