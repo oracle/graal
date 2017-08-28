@@ -232,6 +232,16 @@ public final class JavaInterop {
     }
 
     /**
+     * Returns <code>true</code> if the argument is Java host language object wrapped using Truffle
+     * interop.
+     *
+     * @since 0.28
+     */
+    public static boolean isJavaObject(Object object) {
+        return object instanceof JavaObject;
+    }
+
+    /**
      * Exports a Java object for use in any {@link TruffleLanguage}. The system scans structure of
      * provided object and exposes all <b>public</b> fields and methods to any <em>Truffle</em>
      * language. An instance of class
