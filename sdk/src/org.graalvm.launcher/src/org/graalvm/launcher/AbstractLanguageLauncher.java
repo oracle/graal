@@ -66,12 +66,16 @@ public abstract class AbstractLanguageLauncher extends Launcher {
             polyglotOptions = new HashMap<>();
         }
 
+        if (isAOT()) {
+            assert nativeAccess != null;
+            nativeAccess.setGraalVMProperties();
+        }
+
         List<String> unrecognizedArgs = preprocessArguments(args, polyglotOptions);
 
         if (isAOT()) {
             assert nativeAccess != null;
             nativeAccess.maybeExec(args, false, polyglotOptions, VMType.Native);
-            nativeAccess.setGraalVMProperties();
         }
 
         for (String arg : unrecognizedArgs) {
