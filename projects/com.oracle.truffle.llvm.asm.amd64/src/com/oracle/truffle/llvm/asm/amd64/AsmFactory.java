@@ -954,7 +954,7 @@ class AsmFactory {
 
     private Type getType(AsmOperand dst, AsmOperand src) {
         Type type = getType(dst);
-        if (type == null) {
+        if (type == null || type instanceof VoidType) {
             type = getType(src);
         }
         if (type == null) {
@@ -1005,6 +1005,121 @@ class AsmFactory {
                 if (dstType instanceof PrimitiveType) {
                     LLVMExpressionNode srcA = getOperandLoad(dstType, a);
                     out = srcA;
+                } else {
+                    throw new AsmParseException("invalid operand type: " + dstType);
+                }
+                break;
+            case "bsr":
+                if (dstType instanceof PrimitiveType) {
+                    LLVMExpressionNode srcA = getOperandLoad(dstType, a);
+                    LLVMExpressionNode srcB = getOperandLoad(dstType, b);
+                    switch (dstPrimitiveType) {
+                        case I16:
+                            out = LLVMAMD64BsrwNodeGen.create(getFlagWrite(LLVMAMD64Flags.ZF), srcA, srcB);
+                            break;
+                        case I32:
+                            out = LLVMAMD64BsrlNodeGen.create(getFlagWrite(LLVMAMD64Flags.ZF), srcA, srcB);
+                            break;
+                        case I64:
+                            out = LLVMAMD64BsrqNodeGen.create(getFlagWrite(LLVMAMD64Flags.ZF), srcA, srcB);
+                            break;
+                        default:
+                            throw new AsmParseException("invalid operand type: " + dstType);
+                    }
+                } else {
+                    throw new AsmParseException("invalid operand type: " + dstType);
+                }
+                break;
+            case "bsf":
+                if (dstType instanceof PrimitiveType) {
+                    LLVMExpressionNode srcA = getOperandLoad(dstType, a);
+                    LLVMExpressionNode srcB = getOperandLoad(dstType, b);
+                    switch (dstPrimitiveType) {
+                        case I16:
+                            out = LLVMAMD64BsfwNodeGen.create(getFlagWrite(LLVMAMD64Flags.ZF), srcA, srcB);
+                            break;
+                        case I32:
+                            out = LLVMAMD64BsflNodeGen.create(getFlagWrite(LLVMAMD64Flags.ZF), srcA, srcB);
+                            break;
+                        case I64:
+                            out = LLVMAMD64BsfqNodeGen.create(getFlagWrite(LLVMAMD64Flags.ZF), srcA, srcB);
+                            break;
+                        default:
+                            throw new AsmParseException("invalid operand type: " + dstType);
+                    }
+                } else {
+                    throw new AsmParseException("invalid operand type: " + dstType);
+                }
+                break;
+            case "xchg": {
+                if (dstType instanceof PrimitiveType) {
+                    XchgOperands operands = new XchgOperands(a, b, dstType);
+                    switch (dstPrimitiveType) {
+                        case I8:
+                            out = LLVMAMD64XchgbNodeGen.create(operands.dst, operands.srcA, operands.srcB);
+                            break;
+                        case I16:
+                            out = LLVMAMD64XchgwNodeGen.create(operands.dst, operands.srcA, operands.srcB);
+                            break;
+                        case I32:
+                            out = LLVMAMD64XchglNodeGen.create(operands.dst, operands.srcA, operands.srcB);
+                            break;
+                        case I64:
+                            out = LLVMAMD64XchgqNodeGen.create(operands.dst, operands.srcA, operands.srcB);
+                            break;
+                        default:
+                            throw new AsmParseException("invalid operand type: " + dstType);
+                    }
+                    statements.add(out);
+                    return;
+                } else {
+                    throw new AsmParseException("invalid operand type: " + dstType);
+                }
+            }
+            case "and":
+                if (dstType instanceof PrimitiveType) {
+                    LLVMExpressionNode srcA = getOperandLoad(dstType, a);
+                    LLVMExpressionNode srcB = getOperandLoad(dstType, b);
+                    switch (dstPrimitiveType) {
+                        case I8:
+                            out = LLVMAMD64AndbNodeGen.create(getUpdatePZSFlagsNode(), srcA, srcB);
+                            break;
+                        case I16:
+                            out = LLVMAMD64AndwNodeGen.create(getUpdatePZSFlagsNode(), srcA, srcB);
+                            break;
+                        case I32:
+                            out = LLVMAMD64AndlNodeGen.create(getUpdatePZSFlagsNode(), srcA, srcB);
+                            break;
+                        case I64:
+                            out = LLVMAMD64AndqNodeGen.create(getUpdatePZSFlagsNode(), srcA, srcB);
+                            break;
+                        default:
+                            throw new AsmParseException("invalid operand type: " + dstType);
+                    }
+                } else {
+                    throw new AsmParseException("invalid operand type: " + dstType);
+                }
+                break;
+            case "or":
+                if (dstType instanceof PrimitiveType) {
+                    LLVMExpressionNode srcA = getOperandLoad(dstType, a);
+                    LLVMExpressionNode srcB = getOperandLoad(dstType, b);
+                    switch (dstPrimitiveType) {
+                        case I8:
+                            out = LLVMAMD64OrbNodeGen.create(srcA, srcB);
+                            break;
+                        case I16:
+                            out = LLVMAMD64OrwNodeGen.create(srcA, srcB);
+                            break;
+                        case I32:
+                            out = LLVMAMD64OrlNodeGen.create(srcA, srcB);
+                            break;
+                        case I64:
+                            out = LLVMAMD64OrqNodeGen.create(srcA, srcB);
+                            break;
+                        default:
+                            throw new AsmParseException("invalid operand type: " + dstType);
+                    }
                 } else {
                     throw new AsmParseException("invalid operand type: " + dstType);
                 }
