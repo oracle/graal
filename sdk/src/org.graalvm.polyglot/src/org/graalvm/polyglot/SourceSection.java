@@ -182,7 +182,7 @@ public final class SourceSection {
      * @deprecated use {@link #getCharacters()}
      */
     @Deprecated
-    public CharSequence getCode_() {
+    public CharSequence getCode() {
         return IMPL.getCode(impl);
     }
 
