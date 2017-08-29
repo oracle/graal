@@ -5,8 +5,8 @@ $s.getCode()
 ::
 $s instanceof com.oracle.truffle.api.source.Source
 =>
-'Use Source#getCodeSequence instead':
-$s.getCodeSequence()
+'Use Source#getCharacters instead':
+$s.getCharacters()
 ;;
 
 'SourceSection#getCode is deprecated':
@@ -14,8 +14,8 @@ $s.getCode()
 ::
 $s instanceof com.oracle.truffle.api.source.SourceSection
 =>
-'Use SourceSection#getCodeSequence instead':
-$s.getCodeSequence()
+'Use SourceSection#getCharacters instead':
+$s.getCharacters()
 ;;
 
 'Source#getCode(int) is deprecated':
@@ -23,8 +23,8 @@ $s.getCode($lineIndex)
 ::
 $s instanceof com.oracle.truffle.api.source.Source && $lineIndex instanceof int
 =>
-'Use Source#getCodeSequence(int) instead':
-$s.getCodeSequence($lineIndex)
+'Use Source#getCharacters(int) instead':
+$s.getCharacters($lineIndex)
 ;;
 
 'Source#getCode(int, int) is deprecated':
@@ -32,6 +32,6 @@ $s.getCode($charIndex, $length)
 ::
 $s instanceof com.oracle.truffle.api.source.Source && $charIndex instanceof int && $length instanceof int
 =>
-'Use SourceSection#getCodeSequence() instead':
-$s.getCodeSequence().subSequence($charIndex, $charIndex + $length)
+'Use SourceSection#getCharacters() instead':
+$s.getCharacters().subSequence($charIndex, $charIndex + $length)
 ;;

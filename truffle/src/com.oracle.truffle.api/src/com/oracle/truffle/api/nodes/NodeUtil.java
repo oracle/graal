@@ -637,7 +637,7 @@ public final class NodeUtil {
             // Add some preliminary information before starting with the root node
             final SourceSection sourceSection = node.getSourceSection();
             if (sourceSection != null) {
-                final String txt = sourceSection.getSource().getCodeSequence().toString();
+                final String txt = sourceSection.getSource().getCharacters().toString();
                 p.println("Full source len=(" + txt.length() + ")  ___" + txt + "___");
                 p.println("AST source attribution:");
             }
@@ -808,7 +808,7 @@ public final class NodeUtil {
             // then source cannot become null anymore.
             return "source: <unknown>";
         }
-        final String srcText = section.getCodeSequence().toString();
+        final String srcText = section.getCharacters().toString();
         final StringBuilder sb = new StringBuilder();
         sb.append("source:");
         sb.append(" (" + section.getCharIndex() + "," + (section.getCharEndIndex() - 1) + ")");

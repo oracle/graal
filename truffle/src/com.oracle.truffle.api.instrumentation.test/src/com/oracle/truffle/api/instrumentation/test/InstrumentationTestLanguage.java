@@ -204,7 +204,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         Parser(InstrumentationTestLanguage lang, Source source) {
             this.lang = lang;
             this.source = source;
-            this.code = source.getCodeSequence().toString();
+            this.code = source.getCharacters().toString();
         }
 
         public BaseNode parse() {

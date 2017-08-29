@@ -393,7 +393,7 @@ public class SLDebugDirectTest {
 
             final SourceSection suspendedSourceSection = suspendedEvent.getSourceSection();
             Assert.assertEquals(line, suspendedSourceSection.getStartLine());
-            Assert.assertEquals(code, suspendedSourceSection.getCodeSequence());
+            Assert.assertEquals(code, suspendedSourceSection.getCharacters());
 
             Assert.assertEquals(isBefore, suspendedEvent.isHaltedBefore());
             final DebugStackFrame frame = suspendedEvent.getTopStackFrame();

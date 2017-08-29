@@ -113,14 +113,14 @@ class PolyglotSource extends AbstractSourceImpl {
     public CharSequence getCode(Object impl) {
         com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
 
-        return source.getCodeSequence();
+        return source.getCharacters();
     }
 
     @Override
     public CharSequence getCode(Object impl, int lineNumber) {
         com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
 
-        return source.getCodeSequence(lineNumber);
+        return source.getCharacters(lineNumber);
     }
 
     @Override

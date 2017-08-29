@@ -86,7 +86,7 @@ class PolyglotSourceSection extends AbstractSourceSectionImpl {
     @Override
     public CharSequence getCode(Object impl) {
         SourceSection section = (SourceSection) impl;
-        return section.getCodeSequence();
+        return section.getCharacters();
     }
 
     @Override

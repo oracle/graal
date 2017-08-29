@@ -68,8 +68,8 @@ public class SourceAPITest {
         context.eval(source);
 
         assertEquals(1, source.getLineCount());
-        assertTrue(equalsCharSequence(testString, source.getCode()));
-        assertTrue(equalsCharSequence(testString, source.getCode(1)));
+        assertTrue(equalsCharSequence(testString, source.getCharacters()));
+        assertTrue(equalsCharSequence(testString, source.getCharacters(1)));
         assertEquals(0, source.getLineStartOffset(1));
         assertNull(source.getURL());
         assertNotNull(source.getName());

@@ -61,7 +61,7 @@ final class FileSourceImpl extends Content implements Content.CreateURI {
     }
 
     @Override
-    CharSequence getCode() {
+    CharSequence getCharacters() {
         return code;
     }
 

@@ -144,7 +144,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
 
     @Override
     protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
-        Class<?> allTarget = getContextReference().get().findClass(request.getSource().getCodeSequence().toString());
+        Class<?> allTarget = getContextReference().get().findClass(request.getSource().getCharacters().toString());
         return Truffle.getRuntime().createCallTarget(new RootNode(this) {
             @Override
             public Object execute(VirtualFrame frame) {

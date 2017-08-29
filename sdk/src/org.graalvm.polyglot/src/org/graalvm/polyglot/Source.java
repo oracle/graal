@@ -230,6 +230,15 @@ public final class Source {
      *
      * @since 1.0
      */
+    public CharSequence getCharacters() {
+        return getImpl().getCode(impl);
+    }
+
+    /**
+     * @since 1.0
+     * @deprecated use {@link #getCharacters()}
+     */
+    @Deprecated
     public CharSequence getCode() {
         return getImpl().getCode(impl);
     }
@@ -240,6 +249,15 @@ public final class Source {
      *
      * @since 1.0
      */
+    public CharSequence getCharacters(int lineNumber) {
+        return getImpl().getCode(impl, lineNumber);
+    }
+
+    /**
+     * @since 1.0
+     * @deprecated use {@link #getCharacters(int)}
+     */
+    @Deprecated
     public CharSequence getCode(int lineNumber) {
         return getImpl().getCode(impl, lineNumber);
     }
@@ -462,7 +480,7 @@ public final class Source {
          *
          * {@link SourceSnippets#fromURLWithOwnContent}
          *
-         * @param code the code to be available via {@link Source#getCode()}
+         * @param code the code to be available via {@link Source#getCharacters()}
          * @return instance of this builder
          * @since 1.0
          */
@@ -603,7 +621,7 @@ class SourceSnippets {
      assert resource.toExternalForm().equals(source.getPath());
      assert "sample.js".equals(source.getName());
      assert resource.toExternalForm().equals(source.getURI().toString());
-     assert "{}".equals(source.getCode());
+     assert "{}".equals(source.getCharacters());
      // END: SourceSnippets#fromURLWithOwnContent
      return source;
  }

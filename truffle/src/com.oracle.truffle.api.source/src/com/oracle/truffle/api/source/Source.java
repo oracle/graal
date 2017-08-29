@@ -135,7 +135,7 @@ public abstract class Source {
     /**
      * Creates new {@link Source} builder for specified <code>file</code>. Once the source is built
      * the {@link Source#getName() name} will become {@link File#getName()} and the
-     * {@link Source#getCodeSequence()} will be loaded from the file, unless
+     * {@link Source#getCharacters()} will be loaded from the file, unless
      * {@link Builder#content(java.lang.String) redefined} on the builder. Sample usage:
      * <p>
      * {@link SourceSnippets#fromFile}
@@ -159,7 +159,7 @@ public abstract class Source {
      *
      * {@link SourceSnippets#fromAString}
      *
-     * @param text the text to be returned by {@link Source#getCodeSequence()}
+     * @param text the text to be returned by {@link Source#getCharacters()}
      * @return new builder to configure additional properties
      * @since 0.15
      */
@@ -175,7 +175,7 @@ public abstract class Source {
      *
      * {@link SourceSnippets#fromAString}
      *
-     * @param text the text to be returned by {@link Source#getCodeSequence()}
+     * @param text the text to be returned by {@link Source#getCharacters()}
      * @return new builder to configure additional properties
      * @since 0.28
      */
@@ -386,7 +386,7 @@ public abstract class Source {
      * @since 0.8 or earlier
      */
     public final InputStream getInputStream() {
-        return new ByteArrayInputStream(getCodeSequence().toString().getBytes());
+        return new ByteArrayInputStream(getCharacters().toString().getBytes());
     }
 
     /**
@@ -405,8 +405,8 @@ public abstract class Source {
      *
      * @since 0.28
      */
-    public CharSequence getCodeSequence() {
-        return content().getCode();
+    public CharSequence getCharacters() {
+        return content().getCharacters();
     }
 
     /**
@@ -415,10 +415,10 @@ public abstract class Source {
      *
      * @since 0.28
      */
-    public final CharSequence getCodeSequence(int lineNumber) {
+    public final CharSequence getCharacters(int lineNumber) {
         final int offset = getTextMap().lineStartOffset(lineNumber);
         final int length = getTextMap().lineLength(lineNumber);
-        return getCodeSequence().subSequence(offset, offset + length);
+        return getCharacters().subSequence(offset, offset + length);
     }
 
     /**
@@ -426,11 +426,11 @@ public abstract class Source {
      * they are loaded lazily.
      *
      * @since 0.8 or earlier
-     * @deprecated use {@link #getCodeSequence()} instead.
+     * @deprecated use {@link #getCharacters()} instead.
      */
     @Deprecated
     public String getCode() {
-        return content().getCode().toString();
+        return content().getCharacters().toString();
     }
 
     /**
@@ -438,13 +438,13 @@ public abstract class Source {
      * they are loaded lazily.
      *
      * @since 0.8 or earlier
-     * @deprecated use {@link #getCodeSequence() getCodeSequence()}.
+     * @deprecated use {@link #getCharacters() getCodeSequence()}.
      *             {@link CharSequence#subSequence(int, int)} subSequence(charIndex, charIndex +
      *             charLength)
      */
     @Deprecated
     public String getCode(int charIndex, int charLength) {
-        return getCodeSequence().subSequence(charIndex, charIndex + charLength).toString();
+        return getCharacters().subSequence(charIndex, charIndex + charLength).toString();
     }
 
     /**
@@ -452,11 +452,11 @@ public abstract class Source {
      * Causes the contents of this source to be loaded if they are loaded lazily.
      *
      * @since 0.8 or earlier
-     * @deprecated use {@link #getCodeSequence(int)} instead.
+     * @deprecated use {@link #getCharacters(int)} instead.
      */
     @Deprecated
     public final String getCode(int lineNumber) {
-        return getCodeSequence(lineNumber).toString();
+        return getCharacters(lineNumber).toString();
     }
 
     /**
@@ -529,7 +529,7 @@ public abstract class Source {
     /**
      * Creates a representation of a line of text in the source identified only by line number, from
      * which the character information will be computed. Please note that calling this method does
-     * cause the {@link Source#getCodeSequence() code} of this source to be loaded.
+     * cause the {@link Source#getCharacters() code} of this source to be loaded.
      *
      * @param lineNumber 1-based line number of the first character in the section
      * @return newly created object representing the specified line
@@ -549,7 +549,7 @@ public abstract class Source {
 
     /**
      * Creates a representation of a contiguous region of text in the source. Please note that
-     * calling this method does only cause the {@link Source#getCodeSequence() code} of this source
+     * calling this method does only cause the {@link Source#getCharacters() code} of this source
      * to be loaded if assertions enabled. The bounds of the source section are only verified if
      * assertions (-ea) are enabled in the host system. An {@link IllegalArgumentException} is
      * thrown if the given indices are out of bounds of the source bounds.
@@ -575,7 +575,7 @@ public abstract class Source {
     /**
      * Creates a representation of a contiguous region of text in the source. Computes the
      * {@code charIndex} value by building a text map of lines in the source. Please note that
-     * calling this method does cause the {@link Source#getCodeSequence() code} of this source to be
+     * calling this method does cause the {@link Source#getCharacters() code} of this source to be
      * loaded.
      *
      * @param startLine 1-based line number of the first character in the section
@@ -600,7 +600,7 @@ public abstract class Source {
             throw new IllegalArgumentException("column out of range");
         }
         final int charIndex = lineStartOffset + startColumn - 1;
-        if (charIndex + length > getCodeSequence().length()) {
+        if (charIndex + length > getCharacters().length()) {
             throw new IllegalArgumentException("charIndex out of range");
         }
         SourceSection section = new SourceSection(this, charIndex, length);
@@ -656,7 +656,7 @@ public abstract class Source {
     }
 
     TextMap createTextMap() {
-        final CharSequence code = getCodeSequence();
+        final CharSequence code = getCharacters();
         if (code == null) {
             throw new RuntimeException("can't read file " + getName());
         }
@@ -843,7 +843,7 @@ public abstract class Source {
          *
          * {@link SourceSnippets#fromURLWithOwnContent}
          *
-         * @param code the code to be available via {@link Source#getCodeSequence()}
+         * @param code the code to be available via {@link Source#getCharacters()}
          * @return instance of this builder - which's {@link #build()} method no longer throws an
          *         {@link IOException}
          * @since 0.15
@@ -1003,7 +1003,7 @@ class SourceSnippets {
         assert "sample.js".equals(source.getName());
         assert "application/javascript".equals(source.getMimeType());
         assert resource.toExternalForm().equals(source.getURI().toString());
-        assert "{}".equals(source.getCodeSequence());
+        assert "{}".equals(source.getCharacters());
         // END: SourceSnippets#fromURLWithOwnContent
         return source;
     }

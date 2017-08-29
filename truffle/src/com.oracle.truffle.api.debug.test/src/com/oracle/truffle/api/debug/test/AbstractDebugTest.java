@@ -123,7 +123,7 @@ public abstract class AbstractDebugTest {
     protected SuspendedEvent checkState(SuspendedEvent suspendedEvent, final int expectedLineNumber, final boolean expectedIsBefore, final String expectedCode, final String... expectedFrame) {
         final int actualLineNumber = suspendedEvent.getSourceSection().getStartLine();
         Assert.assertEquals(expectedLineNumber, actualLineNumber);
-        final String actualCode = suspendedEvent.getSourceSection().getCodeSequence().toString();
+        final String actualCode = suspendedEvent.getSourceSection().getCharacters().toString();
         Assert.assertEquals(expectedCode, actualCode);
         final boolean actualIsBefore = suspendedEvent.isHaltedBefore();
         Assert.assertEquals(expectedIsBefore, actualIsBefore);

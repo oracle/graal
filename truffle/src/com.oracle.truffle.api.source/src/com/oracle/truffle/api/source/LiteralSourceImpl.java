@@ -45,7 +45,7 @@ final class LiteralSourceImpl extends Content implements Content.CreateURI {
     }
 
     @Override
-    public CharSequence getCode() {
+    public CharSequence getCharacters() {
         return code;
     }
 

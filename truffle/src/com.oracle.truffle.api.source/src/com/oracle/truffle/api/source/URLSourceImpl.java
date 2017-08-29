@@ -97,7 +97,7 @@ final class URLSourceImpl extends Content {
     }
 
     @Override
-    public CharSequence getCode() {
+    public CharSequence getCharacters() {
         return code;
     }
 

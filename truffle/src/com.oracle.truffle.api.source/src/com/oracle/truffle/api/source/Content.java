@@ -42,7 +42,7 @@ abstract class Content {
 
     abstract Reader getReader() throws IOException;
 
-    abstract CharSequence getCode();
+    abstract CharSequence getCharacters();
 
     abstract String getName();
 
@@ -65,7 +65,7 @@ abstract class Content {
             return false;
         }
         Content other = (Content) obj;
-        return Objects.equals(getCode(), other.getCode());
+        return Objects.equals(getCharacters(), other.getCharacters());
     }
 
     @Override
