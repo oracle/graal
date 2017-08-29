@@ -393,7 +393,7 @@ public abstract class Launcher {
     /**
      * Returns true if the current launcher was compiled ahead-of-time to native code.
      */
-    protected final boolean isAOT() {
+    protected static boolean isAOT() {
         return IS_AOT;
     }
 
