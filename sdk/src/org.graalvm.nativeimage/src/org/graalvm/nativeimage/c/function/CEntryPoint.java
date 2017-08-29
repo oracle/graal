@@ -38,7 +38,7 @@ import org.graalvm.word.WordBase;
 
 /**
  * Annotates a method that is a VM entry point. Such a method must be declared <i>static</i>, and is
- * compiled so that it conforms to the native ABI and can be called as a C function.
+ * made accessible so that it can be called as a C function using the native ABI.
  * <p>
  * An execution context must be passed as a parameter and can be either an {@link IsolateThread}
  * that is specific to the current thread, or an {@link Isolate} for an isolate in which the current
@@ -54,9 +54,6 @@ import org.graalvm.word.WordBase;
  * {@link CEnum} annotation. When enum values are passed as parameters, the enum class must have a
  * method with a {@link CEnumLookup} annotation. For enum return types, the enum class must have a
  * method that is annotated with {@link CEnumValue}.
- * <p>
- * The used calling convention is different to that of regular Java methods, so a method annotated
- * with {@link CEntryPoint} must not be called from any Java method.
  *
  * @see CEntryPointContext
  * @see CEntryPointLiteral
@@ -71,7 +68,7 @@ public @interface CEntryPoint {
     String name() default "";
 
     /**
-     * Method documentation to be displayed in the the header file.
+     * Method documentation to be included in the header file, as an array of lines.
      */
     String[] documentation() default "";
 }
