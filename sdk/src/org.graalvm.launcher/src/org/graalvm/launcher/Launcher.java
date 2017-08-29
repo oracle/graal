@@ -544,10 +544,18 @@ public abstract class Launcher {
             case "--polyglot":
                 seenPolyglot = true;
                 return true;
-            case "--jvm":
-            case "--native":
-                return false;
             default:
+                if ((arg.startsWith("--jvm.") && arg.length() > "--jvm.".length()) || arg.equals("--jvm")) {
+                    if (isAOT()) {
+                        throw abort("should not reach here: jvm option failed to switch to JVM");
+                    }
+                    return true;
+                } else if ((arg.startsWith("--native.") && arg.length() > "--native.".length()) || arg.equals("--native")) {
+                    if (!isAOT()) {
+                        throw abort("native options are not supported on the JVM");
+                    }
+                    return true;
+                }
                 // getLanguageId() or null?
                 if (arg.length() <= 2 || !arg.startsWith("--")) {
                     return false;

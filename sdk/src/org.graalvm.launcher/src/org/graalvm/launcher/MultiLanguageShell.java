@@ -58,7 +58,7 @@ class MultiLanguageShell {
     private final InputStream in;
     private final OutputStream out;
 
-    public MultiLanguageShell(Context context, InputStream in, OutputStream out) {
+    MultiLanguageShell(Context context, InputStream in, OutputStream out) {
         this.context = context;
         this.in = in;
         this.out = out;
