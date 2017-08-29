@@ -372,12 +372,13 @@ public final class Source {
     }
 
     /**
-     *
+     * Creates a new character source builder. The given characters must not mutate after they were
+     * accessed for the first time.
      *
      * @since 1.0
      */
-    public static Builder newBuilder(String language, CharSequence source, String name) {
-        return EMPTY.new Builder(language, source).name(name);
+    public static Builder newBuilder(String language, CharSequence characters, String name) {
+        return EMPTY.new Builder(language, characters).name(name);
     }
 
     /**
@@ -491,7 +492,8 @@ public final class Source {
         /**
          * Specifies content of {@link #build() to-be-built} {@link Source}. Using this method one
          * can ignore the real content of a file or URL and use already read one, or completely
-         * different one. Example:
+         * different one. The given characters must not mutate after they were accessed for the
+         * first time. Example:
          *
          * {@link SourceSnippets#fromURLWithOwnContent}
          *
