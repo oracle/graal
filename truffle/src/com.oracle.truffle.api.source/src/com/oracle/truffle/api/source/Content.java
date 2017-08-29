@@ -257,35 +257,35 @@ abstract class Content {
      * Wrapper to enforce CharSequence contract is not violated by any language.
      */
     private static class CharSequenceWrapper implements CharSequence {
-    
+
         private final CharSequence delegate;
-    
+
         CharSequenceWrapper(CharSequence delegate) {
             this.delegate = delegate;
         }
-    
+
         public int length() {
             return delegate.length();
         }
-    
+
         public char charAt(int index) {
             return delegate.charAt(index);
         }
-    
+
         public CharSequence subSequence(int start, int end) {
             return delegate.subSequence(start, end);
         }
-    
+
         @Override
         public boolean equals(Object obj) {
             return delegate.equals(obj);
         }
-    
+
         @Override
         public int hashCode() {
             return delegate.hashCode();
         }
-    
+
         @Override
         public String toString() {
             return delegate.toString();
