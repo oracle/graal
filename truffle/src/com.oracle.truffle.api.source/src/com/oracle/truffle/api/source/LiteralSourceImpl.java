@@ -36,7 +36,7 @@ final class LiteralSourceImpl extends Content implements Content.CreateURI {
 
     LiteralSourceImpl(String name, CharSequence code) {
         this.name = name;
-        this.code = code;
+        this.code = enforceCharSequenceContract(code);
     }
 
     @Override

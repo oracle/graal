@@ -125,7 +125,7 @@ public abstract class AbstractPolyglotImpl {
             this.engineImpl = engineImpl;
         }
 
-        public abstract Source build(String language, Object origin, URI uri, String name, String content, boolean interactive, boolean internal) throws IOException;
+        public abstract Source build(String language, Object origin, URI uri, String name, CharSequence content, boolean interactive, boolean internal) throws IOException;
 
         public abstract String getName(Object impl);
 

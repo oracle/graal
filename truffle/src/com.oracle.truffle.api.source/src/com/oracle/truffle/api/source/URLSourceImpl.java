@@ -53,7 +53,7 @@ final class URLSourceImpl extends Content {
         } catch (URISyntaxException ex) {
             throw new IOException("Bad URL: " + url, ex);
         }
-        this.code = Source.read(new InputStreamReader(c.getInputStream()));
+        this.code = enforceCharSequenceContract(Source.read(new InputStreamReader(c.getInputStream())));
     }
 
     URLSourceImpl(URL url, CharSequence code, String name) throws IOException {
@@ -65,9 +65,9 @@ final class URLSourceImpl extends Content {
             throw new IOException("Bad URL: " + url, ex);
         }
         if (code != null) {
-            this.code = code;
+            this.code = enforceCharSequenceContract(code);
         } else {
-            this.code = Source.read(new InputStreamReader(url.openStream()));
+            this.code = enforceCharSequenceContract(Source.read(new InputStreamReader(url.openStream())));
         }
     }
 

@@ -549,8 +549,8 @@ public abstract class Source {
 
     /**
      * Creates a representation of a contiguous region of text in the source. Please note that
-     * calling this method does only cause the {@link Source#getCharacters() code} of this source
-     * to be loaded if assertions enabled. The bounds of the source section are only verified if
+     * calling this method does only cause the {@link Source#getCharacters() code} of this source to
+     * be loaded if assertions enabled. The bounds of the source section are only verified if
      * assertions (-ea) are enabled in the host system. An {@link IllegalArgumentException} is
      * thrown if the given indices are out of bounds of the source bounds.
      *
@@ -850,6 +850,24 @@ public abstract class Source {
          */
         @SuppressWarnings("unchecked")
         public Builder<RuntimeException, E2, E3> content(String code) {
+            this.content = code;
+            return (Builder<RuntimeException, E2, E3>) this;
+        }
+
+        /**
+         * Specifies content of {@link #build() to-be-built} {@link Source}. Using this method one
+         * can ignore the real content of a file or URL and use already read one, or completely
+         * different one. Example:
+         *
+         * {@link SourceSnippets#fromURLWithOwnContent}
+         *
+         * @param code the code to be available via {@link Source#getCharacters()}
+         * @return instance of this builder - which's {@link #build()} method no longer throws an
+         *         {@link IOException}
+         * @since 0.28
+         */
+        @SuppressWarnings("unchecked")
+        public Builder<RuntimeException, E2, E3> content(CharSequence code) {
             this.content = code;
             return (Builder<RuntimeException, E2, E3>) this;
         }

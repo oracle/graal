@@ -59,6 +59,20 @@ abstract class Content {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("all")
+    static CharSequence enforceCharSequenceContract(CharSequence sequence) {
+        boolean assertions = false;
+        assert assertions = true;
+        if (assertions) {
+            if (sequence instanceof String) {
+                return sequence;
+            } else {
+                return new CharSequenceWrapper(sequence);
+            }
+        }
+        return sequence;
+    }
+
     @Override
     public final boolean equals(Object obj) {
         if (obj == null || getClass() != obj.getClass()) {
@@ -237,6 +251,45 @@ abstract class Content {
             result.append(hex);
         }
         return result.toString();
+    }
+
+    /**
+     * Wrapper to enforce CharSequence contract is not violated by any language.
+     */
+    private static class CharSequenceWrapper implements CharSequence {
+    
+        private final CharSequence delegate;
+    
+        CharSequenceWrapper(CharSequence delegate) {
+            this.delegate = delegate;
+        }
+    
+        public int length() {
+            return delegate.length();
+        }
+    
+        public char charAt(int index) {
+            return delegate.charAt(index);
+        }
+    
+        public CharSequence subSequence(int start, int end) {
+            return delegate.subSequence(start, end);
+        }
+    
+        @Override
+        public boolean equals(Object obj) {
+            return delegate.equals(obj);
+        }
+    
+        @Override
+        public int hashCode() {
+            return delegate.hashCode();
+        }
+    
+        @Override
+        public String toString() {
+            return delegate.toString();
+        }
     }
 
 }

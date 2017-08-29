@@ -44,7 +44,7 @@ final class FileSourceImpl extends Content implements Content.CreateURI {
     private final String path; // Normalized path description of an actual file
 
     FileSourceImpl(String content, File file, String name, String path) {
-        this.code = content;
+        this.code = enforceCharSequenceContract(content);
         this.file = file.getAbsoluteFile();
         this.name = name;
         this.path = path;
