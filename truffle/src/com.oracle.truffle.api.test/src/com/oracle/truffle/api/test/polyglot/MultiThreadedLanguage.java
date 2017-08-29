@@ -25,6 +25,7 @@ package com.oracle.truffle.api.test.polyglot;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -113,18 +114,23 @@ public class MultiThreadedLanguage extends TruffleLanguage<LanguageContext> {
         return Truffle.getRuntime().createCallTarget(new RootNode(this) {
             @Override
             public Object execute(VirtualFrame frame) {
-                Object result = "null result";
-                if (runinside.get() != null) {
-                    try {
-                        result = runinside.get().apply(getContext().env);
-                    } finally {
-                        runinside.set(null);
-                    }
-                }
+                Object result = run();
                 if (result == null) {
                     result = "null result";
                 }
                 return result;
+            }
+
+            @TruffleBoundary
+            private Object run() {
+                if (runinside.get() != null) {
+                    try {
+                        return runinside.get().apply(getContext().env);
+                    } finally {
+                        runinside.set(null);
+                    }
+                }
+                return "null result";
             }
         });
     }
