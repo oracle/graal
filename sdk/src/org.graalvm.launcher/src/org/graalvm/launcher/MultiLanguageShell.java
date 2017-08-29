@@ -51,8 +51,6 @@ import jline.console.history.MemoryHistory;
 import jline.internal.NonBlockingInputStream;
 
 class MultiLanguageShell {
-
-    private static final String VERSION = System.getProperty("graalvm.version");
     private final Map<Language, History> histories = new HashMap<>();
     private final Context context;
     private final InputStream in;
@@ -70,7 +68,7 @@ class MultiLanguageShell {
         console.setExpandEvents(false);
         console.setCopyPasteDetection(true);
 
-        console.println("GraalVM MultiLanguage Shell " + VERSION);
+        console.println("GraalVM MultiLanguage Shell " + context.getEngine().getVersion());
         console.println("Copyright (c) 2013-7, Oracle and/or its affiliates");
 
         List<Language> languages = new ArrayList<>();

@@ -858,8 +858,24 @@ public abstract class Launcher {
     }
 
     private static final String CLASSPATH = System.getProperty("org.graalvm.launcher.classpath");
-    private static final String GRAALVM_VERSION_PROPERTY = "graalvm.version";
-    private static final String GRAALVM_VERSION = System.getProperty(GRAALVM_VERSION_PROPERTY);
+    private static final String ALT_GRAALVM_VERSION_PROPERTY = "graalvm.version";
+    private static final String GRAALVM_VERSION_PROPERTY = "org.graalvm.version";
+    private static final String GRAALVM_VERSION;
+    static {
+        String version = System.getProperty(GRAALVM_VERSION_PROPERTY);
+        String altVersion = System.getProperty(ALT_GRAALVM_VERSION_PROPERTY);
+        if (version != null && altVersion == null) {
+            GRAALVM_VERSION = version;
+        } else if (altVersion != null && version == null) {
+            GRAALVM_VERSION = altVersion;
+        } else if (version != null && version.equals(altVersion)) {
+            GRAALVM_VERSION = version;
+        } else if (isAOT()) {
+            throw new RuntimeException("Could not find GraalVM version: " + GRAALVM_VERSION_PROPERTY + "='" + version + "' " + ALT_GRAALVM_VERSION_PROPERTY + "='" + altVersion + "'");
+        } else {
+            GRAALVM_VERSION = null;
+        }
+    }
 
     class Native {
         void maybeExec(List<String> args, boolean isPolyglot, Map<String, String> polyglotOptions, VMType defaultVmType) {
@@ -1041,12 +1057,12 @@ public abstract class Launcher {
         }
 
         void setGraalVMProperties() {
-            if (GRAALVM_VERSION == null) {
-                // TODO: this should fail at image generation time
-                throw new Error(GRAALVM_VERSION_PROPERTY + " should have been set");
-            }
+            assert GRAALVM_VERSION != null;
             System.setProperty(GRAALVM_VERSION_PROPERTY, GRAALVM_VERSION);
-            System.setProperty("graalvm.home", getGraalVMHome().toString());
+            System.setProperty(ALT_GRAALVM_VERSION_PROPERTY, GRAALVM_VERSION);
+            String home = getGraalVMHome().toString();
+            System.setProperty("graalvm.home", home);
+            System.setProperty("org.graalvm.home", home);
         }
 
         private Path getGraalVMBinaryPath(String binaryName) {
