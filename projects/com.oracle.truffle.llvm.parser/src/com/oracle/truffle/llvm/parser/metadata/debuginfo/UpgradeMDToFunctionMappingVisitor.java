@@ -31,17 +31,10 @@ package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
-import com.oracle.truffle.llvm.parser.metadata.MDCompileUnit;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
-import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
-import com.oracle.truffle.llvm.parser.metadata.MDNamedNode;
-import com.oracle.truffle.llvm.parser.metadata.MDOldNode;
 import com.oracle.truffle.llvm.parser.metadata.MDReference;
 import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
-import com.oracle.truffle.llvm.parser.metadata.MDSymbolReference;
-import com.oracle.truffle.llvm.parser.metadata.MDTypedValue;
-import com.oracle.truffle.llvm.parser.metadata.MDValue;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.metadata.MetadataList;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
@@ -61,43 +54,11 @@ final class UpgradeMDToFunctionMappingVisitor implements MDFollowRefVisitor {
     }
 
     @Override
-    public void visit(MDCompileUnit md) {
-        md.getSubprograms().accept(this);
-        md.getGlobalVariables().accept(this);
-    }
-
-    @Override
-    public void visit(MDNamedNode md) {
-        for (MDReference ref : md) {
-            ref.accept(this);
-        }
-    }
-
-    @Override
-    public void visit(MDOldNode md) {
-        for (MDTypedValue value : md) {
-            if (value instanceof MDReference) {
-                ((MDReference) value).accept(this);
-            }
-        }
-    }
-
-    @Override
     public void visit(MDSubprogram md) {
-        final MDReference valueRef = md.getFunction();
-        if (valueRef == MDReference.VOID) {
-            return;
-        }
-
-        final MDBaseNode valueNode = valueRef.get();
-        if (valueNode instanceof MDValue) {
-            final MDSymbolReference value = ((MDValue) valueNode).getValue();
-            if (value.isPresent()) {
-                final Symbol valueSymbol = value.get();
-                if (valueSymbol instanceof FunctionDefinition) {
-                    attachSymbol((FunctionDefinition) valueSymbol, md);
-                }
-            }
+        final Symbol valueSymbol = MDSymbolExtractor.getSymbol(md.getFunction());
+        if (valueSymbol instanceof FunctionDefinition) {
+            final FunctionDefinition function = (FunctionDefinition) valueSymbol;
+            attachSymbol(function, md);
         }
     }
 
@@ -109,11 +70,6 @@ final class UpgradeMDToFunctionMappingVisitor implements MDFollowRefVisitor {
             attachSymbol(global, mdGlobal);
         }
 
-    }
-
-    @Override
-    public void visit(MDGlobalVariableExpression md) {
-        md.getGlobalVariable().accept(this);
     }
 
     private void attachSymbol(MetadataAttachmentHolder container, MDBaseNode ref) {

@@ -92,7 +92,7 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
     public void visit(InstructionBlock block) {
         List<Phi> blockPhis = phis.get(block);
         ArrayList<LLVMLivenessAnalysis.NullerInformation> blockNullerInfos = liveness.getNullableWithinBlock()[block.getBlockIndex()];
-        LLVMBitcodeInstructionVisitor visitor = new LLVMBitcodeInstructionVisitor(frame, labels, blockPhis, nodeFactory, argCount, symbols, runtime, blockNullerInfos);
+        LLVMBitcodeInstructionVisitor visitor = new LLVMBitcodeInstructionVisitor(frame, labels, blockPhis, nodeFactory, argCount, symbols, runtime, blockNullerInfos, function.getSourceFunction());
 
         if (addGlobalVISlot) {
             FrameSlot debugSlot = frame.findFrameSlot(LLVMDebugValueContainer.FRAMESLOT_NAME);

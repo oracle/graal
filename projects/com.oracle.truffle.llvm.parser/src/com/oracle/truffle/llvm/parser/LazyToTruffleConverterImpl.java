@@ -92,12 +92,11 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     public RootCallTarget convert() {
         CompilerAsserts.neverPartOfCompilation();
 
-        // this also precompiles the SourceSections for the contained instructions
-        SourceSection sourceSection = runtime.getSourceSection(method);
+        final SourceModel.Function sourceFunction = method.getSourceFunction();
+        SourceSection sourceSection = sourceFunction.getSourceSection();
 
         boolean isLVIEnabled = false;
         if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI) && method.getSourceFunction() != null) {
-            final SourceModel.Function sourceFunction = method.getSourceFunction();
             if (!sourceFunction.getGlobals().isEmpty() || !sourceFunction.getLocals().isEmpty()) {
                 frame.findOrAddFrameSlot(LLVMDebugValueContainer.FRAMESLOT_NAME, FrameSlotKind.Object);
                 isLVIEnabled = true;

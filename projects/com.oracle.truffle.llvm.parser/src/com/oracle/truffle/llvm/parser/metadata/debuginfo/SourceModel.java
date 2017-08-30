@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
 import com.oracle.truffle.llvm.parser.metadata.MetadataList;
@@ -42,6 +44,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
@@ -53,7 +56,9 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public final class SourceModel {
 
@@ -65,9 +70,9 @@ public final class SourceModel {
     public static final String LLVM_DBG_VALUE_NAME = "@llvm.dbg.value";
     public static final int LLVM_DBG_VALUE_LOCALREF_ARGINDEX = 2;
 
-    public static SourceModel generate(ModelModule irModel) {
+    public static SourceModel generate(ModelModule irModel, Source bitcodeSource) {
         final MetadataList moduleMetadata = irModel.getMetadata();
-        final Parser parser = new Parser(moduleMetadata);
+        final Parser parser = new Parser(moduleMetadata, bitcodeSource);
         UpgradeMDToFunctionMappingVisitor.upgrade(moduleMetadata);
         irModel.accept(parser);
         return parser.sourceModel;
@@ -81,6 +86,10 @@ public final class SourceModel {
 
         private final List<Variable> globals;
 
+        private final Map<Instruction, SourceSection> instructions = new HashMap<>();
+
+        private SourceSection lexicalScope;
+
         private Function(FunctionDefinition definition, List<Variable> globals) {
             this.definition = definition;
             this.globals = globals;
@@ -93,6 +102,14 @@ public final class SourceModel {
 
         public List<Variable> getLocals() {
             return locals;
+        }
+
+        public SourceSection getSourceSection() {
+            return lexicalScope;
+        }
+
+        public SourceSection getSourceSection(Instruction instruction) {
+            return instructions.get(instruction);
         }
     }
 
@@ -140,25 +157,65 @@ public final class SourceModel {
 
     private static final class Parser implements ModelVisitor, FunctionVisitor, InstructionVisitorAdapter {
 
+        private final LexicalScopeExtractor lexicalScopeExtractor = new LexicalScopeExtractor();
         private final MDTypeExtractor typeExtractor = new MDTypeExtractor();
 
         private final MetadataList moduleMetadata;
         private final SourceModel sourceModel;
+        private final Source bitcodeSource;
 
         private Function currentFunction = null;
 
-        private Parser(MetadataList moduleMetadata) {
+        private SourceSection currentScopeStart = null;
+        private SourceSection currentScopeEnd = null;
+
+        private Parser(MetadataList moduleMetadata, Source bitcodeSource) {
             this.moduleMetadata = moduleMetadata;
+            this.bitcodeSource = bitcodeSource;
             this.sourceModel = new SourceModel();
         }
 
         @Override
         public void visit(FunctionDefinition function) {
             currentFunction = new Function(function, sourceModel.globals);
+            currentScopeStart = lexicalScopeExtractor.get(function);
+            currentScopeEnd = currentScopeStart;
             typeExtractor.setScopeMetadata(function.getMetadata());
+
             function.accept(this);
             function.setSourceFunction(currentFunction);
+
+            SourceSection lexicalScope;
+            if (currentScopeStart != null && currentScopeEnd != null) {
+                if (currentScopeStart != currentScopeEnd) {
+                    final int startIndex = currentScopeStart.getCharIndex();
+                    final int length = currentScopeEnd.getCharEndIndex() - startIndex;
+                    final Source source = currentScopeStart.getSource();
+                    // Truffle breakpoints are only hit if the text referenced by the SourceSection
+                    // of the corresponding node is fully contained in its rootnode's
+                    // sourcesection's text
+                    try {
+                        lexicalScope = source.createSection(startIndex, length);
+                    } catch (Throwable ignored) {
+                        // this might fail in case the source file was modified after compilation
+                        lexicalScope = null;
+                    }
+
+                } else {
+                    lexicalScope = currentScopeStart;
+                }
+
+            } else {
+                // debug information is not available or the current function is not included in it
+                final String sourceText = String.format("%s:%s", bitcodeSource.getName(), function.getName());
+                final Source irSource = Source.newBuilder(sourceText).mimeType(LexicalScopeExtractor.MIMETYPE_PLAINTEXT).name(sourceText).build();
+                lexicalScope = irSource.createSection(1);
+            }
+            currentFunction.lexicalScope = lexicalScope;
+
             typeExtractor.setScopeMetadata(moduleMetadata);
+            currentScopeEnd = null;
+            currentScopeStart = null;
             currentFunction = null;
         }
 
@@ -199,6 +256,35 @@ public final class SourceModel {
         }
 
         @Override
+        public void defaultAction(Instruction instruction) {
+            final SourceSection instructionScope = lexicalScopeExtractor.get(instruction);
+            if (instructionScope != null) {
+                currentFunction.instructions.put(instruction, instructionScope);
+            } else {
+                return;
+            }
+
+            if (currentScopeStart == null || currentScopeEnd == null) {
+                currentScopeStart = instructionScope;
+                currentScopeEnd = instructionScope;
+                return;
+            }
+
+            if (!currentScopeStart.getSource().equals(instructionScope.getSource())) {
+                // inlined functions should not extend the scope
+                return;
+            }
+
+            if (currentScopeEnd.getCharEndIndex() < instructionScope.getCharEndIndex()) {
+                currentScopeEnd = instructionScope;
+            }
+
+            if (currentScopeStart.getCharIndex() > instructionScope.getCharIndex()) {
+                currentScopeStart = instructionScope;
+            }
+        }
+
+        @Override
         public void visit(VoidCallInstruction call) {
             final Symbol callTarget = call.getCallTarget();
             if (callTarget instanceof FunctionDeclaration) {
@@ -207,23 +293,22 @@ public final class SourceModel {
                     case LLVM_DBG_DECLARE_NAME:
                         if (call.getArgumentCount() >= LLVM_DBG_DECLARE_LOCALREF_ARGINDEX) {
                             mdlocalArgumentIndex = LLVM_DBG_DECLARE_LOCALREF_ARGINDEX;
-                            break;
                         }
-                        return;
+                        break;
 
                     case LLVM_DBG_VALUE_NAME:
                         if (call.getArgumentCount() >= LLVM_DBG_VALUE_LOCALREF_ARGINDEX) {
                             mdlocalArgumentIndex = LLVM_DBG_VALUE_LOCALREF_ARGINDEX;
-                            break;
                         }
-                        return;
-
-                    default:
-                        return;
+                        break;
                 }
 
-                handleDebugIntrinsic(call, mdlocalArgumentIndex);
+                if (mdlocalArgumentIndex >= 0) {
+                    handleDebugIntrinsic(call, mdlocalArgumentIndex);
+                }
             }
+
+            defaultAction(call);
         }
 
         private static final int LLVM_DBG_INTRINSICS_VALUEINDEX = 0;

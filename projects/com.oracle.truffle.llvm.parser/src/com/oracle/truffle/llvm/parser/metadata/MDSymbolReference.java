@@ -40,6 +40,11 @@ public class MDSymbolReference extends MDTypedValue implements MDBaseNode {
     public static final MDSymbolReference VOID = new MDSymbolReference(VoidType.INSTANCE, null) {
 
         @Override
+        public boolean isPresent() {
+            return false;
+        }
+
+        @Override
         public Symbol get() {
             throw new IndexOutOfBoundsException("VOID cannot be dereferenced!");
         }

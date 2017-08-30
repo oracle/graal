@@ -82,7 +82,7 @@ public final class MDLocation implements MDBaseNode {
         final long line = args[MDNODE_LINE];
         final long column = args[MDNODE_COLUMN];
         final MDReference scope = md.getMDRef(args[MDNODE_SCOPE]);
-        final MDReference inlinedAt = md.getMDRefOrNullRef(args[MDNODE_INLINEDAT] - 1);
+        final MDReference inlinedAt = md.getMDRefOrNullRef(args[MDNODE_INLINEDAT]);
         return new MDLocation(line, column, inlinedAt, scope);
     }
 
