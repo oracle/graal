@@ -37,6 +37,7 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -140,5 +141,21 @@ public class NFITest {
 
     protected static TruffleObject lookupAndBind(TruffleObject library, String name, String signature) {
         return (TruffleObject) lookupAndBind.call(library, name, signature);
+    }
+
+    protected static boolean isBoxed(TruffleObject obj) {
+        return ForeignAccess.sendIsBoxed(Message.IS_BOXED.createNode(), obj);
+    }
+
+    protected static Object unbox(TruffleObject obj) {
+        try {
+            return ForeignAccess.sendUnbox(Message.UNBOX.createNode(), obj);
+        } catch (UnsupportedMessageException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    protected static boolean isNull(TruffleObject foreignObject) {
+        return ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), foreignObject);
     }
 }

@@ -24,12 +24,18 @@
  */
 package com.oracle.truffle.api.interop.java;
 
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.Node.Child;
 
 final class JavaInteropSnippets {
     // BEGIN: JavaInteropSnippets#isNullValue
-    public static boolean isNullValue(TruffleObject obj) {
-        return JavaInterop.isNull(obj);
+    @Child Node isNullNode = Message.IS_NULL.createNode();
+
+    boolean isNullValue(TruffleObject obj) {
+        return ForeignAccess.sendIsNull(isNullNode, obj);
     }
     // END: JavaInteropSnippets#isNullValue
 }
