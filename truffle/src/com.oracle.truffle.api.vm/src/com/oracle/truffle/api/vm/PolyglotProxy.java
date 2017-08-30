@@ -353,7 +353,7 @@ final class PolyglotProxy {
                 return getMember(context, (ProxyObject) proxy, (String) key);
             } else {
                 CompilerDirectives.transferToInterpreter();
-                throw UnsupportedMessageException.raise(Message.WRITE);
+                throw UnsupportedMessageException.raise(Message.READ);
             }
         }
 
