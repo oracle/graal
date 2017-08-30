@@ -124,9 +124,12 @@ final class PolyglotLanguageContext implements VMObject {
             }
             LANGUAGE.dispose(localEnv);
 
-            if (!activePolyglotThreads.isEmpty()) {
-                throw new AssertionError("The language did not complete all polyglot threads but should have: " + activePolyglotThreads);
-            }
+            // temporary disabled
+            // if (!activePolyglotThreads.isEmpty()) {
+            // throw new AssertionError("The language did not complete all polyglot threads but
+            // should have: " +
+            // activePolyglotThreads);
+            // }
 
             env = null;
         }
