@@ -25,6 +25,7 @@ package com.oracle.truffle.api.test.polyglot;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -61,6 +62,7 @@ public class ExportValueTest {
         Value value = ctx.importSymbol("tmp");
         try {
             value.getArraySize();
+            Assert.assertTrue("Should not reach here.", false);
         } catch (UnsupportedOperationException e) {
             // Expected
         }
