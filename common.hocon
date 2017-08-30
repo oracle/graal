@@ -6,9 +6,9 @@ overlay = 2c3c4952c2ad7dc321526f6c976051fd70e5c872
 jdks: {
 # GR-5675
 # openjdk8 : {name : openjdk, version : "8u141-jvmci-0.32", platformspecific: true}
-  labsjdk8 : {name : labsjdk, version : "8u141-jvmci-0.33", platformspecific: true}
+  labsjdk8 : {name : labsjdk, version : "8u141-jvmci-0.34", platformspecific: true}
   labsjdk9 : {name : labsjdk, version : "9+181", platformspecific: true}
-  labsjdk8Debug : {name : labsjdk, version : "8u141-jvmci-0.33-fastdebug", platformspecific: true}
+  labsjdk8Debug : {name : labsjdk, version : "8u141-jvmci-0.34-fastdebug", platformspecific: true}
 }
 
 # Overlay placeholder for pinning mx to a specific revision
