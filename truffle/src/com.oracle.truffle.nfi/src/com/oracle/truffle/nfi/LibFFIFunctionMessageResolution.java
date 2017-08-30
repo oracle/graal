@@ -31,9 +31,11 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.CanResolve;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.LibFFIFunctionMessageResolutionFactory.CachedExecuteNodeGen;
@@ -196,6 +198,31 @@ class LibFFIFunctionMessageResolution {
 
         public TruffleObject access(LibFFIFunction receiver, String identifier, Object[] args) {
             return bind.access(receiver.getPointer(), identifier, args);
+        }
+    }
+
+    @Resolve(message = "KEYS")
+    abstract static class LibFFIFunctionKeysNode extends Node {
+
+        @SuppressWarnings("unused")
+        public TruffleObject access(LibFFIFunction receiver) {
+            return JavaInterop.asTruffleObject(new String[]{"bind"});
+        }
+    }
+
+    @Resolve(message = "KEY_INFO")
+    abstract static class LibFFIFunctionKeyInfoNode extends Node {
+
+        private static final int INVOCABLE = KeyInfo.newBuilder().setInvocable(true).build();
+        private static final int NOT_EXISTING = 0;
+
+        @SuppressWarnings("unused")
+        public int access(LibFFIFunction receiver, String identifier) {
+            if ("bind".equals(identifier)) {
+                return INVOCABLE;
+            } else {
+                return NOT_EXISTING;
+            }
         }
     }
 
