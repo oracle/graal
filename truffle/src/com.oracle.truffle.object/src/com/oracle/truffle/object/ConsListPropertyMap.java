@@ -329,6 +329,10 @@ final class ConsListPropertyMap extends PropertyMap {
             throw new IllegalArgumentException("Key must equal extracted key of property.");
         }
 
+        Property oldValue = get(key);
+        if (oldValue != null) {
+            return replaceCopy(oldValue, value);
+        }
         return putCopy(value);
     }
 
