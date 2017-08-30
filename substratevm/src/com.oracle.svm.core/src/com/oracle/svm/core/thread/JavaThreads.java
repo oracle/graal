@@ -744,6 +744,12 @@ final class Target_java_lang_Thread {
 @TargetClass(ThreadGroup.class)
 final class Target_java_lang_ThreadGroup {
 
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    private int nthreads;
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    private Thread[] threads;
+
     @Alias
     native void addUnstarted();
 
