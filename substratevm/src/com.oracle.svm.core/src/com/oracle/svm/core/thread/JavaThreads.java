@@ -23,14 +23,19 @@
 package com.oracle.svm.core.thread;
 
 //Checkstyle: allow reflection
+
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -41,12 +46,14 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.BarrieredAccess;
+import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -176,10 +183,6 @@ public abstract class JavaThreads {
                 VMThreads.THREAD_LIST_CONDITION.block();
             }
         }
-    }
-
-    public boolean isSingleThread(Thread that) {
-        return (that == singleThread);
     }
 
     @NeverInline("Truffle compilation must not inline this method")
@@ -400,6 +403,54 @@ public abstract class JavaThreads {
             JavaStackWalker.walkThread(thread, stackTraceBuilder);
         }
         return stackTraceBuilder.getTrace();
+    }
+
+    /** Initialize thread ID and autonumber sequences in the image heap. */
+    @AutomaticFeature
+    private static class SequenceInitializingFeature implements Feature {
+
+        private final CopyOnWriteArraySet<Thread> collectedThreads = new CopyOnWriteArraySet<>();
+
+        private final MethodHandle threadSeqNumberMH = createFieldMH(Thread.class, "threadSeqNumber");
+        private final MethodHandle threadInitNumberMH = createFieldMH(Thread.class, "threadInitNumber");
+
+        @Override
+        public void duringSetup(DuringSetupAccess access) {
+            access.registerObjectReplacer(this::collectThreads);
+        }
+
+        private Object collectThreads(Object original) {
+            if (original instanceof Thread) {
+                collectedThreads.add((Thread) original);
+            }
+            return original;
+        }
+
+        @Override
+        public void beforeCompilation(BeforeCompilationAccess access) {
+            /*
+             * If there are unstarted threads in the image heap, initialize image version of both
+             * sequences with current values. Otherwise, they'll be restarted from 0.
+             */
+            if (!collectedThreads.isEmpty()) {
+                try {
+                    JavaThreads.singleton().threadSeqNumber.set((long) threadSeqNumberMH.invokeExact());
+                    JavaThreads.singleton().threadInitNumber.set((int) threadInitNumberMH.invokeExact());
+                } catch (Throwable t) {
+                    throw VMError.shouldNotReachHere(t);
+                }
+            }
+        }
+
+        private static MethodHandle createFieldMH(Class<?> declaringClass, String fieldName) {
+            try {
+                Field field = declaringClass.getDeclaredField(fieldName);
+                field.setAccessible(true);
+                return MethodHandles.lookup().unreflectGetter(field);
+            } catch (Throwable t) {
+                throw VMError.shouldNotReachHere(t);
+            }
+        }
     }
 }
 
