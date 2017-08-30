@@ -451,6 +451,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                 resolvedValue = (Value) value;
             } else {
                 PolyglotLanguageContext hostContext = getHostContext();
+                hostContext.ensureInitialized();
                 resolvedValue = hostContext.toHostValue(hostContext.toGuestValue(value));
             }
             polyglotScope.put(symbolName, resolvedValue);
