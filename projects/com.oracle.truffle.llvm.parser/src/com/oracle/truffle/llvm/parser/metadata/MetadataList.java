@@ -98,6 +98,19 @@ public final class MetadataList {
         throw new AssertionError("No kind with id: " + id);
     }
 
+    private int nextArtificialKindId = -1;
+
+    public MDKind getKind(String name) {
+        for (MDKind kind : mdKinds) {
+            if (kind.getName().equals(name)) {
+                return kind;
+            }
+        }
+        final MDKind newKind = MDKind.create(nextArtificialKindId--, name);
+        mdKinds.add(newKind);
+        return newKind;
+    }
+
     public int size() {
         return metadata.size();
     }

@@ -63,8 +63,10 @@ public final class MDKind implements MDBaseNode {
     private static final int ARG_ID = 0;
 
     public static MDKind create(long[] args) {
-        final long id = args[ARG_ID];
-        final String name = ParseUtil.longArrayToString(1, args);
+        return create(args[ARG_ID], ParseUtil.longArrayToString(1, args));
+    }
+
+    public static MDKind create(long id, String name) {
         return new MDKind(id, name);
     }
 

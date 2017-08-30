@@ -35,6 +35,20 @@ import java.util.Objects;
 
 public abstract class MDReference extends MDTypedValue implements MDBaseNode {
 
+    private static final class NodeRef extends MDReference {
+
+        private final MDBaseNode target;
+
+        private NodeRef(MDBaseNode target) {
+            this.target = target;
+        }
+
+        @Override
+        public MDBaseNode get() {
+            return target;
+        }
+    }
+
     private static final class MDRef extends MDReference {
 
         private final int index;
@@ -115,6 +129,10 @@ public abstract class MDReference extends MDTypedValue implements MDBaseNode {
 
     public static MDReference fromSymbolRef(MDSymbolReference ref) {
         return new SymRef(MDValue.createFromSymbolReference(ref));
+    }
+
+    public static MDReference fromNode(MDBaseNode node) {
+        return new NodeRef(node);
     }
 
     private MDReference() {

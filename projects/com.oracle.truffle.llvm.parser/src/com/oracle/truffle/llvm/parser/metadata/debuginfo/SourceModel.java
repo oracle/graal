@@ -30,8 +30,6 @@
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
-import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
-import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
 import com.oracle.truffle.llvm.parser.metadata.MetadataList;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
@@ -68,8 +66,9 @@ public final class SourceModel {
     public static final int LLVM_DBG_VALUE_LOCALREF_ARGINDEX = 2;
 
     public static SourceModel generate(ModelModule irModel) {
-        final Parser parser = new Parser(irModel.getMetadata());
-        irModel.getMetadata().accept(parser);
+        final MetadataList moduleMetadata = irModel.getMetadata();
+        final Parser parser = new Parser(moduleMetadata);
+        UpgradeMDToFunctionMappingVisitor.upgrade(moduleMetadata);
         irModel.accept(parser);
         return parser.sourceModel;
     }
@@ -139,17 +138,14 @@ public final class SourceModel {
     private SourceModel() {
     }
 
-    private static final class Parser implements ModelVisitor, MDFollowRefVisitor, FunctionVisitor, InstructionVisitorAdapter {
+    private static final class Parser implements ModelVisitor, FunctionVisitor, InstructionVisitorAdapter {
+
+        private final MDTypeExtractor typeExtractor = new MDTypeExtractor();
 
         private final MetadataList moduleMetadata;
-
         private final SourceModel sourceModel;
 
         private Function currentFunction = null;
-
-        private GlobalValueSymbol currentGlobal = null;
-
-        private final MDTypeExtractor typeExtractor = new MDTypeExtractor();
 
         private Parser(MetadataList moduleMetadata) {
             this.moduleMetadata = moduleMetadata;
@@ -167,14 +163,19 @@ public final class SourceModel {
         }
 
         private void visitGlobal(GlobalValueSymbol global) {
-            if (global.hasAttachedMetadata()) {
-                final MDBaseNode md = global.getMetadataAttachment(MDKind.DBG_NAME);
-                if (md != null) {
-                    currentGlobal = global;
-                    md.accept(this);
-                    currentGlobal = null;
-                }
+            if (!global.hasAttachedMetadata()) {
+                return;
             }
+
+            final MDBaseNode md = global.getMetadataAttachment(MDKind.DBG_NAME);
+            if (md == null) {
+                return;
+            }
+
+            final String name = MDNameExtractor.getName(md);
+            final LLVMSourceType type = typeExtractor.parseType(md);
+            Variable globalVar = new Variable(name, global, type);
+            sourceModel.globals.add(globalVar);
         }
 
         @Override
@@ -257,28 +258,6 @@ public final class SourceModel {
                 call.replace(call.getArgument(LLVM_DBG_INTRINSICS_VALUEINDEX), value);
                 call.replace(mdLocalMDRef, var);
             }
-        }
-
-        @Override
-        public void visit(MDGlobalVariable mdGlobal) {
-            String name = MDNameExtractor.getName(mdGlobal.getName());
-            Symbol symbol;
-            if (currentGlobal != null) {
-                symbol = currentGlobal;
-            } else {
-                symbol = MDSymbolExtractor.getSymbol(mdGlobal.getVariable());
-            }
-            if (symbol == null) {
-                return;
-            }
-            LLVMSourceType type = typeExtractor.parseType(mdGlobal.getType());
-            Variable globalVar = new Variable(name, symbol, type);
-            sourceModel.globals.add(globalVar);
-        }
-
-        @Override
-        public void visit(MDGlobalVariableExpression md) {
-            md.getGlobalVariable().accept(this);
         }
     }
 }

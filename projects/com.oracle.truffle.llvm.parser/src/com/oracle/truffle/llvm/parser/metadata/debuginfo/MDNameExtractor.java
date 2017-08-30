@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDEnumerator;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
+import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDString;
 
@@ -57,6 +58,11 @@ final class MDNameExtractor implements MDFollowRefVisitor {
     @Override
     public void visit(MDString md) {
         str = md.getString();
+    }
+
+    @Override
+    public void visit(MDGlobalVariableExpression mdGVE) {
+        mdGVE.getGlobalVariable().accept(this);
     }
 
     @Override
