@@ -170,6 +170,7 @@ public final class PolyglotLauncher extends Launcher {
         if (!isAOT()) {
             contextBuilder.allowHostAccess(true);
         }
+        contextBuilder.allowCreateThread(true);
 
         if (shell) {
             runShell(contextBuilder);
