@@ -124,10 +124,10 @@ public final class StructureType extends AggregateType {
         int offset = 0;
         for (int i = 0; i < index; i++) {
             final Type elementType = types[i];
-            offset += elementType.getSize(targetDataLayout);
             if (!isPacked) {
                 offset += Type.getPadding(offset, elementType, targetDataLayout);
             }
+            offset += elementType.getSize(targetDataLayout);
         }
         if (!isPacked && getSize(targetDataLayout) > offset) {
             offset += Type.getPadding(offset, types[index], targetDataLayout);
