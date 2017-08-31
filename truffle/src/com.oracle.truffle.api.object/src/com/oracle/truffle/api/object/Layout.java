@@ -134,7 +134,7 @@ public abstract class Layout {
         if (layoutFactoryImplClassName != null) {
             Class<?> clazz;
             try {
-                clazz = Class.forName(layoutFactoryImplClassName);
+                clazz = Class.forName(layoutFactoryImplClassName, true, Truffle.getRuntime().getClass().getClassLoader());
             } catch (ClassNotFoundException e) {
                 throw new RuntimeException(e);
             }
