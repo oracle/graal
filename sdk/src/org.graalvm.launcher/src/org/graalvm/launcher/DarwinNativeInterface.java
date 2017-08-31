@@ -22,14 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativeimage.impl;
+package org.graalvm.launcher;
 
-import org.graalvm.options.OptionDescriptors;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 
-public interface RuntimeOptionsSupport {
-    void set(String optionName, Object value);
+@Platforms(Platform.DARWIN.class)
+class DarwinNativeInterface {
 
-    <T> T get(String optionName);
+    public static int errno() {
+        return __error().read();
+    }
 
-    OptionDescriptors getOptions();
+    // Checkstyle: stop method name check
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    private static native CIntPointer __error();
+    // Checkstyle: resume method name check
 }

@@ -483,7 +483,10 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     @Override
     public String getVersion() {
-        String version = System.getProperty("graalvm.version");
+        String version = System.getProperty("org.graalvm.version");
+        if (version == null) {
+            version = System.getProperty("graalvm.version");
+        }
         if (version == null) {
             return "Development Build";
         } else {

@@ -709,7 +709,7 @@ def _parseVmArgs(args, addDefaultArgs=True):
 
     if '-version' in args:
         ignoredArgs = args[args.index('-version') + 1:]
-        if  len(ignoredArgs) > 0:
+        if len(ignoredArgs) > 0:
             mx.log("Warning: The following options will be ignored by the VM because they come after the '-version' argument: " + ' '.join(ignoredArgs))
 
     return jdk.processArgs(argsPrefix + args, addDefaultArgs=addDefaultArgs)

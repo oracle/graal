@@ -22,14 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativeimage.impl;
+package org.graalvm.launcher;
 
-import org.graalvm.options.OptionDescriptors;
+import org.graalvm.nativeimage.Feature;
 
-public interface RuntimeOptionsSupport {
-    void set(String optionName, Object value);
-
-    <T> T get(String optionName);
-
-    OptionDescriptors getOptions();
+class PolyglotLauncherFeature implements Feature {
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        PolyglotLauncher.AOT_LAUNCHER_CLASSES.values().forEach(access::registerForReflectiveInstantiation);
+    }
 }
