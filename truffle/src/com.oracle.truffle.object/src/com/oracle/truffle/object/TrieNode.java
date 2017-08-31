@@ -31,9 +31,11 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
     protected static final int HASH_SHIFT = 5; // t
     protected static final int HASH_RANGE = 32; // 2**t
     protected static final int HASH_MASK = HASH_RANGE - 1;
+    private static final BitmapNode<?, ?, ?> EMPTY_NODE = new BitmapNode<>();
 
+    @SuppressWarnings("unchecked")
     static <K, V, E extends Map.Entry<K, V>> TrieNode<K, V, E> empty() {
-        return new BitmapNode<>();
+        return (TrieNode<K, V, E>) EMPTY_NODE;
     }
 
     final E find(K key, int hash) {
@@ -63,6 +65,10 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
 
     final int hash(K key) {
         return key.hashCode();
+    }
+
+    final boolean isEmpty() {
+        return this == empty();
     }
 
     static int pos(int hash, int shift) {
@@ -100,6 +106,12 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
         copy[index] = element;
         System.arraycopy(original, index, copy, index + 1, original.length - index);
         return copy;
+    }
+
+    static <T> T[] copyAndAppend(T[] original, T element) {
+        T[] newArray = Arrays.copyOf(original, original.length + 1);
+        newArray[original.length] = element;
+        return newArray;
     }
 
     abstract Object[] entries();
@@ -240,34 +252,34 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
 
         @SuppressWarnings("unchecked")
         @Override
-        TrieNode<K, V, E> put(K key, int hash, E element, int shift) {
+        TrieNode<K, V, E> put(K key, int hash, E entry, int shift) {
             int bit = bit(hash, shift);
             int index = index(bit);
             if ((bitmap & bit) != 0) {
-                Object entry = entries[index];
-                assert entry != null;
-                if (entry instanceof TrieNode) {
-                    TrieNode<K, V, E> newNode = ((TrieNode<K, V, E>) entry).put(key, hash, element, shift + HASH_SHIFT);
-                    if (newNode == entry) {
+                Object nodeOrEntry = entries[index];
+                assert nodeOrEntry != null;
+                if (nodeOrEntry instanceof TrieNode) {
+                    TrieNode<K, V, E> newNode = ((TrieNode<K, V, E>) nodeOrEntry).put(key, hash, entry, shift + HASH_SHIFT);
+                    if (newNode == nodeOrEntry) {
                         return this;
                     } else {
                         assert newNode != null;
                         return new BitmapNode<>(bitmap, copyAndSet(entries, index, newNode));
                     }
                 } else {
-                    E e = (E) entry;
+                    E e = (E) nodeOrEntry;
                     K k = key(e);
                     if (k.equals(key)) {
-                        return new BitmapNode<>(bitmap, copyAndSet(entries, index, element));
+                        return new BitmapNode<>(bitmap, copyAndSet(entries, index, entry));
                     } else {
                         int h = hash(k);
                         assert bit(h, shift) == bit(hash, shift);
-                        TrieNode<K, V, E> newNode = combine(k, h, e, key, hash, element, shift + HASH_SHIFT);
+                        TrieNode<K, V, E> newNode = combine(k, h, e, key, hash, entry, shift + HASH_SHIFT);
                         return new BitmapNode<>(bitmap, copyAndSet(entries, index, newNode));
                     }
                 }
             } else {
-                Object[] newArray = copyAndInsert(entries, index, element);
+                Object[] newArray = copyAndInsert(entries, index, entry);
                 return new BitmapNode<>(bitmap | bit, newArray);
             }
         }
@@ -284,16 +296,16 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
                     TrieNode<K, V, E> newNode = ((TrieNode<K, V, E>) entry).remove(key, hash, shift + HASH_SHIFT);
                     if (newNode == entry) {
                         return this;
-                    } else if (newNode != null) {
-                        return new BitmapNode<>(bitmap, copyAndSet(entries, index, newNode));
+                    } else if (!newNode.isEmpty()) {
+                        return new BitmapNode<>(bitmap, copyAndSet(entries, index, collapseSingletonNode(newNode)));
                     } else {
-                        return clearEntry(bit, index);
+                        return removeBitAndIndex(bit, index);
                     }
                 } else {
                     E e = (E) entry;
                     K k = key(e);
                     if (k.equals(key)) {
-                        return clearEntry(bit, index);
+                        return removeBitAndIndex(bit, index);
                     } else {
                         return this;
                     }
@@ -303,12 +315,24 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
             }
         }
 
-        private TrieNode<K, V, E> clearEntry(int bit, int index) {
+        private TrieNode<K, V, E> removeBitAndIndex(int bit, int index) {
             if (entries.length > 1) {
                 return new BitmapNode<>(bitmap & ~bit, copyAndRemove(entries, index));
             } else {
-                return null;
+                return empty();
             }
+        }
+
+        private Object collapseSingletonNode(TrieNode<K, V, E> node) {
+            assert !node.isEmpty();
+            // remove may return a single-entry node, collapse it into just the entry
+            if (node instanceof BitmapNode) {
+                BitmapNode<K, V, E> bitmapNode = (BitmapNode<K, V, E>) node;
+                if (bitmapNode.entries.length == 1 && !(bitmapNode.entries[0] instanceof TrieNode)) {
+                    return bitmapNode.entries[0];
+                }
+            }
+            return node;
         }
 
         @Override
@@ -353,24 +377,22 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
 
         @SuppressWarnings("unchecked")
         @Override
-        TrieNode<K, V, E> put(K key, int hash, E element, int shift) {
+        TrieNode<K, V, E> put(K key, int hash, E entry, int shift) {
             if (hash == this.hashcode) {
                 int index = findIndex(key);
                 if (index < 0) {
-                    Object[] newArray = Arrays.copyOf(entries, entries.length + 1);
-                    newArray[entries.length] = element;
-                    return new HashCollisionNode<>(hash, newArray);
+                    return new HashCollisionNode<>(hash, copyAndAppend(entries, entry));
                 } else {
-                    E entry = (E) entries[index];
-                    assert entry != null && key(entry).equals(key);
-                    if (entry.equals(element)) {
+                    E e = (E) entries[index];
+                    assert e != null && key(e).equals(key);
+                    if (e.equals(entry)) {
                         return this;
                     } else {
-                        return new HashCollisionNode<>(hash, copyAndSet(entries, index, element));
+                        return new HashCollisionNode<>(hash, copyAndSet(entries, index, entry));
                     }
                 }
             } else {
-                return new BitmapNode<K, V, E>(bit(this.hashcode, shift), new Object[]{this}).put(key, hash, element, shift);
+                return new BitmapNode<K, V, E>(bit(this.hashcode, shift), new Object[]{this}).put(key, hash, entry, shift);
             }
         }
 
@@ -382,15 +404,11 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
                 return this;
             } else {
                 assert entries[index] != null && key((E) entries[index]).equals(key);
-                int newCount = entries.length - 1;
-                if (newCount > 0) {
-                    if (newCount == 1) {
-                        return new BitmapNode<>(bit(this.hashcode, shift), copyAndRemove(entries, index));
-                    } else {
-                        return new HashCollisionNode<>(hash, copyAndRemove(entries, index));
-                    }
+                assert entries.length >= 2;
+                if (entries.length == 2) {
+                    return new BitmapNode<>(bit(this.hashcode, shift), copyAndRemove(entries, index));
                 } else {
-                    return null;
+                    return new HashCollisionNode<>(hash, copyAndRemove(entries, index));
                 }
             }
         }

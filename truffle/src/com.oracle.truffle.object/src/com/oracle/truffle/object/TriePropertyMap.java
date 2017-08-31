@@ -38,8 +38,7 @@ import com.oracle.truffle.api.object.Property;
  */
 final class TriePropertyMap extends PropertyMap implements LinkedImmutableMap<Object, Property> {
 
-    private static final TrieNode<Object, Property, LinkedPropertyEntry> EMPTY_LINKED_PROPERTY_NODE = TrieNode.empty();
-    private static final TriePropertyMap EMPTY = new TriePropertyMap(0, EMPTY_LINKED_PROPERTY_NODE, null, null);
+    private static final TriePropertyMap EMPTY = new TriePropertyMap(0, TrieNode.empty(), null, null);
 
     /* Enables stricter assertions for debugging. */
     private static final boolean VERIFY = false;
