@@ -911,9 +911,6 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         if benchmarks is None:
             # No benchmark specified in the command line, so run everything.
             benchmarks = [b for b in self.benchmarkList(bmSuiteArgs) if b != 'batik']
-        elif 'batik' in benchmarks:
-            mx.warn('Omitting batik as it uses Sun proprietary API not supported by OpenJDK')
-            benchmarks = [b for b in benchmarks if b != 'batik']
 
         vmArgs = self.vmArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)
