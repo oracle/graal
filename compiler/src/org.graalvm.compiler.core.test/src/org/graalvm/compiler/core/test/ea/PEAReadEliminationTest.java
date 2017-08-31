@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.core.test.ea;
 
+import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.junit.Test;
 
 import sun.misc.Unsafe;
@@ -36,7 +37,7 @@ import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 
-public class PEAReadEliminationTest extends EarlyReadEliminationTest {
+public class PEAReadEliminationTest extends GraalCompilerTest {
 
     public static int testIndexed1Snippet(int[] array) {
         array[1] = 1;
@@ -176,23 +177,6 @@ public class PEAReadEliminationTest extends EarlyReadEliminationTest {
         assertDeepEquals(3, graph.getNodes().filter(RawLoadNode.class).count());
     }
 
-    private static final long offsetLong1 = Unsafe.ARRAY_LONG_BASE_OFFSET + Unsafe.ARRAY_LONG_INDEX_SCALE * 1;
-    private static final long offsetLong2 = Unsafe.ARRAY_LONG_BASE_OFFSET + Unsafe.ARRAY_LONG_INDEX_SCALE * 2;
-
-    public static int testUnsafe5Snippet(int v, long[] array) {
-        int s = UNSAFE.getInt(array, offsetLong1);
-        UNSAFE.putInt(array, offsetLong1, v);
-        UNSAFE.putInt(array, offsetLong2, v);
-        return s + UNSAFE.getInt(array, offsetLong1) + UNSAFE.getInt(array, offsetLong2);
-    }
-
-    @Test
-    public void testUnsafe5() {
-        StructuredGraph graph = processMethod("testUnsafe5Snippet", false);
-        assertDeepEquals(1, graph.getNodes().filter(RawLoadNode.class).count());
-    }
-
-    @Override
     protected StructuredGraph processMethod(final String snippet, boolean doLowering) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
         HighTierContext context = getDefaultHighTierContext();
