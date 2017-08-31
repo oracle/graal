@@ -766,7 +766,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     private static Object loadObjectLayoutFactory() {
         ServiceLoader<LayoutFactory> graalLoader = ServiceLoader.load(LayoutFactory.class, GraalTruffleRuntime.class.getClassLoader());
         if (Java8OrEarlier) {
-            return loadBestObjectLayoutFactory(graalLoader);
+            return selectObjectLayoutFactory(graalLoader);
         } else {
             /*
              * The Graal module (i.e., jdk.internal.vm.compiler) is loaded by the platform class
@@ -775,18 +775,25 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
              * to search the app class loader path as well.
              */
             ServiceLoader<LayoutFactory> appLoader = ServiceLoader.load(LayoutFactory.class, LayoutFactory.class.getClassLoader());
-            return loadBestObjectLayoutFactory(CollectionsUtil.concat(graalLoader, appLoader));
+            return selectObjectLayoutFactory(CollectionsUtil.concat(graalLoader, appLoader));
         }
     }
 
-    protected static LayoutFactory loadBestObjectLayoutFactory(Iterable<LayoutFactory> serviceLoaders) {
+    protected static LayoutFactory selectObjectLayoutFactory(Iterable<LayoutFactory> availableLayoutFactories) {
+        String layoutFactoryImplName = System.getProperty("truffle.object.LayoutFactory");
         LayoutFactory bestLayoutFactory = null;
-        for (LayoutFactory currentLayoutFactory : serviceLoaders) {
-            if (bestLayoutFactory == null) {
-                bestLayoutFactory = currentLayoutFactory;
-            } else if (currentLayoutFactory.getPriority() >= bestLayoutFactory.getPriority()) {
-                assert currentLayoutFactory.getPriority() != bestLayoutFactory.getPriority();
-                bestLayoutFactory = currentLayoutFactory;
+        for (LayoutFactory currentLayoutFactory : availableLayoutFactories) {
+            if (layoutFactoryImplName != null) {
+                if (currentLayoutFactory.getClass().getName().equals(layoutFactoryImplName)) {
+                    return currentLayoutFactory;
+                }
+            } else {
+                if (bestLayoutFactory == null) {
+                    bestLayoutFactory = currentLayoutFactory;
+                } else if (currentLayoutFactory.getPriority() >= bestLayoutFactory.getPriority()) {
+                    assert currentLayoutFactory.getPriority() != bestLayoutFactory.getPriority();
+                    bestLayoutFactory = currentLayoutFactory;
+                }
             }
         }
         return bestLayoutFactory;
