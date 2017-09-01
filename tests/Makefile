@@ -24,7 +24,12 @@
 #
 QUIETLY$(MX_VERBOSE)  = @
 
+ifeq ($(BUILD_REF),1)
 REF_TARGETS:=$(TESTS:%=%/ref.out)
+else
+REF_TARGETS:=
+endif
+
 BC_TARGETS:=$(foreach var,$(VARIANTS),$(TESTS:%=%/$(var).bc))
 
 .PHONY: default
@@ -32,11 +37,11 @@ default: $(REF_TARGETS) $(BC_TARGETS)
 
 %/ref.out: %.c
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) clang $(LDFLAGS) -o $@ $<
+	$(QUIETLY) clang $(CPPFLAGS) $(LDFLAGS) -o $@ $<
 
 %/ref.out: %.cpp
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) clang++ $(LDFLAGS) -o $@ $<
+	$(QUIETLY) clang++ $(CPPFLAGS) $(LDFLAGS) -o $@ $<
 
 %.bc: %.ll
 	$(QUIETLY) $(DRAGONEGG_LLVMAS) -o $@ $<
@@ -44,15 +49,15 @@ default: $(REF_TARGETS) $(BC_TARGETS)
 define OPT_RULES
 %/$(1).bc: %.c
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) clang -c -emit-llvm -$(1) -o $$@ $$<
+	$(QUIETLY) clang -c -emit-llvm -$(1) $(CPPFLAGS) -o $$@ $$<
 
 %/$(1).bc: %.cpp
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) clang++ -c -emit-llvm -$(1) -o $$@ $$<
+	$(QUIETLY) clang++ -c -emit-llvm -$(1) $(CPPFLAGS) -o $$@ $$<
 
 %/gcc_$(1).ll: %.c
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(DRAGONEGG_GCC) -S --std=gnu99 -fplugin=$(DRAGONEGG) -fplugin-arg-dragonegg-emit-ir -$(1) -o $$@ $$<
+	$(QUIETLY) $(DRAGONEGG_GCC) -S --std=gnu99 -fplugin=$(DRAGONEGG) -fplugin-arg-dragonegg-emit-ir -$(1) $(CPPFLAGS) -o $$@ $$<
 endef
 
 $(eval $(call OPT_RULES,O0))
@@ -62,3 +67,6 @@ $(eval $(call OPT_RULES,O3))
 
 %_BB_VECTORIZE.bc: %.bc
 	$(QUIETLY) opt -o $@ -functionattrs -instcombine -always-inline -jump-threading -simplifycfg -mem2reg -bb-vectorize $<
+
+%_MEM2REG.bc: %.bc
+	$(QUIETLY) opt -o $@ -mem2reg $<

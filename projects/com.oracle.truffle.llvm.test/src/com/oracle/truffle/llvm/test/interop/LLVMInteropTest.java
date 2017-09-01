@@ -1038,15 +1038,15 @@ public final class LLVMInteropTest {
         }
     }
 
-    private static final Path TEST_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/interoptests").toPath();
-    private static final String FILE_SUFFIX = "_clang_O0_MEM2REG.bc";
+    private static final Path TEST_DIR = new File(TestOptions.TEST_SUITE_PATH, "interop").toPath();
+    private static final String FILENAME = "O0_MEM2REG.bc";
 
     private static final class Runner {
-        private final String fileName;
+        private final String testName;
         private final Context context;
 
-        Runner(String fileName) {
-            this.fileName = fileName;
+        Runner(String testName) {
+            this.testName = testName;
             this.context = Context.create();
         }
 
@@ -1060,7 +1060,7 @@ public final class LLVMInteropTest {
 
         int run() {
             try {
-                File file = new File(TEST_DIR.toFile(), "/" + fileName + "/" + fileName + FILE_SUFFIX);
+                File file = new File(TEST_DIR.toFile(), testName + "/" + FILENAME);
                 Source source = Source.newBuilder("llvm", file).build();
                 return context.eval(source).asInt();
             } catch (RuntimeException e) {
