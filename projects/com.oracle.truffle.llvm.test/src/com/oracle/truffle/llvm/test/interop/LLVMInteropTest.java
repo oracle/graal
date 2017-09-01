@@ -29,8 +29,11 @@
  */
 package com.oracle.truffle.llvm.test.interop;
 
+import com.oracle.truffle.api.TruffleOptions;
 import java.io.File;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
@@ -41,6 +44,8 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.llvm.test.options.TestOptions;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.junit.Assume;
 
 @SuppressWarnings({"static-method"})
 public final class LLVMInteropTest {
@@ -53,23 +58,21 @@ public final class LLVMInteropTest {
     @Test
     public void test002() {
         Runner runner = new Runner("interop002");
-        ClassA a = new ClassA();
-        runner.export(a, "foreign");
+        runner.export(makeObjectA(), "foreign");
         Assert.assertEquals(42, runner.run());
     }
 
     @Test
     public void test003() {
         Runner runner = new Runner("interop003");
-        ClassA a = new ClassA();
-        runner.export(a, "foreign");
+        runner.export(makeObjectA(), "foreign");
         Assert.assertEquals(215, runner.run());
     }
 
     @Test
     public void test004() {
         Runner runner = new Runner("interop004");
-        ClassB a = new ClassB();
+        Map<String, Object> a = makeObjectB();
         runner.export(a, "foreign");
         Assert.assertEquals(73, runner.run());
     }
@@ -77,43 +80,44 @@ public final class LLVMInteropTest {
     @Test
     public void test005() {
         Runner runner = new Runner("interop005");
-        ClassA a = new ClassA();
+        Map<String, Object> a = makeObjectA();
         runner.export(a, "foreign");
         runner.run();
 
-        Assert.assertEquals(a.valueBool, false);
-        Assert.assertEquals(a.valueI, 2);
-        Assert.assertEquals(a.valueB, 3);
-        Assert.assertEquals(a.valueL, 4);
-        Assert.assertEquals(a.valueF, 5.5, 0.1);
-        Assert.assertEquals(a.valueD, 6.5, 0.1);
+        Assert.assertEquals(false, (boolean) a.get("valueBool"));
+        Assert.assertEquals(2, (int) a.get("valueI"));
+        Assert.assertEquals(3, (byte) a.get("valueB"));
+        Assert.assertEquals(4, (long) a.get("valueL"));
+        Assert.assertEquals(5.5, (float) a.get("valueF"), 0.1);
+        Assert.assertEquals(6.5, (double) a.get("valueD"), 0.1);
     }
 
     @Test
     public void test006() {
         Runner runner = new Runner("interop006");
-        ClassB a = new ClassB();
+        Map<String, Object> a = makeObjectB();
         runner.export(a, "foreign");
         runner.run();
 
-        Assert.assertEquals(a.valueI[0], 1);
-        Assert.assertEquals(a.valueI[1], 2);
+        Assert.assertEquals(1, ((int[]) a.get("valueI"))[0]);
+        Assert.assertEquals(2, ((int[]) a.get("valueI"))[1]);
 
-        Assert.assertEquals(a.valueL[0], 3);
-        Assert.assertEquals(a.valueL[1], 4);
+        Assert.assertEquals(3, ((long[]) a.get("valueL"))[0]);
+        Assert.assertEquals(4, ((long[]) a.get("valueL"))[1]);
 
-        Assert.assertEquals(a.valueB[0], 5);
-        Assert.assertEquals(a.valueB[1], 6);
+        Assert.assertEquals(5, ((byte[]) a.get("valueB"))[0]);
+        Assert.assertEquals(6, ((byte[]) a.get("valueB"))[1]);
 
-        Assert.assertEquals(a.valueF[0], 7.5, 0.1);
-        Assert.assertEquals(a.valueF[1], 8.5, 0.1);
+        Assert.assertEquals(7.5f, ((float[]) a.get("valueF"))[0], 0.1);
+        Assert.assertEquals(8.5f, ((float[]) a.get("valueF"))[1], 0.1);
 
-        Assert.assertEquals(a.valueD[0], 9.5, 0.1);
-        Assert.assertEquals(a.valueD[1], 10.5, 0.1);
+        Assert.assertEquals(9.5, ((double[]) a.get("valueD"))[0], 0.1);
+        Assert.assertEquals(10.5, ((double[]) a.get("valueD"))[1], 0.1);
     }
 
     @Test
     public void test007() {
+        Assume.assumeFalse("JavaInterop not supported", TruffleOptions.AOT);
         Runner runner = new Runner("interop007");
         ClassC a = new ClassC();
         runner.export(a, "foreign");
@@ -129,11 +133,11 @@ public final class LLVMInteropTest {
     @Test
     public void test008() {
         Runner runner = new Runner("interop008");
-        runner.export(new FuncBInterface() {
+        runner.export(new ProxyExecutable() {
 
             @Override
-            public byte eval(byte a, byte b) {
-                return (byte) (a + b);
+            public Object execute(Value... t) {
+                return t[0].asByte() + t[1].asByte();
             }
         }, "foreign");
         Assert.assertEquals(42, runner.run());
@@ -142,11 +146,11 @@ public final class LLVMInteropTest {
     @Test
     public void test009() {
         Runner runner = new Runner("interop009");
-        runner.export(new FuncIInterface() {
+        runner.export(new ProxyExecutable() {
 
             @Override
-            public int eval(int a, int b) {
-                return a + b;
+            public Object execute(Value... t) {
+                return t[0].asInt() + t[1].asInt();
             }
         }, "foreign");
         Assert.assertEquals(42, runner.run());
@@ -155,11 +159,11 @@ public final class LLVMInteropTest {
     @Test
     public void test010() {
         Runner runner = new Runner("interop010");
-        runner.export(new FuncLInterface() {
+        runner.export(new ProxyExecutable() {
 
             @Override
-            public long eval(long a, long b) {
-                return a + b;
+            public Object execute(Value... t) {
+                return t[0].asLong() + t[1].asLong();
             }
         }, "foreign");
         Assert.assertEquals(42, runner.run());
@@ -168,11 +172,11 @@ public final class LLVMInteropTest {
     @Test
     public void test011() {
         Runner runner = new Runner("interop011");
-        runner.export(new FuncFInterface() {
+        runner.export(new ProxyExecutable() {
 
             @Override
-            public float eval(float a, float b) {
-                return a + b;
+            public Object execute(Value... t) {
+                return t[0].asFloat() + t[1].asFloat();
             }
         }, "foreign");
         Assert.assertEquals(42.0, runner.run(), 0.1);
@@ -181,11 +185,12 @@ public final class LLVMInteropTest {
     @Test
     public void test012() {
         Runner runner = new Runner("interop012");
-        runner.export(new FuncDInterface() {
+        runner.export(new ProxyExecutable() {
 
             @Override
-            public double eval(double a, double b) {
-                return a + b;
+            public Object execute(Value... t) {
+                Assert.assertEquals("argument count", 2, t.length);
+                return t[0].asDouble() + t[1].asDouble();
             }
         }, "foreign");
         Assert.assertEquals(42.0, runner.run(), 0.1);
@@ -208,11 +213,12 @@ public final class LLVMInteropTest {
     @Test
     public void test015() {
         Runner runner = new Runner("interop015");
-        runner.export(new FuncDInterface() {
+        runner.export(new ProxyExecutable() {
 
             @Override
-            public double eval(double a, double b) {
-                return a + b;
+            public Object execute(Value... t) {
+                Assert.assertEquals("argument count", 2, t.length);
+                return t[0].asDouble() + t[1].asDouble();
             }
         }, "foreign");
         Assert.assertEquals(42, runner.run(), 0.1);
@@ -274,8 +280,8 @@ public final class LLVMInteropTest {
     @Test
     public void test023() {
         Runner runner = new Runner("interop023");
-        ClassA a = new ClassA();
-        ClassA b = new ClassA();
+        Map<String, Object> a = makeObjectA();
+        Map<String, Object> b = makeObjectA();
         runner.export(a, "foreign");
         runner.export(b, "foreign2");
         Assert.assertEquals(42, runner.run());
@@ -284,9 +290,9 @@ public final class LLVMInteropTest {
     @Test
     public void test024() {
         Runner runner = new Runner("interop024");
-        ClassA a = new ClassA();
-        ClassA b = new ClassA();
-        b.valueI = 55;
+        Map<String, Object> a = makeObjectA();
+        Map<String, Object> b = makeObjectA();
+        b.put("valueI", 55);
         runner.export(a, "foreign");
         runner.export(b, "foreign2");
         Assert.assertEquals(55, runner.run());
@@ -295,11 +301,11 @@ public final class LLVMInteropTest {
     @Test
     public void test025() {
         Runner runner = new Runner("interop025");
-        ClassA a = new ClassA();
-        ClassA b = new ClassA();
-        ClassA c = new ClassA();
-        b.valueI = 55;
-        c.valueI = 66;
+        Map<String, Object> a = makeObjectA();
+        Map<String, Object> b = makeObjectA();
+        Map<String, Object> c = makeObjectA();
+        b.put("valueI", 55);
+        c.put("valueI", 66);
         runner.export(a, "foreign");
         runner.export(b, "foreign2");
         runner.export(c, "foreign3");
@@ -309,32 +315,17 @@ public final class LLVMInteropTest {
     @Test
     public void test026() {
         Runner runner = new Runner("interop026");
-        final Object[] result = new Object[]{null};
-        runner.export(new FuncEInterface() {
-
-            @Override
-            public Object eval(Object x) {
-                result[0] = x;
-                return null;
-            }
-
-        }, "foo");
+        ReturnObject result = new ReturnObject();
+        runner.export(result, "foo");
         Assert.assertEquals(14, runner.run());
-        Assert.assertEquals("bar", result[0]);
+        Assert.assertEquals("bar", result.storage);
     }
 
     @Test
     public void test027() {
         Runner runner = new Runner("interop027");
-        final Object[] result = new Object[]{null};
-        runner.export(new FuncEInterface() {
-
-            @Override
-            public Object eval(Object x) {
-                result[0] = x;
-                return null;
-            }
-        }, "foo");
+        ReturnObject result = new ReturnObject();
+        runner.export(result, "foo");
         Assert.assertEquals(14, runner.run());
         Assert.assertEquals("\u0080\u0081\u0082\u0083\u0084\u0085\u0086\u0087\u0088\u0089\u008a\u008b\u008c\u008d\u008e\u008f" +
                         "\u0090\u0091\u0092\u0093\u0094\u0095\u0096\u0097\u0098\u0099\u009a\u009b\u009c\u009d\u009e\u009f" +
@@ -344,39 +335,25 @@ public final class LLVMInteropTest {
                         "\u00d0\u00d1\u00d2\u00d3\u00d4\u00d5\u00d6\u00d7\u00d8\u00d9\u00da\u00db\u00dc\u00dd\u00de\u00df" +
                         "\u00e0\u00e1\u00e2\u00e3\u00e4\u00e5\u00e6\u00e7\u00e8\u00e9\u00ea\u00eb\u00ec\u00ed\u00ee\u00ef" +
                         "\u00f0\u00f1\u00f2\u00f3\u00f4\u00f5\u00f6\u00f7\u00f8\u00f9\u00fa\u00fb\u00fc\u00fd\u00fe\u00ff",
-                        result[0]);
+                        result.storage);
     }
 
     @Test
     public void test028() {
         Runner runner = new Runner("interop028");
-        final Object[] result = new Object[]{null};
-        runner.export(new FuncEInterface() {
-
-            @Override
-            public Object eval(Object x) {
-                result[0] = x;
-                return null;
-            }
-        }, "foo");
+        ReturnObject result = new ReturnObject();
+        runner.export(result, "foo");
         Assert.assertEquals(72, runner.run());
-        Assert.assertEquals("foo\u0000 bar\u0080 ", result[0]);
+        Assert.assertEquals("foo\u0000 bar\u0080 ", result.storage);
     }
 
     @Test
     public void test029() {
         Runner runner = new Runner("interop029");
-        final Object[] result = new Object[]{null};
-        runner.export(new FuncEInterface() {
-
-            @Override
-            public Object eval(Object x) {
-                result[0] = x;
-                return null;
-            }
-        }, "foo");
+        ReturnObject result = new ReturnObject();
+        runner.export(result, "foo");
         Assert.assertEquals(36, runner.run());
-        byte[] actualResult = (byte[]) (result[0]);
+        byte[] actualResult = (byte[]) result.storage;
         Assert.assertArrayEquals(new byte[]{102, 111, 111, 0, 32, 98, 97, 114, -128, 32}, actualResult);
     }
 
@@ -388,8 +365,7 @@ public final class LLVMInteropTest {
         Runner runner = new Runner("interop030");
         runner.run();
         Value get = runner.findGlobalSymbol("getValueI");
-        ClassA a = new ClassA();
-        int result = get.execute(a).asInt();
+        int result = get.execute(makeObjectA()).asInt();
         Assert.assertEquals(42, result);
     }
 
@@ -523,8 +499,7 @@ public final class LLVMInteropTest {
     @Test
     public void test043() {
         Runner runner = new Runner("interop043");
-        ClassA a = new ClassA();
-        runner.export(a, "foreign");
+        runner.export(makeObjectA(), "foreign");
         Assert.assertEquals(0, runner.run());
     }
 
@@ -619,11 +594,22 @@ public final class LLVMInteropTest {
         Assert.assertEquals(1, runner.run());
     }
 
-    static Object staticStorage;
+    public class ReturnObject implements ProxyExecutable {
 
-    @FunctionalInterface
-    public interface ReturnObject {
-        void storeObject(Object o);
+        Object storage;
+
+        @Override
+        public Object execute(Value... t) {
+            Assert.assertEquals("argument count", 1, t.length);
+            if (t[0].isHostObject()) {
+                storage = t[0].asHostObject();
+            } else if (t[0].isString()) {
+                storage = t[0].asString();
+            } else {
+                Assert.fail("unexpected value type");
+            }
+            return null;
+        }
     }
 
     @Test
@@ -663,19 +649,12 @@ public final class LLVMInteropTest {
     }
 
     private void testGlobal(Runner runner) {
-        ReturnObject returnObject = new ReturnObject() {
-
-            @Override
-            public void storeObject(Object o) {
-                staticStorage = o;
-            }
-        };
+        ReturnObject returnObject = new ReturnObject();
         Object original = new Object();
         runner.export(original, "object");
         runner.export(returnObject, "returnObject");
-        staticStorage = null;
         runner.run();
-        Assert.assertSame(original, staticStorage);
+        Assert.assertSame(original, returnObject.storage);
     }
 
     @Test
@@ -913,12 +892,7 @@ public final class LLVMInteropTest {
     public void test077() {
         Runner runner = new Runner("interop077");
         final String testString = "this is a test";
-        runner.export(new FuncEInterface() {
-            @Override
-            public Object eval(Object x) {
-                return testString;
-            }
-        }, "getstring");
+        runner.export((ProxyExecutable) (Value... t) -> testString, "getstring");
         Assert.assertEquals(testString.length(), runner.run());
     }
 
@@ -976,7 +950,7 @@ public final class LLVMInteropTest {
         Runner runner = new Runner("handleFromNativeCallback");
         runner.run();
         Value testHandleFromNativeCallback = runner.findGlobalSymbol("testHandleFromNativeCallback");
-        Value ret = testHandleFromNativeCallback.execute(new ClassA());
+        Value ret = testHandleFromNativeCallback.execute(makeObjectA());
         Assert.assertEquals(42, ret.asInt());
     }
 
@@ -987,24 +961,26 @@ public final class LLVMInteropTest {
         Assert.assertEquals(42, result);
     }
 
-    public static final class ClassA {
-        public boolean valueBool = true;
-        public byte valueB = 40;
-        public char valueC = 41;
-        public int valueI = 42;
-        public long valueL = 43;
-        public float valueF = 44.5F;
-        public double valueD = 45.5;
+    private static Map<String, Object> makeObjectA() {
+        HashMap<String, Object> values = new HashMap<>();
+        values.put("valueBool", true);
+        values.put("valueB", (byte) 40);
+        values.put("valueC", (char) 41);
+        values.put("valueI", 42);
+        values.put("valueL", 43L);
+        values.put("valueF", 44.5F);
+        values.put("valueD", 45.5);
+        return values;
     }
 
-    public static final class ClassB {
-
-        public byte[] valueB = {1, 2};
-        public int[] valueI = {5, 6};
-        public long[] valueL = {7, 8};
-        public float[] valueF = {9.5F, 10.5F};
-        public double[] valueD = {11.5, 12.5};
-
+    private static Map<String, Object> makeObjectB() {
+        HashMap<String, Object> values = new HashMap<>();
+        values.put("valueB", new byte[]{1, 2});
+        values.put("valueI", new int[]{5, 6});
+        values.put("valueL", new long[]{7, 8});
+        values.put("valueF", new float[]{9.5F, 10.5F});
+        values.put("valueD", new double[]{11.5, 12.5});
+        return values;
     }
 
     public static final class ClassC {
@@ -1060,36 +1036,6 @@ public final class LLVMInteropTest {
             this.real = real;
             this.imaginary = imaginary;
         }
-    }
-
-    @FunctionalInterface
-    public interface FuncIInterface {
-        int eval(int a, int b);
-    }
-
-    @FunctionalInterface
-    public interface FuncBInterface {
-        byte eval(byte a, byte b);
-    }
-
-    @FunctionalInterface
-    public interface FuncLInterface {
-        long eval(long a, long b);
-    }
-
-    @FunctionalInterface
-    public interface FuncFInterface {
-        float eval(float a, float b);
-    }
-
-    @FunctionalInterface
-    public interface FuncDInterface {
-        double eval(double a, double b);
-    }
-
-    @FunctionalInterface
-    public interface FuncEInterface {
-        Object eval(Object string);
     }
 
     private static final Path TEST_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/interoptests").toPath();
