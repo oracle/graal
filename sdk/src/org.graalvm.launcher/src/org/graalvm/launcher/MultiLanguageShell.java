@@ -173,7 +173,7 @@ class MultiLanguageShell {
                     source = Source.newBuilder(currentLanguage.getId(), input, "<shell>").interactive(true).build();
                     context.eval(source);
                     bufferSource = null;
-                    console.getHistory().replace(source.getCode());
+                    console.getHistory().replace(source.getCharacters());
                 }
 
                 if (switchedLanguage != null) {

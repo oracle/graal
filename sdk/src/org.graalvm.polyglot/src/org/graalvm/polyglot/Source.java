@@ -230,6 +230,15 @@ public final class Source {
      *
      * @since 1.0
      */
+    public CharSequence getCharacters() {
+        return getImpl().getCode(impl);
+    }
+
+    /**
+     * @since 1.0
+     * @deprecated use {@link #getCharacters()}
+     */
+    @Deprecated
     public CharSequence getCode() {
         return getImpl().getCode(impl);
     }
@@ -240,6 +249,15 @@ public final class Source {
      *
      * @since 1.0
      */
+    public CharSequence getCharacters(int lineNumber) {
+        return getImpl().getCode(impl, lineNumber);
+    }
+
+    /**
+     * @since 1.0
+     * @deprecated use {@link #getCharacters(int)}
+     */
+    @Deprecated
     public CharSequence getCode(int lineNumber) {
         return getImpl().getCode(impl, lineNumber);
     }
@@ -354,12 +372,13 @@ public final class Source {
     }
 
     /**
-     *
+     * Creates a new character source builder. The given characters must not mutate after they were
+     * accessed for the first time.
      *
      * @since 1.0
      */
-    public static Builder newBuilder(String language, CharSequence source, String name) {
-        return EMPTY.new Builder(language, source).name(name);
+    public static Builder newBuilder(String language, CharSequence characters, String name) {
+        return EMPTY.new Builder(language, characters).name(name);
     }
 
     /**
@@ -435,7 +454,7 @@ public final class Source {
         private String name;
         private boolean interactive;
         private boolean internal;
-        private String content;
+        private CharSequence content;
 
         Builder(String language, Object origin) {
             Objects.requireNonNull(language);
@@ -462,11 +481,27 @@ public final class Source {
          *
          * {@link SourceSnippets#fromURLWithOwnContent}
          *
-         * @param code the code to be available via {@link Source#getCode()}
+         * @param code the code to be available via {@link Source#getCharacters()}
          * @return instance of this builder
          * @since 1.0
          */
         public Builder content(String code) {
+            return content((CharSequence) code);
+        }
+
+        /**
+         * Specifies content of {@link #build() to-be-built} {@link Source}. Using this method one
+         * can ignore the real content of a file or URL and use already read one, or completely
+         * different one. The given characters must not mutate after they were accessed for the
+         * first time. Example:
+         *
+         * {@link SourceSnippets#fromURLWithOwnContent}
+         *
+         * @param code the code to be available via {@link Source#getCharacters()}
+         * @return instance of this builder
+         * @since 1.0
+         */
+        public Builder content(CharSequence code) {
             Objects.requireNonNull(code);
             this.content = code;
             return this;
@@ -603,7 +638,7 @@ class SourceSnippets {
      assert resource.toExternalForm().equals(source.getPath());
      assert "sample.js".equals(source.getName());
      assert resource.toExternalForm().equals(source.getURI().toString());
-     assert "{}".equals(source.getCode());
+     assert "{}".equals(source.getCharacters());
      // END: SourceSnippets#fromURLWithOwnContent
      return source;
  }

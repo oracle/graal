@@ -127,7 +127,7 @@ public abstract class REPLHandler {
             if (section != null && section.getSource() != null) {
                 infoMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.FILE_PATH, section.getSource().getPath());
                 infoMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.LINE_NUMBER, Integer.toString(section.getStartLine()));
-                infoMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_LINE_TEXT, section.getSource().getCode(section.getStartLine()));
+                infoMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_LINE_TEXT, section.getSource().getCharacters(section.getStartLine()).toString());
             }
         }
         infoMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.STATUS, com.oracle.truffle.tools.debug.shell.REPLMessage.SUCCEEDED);
@@ -158,7 +158,7 @@ public abstract class REPLHandler {
             if (section != null && section.getSource() != null) {
                 btMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.FILE_PATH, section.getSource().getPath());
                 btMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.LINE_NUMBER, Integer.toString(section.getStartLine()));
-                btMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_LINE_TEXT, section.getSource().getCode(section.getStartLine()));
+                btMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_LINE_TEXT, section.getSource().getCharacters(section.getStartLine()).toString());
             }
             btMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.STATUS, com.oracle.truffle.tools.debug.shell.REPLMessage.SUCCEEDED);
         }
@@ -280,7 +280,7 @@ public abstract class REPLHandler {
                     return finishReplyFailed(reply, "file \"" + fileName + "\" not found");
                 } else {
                     reply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.FILE_PATH, source.getPath());
-                    reply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.CODE, source.getCode());
+                    reply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.CODE, source.getCharacters().toString());
                     return finishReplySucceeded(reply, "file found");
                 }
             } catch (IOException ex) {

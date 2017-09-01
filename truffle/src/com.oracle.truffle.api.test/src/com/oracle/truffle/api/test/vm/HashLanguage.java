@@ -66,7 +66,7 @@ public class HashLanguage extends TruffleLanguage<Env> {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return System.identityHashCode(this) + "@" + code.getCode() + " @ " + id;
+            return System.identityHashCode(this) + "@" + code.getCharacters() + " @ " + id;
         }
     }
 

@@ -71,9 +71,9 @@ public class DebugValueTest extends AbstractDebugTest {
                 assertEquals("Integer", value42.getMetaObject().as(String.class));
                 assertEquals("Infinity", frame.getScope().getDeclaredValue("inf").getMetaObject().as(String.class));
                 SourceSection integerSS = value42.getSourceLocation();
-                assertEquals("source integer", integerSS.getCode());
+                assertEquals("source integer", integerSS.getCharacters());
                 SourceSection infinitySS = frame.getScope().getDeclaredValue("inf").getSourceLocation();
-                assertEquals("source infinity", infinitySS.getCode());
+                assertEquals("source infinity", infinitySS.getCharacters());
             });
 
             expectDone();

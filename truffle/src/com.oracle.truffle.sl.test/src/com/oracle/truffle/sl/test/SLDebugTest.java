@@ -112,7 +112,7 @@ public class SLDebugTest {
                     final String... expectedFrame) {
         final int actualLineNumber = suspendedEvent.getSourceSection().getStartLine();
         Assert.assertEquals(expectedLineNumber, actualLineNumber);
-        final String actualCode = suspendedEvent.getSourceSection().getCode();
+        final String actualCode = suspendedEvent.getSourceSection().getCharacters().toString();
         Assert.assertEquals(expectedCode, actualCode);
         final boolean actualIsBefore = suspendedEvent.isHaltedBefore();
         Assert.assertEquals(expectedIsBefore, actualIsBefore);
@@ -581,7 +581,7 @@ public class SLDebugTest {
                 Assert.assertNotNull(sourceLocation);
                 assertEquals(9, sourceLocation.getStartLine());
                 assertEquals(9, sourceLocation.getEndLine());
-                assertEquals("doNull() {}", sourceLocation.getCode());
+                assertEquals("doNull() {}", sourceLocation.getCharacters());
             });
 
             expectDone();
