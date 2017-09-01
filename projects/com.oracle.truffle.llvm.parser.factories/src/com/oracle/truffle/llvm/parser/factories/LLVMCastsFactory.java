@@ -738,6 +738,8 @@ final class LLVMCastsFactory {
                 }
             } else if (targetType instanceof VariableBitWidthType) {
                 return LLVMToIVarZeroExtNodeGen.create(fromNode, bits == 0 ? targetType.getBitSize() : bits);
+            } else if (targetType instanceof PointerType) {
+                return LLVMToAddressNodeGen.create(fromNode, targetType);
             } else {
                 throw new AssertionError(targetType + " " + conv);
             }

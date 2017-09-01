@@ -151,13 +151,17 @@ public final class LLVMSymbolReadResolver {
                         resolvedNode = runtime.getNodeFactory().createSimpleConstantNoArray(runtime, null, type);
                         break;
                     default:
-                        throw new UnsupportedOperationException("Unsupported Type for Zero Constant: " + type);
+                        unsupportedType(type);
                 }
             }
 
             @Override
             public void visit(MetaType metaType) {
-                unsupportedType(metaType);
+                if (metaType == MetaType.DEBUG) {
+                    resolvedNode = runtime.getNodeFactory().createSimpleConstantNoArray(runtime, null, metaType);
+                } else {
+                    unsupportedType(metaType);
+                }
             }
 
             @Override
@@ -207,7 +211,7 @@ public final class LLVMSymbolReadResolver {
 
             @Override
             public void visit(OpaqueType type) {
-                throw new UnsupportedOperationException("Unsupported Type for Zero Constant: " + type);
+                unsupportedType(type);
             }
         };
 

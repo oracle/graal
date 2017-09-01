@@ -168,9 +168,9 @@ public abstract class LLVMDebugObject implements TruffleObject {
         protected Object getValueSafe() {
             final int size = (int) type.getSize();
 
-            final BigInteger id = value.readUnsignedInteger(offset, size);
+            final BigInteger id = value.readInteger(offset, size, false);
             if (size >= Long.SIZE) {
-                return LLVMDebugObject.toHexString(id);
+                return LLVMDebugValueProvider.toHexString(id);
             }
 
             final Object enumVal = type.getElementName(id.longValue());
@@ -255,21 +255,25 @@ public abstract class LLVMDebugObject implements TruffleObject {
                         return readFloating();
 
                     case SIGNED:
-                        return value.readSignedInteger(offset, size);
+                        return value.readInteger(offset, size, true);
 
                     case SIGNED_CHAR:
-                        return (char) value.readSignedInteger(offset, size).byteValue();
+                        return (char) value.readInteger(offset, size, true).byteValue();
 
                     case UNSIGNED:
-                        return value.readUnsignedInteger(offset, size);
+                        return value.readInteger(offset, size, false);
 
                     case UNSIGNED_CHAR:
-                        return (char) Byte.toUnsignedInt(value.readUnsignedInteger(offset, size).byteValue());
+                        return (char) Byte.toUnsignedInt(value.readInteger(offset, size, false).byteValue());
                 }
             }
 
             return value.readUnknown(offset, size);
         }
+
+        // clang uses the x86_fp80 datatype to represent the long double type which is indicated in
+        // metadata to have 128 bits
+        private static final int LONGDOUBLE_SIZE = 128;
 
         private Object readFloating() {
             final int size = (int) type.getSize();
@@ -282,6 +286,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
                         return value.readDouble(offset);
 
                     case LLVM80BitFloat.BIT_WIDTH:
+                    case LONGDOUBLE_SIZE:
                         return value.read80BitFloat(offset);
 
                     default:
@@ -341,17 +346,6 @@ public abstract class LLVMDebugObject implements TruffleObject {
             }
             return instantiate(pointerType.getBaseType(), 0L, targetValue);
         }
-    }
-
-    @TruffleBoundary
-    private static String toHexString(BigInteger value) {
-        final byte[] bytes = value.toByteArray();
-        final StringBuilder builder = new StringBuilder(bytes.length * 2 + 2);
-        builder.append("0x");
-        for (byte b : bytes) {
-            builder.append(String.format("%02x", b));
-        }
-        return builder.toString();
     }
 
     public static LLVMDebugObject instantiate(LLVMSourceType type, long baseOffset, LLVMDebugValueProvider value) {

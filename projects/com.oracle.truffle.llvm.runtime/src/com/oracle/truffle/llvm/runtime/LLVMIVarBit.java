@@ -407,4 +407,13 @@ public final class LLVMIVarBit {
         return asBigInteger().compareTo(other.asBigInteger());
     }
 
+    public boolean isZero() {
+        return arr == null || arr.length == 0 || BigInteger.ZERO.equals(asBigInteger());
+    }
+
+    @Override
+    @TruffleBoundary
+    public String toString() {
+        return String.format("i%d %s", getBitSize(), asBigInteger().toString());
+    }
 }

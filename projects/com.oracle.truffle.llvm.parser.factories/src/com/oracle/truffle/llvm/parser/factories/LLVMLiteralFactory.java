@@ -72,6 +72,7 @@ import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
@@ -130,6 +131,8 @@ final class LLVMLiteralFactory {
                 default:
                     throw new AssertionError(type);
             }
+        } else if (type == MetaType.DEBUG) {
+            return new LLVMAddressLiteralNode(LLVMAddress.nullPointer());
         } else {
             throw new AssertionError(type);
         }

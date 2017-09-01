@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -62,7 +63,32 @@ public abstract class LLVMToAddressNode extends LLVMExpressionNode {
 
     @Specialization
     public LLVMAddress executeI8(byte from) {
-        return LLVMAddress.fromLong(from);
+        return LLVMAddress.fromLong(zeroExtend(from));
+    }
+
+    @TruffleBoundary
+    private static long zeroExtend(byte val) {
+        return Byte.toUnsignedLong(val);
+    }
+
+    @Specialization
+    public LLVMAddress executeI16(short from) {
+        return LLVMAddress.fromLong(zeroExtend(from));
+    }
+
+    @TruffleBoundary
+    private static long zeroExtend(short val) {
+        return Short.toUnsignedLong(val);
+    }
+
+    @Specialization
+    public LLVMAddress executeI32(int from) {
+        return LLVMAddress.fromLong(zeroExtend(from));
+    }
+
+    @TruffleBoundary
+    private static long zeroExtend(int val) {
+        return Integer.toUnsignedLong(val);
     }
 
     @Specialization

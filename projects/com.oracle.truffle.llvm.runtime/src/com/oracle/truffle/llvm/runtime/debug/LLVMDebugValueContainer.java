@@ -87,12 +87,7 @@ public final class LLVMDebugValueContainer extends LLVMDebugObject {
         }
 
         @Override
-        public BigInteger readUnsignedInteger(long bitOffset, int bitSize) {
-            return null;
-        }
-
-        @Override
-        public BigInteger readSignedInteger(long bitOffset, int bitSize) {
+        public BigInteger readInteger(long bitOffset, int bitSize, boolean signed) {
             return null;
         }
 

@@ -29,9 +29,22 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
+import com.oracle.truffle.api.CompilerDirectives;
+
 import java.math.BigInteger;
 
 public interface LLVMDebugValueProvider {
+
+    @CompilerDirectives.TruffleBoundary
+    static String toHexString(BigInteger value) {
+        final byte[] bytes = value.toByteArray();
+        final StringBuilder builder = new StringBuilder(bytes.length * 2 + 2);
+        builder.append("0x");
+        for (byte b : bytes) {
+            builder.append(String.format("%02x", b));
+        }
+        return builder.toString();
+    }
 
     boolean canRead(long bitOffset, int bits);
 
@@ -49,9 +62,7 @@ public interface LLVMDebugValueProvider {
 
     Object computeAddress(long bitOffset);
 
-    BigInteger readUnsignedInteger(long bitOffset, int bitSize);
-
-    BigInteger readSignedInteger(long bitOffset, int bitSize);
+    BigInteger readInteger(long bitOffset, int bitSize, boolean signed);
 
     LLVMDebugValueProvider dereferencePointer(long bitOffset);
 

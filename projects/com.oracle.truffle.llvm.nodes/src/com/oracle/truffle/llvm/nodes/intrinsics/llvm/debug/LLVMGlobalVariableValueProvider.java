@@ -143,12 +143,7 @@ public final class LLVMGlobalVariableValueProvider implements LLVMDebugValueProv
         }
 
         final Container originalContainer = global.getContainer();
-        Object result;
-        if (bitOffset != 0) {
-            CompilerDirectives.transferToInterpreter();
-            throw new UnsupportedOperationException("Cannot read address from global offset != 0! " + bitOffset);
-        }
-        result = globalAccess.get(global);
+        final Object result = toAddress().readAddress(bitOffset);
         global.setContainer(originalContainer);
         return result;
     }
@@ -174,7 +169,7 @@ public final class LLVMGlobalVariableValueProvider implements LLVMDebugValueProv
     }
 
     @Override
-    public BigInteger readUnsignedInteger(long bitOffset, int bitSize) {
+    public BigInteger readInteger(long bitOffset, int bitSize, boolean signed) {
         if (!canRead(bitOffset, bitSize)) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Cannot read from " + global);
@@ -183,65 +178,48 @@ public final class LLVMGlobalVariableValueProvider implements LLVMDebugValueProv
         final Container originalContainer = global.getContainer();
         BigInteger result = null;
         if (bitOffset == 0) {
-            switch (bitSize) {
-                case Byte.SIZE:
-                    result = BigInteger.valueOf(Byte.toUnsignedInt(globalAccess.getI8(global)));
-                    break;
+            if (signed) {
+                switch (bitSize) {
+                    case Byte.SIZE:
+                        result = BigInteger.valueOf(globalAccess.getI8(global));
+                        break;
 
-                case Short.SIZE:
-                    result = BigInteger.valueOf(Short.toUnsignedInt(globalAccess.getI16(global)));
-                    break;
+                    case Short.SIZE:
+                        result = BigInteger.valueOf(globalAccess.getI16(global));
+                        break;
 
-                case Integer.SIZE:
-                    result = BigInteger.valueOf(Integer.toUnsignedLong(globalAccess.getI32(global)));
-                    break;
+                    case Integer.SIZE:
+                        result = BigInteger.valueOf(globalAccess.getI32(global));
+                        break;
 
-                case Long.SIZE:
-                    result = new BigInteger(Long.toUnsignedString(globalAccess.getI64(global)));
-                    break;
+                    case Long.SIZE:
+                        result = BigInteger.valueOf(globalAccess.getI64(global));
+                        break;
+                }
+
+            } else {
+                switch (bitSize) {
+                    case Byte.SIZE:
+                        result = BigInteger.valueOf(Byte.toUnsignedInt(globalAccess.getI8(global)));
+                        break;
+
+                    case Short.SIZE:
+                        result = BigInteger.valueOf(Short.toUnsignedInt(globalAccess.getI16(global)));
+                        break;
+
+                    case Integer.SIZE:
+                        result = BigInteger.valueOf(Integer.toUnsignedLong(globalAccess.getI32(global)));
+                        break;
+
+                    case Long.SIZE:
+                        result = new BigInteger(Long.toUnsignedString(globalAccess.getI64(global)));
+                        break;
+                }
             }
         }
 
         if (result == null) {
-            result = toAddress().readBigInt(bitOffset, bitSize, false);
-        }
-
-        global.setContainer(originalContainer);
-        return result;
-    }
-
-    @Override
-    public BigInteger readSignedInteger(long bitOffset, int bitSize) {
-        if (!canRead(bitOffset, bitSize)) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Cannot read from " + global);
-        }
-
-        final Container originalContainer = global.getContainer();
-        BigInteger result = null;
-
-        if (bitOffset == 0) {
-            switch (bitSize) {
-                case Byte.SIZE:
-                    result = BigInteger.valueOf(globalAccess.getI8(global));
-                    break;
-
-                case Short.SIZE:
-                    result = BigInteger.valueOf(globalAccess.getI16(global));
-                    break;
-
-                case Integer.SIZE:
-                    result = BigInteger.valueOf(globalAccess.getI32(global));
-                    break;
-
-                case Long.SIZE:
-                    result = BigInteger.valueOf(globalAccess.getI64(global));
-                    break;
-            }
-        }
-
-        if (result == null) {
-            result = toAddress().readBigInt(bitOffset, bitSize, true);
+            result = toAddress().readInteger(bitOffset, bitSize, signed);
         }
 
         global.setContainer(originalContainer);
@@ -259,7 +237,7 @@ public final class LLVMGlobalVariableValueProvider implements LLVMDebugValueProv
         if (bitOffset == 0) {
             address = LLVMAddress.fromLong(globalAccess.getI64(global));
         } else {
-            address = LLVMAddress.fromLong(toAddress().readUnsignedInteger(bitOffset, LLVMAddress.WORD_LENGTH_BIT).longValue());
+            address = LLVMAddress.fromLong(toAddress().readInteger(bitOffset, LLVMAddress.WORD_LENGTH_BIT, false).longValue());
         }
         global.setContainer(originalContainer);
         return new LLVMAddressValueProvider(address);
