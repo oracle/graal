@@ -76,9 +76,9 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
                 } else if (xStamp.isNegative()) {
                     return new NegateNode(new AndNode(new NegateNode(forX), ConstantNode.forIntegerStamp(stamp(), constY - 1)));
                 } else {
-                    return new OrNode(new AndNode(forX, ConstantNode.forIntegerStamp(stamp(), constY - 1)),
-                                    new ConditionalNode(IntegerLessThanNode.create(forX, ConstantNode.forIntegerStamp(forX.stamp(), 0)), ConstantNode.forIntegerStamp(forY.stamp(), -constY),
-                                                    ConstantNode.forIntegerStamp(forY.stamp(), 0)));
+                    return new ConditionalNode(IntegerLessThanNode.create(forX, ConstantNode.forIntegerStamp(forX.stamp(), 0)),
+                                    new NegateNode(new AndNode(new NegateNode(forX), ConstantNode.forIntegerStamp(stamp(), constY - 1))),
+                                    new AndNode(forX, ConstantNode.forIntegerStamp(stamp(), constY - 1)));
                 }
             }
         }
