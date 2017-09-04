@@ -104,6 +104,15 @@ public final class LLVMThreadingStack {
         }
     }
 
+    public boolean checkThread() {
+        if (singleThreading.isValid()) {
+            return Thread.currentThread() == defaultThread;
+        } else {
+            // in that case, we do a lookup always anyway.
+            return true;
+        }
+    }
+
     public LLVMStack getStack() {
         if (singleThreading.isValid()) {
             assert Thread.currentThread() == defaultThread;
