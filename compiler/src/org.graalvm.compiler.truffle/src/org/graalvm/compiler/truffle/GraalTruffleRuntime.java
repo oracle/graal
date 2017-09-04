@@ -24,7 +24,6 @@ package org.graalvm.compiler.truffle;
 
 import static org.graalvm.compiler.serviceprovider.JDK9Method.Java8OrEarlier;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationRepeats;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompileOnly;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilerThreads;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBoundaries;
@@ -53,6 +52,14 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
+
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.stack.InspectedFrame;
+import jdk.vm.ci.code.stack.InspectedFrameVisitor;
+import jdk.vm.ci.code.stack.StackIntrospection;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
 
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.code.CompilationResult;
@@ -104,14 +111,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.LayoutFactory;
-
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.stack.InspectedFrame;
-import jdk.vm.ci.code.stack.InspectedFrameVisitor;
-import jdk.vm.ci.code.stack.StackIntrospection;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.SpeculationLog;
 
 public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
@@ -525,23 +524,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         }
     }
 
-    protected void doCompile(OptionValues options, OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task) {
-        int repeats = TruffleCompilerOptions.getValue(TruffleCompilationRepeats);
-        if (repeats <= 1) {
-            /* Normal compilation. */
-            doCompile0(options, optimizedCallTarget, task);
-
-        } else {
-            /* Repeated compilation for compilation time benchmarking. */
-            for (int i = 0; i < repeats; i++) {
-                doCompile0(options, optimizedCallTarget, task);
-            }
-            System.exit(0);
-        }
-    }
-
     @SuppressWarnings("try")
-    private void doCompile0(OptionValues options, OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task) {
+    protected void doCompile(OptionValues options, OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task) {
         TruffleCompiler compiler = getTruffleCompiler();
         ResolvedJavaMethod rootMethod = compiler.partialEvaluator.rootForCallTarget(optimizedCallTarget);
         CompilationIdentifier compilationId = getCompilationIdentifier(optimizedCallTarget, rootMethod, compiler.backend);
