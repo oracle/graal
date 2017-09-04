@@ -148,7 +148,7 @@ public final class Runner {
             context.registerDestructorFunction(result.getDestructorFunction());
         }
         if (!context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
-            context.getThreadingStack().checkThread();
+            assert context.getThreadingStack().checkThread();
             long stackPointer = context.getThreadingStack().getStack().getStackPointer();
             result.getGlobalVarInit().call(stackPointer);
             context.getThreadingStack().getStack().setStackPointer(stackPointer);
@@ -161,7 +161,7 @@ public final class Runner {
     }
 
     public static void disposeContext(LLVMContext context) {
-        context.getThreadingStack().checkThread();
+        assert context.getThreadingStack().checkThread();
         for (RootCallTarget destructorFunction : context.getDestructorFunctions()) {
             long stackPointer = context.getThreadingStack().getStack().getStackPointer();
             destructorFunction.call(stackPointer);

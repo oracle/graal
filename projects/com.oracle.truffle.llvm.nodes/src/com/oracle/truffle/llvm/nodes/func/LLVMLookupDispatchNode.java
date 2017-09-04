@@ -64,7 +64,14 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
 
     public abstract Object executeDispatch(VirtualFrame frame, Object function, Object[] arguments);
 
-    @Specialization
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = "descriptor == cachedDescriptor")
+    protected static Object doDirectCached(VirtualFrame frame, LLVMFunctionDescriptor descriptor, Object[] arguments,
+                    @Cached("descriptor") LLVMFunctionDescriptor cachedDescriptor,
+                    @Cached("createCachedDispatch()") LLVMDispatchNode dispatchNode) {
+        return dispatchNode.executeDispatch(frame, cachedDescriptor, arguments);
+    }
+
+    @Specialization(replaces = "doDirectCached")
     protected static Object doDirect(VirtualFrame frame, LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached("createCachedDispatch()") LLVMDispatchNode dispatchNode) {
         return dispatchNode.executeDispatch(frame, descriptor, arguments);

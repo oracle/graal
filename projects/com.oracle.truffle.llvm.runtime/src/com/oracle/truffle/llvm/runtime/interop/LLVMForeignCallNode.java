@@ -123,18 +123,22 @@ abstract class LLVMForeignCallNode extends LLVMNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"function.getFunctionPointer() == functionIndex", "cachedLength == arguments.length"})
-    public Object callDirect(LLVMFunctionDescriptor function, Object[] arguments,
-                    @Cached("function.getFunctionPointer()") long functionIndex,
-                    @Cached("create(getCallTarget(function))") DirectCallNode callNode,
-                    @Cached("createFastPackArguments(function, arguments.length)") PackForeignArgumentsNode packNode,
+    @Specialization(limit = "3", guards = {"function == cachedFunction", "cachedLength == arguments.length"})
+    public Object callDirectCached(LLVMFunctionDescriptor function, Object[] arguments,
+                    @Cached("function") LLVMFunctionDescriptor cachedFunction,
+                    @Cached("create(getCallTarget(cachedFunction))") DirectCallNode callNode,
+                    @Cached("createFastPackArguments(cachedFunction, arguments.length)") PackForeignArgumentsNode packNode,
                     @Cached("arguments.length") int cachedLength,
-                    @Cached("function.getContext()") LLVMContext context,
-                    @Cached("function.needsStackPointer()") boolean needsStackPointer) {
-        assert !(function.getType().getReturnType() instanceof StructureType);
+                    @Cached("cachedFunction.getContext()") LLVMContext context,
+                    @Cached("cachedFunction.needsStackPointer()") boolean needsStackPointer) {
+        assert !(cachedFunction.getType().getReturnType() instanceof StructureType);
+        return directCall(arguments, callNode, packNode, context, needsStackPointer);
+    }
+
+    private Object directCall(Object[] arguments, DirectCallNode callNode, PackForeignArgumentsNode packNode, LLVMContext context, boolean needsStackPointer) {
         Object result;
         if (needsStackPointer) {
-            getThreadingStack(context).checkThread();
+            assert getThreadingStack(context).checkThread();
             long stackPointer = getThreadingStack(context).getStack().getStackPointer();
             result = callNode.call(packNode.pack(arguments, stackPointer));
             getThreadingStack(context).getStack().setStackPointer(stackPointer);
@@ -144,11 +148,24 @@ abstract class LLVMForeignCallNode extends LLVMNode {
         return prepareValueForEscape.executeWithTarget(result, context);
     }
 
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"function.getFunctionPointer() == functionIndex", "cachedLength == arguments.length"}, replaces = "callDirectCached")
+    public Object callDirect(LLVMFunctionDescriptor function, Object[] arguments,
+                    @Cached("function.getFunctionPointer()") long functionIndex,
+                    @Cached("create(getCallTarget(function))") DirectCallNode callNode,
+                    @Cached("createFastPackArguments(function, arguments.length)") PackForeignArgumentsNode packNode,
+                    @Cached("arguments.length") int cachedLength,
+                    @Cached("function.getContext()") LLVMContext context,
+                    @Cached("function.needsStackPointer()") boolean needsStackPointer) {
+        assert !(function.getType().getReturnType() instanceof StructureType);
+        return directCall(arguments, callNode, packNode, context, needsStackPointer);
+    }
+
     @Specialization
     public Object callIndirect(LLVMFunctionDescriptor function, Object[] arguments,
                     @Cached("create()") IndirectCallNode callNode, @Cached("createSlowPackArguments()") SlowPackForeignArgumentsNode slowPack) {
         assert !(function.getType().getReturnType() instanceof StructureType);
-        function.getContext().getThreadingStack().checkThread();
+        assert function.getContext().getThreadingStack().checkThread();
         long stackPointer = function.getContext().getThreadingStack().getStack().getStackPointer();
         Object result = callNode.call(getCallTarget(function), slowPack.pack(function, arguments, stackPointer));
         function.getContext().getThreadingStack().getStack().setStackPointer(stackPointer);
