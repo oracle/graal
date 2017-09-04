@@ -32,19 +32,19 @@ package com.oracle.truffle.llvm.nodes.asm;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdatePZSOFlagsNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild("valueNode")
 public abstract class LLVMAMD64IncNode extends LLVMExpressionNode {
-    @Child LLVMAMD64UpdateFlagsNode flags;
+    @Child protected LLVMAMD64UpdatePZSOFlagsNode flags;
 
-    public LLVMAMD64IncNode(LLVMAMD64UpdateFlagsNode flags) {
+    public LLVMAMD64IncNode(LLVMAMD64UpdatePZSOFlagsNode flags) {
         this.flags = flags;
     }
 
     public abstract static class LLVMAMD64IncbNode extends LLVMAMD64IncNode {
-        public LLVMAMD64IncbNode(LLVMAMD64UpdateFlagsNode flags) {
+        public LLVMAMD64IncbNode(LLVMAMD64UpdatePZSOFlagsNode flags) {
             super(flags);
         }
 
@@ -58,7 +58,7 @@ public abstract class LLVMAMD64IncNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMAMD64IncwNode extends LLVMAMD64IncNode {
-        public LLVMAMD64IncwNode(LLVMAMD64UpdateFlagsNode flags) {
+        public LLVMAMD64IncwNode(LLVMAMD64UpdatePZSOFlagsNode flags) {
             super(flags);
         }
 
@@ -72,7 +72,7 @@ public abstract class LLVMAMD64IncNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMAMD64InclNode extends LLVMAMD64IncNode {
-        public LLVMAMD64InclNode(LLVMAMD64UpdateFlagsNode flags) {
+        public LLVMAMD64InclNode(LLVMAMD64UpdatePZSOFlagsNode flags) {
             super(flags);
         }
 
@@ -86,7 +86,7 @@ public abstract class LLVMAMD64IncNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMAMD64IncqNode extends LLVMAMD64IncNode {
-        public LLVMAMD64IncqNode(LLVMAMD64UpdateFlagsNode flags) {
+        public LLVMAMD64IncqNode(LLVMAMD64UpdatePZSOFlagsNode flags) {
             super(flags);
         }
 

@@ -194,7 +194,10 @@ import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64Flags;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ReadAddressNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ReadRegisterNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ToI8NodeFactory.LLVMAMD64I64ToI8NodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdateCPAZSOFlagsNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdateCPZSOFlagsNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdatePZSFlagsNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdatePZSOFlagsNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteAddressRegisterNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteBooleanNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStructWriteNodeFactory.LLVMPrimitiveStructWriteNodeGen;
@@ -778,40 +781,40 @@ class AsmFactory {
         src = getOperandLoad(dstType, operand);
         switch (operation) {
             case "incb":
-                out = LLVMAMD64IncbNodeGen.create(getUpdateFlagsNode(), src);
+                out = LLVMAMD64IncbNodeGen.create(getUpdatePZSOFlagsNode(), src);
                 break;
             case "incw":
-                out = LLVMAMD64IncwNodeGen.create(getUpdateFlagsNode(), src);
+                out = LLVMAMD64IncwNodeGen.create(getUpdatePZSOFlagsNode(), src);
                 break;
             case "incl":
-                out = LLVMAMD64InclNodeGen.create(getUpdateFlagsNode(), src);
+                out = LLVMAMD64InclNodeGen.create(getUpdatePZSOFlagsNode(), src);
                 break;
             case "incq":
-                out = LLVMAMD64IncqNodeGen.create(getUpdateFlagsNode(), src);
+                out = LLVMAMD64IncqNodeGen.create(getUpdatePZSOFlagsNode(), src);
                 break;
             case "decb":
-                out = LLVMAMD64DecbNodeGen.create(getUpdateFlagsNode(), src);
+                out = LLVMAMD64DecbNodeGen.create(getUpdatePZSOFlagsNode(), src);
                 break;
             case "decw":
-                out = LLVMAMD64DecwNodeGen.create(getUpdateFlagsNode(), src);
+                out = LLVMAMD64DecwNodeGen.create(getUpdatePZSOFlagsNode(), src);
                 break;
             case "decl":
-                out = LLVMAMD64DeclNodeGen.create(getUpdateFlagsNode(), src);
+                out = LLVMAMD64DeclNodeGen.create(getUpdatePZSOFlagsNode(), src);
                 break;
             case "decq":
-                out = LLVMAMD64DecqNodeGen.create(getUpdateFlagsNode(), src);
+                out = LLVMAMD64DecqNodeGen.create(getUpdatePZSOFlagsNode(), src);
                 break;
             case "negb":
-                out = LLVMAMD64NegbNodeGen.create(getUpdateFlagsNode(), src);
+                out = LLVMAMD64NegbNodeGen.create(getUpdateCPZSOFlagsNode(), src);
                 break;
             case "negw":
-                out = LLVMAMD64NegwNodeGen.create(getUpdateFlagsNode(), src);
+                out = LLVMAMD64NegwNodeGen.create(getUpdateCPZSOFlagsNode(), src);
                 break;
             case "negl":
-                out = LLVMAMD64NeglNodeGen.create(getUpdateFlagsNode(), src);
+                out = LLVMAMD64NeglNodeGen.create(getUpdateCPZSOFlagsNode(), src);
                 break;
             case "negq":
-                out = LLVMAMD64NegqNodeGen.create(getUpdateFlagsNode(), src);
+                out = LLVMAMD64NegqNodeGen.create(getUpdateCPZSOFlagsNode(), src);
                 break;
             case "notb":
                 out = LLVMAMD64NotbNodeGen.create(src);
@@ -1125,28 +1128,28 @@ class AsmFactory {
         }
         switch (operation) {
             case "addb":
-                out = LLVMAMD64AddbNodeGen.create(getUpdateFlagsNode(), srcA, srcB);
+                out = LLVMAMD64AddbNodeGen.create(getUpdateCPZSOFlagsNode(), srcA, srcB);
                 break;
             case "addw":
-                out = LLVMAMD64AddwNodeGen.create(getUpdateFlagsNode(), srcA, srcB);
+                out = LLVMAMD64AddwNodeGen.create(getUpdateCPZSOFlagsNode(), srcA, srcB);
                 break;
             case "addl":
-                out = LLVMAMD64AddlNodeGen.create(getUpdateFlagsNode(), srcA, srcB);
+                out = LLVMAMD64AddlNodeGen.create(getUpdateCPZSOFlagsNode(), srcA, srcB);
                 break;
             case "addq":
-                out = LLVMAMD64AddqNodeGen.create(getUpdateFlagsNode(), srcA, srcB);
+                out = LLVMAMD64AddqNodeGen.create(getUpdateCPZSOFlagsNode(), srcA, srcB);
                 break;
             case "adcb":
-                out = LLVMAMD64AdcbNodeGen.create(getUpdateFlagsNode(), srcA, srcB, getFlag(LLVMAMD64Flags.CF));
+                out = LLVMAMD64AdcbNodeGen.create(getUpdateCPZSOFlagsNode(), srcA, srcB, getFlag(LLVMAMD64Flags.CF));
                 break;
             case "adcw":
-                out = LLVMAMD64AdcwNodeGen.create(getUpdateFlagsNode(), srcA, srcB, getFlag(LLVMAMD64Flags.CF));
+                out = LLVMAMD64AdcwNodeGen.create(getUpdateCPZSOFlagsNode(), srcA, srcB, getFlag(LLVMAMD64Flags.CF));
                 break;
             case "adcl":
-                out = LLVMAMD64AdclNodeGen.create(getUpdateFlagsNode(), srcA, srcB, getFlag(LLVMAMD64Flags.CF));
+                out = LLVMAMD64AdclNodeGen.create(getUpdateCPZSOFlagsNode(), srcA, srcB, getFlag(LLVMAMD64Flags.CF));
                 break;
             case "adcq":
-                out = LLVMAMD64AdcqNodeGen.create(getUpdateFlagsNode(), srcA, srcB, getFlag(LLVMAMD64Flags.CF));
+                out = LLVMAMD64AdcqNodeGen.create(getUpdateCPZSOFlagsNode(), srcA, srcB, getFlag(LLVMAMD64Flags.CF));
                 break;
             case "subb":
                 out = LLVMAMD64SubbNodeGen.create(srcB, srcA);
@@ -1285,16 +1288,16 @@ class AsmFactory {
                 out = LLVMAMD64RorqNodeGen.create(srcB, srcA);
                 break;
             case "andb":
-                out = LLVMAMD64AndbNodeGen.create(getUpdateFlagsNode(), srcA, srcB);
+                out = LLVMAMD64AndbNodeGen.create(getUpdatePZSFlagsNode(), srcA, srcB);
                 break;
             case "andw":
-                out = LLVMAMD64AndwNodeGen.create(getUpdateFlagsNode(), srcA, srcB);
+                out = LLVMAMD64AndwNodeGen.create(getUpdatePZSFlagsNode(), srcA, srcB);
                 break;
             case "andl":
-                out = LLVMAMD64AndlNodeGen.create(getUpdateFlagsNode(), srcA, srcB);
+                out = LLVMAMD64AndlNodeGen.create(getUpdatePZSFlagsNode(), srcA, srcB);
                 break;
             case "andq":
-                out = LLVMAMD64AndqNodeGen.create(getUpdateFlagsNode(), srcA, srcB);
+                out = LLVMAMD64AndqNodeGen.create(getUpdatePZSFlagsNode(), srcA, srcB);
                 break;
             case "orb":
                 out = LLVMAMD64OrbNodeGen.create(srcA, srcB);
@@ -1333,28 +1336,28 @@ class AsmFactory {
                 break;
             }
             case "cmpb":
-                statements.add(LLVMAMD64CmpbNodeGen.create(getUpdateFlagsNode(), srcB, srcA));
+                statements.add(LLVMAMD64CmpbNodeGen.create(getUpdateCPAZSOFlagsNode(), srcB, srcA));
                 return;
             case "cmpw":
-                statements.add(LLVMAMD64CmpwNodeGen.create(getUpdateFlagsNode(), srcB, srcA));
+                statements.add(LLVMAMD64CmpwNodeGen.create(getUpdateCPAZSOFlagsNode(), srcB, srcA));
                 return;
             case "cmpl":
-                statements.add(LLVMAMD64CmplNodeGen.create(getUpdateFlagsNode(), srcB, srcA));
+                statements.add(LLVMAMD64CmplNodeGen.create(getUpdateCPAZSOFlagsNode(), srcB, srcA));
                 return;
             case "cmpq":
-                statements.add(LLVMAMD64CmpqNodeGen.create(getUpdateFlagsNode(), srcB, srcA));
+                statements.add(LLVMAMD64CmpqNodeGen.create(getUpdateCPAZSOFlagsNode(), srcB, srcA));
                 return;
             case "cmpxchgb": {
                 LLVMAMD64WriteI8RegisterNode dst2 = getRegisterStore("al");
                 LLVMExpressionNode accumulator = getOperandLoad(PrimitiveType.I8, new AsmRegisterOperand("al"));
-                out = LLVMAMD64CmpXchgbNodeGen.create(getUpdateFlagsNode(), dst2, accumulator, srcA, srcB);
+                out = LLVMAMD64CmpXchgbNodeGen.create(getUpdateCPAZSOFlagsNode(), dst2, accumulator, srcA, srcB);
                 dst = b;
                 break;
             }
             case "cmpxchgw": {
                 LLVMAMD64WriteI16RegisterNode dst2 = getRegisterStore("ax");
                 LLVMExpressionNode accumulator = getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("ax"));
-                out = LLVMAMD64CmpXchgwNodeGen.create(getUpdateFlagsNode(), dst2, accumulator, srcA, srcB);
+                out = LLVMAMD64CmpXchgwNodeGen.create(getUpdateCPAZSOFlagsNode(), dst2, accumulator, srcA, srcB);
                 dst = b;
                 break;
             }
@@ -1364,23 +1367,23 @@ class AsmFactory {
                 if (b instanceof AsmRegisterOperand) {
                     AsmRegisterOperand rd = (AsmRegisterOperand) b;
                     LLVMAMD64WriteI32RegisterNode dst1 = getRegisterStore(PrimitiveType.I32, rd.getRegister());
-                    out = LLVMAMD64CmpXchglrNodeGen.create(getUpdateFlagsNode(), dst1, dst2, accumulator, srcA, srcB);
+                    out = LLVMAMD64CmpXchglrNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB);
                     statements.add(out);
                     return;
                 } else if (b instanceof AsmArgumentOperand) {
                     AsmArgumentOperand arg = (AsmArgumentOperand) b;
                     Argument info = argInfo.get(arg.getIndex());
                     if (info.isMemory()) {
-                        out = LLVMAMD64CmpXchglNodeGen.create(getUpdateFlagsNode(), dst2, accumulator, srcA, srcB);
+                        out = LLVMAMD64CmpXchglNodeGen.create(getUpdateCPAZSOFlagsNode(), dst2, accumulator, srcA, srcB);
                         dst = b;
                     } else {
                         LLVMAMD64WriteI32RegisterNode dst1 = getRegisterStore(PrimitiveType.I32, info.getRegister());
-                        out = LLVMAMD64CmpXchglrNodeGen.create(getUpdateFlagsNode(), dst1, dst2, accumulator, srcA, srcB);
+                        out = LLVMAMD64CmpXchglrNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB);
                         statements.add(out);
                         return;
                     }
                 } else {
-                    out = LLVMAMD64CmpXchglNodeGen.create(getUpdateFlagsNode(), dst2, accumulator, srcA, srcB);
+                    out = LLVMAMD64CmpXchglNodeGen.create(getUpdateCPAZSOFlagsNode(), dst2, accumulator, srcA, srcB);
                     dst = b;
                 }
                 break;
@@ -1388,28 +1391,28 @@ class AsmFactory {
             case "cmpxchgq": {
                 LLVMAMD64WriteI64RegisterNode dst2 = getRegisterStore("rax");
                 LLVMExpressionNode accumulator = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rax"));
-                out = LLVMAMD64CmpXchgqNodeGen.create(getUpdateFlagsNode(), dst2, accumulator, srcA, srcB);
+                out = LLVMAMD64CmpXchgqNodeGen.create(getUpdateCPAZSOFlagsNode(), dst2, accumulator, srcA, srcB);
                 dst = b;
                 break;
             }
             case "xaddb": {
                 LLVMAMD64WriteI8RegisterNode src = getRegisterStore(PrimitiveType.I8, a);
-                out = LLVMAMD64XaddbNodeGen.create(getUpdateFlagsNode(), src, srcA, srcB);
+                out = LLVMAMD64XaddbNodeGen.create(getUpdateCPZSOFlagsNode(), src, srcA, srcB);
                 break;
             }
             case "xaddw": {
                 LLVMAMD64WriteI16RegisterNode src = getRegisterStore(PrimitiveType.I16, a);
-                out = LLVMAMD64XaddwNodeGen.create(getUpdateFlagsNode(), src, srcA, srcB);
+                out = LLVMAMD64XaddwNodeGen.create(getUpdateCPZSOFlagsNode(), src, srcA, srcB);
                 break;
             }
             case "xaddl": {
                 LLVMAMD64WriteI32RegisterNode src = getRegisterStore(PrimitiveType.I32, a);
-                out = LLVMAMD64XaddlNodeGen.create(getUpdateFlagsNode(), src, srcA, srcB);
+                out = LLVMAMD64XaddlNodeGen.create(getUpdateCPZSOFlagsNode(), src, srcA, srcB);
                 break;
             }
             case "xaddq": {
                 LLVMAMD64WriteI64RegisterNode src = getRegisterStore(PrimitiveType.I64, a);
-                out = LLVMAMD64XaddqNodeGen.create(getUpdateFlagsNode(), src, srcA, srcB);
+                out = LLVMAMD64XaddqNodeGen.create(getUpdateCPZSOFlagsNode(), src, srcA, srcB);
                 break;
             }
             case "xorb":
@@ -2029,8 +2032,21 @@ class AsmFactory {
         return new LLVMAMD64WriteBooleanNode(getFlagSlot(flag));
     }
 
-    private LLVMAMD64UpdateFlagsNode getUpdateFlagsNode() {
-        return new LLVMAMD64UpdateFlagsNode(getFlagSlot(LLVMAMD64Flags.CF), getFlagSlot(LLVMAMD64Flags.PF), getFlagSlot(LLVMAMD64Flags.AF), getFlagSlot(LLVMAMD64Flags.ZF),
+    private LLVMAMD64UpdatePZSFlagsNode getUpdatePZSFlagsNode() {
+        return new LLVMAMD64UpdatePZSFlagsNode(getFlagSlot(LLVMAMD64Flags.PF), getFlagSlot(LLVMAMD64Flags.ZF), getFlagSlot(LLVMAMD64Flags.SF));
+    }
+
+    private LLVMAMD64UpdatePZSOFlagsNode getUpdatePZSOFlagsNode() {
+        return new LLVMAMD64UpdatePZSOFlagsNode(getFlagSlot(LLVMAMD64Flags.PF), getFlagSlot(LLVMAMD64Flags.ZF), getFlagSlot(LLVMAMD64Flags.SF), getFlagSlot(LLVMAMD64Flags.OF));
+    }
+
+    private LLVMAMD64UpdateCPZSOFlagsNode getUpdateCPZSOFlagsNode() {
+        return new LLVMAMD64UpdateCPZSOFlagsNode(getFlagSlot(LLVMAMD64Flags.CF), getFlagSlot(LLVMAMD64Flags.PF), getFlagSlot(LLVMAMD64Flags.ZF), getFlagSlot(LLVMAMD64Flags.SF),
+                        getFlagSlot(LLVMAMD64Flags.OF));
+    }
+
+    private LLVMAMD64UpdateCPAZSOFlagsNode getUpdateCPAZSOFlagsNode() {
+        return new LLVMAMD64UpdateCPAZSOFlagsNode(getFlagSlot(LLVMAMD64Flags.CF), getFlagSlot(LLVMAMD64Flags.PF), getFlagSlot(LLVMAMD64Flags.AF), getFlagSlot(LLVMAMD64Flags.ZF),
                         getFlagSlot(LLVMAMD64Flags.SF), getFlagSlot(LLVMAMD64Flags.OF));
     }
 }

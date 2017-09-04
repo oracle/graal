@@ -33,7 +33,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdateCPAZSOFlagsNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI16RegisterNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI32RegisterNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI64RegisterNode;
@@ -42,16 +42,16 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild("a"), @NodeChild("src"), @NodeChild("dst")})
 public abstract class LLVMAMD64CmpXchgNode extends LLVMExpressionNode {
-    @Child LLVMAMD64UpdateFlagsNode flags;
+    @Child protected LLVMAMD64UpdateCPAZSOFlagsNode flags;
 
-    private LLVMAMD64CmpXchgNode(LLVMAMD64UpdateFlagsNode flags) {
+    private LLVMAMD64CmpXchgNode(LLVMAMD64UpdateCPAZSOFlagsNode flags) {
         this.flags = flags;
     }
 
     public abstract static class LLVMAMD64CmpXchgbNode extends LLVMAMD64CmpXchgNode {
         @Child LLVMAMD64WriteI8RegisterNode out2;
 
-        public LLVMAMD64CmpXchgbNode(LLVMAMD64UpdateFlagsNode flags, LLVMAMD64WriteI8RegisterNode out2) {
+        public LLVMAMD64CmpXchgbNode(LLVMAMD64UpdateCPAZSOFlagsNode flags, LLVMAMD64WriteI8RegisterNode out2) {
             super(flags);
             this.out2 = out2;
         }
@@ -74,7 +74,7 @@ public abstract class LLVMAMD64CmpXchgNode extends LLVMExpressionNode {
     public abstract static class LLVMAMD64CmpXchgwNode extends LLVMAMD64CmpXchgNode {
         @Child LLVMAMD64WriteI16RegisterNode out2;
 
-        public LLVMAMD64CmpXchgwNode(LLVMAMD64UpdateFlagsNode flags, LLVMAMD64WriteI16RegisterNode out2) {
+        public LLVMAMD64CmpXchgwNode(LLVMAMD64UpdateCPAZSOFlagsNode flags, LLVMAMD64WriteI16RegisterNode out2) {
             super(flags);
             this.out2 = out2;
         }
@@ -97,7 +97,7 @@ public abstract class LLVMAMD64CmpXchgNode extends LLVMExpressionNode {
     public abstract static class LLVMAMD64CmpXchglNode extends LLVMAMD64CmpXchgNode {
         @Child LLVMAMD64WriteI32RegisterNode out2;
 
-        public LLVMAMD64CmpXchglNode(LLVMAMD64UpdateFlagsNode flags, LLVMAMD64WriteI32RegisterNode out2) {
+        public LLVMAMD64CmpXchglNode(LLVMAMD64UpdateCPAZSOFlagsNode flags, LLVMAMD64WriteI32RegisterNode out2) {
             super(flags);
             this.out2 = out2;
         }
@@ -121,7 +121,7 @@ public abstract class LLVMAMD64CmpXchgNode extends LLVMExpressionNode {
         @Child LLVMAMD64WriteI32RegisterNode out1;
         @Child LLVMAMD64WriteI32RegisterNode out2;
 
-        public LLVMAMD64CmpXchglrNode(LLVMAMD64UpdateFlagsNode flags, LLVMAMD64WriteI32RegisterNode out1, LLVMAMD64WriteI32RegisterNode out2) {
+        public LLVMAMD64CmpXchglrNode(LLVMAMD64UpdateCPAZSOFlagsNode flags, LLVMAMD64WriteI32RegisterNode out1, LLVMAMD64WriteI32RegisterNode out2) {
             super(flags);
             this.out1 = out1;
             this.out2 = out2;
@@ -146,7 +146,7 @@ public abstract class LLVMAMD64CmpXchgNode extends LLVMExpressionNode {
     public abstract static class LLVMAMD64CmpXchgqNode extends LLVMAMD64CmpXchgNode {
         private final LLVMAMD64WriteI64RegisterNode out2;
 
-        public LLVMAMD64CmpXchgqNode(LLVMAMD64UpdateFlagsNode flags, LLVMAMD64WriteI64RegisterNode out2) {
+        public LLVMAMD64CmpXchgqNode(LLVMAMD64UpdateCPAZSOFlagsNode flags, LLVMAMD64WriteI64RegisterNode out2) {
             super(flags);
             this.out2 = out2;
         }
