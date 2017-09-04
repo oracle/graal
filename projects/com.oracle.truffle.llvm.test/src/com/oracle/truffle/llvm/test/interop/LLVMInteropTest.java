@@ -488,7 +488,7 @@ public final class LLVMInteropTest {
         Assert.assertEquals(9, value);
     }
 
-    @Test(expected = PolyglotException.class)
+    @Test(expected = UnsupportedOperationException.class)
     public void test042() throws Exception {
         Runner runner = new Runner("interop042");
         runner.run();
@@ -1051,7 +1051,7 @@ public final class LLVMInteropTest {
         }
 
         public Value findGlobalSymbol(String string) {
-            return context.importSymbol(string);
+            return context.lookup("llvm", string);
         }
 
         void export(Object foreignObject, String name) {
