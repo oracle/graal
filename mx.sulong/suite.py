@@ -265,6 +265,15 @@ suite = {
       "prefix": "",
     },
 
+    "com.oracle.truffle.llvm.tests.interop" : {
+      "subDir" : "tests",
+      "class" : "SulongTestSuite",
+      "variants" : ['O0_MEM2REG'],
+      "buildRef" : False,
+      "buildEnv" : {
+        "CPPFLAGS" : "-I<sulong_include>",
+      },
+    },
     "com.oracle.truffle.llvm.tests.sulong" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
@@ -348,6 +357,7 @@ suite = {
       "platformDependent" : True,
       "output" : "mxbuild/sulong-test-suites",
       "dependencies" : [
+        "com.oracle.truffle.llvm.tests.interop",
         "com.oracle.truffle.llvm.tests.sulong",
         "com.oracle.truffle.llvm.tests.sulongcpp",
       ],

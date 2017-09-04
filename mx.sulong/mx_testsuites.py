@@ -18,7 +18,6 @@ _cacheDir = os.path.join(_suite.dir, "cache/tests")
 
 _benchmarksgameSuiteDir = os.path.join(_testDir, "benchmarksgame/")
 _benchmarksgameSuiteDirRoot = os.path.join(_benchmarksgameSuiteDir, "benchmarksgame-2014-08-31/benchmarksgame/bench/")
-_interoptestsDir = os.path.join(_testDir, "interoptests/")
 _otherDir = os.path.join(_testDir, "other/")
 _inlineassemblytestsDir = os.path.join(_testDir, "inlineassemblytests/")
 _llvmSuiteDir = os.path.join(_testDir, "llvm/")
@@ -74,10 +73,6 @@ def runGCCSuite38(vmArgs):
     compileSuite(['gcc38'])
     return run(vmArgs + ['-Dsulongtest.ignoreFortran=true'], "com.oracle.truffle.llvm.test.alpha.GCCSuite")
 
-def compileInteropTests():
-    print("Compiling Interop with clang -O0 and mem2reg", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_interoptestsDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude', '-lm'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, optimizers=[mx_tools.Tool.MEM2REG]))
-
 def compileOtherTests():
     print("Compiling Other with clang -O0", end='')
     mx_tools.printProgress(mx_tools.multicompileFolder(_otherDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude', '-lm'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC))
@@ -96,11 +91,6 @@ def runVAargsTests(vmArgs):
     """runs the Sulong test suite"""
     compileSuite(['vaargs'])
     return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.VAArgsTest")
-
-def runInteropTests(vmArgs):
-    """runs the Sulong test suite"""
-    compileSuite(['interop'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.interop.LLVMInteropTest")
 
 def runInlineAssemblySuite(vmArgs):
     """runs the InlineAssembly test suite"""
@@ -199,7 +189,6 @@ testSuites = {
     'llvm' : (compileLLVMSuite, runLLVMSuite),
     'gcc38' : (compileV38GCCSuite, runGCCSuite38),
     'shootout' : (compileShootoutSuite, runShootoutSuite),
-    'interop' : (compileInteropTests, runInteropTests),
     'parserTorture' : (compileParserTurtureSuite, runParserTortureSuite),
     'polyglot' : (None, runPolyglotTests),
     'type' : (None, runTypeTests),
@@ -277,6 +266,8 @@ def renameBenchmarkFiles(directory):
             if ext in ['.gpp']:
                 os.rename(absPath, absPath + '.cpp')
 
+mx_subst.path_substitutions.register_no_arg('sulong_include', lambda: os.path.join(mx.suite('sulong').dir, 'include'))
+
 
 class SulongTestSuite(mx.NativeProject):
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
@@ -313,12 +304,19 @@ class SulongTestSuite(mx.NativeProject):
                 self._variants.append(v)
         return self._variants
 
+    def getBuildRef(self):
+        if hasattr(self, 'buildRef'):
+            return self.buildRef
+        else:
+            return True
+
     def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
         env = super(SulongTestSuite, self).getBuildEnv(replaceVar=replaceVar)
         env['VPATH'] = os.path.join(self.dir, self.name)
         env['PROJECT'] = self.name
         env['TESTS'] = ' '.join(self.getTests())
         env['VARIANTS'] = ' '.join(self.getVariants())
+        env['BUILD_REF'] = '1' if self.getBuildRef() else '0'
         if SulongTestSuite.haveDragonegg():
             env['DRAGONEGG'] = mx_sulong.dragonEggPath()
             env['DRAGONEGG_GCC'] = mx_sulong.getGCC()
@@ -329,7 +327,8 @@ class SulongTestSuite(mx.NativeProject):
         if not self.results:
             self.results = []
             for t in self.getTests():
-                self.results.append(os.path.join(t, 'ref.out'))
+                if self.getBuildRef():
+                    self.results.append(os.path.join(t, 'ref.out'))
                 for v in self.getVariants():
                     self.results.append(os.path.join(t, v + '.bc'))
         return super(SulongTestSuite, self).getResults(replaceVar=replaceVar)
