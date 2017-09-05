@@ -163,6 +163,8 @@ public abstract class Accessor {
 
         public abstract Map<String, InstrumentInfo> getInstruments(Object vmInstance);
 
+        public abstract org.graalvm.polyglot.SourceSection createSourceSection(Object vmObject, org.graalvm.polyglot.Source source, SourceSection sectionImpl);
+
         public abstract <T> T lookup(InstrumentInfo info, Class<T> serviceClass);
 
         public abstract <S> S lookup(LanguageInfo language, Class<S> type);
@@ -459,7 +461,10 @@ public abstract class Accessor {
             // O.K.
         } else if (this.getClass().getSimpleName().endsWith("TruffleTCKAccessor")) {
             // O.K.
+        } else if (this.getClass().getSimpleName().endsWith("TestAccessor")) {
+            // O.K.
         } else {
+            assert this.getClass().getSimpleName().endsWith("VMAccessor");
             SPI = this.engineSupport();
         }
     }

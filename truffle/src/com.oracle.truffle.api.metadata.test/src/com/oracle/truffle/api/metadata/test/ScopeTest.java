@@ -55,8 +55,8 @@ import com.oracle.truffle.api.metadata.ScopeProvider;
 import com.oracle.truffle.api.metadata.ScopeProvider.AbstractScope;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.polyglot.Source;
 
 /**
  * Test of {@link Scope}.
@@ -65,13 +65,13 @@ public class ScopeTest extends AbstractInstrumentationTest {
 
     @Test
     public void testDefaultScope() throws Throwable {
-        engine.getRuntime().getInstruments().get("testScopeInstrument").setEnabled(true);
+        assureEnabled(engine.getInstruments().get("testScopeInstrument"));
         TestScopeInstrument.INSTANCE.setTester(new DefaultScopeTester());
         run("ROOT(DEFINE(testFunction,\nROOT(\nVARIABLE(a, 10),\nVARIABLE(b, 20),\nSTATEMENT)),\nCALL(testFunction))");
         TestScopeInstrument.INSTANCE.checkForFailure();
     }
 
-    @TruffleInstrument.Registration(id = "testScopeInstrument")
+    @TruffleInstrument.Registration(id = "testScopeInstrument", services = Object.class)
     public static class TestScopeInstrument extends TruffleInstrument {
 
         static TestScopeInstrument INSTANCE;
@@ -180,14 +180,14 @@ public class ScopeTest extends AbstractInstrumentationTest {
 
     @Test
     public void testSPIScopeCalls() throws Throwable {
-        Source source = Source.newBuilder("test").name("unknown").mimeType("x-testCustomScope").build();
-        engine.getRuntime().getInstruments().get("testScopeInstrument").setEnabled(true);
+        Source source = Source.create("test-custom-scope-language", "test");
+        assureEnabled(engine.getInstruments().get("testScopeInstrument"));
         TestScopeInstrument.INSTANCE.setTester(new CustomScopeTester());
-        engine.eval(source);
+        context.eval(source);
         TestScopeInstrument.INSTANCE.checkForFailure();
     }
 
-    @TruffleLanguage.Registration(name = "", version = "", mimeType = "x-testCustomScope")
+    @TruffleLanguage.Registration(id = "test-custom-scope-language", name = "", version = "", mimeType = "x-testCustomScope")
     @ProvidedTags({StandardTags.StatementTag.class})
     public static class CustomScopeLanguage extends TruffleLanguage<Object> implements ScopeProvider<Object> {
 
@@ -248,7 +248,7 @@ public class ScopeTest extends AbstractInstrumentationTest {
 
             @Override
             public SourceSection getSourceSection() {
-                return Source.newBuilder("test").name("unknown").mimeType("x-testCustomScope").build().createSection(1);
+                return com.oracle.truffle.api.source.Source.newBuilder("test").name("unknown").mimeType("x-testCustomScope").build().createSection(1);
             }
 
             @Override

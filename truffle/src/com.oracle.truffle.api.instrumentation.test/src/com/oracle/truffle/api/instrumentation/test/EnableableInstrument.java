@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.instrumentation.test.examples;
+package com.oracle.truffle.api.instrumentation.test;
 
-import java.io.IOException;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 
-import org.junit.Before;
-import org.junit.Test;
+/**
+ * An instrument whose functionality can be enabled or disabled.
+ */
+abstract class EnableableInstrument extends TruffleInstrument {
 
-import com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest;
+    private Env env;
 
-public class CoverageExampleTest extends AbstractInstrumentationTest {
-
-    @Before
-    public void setupInstrument() {
-        assureEnabled(engine.getInstruments().get(CoverageExample.ID));
+    @Override
+    protected final void onCreate(Env newEnv) {
+        newEnv.registerService(this);
+        this.env = newEnv;
+        setEnabled(true);
     }
 
-    @Test
-    public void testExpressionCoverage() throws IOException {
-        assertEvalOut("STATEMENT(EXPRESSION,EXPRESSION)", "10 21 ");
-        assertEvalOut("EXPRESSION(STATEMENT,BLOCK)", "0 ");
-        assertEvalOut("EXPRESSION", "0 ");
+    @Override
+    protected final void onDispose(Env oldEnv) {
+        setEnabled(false);
     }
+
+    protected final Env getEnv() {
+        return env;
+    }
+
+    public abstract void setEnabled(boolean enabled);
 
 }

@@ -38,6 +38,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
@@ -46,10 +47,10 @@ import com.oracle.truffle.api.instrumentation.LoadSourceListener;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
 
 public class InstrumentationMultiThreadingTest {
 
@@ -63,16 +64,16 @@ public class InstrumentationMultiThreadingTest {
             ExecutorService executorService = Executors.newFixedThreadPool(nEvals + nInstruments);
             List<Future<?>> futures = new ArrayList<>();
             final AtomicBoolean terminated = new AtomicBoolean(false);
-            final AtomicReference<PolyglotEngine> engineRef = new AtomicReference<>();
+            final AtomicReference<Context> engineRef = new AtomicReference<>();
             for (int i = 0; i < nEvals; i++) {
                 futures.add(executorService.submit(new Runnable() {
                     public void run() {
-                        final PolyglotEngine engine = PolyglotEngine.newBuilder().build();
+                        final Context engine = Context.create();
                         engineRef.set(engine);
                         while (!terminated.get()) {
                             try {
-                                engine.eval(Source.newBuilder("ROOT(BLOCK(STATEMENT(EXPRESSION, EXPRESSION), STATEMENT(EXPRESSION)))").name("asyncTest").mimeType(
-                                                InstrumentationTestLanguage.MIME_TYPE).build());
+                                engine.eval(Source.create(InstrumentationTestLanguage.ID,
+                                                "ROOT(BLOCK(STATEMENT(EXPRESSION, EXPRESSION), STATEMENT(EXPRESSION)))"));
                             } catch (Throwable e) {
                                 throw new RuntimeException(e);
                             }
@@ -86,10 +87,10 @@ public class InstrumentationMultiThreadingTest {
                 futures.add(executorService.submit(new Runnable() {
                     public void run() {
                         while (!terminated.get()) {
-                            PolyglotEngine engine = engineRef.get();
+                            Context engine = engineRef.get();
                             if (engine != null) {
-                                engine.getRuntime().getInstruments().get("testAsyncAttachement1").setEnabled(index % 2 == 0);
-                                engine.getRuntime().getInstruments().get("testAsyncAttachement2").setEnabled(index % 2 == 1);
+                                engine.getEngine().getInstruments().get("testAsyncAttachement1").lookup(EnableableInstrument.class).setEnabled(index % 2 == 0);
+                                engine.getEngine().getInstruments().get("testAsyncAttachement2").lookup(EnableableInstrument.class).setEnabled(index % 2 == 1);
                             }
                         }
                     }
@@ -100,48 +101,61 @@ public class InstrumentationMultiThreadingTest {
             for (Future<?> future : futures) {
                 future.get();
             }
-            engineRef.get().getRuntime().getInstruments().get("testAsyncAttachement1").setEnabled(false);
-            engineRef.get().getRuntime().getInstruments().get("testAsyncAttachement2").setEnabled(false);
+            engineRef.get().getEngine().getInstruments().get("testAsyncAttachement1").lookup(EnableableInstrument.class).setEnabled(false);
+            engineRef.get().getEngine().getInstruments().get("testAsyncAttachement2").lookup(EnableableInstrument.class).setEnabled(false);
         }
 
         Assert.assertEquals(0, createDisposeCount.get());
 
     }
 
-    @Registration(id = "testAsyncAttachement1")
-    public static class TestAsyncAttachement1 extends TruffleInstrument {
+    @Registration(id = "testAsyncAttachement1", services = EnableableInstrument.class)
+    public static class TestAsyncAttachement1 extends EnableableInstrument {
+
+        private EventBinding<?>[] bindings;
 
         @Override
-        protected void onCreate(Env env) {
-            createDummyBindings(env.getInstrumenter());
-            createDisposeCount.incrementAndGet();
-        }
-
-        @Override
-        protected void onDispose(Env env) {
-            createDisposeCount.decrementAndGet();
+        public synchronized void setEnabled(boolean enabled) {
+            if (enabled && bindings == null) {
+                bindings = createDummyBindings(getEnv().getInstrumenter());
+                createDisposeCount.incrementAndGet();
+            } else if (!enabled && bindings != null) {
+                createDisposeCount.decrementAndGet();
+                for (EventBinding<?> b : bindings) {
+                    b.dispose();
+                }
+                bindings = null;
+            }
         }
 
     }
 
     static final AtomicInteger createDisposeCount = new AtomicInteger(0);
 
-    @Registration(id = "testAsyncAttachement2")
-    public static class TestAsyncAttachement2 extends TruffleInstrument {
+    @Registration(id = "testAsyncAttachement2", services = EnableableInstrument.class)
+    public static class TestAsyncAttachement2 extends EnableableInstrument {
+
+        private EventBinding<?>[] bindings;
 
         @Override
-        protected void onCreate(Env env) {
-            createDummyBindings(env.getInstrumenter());
-            createDisposeCount.incrementAndGet();
+        public synchronized void setEnabled(boolean enabled) {
+            if (enabled && bindings == null) {
+                bindings = createDummyBindings(getEnv().getInstrumenter());
+                createDisposeCount.incrementAndGet();
+            } else if (!enabled && bindings != null) {
+                createDisposeCount.decrementAndGet();
+                for (EventBinding<?> b : bindings) {
+                    b.dispose();
+                }
+                bindings = null;
+            }
         }
 
-        @Override
-        protected void onDispose(Env env) {
-            createDisposeCount.decrementAndGet();
-        }
     }
 
-    private static void createDummyBindings(Instrumenter instrumenter) {
+    private static EventBinding<?>[] createDummyBindings(Instrumenter instrumenter) {
+        EventBinding<?>[] bindings = new EventBinding<?>[5];
+        int bi = 0;
         ExecutionEventListener dummyListener = new ExecutionEventListener() {
             public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
             }
@@ -152,26 +166,27 @@ public class InstrumentationMultiThreadingTest {
             public void onEnter(EventContext context, VirtualFrame frame) {
             }
         };
-        instrumenter.attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), dummyListener);
-        instrumenter.attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), dummyListener);
-        instrumenter.attachLoadSourceListener(SourceSectionFilter.ANY, new LoadSourceListener() {
+        bindings[bi++] = instrumenter.attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), dummyListener);
+        bindings[bi++] = instrumenter.attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), dummyListener);
+        bindings[bi++] = instrumenter.attachLoadSourceListener(SourceSectionFilter.ANY, new LoadSourceListener() {
 
             public void onLoad(LoadSourceEvent event) {
 
             }
         }, true);
-        instrumenter.attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new LoadSourceSectionListener() {
+        bindings[bi++] = instrumenter.attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new LoadSourceSectionListener() {
 
             public void onLoad(LoadSourceSectionEvent event) {
 
             }
         }, true);
 
-        instrumenter.attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new LoadSourceSectionListener() {
+        bindings[bi++] = instrumenter.attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new LoadSourceSectionListener() {
             public void onLoad(LoadSourceSectionEvent event) {
 
             }
         }, true);
+        return bindings;
     }
 
 }

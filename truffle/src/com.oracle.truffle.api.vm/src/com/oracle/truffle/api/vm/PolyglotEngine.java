@@ -1800,6 +1800,11 @@ public class PolyglotEngine {
             throw new IllegalStateException("createThread is not supported.");
         }
 
+        @Override
+        public org.graalvm.polyglot.SourceSection createSourceSection(Object vmObject, org.graalvm.polyglot.Source source, SourceSection sectionImpl) {
+            throw new UnsupportedOperationException("Not supported in legacy engine.");
+        }
+
     }
 
     private static final class Pair {

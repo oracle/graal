@@ -32,7 +32,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.source.Source;
+import org.graalvm.polyglot.Source;
 
 public class DoubleHaltTest extends AbstractDebugTest {
 
@@ -50,10 +50,10 @@ public class DoubleHaltTest extends AbstractDebugTest {
                         ")\n");
 
         try (DebuggerSession session = startSession()) {
-            Breakpoint breakpoint2 = session.install(Breakpoint.newBuilder(testSource).lineIs(2).build());
-            Breakpoint breakpoint3 = session.install(Breakpoint.newBuilder(testSource).lineIs(3).build());
-            Breakpoint breakpoint5 = session.install(Breakpoint.newBuilder(testSource).lineIs(5).build());
-            Breakpoint breakpoint6 = session.install(Breakpoint.newBuilder(testSource).lineIs(6).build());
+            Breakpoint breakpoint2 = session.install(Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(2).build());
+            Breakpoint breakpoint3 = session.install(Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(3).build());
+            Breakpoint breakpoint5 = session.install(Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(5).build());
+            Breakpoint breakpoint6 = session.install(Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(6).build());
 
             session.suspendNextExecution();
             startEval(testSource);
@@ -106,7 +106,7 @@ public class DoubleHaltTest extends AbstractDebugTest {
                         ")\n");
 
         try (DebuggerSession session = startSession()) {
-            Breakpoint breakpoint4 = session.install(Breakpoint.newBuilder(testSource).lineIs(4).build());
+            Breakpoint breakpoint4 = session.install(Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(4).build());
             session.suspendNextExecution();
             startEval(testSource);
 

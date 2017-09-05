@@ -38,6 +38,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Breakpoint;
@@ -60,8 +61,11 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import org.graalvm.polyglot.Source;
 
 /**
  * Test of value association with language and language-specific view of values.
@@ -70,22 +74,24 @@ public class ValueLanguageTest extends AbstractDebugTest {
 
     @Test
     public void testValueLanguage() {
-        Source source1 = Source.newBuilder("i=10\n" +
-                        "s=test\n" +
-                        "a=null\n" +
-                        "b={}\n" +
-                        "b.a={}\n" +
-                        "b.j=100\n" +
-                        "b.k=200\n").mimeType(ValuesLanguage1.MIME_TYPE).name("test code 1").build();
-        Source source2 = Source.newBuilder("j=20\n" +
-                        "s=test2\n" +
-                        "d=null\n" +
-                        "e={}\n" +
-                        "b.c={}\n" +
-                        "e.d={}\n" +
-                        "e.k=200\n").mimeType(ValuesLanguage2.MIME_TYPE).name("test code 2").build();
+        Source source1 = Source.create(ValuesLanguage1.ID,
+                        "i=10\n" +
+                                        "s=test\n" +
+                                        "a=null\n" +
+                                        "b={}\n" +
+                                        "b.a={}\n" +
+                                        "b.j=100\n" +
+                                        "b.k=200\n");
+        Source source2 = Source.create(ValuesLanguage2.ID,
+                        "j=20\n" +
+                                        "s=test2\n" +
+                                        "d=null\n" +
+                                        "e={}\n" +
+                                        "b.c={}\n" +
+                                        "e.d={}\n" +
+                                        "e.k=200\n");
         try (DebuggerSession session = startSession()) {
-            Breakpoint bp1 = Breakpoint.newBuilder(source1).lineIs(7).build();
+            Breakpoint bp1 = Breakpoint.newBuilder(getSourceImpl(source1)).lineIs(7).build();
             session.install(bp1);
             startEval(source1);
 
@@ -101,11 +107,13 @@ public class ValueLanguageTest extends AbstractDebugTest {
                 assertEquals("L1:test", value.as(String.class));
 
                 value = frame.getScope().getDeclaredValue("a");
-                assertNull(value.getOriginalLanguage());
+                LanguageInfo lang = value.getOriginalLanguage();
+                assertNotNull(lang);
+                assertEquals("host", lang.getId());
                 assertEquals("null", value.as(String.class));
 
                 value = frame.getScope().getDeclaredValue("b");
-                LanguageInfo lang = value.getOriginalLanguage();
+                lang = value.getOriginalLanguage();
                 assertNotNull(lang);
                 assertEquals(ValuesLanguage1.NAME, lang.getName());
                 assertEquals("{a={}, j=100}", value.as(String.class));
@@ -115,7 +123,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
 
             expectDone();
 
-            Breakpoint bp2 = Breakpoint.newBuilder(source2).lineIs(7).build();
+            Breakpoint bp2 = Breakpoint.newBuilder(getSourceImpl(source2)).lineIs(7).build();
             session.install(bp2);
             startEval(source2);
 
@@ -182,7 +190,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
                 assertEquals("null", value.as(String.class));
 
                 value = frame.getScope().getDeclaredValue("e");
-                assertEquals(source2.createSection(4, 3, 2), value.getSourceLocation());
+                assertEquals(getSourceImpl(source2).createSection(4, 3, 2), value.getSourceLocation());
                 value = value.asInLanguage(lang1);
                 assertNull(value.getSourceLocation());
 
@@ -205,11 +213,12 @@ public class ValueLanguageTest extends AbstractDebugTest {
      * <li>a.b - object property</li>
      * </ul>
      */
-    @TruffleLanguage.Registration(mimeType = ValuesLanguage1.MIME_TYPE, name = ValuesLanguage1.NAME, version = "1.0")
+    @TruffleLanguage.Registration(id = ValuesLanguage1.ID, mimeType = ValuesLanguage1.MIME_TYPE, name = ValuesLanguage1.NAME, version = "1.0")
     @ProvidedTags({StandardTags.RootTag.class, StandardTags.StatementTag.class})
     public static class ValuesLanguage1 extends ValuesLanguage {
 
         static final String NAME = "Test Values Language 1";
+        static final String ID = "truffle-test-values-language1";
         static final String MIME_TYPE = "application/x-truffle-test-values-language1";
 
         public ValuesLanguage1() {
@@ -217,11 +226,12 @@ public class ValueLanguageTest extends AbstractDebugTest {
         }
     }
 
-    @TruffleLanguage.Registration(mimeType = ValuesLanguage2.MIME_TYPE, name = ValuesLanguage2.NAME, version = "1.0")
+    @TruffleLanguage.Registration(id = ValuesLanguage2.ID, mimeType = ValuesLanguage2.MIME_TYPE, name = ValuesLanguage2.NAME, version = "1.0")
     @ProvidedTags({StandardTags.RootTag.class, StandardTags.StatementTag.class})
     public static class ValuesLanguage2 extends ValuesLanguage {
 
         static final String NAME = "Test Values Language 2";
+        static final String ID = "truffle-test-values-language2";
         static final String MIME_TYPE = "application/x-truffle-test-values-language2";
 
         public ValuesLanguage2() {
@@ -257,7 +267,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            final Source source = request.getSource();
+            final com.oracle.truffle.api.source.Source source = request.getSource();
             return Truffle.getRuntime().createCallTarget(new RootNode(this) {
 
                 @Node.Child private BlockNode variables = parse(source);
@@ -270,7 +280,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
             });
         }
 
-        private BlockNode parse(Source source) {
+        private BlockNode parse(com.oracle.truffle.api.source.Source source) {
             String code = source.getCharacters().toString();
             String[] variables = code.split("\\s");
             int n = variables.length;
@@ -433,7 +443,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
                 for (VarNode ch : children) {
                     ch.execute(frame);
                 }
-                return null;
+                return JavaInterop.asTruffleObject(null);
             }
 
             @Override

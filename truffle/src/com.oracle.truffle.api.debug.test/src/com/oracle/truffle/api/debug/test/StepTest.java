@@ -32,7 +32,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.source.Source;
+import org.graalvm.polyglot.Source;
 
 public class StepTest extends AbstractDebugTest {
 
@@ -336,8 +336,8 @@ public class StepTest extends AbstractDebugTest {
 
         try (DebuggerSession session = startSession()) {
             session.suspendNextExecution();
-            Breakpoint bp14 = Breakpoint.newBuilder(source).lineIs(14).build();
-            Breakpoint bp17 = Breakpoint.newBuilder(source).lineIs(17).build();
+            Breakpoint bp14 = Breakpoint.newBuilder(getSourceImpl(source)).lineIs(14).build();
+            Breakpoint bp17 = Breakpoint.newBuilder(getSourceImpl(source)).lineIs(17).build();
             session.install(bp14);
             session.install(bp17);
             startEval(source);
@@ -387,7 +387,7 @@ public class StepTest extends AbstractDebugTest {
 
         try (DebuggerSession session = startSession()) {
             session.suspendNextExecution();
-            Breakpoint bp5 = Breakpoint.newBuilder(source).lineIs(5).build();
+            Breakpoint bp5 = Breakpoint.newBuilder(getSourceImpl(source)).lineIs(5).build();
             session.install(bp5);
             startEval(source);
 
