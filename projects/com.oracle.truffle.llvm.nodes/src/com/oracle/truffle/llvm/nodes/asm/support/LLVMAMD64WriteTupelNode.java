@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,38 +27,44 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.asm;
+package com.oracle.truffle.llvm.nodes.asm.support;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RdtscNodeGen.LLVMAMD64RdtscReadNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteTupelNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.api.nodes.Node;
 
-public abstract class LLVMAMD64RdtscNode extends LLVMExpressionNode {
-    @Child private LLVMExpressionNode rdtsc;
-    @Child private LLVMAMD64WriteTupelNode out;
+public abstract class LLVMAMD64WriteTupelNode extends Node {
+    @Child private LLVMAMD64WriteValueNode write1;
+    @Child private LLVMAMD64WriteValueNode write2;
 
-    public LLVMAMD64RdtscNode(LLVMAMD64WriteTupelNode out) {
-        this.out = out;
-        rdtsc = LLVMAMD64RdtscReadNodeGen.create();
+    public LLVMAMD64WriteTupelNode(LLVMAMD64WriteValueNode write1, LLVMAMD64WriteValueNode write2) {
+        this.write1 = write1;
+        this.write2 = write2;
+    }
+
+    public abstract void execute(VirtualFrame frame, Object value1, Object value2);
+
+    @Specialization
+    public void execute(VirtualFrame frame, byte value1, byte value2) {
+        write1.execute(frame, value1);
+        write2.execute(frame, value2);
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame) {
-        long value = rdtsc.executeI64(frame);
-        long lo = value & LLVMExpressionNode.I32_MASK;
-        long hi = (value >> LLVMExpressionNode.I32_SIZE_IN_BITS) & LLVMExpressionNode.I32_MASK;
-        out.execute(frame, lo, hi);
-        return null;
+    public void execute(VirtualFrame frame, short value1, short value2) {
+        write1.execute(frame, value1);
+        write2.execute(frame, value2);
     }
 
-    public abstract static class LLVMAMD64RdtscReadNode extends LLVMExpressionNode {
-        @TruffleBoundary
-        @Specialization
-        public long executeRdtsc() {
-            return System.currentTimeMillis();
-        }
+    @Specialization
+    public void execute(VirtualFrame frame, int value1, int value2) {
+        write1.execute(frame, value1);
+        write2.execute(frame, value2);
+    }
+
+    @Specialization
+    public void execute(VirtualFrame frame, long value1, long value2) {
+        write1.execute(frame, value1);
+        write2.execute(frame, value2);
     }
 }

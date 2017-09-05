@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,38 +27,34 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.asm;
+package com.oracle.truffle.llvm.nodes.asm.support;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RdtscNodeGen.LLVMAMD64RdtscReadNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteTupelNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
-public abstract class LLVMAMD64RdtscNode extends LLVMExpressionNode {
-    @Child private LLVMExpressionNode rdtsc;
-    @Child private LLVMAMD64WriteTupelNode out;
+public abstract class LLVMAMD64RegisterToLongNode extends Node {
+    public abstract long execute(VirtualFrame frame, FrameSlot slot);
 
-    public LLVMAMD64RdtscNode(LLVMAMD64WriteTupelNode out) {
-        this.out = out;
-        rdtsc = LLVMAMD64RdtscReadNodeGen.create();
+    @Specialization(guards = "isLong(frame, slot)")
+    protected long readLong(VirtualFrame frame, FrameSlot slot) {
+        return FrameUtil.getLongSafe(frame, slot);
     }
 
-    @Specialization
-    public Object execute(VirtualFrame frame) {
-        long value = rdtsc.executeI64(frame);
-        long lo = value & LLVMExpressionNode.I32_MASK;
-        long hi = (value >> LLVMExpressionNode.I32_SIZE_IN_BITS) & LLVMExpressionNode.I32_MASK;
-        out.execute(frame, lo, hi);
-        return null;
+    @Specialization(guards = "isAddress(frame, slot)")
+    protected long readAddress(VirtualFrame frame, FrameSlot slot) {
+        return ((LLVMAddress) FrameUtil.getObjectSafe(frame, slot)).getVal();
     }
 
-    public abstract static class LLVMAMD64RdtscReadNode extends LLVMExpressionNode {
-        @TruffleBoundary
-        @Specialization
-        public long executeRdtsc() {
-            return System.currentTimeMillis();
-        }
+    protected boolean isLong(@SuppressWarnings("unused") VirtualFrame frame, FrameSlot slot) {
+        return slot.getKind() == FrameSlotKind.Long;
+    }
+
+    protected boolean isAddress(@SuppressWarnings("unused") VirtualFrame frame, FrameSlot slot) {
+        return slot.getKind() == FrameSlotKind.Object;
     }
 }

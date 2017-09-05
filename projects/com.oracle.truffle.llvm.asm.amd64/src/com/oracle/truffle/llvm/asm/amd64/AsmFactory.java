@@ -65,7 +65,6 @@ import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64CmpNodeFactory.LLVMAMD64CmpqNo
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64CmpNodeFactory.LLVMAMD64CmpwNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64CmpXchgNodeFactory.LLVMAMD64CmpXchgbNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64CmpXchgNodeFactory.LLVMAMD64CmpXchglNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64CmpXchgNodeFactory.LLVMAMD64CmpXchglrNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64CmpXchgNodeFactory.LLVMAMD64CmpXchgqNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64CmpXchgNodeFactory.LLVMAMD64CmpXchgwNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64CpuidNodeGen;
@@ -181,11 +180,6 @@ import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64XorNodeFactory.LLVMAMD64XorwNo
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ToRegisterNodeFactory.LLVMI16ToR64NodeGen;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ToRegisterNodeFactory.LLVMI32ToR64NodeGen;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ToRegisterNodeFactory.LLVMI8ToR64NodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI16RegisterNode;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI32RegisterNode;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI64RegisterNode;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI8RegisterNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStructWriteNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64AddressComputationNodeFactory.LLVMAMD64AddressDisplacementComputationNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64AddressComputationNodeFactory.LLVMAMD64AddressNoBaseOffsetComputationNodeGen;
@@ -193,6 +187,7 @@ import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64AddressComputationNode
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64Flags;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ReadAddressNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ReadRegisterNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64Target;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ToI8NodeFactory.LLVMAMD64I64ToI8NodeGen;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdateCPAZSOFlagsNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdateCPZSOFlagsNode;
@@ -200,6 +195,10 @@ import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAM
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdatePZSOFlagsNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteAddressRegisterNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteBooleanNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteTupelNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteTupelNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteValueNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteValueNodeGen;
 import com.oracle.truffle.llvm.nodes.base.LLVMStructWriteNodeFactory.LLVMPrimitiveStructWriteNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI16NodeFactory.LLVMToI16NoZeroExtNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI32NodeGen.LLVMToI32NoZeroExtNodeGen;
@@ -516,17 +515,18 @@ class AsmFactory {
                 // TODO: implement properly
                 break;
             case "rdtsc": {
-                LLVMAMD64WriteI64RegisterNode high = getRegisterStore("rdx");
-                LLVMAMD64WriteI64RegisterNode low = getRegisterStore("rax");
-                statements.add(LLVMAMD64RdtscNodeGen.create(low, high));
+                LLVMAMD64WriteValueNode high = getRegisterStore("rdx");
+                LLVMAMD64WriteValueNode low = getRegisterStore("rax");
+                LLVMAMD64WriteTupelNode out = LLVMAMD64WriteTupelNodeGen.create(low, high);
+                statements.add(LLVMAMD64RdtscNodeGen.create(out));
                 break;
             }
             case "cpuid": {
                 LLVMExpressionNode level = getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("eax"));
-                LLVMAMD64WriteI32RegisterNode eax = getRegisterStore("eax");
-                LLVMAMD64WriteI32RegisterNode ebx = getRegisterStore("ebx");
-                LLVMAMD64WriteI32RegisterNode ecx = getRegisterStore("ecx");
-                LLVMAMD64WriteI32RegisterNode edx = getRegisterStore("edx");
+                LLVMAMD64WriteValueNode eax = getRegisterStore("eax");
+                LLVMAMD64WriteValueNode ebx = getRegisterStore("ebx");
+                LLVMAMD64WriteValueNode ecx = getRegisterStore("ecx");
+                LLVMAMD64WriteValueNode edx = getRegisterStore("edx");
                 statements.add(LLVMAMD64CpuidNodeGen.create(eax, ebx, ecx, edx, level));
                 break;
             }
@@ -834,28 +834,25 @@ class AsmFactory {
                 dstType = PrimitiveType.I16;
                 break;
             case "idivw": {
-                LLVMAMD64WriteI16RegisterNode rem = getRegisterStore("dx");
+                LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(getRegisterStore("ax"), getRegisterStore("dx"));
                 LLVMExpressionNode high = getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("dx"));
-                out = LLVMAMD64IdivwNodeGen.create(rem, high, getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("ax")), src);
-                dst = new AsmRegisterOperand("ax");
-                dstType = PrimitiveType.I16;
-                break;
+                out = LLVMAMD64IdivwNodeGen.create(res, high, getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("ax")), src);
+                statements.add(out);
+                return;
             }
             case "idivl": {
-                LLVMAMD64WriteI32RegisterNode rem = getRegisterStore("edx");
+                LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(getRegisterStore("eax"), getRegisterStore("edx"));
                 LLVMExpressionNode high = getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("edx"));
-                out = LLVMAMD64IdivlNodeGen.create(rem, high, getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("eax")), src);
-                dst = new AsmRegisterOperand("eax");
-                dstType = PrimitiveType.I32;
-                break;
+                out = LLVMAMD64IdivlNodeGen.create(res, high, getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("eax")), src);
+                statements.add(out);
+                return;
             }
             case "idivq": {
-                LLVMAMD64WriteI64RegisterNode rem = getRegisterStore("rdx");
+                LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(getRegisterStore("rax"), getRegisterStore("rdx"));
                 LLVMExpressionNode high = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rdx"));
-                out = LLVMAMD64IdivqNodeGen.create(rem, high, getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rax")), src);
-                dst = new AsmRegisterOperand("rax");
-                dstType = PrimitiveType.I64;
-                break;
+                out = LLVMAMD64IdivqNodeGen.create(res, high, getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rax")), src);
+                statements.add(out);
+                return;
             }
             case "imulb":
                 out = LLVMAMD64ImulbNodeGen.create(getFlagWrite(LLVMAMD64Flags.CF), getFlagWrite(LLVMAMD64Flags.PF), getFlagWrite(LLVMAMD64Flags.AF), getFlagWrite(LLVMAMD64Flags.ZF),
@@ -864,28 +861,25 @@ class AsmFactory {
                 dstType = PrimitiveType.I16;
                 break;
             case "imulw": {
-                LLVMAMD64WriteI16RegisterNode high = getRegisterStore("dx");
+                LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(getRegisterStore("ax"), getRegisterStore("dx"));
                 out = LLVMAMD64ImulwNodeGen.create(getFlagWrite(LLVMAMD64Flags.CF), getFlagWrite(LLVMAMD64Flags.PF), getFlagWrite(LLVMAMD64Flags.AF), getFlagWrite(LLVMAMD64Flags.ZF),
-                                getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), high, getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("ax")), src);
-                dst = new AsmRegisterOperand("ax");
-                dstType = PrimitiveType.I16;
-                break;
+                                getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), res, getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("ax")), src);
+                statements.add(out);
+                return;
             }
             case "imull": {
-                LLVMAMD64WriteI32RegisterNode high = getRegisterStore("edx");
+                LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(getRegisterStore("eax"), getRegisterStore("edx"));
                 out = LLVMAMD64ImullNodeGen.create(getFlagWrite(LLVMAMD64Flags.CF), getFlagWrite(LLVMAMD64Flags.PF), getFlagWrite(LLVMAMD64Flags.AF), getFlagWrite(LLVMAMD64Flags.ZF),
-                                getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), high, getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("eax")), src);
-                dst = new AsmRegisterOperand("eax");
-                dstType = PrimitiveType.I32;
-                break;
+                                getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), res, getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("eax")), src);
+                statements.add(out);
+                return;
             }
             case "imulq": {
-                LLVMAMD64WriteI64RegisterNode high = getRegisterStore("rdx");
+                LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(getRegisterStore("rax"), getRegisterStore("rdx"));
                 out = LLVMAMD64ImulqNodeGen.create(getFlagWrite(LLVMAMD64Flags.CF), getFlagWrite(LLVMAMD64Flags.PF), getFlagWrite(LLVMAMD64Flags.AF), getFlagWrite(LLVMAMD64Flags.ZF),
-                                getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), high, getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rax")), src);
-                dst = new AsmRegisterOperand("rax");
-                dstType = PrimitiveType.I64;
-                break;
+                                getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), res, getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rax")), src);
+                statements.add(out);
+                return;
             }
             case "divb":
                 out = LLVMAMD64DivbNodeGen.create(getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("ax")), src);
@@ -893,28 +887,25 @@ class AsmFactory {
                 dstType = PrimitiveType.I16;
                 break;
             case "divw": {
-                LLVMAMD64WriteI16RegisterNode rem = getRegisterStore("dx");
+                LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(getRegisterStore("ax"), getRegisterStore("dx"));
                 LLVMExpressionNode high = getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("dx"));
-                out = LLVMAMD64DivwNodeGen.create(rem, high, getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("ax")), src);
-                dst = new AsmRegisterOperand("ax");
-                dstType = PrimitiveType.I16;
-                break;
+                out = LLVMAMD64DivwNodeGen.create(res, high, getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("ax")), src);
+                statements.add(out);
+                return;
             }
             case "divl": {
-                LLVMAMD64WriteI32RegisterNode rem = getRegisterStore("edx");
+                LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(getRegisterStore("eax"), getRegisterStore("edx"));
                 LLVMExpressionNode high = getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("edx"));
-                out = LLVMAMD64DivlNodeGen.create(rem, high, getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("eax")), src);
-                dst = new AsmRegisterOperand("eax");
-                dstType = PrimitiveType.I32;
-                break;
+                out = LLVMAMD64DivlNodeGen.create(res, high, getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("eax")), src);
+                statements.add(out);
+                return;
             }
             case "divq": {
-                LLVMAMD64WriteI64RegisterNode rem = getRegisterStore("rdx");
+                LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(getRegisterStore("rax"), getRegisterStore("rdx"));
                 LLVMExpressionNode high = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rdx"));
-                out = LLVMAMD64DivqNodeGen.create(rem, high, getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rax")), src);
-                dst = new AsmRegisterOperand("rax");
-                dstType = PrimitiveType.I64;
-                break;
+                out = LLVMAMD64DivqNodeGen.create(res, high, getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rax")), src);
+                statements.add(out);
+                return;
             }
             case "mulb":
                 out = LLVMAMD64MulbNodeGen.create(getFlagWrite(LLVMAMD64Flags.CF), getFlagWrite(LLVMAMD64Flags.PF), getFlagWrite(LLVMAMD64Flags.AF), getFlagWrite(LLVMAMD64Flags.ZF),
@@ -923,28 +914,25 @@ class AsmFactory {
                 dstType = PrimitiveType.I16;
                 break;
             case "mulw": {
-                LLVMAMD64WriteI16RegisterNode high = getRegisterStore("dx");
+                LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(getRegisterStore("ax"), getRegisterStore("dx"));
                 out = LLVMAMD64MulwNodeGen.create(getFlagWrite(LLVMAMD64Flags.CF), getFlagWrite(LLVMAMD64Flags.PF), getFlagWrite(LLVMAMD64Flags.AF), getFlagWrite(LLVMAMD64Flags.ZF),
-                                getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), high, getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("ax")), src);
-                dst = new AsmRegisterOperand("ax");
-                dstType = PrimitiveType.I16;
-                break;
+                                getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), res, getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("ax")), src);
+                statements.add(out);
+                return;
             }
             case "mull": {
-                LLVMAMD64WriteI32RegisterNode high = getRegisterStore("edx");
+                LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(getRegisterStore("eax"), getRegisterStore("edx"));
                 out = LLVMAMD64MullNodeGen.create(getFlagWrite(LLVMAMD64Flags.CF), getFlagWrite(LLVMAMD64Flags.PF), getFlagWrite(LLVMAMD64Flags.AF), getFlagWrite(LLVMAMD64Flags.ZF),
-                                getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), high, getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("eax")), src);
-                dst = new AsmRegisterOperand("eax");
-                dstType = PrimitiveType.I32;
-                break;
+                                getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), res, getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("eax")), src);
+                statements.add(out);
+                return;
             }
             case "mulq": {
-                LLVMAMD64WriteI64RegisterNode high = getRegisterStore("rdx");
+                LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(getRegisterStore("rax"), getRegisterStore("rdx"));
                 out = LLVMAMD64MulqNodeGen.create(getFlagWrite(LLVMAMD64Flags.CF), getFlagWrite(LLVMAMD64Flags.PF), getFlagWrite(LLVMAMD64Flags.AF), getFlagWrite(LLVMAMD64Flags.ZF),
-                                getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), high, getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rax")), src);
-                dst = new AsmRegisterOperand("rax");
-                dstType = PrimitiveType.I64;
-                break;
+                                getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), res, getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rax")), src);
+                statements.add(out);
+                return;
             }
             case "bswapl":
                 out = LLVMAMD64BswaplNodeGen.create(src);
@@ -1000,21 +988,22 @@ class AsmFactory {
     private class XchgOperands {
         public final LLVMExpressionNode srcA;
         public final LLVMExpressionNode srcB;
-        public final AsmOperand dst;
-        public final LLVMAMD64WriteRegisterNode dst2;
+        public final LLVMAMD64WriteValueNode dst1;
+        public final LLVMAMD64WriteValueNode dst2;
+        public final LLVMAMD64WriteTupelNode dst;
 
         XchgOperands(AsmOperand a, AsmOperand b, Type type) {
             if (b instanceof AsmRegisterOperand) {
                 AsmRegisterOperand rb = (AsmRegisterOperand) b;
                 srcA = getOperandLoad(type, a);
                 srcB = getOperandLoad(type, b);
-                dst = a;
+                dst1 = getStore(type, a);
                 dst2 = getRegisterStore(rb.getRegister());
             } else if (a instanceof AsmRegisterOperand) {
                 AsmRegisterOperand ra = (AsmRegisterOperand) a;
                 srcA = getOperandLoad(type, b);
                 srcB = getOperandLoad(type, a);
-                dst = b;
+                dst1 = getStore(type, b);
                 dst2 = getRegisterStore(ra.getRegister());
             } else if (a instanceof AsmArgumentOperand) {
                 AsmArgumentOperand arg = (AsmArgumentOperand) a;
@@ -1022,7 +1011,7 @@ class AsmFactory {
                 if (info.isRegister()) {
                     srcA = getOperandLoad(type, b);
                     srcB = getOperandLoad(type, a);
-                    dst = b;
+                    dst1 = getStore(type, b);
                     dst2 = getRegisterStore(type, info.getRegister());
                 } else {
                     throw new AsmParseException("not implemented");
@@ -1030,6 +1019,7 @@ class AsmFactory {
             } else {
                 throw new AsmParseException("not implemented");
             }
+            dst = LLVMAMD64WriteTupelNodeGen.create(dst1, dst2);
         }
     }
 
@@ -1171,42 +1161,39 @@ class AsmFactory {
                 dstType = PrimitiveType.I16;
                 break;
             case "idivw": {
-                LLVMAMD64WriteI16RegisterNode rem = getRegisterStore("dx");
+                LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(getRegisterStore("ax"), getRegisterStore("dx"));
                 LLVMExpressionNode high = getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("dx"));
-                out = LLVMAMD64IdivwNodeGen.create(rem, high, srcB, srcA);
-                dst = new AsmRegisterOperand("ax");
-                break;
+                out = LLVMAMD64IdivwNodeGen.create(res, high, srcB, srcA);
+                statements.add(out);
+                return;
             }
             case "idivl": {
-                LLVMAMD64WriteI32RegisterNode rem = getRegisterStore("edx");
+                LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(getRegisterStore("eax"), getRegisterStore("edx"));
                 LLVMExpressionNode high = getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("edx"));
-                out = LLVMAMD64IdivlNodeGen.create(rem, high, srcB, srcA);
-                dst = new AsmRegisterOperand("eax");
-                break;
+                out = LLVMAMD64IdivlNodeGen.create(res, high, srcB, srcA);
+                statements.add(out);
+                return;
             }
             case "idivq": {
-                LLVMAMD64WriteI64RegisterNode rem = getRegisterStore("rdx");
+                LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(getRegisterStore("rax"), getRegisterStore("rdx"));
                 LLVMExpressionNode high = getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("rdx"));
-                out = LLVMAMD64IdivqNodeGen.create(rem, high, srcB, srcA);
-                dst = new AsmRegisterOperand("rax");
-                break;
+                out = LLVMAMD64IdivqNodeGen.create(res, high, srcB, srcA);
+                statements.add(out);
+                return;
             }
             case "imulw": {
-                LLVMAMD64WriteI16RegisterNode high = getRegisterStore("dx");
-                out = LLVMAMD64ImulwNodeGen.create(getFlagWrite(LLVMAMD64Flags.CF), getFlagWrite(LLVMAMD64Flags.PF), getFlagWrite(LLVMAMD64Flags.AF), getFlagWrite(LLVMAMD64Flags.ZF),
-                                getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), high, srcA, srcB);
+                out = LLVMAMD64Imulw3NodeGen.create(getFlagWrite(LLVMAMD64Flags.CF), getFlagWrite(LLVMAMD64Flags.PF), getFlagWrite(LLVMAMD64Flags.AF), getFlagWrite(LLVMAMD64Flags.ZF),
+                                getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), srcA, srcB);
                 break;
             }
             case "imull": {
-                LLVMAMD64WriteI32RegisterNode high = getRegisterStore("edx");
-                out = LLVMAMD64ImullNodeGen.create(getFlagWrite(LLVMAMD64Flags.CF), getFlagWrite(LLVMAMD64Flags.PF), getFlagWrite(LLVMAMD64Flags.AF), getFlagWrite(LLVMAMD64Flags.ZF),
-                                getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), high, srcA, srcB);
+                out = LLVMAMD64Imull3NodeGen.create(getFlagWrite(LLVMAMD64Flags.CF), getFlagWrite(LLVMAMD64Flags.PF), getFlagWrite(LLVMAMD64Flags.AF), getFlagWrite(LLVMAMD64Flags.ZF),
+                                getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), srcA, srcB);
                 break;
             }
             case "imulq": {
-                LLVMAMD64WriteI64RegisterNode high = getRegisterStore("rdx");
-                out = LLVMAMD64ImulqNodeGen.create(getFlagWrite(LLVMAMD64Flags.CF), getFlagWrite(LLVMAMD64Flags.PF), getFlagWrite(LLVMAMD64Flags.AF), getFlagWrite(LLVMAMD64Flags.ZF),
-                                getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), high, srcA, srcB);
+                out = LLVMAMD64Imulq3NodeGen.create(getFlagWrite(LLVMAMD64Flags.CF), getFlagWrite(LLVMAMD64Flags.PF), getFlagWrite(LLVMAMD64Flags.AF), getFlagWrite(LLVMAMD64Flags.ZF),
+                                getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), srcA, srcB);
                 break;
             }
             case "movb":
@@ -1313,27 +1300,27 @@ class AsmFactory {
                 break;
             case "xchgb": {
                 XchgOperands operands = new XchgOperands(a, b, dstType);
-                out = LLVMAMD64XchgbNodeGen.create((LLVMAMD64WriteI8RegisterNode) operands.dst2, operands.srcA, operands.srcB);
-                dst = operands.dst;
-                break;
+                out = LLVMAMD64XchgbNodeGen.create(operands.dst, operands.srcA, operands.srcB);
+                statements.add(out);
+                return;
             }
             case "xchgw": {
                 XchgOperands operands = new XchgOperands(a, b, dstType);
-                out = LLVMAMD64XchgwNodeGen.create((LLVMAMD64WriteI16RegisterNode) operands.dst2, operands.srcA, operands.srcB);
-                dst = operands.dst;
-                break;
+                out = LLVMAMD64XchgwNodeGen.create(operands.dst, operands.srcA, operands.srcB);
+                statements.add(out);
+                return;
             }
             case "xchgl": {
                 XchgOperands operands = new XchgOperands(a, b, dstType);
-                out = LLVMAMD64XchglNodeGen.create((LLVMAMD64WriteI32RegisterNode) operands.dst2, operands.srcA, operands.srcB);
-                dst = operands.dst;
-                break;
+                out = LLVMAMD64XchglNodeGen.create(operands.dst, operands.srcA, operands.srcB);
+                statements.add(out);
+                return;
             }
             case "xchgq": {
                 XchgOperands operands = new XchgOperands(a, b, dstType);
-                out = LLVMAMD64XchgqNodeGen.create((LLVMAMD64WriteI64RegisterNode) operands.dst2, operands.srcA, operands.srcB);
-                dst = operands.dst;
-                break;
+                out = LLVMAMD64XchgqNodeGen.create(operands.dst, operands.srcA, operands.srcB);
+                statements.add(out);
+                return;
             }
             case "cmpb":
                 statements.add(LLVMAMD64CmpbNodeGen.create(getUpdateCPAZSOFlagsNode(), srcB, srcA));
@@ -1348,72 +1335,68 @@ class AsmFactory {
                 statements.add(LLVMAMD64CmpqNodeGen.create(getUpdateCPAZSOFlagsNode(), srcB, srcA));
                 return;
             case "cmpxchgb": {
-                LLVMAMD64WriteI8RegisterNode dst2 = getRegisterStore("al");
+                LLVMAMD64WriteValueNode dst1 = getStore(dstType, b);
+                LLVMAMD64WriteValueNode dst2 = getRegisterStore("al");
                 LLVMExpressionNode accumulator = getOperandLoad(PrimitiveType.I8, new AsmRegisterOperand("al"));
-                out = LLVMAMD64CmpXchgbNodeGen.create(getUpdateCPAZSOFlagsNode(), dst2, accumulator, srcA, srcB);
-                dst = b;
-                break;
+                out = LLVMAMD64CmpXchgbNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB);
+                statements.add(out);
+                return;
             }
             case "cmpxchgw": {
-                LLVMAMD64WriteI16RegisterNode dst2 = getRegisterStore("ax");
+                LLVMAMD64WriteValueNode dst1 = getStore(dstType, b);
+                LLVMAMD64WriteValueNode dst2 = getRegisterStore("ax");
                 LLVMExpressionNode accumulator = getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("ax"));
-                out = LLVMAMD64CmpXchgwNodeGen.create(getUpdateCPAZSOFlagsNode(), dst2, accumulator, srcA, srcB);
-                dst = b;
-                break;
+                out = LLVMAMD64CmpXchgwNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB);
+                statements.add(out);
+                return;
             }
             case "cmpxchgl": {
-                LLVMAMD64WriteI32RegisterNode dst2 = getRegisterStore("eax");
+                LLVMAMD64WriteValueNode dst1 = getStore(dstType, b);
+                LLVMAMD64WriteValueNode dst2 = getRegisterStore("eax");
                 LLVMExpressionNode accumulator = getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("eax"));
-                if (b instanceof AsmRegisterOperand) {
-                    AsmRegisterOperand rd = (AsmRegisterOperand) b;
-                    LLVMAMD64WriteI32RegisterNode dst1 = getRegisterStore(PrimitiveType.I32, rd.getRegister());
-                    out = LLVMAMD64CmpXchglrNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB);
-                    statements.add(out);
-                    return;
-                } else if (b instanceof AsmArgumentOperand) {
-                    AsmArgumentOperand arg = (AsmArgumentOperand) b;
-                    Argument info = argInfo.get(arg.getIndex());
-                    if (info.isMemory()) {
-                        out = LLVMAMD64CmpXchglNodeGen.create(getUpdateCPAZSOFlagsNode(), dst2, accumulator, srcA, srcB);
-                        dst = b;
-                    } else {
-                        LLVMAMD64WriteI32RegisterNode dst1 = getRegisterStore(PrimitiveType.I32, info.getRegister());
-                        out = LLVMAMD64CmpXchglrNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB);
-                        statements.add(out);
-                        return;
-                    }
-                } else {
-                    out = LLVMAMD64CmpXchglNodeGen.create(getUpdateCPAZSOFlagsNode(), dst2, accumulator, srcA, srcB);
-                    dst = b;
-                }
-                break;
+                out = LLVMAMD64CmpXchglNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB);
+                statements.add(out);
+                return;
             }
             case "cmpxchgq": {
-                LLVMAMD64WriteI64RegisterNode dst2 = getRegisterStore("rax");
+                LLVMAMD64WriteValueNode dst1 = getStore(dstType, b);
+                LLVMAMD64WriteValueNode dst2 = getRegisterStore("rax");
                 LLVMExpressionNode accumulator = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rax"));
-                out = LLVMAMD64CmpXchgqNodeGen.create(getUpdateCPAZSOFlagsNode(), dst2, accumulator, srcA, srcB);
-                dst = b;
-                break;
+                out = LLVMAMD64CmpXchgqNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB);
+                statements.add(out);
+                return;
             }
             case "xaddb": {
-                LLVMAMD64WriteI8RegisterNode src = getRegisterStore(PrimitiveType.I8, a);
-                out = LLVMAMD64XaddbNodeGen.create(getUpdateCPZSOFlagsNode(), src, srcA, srcB);
-                break;
+                LLVMAMD64WriteValueNode dst1 = getRegisterStore(PrimitiveType.I8, a);
+                LLVMAMD64WriteValueNode dst2 = getStore(dstType, dst);
+                LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(dst1, dst2);
+                out = LLVMAMD64XaddbNodeGen.create(getUpdateCPZSOFlagsNode(), res, srcA, srcB);
+                statements.add(out);
+                return;
             }
             case "xaddw": {
-                LLVMAMD64WriteI16RegisterNode src = getRegisterStore(PrimitiveType.I16, a);
-                out = LLVMAMD64XaddwNodeGen.create(getUpdateCPZSOFlagsNode(), src, srcA, srcB);
-                break;
+                LLVMAMD64WriteValueNode dst1 = getRegisterStore(PrimitiveType.I16, a);
+                LLVMAMD64WriteValueNode dst2 = getStore(dstType, dst);
+                LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(dst1, dst2);
+                out = LLVMAMD64XaddwNodeGen.create(getUpdateCPZSOFlagsNode(), res, srcA, srcB);
+                statements.add(out);
+                return;
             }
             case "xaddl": {
-                LLVMAMD64WriteI32RegisterNode src = getRegisterStore(PrimitiveType.I32, a);
-                out = LLVMAMD64XaddlNodeGen.create(getUpdateCPZSOFlagsNode(), src, srcA, srcB);
-                break;
+                LLVMAMD64WriteValueNode dst1 = getRegisterStore(PrimitiveType.I32, a);
+                LLVMAMD64WriteValueNode dst2 = getStore(dstType, dst);
+                LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(dst1, dst2);
+                out = LLVMAMD64XaddlNodeGen.create(getUpdateCPZSOFlagsNode(), res, srcA, srcB);
+                statements.add(out);
+                return;
             }
             case "xaddq": {
-                LLVMAMD64WriteI64RegisterNode src = getRegisterStore(PrimitiveType.I64, a);
-                out = LLVMAMD64XaddqNodeGen.create(getUpdateCPZSOFlagsNode(), src, srcA, srcB);
-                break;
+                LLVMAMD64WriteValueNode dst1 = getRegisterStore(PrimitiveType.I64, a);
+                LLVMAMD64WriteValueNode dst2 = getStore(dstType, dst);
+                LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(dst1, dst2);
+                out = LLVMAMD64XaddqNodeGen.create(getUpdateCPZSOFlagsNode(), res, srcA, srcB);
+                statements.add(out);
+                return;
             }
             case "xorb":
                 out = LLVMAMD64XorbNodeGen.create(srcA, srcB);
@@ -1939,15 +1922,66 @@ class AsmFactory {
         throw new AsmParseException("unsupported operand type: " + operand);
     }
 
-    private <T extends LLVMAMD64WriteRegisterNode> T getRegisterStore(Type type, AsmOperand operand) {
+    private LLVMAMD64Target getTarget(Type type, AsmOperand operand) {
         if (operand instanceof AsmRegisterOperand) {
             AsmRegisterOperand op = (AsmRegisterOperand) operand;
-            return getRegisterStore(type, op.getRegister());
+            FrameSlot frame = getRegisterSlot(op.getBaseRegister());
+            int shift = op.getShift();
+            assert type == op.getType();
+            switch (((PrimitiveType) op.getType()).getPrimitiveKind()) {
+                case I8:
+                    return new LLVMAMD64Target(frame, shift);
+                case I16:
+                case I32:
+                case I64:
+                    return new LLVMAMD64Target(frame);
+                default:
+                    throw new AsmParseException("unsupported operand type: " + op.getType());
+            }
+        } else if (operand instanceof AsmArgumentOperand) {
+            AsmArgumentOperand op = (AsmArgumentOperand) operand;
+            Argument info = argInfo.get(op.getIndex());
+            if (info.isMemory()) {
+                LLVMExpressionNode address = info.getAddress();
+                switch (((PrimitiveType) type).getPrimitiveKind()) {
+                    case I8:
+                    case I16:
+                    case I32:
+                    case I64:
+                        return new LLVMAMD64Target(address);
+                    default:
+                        throw new AsmParseException("unsupported operand type: " + type);
+                }
+            } else if (info.isRegister()) {
+                FrameSlot frame = getRegisterSlot(info.getRegister());
+                if (type instanceof PointerType || info.getType() instanceof PointerType) {
+                    return new LLVMAMD64Target(frame);
+                }
+                switch (((PrimitiveType) type).getPrimitiveKind()) {
+                    case I8:
+                    case I16:
+                    case I32:
+                    case I64:
+                        return new LLVMAMD64Target(frame);
+                    default:
+                        throw new AsmParseException("unsupported operand type: " + type);
+                }
+            } else {
+                throw new AssertionError("this should not happen; " + info);
+            }
+        }
+        throw new AsmParseException("unsupported operand type: " + operand);
+    }
+
+    private LLVMAMD64Target getRegisterTarget(Type type, AsmOperand operand) {
+        if (operand instanceof AsmRegisterOperand) {
+            AsmRegisterOperand op = (AsmRegisterOperand) operand;
+            return getRegisterTarget(type, op.getRegister());
         } else if (operand instanceof AsmArgumentOperand) {
             AsmArgumentOperand op = (AsmArgumentOperand) operand;
             Argument info = argInfo.get(op.getIndex());
             if (info.isRegister()) {
-                return getRegisterStore(type, info.getRegister());
+                return getRegisterTarget(type, info.getRegister());
             } else {
                 throw new AsmParseException("unsupported operand: " + info);
             }
@@ -1956,35 +1990,41 @@ class AsmFactory {
         }
     }
 
-    private <T extends LLVMAMD64WriteRegisterNode> T getRegisterStore(String name) {
+    private LLVMAMD64Target getRegisterTarget(String name) {
         AsmRegisterOperand op = new AsmRegisterOperand(name);
         Type type = name.startsWith(TEMP_REGISTER_PREFIX) ? PrimitiveType.I64 : op.getType();
-        return getRegisterStore(type, name);
+        return getRegisterTarget(type, name);
     }
 
-    @SuppressWarnings("unchecked")
-    private <T extends LLVMAMD64WriteRegisterNode> T getRegisterStore(Type type, String name) {
+    private LLVMAMD64Target getRegisterTarget(Type type, String name) {
         AsmRegisterOperand op = new AsmRegisterOperand(name);
         FrameSlot frame = getRegisterSlot(name);
-        LLVMExpressionNode register = LLVMAMD64ReadRegisterNodeGen.create(frame);
-        LLVMAMD64WriteRegisterNode node = null;
         switch (((PrimitiveType) type).getPrimitiveKind()) {
             case I8:
-                node = new LLVMAMD64WriteI8RegisterNode(frame, op.getShift(), register);
-                break;
+                return new LLVMAMD64Target(frame, op.getShift());
             case I16:
-                node = new LLVMAMD64WriteI16RegisterNode(frame, register);
-                break;
             case I32:
-                node = new LLVMAMD64WriteI32RegisterNode(frame);
-                break;
             case I64:
-                node = new LLVMAMD64WriteI64RegisterNode(frame);
-                break;
+                return new LLVMAMD64Target(frame);
             default:
                 throw new AsmParseException("unsupported operand type");
         }
-        return (T) node;
+    }
+
+    private LLVMAMD64WriteValueNode getStore(Type type, AsmOperand operand) {
+        return LLVMAMD64WriteValueNodeGen.create(getTarget(type, operand));
+    }
+
+    private LLVMAMD64WriteValueNode getRegisterStore(Type type, AsmOperand operand) {
+        return LLVMAMD64WriteValueNodeGen.create(getRegisterTarget(type, operand));
+    }
+
+    private LLVMAMD64WriteValueNode getRegisterStore(Type type, String name) {
+        return LLVMAMD64WriteValueNodeGen.create(getRegisterTarget(type, name));
+    }
+
+    private LLVMAMD64WriteValueNode getRegisterStore(String name) {
+        return LLVMAMD64WriteValueNodeGen.create(getRegisterTarget(name));
     }
 
     private FrameSlot getRegisterSlot(String name) {

@@ -33,7 +33,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI32RegisterNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteValueNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild("level")
@@ -66,10 +66,10 @@ public abstract class LLVMAMD64CpuidNode extends LLVMExpressionNode {
         }
     }
 
-    @Child private LLVMAMD64WriteI32RegisterNode eax;
-    @Child private LLVMAMD64WriteI32RegisterNode ebx;
-    @Child private LLVMAMD64WriteI32RegisterNode ecx;
-    @Child private LLVMAMD64WriteI32RegisterNode edx;
+    @Child private LLVMAMD64WriteValueNode eax;
+    @Child private LLVMAMD64WriteValueNode ebx;
+    @Child private LLVMAMD64WriteValueNode ecx;
+    @Child private LLVMAMD64WriteValueNode edx;
 
     // FN=1: EDX
     public static final int TSC = 1 << 4;
@@ -82,7 +82,7 @@ public abstract class LLVMAMD64CpuidNode extends LLVMExpressionNode {
     // FN=80000001h: ECX
     public static final int LAHF_LM = 1;
 
-    public LLVMAMD64CpuidNode(LLVMAMD64WriteI32RegisterNode eax, LLVMAMD64WriteI32RegisterNode ebx, LLVMAMD64WriteI32RegisterNode ecx, LLVMAMD64WriteI32RegisterNode edx) {
+    public LLVMAMD64CpuidNode(LLVMAMD64WriteValueNode eax, LLVMAMD64WriteValueNode ebx, LLVMAMD64WriteValueNode ecx, LLVMAMD64WriteValueNode edx) {
         this.eax = eax;
         this.ebx = ebx;
         this.ecx = ecx;

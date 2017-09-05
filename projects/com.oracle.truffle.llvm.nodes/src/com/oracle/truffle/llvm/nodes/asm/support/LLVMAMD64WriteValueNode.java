@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,38 +27,52 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.asm;
+package com.oracle.truffle.llvm.nodes.asm.support;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RdtscNodeGen.LLVMAMD64RdtscReadNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteTupelNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public abstract class LLVMAMD64RdtscNode extends LLVMExpressionNode {
-    @Child private LLVMExpressionNode rdtsc;
-    @Child private LLVMAMD64WriteTupelNode out;
+public abstract class LLVMAMD64WriteValueNode extends Node {
+    @Child protected LLVMExpressionNode data;
+    @Child protected LLVMAMD64WriteNode write;
 
-    public LLVMAMD64RdtscNode(LLVMAMD64WriteTupelNode out) {
-        this.out = out;
-        rdtsc = LLVMAMD64RdtscReadNodeGen.create();
+    public LLVMAMD64WriteValueNode(LLVMAMD64Target dst) {
+        this.data = dst.createInput();
+        this.write = dst.createTarget();
+    }
+
+    public abstract void execute(VirtualFrame frame, Object value);
+
+    @Specialization
+    protected void executeI8(VirtualFrame frame, byte value) {
+        Object info = data.executeGeneric(frame);
+        write.execute(frame, info, value);
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame) {
-        long value = rdtsc.executeI64(frame);
-        long lo = value & LLVMExpressionNode.I32_MASK;
-        long hi = (value >> LLVMExpressionNode.I32_SIZE_IN_BITS) & LLVMExpressionNode.I32_MASK;
-        out.execute(frame, lo, hi);
-        return null;
+    protected void executeI16(VirtualFrame frame, short value) {
+        Object info = data.executeGeneric(frame);
+        write.execute(frame, info, value);
     }
 
-    public abstract static class LLVMAMD64RdtscReadNode extends LLVMExpressionNode {
-        @TruffleBoundary
-        @Specialization
-        public long executeRdtsc() {
-            return System.currentTimeMillis();
-        }
+    @Specialization
+    protected void executeI32(VirtualFrame frame, int value) {
+        Object info = data.executeGeneric(frame);
+        write.execute(frame, info, value);
+    }
+
+    @Specialization
+    protected void executeI64(VirtualFrame frame, long value) {
+        Object info = data.executeGeneric(frame);
+        write.execute(frame, info, value);
+    }
+
+    @Specialization
+    protected void executeAddress(VirtualFrame frame, LLVMAddress value) {
+        Object info = data.executeGeneric(frame);
+        write.execute(frame, info, value);
     }
 }
