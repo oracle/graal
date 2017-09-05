@@ -245,19 +245,29 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
 
     private static JavaKind getElementKindFromStamp(ValueNode array) {
         ResolvedJavaType type = StampTool.typeOrNull(array);
-        assert type != null && type.isArray() : "request component type for a non-array";
-        return type.getComponentType().getJavaKind();
+        if (type != null && type.isArray()) {
+            return type.getComponentType().getJavaKind();
+        } else {
+            // It is likely an OSRLocal without valid stamp
+            return JavaKind.Illegal;
+        }
     }
 
     private boolean processStoreIndexed(StoreIndexedNode store, PEReadEliminationBlockState state, GraphEffectList effects) {
+        int index = store.index().isConstant() ? ((JavaConstant) store.index().asConstant()).asInt() : -1;
         // BASTORE (with elementKind being Byte) can be used to store values in boolean arrays.
         JavaKind elementKind = store.elementKind();
         if (elementKind == JavaKind.Byte) {
             elementKind = getElementKindFromStamp(store.array());
+            if (elementKind == JavaKind.Illegal) {
+                // Could not determine the actual access kind from stamp. Hence kill both.
+                state.killReadCache(NamedLocationIdentity.getArrayLocation(JavaKind.Boolean), index);
+                state.killReadCache(NamedLocationIdentity.getArrayLocation(JavaKind.Byte), index);
+                return false;
+            }
         }
         LocationIdentity arrayLocation = NamedLocationIdentity.getArrayLocation(elementKind);
-        if (store.index().isConstant()) {
-            int index = ((JavaConstant) store.index().asConstant()).asInt();
+        if (index != -1) {
             return processStore(store, store.array(), arrayLocation, index, elementKind, false, store.value(), state, effects);
         } else {
             state.killReadCache(arrayLocation, -1);
@@ -273,6 +283,9 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
             JavaKind elementKind = load.elementKind();
             if (elementKind == JavaKind.Byte) {
                 elementKind = getElementKindFromStamp(load.array());
+                if (elementKind == JavaKind.Illegal) {
+                    return false;
+                }
             }
             LocationIdentity arrayLocation = NamedLocationIdentity.getArrayLocation(elementKind);
             return processLoad(load, load.array(), arrayLocation, index, elementKind, state, effects);
