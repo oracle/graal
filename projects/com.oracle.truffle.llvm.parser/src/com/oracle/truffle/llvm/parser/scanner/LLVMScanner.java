@@ -30,6 +30,8 @@
 
 package com.oracle.truffle.llvm.parser.scanner;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,7 +40,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.listeners.Module;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
@@ -49,7 +50,8 @@ public final class LLVMScanner {
 
     private static final int DEFAULT_ID_SIZE = 2;
 
-    private static final long MAGIC_WORD = 0xdec04342L; // 'BC' c0de
+    private static final long BC_MAGIC_WORD = 0xdec04342L; // 'BC' c0de
+    private static final long WRAPPER_MAGIC_WORD = 0x0B17C0DEL;
 
     private static final int MAX_BLOCK_DEPTH = 3;
 
@@ -79,24 +81,51 @@ public final class LLVMScanner {
         this.offset = 0;
     }
 
-    public static ModelModule parse(Source source) {
-        final BitStream bitstream = BitStream.create(source);
+    public static ModelModule parse(ByteBuffer bytes) {
         final ModelModule model = new ModelModule();
-        final LLVMScanner scanner = new LLVMScanner(bitstream, new Module(model));
 
-        final StreamInformation bcStreamInfo = StreamInformation.getStreamInformation(bitstream, scanner);
-        scanner.setOffset(bcStreamInfo.getOffset());
-
-        final long actualMagicWord = scanner.read(Integer.SIZE);
-        if (actualMagicWord != MAGIC_WORD) {
-            throw new RuntimeException("Not a valid Bitcode File: " + source);
+        ByteBuffer b = bytes.duplicate();
+        b.order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer bitcode;
+        long magicWord = Integer.toUnsignedLong(b.getInt());
+        if (Long.compareUnsigned(magicWord, BC_MAGIC_WORD) == 0) {
+            bitcode = b;
+        } else if (magicWord == WRAPPER_MAGIC_WORD) {
+            // Version
+            b.getInt();
+            // Offset32
+            long offset = b.getInt();
+            // Size32
+            long size = b.getInt();
+            b.position((int) offset);
+            b.limit((int) (offset + size));
+            bitcode = b.slice();
+        } else {
+            throw new RuntimeException("Not a valid input file!");
         }
 
-        while (scanner.offset < bcStreamInfo.totalStreamSize()) {
+        final BitStream bitstream = BitStream.create(bitcode);
+        final LLVMScanner scanner = new LLVMScanner(bitstream, new Module(model));
+        parseBitcodeBlock(scanner);
+        return model;
+    }
+
+    public static boolean isSupportedFile(ByteBuffer bytes) {
+        ByteBuffer duplicate = bytes.duplicate();
+        BitStream bs = BitStream.create(duplicate);
+        long magicWord = bs.read(0, Integer.SIZE);
+        return magicWord == BC_MAGIC_WORD || magicWord == WRAPPER_MAGIC_WORD;
+    }
+
+    private static void parseBitcodeBlock(LLVMScanner scanner) {
+        final long actualMagicWord = scanner.read(Integer.SIZE);
+        if (actualMagicWord != BC_MAGIC_WORD) {
+            throw new RuntimeException("Not a valid Bitcode File!");
+        }
+
+        while (scanner.offset < scanner.bitstream.size()) {
             scanner.scanNext();
         }
-
-        return model;
     }
 
     private static <V> List<V> subList(List<V> original, int from) {
@@ -342,10 +371,6 @@ public final class LLVMScanner {
     private void passRecordToParser() {
         parser.record(recordBuffer.getId(), recordBuffer.getOps());
         recordBuffer.invalidate();
-    }
-
-    private void setOffset(long offset) {
-        this.offset = offset;
     }
 
     private void unabbreviatedRecord() {

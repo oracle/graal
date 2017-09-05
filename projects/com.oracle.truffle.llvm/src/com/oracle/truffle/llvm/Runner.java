@@ -31,9 +31,12 @@ package com.oracle.truffle.llvm;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Base64;
 import java.util.function.Consumer;
 
 import com.oracle.truffle.api.CallTarget;
@@ -44,6 +47,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.NodeFactory;
+import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -65,48 +69,41 @@ public final class Runner {
             parseDynamicBitcodeLibraries(language, context);
 
             CallTarget mainFunction = null;
-            if (code.getMimeType().equals(Sulong.LLVM_BITCODE_MIME_TYPE) || code.getMimeType().equals(Sulong.LLVM_BITCODE_BASE64_MIME_TYPE) || code.getMimeType().equals("x-unknown")) {
-                LLVMParserResult parserResult = parseBitcodeFile(code, language, context);
-                mainFunction = parserResult.getMainCallTarget();
-                handleParserResult(context, parserResult);
-            } else if (code.getMimeType().equals(Sulong.SULONG_LIBRARY_MIME_TYPE)) {
-                final Library library = new Library(new File(code.getPath()));
-                List<Source> sourceFiles = new ArrayList<>();
-                library.readContents(dependentLibrary -> {
-                    context.addLibraryToNativeLookup(dependentLibrary);
-                }, source -> {
-                    sourceFiles.add(source);
-                });
-                for (Source source : sourceFiles) {
-                    String mimeType = source.getMimeType();
-                    try {
-                        LLVMParserResult parserResult;
-                        if (mimeType.equals(Sulong.LLVM_BITCODE_MIME_TYPE) || mimeType.equals(Sulong.LLVM_BITCODE_BASE64_MIME_TYPE)) {
-                            parserResult = parseBitcodeFile(source, language, context);
-                        } else {
-                            throw new UnsupportedOperationException(mimeType);
-                        }
-                        handleParserResult(context, parserResult);
-                        if (parserResult.getMainCallTarget() != null) {
-                            mainFunction = parserResult.getMainCallTarget();
-                        }
-                    } catch (Throwable t) {
-                        throw new IOException("Error while trying to parse " + source.getName(), t);
-                    }
-                }
-                if (mainFunction == null) {
-                    mainFunction = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(null));
-                }
+            ByteBuffer bytes;
+
+            if (code.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE)) {
+                ByteBuffer buffer = Charset.forName("ascii").newEncoder().encode(CharBuffer.wrap(code.getCharacters()));
+                bytes = Base64.getDecoder().decode(buffer);
+                assert LLVMScanner.isSupportedFile(bytes);
+            } else if (code.getPath() != null) {
+                bytes = read(code.getPath());
+                assert LLVMScanner.isSupportedFile(bytes);
             } else {
-                throw new IllegalArgumentException("undeclared mime type: " + code.getMimeType());
+                throw new IllegalStateException();
             }
+
+            assert bytes != null;
+
+            LLVMParserResult parserResult = parseBitcodeFile(code, bytes, language, context);
+            mainFunction = parserResult.getMainCallTarget();
+            if (mainFunction == null) {
+                mainFunction = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
+            }
+            handleParserResult(context, parserResult);
             if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
                 return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
-            } else {
-                return mainFunction;
             }
+            return mainFunction;
         } catch (Throwable t) {
             throw new IOException("Error while trying to parse " + code.getPath(), t);
+        }
+    }
+
+    private static ByteBuffer read(String filename) {
+        try {
+            return ByteBuffer.wrap(Files.readAllBytes(Paths.get(filename)));
+        } catch (IOException ignore) {
+            return ByteBuffer.allocate(0);
         }
     }
 
@@ -175,7 +172,7 @@ public final class Runner {
         context.getThreadingStack().freeStacks();
     }
 
-    private LLVMParserResult parseBitcodeFile(Source source, LLVMLanguage language, LLVMContext context) {
-        return LLVMParserRuntime.parse(source, language, context, nodeFactory);
+    private LLVMParserResult parseBitcodeFile(Source source, ByteBuffer bytes, LLVMLanguage language, LLVMContext context) {
+        return LLVMParserRuntime.parse(source, bytes, language, context, nodeFactory);
     }
 }
