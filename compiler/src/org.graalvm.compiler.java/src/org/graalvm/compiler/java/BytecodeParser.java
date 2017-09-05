@@ -2713,8 +2713,9 @@ public class BytecodeParser implements GraphBuilderContext {
         FixedNode target = createTarget(probability, block, stateAfter);
         AbstractBeginNode begin = BeginNode.begin(target);
 
-        assert !(target instanceof DeoptimizeNode && begin instanceof BeginStateSplitNode && ((BeginStateSplitNode) begin).stateAfter() != null) : "We are not allowed to set the stateAfter of the begin node,"
-                        + " because we have to deoptimize to a bci _before_ the actual if, so that the interpreter can update the profiling information.";
+        assert !(target instanceof DeoptimizeNode && begin instanceof BeginStateSplitNode &&
+                        ((BeginStateSplitNode) begin).stateAfter() != null) : "We are not allowed to set the stateAfter of the begin node," +
+                                        " because we have to deoptimize to a bci _before_ the actual if, so that the interpreter can update the profiling information.";
         return begin;
     }
 

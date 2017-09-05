@@ -272,10 +272,12 @@ public abstract class PartialEvaluator {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
             TruffleBoundary truffleBoundary = original.getAnnotation(TruffleBoundary.class);
             if (truffleBoundary != null) {
-                return truffleBoundary.throwsControlFlowException() || !truffleBoundary.transferToInterpreterOnException() ? InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION : InlineInfo.DO_NOT_INLINE_DEOP_ON_EXCEPTION;
+                return truffleBoundary.throwsControlFlowException() || !truffleBoundary.transferToInterpreterOnException() ? InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION
+                                : InlineInfo.DO_NOT_INLINE_DEOP_ON_EXCEPTION;
             }
             assert !builder.parsingIntrinsic();
 
@@ -339,6 +341,7 @@ public abstract class PartialEvaluator {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
             if (invocationPlugins.lookupInvocation(original) != null || replacements.hasSubstitution(original, builder.bci())) {
                 /*
@@ -353,7 +356,8 @@ public abstract class PartialEvaluator {
             }
             TruffleBoundary truffleBoundary = original.getAnnotation(TruffleBoundary.class);
             if (truffleBoundary != null) {
-                return truffleBoundary.throwsControlFlowException() || !truffleBoundary.transferToInterpreterOnException() ? InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION : InlineInfo.DO_NOT_INLINE_DEOP_ON_EXCEPTION;
+                return truffleBoundary.throwsControlFlowException() || !truffleBoundary.transferToInterpreterOnException() ? InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION
+                                : InlineInfo.DO_NOT_INLINE_DEOP_ON_EXCEPTION;
             }
 
             if (original.equals(callSiteProxyMethod) || original.equals(callDirectMethod)) {

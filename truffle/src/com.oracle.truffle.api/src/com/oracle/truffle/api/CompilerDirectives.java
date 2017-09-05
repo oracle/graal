@@ -253,7 +253,7 @@ public final class CompilerDirectives {
     public @interface TruffleBoundary {
         /**
          * Determines whether this method throws a {@link ControlFlowException}.
-         * 
+         *
          * @since 0.8 or earlier
          * @deprecated use {@link #transferToInterpreterOnException()}
          */
@@ -261,16 +261,16 @@ public final class CompilerDirectives {
         boolean throwsControlFlowException() default false;
 
         /**
-         * Determines whether execution should be transferred to the interpreter in the case that
-         * an exception is thrown accross this boundary.
-         * 
+         * Determines whether execution should be transferred to the interpreter in the case that an
+         * exception is thrown accross this boundary.
+         *
          * @since 0.28
          */
         boolean transferToInterpreterOnException() default true;
 
         /**
          * Considers this Truffle boundary invoke as an inlining candidate.
-         * 
+         *
          * @since 0.27
          */
         boolean allowInlining() default false;

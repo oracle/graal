@@ -265,8 +265,6 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
             }
         }
 
-        final int totalExecutions = compilationThreshold + execCount;
-
         int deopCount = ((DeoptCountingExceptionOverBoundaryRootNode) outerTarget.getRootNode()).deopCounter;
         Assert.assertEquals("Incorrect number of deops detected!", 0, deopCount);
 
@@ -318,8 +316,6 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
                 // do nothing
             }
         }
-
-        final int totalExecutions = compilationThreshold + execCount;
 
         int deopCount = ((DeoptCountingExceptionOverBoundaryRootNode) outerTarget.getRootNode()).deopCounter;
         Assert.assertEquals("Incorrect number of deops detected!", 0, deopCount);
