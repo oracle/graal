@@ -610,7 +610,7 @@ public abstract class Launcher {
                 if (engine.getLanguages().containsKey(group)) {
                     descriptors = engine.getLanguages().get(group).getOptions();
                 } else if (engine.getInstruments().containsKey(group)) {
-                    descriptors = engine.getLanguages().get(group).getOptions();
+                    descriptors = engine.getInstruments().get(group).getOptions();
                 }
                 break;
         }
