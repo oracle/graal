@@ -32,6 +32,7 @@ import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest;
@@ -332,6 +333,7 @@ public class ProfilerTest extends AbstractInstrumentationTest {
     }
 
     @Test
+    @Ignore
     public void testMIMEFilter() throws IOException {
 
         profiler.setCollecting(true);
