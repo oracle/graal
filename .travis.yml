@@ -67,9 +67,9 @@ matrix:
   include:
   - env: TEST_COMMAND='mx check --verbose' COMPILE_COMMAND=''
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx unittest SulongSuite' COMPILE_COMMAND='mx build'
+  - env: TEST_COMMAND='mx unittest SulongSuite LLVMInteropTest' COMPILE_COMMAND='mx build'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx test llvm args assembly interop type vaargs pipe callback polyglot shootout nwcc parserTorture' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
+  - env: TEST_COMMAND='mx test llvm args assembly type vaargs pipe callback polyglot shootout nwcc parserTorture' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
     jdk: oraclejdk8
   - env: TEST_COMMAND='mx test gcc32' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
     jdk: oraclejdk8
