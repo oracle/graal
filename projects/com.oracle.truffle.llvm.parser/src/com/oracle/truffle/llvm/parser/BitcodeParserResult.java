@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
@@ -62,6 +63,14 @@ public final class BitcodeParserResult {
 
     public LLVMLabelList getLabels() {
         return labels;
+    }
+
+    public List<String> getLibraries() {
+        return model.getLibraries();
+    }
+
+    public List<String> getLibraryPaths() {
+        return model.getLibraryPaths();
     }
 
     public static BitcodeParserResult getFromSource(ByteBuffer bytes) {
