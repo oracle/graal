@@ -35,6 +35,7 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.function.Consumer;
@@ -108,16 +109,13 @@ public final class Runner {
     }
 
     private static void visitBitcodeLibraries(LLVMContext context, Consumer<Source> sharedLibraryConsumer) throws IOException {
-        String[] dynamicLibraryPaths = SulongEngineOption.getBitcodeLibraries(context.getEnv());
-        if (dynamicLibraryPaths != null && dynamicLibraryPaths.length != 0) {
-            for (String s : dynamicLibraryPaths) {
-                addLibrary(s, sharedLibraryConsumer);
-            }
+        for (Path p : context.getBitcodeLibraries()) {
+            addLibrary(p, sharedLibraryConsumer);
         }
     }
 
-    private static void addLibrary(String s, Consumer<Source> sharedLibraryConsumer) throws IOException {
-        File lib = Paths.get(s).toFile();
+    private static void addLibrary(Path s, Consumer<Source> sharedLibraryConsumer) throws IOException {
+        File lib = s.toFile();
         Source source = Source.newBuilder(lib).build();
         sharedLibraryConsumer.accept(source);
     }
