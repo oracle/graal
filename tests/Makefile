@@ -35,13 +35,24 @@ BC_TARGETS:=$(foreach var,$(VARIANTS),$(TESTS:%=%/$(var).bc))
 .PHONY: default
 default: $(REF_TARGETS) $(BC_TARGETS)
 
-%/ref.out: %.c
-	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) clang $(CPPFLAGS) $(LDFLAGS) -o $@ $<
+ifeq ($(OS), darwin)
+EMBED_BC=-fembed-bitcode
+BC_FILE=
+else
+EMBED_BC=
+BC_FILE=%/O0.bc.o
 
-%/ref.out: %.cpp
+%.bc.o: %.bc
+	objcopy -I binary -O elf64-x86-64 -B i386:x86-64 --rename-section .data=.llvmbc $< $@
+endif
+
+%/ref.out: %.c $(BC_FILE)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) clang++ $(CPPFLAGS) $(LDFLAGS) -o $@ $<
+	$(QUIETLY) clang $(EMBED_BC) $(CPPFLAGS) $(LDFLAGS) -o $@ $^
+
+%/ref.out: %.cpp $(BC_FILE)
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) clang++ $(EMBED_BC) $(CPPFLAGS) $(LDFLAGS) -o $@ $^
 
 %.bc: %.ll
 	$(QUIETLY) $(DRAGONEGG_LLVMAS) -o $@ $<
