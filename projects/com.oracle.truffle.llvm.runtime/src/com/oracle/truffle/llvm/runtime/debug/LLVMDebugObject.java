@@ -350,6 +350,11 @@ public abstract class LLVMDebugObject implements TruffleObject {
 
     public static LLVMDebugObject instantiate(LLVMSourceType type, long baseOffset, LLVMDebugValueProvider value) {
         if (type.isAggregate()) {
+            long elementCount = type.getElementCount();
+            if (elementCount < 0) {
+                // happens for dynamically initialized arrays
+                elementCount = 0;
+            }
             final Object[] memberIdentifiers = new Object[type.getElementCount()];
             for (int i = 0; i < type.getElementCount(); i++) {
                 memberIdentifiers[i] = type.getElementName(i);
