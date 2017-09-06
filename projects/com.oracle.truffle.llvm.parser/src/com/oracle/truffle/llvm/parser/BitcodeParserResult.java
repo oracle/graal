@@ -29,7 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import com.oracle.truffle.api.source.Source;
+import java.nio.ByteBuffer;
+
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
@@ -63,8 +64,8 @@ public final class BitcodeParserResult {
         return labels;
     }
 
-    public static BitcodeParserResult getFromSource(Source source) {
-        final ModelModule model = LLVMScanner.parse(source);
+    public static BitcodeParserResult getFromSource(ByteBuffer bytes) {
+        final ModelModule model = LLVMScanner.parse(bytes);
 
         // set ValueInstruction#sourceVariable
         SourceModel.generate(model);

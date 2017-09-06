@@ -29,38 +29,19 @@
  */
 package com.oracle.truffle.llvm.parser.scanner;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Base64;
-
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import java.nio.ByteBuffer;
 
 public final class BitStream {
 
     private static final long BYTE_MASK = 0xffL;
-    private final byte[] bitstream;
+    private final ByteBuffer bitstream;
 
-    private BitStream(byte[] bitstream) {
+    private BitStream(ByteBuffer bitstream) {
         this.bitstream = bitstream;
     }
 
-    public static BitStream create(Source source) {
-        byte[] bytes;
-        switch (source.getMimeType()) {
-            case "x-unknown":
-            case LLVMLanguage.LLVM_BITCODE_MIME_TYPE:
-                bytes = read(source.getPath());
-                break;
+    public static BitStream create(ByteBuffer bytes) {
 
-            case LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE:
-                bytes = Base64.getDecoder().decode(source.getCode());
-                break;
-
-            default:
-                throw new UnsupportedOperationException();
-        }
         return new BitStream(bytes);
     }
 
@@ -73,15 +54,7 @@ public final class BitStream {
                 blob[to++] = (byte) ((l >> (Byte.SIZE * i)) & BYTE_MASK);
             }
         }
-        return new BitStream(blob);
-    }
-
-    private static byte[] read(String filename) {
-        try {
-            return Files.readAllBytes(Paths.get(filename));
-        } catch (IOException ignore) {
-            return new byte[0];
-        }
+        return new BitStream(ByteBuffer.wrap(blob));
     }
 
     public static long widthVBR(long value, long width) {
@@ -120,7 +93,7 @@ public final class BitStream {
     }
 
     public long size() {
-        return bitstream.length * Byte.SIZE;
+        return bitstream.limit() * Byte.SIZE;
     }
 
     private long read(long offset) {
@@ -138,6 +111,10 @@ public final class BitStream {
     }
 
     private long readAlignedByte(long i) {
-        return i < bitstream.length ? bitstream[(int) i] & BYTE_MASK : 0;
+        return i < bitstream.capacity() ? bitstream.get((int) i) & BYTE_MASK : 0;
+    }
+
+    public ByteBuffer getBitstream() {
+        return bitstream;
     }
 }
