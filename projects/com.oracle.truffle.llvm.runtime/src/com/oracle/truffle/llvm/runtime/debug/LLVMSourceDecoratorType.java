@@ -63,6 +63,7 @@ public final class LLVMSourceDecoratorType extends LLVMSourceType {
         this.baseType = baseType;
     }
 
+    @TruffleBoundary
     public LLVMSourceType getTrueBaseType() {
         if (baseType instanceof LLVMSourceDecoratorType) {
             return ((LLVMSourceDecoratorType) baseType).getTrueBaseType();
