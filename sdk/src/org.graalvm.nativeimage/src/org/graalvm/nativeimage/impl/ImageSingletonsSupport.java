@@ -24,15 +24,38 @@
  */
 package org.graalvm.nativeimage.impl;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public interface ImageSingletonsSupport {
+public abstract class ImageSingletonsSupport {
 
-    <T> void add(Class<T> key, T value);
+    /** Implementation-specific singleton that stores the registration data. */
+    private static ImageSingletonsSupport support;
 
-    <T> T lookup(Class<T> key);
+    protected static void installSupport(ImageSingletonsSupport imageSingletonsSupport) {
+        assert imageSingletonsSupport != null : "ImageSingletonsSupport cannot be null.";
+        support = imageSingletonsSupport;
+    }
 
-    boolean contains(Class<?> key);
+    public static ImageSingletonsSupport get() {
+        checkInstalled();
+        return support;
+    }
+
+    private static void checkInstalled() {
+        if (support == null) {
+            throw new Error("The class " + ImageSingletons.class.getSimpleName() + " can only be used when building native images, i.e., when using the native-image command.");
+        }
+    }
+
+    protected ImageSingletonsSupport() {
+    }
+
+    public abstract <T> void add(Class<T> key, T value);
+
+    public abstract <T> T lookup(Class<T> key);
+
+    public abstract boolean contains(Class<?> key);
 }
