@@ -38,35 +38,35 @@ import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteBooleanNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMAMD64RdRandNode extends LLVMExpressionNode {
-    private final SecureRandom rng = new SecureRandom();
+    private final SecureRandom random = new SecureRandom();
 
-    @Child protected LLVMAMD64WriteBooleanNode cf;
+    @Child protected LLVMAMD64WriteBooleanNode writeCFNode;
 
     // TODO: OF, SF, ZF, AF, PF = 0
 
     @TruffleBoundary
     protected int nextInt() {
-        return rng.nextInt();
+        return random.nextInt();
     }
 
     @TruffleBoundary
     protected long nextLong() {
-        return rng.nextLong();
+        return random.nextLong();
     }
 
-    public LLVMAMD64RdRandNode(LLVMAMD64WriteBooleanNode cf) {
-        this.cf = cf;
+    public LLVMAMD64RdRandNode(LLVMAMD64WriteBooleanNode writeCFNode) {
+        this.writeCFNode = writeCFNode;
     }
 
     public abstract static class LLVMAMD64RdRandwNode extends LLVMAMD64RdRandNode {
-        public LLVMAMD64RdRandwNode(LLVMAMD64WriteBooleanNode cf) {
-            super(cf);
+        public LLVMAMD64RdRandwNode(LLVMAMD64WriteBooleanNode writeCFNode) {
+            super(writeCFNode);
         }
 
         @Override
         @Specialization
         public short executeI16(VirtualFrame frame) {
-            cf.execute(frame, true);
+            writeCFNode.execute(frame, true);
             return (short) nextInt();
         }
     }
@@ -79,7 +79,7 @@ public abstract class LLVMAMD64RdRandNode extends LLVMExpressionNode {
         @Override
         @Specialization
         public int executeI32(VirtualFrame frame) {
-            cf.execute(frame, true);
+            writeCFNode.execute(frame, true);
             return nextInt();
         }
     }
@@ -92,7 +92,7 @@ public abstract class LLVMAMD64RdRandNode extends LLVMExpressionNode {
         @Override
         @Specialization
         public long executeI64(VirtualFrame frame) {
-            cf.execute(frame, true);
+            writeCFNode.execute(frame, true);
             return nextLong();
         }
     }

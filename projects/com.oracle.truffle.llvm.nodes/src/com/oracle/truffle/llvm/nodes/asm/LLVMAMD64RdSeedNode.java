@@ -38,33 +38,33 @@ import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteBooleanNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMAMD64RdSeedNode extends LLVMExpressionNode {
-    private final SecureRandom rng = new SecureRandom();
+    private final SecureRandom random = new SecureRandom();
 
-    @Child protected LLVMAMD64WriteBooleanNode cf;
+    @Child protected LLVMAMD64WriteBooleanNode writeCFNode;
 
     // TODO: OF, SF, ZF, AF, PF = 0
 
     @TruffleBoundary
     protected short getSeedI16() {
-        byte[] seed = rng.generateSeed(2);
+        byte[] seed = random.generateSeed(2);
         return (short) (Byte.toUnsignedInt(seed[0]) << 8 | Byte.toUnsignedInt(seed[1]));
     }
 
     @TruffleBoundary
     protected int getSeedI32() {
-        byte[] seed = rng.generateSeed(4);
+        byte[] seed = random.generateSeed(4);
         return Byte.toUnsignedInt(seed[0]) << 24 | Byte.toUnsignedInt(seed[1]) << 16 | Byte.toUnsignedInt(seed[2]) << 8 | Byte.toUnsignedInt(seed[3]);
     }
 
     @TruffleBoundary
     protected long getSeedI64() {
-        byte[] seed = rng.generateSeed(8);
+        byte[] seed = random.generateSeed(8);
         return Byte.toUnsignedLong(seed[0]) << 56 | Byte.toUnsignedLong(seed[1]) << 48 | Byte.toUnsignedLong(seed[2]) << 40 | Byte.toUnsignedLong(seed[3]) << 32 | Byte.toUnsignedLong(seed[4]) << 24 |
                         Byte.toUnsignedLong(seed[5]) << 16 | Byte.toUnsignedLong(seed[6]) << 8 | Byte.toUnsignedLong(seed[7]);
     }
 
     public LLVMAMD64RdSeedNode(LLVMAMD64WriteBooleanNode cf) {
-        this.cf = cf;
+        this.writeCFNode = cf;
     }
 
     public abstract static class LLVMAMD64RdSeedwNode extends LLVMAMD64RdSeedNode {
@@ -75,7 +75,7 @@ public abstract class LLVMAMD64RdSeedNode extends LLVMExpressionNode {
         @Override
         @Specialization
         public short executeI16(VirtualFrame frame) {
-            cf.execute(frame, true);
+            writeCFNode.execute(frame, true);
             return getSeedI16();
         }
     }
@@ -88,7 +88,7 @@ public abstract class LLVMAMD64RdSeedNode extends LLVMExpressionNode {
         @Override
         @Specialization
         public int executeI32(VirtualFrame frame) {
-            cf.execute(frame, true);
+            writeCFNode.execute(frame, true);
             return getSeedI32();
         }
     }
@@ -101,7 +101,7 @@ public abstract class LLVMAMD64RdSeedNode extends LLVMExpressionNode {
         @Override
         @Specialization
         public long executeI64(VirtualFrame frame) {
-            cf.execute(frame, true);
+            writeCFNode.execute(frame, true);
             return getSeedI64();
         }
     }

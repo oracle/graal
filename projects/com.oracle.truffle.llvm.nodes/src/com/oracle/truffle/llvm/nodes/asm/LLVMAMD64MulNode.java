@@ -40,37 +40,37 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LongMultiplication;
 
 public abstract class LLVMAMD64MulNode extends LLVMExpressionNode {
-    @Child protected LLVMAMD64WriteBooleanNode cf;
-    @Child protected LLVMAMD64WriteBooleanNode pf;
-    @Child protected LLVMAMD64WriteBooleanNode af;
-    @Child protected LLVMAMD64WriteBooleanNode zf;
-    @Child protected LLVMAMD64WriteBooleanNode sf;
-    @Child protected LLVMAMD64WriteBooleanNode of;
+    @Child protected LLVMAMD64WriteBooleanNode writeCFNode;
+    @Child protected LLVMAMD64WriteBooleanNode writePFNode;
+    @Child protected LLVMAMD64WriteBooleanNode writeAFNode;
+    @Child protected LLVMAMD64WriteBooleanNode writeZFNode;
+    @Child protected LLVMAMD64WriteBooleanNode writeSFNode;
+    @Child protected LLVMAMD64WriteBooleanNode writeOFNode;
 
     protected void setFlags(VirtualFrame frame, byte value, boolean overflow, boolean sign) {
-        cf.execute(frame, overflow);
-        pf.execute(frame, LLVMAMD64UpdateFlagsNode.getParity(value));
-        af.execute(frame, false);
-        zf.execute(frame, false);
-        sf.execute(frame, sign);
-        of.execute(frame, overflow);
+        writeCFNode.execute(frame, overflow);
+        writePFNode.execute(frame, LLVMAMD64UpdateFlagsNode.getParity(value));
+        writeAFNode.execute(frame, false);
+        writeZFNode.execute(frame, false);
+        writeSFNode.execute(frame, sign);
+        writeOFNode.execute(frame, overflow);
     }
 
-    public LLVMAMD64MulNode(LLVMAMD64WriteBooleanNode cf, LLVMAMD64WriteBooleanNode pf, LLVMAMD64WriteBooleanNode af, LLVMAMD64WriteBooleanNode zf, LLVMAMD64WriteBooleanNode sf,
-                    LLVMAMD64WriteBooleanNode of) {
-        this.cf = cf;
-        this.pf = pf;
-        this.af = af;
-        this.zf = zf;
-        this.sf = sf;
-        this.of = of;
+    public LLVMAMD64MulNode(LLVMAMD64WriteBooleanNode writeCFNode, LLVMAMD64WriteBooleanNode writePFNode, LLVMAMD64WriteBooleanNode writeAFNode, LLVMAMD64WriteBooleanNode writeZFNode,
+                    LLVMAMD64WriteBooleanNode writeSFNode, LLVMAMD64WriteBooleanNode writeOFNode) {
+        this.writeCFNode = writeCFNode;
+        this.writePFNode = writePFNode;
+        this.writeAFNode = writeAFNode;
+        this.writeZFNode = writeZFNode;
+        this.writeSFNode = writeSFNode;
+        this.writeOFNode = writeOFNode;
     }
 
     @NodeChildren({@NodeChild(value = "left", type = LLVMExpressionNode.class), @NodeChild(value = "right", type = LLVMExpressionNode.class)})
     public abstract static class LLVMAMD64MulbNode extends LLVMAMD64MulNode {
-        public LLVMAMD64MulbNode(LLVMAMD64WriteBooleanNode cf, LLVMAMD64WriteBooleanNode pf, LLVMAMD64WriteBooleanNode af, LLVMAMD64WriteBooleanNode zf, LLVMAMD64WriteBooleanNode sf,
-                        LLVMAMD64WriteBooleanNode of) {
-            super(cf, pf, af, zf, sf, of);
+        public LLVMAMD64MulbNode(LLVMAMD64WriteBooleanNode writeCFNode, LLVMAMD64WriteBooleanNode writePFNode, LLVMAMD64WriteBooleanNode writeAFNode, LLVMAMD64WriteBooleanNode writeZFNode,
+                        LLVMAMD64WriteBooleanNode writeSFNode, LLVMAMD64WriteBooleanNode writeOFNode) {
+            super(writeCFNode, writePFNode, writeAFNode, writeZFNode, writeSFNode, writeOFNode);
         }
 
         @Specialization
@@ -88,9 +88,9 @@ public abstract class LLVMAMD64MulNode extends LLVMExpressionNode {
     public abstract static class LLVMAMD64MulwNode extends LLVMAMD64MulNode {
         @Child private LLVMAMD64WriteTupelNode out;
 
-        public LLVMAMD64MulwNode(LLVMAMD64WriteBooleanNode cf, LLVMAMD64WriteBooleanNode pf, LLVMAMD64WriteBooleanNode af, LLVMAMD64WriteBooleanNode zf, LLVMAMD64WriteBooleanNode sf,
-                        LLVMAMD64WriteBooleanNode of, LLVMAMD64WriteTupelNode out) {
-            super(cf, pf, af, zf, sf, of);
+        public LLVMAMD64MulwNode(LLVMAMD64WriteBooleanNode writeCFNode, LLVMAMD64WriteBooleanNode writePFNode, LLVMAMD64WriteBooleanNode writeAFNode, LLVMAMD64WriteBooleanNode writeZFNode,
+                        LLVMAMD64WriteBooleanNode writeSFNode, LLVMAMD64WriteBooleanNode writeOFNode, LLVMAMD64WriteTupelNode out) {
+            super(writeCFNode, writePFNode, writeAFNode, writeZFNode, writeSFNode, writeOFNode);
             this.out = out;
         }
 
@@ -108,9 +108,9 @@ public abstract class LLVMAMD64MulNode extends LLVMExpressionNode {
     public abstract static class LLVMAMD64MullNode extends LLVMAMD64MulNode {
         @Child private LLVMAMD64WriteTupelNode out;
 
-        public LLVMAMD64MullNode(LLVMAMD64WriteBooleanNode cf, LLVMAMD64WriteBooleanNode pf, LLVMAMD64WriteBooleanNode af, LLVMAMD64WriteBooleanNode zf, LLVMAMD64WriteBooleanNode sf,
-                        LLVMAMD64WriteBooleanNode of, LLVMAMD64WriteTupelNode out) {
-            super(cf, pf, af, zf, sf, of);
+        public LLVMAMD64MullNode(LLVMAMD64WriteBooleanNode writeCFNode, LLVMAMD64WriteBooleanNode writePFNode, LLVMAMD64WriteBooleanNode writeAFNode, LLVMAMD64WriteBooleanNode writeZFNode,
+                        LLVMAMD64WriteBooleanNode writeSFNode, LLVMAMD64WriteBooleanNode writeOFNode, LLVMAMD64WriteTupelNode out) {
+            super(writeCFNode, writePFNode, writeAFNode, writeZFNode, writeSFNode, writeOFNode);
             this.out = out;
         }
 
@@ -128,9 +128,9 @@ public abstract class LLVMAMD64MulNode extends LLVMExpressionNode {
     public abstract static class LLVMAMD64MulqNode extends LLVMAMD64MulNode {
         @Child private LLVMAMD64WriteTupelNode out;
 
-        public LLVMAMD64MulqNode(LLVMAMD64WriteBooleanNode cf, LLVMAMD64WriteBooleanNode pf, LLVMAMD64WriteBooleanNode af, LLVMAMD64WriteBooleanNode zf, LLVMAMD64WriteBooleanNode sf,
-                        LLVMAMD64WriteBooleanNode of, LLVMAMD64WriteTupelNode out) {
-            super(cf, pf, af, zf, sf, of);
+        public LLVMAMD64MulqNode(LLVMAMD64WriteBooleanNode writeCFNode, LLVMAMD64WriteBooleanNode writePFNode, LLVMAMD64WriteBooleanNode writeAFNode, LLVMAMD64WriteBooleanNode writeZFNode,
+                        LLVMAMD64WriteBooleanNode writeSFNode, LLVMAMD64WriteBooleanNode writeOFNode, LLVMAMD64WriteTupelNode out) {
+            super(writeCFNode, writePFNode, writeAFNode, writeZFNode, writeSFNode, writeOFNode);
             this.out = out;
         }
 
