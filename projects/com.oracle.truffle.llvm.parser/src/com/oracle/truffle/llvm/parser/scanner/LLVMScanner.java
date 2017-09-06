@@ -40,6 +40,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.llvm.parser.elf.ElfDynamicSection;
+import com.oracle.truffle.llvm.parser.elf.ElfFile;
+import com.oracle.truffle.llvm.parser.elf.ElfSectionHeaderTable.Entry;
 import com.oracle.truffle.llvm.parser.listeners.Module;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
@@ -52,6 +55,7 @@ public final class LLVMScanner {
 
     private static final long BC_MAGIC_WORD = 0xdec04342L; // 'BC' c0de
     private static final long WRAPPER_MAGIC_WORD = 0x0B17C0DEL;
+    private static final long ELF_MAGIC_WORD = 0x464C457FL;
 
     private static final int MAX_BLOCK_DEPTH = 3;
 
@@ -100,6 +104,24 @@ public final class LLVMScanner {
             b.position((int) offset);
             b.limit((int) (offset + size));
             bitcode = b.slice();
+        } else if (magicWord == ELF_MAGIC_WORD) {
+            ElfFile elfFile = ElfFile.create(b);
+            Entry llvmbc = elfFile.getSectionHeaderTable().getEntry(".llvmbc");
+            if (llvmbc == null) {
+                throw new RuntimeException("ELF File does not contain an .llvmbc section.");
+            }
+            ElfDynamicSection dynamicSection = elfFile.getDynamicSection();
+            if (dynamicSection != null) {
+                List<String> libraries = dynamicSection.getDTNeeded();
+                List<String> paths = dynamicSection.getDTRPath();
+                model.addLibraries(libraries);
+                model.addLibraryPaths(paths);
+            }
+            long offset = llvmbc.getOffset();
+            long size = llvmbc.getSize();
+            b.position((int) offset);
+            b.limit((int) (offset + size));
+            bitcode = b.slice();
         } else {
             throw new RuntimeException("Not a valid input file!");
         }
@@ -114,7 +136,7 @@ public final class LLVMScanner {
         ByteBuffer duplicate = bytes.duplicate();
         BitStream bs = BitStream.create(duplicate);
         long magicWord = bs.read(0, Integer.SIZE);
-        return magicWord == BC_MAGIC_WORD || magicWord == WRAPPER_MAGIC_WORD;
+        return magicWord == BC_MAGIC_WORD || magicWord == WRAPPER_MAGIC_WORD || magicWord == ELF_MAGIC_WORD;
     }
 
     private static void parseBitcodeBlock(LLVMScanner scanner) {

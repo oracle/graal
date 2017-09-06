@@ -88,6 +88,9 @@ public final class LLVMParserRuntime {
 
     public static LLVMParserResult parse(Source source, ByteBuffer bytes, LLVMLanguage language, LLVMContext context, NodeFactory nodeFactory) {
         BitcodeParserResult parserResult = BitcodeParserResult.getFromSource(bytes);
+        context.addLibraryPaths(parserResult.getLibraryPaths());
+        context.addNativeLibraries(parserResult.getLibraries());
+
         ModelModule model = parserResult.getModel();
         StackAllocation stack = parserResult.getStackAllocation();
         LLVMPhiManager phiManager = parserResult.getPhis();
