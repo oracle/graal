@@ -33,6 +33,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -186,6 +187,27 @@ public abstract class LLVMVectorSelectNode {
             }
 
             return LLVMDoubleVector.create(values);
+        }
+
+    }
+
+    @NodeChildren({
+                    @NodeChild(value = "conditionNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "trueNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "elseNode", type = LLVMExpressionNode.class)})
+    public abstract static class LLVMAddressVectorSelectNode extends LLVMExpressionNode {
+
+        @Specialization
+        public LLVMAddressVector execute(LLVMI1Vector condition, LLVMAddressVector trueValue, LLVMAddressVector elseValue) {
+            int length = condition.getLength();
+
+            long[] values = new long[length];
+
+            for (int i = 0; i < length; i++) {
+                values[i] = condition.getValue(i) ? trueValue.getValue(i) : elseValue.getValue(i);
+            }
+
+            return LLVMAddressVector.create(values);
         }
 
     }
