@@ -55,9 +55,6 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.ArrayConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.StructureConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.util.Pair;
@@ -87,7 +84,7 @@ public final class LLVMParserRuntime {
     private static final Comparator<Pair<Integer, ?>> DESCENDING_PRIORITY = (p1, p2) -> p1.getFirst() < p2.getFirst() ? 1 : -1;
 
     public static LLVMParserResult parse(Source source, ByteBuffer bytes, LLVMLanguage language, LLVMContext context, NodeFactory nodeFactory) {
-        BitcodeParserResult parserResult = BitcodeParserResult.getFromSource(bytes);
+        BitcodeParserResult parserResult = BitcodeParserResult.getFromSource(source, bytes);
         context.addLibraryPaths(parserResult.getLibraryPaths());
         context.addNativeLibraries(parserResult.getLibraries());
 
