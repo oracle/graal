@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -42,6 +44,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -59,6 +62,9 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMContext {
+
+    private final List<Path> libraryPaths = new ArrayList<>();
+    private final List<Path> bitcodeLibraries = new ArrayList<>();
 
     private final List<RootCallTarget> globalVarInits = new ArrayList<>();
     private final List<RootCallTarget> globalVarDeallocs = new ArrayList<>();
@@ -172,7 +178,6 @@ public final class LLVMContext {
         this.nativeLookup = env.getOptions().get(SulongEngineOption.DISABLE_NFI) ? null : new NativeLookup(env);
         this.nativeCallStatistics = SulongEngineOption.isTrue(env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new HashMap<>() : null;
         this.threadingStack = new LLVMThreadingStack(env.getOptions().get(SulongEngineOption.STACK_SIZE_KB));
-        this.nativeFunctions = new LLVMNativeFunctionsImpl(nativeLookup);
         this.sigDfl = LLVMFunctionHandle.createHandle(0);
         this.sigIgn = LLVMFunctionHandle.createHandle(1);
         this.sigErr = LLVMFunctionHandle.createHandle(-1);
@@ -185,6 +190,74 @@ public final class LLVMContext {
 
         Object mainArgs = env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
         this.mainArguments = mainArgs == null ? env.getApplicationArguments() : (Object[]) mainArgs;
+
+        addLibraryPaths(SulongEngineOption.getPolyglotOptionSearchPaths(env));
+        if (nativeLookup != null) {
+            List<String> nativeLibraries = SulongEngineOption.getPolyglotOptionNativeLibraries(env);
+            nativeLookup.addLibrary(findLibrary("libsulong." + SulongEngineOption.getNativeLibrarySuffix()));
+            nativeLookup.addLibraries(nativeLibraries.stream().map(l -> findLibrary(l)).collect(Collectors.toList()));
+        }
+        addBitcodeLibrary("libsulong.bc");
+        this.nativeFunctions = new LLVMNativeFunctionsImpl(nativeLookup);
+    }
+
+    public void addBitcodeLibrary(String l) {
+        CompilerAsserts.neverPartOfCompilation();
+        Path p = findLibrary(l);
+        if (!bitcodeLibraries.contains(p)) {
+            if (!p.toFile().exists()) {
+                throw new LinkageError(String.format("Library \"%s\" does not exist.", p.toString()));
+            }
+            bitcodeLibraries.add(p);
+        }
+    }
+
+    public List<Path> getBitcodeLibraries() {
+        return bitcodeLibraries;
+    }
+
+    public void addNativeLibraries(List<String> libraries) {
+        if (nativeLookup == null) {
+            return;
+        }
+        nativeLookup.addLibraries(libraries.stream().map(l -> findLibrary(l)).collect(Collectors.toList()));
+    }
+
+    public void addLibraryPaths(List<String> paths) {
+        for (String p : paths) {
+            addLibraryPath(p);
+        }
+    }
+
+    public void addLibraryPath(String p) {
+        Path path = Paths.get(p);
+        if (!path.toFile().exists()) {
+            System.err.println(String.format("Library Path \"%s\" does not exist.", path.toString()));
+        } else {
+            if (!libraryPaths.contains(path)) {
+                libraryPaths.add(path);
+            }
+        }
+    }
+
+    private Path findLibrary(String lib) {
+        Path libPath = Paths.get(lib);
+        if (libPath.isAbsolute()) {
+            if (libPath.toFile().exists()) {
+                return libPath;
+            } else {
+                throw new LinkageError(String.format("Library \"%s\" does not exist.", lib));
+            }
+        }
+
+        for (Path p : libraryPaths) {
+            Path absPath = Paths.get(p.toString(), lib);
+            if (absPath.toFile().exists()) {
+                return absPath;
+            }
+        }
+
+        return Paths.get(lib);
     }
 
     public Env getEnv() {
@@ -348,7 +421,7 @@ public final class LLVMContext {
     }
 
     public void addLibraryToNativeLookup(String library) {
-        nativeLookup.addLibraryToNativeLookup(library);
+        nativeLookup.addLibrary(findLibrary(library));
     }
 
     public LLVMThreadingStack getThreadingStack() {

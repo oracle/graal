@@ -55,6 +55,8 @@ public final class ModelModule extends IRScope {
     private final List<FunctionDeclaration> declares = new ArrayList<>();
     private final List<FunctionDefinition> defines = new ArrayList<>();
     private final List<TargetInformation> targetInfo = new ArrayList<>();
+    private final List<String> libraries = new ArrayList<>();
+    private final List<String> paths = new ArrayList<>();
     private int currentFunction = -1;
     private TargetDataLayout targetDataLayout = defaultLayout;
 
@@ -142,5 +144,21 @@ public final class ModelModule extends IRScope {
     @Override
     public List<MDAttachment> getAttachedMetadata() {
         return Collections.emptyList();
+    }
+
+    public void addLibraries(List<String> l) {
+        this.libraries.addAll(l);
+    }
+
+    public List<String> getLibraries() {
+        return Collections.unmodifiableList(libraries);
+    }
+
+    public void addLibraryPaths(List<String> p) {
+        this.paths.addAll(p);
+    }
+
+    public List<String> getLibraryPaths() {
+        return Collections.unmodifiableList(paths);
     }
 }

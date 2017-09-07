@@ -42,8 +42,12 @@ public abstract class LLVMLanguage extends TruffleLanguage<LLVMContext> {
      */
     public static final String LLVM_BITCODE_BASE64_MIME_TYPE = "application/x-llvm-ir-bitcode-base64";
 
+    // TODO: remove Sulong.SULONG_LIBRARY_MIME_TYPE after GR-5904 is closed.
     public static final String SULONG_LIBRARY_MIME_TYPE = "application/x-sulong-library";
-    public static final String SULONG_LIBRARY_EXTENSION = "su";
+
+    public static final String LLVM_ELF_SHARED_MIME_TYPE = "application/x-sharedlib";
+    public static final String LLVM_ELF_EXEC_MIME_TYPE = "application/x-executable";
+    public static final String LLVM_ELF_LINUX_EXTENSION = "so";
 
     public static final String MAIN_ARGS_KEY = "Sulong Main Args";
     public static final String PARSE_ONLY_KEY = "Parse only";

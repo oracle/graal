@@ -63,7 +63,7 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
             return;
         }
         Path referenceFile = files.get(0);
-        List<Path> testCandidates = Files.walk(getTestDirectory()).filter(isFile).filter(isSulong).collect(Collectors.toList());
+        List<Path> testCandidates = Files.walk(getTestDirectory()).filter(isFile).filter(getIsSulongFilter()).collect(Collectors.toList());
         ProcessResult processResult = ProcessUtil.executeNativeCommand(referenceFile.toAbsolutePath().toString());
         String referenceStdOut = processResult.getStdOutput();
         final int referenceReturnValue = processResult.getReturnValue();
@@ -93,6 +93,10 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
             }
         }
         pass(getTestName());
+    }
+
+    protected Predicate<? super Path> getIsSulongFilter() {
+        return isSulong;
     }
 
     protected static void fail(String testName, AssertionError error) {
