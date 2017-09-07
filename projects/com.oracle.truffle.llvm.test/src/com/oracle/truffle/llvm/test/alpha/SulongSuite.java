@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -47,6 +48,7 @@ import com.oracle.truffle.llvm.test.options.TestOptions;
 @RunWith(Parameterized.class)
 public final class SulongSuite extends BaseSuiteHarness {
 
+    private static final boolean IS_MAC = System.getProperty("os.name").toLowerCase().indexOf("mac") >= 0;
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public String testName;
 
@@ -59,6 +61,15 @@ public final class SulongSuite extends BaseSuiteHarness {
         } catch (IOException e) {
             throw new AssertionError("Test cases not found", e);
         }
+    }
+
+    @Override
+    protected Predicate<? super Path> getIsSulongFilter() {
+        return f -> {
+            boolean isBC = f.getFileName().toString().endsWith(".bc");
+            boolean isOut = f.getFileName().toString().endsWith(".out");
+            return isBC || (isOut && !IS_MAC);
+        };
     }
 
     @Override
