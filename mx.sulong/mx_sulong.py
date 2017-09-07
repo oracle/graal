@@ -121,8 +121,6 @@ def travis1(args=None):
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac', '--dependencies', 'SULONG_TEST'])
     with Task('TestBenchmarks', tasks) as t:
         if t: mx_testsuites.runSuite(['shootout'])
-    with Task('TestPolglot', tasks) as t:
-        if t: mx_testsuites.runSuite(['polyglot'])
     with Task('TestTypes', tasks) as t:
         if t: mx_testsuites.runSuite(['type'])
     with Task('TestPipe', tasks) as t:
