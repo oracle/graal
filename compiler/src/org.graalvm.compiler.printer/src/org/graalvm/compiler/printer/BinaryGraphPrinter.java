@@ -80,7 +80,7 @@ public class BinaryGraphPrinter implements
     private final GraphOutput<BinaryGraphPrinter.GraphInfo, ResolvedJavaMethod> output;
 
     public BinaryGraphPrinter(WritableByteChannel channel, SnippetReflectionProvider snippetReflection) throws IOException {
-        this.output = GraphOutput.newBuilder(this).blocks(this).elements(this).types(this).build(channel);
+        this.output = GraphOutput.newBuilder(this).protocolVersion(5, 0).blocks(this).elements(this).types(this).build(channel);
         this.snippetReflection = snippetReflection;
     }
 
