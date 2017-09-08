@@ -59,12 +59,12 @@ gateTest38-linux: ${gateCommon} ${linux-amd64} {
 
 darwin-llvm : {
     packages: {
-        "llvm": ""
+        "llvm@4": ""
     }
 
     environment: {
         # homebrew doesn't put llvm on the path by default
-        PATH: "/Users/graal/slave/buildlog/ci_executor/main/homebrew/opt/llvm/bin:$PATH"
+        PATH: "/Users/graal/slave/buildlog/ci_executor/main//homebrew/Cellar/llvm@4/4.0.1/bin:$PATH"
     }
 }
 
