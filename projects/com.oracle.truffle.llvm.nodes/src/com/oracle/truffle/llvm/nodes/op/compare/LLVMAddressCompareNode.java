@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.op.compare;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
@@ -191,7 +192,7 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
             if (ForeignAccess.sendIsNull(isNull, address.getObject())) {
                 return LLVMAddress.fromLong(address.getOffset());
             } else {
-                return LLVMAddress.fromLong(address.getObject().hashCode() + address.getOffset());
+                return LLVMAddress.fromLong(getHashCode(address.getObject()) + address.getOffset());
             }
         }
 
@@ -200,8 +201,13 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
             if (ForeignAccess.sendIsNull(isNull, address)) {
                 return LLVMAddress.nullPointer();
             } else {
-                return LLVMAddress.fromLong(address.hashCode());
+                return LLVMAddress.fromLong(getHashCode(address));
             }
+        }
+
+        @TruffleBoundary
+        private static int getHashCode(TruffleObject address) {
+            return address.hashCode();
         }
 
         @Specialization
