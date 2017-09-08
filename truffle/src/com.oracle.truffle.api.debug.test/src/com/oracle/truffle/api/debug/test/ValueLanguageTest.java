@@ -32,6 +32,7 @@ import static org.junit.Assert.assertNull;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.Test;
 
@@ -51,7 +52,10 @@ import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -316,7 +320,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
                     if ("null".equals(valueStr)) {
                         value = JavaInterop.asTruffleObject(null);
                     } else {
-                        value = JavaInterop.asTruffleObject(new ValueObject(id, sourceSection));
+                        value = new PropertiesMapObject(id, sourceSection);
                     }
             }
             return value;
@@ -329,14 +333,11 @@ public class ValueLanguageTest extends AbstractDebugTest {
 
         @Override
         protected boolean isObjectOfLanguage(Object object) {
-            if (!(object instanceof TruffleObject)) {
+            if (!(object instanceof PropertiesMapObject)) {
                 return false;
             }
-            ValueObject vo = JavaInterop.asJavaObject(ValueObject.class, (TruffleObject) object);
-            if (vo == null) {
-                return false;
-            }
-            return id.equals(vo.getLanguageId());
+            PropertiesMapObject pmo = (PropertiesMapObject) object;
+            return id.equals(pmo.getLanguageId());
         }
 
         @Override
@@ -350,11 +351,39 @@ public class ValueLanguageTest extends AbstractDebugTest {
             if (ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), (TruffleObject) value)) {
                 return "null";
             }
-            ValueObject vo = JavaInterop.asJavaObject(ValueObject.class, (TruffleObject) value);
-            if (id.equals(vo.getLanguageId())) {
-                return vo.toString();
+            PropertiesMapObject pmo = (PropertiesMapObject) value;
+            if (id.equals(pmo.getLanguageId())) {
+                return toString(pmo);
             } else {
                 return "Object";
+            }
+        }
+
+        private static String toString(PropertiesMapObject pmo) {
+            Iterator<Map.Entry<String, Object>> i = pmo.map.entrySet().iterator();
+            if (!i.hasNext()) {
+                return "{}";
+            }
+            StringBuilder sb = new StringBuilder();
+            sb.append('{');
+            for (;;) {
+                Map.Entry<String, Object> e = i.next();
+                String key = e.getKey();
+                Object value = e.getValue();
+                if (value instanceof PropertiesMapObject) {
+                    if (value == pmo) {
+                        value = "(this Map)";
+                    } else {
+                        value = toString((PropertiesMapObject) value);
+                    }
+                }
+                sb.append(key);
+                sb.append('=');
+                sb.append(value);
+                if (!i.hasNext()) {
+                    return sb.append('}').toString();
+                }
+                sb.append(',').append(' ');
             }
         }
 
@@ -369,8 +398,8 @@ public class ValueLanguageTest extends AbstractDebugTest {
             if (ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), (TruffleObject) value)) {
                 return "Null";
             }
-            ValueObject vo = JavaInterop.asJavaObject(ValueObject.class, (TruffleObject) value);
-            if (id.equals(vo.getLanguageId())) {
+            PropertiesMapObject pmo = (PropertiesMapObject) value;
+            if (id.equals(pmo.getLanguageId())) {
                 return "Map";
             } else {
                 return "Object";
@@ -382,9 +411,9 @@ public class ValueLanguageTest extends AbstractDebugTest {
             if (!(value instanceof TruffleObject)) {
                 return null;
             }
-            ValueObject vo = JavaInterop.asJavaObject(ValueObject.class, (TruffleObject) value);
-            if (id.equals(vo.getLanguageId())) {
-                return vo.getSourceSection();
+            PropertiesMapObject pmo = (PropertiesMapObject) value;
+            if (id.equals(pmo.getLanguageId())) {
+                return pmo.getSourceSection();
             } else {
                 return null;
             }
@@ -510,20 +539,19 @@ public class ValueLanguageTest extends AbstractDebugTest {
                         throw new IllegalStateException("Unknown var " + var);
                     }
                 }
-                ValueObject vo = JavaInterop.asJavaObject(ValueObject.class, (TruffleObject) varObj);
-                vo.put(prop, value);
+                PropertiesMapObject props = (PropertiesMapObject) varObj;
+                props.map.put(prop, value);
                 return value;
             }
         }
 
-        public static class ValueObject extends LinkedHashMap<String, Object> {
+        static final class PropertiesMapObject implements TruffleObject {
 
-            private static final long serialVersionUID = 1L;
-
+            private final Map<String, Object> map = new LinkedHashMap<>();
             private final String languageId;
             private final SourceSection sourceSection;
 
-            ValueObject(String languageId, SourceSection sourceSection) {
+            private PropertiesMapObject(String languageId, SourceSection sourceSection) {
                 this.languageId = languageId;
                 this.sourceSection = sourceSection;
             }
@@ -537,30 +565,107 @@ public class ValueLanguageTest extends AbstractDebugTest {
             }
 
             @Override
-            public String toString() {
-                Iterator<Map.Entry<String, Object>> i = entrySet().iterator();
-                if (!i.hasNext()) {
-                    return "{}";
+            public ForeignAccess getForeignAccess() {
+                return PropertiesMapMessageResolutionForeign.ACCESS;
+            }
+
+            public static boolean isInstance(TruffleObject obj) {
+                return obj instanceof PropertiesMapObject;
+            }
+
+            @MessageResolution(receiverType = PropertiesMapObject.class)
+            static class PropertiesMapMessageResolution {
+
+                @Resolve(message = "KEYS")
+                abstract static class PropsMapKeysNode extends Node {
+
+                    @CompilerDirectives.TruffleBoundary
+                    public Object access(PropertiesMapObject varMap) {
+                        return new PropertyNamesObject(varMap.map.keySet());
+                    }
                 }
-                StringBuilder sb = new StringBuilder();
-                sb.append('{');
-                for (;;) {
-                    Map.Entry<String, Object> e = i.next();
-                    String key = e.getKey();
-                    Object value = e.getValue();
-                    if (value instanceof TruffleObject) {
-                        if (JavaInterop.isJavaObject((TruffleObject) value)) {
-                            value = JavaInterop.asJavaObject(ValueObject.class, (TruffleObject) value);
+
+                @Resolve(message = "READ")
+                abstract static class PropsMapReadNode extends Node {
+
+                    @CompilerDirectives.TruffleBoundary
+                    public Object access(PropertiesMapObject varMap, String name) {
+                        Object object = varMap.map.get(name);
+                        if (object == null) {
+                            throw UnknownIdentifierException.raise(name);
+                        } else {
+                            return object;
                         }
                     }
-                    sb.append(key);
-                    sb.append('=');
-                    sb.append(value == this ? "(this Map)" : value);
-                    if (!i.hasNext()) {
-                        return sb.append('}').toString();
-                    }
-                    sb.append(',').append(' ');
                 }
+
+                @Resolve(message = "WRITE")
+                abstract static class PropsMapWriteNode extends Node {
+
+                    @CompilerDirectives.TruffleBoundary
+                    public Object access(PropertiesMapObject varMap, String name, Object value) {
+                        varMap.map.put(name, value);
+                        return value;
+                    }
+                }
+
+            }
+        }
+
+        static final class PropertyNamesObject implements TruffleObject {
+
+            private final Set<String> names;
+
+            private PropertyNamesObject(Set<String> names) {
+                this.names = names;
+            }
+
+            @Override
+            public ForeignAccess getForeignAccess() {
+                return PropertyNamesMessageResolutionForeign.ACCESS;
+            }
+
+            public static boolean isInstance(TruffleObject obj) {
+                return obj instanceof PropertyNamesObject;
+            }
+
+            @MessageResolution(receiverType = PropertyNamesObject.class)
+            static final class PropertyNamesMessageResolution {
+
+                @Resolve(message = "HAS_SIZE")
+                abstract static class PropNamesHasSizeNode extends Node {
+
+                    @SuppressWarnings("unused")
+                    public Object access(PropertyNamesObject varNames) {
+                        return true;
+                    }
+                }
+
+                @Resolve(message = "GET_SIZE")
+                abstract static class PropNamesGetSizeNode extends Node {
+
+                    public Object access(PropertyNamesObject varNames) {
+                        return varNames.names.size();
+                    }
+                }
+
+                @Resolve(message = "READ")
+                abstract static class PropNamesReadNode extends Node {
+
+                    @CompilerDirectives.TruffleBoundary
+                    public Object access(PropertyNamesObject varNames, int index) {
+                        if (index >= varNames.names.size()) {
+                            throw UnknownIdentifierException.raise(Integer.toString(index));
+                        }
+                        Iterator<String> iterator = varNames.names.iterator();
+                        int i = index;
+                        while (i-- > 0) {
+                            iterator.next();
+                        }
+                        return iterator.next();
+                    }
+                }
+
             }
         }
 
