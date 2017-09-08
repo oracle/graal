@@ -26,6 +26,7 @@ package com.oracle.truffle.nfi;
 
 import java.lang.ref.PhantomReference;
 import java.lang.ref.ReferenceQueue;
+import java.util.concurrent.atomic.AtomicReference;
 
 final class NativeAllocation extends PhantomReference<Object> {
 
@@ -73,24 +74,35 @@ final class NativeAllocation extends PhantomReference<Object> {
         this.destructor = destructor;
     }
 
-    static {
-        Thread gc = new Thread(new Runnable() {
+    private static final AtomicReference<Thread> gcThread = new AtomicReference<>(null);
 
-            @Override
-            public void run() {
-                for (;;) {
-                    try {
-                        NativeAllocation alloc = (NativeAllocation) queue.remove();
-                        remove(alloc);
-                        alloc.destructor.destroy();
-                    } catch (InterruptedException ex) {
-                        // ignore
+    static void ensureGCThreadRunning() {
+        Thread thread = gcThread.get();
+        if (thread == null) {
+            thread = new Thread(new Runnable() {
+
+                @Override
+                public void run() {
+                    for (;;) {
+                        try {
+                            NativeAllocation alloc = (NativeAllocation) queue.remove();
+                            remove(alloc);
+                            alloc.destructor.destroy();
+                        } catch (InterruptedException ex) {
+                            // ignore
+                        }
                     }
                 }
+            }, "nfi-gc");
+            if (gcThread.compareAndSet(null, thread)) {
+                thread.setDaemon(true);
+                thread.start();
+            } else {
+                Thread other = gcThread.get();
+                // nothing to do, another thread already started the GC thread
+                assert other != null && other != thread;
             }
-        }, "nfi-gc");
-        gc.setDaemon(true);
-        gc.start();
+        }
     }
 
     private static synchronized void add(NativeAllocation allocation) {
