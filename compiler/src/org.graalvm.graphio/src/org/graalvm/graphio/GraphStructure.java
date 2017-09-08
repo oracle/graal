@@ -98,7 +98,13 @@ public interface GraphStructure<G, N, C, P> {
     /**
      * Finds the node class for the provided object, if possible. If the given object
      * <code>obj</code> can be seen as an instance of node class or it is a node in this graph,
-     * return the properly typed instance of the node class. Otherwise return <code>null</code>
+     * return the properly typed instance of the node class. Otherwise return <code>null</code>.
+     * <p>
+     * Since {@link GraphOutput.Builder#protocolVersion(int, int) protocol version} <code>5.0</code>
+     * it is expected that the returned value of <em>node class</em> is
+     * {@link Object#equals(java.lang.Object) equal} to <code>obj</code>. The protocol uses that to
+     * distinguish between <code>obj</code> being node class (return value is equal) and node
+     * (return value is its node class, e.g. different to <code>obj</code>).
      *
      * @param obj an object to find node class for
      * @return appropriate graph object or <code>null</code> if the object doesn't represent a graph

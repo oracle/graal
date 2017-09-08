@@ -32,6 +32,8 @@ import java.util.Map;
 import org.graalvm.graphio.GraphOutput;
 import org.graalvm.graphio.GraphStructure;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
@@ -69,6 +71,29 @@ public final class NodeEncodingTest {
         assertByte(false, 33, out.toByteArray());
         assertEquals("Node class of the node has been requested", 1, node.nodeClassRequested);
         assertEquals("Node class template name stored", 1, clazz.nameTemplateQueried);
+        assertFalse("No to string ops", node.toStringRequested);
+    }
+
+    @Test
+    public void dumpingNodeInVersion10() throws Exception {
+        runTheNodeIsTreatedAsString(true);
+    }
+
+    private void runTheNodeIsTreatedAsString(boolean explicitVersion) throws Exception {
+        WritableByteChannel w = Channels.newChannel(out);
+        MockGraph graph = new MockGraph();
+        MockNodeClass clazz = new MockNodeClass("clazz");
+        MockNode node = new MockNode(clazz, 33); // random value otherwise not found in the stream
+        try (GraphOutput<MockGraph, ?> dump = explicitVersion ? GraphOutput.newBuilder(new MockStructure()).protocolVersion(1, 0).build(w) : GraphOutput.newBuilder(new MockStructure()).build(w)) {
+            dump.beginGroup(graph, "test1", "t1", null, 0, Collections.singletonMap("node", node));
+            dump.endGroup();
+        }
+
+        assertEquals("Nobody asks for id of a node in version 1.0", 0, node.idTested);
+        assertByte(false, 33, out.toByteArray());
+        assertEquals("Node class was needed to find out it is not NodeClass instance", 1, node.nodeClassRequested);
+        assertEquals("Node class template name wasn't needed however", 0, clazz.nameTemplateQueried);
+        assertTrue("Node sent as a string version 1.0", node.toStringRequested);
     }
 
     private static void assertByte(boolean shouldBeFound, int value, byte[] arr) {
@@ -186,20 +211,27 @@ public final class NodeEncodingTest {
     }
 
     private static final class MockNode {
-        private final MockNodeClass clazz;
-        private final int id;
-        private int idTested;
-        private int nodeClassRequested;
+        final MockNodeClass clazz;
+        final int id;
+        int idTested;
+        int nodeClassRequested;
+        boolean toStringRequested;
 
         MockNode(MockNodeClass clazz, int id) {
             this.clazz = clazz;
             this.id = id;
         }
+
+        @Override
+        public String toString() {
+            this.toStringRequested = true;
+            return "MockNode{" + "id=" + id + ", class=" + clazz + '}';
+        }
     }
 
     private static final class MockNodeClass {
-        private final String name;
-        private int nameTemplateQueried;
+        final String name;
+        int nameTemplateQueried;
 
         MockNodeClass(String name) {
             this.name = name;
