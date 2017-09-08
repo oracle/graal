@@ -5,6 +5,10 @@
 package org.graalvm.compiler.core.test;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.ReturnNode;
+import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.junit.Test;
 
 import java.util.HashMap;
@@ -25,6 +29,12 @@ public class HashMapGetTest extends GraalCompilerTest {
             mapGet(map, i);
         }
         test(get, null, map, new Integer(0));
+        for (IfNode ifNode : lastCompiledGraph.getNodes(IfNode.TYPE)) {
+            LogicNode condition = ifNode.condition();
+            if (ifNode.getTrueSuccessorProbability() < 0.4 && condition instanceof ObjectEqualsNode) {
+                assertTrue(ifNode.trueSuccessor().next() instanceof ReturnNode, "Expected return.", ifNode.trueSuccessor(), ifNode.trueSuccessor().next());
+            }
+        }
     }
 
 }
