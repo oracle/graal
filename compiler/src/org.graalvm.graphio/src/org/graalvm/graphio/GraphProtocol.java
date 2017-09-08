@@ -52,6 +52,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
     private static final int POOL_FIELD = 0x07;
     private static final int POOL_SIGNATURE = 0x08;
     private static final int POOL_NODE_SOURCE_POSITION = 0x09;
+    private static final int POOL_NODE = 0x0a;
 
     private static final int PROPERTY_POOL = 0x00;
     private static final int PROPERTY_INT = 0x01;
@@ -75,10 +76,10 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
     final int versionMinor;
 
     GraphProtocol(WritableByteChannel channel, int major, int minor) throws IOException {
-        if (major > 4) {
+        if (major > 5) {
             throw new IllegalArgumentException();
         }
-        if (major == 4 && minor > 0) {
+        if (major == 5 && minor > 0) {
             throw new IllegalArgumentException();
         }
         this.versionMajor = major;
@@ -132,6 +133,15 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
     protected abstract Graph findGraph(Graph current, Object obj);
 
     protected abstract ResolvedJavaMethod findMethod(Object obj);
+
+    /**
+     * Attempts to recognize provided object as node. Used to encode it with {@link #POOL_NODE} pool
+     * type.
+     * 
+     * @param obj any object
+     * @return <code>null</code> if it is not a node object, non-null otherwise
+     */
+    protected abstract Node findNode(Object obj);
 
     /**
      * Finds whether the provided object is node class or not.
@@ -371,6 +381,8 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             } else {
                 if (findNodeClass(object) != null) {
                     writeByte(POOL_NODE_CLASS);
+                } else if (versionMajor >= 5 && findNode(object) != null) {
+                    writeByte(POOL_NODE);
                 } else if (findMethod(object) != null) {
                     writeByte(POOL_METHOD);
                 } else {
@@ -563,6 +575,13 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
                 }
                 writeEdgesInfo(nodeClass, true);
                 writeEdgesInfo(nodeClass, false);
+                return;
+            }
+            Node node = versionMajor >= 5 ? findNode(object) : null;
+            if (node != null) {
+                writeByte(POOL_NODE);
+                writeInt(findNodeId(node));
+                writePoolObject(getNodeClass(node));
                 return;
             }
             ResolvedJavaMethod method = findMethod(object);

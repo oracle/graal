@@ -96,6 +96,28 @@ public final class NodeEncodingTest {
         assertTrue("Node sent as a string version 1.0", node.toStringRequested);
     }
 
+    @Test
+    public void dumpingNodeInVersion15() throws Exception {
+        runTheNodeIsTreatedPoolEntry(true);
+    }
+
+    private void runTheNodeIsTreatedPoolEntry(boolean explicitVersion) throws Exception {
+        WritableByteChannel w = Channels.newChannel(out);
+        MockGraph graph = new MockGraph();
+        MockNodeClass clazz = new MockNodeClass("clazz");
+        MockNode node = new MockNode(clazz, 33); // random value otherwise not found in the stream
+        try (GraphOutput<MockGraph, ?> dump = explicitVersion ? GraphOutput.newBuilder(new MockStructure()).protocolVersion(5, 0).build(w) : GraphOutput.newBuilder(new MockStructure()).build(w)) {
+            dump.beginGroup(graph, "test1", "t1", null, 0, Collections.singletonMap("node", node));
+            dump.endGroup();
+        }
+
+        assertEquals("Id of our node is requested in version 5.0", 1, node.idTested);
+        assertByte(true, 33, out.toByteArray());
+        assertTrue("Node class was needed at least once", 1 <= node.nodeClassRequested);
+        assertEquals("Node class template name sent to server", 1, clazz.nameTemplateQueried);
+        assertFalse("Node.toString() isn't needed", node.toStringRequested);
+    }
+
     private static void assertByte(boolean shouldBeFound, int value, byte[] arr) {
         boolean found = false;
         for (int i = 0; i < arr.length; i++) {

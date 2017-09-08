@@ -49,6 +49,22 @@ final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod
     }
 
     @Override
+    protected Node findNode(Object obj) {
+        assert versionMajor >= 5 : "Shouldn't be used in older versions";
+        NodeClass res = structure.nodeClass(obj);
+        if (res == null) {
+            return null;
+        }
+        if (res.equals(obj)) {
+            // it is a node class
+            return null;
+        }
+        @SuppressWarnings("unchecked")
+        Node unchecked = (Node) obj;
+        return unchecked;
+    }
+
+    @Override
     protected NodeClass findNodeClass(Object obj) {
         NodeClass res = structure.nodeClass(obj);
         if (res == null) {
