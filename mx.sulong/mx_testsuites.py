@@ -166,9 +166,9 @@ def compileShootoutSuite():
     ensureShootoutsExist()
     excludes = mx_tools.collectExcludePattern(os.path.join(_benchmarksgameSuiteDir, "configs/"))
     print("Compiling Shootout Suite reference executables ", end='')
-    mx_tools.printProgress(mx_tools.multicompileRefFolder(_benchmarksgameSuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude', '-lm'], excludes=excludes))
+    mx_tools.printProgress(mx_tools.multicompileRefFolder(_benchmarksgameSuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude', '-lm', '-lgmp'], excludes=excludes))
     print("Compiling Shootout Suite with -O1 ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_benchmarksgameSuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude', '-lm'], [mx_tools.Optimization.O1], mx_tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
+    mx_tools.printProgress(mx_tools.multicompileFolder(_benchmarksgameSuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude', '-lm', '-lgmp'], [mx_tools.Optimization.O1], mx_tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
 
 def compileNWCCSuite():
     ensureNWCCSuiteExists()
