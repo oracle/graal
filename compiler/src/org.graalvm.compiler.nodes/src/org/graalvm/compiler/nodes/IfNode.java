@@ -288,6 +288,27 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
     }
 
+    /**
+     * Attempts to replace the following pattern:
+     *
+     * <code>
+     * Integer x = ...;
+     * Integer y = ...;
+     * if ((x == y) || x.equals(y)) { ... }
+     * </code>
+     *
+     * with:
+     *
+     * <code>
+     * Integer x = ...;
+     * Integer y = ...;
+     * if (x.equals(y)) { ... }
+     * </code>
+     *
+     * whenever the probability that the reference check will pass is relatively small.
+     *
+     * See GR-1315 for more information.
+     */
     private boolean tryEliminateBoxedReferenceEquals(SimplifierTool tool) {
         if (!(condition instanceof ObjectEqualsNode)) {
             return false;
