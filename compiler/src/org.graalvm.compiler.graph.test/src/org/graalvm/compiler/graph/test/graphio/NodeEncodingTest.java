@@ -57,17 +57,18 @@ public final class NodeEncodingTest {
 
     private void runTheNodeIsntDumpedWithItsID(boolean explicitVersion) throws Exception {
         WritableByteChannel w = Channels.newChannel(out);
-        MockNode node;
+        MockGraph graph = new MockGraph();
+        MockNodeClass clazz = new MockNodeClass("clazz");
+        MockNode node = new MockNode(clazz, 33); // random value otherwise not found in the stream
         try (GraphOutput<MockGraph, ?> dump = explicitVersion ? GraphOutput.newBuilder(new MockStructure()).protocolVersion(4, 0).build(w) : GraphOutput.newBuilder(new MockStructure()).build(w)) {
-            MockGraph graph = new MockGraph();
-            MockNodeClass clazz = new MockNodeClass("clazz");
-            node = new MockNode(clazz, 33); // random value otherwise not found in the stream
             dump.beginGroup(graph, "test1", "t1", null, 0, Collections.singletonMap("node", node));
             dump.endGroup();
         }
 
         assertEquals("Nobody asks for id of a node in version 4.0", 0, node.idTested);
         assertByte(false, 33, out.toByteArray());
+        assertEquals("Node class of the node has been requested", 1, node.nodeClassRequested);
+        assertEquals("Node class template name stored", 1, clazz.nameTemplateQueried);
     }
 
     private static void assertByte(boolean shouldBeFound, int value, byte[] arr) {
@@ -126,13 +127,16 @@ public final class NodeEncodingTest {
                 return (MockNodeClass) obj;
             }
             if (obj instanceof MockNode) {
-                return ((MockNode) obj).clazz;
+                MockNode n = (MockNode) obj;
+                n.nodeClassRequested++;
+                return n.clazz;
             }
             return null;
         }
 
         @Override
         public String nameTemplate(MockNodeClass nodeClass) {
+            nodeClass.nameTemplateQueried++;
             return "";
         }
 
@@ -185,6 +189,7 @@ public final class NodeEncodingTest {
         private final MockNodeClass clazz;
         private final int id;
         private int idTested;
+        private int nodeClassRequested;
 
         MockNode(MockNodeClass clazz, int id) {
             this.clazz = clazz;
@@ -194,6 +199,7 @@ public final class NodeEncodingTest {
 
     private static final class MockNodeClass {
         private final String name;
+        private int nameTemplateQueried;
 
         MockNodeClass(String name) {
             this.name = name;
