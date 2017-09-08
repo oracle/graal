@@ -240,6 +240,7 @@ public final class LLVMContext {
         }
     }
 
+    @TruffleBoundary
     private Path findLibrary(String lib) {
         Path libPath = Paths.get(lib);
         if (libPath.isAbsolute()) {
@@ -420,6 +421,7 @@ public final class LLVMContext {
         return destructorStack;
     }
 
+    @TruffleBoundary
     public void addLibraryToNativeLookup(String library) {
         nativeLookup.addLibrary(findLibrary(library));
     }
