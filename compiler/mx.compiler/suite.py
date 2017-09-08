@@ -464,6 +464,7 @@ suite = {
         "mx:JUNIT",
         "org.graalvm.compiler.api.test",
         "org.graalvm.compiler.graph",
+        "org.graalvm.graphio",
       ],
       "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
       "javaCompliance" : "1.8",

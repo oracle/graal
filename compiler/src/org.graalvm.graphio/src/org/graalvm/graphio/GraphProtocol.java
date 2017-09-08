@@ -74,11 +74,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
     private final int versionMajor;
     private final int versionMinor;
 
-    protected GraphProtocol(WritableByteChannel channel) throws IOException {
-        this(channel, 4, 0);
-    }
-
-    private GraphProtocol(WritableByteChannel channel, int major, int minor) throws IOException {
+    GraphProtocol(WritableByteChannel channel, int major, int minor) throws IOException {
         if (major > 4) {
             throw new IllegalArgumentException();
         }
