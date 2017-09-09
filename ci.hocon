@@ -68,7 +68,7 @@ darwin-llvm : {
     }
 }
 
-gateTest38-darwin: ${gateCommon} ${darwin-amd64} ${darwin-llvm} {
+gateTest40-darwin: ${gateCommon} ${darwin-amd64} ${darwin-llvm} {
 }
 
 requireGCC: {
@@ -131,7 +131,7 @@ builds = [
   ${gateTest38-linux} ${requireGCC} { name: gate-travis1, run: [[mx, travis1]] }
   ${gateTest38-linux} ${requireGCC} { name: gate-travis2, run: [[mx, travis2]] }
   ${gateTest38-linux} ${requireGCC} ${sulongSuite} { name: gate-sulong-v38-linux }
-  ${gateTest38-darwin} ${sulongSuite} { name: gate-sulong-v38-darwin }
+  ${gateTest40-darwin} ${sulongSuite} { name: gate-sulong-v40-darwin }
   ${gateTest38-linux} { name: gate-gcc-v38, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, gcc38]] }
   ${gateTest38-linux} { name: gate-var-v38, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, assembly], [mx, test, args], [mx, test, callback], [mx, test, vaargs]] }
   ${gateTest38-linux} ${ruby-downstream-test} { name: gate-ruby-downstream }
