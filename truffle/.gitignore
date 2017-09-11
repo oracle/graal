@@ -13,6 +13,7 @@ mx.truffle/eclipse-launches/**
 /src/*/\bin
 /src/*/\.checkstyle
 /src/*/\.factorypath
+/src/*/javadoc/
 /src/TRUFFLE*dist/\.externalToolBuilders
 hs_err_pid*.log
 workingsets.xml

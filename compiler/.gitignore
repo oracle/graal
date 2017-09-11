@@ -42,6 +42,7 @@ ecj.jar
 /src/*/*.iml
 /src/*/.factorypath
 /src/*.dist/
+/src/*/javadoc/
 /scratch/
 /test-output/
 .DS_Store
