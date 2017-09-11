@@ -27,60 +27,22 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-import java.math.BigInteger;
+final class LLVMDebugValueLoadNode extends LLVMExpressionNode {
 
-public interface LLVMDebugValueProvider {
+    private final Object value;
 
-    Object UNAVAILABLE_VALUE = "<unavailable>";
-
-    @TruffleBoundary
-    static String toHexString(BigInteger value) {
-        final byte[] bytes = value.toByteArray();
-        final StringBuilder builder = new StringBuilder(bytes.length * 2 + 2);
-        builder.append("0x");
-        for (byte b : bytes) {
-            builder.append(String.format("%02x", b));
-        }
-        return builder.toString();
+    LLVMDebugValueLoadNode(Object value) {
+        this.value = value;
     }
 
-    Object describeValue(long bitOffset, int bitSize);
-
-    @TruffleBoundary
-    default Object cannotInterpret(String intendedType, long bitOffset, int bitSize) {
-        return String.format("<cannot interpret as %s: %s>", intendedType, describeValue(bitOffset, bitSize));
+    @Override
+    public Object executeGeneric(VirtualFrame frame) {
+        // TODO is there already a node like this
+        return value;
     }
-
-    @TruffleBoundary
-    default Object unavailable(long bitOffset, int bitSize) {
-        return String.format("<unavailable: %s>", describeValue(bitOffset, bitSize));
-    }
-
-    boolean canRead(long bitOffset, int bits);
-
-    Object readBoolean(long bitOffset);
-
-    Object readFloat(long bitOffset);
-
-    Object readDouble(long bitOffset);
-
-    Object read80BitFloat(long bitOffset);
-
-    Object readAddress(long bitOffset);
-
-    Object readUnknown(long bitOffset, int bitSize);
-
-    Object computeAddress(long bitOffset);
-
-    Object readBigInteger(long bitOffset, int bitSize, boolean signed);
-
-    LLVMDebugValueProvider dereferencePointer(long bitOffset);
-
-    boolean isInteropValue();
-
-    Object asInteropValue();
 }

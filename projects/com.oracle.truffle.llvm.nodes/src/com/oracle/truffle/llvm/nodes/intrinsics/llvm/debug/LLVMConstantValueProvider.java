@@ -29,64 +29,56 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 
 import java.math.BigInteger;
-import java.util.Objects;
 
 abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
 
     @Override
-    public boolean readBoolean(long bitOffset) {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("Cannot read value at offset " + bitOffset + "bits from " + getBaseValue());
+    public Object readBoolean(long bitOffset) {
+        return cannotInterpret(LLVMDebugTypeConstants.BOOLEAN_NAME, bitOffset, LLVMDebugTypeConstants.BOOLEAN_SIZE);
     }
 
     @Override
     public Object readFloat(long bitOffset) {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("Cannot read value at offset " + bitOffset + "bits from " + getBaseValue());
+        return cannotInterpret(LLVMDebugTypeConstants.FLOAT_NAME, bitOffset, LLVMDebugTypeConstants.FLOAT_SIZE);
     }
 
     @Override
     public Object readDouble(long bitOffset) {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("Cannot read value at offset " + bitOffset + "bits from " + getBaseValue());
+        return cannotInterpret(LLVMDebugTypeConstants.DOUBLE_NAME, bitOffset, LLVMDebugTypeConstants.DOUBLE_SIZE);
     }
 
     @Override
     public Object read80BitFloat(long bitOffset) {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("Cannot read value at offset " + bitOffset + "bits from " + getBaseValue());
+        return cannotInterpret(LLVMDebugTypeConstants.LLVM80BIT_NAME, bitOffset, LLVMDebugTypeConstants.LLVM80BIT_SIZE_ACTUAL);
     }
 
     @Override
     public Object readAddress(long bitOffset) {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("Cannot read value at offset " + bitOffset + "bits from " + getBaseValue());
+        return cannotInterpret(LLVMDebugTypeConstants.ADDRESS_NAME, bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE);
     }
 
     @Override
     public Object readUnknown(long bitOffset, int bitSize) {
-        return getBaseValue();
+        return describeValue(bitOffset, bitSize);
     }
 
     @Override
     public Object computeAddress(long bitOffset) {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("Cannot read value at offset " + bitOffset + "bits from " + getBaseValue());
+        return UNAVAILABLE_VALUE;
     }
 
     @Override
-    public BigInteger readInteger(long bitOffset, int bitSize, boolean signed) {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("Cannot read value at offset " + bitOffset + "bits from " + getBaseValue());
+    public Object readBigInteger(long bitOffset, int bitSize, boolean signed) {
+        return cannotInterpret(LLVMDebugTypeConstants.getIntegerKind(bitSize, signed), bitOffset, bitSize);
     }
 
     @Override
@@ -108,8 +100,12 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
 
     @Override
     @TruffleBoundary
-    public String toString() {
-        return Objects.toString(getBaseValue());
+    public String describeValue(long bitOffset, int bitSize) {
+        if (bitOffset >= 0 && bitSize >= 0) {
+            return String.format("%d bits at offset %d in %s", bitSize, bitOffset, getBaseValue());
+        } else {
+            return String.valueOf(getBaseValue());
+        }
     }
 
     static final class Integer extends LLVMConstantValueProvider {
@@ -133,16 +129,15 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
         }
 
         @Override
-        public boolean readBoolean(long bitOffset) {
+        public Object readBoolean(long bitOffset) {
             return value != 0;
         }
 
         @Override
         @TruffleBoundary
-        public BigInteger readInteger(long bitOffset, int bitSize, boolean signed) {
+        public Object readBigInteger(long bitOffset, int bitSize, boolean signed) {
             if (!canRead(bitOffset, bitSize)) {
-                CompilerDirectives.transferToInterpreter();
-                throw new UnsupportedOperationException("Cannot read " + bitSize + " + bits at offset " + bitOffset + " from integer value " + value);
+                return describeValue(bitOffset, bitSize);
             }
 
             long result = value;
@@ -176,15 +171,14 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
         }
 
         @Override
-        public boolean readBoolean(long bitOffset) {
+        public Object readBoolean(long bitOffset) {
             return !value.isZero();
         }
 
         @Override
-        public BigInteger readInteger(long bitOffset, int bitSize, boolean signed) {
+        public Object readBigInteger(long bitOffset, int bitSize, boolean signed) {
             if (!canRead(bitOffset, bitSize)) {
-                CompilerDirectives.transferToInterpreter();
-                throw new UnsupportedOperationException("Cannot read " + bitSize + " + bits at offset " + bitOffset + " from integer value " + value);
+                return cannotInterpret(LLVMDebugTypeConstants.getIntegerKind(bitSize, signed), bitOffset, bitSize);
             }
 
             if (value.isZero()) {
@@ -227,29 +221,31 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
 
         @Override
         public boolean canRead(long bitOffset, int bits) {
-            return bitOffset == 0 && bits == LLVMAddress.WORD_LENGTH_BIT;
+            return bitOffset == 0 && bits == LLVMDebugTypeConstants.ADDRESS_SIZE;
         }
 
         @Override
-        public boolean readBoolean(long bitOffset) {
+        public Object readBoolean(long bitOffset) {
             return !address.equals(LLVMAddress.nullPointer());
         }
 
         @Override
         @TruffleBoundary
         public Object readAddress(long bitOffset) {
-            if (bitOffset != 0) {
-                return "Cannot read address from offset " + bitOffset + " in address value " + address;
+            if (canRead(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE)) {
+                return address;
+            } else {
+                return cannotInterpret(LLVMDebugTypeConstants.ADDRESS_NAME, bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE);
             }
-            return address;
         }
 
         @Override
         public LLVMDebugValueProvider dereferencePointer(long bitOffset) {
-            if (bitOffset != 0) {
+            if (canRead(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE)) {
+                return new LLVMAllocationValueProvider(address);
+            } else {
                 return null;
             }
-            return new LLVMAddressValueProvider(address);
         }
     }
 
@@ -268,12 +264,16 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
 
         @Override
         public boolean canRead(long bitOffset, int bits) {
-            return bitOffset == 0 && bits == java.lang.Float.SIZE;
+            return bitOffset == 0 && bits == LLVMDebugTypeConstants.FLOAT_SIZE;
         }
 
         @Override
         public Object readFloat(long bitOffset) {
-            return value;
+            if (canRead(bitOffset, LLVMDebugTypeConstants.FLOAT_SIZE)) {
+                return value;
+            } else {
+                return cannotInterpret(LLVMDebugTypeConstants.FLOAT_NAME, bitOffset, LLVMDebugTypeConstants.FLOAT_SIZE);
+            }
         }
     }
 
@@ -292,19 +292,23 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
 
         @Override
         public boolean canRead(long bitOffset, int bits) {
-            return bitOffset == 0 && bits == java.lang.Double.SIZE;
+            return bitOffset == 0 && bits == LLVMDebugTypeConstants.DOUBLE_SIZE;
         }
 
         @Override
         public Object readDouble(long bitOffset) {
-            return value;
+            if (canRead(bitOffset, LLVMDebugTypeConstants.DOUBLE_SIZE)) {
+                return value;
+            } else {
+                return cannotInterpret(LLVMDebugTypeConstants.DOUBLE_NAME, bitOffset, LLVMDebugTypeConstants.DOUBLE_SIZE);
+            }
         }
     }
 
     static final class LLVM80BitFloat extends LLVMConstantValueProvider {
 
         private static boolean isValidBitsize(int bits) {
-            return bits == 80 || bits == 128;
+            return bits == LLVMDebugTypeConstants.LLVM80BIT_SIZE_ACTUAL || bits == LLVMDebugTypeConstants.LLVM80BIT_SIZE_SUGGESTED;
         }
 
         private final com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat value;
@@ -327,7 +331,11 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
 
         @Override
         public Object read80BitFloat(long bitOffset) {
-            return value;
+            if (canRead(bitOffset, LLVMDebugTypeConstants.LLVM80BIT_SIZE_ACTUAL)) {
+                return value;
+            } else {
+                return cannotInterpret(LLVMDebugTypeConstants.LLVM80BIT_NAME, bitOffset, LLVMDebugTypeConstants.LLVM80BIT_SIZE_ACTUAL);
+            }
         }
     }
 
@@ -353,12 +361,16 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
         @Override
         public boolean canRead(long bitOffset, int bits) {
             // this may only be used for function pointers
-            return bitOffset == 0 && bits == LLVMAddress.WORD_LENGTH_BIT;
+            return bitOffset == 0 && bits == LLVMDebugTypeConstants.ADDRESS_SIZE;
         }
 
         @Override
         public Object readAddress(long bitOffset) {
-            return getBaseValue();
+            if (canRead(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE)) {
+                return getBaseValue();
+            } else {
+                return cannotInterpret(LLVMDebugTypeConstants.ADDRESS_NAME, bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE);
+            }
         }
     }
 
@@ -378,11 +390,12 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
         }
 
         @Override
+        @TruffleBoundary
         Object getBaseValue() {
-            if (offset == 0) {
-                return value;
+            if (offset > 0) {
+                return String.format("offset %d in %s", offset, value);
             } else {
-                return "Offset " + offset + " in " + value;
+                return value;
             }
         }
 

@@ -47,12 +47,17 @@ public final class LLVMDebugValueContainer extends LLVMDebugObject {
     };
     private static final LLVMDebugValueProvider valueProvider = new LLVMDebugValueProvider() {
         @Override
+        public Object describeValue(long bitOffset, int bitSize) {
+            return "Debug Value Container";
+        }
+
+        @Override
         public boolean canRead(long bitOffset, int bits) {
             return true;
         }
 
         @Override
-        public boolean readBoolean(long bitOffset) {
+        public Object readBoolean(long bitOffset) {
             return false;
         }
 
@@ -87,7 +92,7 @@ public final class LLVMDebugValueContainer extends LLVMDebugObject {
         }
 
         @Override
-        public BigInteger readInteger(long bitOffset, int bitSize, boolean signed) {
+        public BigInteger readBigInteger(long bitOffset, int bitSize, boolean signed) {
             return null;
         }
 

@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
@@ -75,7 +75,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         private final LLVMI1Vector value;
 
         I1(LLVMI1Vector value) {
-            super(1, value.getLength());
+            super(LLVMDebugTypeConstants.BOOLEAN_SIZE, value.getLength());
             this.value = value;
         }
 
@@ -85,8 +85,8 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
-        public boolean readBoolean(long bitOffset) {
-            if (canRead(bitOffset, 1)) {
+        public Object readBoolean(long bitOffset) {
+            if (canRead(bitOffset, LLVMDebugTypeConstants.BOOLEAN_SIZE)) {
                 return value.getValue(getIndex(bitOffset));
             } else {
                 return super.readBoolean(bitOffset);
@@ -99,7 +99,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         private final LLVMI8Vector value;
 
         I8(LLVMI8Vector value) {
-            super(Byte.SIZE, value.getLength());
+            super(LLVMDebugTypeConstants.BYTE_SIZE, value.getLength());
             this.value = value;
         }
 
@@ -109,9 +109,9 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
-        public BigInteger readInteger(long bitOffset, int bitSize, boolean signed) {
+        public Object readBigInteger(long bitOffset, int bitSize, boolean signed) {
             if (!canRead(bitOffset, bitSize)) {
-                return super.readInteger(bitOffset, bitSize, signed);
+                return super.readBigInteger(bitOffset, bitSize, signed);
 
             } else if (signed) {
                 return BigInteger.valueOf(value.getValue(getIndex(bitOffset)));
@@ -127,7 +127,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         private final LLVMI16Vector value;
 
         I16(LLVMI16Vector value) {
-            super(Short.SIZE, value.getLength());
+            super(LLVMDebugTypeConstants.SHORT_SIZE, value.getLength());
             this.value = value;
         }
 
@@ -137,9 +137,9 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
-        public BigInteger readInteger(long bitOffset, int bitSize, boolean signed) {
+        public Object readBigInteger(long bitOffset, int bitSize, boolean signed) {
             if (!canRead(bitOffset, bitSize)) {
-                return super.readInteger(bitOffset, bitSize, signed);
+                return super.readBigInteger(bitOffset, bitSize, signed);
 
             } else if (signed) {
                 return BigInteger.valueOf(value.getValue(getIndex(bitOffset)));
@@ -155,7 +155,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         private final LLVMI32Vector value;
 
         I32(LLVMI32Vector value) {
-            super(java.lang.Integer.SIZE, value.getLength());
+            super(LLVMDebugTypeConstants.INTEGER_SIZE, value.getLength());
             this.value = value;
         }
 
@@ -165,9 +165,9 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
-        public BigInteger readInteger(long bitOffset, int bitSize, boolean signed) {
+        public Object readBigInteger(long bitOffset, int bitSize, boolean signed) {
             if (!canRead(bitOffset, bitSize)) {
-                return super.readInteger(bitOffset, bitSize, signed);
+                return super.readBigInteger(bitOffset, bitSize, signed);
 
             } else if (signed) {
                 return BigInteger.valueOf(value.getValue(getIndex(bitOffset)));
@@ -183,7 +183,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         private final LLVMI64Vector value;
 
         I64(LLVMI64Vector value) {
-            super(Long.SIZE, value.getLength());
+            super(LLVMDebugTypeConstants.LONG_SIZE, value.getLength());
             this.value = value;
         }
 
@@ -193,9 +193,9 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
-        public BigInteger readInteger(long bitOffset, int bitSize, boolean signed) {
+        public Object readBigInteger(long bitOffset, int bitSize, boolean signed) {
             if (!canRead(bitOffset, bitSize)) {
-                return super.readInteger(bitOffset, bitSize, signed);
+                return super.readBigInteger(bitOffset, bitSize, signed);
 
             } else if (signed) {
                 return BigInteger.valueOf(value.getValue(getIndex(bitOffset)));
@@ -211,7 +211,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         private final LLVMFloatVector value;
 
         Float(LLVMFloatVector value) {
-            super(java.lang.Float.SIZE, value.getLength());
+            super(LLVMDebugTypeConstants.FLOAT_SIZE, value.getLength());
             this.value = value;
         }
 
@@ -235,7 +235,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         private final LLVMDoubleVector value;
 
         Double(LLVMDoubleVector value) {
-            super(java.lang.Double.SIZE, value.getLength());
+            super(LLVMDebugTypeConstants.DOUBLE_SIZE, value.getLength());
             this.value = value;
         }
 
@@ -259,7 +259,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         private final LLVMAddressVector value;
 
         Address(LLVMAddressVector value) {
-            super(LLVMAddress.WORD_LENGTH_BIT, value.getLength());
+            super(LLVMDebugTypeConstants.ADDRESS_SIZE, value.getLength());
             this.value = value;
         }
 

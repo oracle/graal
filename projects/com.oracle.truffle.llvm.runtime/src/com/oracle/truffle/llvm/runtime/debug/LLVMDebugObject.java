@@ -127,9 +127,6 @@ public abstract class LLVMDebugObject implements TruffleObject {
         } else if (value.isInteropValue()) {
             return INTEROP_VALUE;
 
-        } else if (!value.canRead(offset, (int) type.getSize())) {
-            return cannotRead();
-
         } else {
             return getValueSafe();
         }
@@ -148,11 +145,6 @@ public abstract class LLVMDebugObject implements TruffleObject {
         return Objects.toString(getValue());
     }
 
-    @TruffleBoundary
-    Object cannotRead() {
-        return String.format("Cannot read %d bits from offset %d in %s", type.getSize(), offset, value);
-    }
-
     @Override
     public ForeignAccess getForeignAccess() {
         return LLVMDebugObjectMessageResolutionForeign.ACCESS;
@@ -168,13 +160,20 @@ public abstract class LLVMDebugObject implements TruffleObject {
         protected Object getValueSafe() {
             final int size = (int) type.getSize();
 
-            final BigInteger id = value.readInteger(offset, size, false);
+            final Object idRead = value.readBigInteger(offset, size, false);
+            final BigInteger id;
+            if (idRead instanceof BigInteger) {
+                id = (BigInteger) idRead;
+            } else {
+                return value.describeValue(offset, size);
+            }
+
             if (size >= Long.SIZE) {
                 return LLVMDebugValueProvider.toHexString(id);
             }
 
             final Object enumVal = type.getElementName(id.longValue());
-            return enumVal != null ? enumVal : cannotRead();
+            return enumVal != null ? enumVal : LLVMDebugValueProvider.toHexString(id);
         }
 
         @Override
@@ -255,16 +254,28 @@ public abstract class LLVMDebugObject implements TruffleObject {
                         return readFloating();
 
                     case SIGNED:
-                        return value.readInteger(offset, size, true);
+                        return value.readBigInteger(offset, size, true);
 
-                    case SIGNED_CHAR:
-                        return (char) value.readInteger(offset, size, true).byteValue();
+                    case SIGNED_CHAR: {
+                        final Object intRead = value.readBigInteger(offset, size, true);
+                        if (intRead instanceof BigInteger) {
+                            return (char) ((BigInteger) intRead).byteValue();
+                        } else {
+                            return intRead;
+                        }
+                    }
 
                     case UNSIGNED:
-                        return value.readInteger(offset, size, false);
+                        return value.readBigInteger(offset, size, false);
 
-                    case UNSIGNED_CHAR:
-                        return (char) Byte.toUnsignedInt(value.readInteger(offset, size, false).byteValue());
+                    case UNSIGNED_CHAR: {
+                        final Object intRead = value.readBigInteger(offset, size, false);
+                        if (intRead instanceof BigInteger) {
+                            return (char) Byte.toUnsignedInt(((BigInteger) intRead).byteValue());
+                        } else {
+                            return intRead;
+                        }
+                    }
                 }
             }
 
@@ -336,7 +347,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
 
         private LLVMDebugObject dereference() {
             // the pointer may change at runtime, so we cannot just cache the dereferenced object
-            if (pointerType == null || !pointerType.isSafeToDereference() || !value.canRead(offset, (int) type.getSize())) {
+            if (pointerType == null || !pointerType.isSafeToDereference()) {
                 return null;
             }
 
@@ -350,13 +361,13 @@ public abstract class LLVMDebugObject implements TruffleObject {
 
     public static LLVMDebugObject instantiate(LLVMSourceType type, long baseOffset, LLVMDebugValueProvider value) {
         if (type.isAggregate()) {
-            long elementCount = type.getElementCount();
+            int elementCount = type.getElementCount();
             if (elementCount < 0) {
                 // happens for dynamically initialized arrays
                 elementCount = 0;
             }
-            final Object[] memberIdentifiers = new Object[type.getElementCount()];
-            for (int i = 0; i < type.getElementCount(); i++) {
+            final Object[] memberIdentifiers = new Object[elementCount];
+            for (int i = 0; i < elementCount; i++) {
                 memberIdentifiers[i] = type.getElementName(i);
             }
             return new Structured(value, baseOffset, type, memberIdentifiers);
