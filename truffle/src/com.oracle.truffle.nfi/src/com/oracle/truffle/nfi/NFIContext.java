@@ -91,6 +91,7 @@ class NFIContext {
 
     void initialize() {
         loadNFILib();
+        NativeAllocation.ensureGCThreadRunning();
         nativeContext = initializeNativeContext();
         nativeEnv = ThreadLocal.withInitial(new NativeEnvSupplier());
     }
