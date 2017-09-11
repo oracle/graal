@@ -147,6 +147,41 @@ final class GraphSnippets {
     }
     // END: org.graalvm.graphio.GraphSnippets#buildOutput
 
+    // BEGIN: org.graalvm.graphio.GraphSnippets#buildAll
+    static GraphOutput<AcmeGraph, ?> buildAll(WritableByteChannel channel)
+    throws IOException {
+        GraphBlocks<AcmeGraph, AcmeBlocks, AcmeNode> graphBlocks = acmeBlocks();
+        GraphElements<AcmeMethod, AcmeField,
+            AcmeSignature, AcmeCodePosition> graphElements = acmeElements();
+        GraphTypes graphTypes = acmeTypes();
+
+        return GraphOutput.newBuilder(acmeGraphStructure()).
+            protocolVersion(5, 0).
+            blocks(graphBlocks).
+            elements(graphElements).
+            types(graphTypes).
+            build(channel);
+    }
+    // END: org.graalvm.graphio.GraphSnippets#buildAll
+
+    private static GraphTypes acmeTypes() {
+        GraphTypes graphTypes = null;
+        // in real world don't return null
+        return graphTypes;
+    }
+
+    private static GraphElements<AcmeMethod, AcmeField, AcmeSignature, AcmeCodePosition> acmeElements() {
+        GraphElements<AcmeMethod, AcmeField, AcmeSignature, AcmeCodePosition> graphElements = null;
+        // in real world don't return null
+        return graphElements;
+    }
+
+    private static GraphBlocks<AcmeGraph, AcmeBlocks, AcmeNode> acmeBlocks() {
+        GraphBlocks<AcmeGraph, AcmeBlocks, AcmeNode> graphBlocks = null;
+        // in real world don't return null
+        return graphBlocks;
+    }
+
     private static class AcmeGraph {
         final AcmeNode root;
 
@@ -197,6 +232,21 @@ final class GraphSnippets {
         AcmeEdges() {
             this.targets = new LinkedHashSet<>();
         }
+    }
+
+    private static class AcmeBlocks {
+    }
+
+    private static class AcmeMethod {
+    }
+
+    private static class AcmeField {
+    }
+
+    private static class AcmeSignature {
+    }
+
+    private static class AcmeCodePosition {
     }
 
     // BEGIN: org.graalvm.graphio.GraphSnippets#dump
