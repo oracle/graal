@@ -150,7 +150,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
     protected abstract NodeClass findNodeClass(Object obj);
 
     /**
-     * Returns NodeClass for given Node {@link obj}. It is a failure to return <code>null</code>.
+     * Returns NodeClass for given Node {@code obj}. It is a failure to return <code>null</code>.
      * Returning <code>null</code> will result in an exception being thrown at runtime.
      * 
      * @param obj instance of node
