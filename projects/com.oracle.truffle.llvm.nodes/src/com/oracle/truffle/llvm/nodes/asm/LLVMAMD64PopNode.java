@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.nodes.asm;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
@@ -42,50 +42,39 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NeedsStack
 public abstract class LLVMAMD64PopNode extends LLVMExpressionNode {
-    @CompilationFinal private FrameSlot stackPointer;
-
     protected FrameSlot getStackPointerSlot() {
-        if (stackPointer == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            stackPointer = getRootNode().getFrameDescriptor().findFrameSlot(LLVMStack.FRAME_ID);
-        }
-        return stackPointer;
+        CompilerAsserts.neverPartOfCompilation();
+        return getRootNode().getFrameDescriptor().findFrameSlot(LLVMStack.FRAME_ID);
     }
 
     public abstract static class LLVMAMD64PopwNode extends LLVMAMD64PopNode {
-        @Override
         @Specialization
-        public short executeI16(VirtualFrame frame) {
-            FrameSlot slot = getStackPointerSlot();
+        public short executeI16(VirtualFrame frame, @Cached("getStackPointerSlot()") FrameSlot slot) {
             long sp = FrameUtil.getLongSafe(frame, slot);
             short value = LLVMMemory.getI16(sp);
-            sp += 2;
+            sp += LLVMExpressionNode.I16_SIZE_IN_BYTES;
             frame.setLong(slot, sp);
             return value;
         }
     }
 
     public abstract static class LLVMAMD64PoplNode extends LLVMAMD64PopNode {
-        @Override
         @Specialization
-        public int executeI32(VirtualFrame frame) {
-            FrameSlot slot = getStackPointerSlot();
+        public int executeI32(VirtualFrame frame, @Cached("getStackPointerSlot()") FrameSlot slot) {
             long sp = FrameUtil.getLongSafe(frame, slot);
             int value = LLVMMemory.getI32(sp);
-            sp += 4;
+            sp += LLVMExpressionNode.I32_SIZE_IN_BYTES;
             frame.setLong(slot, sp);
             return value;
         }
     }
 
     public abstract static class LLVMAMD64PopqNode extends LLVMAMD64PopNode {
-        @Override
         @Specialization
-        public long executeI64(VirtualFrame frame) {
-            FrameSlot slot = getStackPointerSlot();
+        public long executeI64(VirtualFrame frame, @Cached("getStackPointerSlot()") FrameSlot slot) {
             long sp = FrameUtil.getLongSafe(frame, slot);
             long value = LLVMMemory.getI64(sp);
-            sp += 8;
+            sp += LLVMExpressionNode.I64_SIZE_IN_BYTES;
             frame.setLong(slot, sp);
             return value;
         }

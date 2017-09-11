@@ -39,8 +39,8 @@ import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteTupelNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMAMD64DivNode extends LLVMExpressionNode {
-    public static final String DIV_BY_ZERO = "division by zero";
-    public static final String QUOTIENT_TOO_LARGE = "quotient too large";
+    private static final String DIV_BY_ZERO = "division by zero";
+    private static final String QUOTIENT_TOO_LARGE = "quotient too large";
 
     @NodeChildren({@NodeChild(value = "left", type = LLVMExpressionNode.class), @NodeChild(value = "right", type = LLVMExpressionNode.class)})
     public abstract static class LLVMAMD64DivbNode extends LLVMExpressionNode {
@@ -127,7 +127,10 @@ public abstract class LLVMAMD64DivNode extends LLVMExpressionNode {
                 throw new ArithmeticException(DIV_BY_ZERO);
             }
             LongDivision.Result result = LongDivision.divu128by64(high, left, right);
-            // TODO: error on quotient too large
+            if (result.isInvalid()) {
+                CompilerDirectives.transferToInterpreter();
+                throw new ArithmeticException(QUOTIENT_TOO_LARGE);
+            }
             long quotient = result.quotient;
             long remainder = result.remainder;
             out.execute(frame, quotient, remainder);

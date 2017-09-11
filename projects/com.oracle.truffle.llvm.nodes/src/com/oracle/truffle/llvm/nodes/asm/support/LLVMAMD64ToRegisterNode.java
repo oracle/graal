@@ -32,85 +32,68 @@ package com.oracle.truffle.llvm.nodes.asm.support;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMAMD64ToRegisterNode extends LLVMExpressionNode {
-    @NodeChildren({@NodeChild(value = "from", type = LLVMExpressionNode.class)})
+    @NodeChildren({@NodeChild(value = "reg", type = LLVMExpressionNode.class), @NodeChild(value = "from", type = LLVMExpressionNode.class)})
     public abstract static class LLVMI8ToR64 extends LLVMAMD64ToRegisterNode {
-        @Child private LLVMExpressionNode register;
         private final int shift;
         private final long mask;
 
-        public LLVMI8ToR64(int shift, LLVMExpressionNode register) {
+        public LLVMI8ToR64(int shift) {
             this.shift = shift;
             this.mask = ~((long) LLVMExpressionNode.I8_MASK << shift);
-            this.register = register;
         }
 
         @Specialization
-        public long executeI64(VirtualFrame frame, byte from) {
-            long reg = register.executeI64(frame);
+        public long executeI64(long reg, byte from) {
             return (reg & mask) | Byte.toUnsignedLong(from) << shift;
         }
 
         @Specialization
-        public long executeI64(VirtualFrame frame, short from) {
-            long reg = register.executeI64(frame);
+        public long executeI64(long reg, short from) {
             return (reg & mask) | (from & ~mask) << shift;
         }
 
         @Specialization
-        public long executeI64(VirtualFrame frame, int from) {
-            long reg = register.executeI64(frame);
+        public long executeI64(long reg, int from) {
             return (reg & mask) | (from & ~mask) << shift;
         }
 
         @Specialization
-        public long executeI64(VirtualFrame frame, long from) {
-            long reg = register.executeI64(frame);
+        public long executeI64(long reg, long from) {
             return (reg & mask) | (from & ~mask) << shift;
         }
     }
 
-    @NodeChildren({@NodeChild(value = "from", type = LLVMExpressionNode.class)})
+    @NodeChildren({@NodeChild(value = "reg", type = LLVMExpressionNode.class), @NodeChild(value = "from", type = LLVMExpressionNode.class)})
     public abstract static class LLVMI16ToR64 extends LLVMAMD64ToRegisterNode {
-        @Child private LLVMExpressionNode register;
-        private final long mask;
-
-        public LLVMI16ToR64(LLVMExpressionNode register) {
-            this.register = register;
-            this.mask = ~(long) LLVMExpressionNode.I16_MASK;
-        }
+        private final long mask = ~(long) LLVMExpressionNode.I16_MASK;
 
         @Specialization
-        public long executeI64(VirtualFrame frame, byte from) {
-            long reg = register.executeI64(frame);
+        public long executeI64(long reg, byte from) {
             return (reg & mask) | Byte.toUnsignedLong(from);
         }
 
         @Specialization
-        public long executeI64(VirtualFrame frame, short from) {
-            long reg = register.executeI64(frame);
+        public long executeI64(long reg, short from) {
             return (reg & mask) | Short.toUnsignedLong(from);
         }
 
         @Specialization
-        public long executeI64(VirtualFrame frame, int from) {
-            long reg = register.executeI64(frame);
+        public long executeI64(long reg, int from) {
             return (reg & mask) | (from & ~mask);
         }
 
         @Specialization
-        public long executeI64(VirtualFrame frame, long from) {
-            long reg = register.executeI64(frame);
+        public long executeI64(long reg, long from) {
             return (reg & mask) | (from & ~mask);
         }
     }
 
     @NodeChildren({@NodeChild(value = "from", type = LLVMExpressionNode.class)})
     public abstract static class LLVMI32ToR64 extends LLVMAMD64ToRegisterNode {
-        private static final long mask = 0xFFFFFFFFL;
+        private static final long MASK = 0xFFFFFFFFL;
 
         @Specialization
         public long executeI64(byte from) {
@@ -129,7 +112,7 @@ public abstract class LLVMAMD64ToRegisterNode extends LLVMExpressionNode {
 
         @Specialization
         public long executeI64(long from) {
-            return from & mask;
+            return from & MASK;
         }
     }
 }

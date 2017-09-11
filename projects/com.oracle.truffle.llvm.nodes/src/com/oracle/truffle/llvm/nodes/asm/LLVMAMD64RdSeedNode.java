@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.nodes.asm;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.security.SecureRandom;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -53,14 +55,13 @@ public abstract class LLVMAMD64RdSeedNode extends LLVMExpressionNode {
     @TruffleBoundary
     protected int getSeedI32() {
         byte[] seed = random.generateSeed(4);
-        return Byte.toUnsignedInt(seed[0]) << 24 | Byte.toUnsignedInt(seed[1]) << 16 | Byte.toUnsignedInt(seed[2]) << 8 | Byte.toUnsignedInt(seed[3]);
+        return ByteBuffer.wrap(seed).order(ByteOrder.nativeOrder()).getInt();
     }
 
     @TruffleBoundary
     protected long getSeedI64() {
         byte[] seed = random.generateSeed(8);
-        return Byte.toUnsignedLong(seed[0]) << 56 | Byte.toUnsignedLong(seed[1]) << 48 | Byte.toUnsignedLong(seed[2]) << 40 | Byte.toUnsignedLong(seed[3]) << 32 | Byte.toUnsignedLong(seed[4]) << 24 |
-                        Byte.toUnsignedLong(seed[5]) << 16 | Byte.toUnsignedLong(seed[6]) << 8 | Byte.toUnsignedLong(seed[7]);
+        return ByteBuffer.wrap(seed).order(ByteOrder.nativeOrder()).getLong();
     }
 
     public LLVMAMD64RdSeedNode(LLVMAMD64WriteBooleanNode cf) {

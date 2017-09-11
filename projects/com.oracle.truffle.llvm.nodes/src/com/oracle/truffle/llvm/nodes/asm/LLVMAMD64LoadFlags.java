@@ -32,29 +32,36 @@ package com.oracle.truffle.llvm.nodes.asm;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64Flags;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMAMD64LoadFlags extends LLVMExpressionNode {
+    protected ConditionProfile profileCF = ConditionProfile.createCountingProfile();
+    protected ConditionProfile profilePF = ConditionProfile.createCountingProfile();
+    protected ConditionProfile profileAF = ConditionProfile.createCountingProfile();
+    protected ConditionProfile profileZF = ConditionProfile.createCountingProfile();
+    protected ConditionProfile profileSF = ConditionProfile.createCountingProfile();
+
     @NodeChildren({@NodeChild(value = "cf", type = LLVMExpressionNode.class), @NodeChild(value = "pf", type = LLVMExpressionNode.class), @NodeChild(value = "af", type = LLVMExpressionNode.class),
                     @NodeChild(value = "zf", type = LLVMExpressionNode.class), @NodeChild(value = "sf", type = LLVMExpressionNode.class)})
     public abstract static class LLVMAMD64LahfNode extends LLVMAMD64LoadFlags {
         @Specialization
         protected byte executeI8(boolean cf, boolean pf, boolean af, boolean zf, boolean sf) {
             byte flags = 0;
-            if (cf) {
+            if (profileCF.profile(cf)) {
                 flags |= (byte) (1 << LLVMAMD64Flags.CF);
             }
-            if (pf) {
+            if (profilePF.profile(pf)) {
                 flags |= (byte) (1 << LLVMAMD64Flags.PF);
             }
-            if (af) {
+            if (profileAF.profile(af)) {
                 flags |= (byte) (1 << LLVMAMD64Flags.AF);
             }
-            if (zf) {
+            if (profileZF.profile(zf)) {
                 flags |= (byte) (1 << LLVMAMD64Flags.ZF);
             }
-            if (sf) {
+            if (profileSF.profile(sf)) {
                 flags |= (byte) (1 << LLVMAMD64Flags.SF);
             }
             return flags;
@@ -64,25 +71,27 @@ public abstract class LLVMAMD64LoadFlags extends LLVMExpressionNode {
     @NodeChildren({@NodeChild(value = "cf", type = LLVMExpressionNode.class), @NodeChild(value = "pf", type = LLVMExpressionNode.class), @NodeChild(value = "af", type = LLVMExpressionNode.class),
                     @NodeChild(value = "zf", type = LLVMExpressionNode.class), @NodeChild(value = "sf", type = LLVMExpressionNode.class), @NodeChild(value = "of", type = LLVMExpressionNode.class)})
     public abstract static class LLVMAMD64ReadFlagswNode extends LLVMAMD64LoadFlags {
+        private ConditionProfile profileOF = ConditionProfile.createCountingProfile();
+
         @Specialization
         protected short executeI16(boolean cf, boolean pf, boolean af, boolean zf, boolean sf, boolean of) {
             short flags = 0;
-            if (cf) {
+            if (profileCF.profile(cf)) {
                 flags |= (short) (1 << LLVMAMD64Flags.CF);
             }
-            if (pf) {
+            if (profilePF.profile(pf)) {
                 flags |= (short) (1 << LLVMAMD64Flags.PF);
             }
-            if (af) {
+            if (profileAF.profile(af)) {
                 flags |= (short) (1 << LLVMAMD64Flags.AF);
             }
-            if (zf) {
+            if (profileZF.profile(zf)) {
                 flags |= (short) (1 << LLVMAMD64Flags.ZF);
             }
-            if (sf) {
+            if (profileSF.profile(sf)) {
                 flags |= (short) (1 << LLVMAMD64Flags.SF);
             }
-            if (of) {
+            if (profileOF.profile(of)) {
                 flags |= (short) (1 << LLVMAMD64Flags.OF);
             }
             return flags;

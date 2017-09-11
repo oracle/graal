@@ -52,6 +52,7 @@ public abstract class LLVMAMD64IdivNode extends LLVMExpressionNode {
             }
             byte quotient = (byte) (left / right);
             byte remainder = (byte) (left % right);
+            // TODO: error on quotient too large
             return (short) ((quotient & LLVMExpressionNode.I8_MASK) | ((remainder & LLVMExpressionNode.I8_MASK) << LLVMExpressionNode.I8_SIZE_IN_BITS));
         }
     }
@@ -73,6 +74,7 @@ public abstract class LLVMAMD64IdivNode extends LLVMExpressionNode {
             int value = Short.toUnsignedInt(high) << LLVMExpressionNode.I16_SIZE_IN_BITS | Short.toUnsignedInt(left);
             short quotient = (short) (value / right);
             short remainder = (short) (value % right);
+            // TODO: error on quotient too large
             out.execute(frame, quotient, remainder);
             return null;
         }
@@ -95,6 +97,7 @@ public abstract class LLVMAMD64IdivNode extends LLVMExpressionNode {
             long value = Integer.toUnsignedLong(high) << LLVMExpressionNode.I32_SIZE_IN_BITS | Integer.toUnsignedLong(left);
             int quotient = (int) (value / right);
             int remainder = (int) (value % right);
+            // TODO: error on quotient too large
             out.execute(frame, quotient, remainder);
             return null;
         }
@@ -115,7 +118,10 @@ public abstract class LLVMAMD64IdivNode extends LLVMExpressionNode {
                 throw new ArithmeticException(DIV_BY_ZERO);
             }
             LongDivision.Result result = LongDivision.divs128by64(high, left, right);
-            // TODO: error on quotient too large
+            if (result.isInvalid()) {
+                CompilerDirectives.transferToInterpreter();
+                throw new ArithmeticException(QUOTIENT_TOO_LARGE);
+            }
             long quotient = result.quotient;
             long remainder = result.remainder;
             out.execute(frame, quotient, remainder);

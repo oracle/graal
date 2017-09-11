@@ -206,6 +206,7 @@ import com.oracle.truffle.llvm.nodes.cast.LLVMToI64NodeGen.LLVMToI64NoZeroExtNod
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI8NodeGen.LLVMToI8NoZeroExtNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
+import com.oracle.truffle.llvm.nodes.memory.LLVMFenceNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMI16StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMI64StoreNodeGen;
@@ -215,7 +216,6 @@ import com.oracle.truffle.llvm.nodes.memory.load.LLVMI32LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI64LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode;
-import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode.LLVMI32UnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMAddressReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMI1ReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNode.LLVMWriteAddressNode;
@@ -267,89 +267,6 @@ class AsmFactory {
         this.retOffsets = retOffsets;
         this.sourceSection = sourceSection;
         parseArguments();
-    }
-
-    private class Argument {
-        private final boolean input;
-        private final boolean output;
-        private final boolean memory;
-        private final Type type;
-        private final int index;
-        private final int inIndex;
-        private final int outIndex;
-        private final String source;
-        private final String register;
-        private final boolean anonymous;
-
-        Argument(boolean input, boolean output, boolean memory, boolean anonymous, Type type, int index, int inIndex, int outIndex, String source, String register) {
-            this.input = input;
-            this.output = output;
-            this.memory = memory;
-            this.anonymous = anonymous;
-            this.type = type;
-            this.index = index;
-            this.inIndex = inIndex;
-            this.outIndex = outIndex;
-            this.source = source;
-            this.register = register;
-        }
-
-        public boolean isInput() {
-            return input;
-        }
-
-        public boolean isOutput() {
-            return output;
-        }
-
-        public boolean isMemory() {
-            return memory;
-        }
-
-        public boolean isAnonymous() {
-            return anonymous;
-        }
-
-        public Type getType() {
-            return type;
-        }
-
-        public int getIndex() {
-            return index;
-        }
-
-        public int getInIndex() {
-            assert isInput();
-            return inIndex;
-        }
-
-        public int getOutIndex() {
-            assert isOutput();
-            return outIndex;
-        }
-
-        public String getRegister() {
-            assert isRegister();
-            return register;
-        }
-
-        public boolean isRegister() {
-            return register != null;
-        }
-
-        public LLVMExpressionNode getAddress() {
-            assert isMemory();
-            if (output) {
-                return LLVMArgNodeGen.create(outIndex);
-            } else {
-                return LLVMArgNodeGen.create(inIndex);
-            }
-        }
-
-        @Override
-        public String toString() {
-            return String.format("Argument[IDX=%d,I=%s(%s),O=%s(%s),M=%s,T=%s,R=%s,S=%s]", index, input, inIndex, output, outIndex, memory, type, register, source);
-        }
     }
 
     private void parseArguments() {
@@ -462,7 +379,7 @@ class AsmFactory {
         if (id == 3) {
             statements.add(new LLVMAMD64BreakpointNode(sourceSection));
         } else {
-            statements.add(new LLVMI32UnsupportedInlineAssemblerNode(null));
+            statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceSection, "Unsupported interrupt " + nr));
         }
     }
 
@@ -472,7 +389,7 @@ class AsmFactory {
             case "cld":
             case "cli":
             case "cmc":
-                statements.add(new LLVMI32UnsupportedInlineAssemblerNode(null));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceSection, "Unsupported operation: " + operation));
                 break;
             case "lahf": {
                 LLVMExpressionNode lahf = LLVMAMD64LahfNodeGen.create(getFlag(LLVMAMD64Flags.CF), getFlag(LLVMAMD64Flags.PF), getFlag(LLVMAMD64Flags.AF), getFlag(LLVMAMD64Flags.ZF),
@@ -501,7 +418,7 @@ class AsmFactory {
             case "stc":
             case "std":
             case "sti":
-                statements.add(new LLVMI32UnsupportedInlineAssemblerNode(null));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceSection, "Unsupported operation: " + operation));
                 break;
             case "nop":
                 if ("rep".equals(currentPrefix)) {
@@ -509,10 +426,12 @@ class AsmFactory {
                 }
                 break;
             case "hlt":
+                // TODO: implement properly
+                break;
             case "mfence":
             case "lfance":
             case "sfence":
-                // TODO: implement properly
+                statements.add(LLVMFenceNodeGen.create());
                 break;
             case "rdtsc": {
                 LLVMAMD64WriteValueNode high = getRegisterStore("rdx");
@@ -534,7 +453,7 @@ class AsmFactory {
                 statements.add(new LLVMAMD64Ud2Node());
                 break;
             default:
-                statements.add(new LLVMI32UnsupportedInlineAssemblerNode(null));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceSection, "Unsupported operation: " + operation));
                 return;
         }
     }
@@ -641,12 +560,10 @@ class AsmFactory {
                             out = LLVMAMD64RdRandqNodeGen.create(getFlagWrite(LLVMAMD64Flags.CF));
                             break;
                         default:
-                            statements.add(new LLVMI32UnsupportedInlineAssemblerNode(null));
-                            return;
+                            throw new AsmParseException("invalid operand size: " + dstPrimitiveType);
                     }
                 } else {
-                    statements.add(new LLVMI32UnsupportedInlineAssemblerNode(null));
-                    return;
+                    throw new AsmParseException("invalid operand type: " + dstType);
                 }
                 break;
             case "rdseed":
@@ -662,12 +579,10 @@ class AsmFactory {
                             out = LLVMAMD64RdSeedqNodeGen.create(getFlagWrite(LLVMAMD64Flags.CF));
                             break;
                         default:
-                            statements.add(new LLVMI32UnsupportedInlineAssemblerNode(null));
-                            return;
+                            throw new AsmParseException("invalid operand size: " + dstPrimitiveType);
                     }
                 } else {
-                    statements.add(new LLVMI32UnsupportedInlineAssemblerNode(null));
-                    return;
+                    throw new AsmParseException("invalid operand type: " + dstType);
                 }
                 break;
             case "pop":
@@ -760,7 +675,7 @@ class AsmFactory {
                     throw new AsmParseException("invalid operand type: " + dstType);
                 }
             default:
-                statements.add(new LLVMI32UnsupportedInlineAssemblerNode(null));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceSection, "Unsupported operation: " + operation));
                 return;
         }
         if (dstType == null) {
@@ -959,7 +874,7 @@ class AsmFactory {
                 statements.add(LLVMAMD64PushqNodeGen.create(src));
                 return;
             default:
-                statements.add(new LLVMI32UnsupportedInlineAssemblerNode(null));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceSection, "Unsupported operation: " + operation));
                 return;
         }
         LLVMExpressionNode write = getOperandStore(dstType, dst, out);
@@ -1094,7 +1009,7 @@ class AsmFactory {
                 }
                 break;
             default:
-                statements.add(new LLVMI32UnsupportedInlineAssemblerNode(null));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceSection, "Unsupported operation: " + operation));
                 return;
         }
         LLVMExpressionNode write = getOperandStore(dstType, dst, out);
@@ -1429,7 +1344,7 @@ class AsmFactory {
                 out = LLVMAMD64BsfqNodeGen.create(getFlagWrite(LLVMAMD64Flags.ZF), srcA, srcB);
                 break;
             default:
-                statements.add(new LLVMI32UnsupportedInlineAssemblerNode(null));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceSection, "Unsupported operation: " + operation));
                 return;
         }
         LLVMExpressionNode write = getOperandStore(dstType, dst, out);
@@ -1463,7 +1378,7 @@ class AsmFactory {
                                 getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), srcA, srcB);
                 break;
             default:
-                statements.add(new LLVMI32UnsupportedInlineAssemblerNode(null));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceSection, "Unsupported operation: " + operation));
                 return;
         }
         LLVMExpressionNode write = getOperandStore(dstType, dst, out);
@@ -1503,14 +1418,6 @@ class AsmFactory {
         PrimitiveKind primitiveKind;
         if (arg.getType() instanceof PrimitiveType) {
             primitiveKind = ((PrimitiveType) arg.getType()).getPrimitiveKind();
-        } else if (arg.getType() instanceof PointerType) {
-            PointerType ptr = (PointerType) arg.getType();
-            Type type = ptr.getPointeeType();
-            if (type instanceof PrimitiveType) {
-                primitiveKind = ((PrimitiveType) type).getPrimitiveKind();
-            } else {
-                throw new AsmParseException("cannot handle return type " + type);
-            }
         } else {
             throw new AsmParseException("cannot handle return type " + arg.getType());
         }
@@ -1642,7 +1549,7 @@ class AsmFactory {
             case I64:
                 return LLVMToI64NoZeroExtNodeGen.create(register);
             default:
-                return new LLVMUnsupportedInlineAssemblerNode(null);
+                throw new AsmParseException("unsupported result type: " + retType);
         }
     }
 

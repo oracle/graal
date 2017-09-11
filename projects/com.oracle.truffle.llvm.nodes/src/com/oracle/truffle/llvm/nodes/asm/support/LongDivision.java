@@ -30,10 +30,14 @@
 package com.oracle.truffle.llvm.nodes.asm.support;
 
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives.ValueType;
 
 public class LongDivision {
+    @ValueType
     public static class Result {
         private static final long INVALID = 0x8000000000000000L;
 
@@ -47,7 +51,7 @@ public class LongDivision {
             this.remainder = remainder;
         }
 
-        public boolean invalid() {
+        public boolean isInvalid() {
             return quotient == INVALID && remainder == INVALID;
         }
 
@@ -113,62 +117,20 @@ public class LongDivision {
     }
 
     private static BigInteger u64(long x) {
-        byte[] bytes = new byte[]{
-                        (byte) 0,
-                        (byte) (x >> 56),
-                        (byte) (x >> 48),
-                        (byte) (x >> 40),
-                        (byte) (x >> 32),
-                        (byte) (x >> 24),
-                        (byte) (x >> 16),
-                        (byte) (x >> 8),
-                        (byte) (x)
-        };
+        byte[] bytes = new byte[Long.BYTES + 1];
+        ByteBuffer.wrap(bytes, 1, Long.BYTES).order(ByteOrder.BIG_ENDIAN).putLong(x);
         return new BigInteger(bytes);
     }
 
     private static BigInteger u128(long h, long l) {
-        byte[] bytes = new byte[]{
-                        (byte) 0,
-                        (byte) (h >> 56),
-                        (byte) (h >> 48),
-                        (byte) (h >> 40),
-                        (byte) (h >> 32),
-                        (byte) (h >> 24),
-                        (byte) (h >> 16),
-                        (byte) (h >> 8),
-                        (byte) (h),
-                        (byte) (l >> 56),
-                        (byte) (l >> 48),
-                        (byte) (l >> 40),
-                        (byte) (l >> 32),
-                        (byte) (l >> 24),
-                        (byte) (l >> 16),
-                        (byte) (l >> 8),
-                        (byte) (l)
-        };
+        byte[] bytes = new byte[2 * Long.BYTES + 1];
+        ByteBuffer.wrap(bytes, 1, 2 * Long.BYTES).order(ByteOrder.BIG_ENDIAN).putLong(h).putLong(l);
         return new BigInteger(bytes);
     }
 
     private static BigInteger s128(long h, long l) {
-        byte[] bytes = new byte[]{
-                        (byte) (h >> 56),
-                        (byte) (h >> 48),
-                        (byte) (h >> 40),
-                        (byte) (h >> 32),
-                        (byte) (h >> 24),
-                        (byte) (h >> 16),
-                        (byte) (h >> 8),
-                        (byte) (h),
-                        (byte) (l >> 56),
-                        (byte) (l >> 48),
-                        (byte) (l >> 40),
-                        (byte) (l >> 32),
-                        (byte) (l >> 24),
-                        (byte) (l >> 16),
-                        (byte) (l >> 8),
-                        (byte) (l)
-        };
+        byte[] bytes = new byte[2 * Long.BYTES];
+        ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN).putLong(h).putLong(l);
         return new BigInteger(bytes);
     }
 }

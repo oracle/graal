@@ -33,8 +33,10 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdateCPAZSOFlagsNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteValueNode;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild("a"), @NodeChild("src"), @NodeChild("dst")})
@@ -44,10 +46,13 @@ public abstract class LLVMAMD64CmpXchgNode extends LLVMExpressionNode {
     @Child protected LLVMAMD64WriteValueNode out1;
     @Child protected LLVMAMD64WriteValueNode out2;
 
+    protected ConditionProfile profile;
+
     private LLVMAMD64CmpXchgNode(LLVMAMD64UpdateCPAZSOFlagsNode flags, LLVMAMD64WriteValueNode out1, LLVMAMD64WriteValueNode out2) {
         this.flags = flags;
         this.out1 = out1;
         this.out2 = out2;
+        profile = ConditionProfile.createCountingProfile();
     }
 
     public abstract static class LLVMAMD64CmpXchgbNode extends LLVMAMD64CmpXchgNode {
@@ -61,7 +66,7 @@ public abstract class LLVMAMD64CmpXchgNode extends LLVMExpressionNode {
             boolean carry = Byte.toUnsignedInt(a) < Byte.toUnsignedInt(dst);
             boolean adjust = (((a ^ dst) ^ result) & 0x10) != 0;
             flags.execute(frame, false, carry, adjust, result);
-            if (a == dst) {
+            if (profile.profile(a == dst)) {
                 out1.execute(frame, src);
             } else {
                 out2.execute(frame, dst);
@@ -81,7 +86,7 @@ public abstract class LLVMAMD64CmpXchgNode extends LLVMExpressionNode {
             boolean carry = Short.toUnsignedInt(a) < Short.toUnsignedInt(dst);
             boolean adjust = (((a ^ dst) ^ result) & 0x10) != 0;
             flags.execute(frame, false, carry, adjust, result);
-            if (a == dst) {
+            if (profile.profile(a == dst)) {
                 out1.execute(frame, src);
             } else {
                 out2.execute(frame, dst);
@@ -101,7 +106,7 @@ public abstract class LLVMAMD64CmpXchgNode extends LLVMExpressionNode {
             boolean carry = Integer.compareUnsigned(a, dst) < 0;
             boolean adjust = (((a ^ dst) ^ result) & 0x10) != 0;
             flags.execute(frame, false, carry, adjust, result);
-            if (a == dst) {
+            if (profile.profile(a == dst)) {
                 out1.execute(frame, src);
             } else {
                 out2.execute(frame, dst);
@@ -121,7 +126,21 @@ public abstract class LLVMAMD64CmpXchgNode extends LLVMExpressionNode {
             boolean carry = Long.compareUnsigned(a, dst) < 0;
             boolean adjust = (((a ^ dst) ^ result) & 0x10) != 0;
             flags.execute(frame, false, carry, adjust, result);
-            if (a == dst) {
+            if (profile.profile(a == dst)) {
+                out1.execute(frame, src);
+            } else {
+                out2.execute(frame, dst);
+            }
+            return null;
+        }
+
+        @Specialization
+        protected Object execute(VirtualFrame frame, LLVMAddress a, LLVMAddress src, LLVMAddress dst) {
+            long result = a.getVal() - dst.getVal();
+            boolean carry = Long.compareUnsigned(a.getVal(), dst.getVal()) < 0;
+            boolean adjust = (((a.getVal() ^ dst.getVal()) ^ result) & 0x10) != 0;
+            flags.execute(frame, false, carry, adjust, result);
+            if (profile.profile(a.equals(dst))) {
                 out1.execute(frame, src);
             } else {
                 out2.execute(frame, dst);

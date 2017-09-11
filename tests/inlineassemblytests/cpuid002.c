@@ -18,6 +18,12 @@ int main(void)
   if(!strcmp(vendor.str, "GenuineIntel")) {
     return 1;
   }
+  if(!strcmp(vendor.str, "AuthenticAMD")) {
+    return 1;
+  }
+  if(!strcmp(vendor.str, "KVMKVMKVM")) {
+    return 1;
+  }
   if(!strcmp(vendor.str, "SulongLLVM64")) {
     return 1;
   }

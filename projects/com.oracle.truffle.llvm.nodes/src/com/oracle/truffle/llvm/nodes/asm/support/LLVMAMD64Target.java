@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.support;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -51,6 +52,7 @@ public class LLVMAMD64Target {
     }
 
     public LLVMExpressionNode createInput() {
+        CompilerAsserts.neverPartOfCompilation();
         if (location instanceof LLVMExpressionNode) {
             return (LLVMExpressionNode) location;
         } else if (location instanceof FrameSlot) {
@@ -61,6 +63,7 @@ public class LLVMAMD64Target {
     }
 
     public LLVMAMD64WriteNode createTarget() {
+        CompilerAsserts.neverPartOfCompilation();
         return LLVMAMD64WriteNodeGen.create(shift);
     }
 }

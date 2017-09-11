@@ -30,9 +30,11 @@
 package com.oracle.truffle.llvm.nodes.asm;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.profiles.IntValueProfile;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteValueNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -41,8 +43,10 @@ public abstract class LLVMAMD64CpuidNode extends LLVMExpressionNode {
     public static final String BRAND = "Sulong"; // at most 48 characters
     public static final String VENDOR_ID = "SulongLLVM64"; // exactly 12 characters
 
-    public static final int[] BRAND_I32 = getI32(BRAND, 12);
-    public static final int[] VENDOR_ID_I32 = getI32(VENDOR_ID, 3);
+    @CompilationFinal(dimensions = 1) public static final int[] BRAND_I32 = getI32(BRAND, 12);
+    @CompilationFinal(dimensions = 1) public static final int[] VENDOR_ID_I32 = getI32(VENDOR_ID, 3);
+
+    private IntValueProfile profile;
 
     private static int[] getI32(String s, int len) {
         CompilerAsserts.neverPartOfCompilation();
@@ -72,21 +76,22 @@ public abstract class LLVMAMD64CpuidNode extends LLVMExpressionNode {
     @Child private LLVMAMD64WriteValueNode edx;
 
     // FN=1: EDX
-    public static final int TSC = 1 << 4;
+    public static final int TSC_IS_SUPPORTED = 1 << 4;
     // FN=1: ECX
-    public static final int RDRND = 1 << 30;
+    public static final int RDRND_IS_SUPPORTED = 1 << 30;
     // FN=7/0: EBX
-    public static final int RDSEED = 1 << 18;
+    public static final int RDSEED_IS_SUPPORTED = 1 << 18;
     // FN=80000001h: EDX
-    public static final int LM = (1 << 29);
+    public static final int LM_IS_SUPPORTED = (1 << 29);
     // FN=80000001h: ECX
-    public static final int LAHF_LM = 1;
+    public static final int LAHF_LM_IS_SUPPORTED = 1;
 
     public LLVMAMD64CpuidNode(LLVMAMD64WriteValueNode eax, LLVMAMD64WriteValueNode ebx, LLVMAMD64WriteValueNode ecx, LLVMAMD64WriteValueNode edx) {
         this.eax = eax;
         this.ebx = ebx;
         this.ecx = ecx;
         this.edx = edx;
+        profile = IntValueProfile.createIdentityProfile();
     }
 
     @Specialization
@@ -95,7 +100,7 @@ public abstract class LLVMAMD64CpuidNode extends LLVMExpressionNode {
         int b;
         int c;
         int d;
-        switch (level) {
+        switch (profile.profile(level)) {
             case 0:
                 // Get Vendor ID/Highest Function Parameter
                 a = 7; // max supported function
@@ -114,13 +119,13 @@ public abstract class LLVMAMD64CpuidNode extends LLVMExpressionNode {
                 // 27:20 - Extended Family
                 a = 0;
                 b = 0;
-                c = RDRND;
-                d = TSC;
+                c = RDRND_IS_SUPPORTED;
+                d = TSC_IS_SUPPORTED;
                 break;
             case 7:
                 // Extended Features (FIXME: assumption is ECX=0)
                 a = 0;
-                b = RDSEED;
+                b = RDSEED_IS_SUPPORTED;
                 c = 0;
                 d = 0;
                 break;
@@ -135,8 +140,8 @@ public abstract class LLVMAMD64CpuidNode extends LLVMExpressionNode {
                 // Extended Processor Info and Feature Bits
                 a = 0;
                 b = 0;
-                c = LAHF_LM;
-                d = LM;
+                c = LAHF_LM_IS_SUPPORTED;
+                d = LM_IS_SUPPORTED;
                 break;
             case 0x80000002:
                 // Processor Brand String

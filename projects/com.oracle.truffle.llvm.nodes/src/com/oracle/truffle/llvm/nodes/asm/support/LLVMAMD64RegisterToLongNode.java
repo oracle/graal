@@ -40,21 +40,21 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 public abstract class LLVMAMD64RegisterToLongNode extends Node {
     public abstract long execute(VirtualFrame frame, FrameSlot slot);
 
-    @Specialization(guards = "isLong(frame, slot)")
+    @Specialization(guards = "isLong(slot)")
     protected long readLong(VirtualFrame frame, FrameSlot slot) {
         return FrameUtil.getLongSafe(frame, slot);
     }
 
-    @Specialization(guards = "isAddress(frame, slot)")
+    @Specialization(guards = "isAddress(slot)")
     protected long readAddress(VirtualFrame frame, FrameSlot slot) {
         return ((LLVMAddress) FrameUtil.getObjectSafe(frame, slot)).getVal();
     }
 
-    protected boolean isLong(@SuppressWarnings("unused") VirtualFrame frame, FrameSlot slot) {
+    protected boolean isLong(FrameSlot slot) {
         return slot.getKind() == FrameSlotKind.Long;
     }
 
-    protected boolean isAddress(@SuppressWarnings("unused") VirtualFrame frame, FrameSlot slot) {
+    protected boolean isAddress(FrameSlot slot) {
         return slot.getKind() == FrameSlotKind.Object;
     }
 }

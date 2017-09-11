@@ -41,9 +41,11 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     private final SourceSection sourceSection;
+    protected final String message;
 
-    public LLVMUnsupportedInlineAssemblerNode(SourceSection sourceSection) {
+    public LLVMUnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
         this.sourceSection = sourceSection;
+        this.message = message;
     }
 
     @Override
@@ -53,13 +55,13 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     public static class LLVMI1UnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
 
-        public LLVMI1UnsupportedInlineAssemblerNode(SourceSection sourceSection) {
-            super(sourceSection);
+        public LLVMI1UnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
+            super(sourceSection, message);
         }
 
         @Override
         public boolean executeI1(VirtualFrame frame) {
-            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
+            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER, message);
         }
 
         @Override
@@ -71,13 +73,13 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     public static class LLVMI8UnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
 
-        public LLVMI8UnsupportedInlineAssemblerNode(SourceSection sourceSection) {
-            super(sourceSection);
+        public LLVMI8UnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
+            super(sourceSection, message);
         }
 
         @Override
         public byte executeI8(VirtualFrame frame) {
-            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
+            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER, message);
         }
 
         @Override
@@ -88,13 +90,13 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     public static class LLVMI16UnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
 
-        public LLVMI16UnsupportedInlineAssemblerNode(SourceSection sourceSection) {
-            super(sourceSection);
+        public LLVMI16UnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
+            super(sourceSection, message);
         }
 
         @Override
         public short executeI16(VirtualFrame frame) {
-            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
+            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER, message);
         }
 
         @Override
@@ -105,13 +107,13 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     public static class LLVMI32UnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
 
-        public LLVMI32UnsupportedInlineAssemblerNode(SourceSection sourceSection) {
-            super(sourceSection);
+        public LLVMI32UnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
+            super(sourceSection, message);
         }
 
         @Override
         public int executeI32(VirtualFrame frame) {
-            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
+            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER, message);
         }
 
         @Override
@@ -122,13 +124,13 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     public static class LLVMI64UnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
 
-        public LLVMI64UnsupportedInlineAssemblerNode(SourceSection sourceSection) {
-            super(sourceSection);
+        public LLVMI64UnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
+            super(sourceSection, message);
         }
 
         @Override
         public long executeI64(VirtualFrame frame) {
-            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
+            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER, message);
         }
 
         @Override
@@ -139,13 +141,13 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     public static class LLVMFloatUnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
 
-        public LLVMFloatUnsupportedInlineAssemblerNode(SourceSection sourceSection) {
-            super(sourceSection);
+        public LLVMFloatUnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
+            super(sourceSection, message);
         }
 
         @Override
         public float executeFloat(VirtualFrame frame) {
-            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
+            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER, message);
         }
 
         @Override
@@ -156,13 +158,13 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     public static class LLVMDoubleUnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
 
-        public LLVMDoubleUnsupportedInlineAssemblerNode(SourceSection sourceSection) {
-            super(sourceSection);
+        public LLVMDoubleUnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
+            super(sourceSection, message);
         }
 
         @Override
         public double executeDouble(VirtualFrame frame) {
-            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
+            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER, message);
         }
 
         @Override
@@ -173,13 +175,13 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     public static class LLVM80BitFloatUnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
 
-        public LLVM80BitFloatUnsupportedInlineAssemblerNode(SourceSection sourceSection) {
-            super(sourceSection);
+        public LLVM80BitFloatUnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
+            super(sourceSection, message);
         }
 
         @Override
         public LLVM80BitFloat executeLLVM80BitFloat(VirtualFrame frame) {
-            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
+            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER, message);
         }
 
         @Override
@@ -190,13 +192,13 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     public static class LLVMAddressUnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
 
-        public LLVMAddressUnsupportedInlineAssemblerNode(SourceSection sourceSection) {
-            super(sourceSection);
+        public LLVMAddressUnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
+            super(sourceSection, message);
         }
 
         @Override
         public LLVMAddress executeLLVMAddress(VirtualFrame frame) {
-            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
+            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER, message);
         }
 
         @Override
@@ -208,13 +210,13 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     public static class LLVMFunctionUnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
 
-        public LLVMFunctionUnsupportedInlineAssemblerNode(SourceSection sourceSection) {
-            super(sourceSection);
+        public LLVMFunctionUnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
+            super(sourceSection, message);
         }
 
         @Override
         public LLVMFunctionDescriptor executeLLVMFunctionDescriptor(VirtualFrame frame) {
-            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
+            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER, message);
         }
 
         @Override
@@ -225,7 +227,7 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
+        throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER, message);
     }
 
 }

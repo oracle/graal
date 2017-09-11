@@ -33,15 +33,18 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteBooleanNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild("src"), @NodeChild("dst")})
 public abstract class LLVMAMD64BsrNode extends LLVMExpressionNode {
     @Child protected LLVMAMD64WriteBooleanNode writeZFNode;
+    protected ConditionProfile profile;
 
     public LLVMAMD64BsrNode(LLVMAMD64WriteBooleanNode writeZFNode) {
         this.writeZFNode = writeZFNode;
+        profile = ConditionProfile.createCountingProfile();
     }
 
     public abstract static class LLVMAMD64BsrwNode extends LLVMAMD64BsrNode {
@@ -51,7 +54,7 @@ public abstract class LLVMAMD64BsrNode extends LLVMExpressionNode {
 
         @Specialization
         protected short executeI16(VirtualFrame frame, short src, short dst) {
-            if (src == 0) {
+            if (profile.profile(src == 0)) {
                 writeZFNode.execute(frame, true);
                 return dst;
             } else {
@@ -70,7 +73,7 @@ public abstract class LLVMAMD64BsrNode extends LLVMExpressionNode {
 
         @Specialization
         protected int executeI32(VirtualFrame frame, int src, int dst) {
-            if (src == 0) {
+            if (profile.profile(src == 0)) {
                 writeZFNode.execute(frame, true);
                 return dst;
             } else {
@@ -88,7 +91,7 @@ public abstract class LLVMAMD64BsrNode extends LLVMExpressionNode {
 
         @Specialization
         protected long executeI64(VirtualFrame frame, long src, long dst) {
-            if (src == 0) {
+            if (profile.profile(src == 0)) {
                 writeZFNode.execute(frame, true);
                 return dst;
             } else {
