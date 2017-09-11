@@ -5,7 +5,7 @@ Additionally, Sulong is also tested with selected external testsuites that
 can be executed using `mx test`. Optional arguments to this command
 specify the testsuites to be executed. `mx test -h` provides a list
 of available suites. The most important testsuites (beside the SulongSuite)
-are the `gcc38` and `llvm38` suites which consist of selected test cases from
+are the `gcc38` and `llvm` suites which consist of selected test cases from
 the official GCC 5.2 and LLVM 3.2 testsuites.
 
 To attach a debugger to Sulong tests, run `mx -d unittest SulongSuite` or
@@ -44,8 +44,9 @@ Sulong also uses DragonEgg for the C/C++ test cases besides Clang to get
 additional "free" test cases for a given C/C++ file. DragonEgg requires
 a GCC in the aforementioned versions.
 
-`mx pulldragonegg` downloads both DragonEgg and Clang. You can set
-certain environment variables to tell Sulong where to find the binaries:
+`mx pulldragonegg` downloads both DragonEgg and Clang 3.2 to the `cache/tools`
+directory. If you want to supply your own binaries you need to set certain
+environment variables to tell Sulong where to find them:
 
 - Sulong expects to find Clang 3.2 in `$DRAGONEGG_LLVM/bin`
 - Sulong expects to find GCC 4.5, 4.6 or 4.7 in `$DRAGONEGG_GCC/bin`
@@ -63,7 +64,7 @@ DYLD_LIBRARY_PATH cannot normally be set on the Mac.
 ## Test case options
 
 You can pass VM arguments as the last argument to the test runner. For
-example, you can use `mx test llvm38 -Dpolyglot.llvm.debug=true` to get useful
+example, you can use `mx test llvm -Dpolyglot.llvm.debug=true` to get useful
 information for debugging the test cases.
 
 ## Reference output
@@ -93,20 +94,34 @@ JVM process or which will not be supported by Sulong in the near future.
 
 ## External test suites
 
-| test suite       | Class Name             | description                     |
-|------------------|------------------------|---------------------------------|
-| llvm             | LLVMSuite              | LLVM's test suite               |
-| parserTorture    | ParserTortureSuite     | Parser test using GCC suite     |
-| interop          | LLVMInteropTest        | Test Truffle interoperability   |
-| polyglot         | TestPolyGlotEngine     | Minimal Polyglot engine test    |
-| tck              | LLVMTckTest            | Certify Truffle compliance      |
-| nwcc             | NWCCSuite              | Test suite of the NWCC compiler |
-| assembly         | InlineAssemblyTest     | Inline assembler tests          |
-| gcc              | GCCSuite               | GCC's test suite                |
-| args             | MainArgsTest           | Tests main args passing         |
-| shootout         | ShootoutsSuite         | Language Benchmark game tests   |
-| vaargs           | VAArgsTest             | Varargs tests                   |
+| test suite      | class name          | description                           |
+|-----------------|---------------------|---------------------------------------|
+| llvm            | LLVMSuite           | LLVM's test suite                     |
+| parserTorture   | ParserTortureSuite  | Parser test using GCC suite           |
+| nwcc            | NWCCSuite           | Test suite of the NWCC compiler       |
+| assembly        | InlineAssemblyTest  | Inline assembler tests                |
+| gcc32           | GCCSuite            | GCC's test suite (no Fortran tests)   |
+| gcc38           | GCCSuite            | GCC's test suite (with Fortran tests) |
+| args            | MainArgsTest        | Tests main args passing               |
+| shootout        | ShootoutsSuite      | Language Benchmark game tests         |
+| vaargs          | VAArgsTest          | Varargs tests                         |
+| pipe            | CaptureOutputTest   | Test output capturing                 |
+| callback        | CallbackTest        | Test calling native functions         |
+| type            | -                   | Test floating point arithmetic        |
 
-These testsuites are compiled by any Clang in versions 3.2 or 3.3 that are
-available on the system `PATH`. There are also `llvm38`, `nwcc38`, `gcc38` suites
-that are compiled by any version of Clang between 3.2 and 4.0 that is available.
+These tests can be compiled and executed using `mx test <test suite>` or, after
+they have been compiled this way, also using `mx unittest <class name>`. In the
+latter case you may need to specify required libraries, e.g. `libgfortran.so.3`
+which is needed by the fortan tests of the `gcc32` testsuite, manually using the
+`polyglot.llvm.libraries` option.
+
+## Internal test suites
+
+| class name          | description                         |
+|---------------------|-------------------------------------|
+| SulongSuite         | Sulong's main test suite            |
+| LLVMInteropTest     | Language interoperability tests     |
+
+These tests are compiled together with Sulong and can only be executed using
+`mx unittest <class name>`. Sulong, including these tests, can be rebuilt
+using `mx build -c`.
