@@ -121,9 +121,9 @@ public final class GraphOutput<G, M> implements Closeable {
         }
 
         /**
-         * Chooses which version of the protocol to use.By default one gets version <code>4.0</code>
-         * (when the {@link GraphOutput} classes were introduced).Can be changes to other known
-         * versions manually.
+         * Chooses which version of the protocol to use. By default one gets version
+         * <code>4.0</code> (when the {@link GraphOutput} classes were introduced). The default can
+         * be changed to other known versions manually by calling this method.
          *
          * @param majorVersion by default 4, newer version may be known
          * @param minorVersion usually 0
