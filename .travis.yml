@@ -5,6 +5,7 @@ cache:
   - $HOME/.mx
 dist: trusty
 sudo: required
+group: deprecated-2017Q3
 language: java
 python:
   - "2.7"
