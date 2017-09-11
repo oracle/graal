@@ -41,9 +41,9 @@ install:
   - export ECLIPSE_EXE=eclipse/eclipse
   - export DEFAULT_VM=server
   - export PATH=`pwd`/mx:$PATH
-  - wget https://github.com/dougxc/openjdk8-jvmci-builder/releases/download/jvmci-0.23/jdk1.8.0_111-jvmci-0.23-linux-amd64.tar.gz
-  - tar -xzf jdk1.8.0_111-jvmci-0.23-linux-amd64.tar.gz
-  - export JAVA_HOME=`pwd`/jdk1.8.0_111-jvmci-0.23
+  - wget https://github.com/dougxc/openjdk8-jvmci-builder/releases/download/jvmci-0.34/openjdk1.8.0_141-jvmci-0.34-linux-amd64.tar.gz
+  - tar -xzf openjdk1.8.0_141-jvmci-0.34-linux-amd64.tar.gz
+  - export JAVA_HOME=`pwd`/openjdk1.8.0_141-jvmci-0.34
   - mx pulldragonegg
   - export DRAGONEGG_LLVM=`pwd`/cache/tools/llvm
   - export DRAGONEGG=`pwd`/cache/tools/dragonegg/dragonegg-3.2.src
