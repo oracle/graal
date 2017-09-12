@@ -62,6 +62,15 @@ final class GraphPrintVisitor implements GraphStructure<RootCallTarget, NodeElem
     }
 
     @Override
+    public NodeElement node(Object o) {
+        Object obj = o;
+        if (obj instanceof NodeElement) {
+            return (NodeElement) o;
+        }
+        return null;
+    }
+
+    @Override
     public NodeClass nodeClass(Object o) {
         Object obj = o;
         if (obj instanceof NodeElement) {
@@ -78,6 +87,11 @@ final class GraphPrintVisitor implements GraphStructure<RootCallTarget, NodeElem
             return NodeClass.get(node.getClass());
         }
         return null;
+    }
+
+    @Override
+    public NodeClass classForNode(NodeElement node) {
+        return nodeClass(node.node);
     }
 
     @Override

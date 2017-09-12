@@ -67,6 +67,7 @@ public final class NodeEncodingTest {
             dump.endGroup();
         }
 
+        assertEquals("Node is always requested", 1, node.nodeRequested);
         assertEquals("Nobody asks for id of a node in version 4.0", 0, node.idTested);
         assertByte(false, 33, out.toByteArray());
         assertEquals("Node class of the node has been requested", 1, node.nodeClassRequested);
@@ -89,6 +90,7 @@ public final class NodeEncodingTest {
             dump.endGroup();
         }
 
+        assertEquals("Node is always requested", 1, node.nodeRequested);
         assertEquals("Nobody asks for id of a node in version 1.0", 0, node.idTested);
         assertByte(false, 33, out.toByteArray());
         assertEquals("Node class was needed to find out it is not NodeClass instance", 1, node.nodeClassRequested);
@@ -111,6 +113,7 @@ public final class NodeEncodingTest {
             dump.endGroup();
         }
 
+        assertEquals("Node is always requested", 1, node.nodeRequested);
         assertEquals("Id of our node is requested in version 5.0", 1, node.idTested);
         assertByte(true, 33, out.toByteArray());
         assertTrue("Node class was needed at least once", 1 <= node.nodeClassRequested);
@@ -169,16 +172,26 @@ public final class NodeEncodingTest {
         }
 
         @Override
-        public MockNodeClass nodeClass(Object obj) {
-            if (obj instanceof MockNodeClass) {
-                return (MockNodeClass) obj;
-            }
+        public MockNode node(Object obj) {
             if (obj instanceof MockNode) {
-                MockNode n = (MockNode) obj;
-                n.nodeClassRequested++;
-                return n.clazz;
+                ((MockNode) obj).nodeRequested++;
+                return (MockNode) obj;
             }
             return null;
+        }
+
+        @Override
+        public MockNodeClass nodeClass(Object obj) {
+            if (obj instanceof MockNode) {
+                ((MockNode) obj).nodeClassRequested++;
+            }
+            return obj instanceof MockNodeClass ? (MockNodeClass) obj : null;
+        }
+
+        @Override
+        public MockNodeClass classForNode(MockNode n) {
+            n.nodeClassRequested++;
+            return n.clazz;
         }
 
         @Override
@@ -237,6 +250,7 @@ public final class NodeEncodingTest {
         final int id;
         int idTested;
         int nodeClassRequested;
+        int nodeRequested;
         boolean toStringRequested;
 
         MockNode(MockNodeClass clazz, int id) {

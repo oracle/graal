@@ -74,12 +74,20 @@ final class GraphSnippets {
 
             @Override
             public AcmeNodeType nodeClass(Object obj) {
-                if (obj instanceof AcmeNodeType || obj instanceof AcmeNode) {
-                    // all nodes share the same standard class for simplicity
-                    return AcmeNodeType.STANDARD;
-                }
-                return null;
+                return obj instanceof AcmeNodeType ? (AcmeNodeType) obj : null;
             }
+
+            @Override
+            public AcmeNode node(Object obj) {
+                return obj instanceof AcmeNode ? (AcmeNode) obj : null;
+            }
+
+            @Override
+            public AcmeNodeType classForNode(AcmeNode node) {
+                // we have only one type of nodes
+                return AcmeNodeType.STANDARD;
+            }
+
 
             @Override
             public String nameTemplate(AcmeNodeType nodeClass) {

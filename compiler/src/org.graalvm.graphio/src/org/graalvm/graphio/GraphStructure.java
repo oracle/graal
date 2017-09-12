@@ -96,20 +96,33 @@ public interface GraphStructure<G, N, C, P> {
     void nodeProperties(G graph, N node, Map<String, ? super Object> properties);
 
     /**
-     * Finds the node class for the provided object, if possible. If the given object
-     * <code>obj</code> can be seen as an instance of node class or it is a node in this graph,
-     * return the properly typed instance of the node class. Otherwise return <code>null</code>.
-     * <p>
-     * Since {@link GraphOutput.Builder#protocolVersion(int, int) protocol version} <code>5.0</code>
-     * it is expected that the returned value of <em>node class</em> is
-     * {@link Object#equals(java.lang.Object) equal} to <code>obj</code>. The protocol uses that to
-     * distinguish between <code>obj</code> being node class (return value is equal) and node
-     * (return value is its node class, e.g. different to <code>obj</code>).
+     * Finds a node for given object, if possible. If the given object <code>obj</code> can be seen
+     * as an instance of node return the properly typed instance of the node class. Otherwise return
+     * <code>null</code>.
+     *
+     * @param obj an object to find node for
+     * @return appropriate graph object or <code>null</code> if the object doesn't represent a node
+     */
+    N node(Object obj);
+
+    /**
+     * Finds a node class for given object, if possible. If the given object <code>obj</code> can be
+     * seen as an instance of node class return the properly typed instance of the node class.
+     * Otherwise return <code>null</code>.
      *
      * @param obj an object to find node class for
-     * @return appropriate graph object or <code>null</code> if the object doesn't represent a graph
+     * @return appropriate graph object or <code>null</code> if the object doesn't represent a node
+     *         class
      */
     C nodeClass(Object obj);
+
+    /**
+     * Finds a node class for provided node.
+     * 
+     * @param node an instance of node in this graph
+     * @return the node's node class, never <code>null</code>
+     */
+    C classForNode(N node);
 
     /**
      * The template used to build the name of nodes of this class. The template may use references

@@ -116,14 +116,21 @@ public class BinaryGraphPrinter implements
     }
 
     @Override
+    public Node node(Object obj) {
+        return obj instanceof Node ? (Node) obj : null;
+    }
+
+    @Override
     public NodeClass<?> nodeClass(Object obj) {
         if (obj instanceof NodeClass<?>) {
             return (NodeClass<?>) obj;
         }
-        if (obj instanceof Node) {
-            return ((Node) obj).getNodeClass();
-        }
         return null;
+    }
+
+    @Override
+    public NodeClass<?> classForNode(Node node) {
+        return node.getNodeClass();
     }
 
     @Override
