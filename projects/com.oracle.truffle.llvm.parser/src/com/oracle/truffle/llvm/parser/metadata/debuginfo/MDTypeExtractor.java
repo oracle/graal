@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.parser.metadata.Flags;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDBasicType;
@@ -43,6 +45,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDOldNode;
 import com.oracle.truffle.llvm.parser.metadata.MDReference;
 import com.oracle.truffle.llvm.parser.metadata.MDString;
 import com.oracle.truffle.llvm.parser.metadata.MDSubrange;
+import com.oracle.truffle.llvm.parser.metadata.MDSubroutine;
 import com.oracle.truffle.llvm.parser.metadata.MDTypedValue;
 import com.oracle.truffle.llvm.parser.metadata.MetadataList;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
@@ -61,8 +64,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import static com.oracle.truffle.llvm.runtime.debug.LLVMSourceType.UNKNOWN_TYPE;
+import static com.oracle.truffle.llvm.runtime.debug.LLVMSourceType.VOID_TYPE;
 
 final class MDTypeExtractor implements MetadataVisitor {
 
@@ -162,48 +167,24 @@ final class MDTypeExtractor implements MetadataVisitor {
 
                 case DW_TAG_VECTOR_TYPE:
                 case DW_TAG_ARRAY_TYPE: {
+                    final boolean isVector = mdType.getTag() == MDCompositeType.Tag.DW_TAG_VECTOR_TYPE;
                     final LLVMSourceArrayLikeType type = new LLVMSourceArrayLikeType(size, align, offset);
                     parsedTypes.put(mdType, type);
 
                     LLVMSourceType baseType = resolve(mdType.getDerivedFrom());
 
                     final List<LLVMSourceType> members = new ArrayList<>(1);
-                    getElements(mdType.getMemberDescriptors(), members);
+                    getElements(mdType.getMemberDescriptors(), members, false);
 
                     for (int i = members.size() - 1; i > 0; i--) {
-                        final LLVMSourceType count = members.get(i);
-                        final long tmpSize = count.getSize() * baseType.getSize();
+                        final long length = extractLength(members.get(i));
+                        final long tmpSize = length * baseType.getSize();
                         final LLVMSourceArrayLikeType tmp = new LLVMSourceArrayLikeType(tmpSize, align, 0L);
-
-                        if (COUNT_NAME.equals(count.getName())) {
-                            tmp.setLength(count.getSize());
-                            final LLVMSourceType finalBaseType = baseType;
-                            tmp.setBaseType(finalBaseType);
-                            if (mdType.getTag() == MDCompositeType.Tag.DW_TAG_VECTOR_TYPE) {
-                                tmp.setName(() -> String.format("%s<%d>", finalBaseType.getName(), tmp.getLength()));
-                            } else {
-                                tmp.setName(() -> String.format("%s[%d]", finalBaseType.getName(), tmp.getLength()));
-                            }
-                        } else {
-                            tmp.setLength(0);
-                        }
+                        setAggregateProperties(isVector, tmp, length, baseType);
                         baseType = tmp;
                     }
 
-                    final LLVMSourceType count = members.get(0);
-                    if (COUNT_NAME.equals(count.getName())) {
-                        type.setLength(count.getSize());
-                        final LLVMSourceType finalBaseType = baseType;
-                        type.setBaseType(finalBaseType);
-                        if (mdType.getTag() == MDCompositeType.Tag.DW_TAG_VECTOR_TYPE) {
-                            type.setName(() -> String.format("%s<%d>", finalBaseType.getName(), type.getLength()));
-                        } else {
-                            type.setName(() -> String.format("%s[%d]", finalBaseType.getName(), type.getLength()));
-                        }
-
-                    } else {
-                        type.setLength(0);
-                    }
+                    setAggregateProperties(isVector, type, extractLength(members.get(0)), baseType);
 
                     break;
                 }
@@ -222,7 +203,7 @@ final class MDTypeExtractor implements MetadataVisitor {
                     parsedTypes.put(mdType, type);
 
                     final List<LLVMSourceType> members = new ArrayList<>();
-                    getElements(mdType.getMemberDescriptors(), members);
+                    getElements(mdType.getMemberDescriptors(), members, false);
                     for (final LLVMSourceType member : members) {
                         if (member instanceof LLVMSourceMemberType) {
                             type.addMember((LLVMSourceMemberType) member);
@@ -238,7 +219,7 @@ final class MDTypeExtractor implements MetadataVisitor {
                     parsedTypes.put(mdType, type);
 
                     final List<LLVMSourceType> members = new ArrayList<>();
-                    getElements(mdType.getMemberDescriptors(), members);
+                    getElements(mdType.getMemberDescriptors(), members, false);
                     for (final LLVMSourceType member : members) {
                         type.addValue((int) member.getOffset(), member.getName());
                     }
@@ -246,10 +227,47 @@ final class MDTypeExtractor implements MetadataVisitor {
                 }
 
                 default:
-                    // TODO parse other kinds and remove this
                     parsedTypes.put(mdType, UNKNOWN_TYPE);
             }
         }
+    }
+
+    private static long extractLength(LLVMSourceType count) {
+        return COUNT_NAME.equals(count.getName()) ? count.getSize() : 0L;
+    }
+
+    private static void setAggregateProperties(boolean isVector, LLVMSourceArrayLikeType aggregate, long length, LLVMSourceType baseType) {
+        aggregate.setLength(length);
+        aggregate.setBaseType(baseType);
+        final String nameFormatString = isVector ? "%s<%d>" : "%s[%d]";
+        aggregate.setName(new Supplier<String>() {
+            @Override
+            @TruffleBoundary
+            public String get() {
+                return String.format(nameFormatString, baseType.getName(), length);
+            }
+        });
+    }
+
+    @Override
+    public void visit(MDSubroutine mdSubroutine) {
+        final List<LLVMSourceType> members = new ArrayList<>();
+        final LLVMSourceDecoratorType type = new LLVMSourceDecoratorType(0L, 0L, 0L, new Function<String, String>() {
+            @Override
+            @TruffleBoundary
+            public String apply(String ignored) {
+                if (members.isEmpty()) {
+                    return "(void())";
+                } else {
+                    CompilerDirectives.transferToInterpreter();
+                    final LLVMSourceType returnType = members.get(0);
+                    final String returnTypeName = returnType != UNKNOWN_TYPE ? returnType.getName() : VOID_TYPE.getName();
+                    return returnTypeName + members.subList(1, members.size()).stream().map(LLVMSourceType::getName).collect(Collectors.joining(", ", "(", ")"));
+                }
+            }
+        });
+        parsedTypes.put(mdSubroutine, type);
+        getElements(mdSubroutine.getTypes(), members, true);
     }
 
     @Override
@@ -430,7 +448,7 @@ final class MDTypeExtractor implements MetadataVisitor {
         }
     }
 
-    private void getElements(MDReference elemRef, List<LLVMSourceType> elemTypes) {
+    private void getElements(MDReference elemRef, List<LLVMSourceType> elemTypes, boolean includeUnknowns) {
         if (elemRef == MDReference.VOID) {
             return;
         }
@@ -440,7 +458,7 @@ final class MDTypeExtractor implements MetadataVisitor {
             final MDNode elemListNode = (MDNode) elemList;
             for (MDReference elemNode : elemListNode) {
                 final LLVMSourceType elemType = resolve(elemNode);
-                if (elemType != UNKNOWN_TYPE) {
+                if (elemType != UNKNOWN_TYPE || includeUnknowns) {
                     elemTypes.add(elemType);
                 }
             }
@@ -449,7 +467,7 @@ final class MDTypeExtractor implements MetadataVisitor {
             for (MDTypedValue elemNode : elemListNode) {
                 if (elemNode != MDReference.VOID && elemNode instanceof MDReference) {
                     final LLVMSourceType elemType = resolve((MDReference) elemNode);
-                    if (elemType != UNKNOWN_TYPE) {
+                    if (elemType != UNKNOWN_TYPE || includeUnknowns) {
                         elemTypes.add(elemType);
                     }
                 }
