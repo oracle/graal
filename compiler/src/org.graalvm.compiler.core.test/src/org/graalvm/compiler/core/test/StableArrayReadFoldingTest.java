@@ -22,11 +22,14 @@
  */
 package org.graalvm.compiler.core.test;
 
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
+import org.junit.Assume;
 import org.junit.Test;
 
 public class StableArrayReadFoldingTest extends GraalCompilerTest {
@@ -96,6 +99,7 @@ public class StableArrayReadFoldingTest extends GraalCompilerTest {
 
     @Test
     public void testKillWithSameTypeUnaligned() {
+        Assume.assumeTrue("Only test unaligned access on AMD64", getTarget().arch instanceof AMD64);
         ResolvedJavaMethod method = getResolvedJavaMethod("killWithSameTypeUnaligned");
         testAgainstExpected(method, new Result(true, null), null);
     }
@@ -111,6 +115,7 @@ public class StableArrayReadFoldingTest extends GraalCompilerTest {
 
     @Test
     public void testKillWithDifferentTypeUnaligned() {
+        Assume.assumeTrue("Only test unaligned access on AMD64", getTarget().arch instanceof AMD64);
         ResolvedJavaMethod method = getResolvedJavaMethod("killWithDifferentTypeUnaligned");
         testAgainstExpected(method, new Result(true, null), null);
     }
