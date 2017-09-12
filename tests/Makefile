@@ -43,7 +43,7 @@ EMBED_BC=
 BC_FILE=%/O0.bc.o
 
 %.bc.o: %.bc
-	objcopy -I binary -O elf64-x86-64 -B i386:x86-64 --rename-section .data=.llvmbc $< $@
+	$(QUIETLY) objcopy -I binary -O elf64-x86-64 -B i386:x86-64 --rename-section .data=.llvmbc $< $@
 endif
 
 %/ref.out: %.c $(BC_FILE)

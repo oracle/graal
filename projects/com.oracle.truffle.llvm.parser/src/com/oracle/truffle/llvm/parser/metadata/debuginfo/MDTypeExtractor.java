@@ -36,6 +36,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDCompositeType;
 import com.oracle.truffle.llvm.parser.metadata.MDDerivedType;
 import com.oracle.truffle.llvm.parser.metadata.MDEnumerator;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
+import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDNode;
 import com.oracle.truffle.llvm.parser.metadata.MDOldNode;
@@ -398,6 +399,14 @@ final class MDTypeExtractor implements MetadataVisitor {
         if (!parsedTypes.containsKey(mdGlobal)) {
             final LLVMSourceType type = resolve(mdGlobal.getType());
             parsedTypes.put(mdGlobal, type);
+        }
+    }
+
+    @Override
+    public void visit(MDGlobalVariableExpression mdGlobalExpression) {
+        if (!parsedTypes.containsKey(mdGlobalExpression)) {
+            final LLVMSourceType type = resolve(mdGlobalExpression.getGlobalVariable());
+            parsedTypes.put(mdGlobalExpression, type);
         }
     }
 

@@ -7,6 +7,7 @@ mx.sulong/env
 mx.sulong/eclipse-launches/**
 mx.sulong/libs/*.ll
 mx.sulong/libs/*.bc
+mx.sulong/*.iml
 .DS_Store
 build.xml
 workingsets.xml
@@ -31,12 +32,6 @@ projects/*/\.factorypath
 
 cache/**
 projects/com.oracle.truffle.llvm.bench/languagegame/**
-projects/com.intel.llvm.ireditor/plugin.xml
-projects/com.intel.llvm.ireditor/plugin.xml_gen
-projects/com.intel.llvm.ireditor/build.properties
-projects/com.intel.llvm.ireditor/src_gen/**
-projects/com.intel.llvm.ireditor/xtend-gen/**
-projects/com.intel.llvm.ireditor/.launch/**
 projects/com.oracle.truffle.llvm.test/lifetime/**
 
 tests/argon2/phc-winner-argon2/**
