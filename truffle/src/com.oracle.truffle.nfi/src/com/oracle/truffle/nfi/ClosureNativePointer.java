@@ -69,9 +69,22 @@ final class ClosureNativePointer {
      */
     final LibFFISignature signature;
 
+    /**
+     * The destructor of {@link LibFFIClosure} needs a reference to this object, in order to call
+     * {@link #releaseRef} when it dies. Since this object in turn might contain a transitive
+     * reference to the {@link LibFFIClosure} object, we must not keep the destructor
+     * unconditionally alive, otherwise that will keep the {@link LibFFIClosure} object alive
+     * forever, and the reference count will never drop to zero. By keeping the destructor reference
+     * here, we allow the {@link ClosureNativePointer} object and the {@link LibFFIClosure} object
+     * to die simultaneously (e.g. if a context is disposed). In that case, the destructor will not
+     * run, but since the {@link ClosureNativePointer} object is dead anyway, we don't care about
+     * the reference count.
+     */
+    private final NativeAllocation.Queue releaseRefQueue;
+
     static ClosureNativePointer create(NFIContext context, long nativeClosure, long codePointer, CallTarget callTarget, LibFFISignature signature) {
         ClosureNativePointer ret = new ClosureNativePointer(context, codePointer, callTarget, signature);
-        NativeAllocation.registerNativeAllocation(ret, new NativeDestructor(nativeClosure));
+        NativeAllocation.getGlobalQueue().registerNativeAllocation(ret, new NativeDestructor(nativeClosure));
         return ret;
     }
 
@@ -81,13 +94,20 @@ final class ClosureNativePointer {
         this.callTarget = callTarget;
         this.signature = signature;
 
-        // the first reference is owned by the LibFFIClosure object
-        this.refCount = new AtomicInteger(1);
+        // the code calling this constructor is responsible for calling registerManagedRef
+        this.refCount = new AtomicInteger(0);
+
+        this.releaseRefQueue = new NativeAllocation.Queue();
+    }
+
+    void registerManagedRef(LibFFIClosure closure) {
+        addRef();
+        releaseRefQueue.registerNativeAllocation(closure, new ReleaseRef(this));
     }
 
     void addRef() {
-        int refs = refCount.getAndIncrement();
-        assert refs > 0 : "addRef on dead closure";
+        int refs = refCount.incrementAndGet();
+        assert refs > 0 : "closure still dead after addRef";
     }
 
     void releaseRef() {
@@ -101,6 +121,20 @@ final class ClosureNativePointer {
     long getCodePointer() {
         assert refCount.get() > 0 : "accessing dead closure";
         return codePointer;
+    }
+
+    private static final class ReleaseRef extends NativeAllocation.Destructor {
+
+        private final ClosureNativePointer pointer;
+
+        ReleaseRef(ClosureNativePointer pointer) {
+            this.pointer = pointer;
+        }
+
+        @Override
+        protected void destroy() {
+            pointer.releaseRef();
+        }
     }
 
     private static class NativeDestructor extends NativeAllocation.Destructor {
