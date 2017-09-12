@@ -144,12 +144,24 @@ public abstract class BaseTestHarness {
     }
 
     private static Set<Path> getWhiteListEntries(Path configDir) {
-        Predicate<Path> fortranFilter;
-        if (TestOptions.IGNORE_FORTRAN) {
-            fortranFilter = f -> (!f.toString().trim().endsWith(".f90") && !f.toString().trim().endsWith(".F90"));
-        } else {
-            fortranFilter = f -> true;
-        }
+        Predicate<Path> filter = new Predicate<Path>() {
+
+            @Override
+            public boolean test(Path f) {
+                if (TestOptions.FILE_EXTENSION_FILTER == null) {
+                    System.err.print(f.toString());
+                    System.err.println(" TRUE");
+                    return true;
+                }
+                for (String e : TestOptions.FILE_EXTENSION_FILTER) {
+                    String fileName = f.toString().toLowerCase().trim();
+                    if (fileName.endsWith(e)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        };
         try {
             return Files.walk(configDir).filter(isIncludeFile).flatMap(f -> {
                 try {
@@ -157,7 +169,7 @@ public abstract class BaseTestHarness {
                 } catch (IOException e) {
                     throw new AssertionError("Error creating whitelist.", e);
                 }
-            }).map(s -> Paths.get(s)).filter(fortranFilter).collect(Collectors.toSet());
+            }).map(s -> Paths.get(s)).filter(filter).collect(Collectors.toSet());
         } catch (IOException e) {
             throw new AssertionError("Error creating whitelist.", e);
         }

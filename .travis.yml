@@ -73,9 +73,11 @@ matrix:
     jdk: oraclejdk8
   - env: TEST_COMMAND='mx test llvm args assembly type vaargs pipe callback shootout nwcc parserTorture' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx test gcc32' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
+  - env: TEST_COMMAND='mx test gcc_c' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx test gcc38' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
+  - env: TEST_COMMAND='mx test gcc_cpp' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
+    jdk: oraclejdk8
+  - env: TEST_COMMAND='mx test gcc_fortran' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
     jdk: oraclejdk8
 after_failure:
   - find . -iname "*.log" -print0 | xargs -0 cat
