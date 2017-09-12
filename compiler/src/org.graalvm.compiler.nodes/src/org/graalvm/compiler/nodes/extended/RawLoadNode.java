@@ -133,17 +133,17 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (!isAnyLocationForced() && getLocationIdentity().isAny()) {
-            ValueNode object = object();
-            if (offset().isConstant() && object.isConstant() && !object.isNullConstant() ) {
-                ConstantNode objectConstant = (ConstantNode) object;
+            ValueNode targetObject = object();
+            if (offset().isConstant() && targetObject.isConstant() && !targetObject.isNullConstant()) {
+                ConstantNode objectConstant = (ConstantNode) targetObject;
                 ResolvedJavaType type = StampTool.typeOrNull(objectConstant);
                 if (type != null && type.isArray()) {
                     JavaConstant arrayConstant = objectConstant.asJavaConstant();
                     if (arrayConstant != null) {
                         int stableDimension = objectConstant.getStableDimension();
                         if (stableDimension > 0) {
-                            long offsetConstant = offset().asJavaConstant().asLong();
-                            Constant constant = stamp().readConstant(tool.getConstantReflection().getMemoryAccessProvider(), arrayConstant, offsetConstant);
+                            long constantOffset = offset().asJavaConstant().asLong();
+                            Constant constant = stamp().readConstant(tool.getConstantReflection().getMemoryAccessProvider(), arrayConstant, constantOffset);
                             boolean isDefaultStable = objectConstant.isDefaultStable();
                             if (constant != null && (isDefaultStable || !constant.isDefaultForKind())) {
                                 return ConstantNode.forConstant(stamp(), constant, stableDimension - 1, isDefaultStable, tool.getMetaAccess());
