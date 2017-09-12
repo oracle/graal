@@ -198,6 +198,10 @@ public final class LLVMContext {
             nativeLookup.addLibraries(nativeLibraries.stream().map(l -> findLibrary(l)).collect(Collectors.toList()));
         }
         addBitcodeLibrary("libsulong.bc");
+        List<String> bcLibraries = SulongEngineOption.getPolyglotOptionBCLibraries(env);
+        for (String bcl : bcLibraries) {
+            addBitcodeLibrary(bcl);
+        }
         this.nativeFunctions = new LLVMNativeFunctionsImpl(nativeLookup);
     }
 
