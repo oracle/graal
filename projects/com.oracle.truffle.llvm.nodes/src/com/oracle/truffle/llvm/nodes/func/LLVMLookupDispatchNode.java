@@ -44,9 +44,11 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
+import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -131,11 +133,13 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
                     @Cached("createCrossLanguageCallNode(arguments)") Node crossLanguageCallNode,
                     @Cached("createLLVMDataEscapeNodes()") LLVMDataEscapeNode[] dataEscapeNodes,
                     @Cached("createToLLVMNode()") ForeignToLLVM toLLVMNode,
-                    @Cached("getContext()") LLVMContext context) {
+                    @Cached("getContext()") LLVMContext context,
+                    @Cached("create()") LLVMGetStackNode getStack) {
         try {
-            getThreadingStack(context).getStack().setStackPointer((long) arguments[0]);
+            LLVMStack stack = getStack.executeWithTarget(getThreadingStack(context), Thread.currentThread());
+            stack.setStackPointer((long) arguments[0]);
             Object ret = ForeignAccess.sendExecute(crossLanguageCallNode, function, getForeignArguments(dataEscapeNodes, arguments, context));
-            getThreadingStack(context).getStack().setStackPointer((long) arguments[0]);
+            stack.setStackPointer((long) arguments[0]);
             return toLLVMNode.executeWithTarget(ret);
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();

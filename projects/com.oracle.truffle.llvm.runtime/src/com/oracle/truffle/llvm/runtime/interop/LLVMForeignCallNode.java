@@ -43,9 +43,11 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.SlowPathForeignToLLVM;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
@@ -130,18 +132,20 @@ abstract class LLVMForeignCallNode extends LLVMNode {
                     @Cached("createFastPackArguments(cachedFunction, arguments.length)") PackForeignArgumentsNode packNode,
                     @Cached("arguments.length") int cachedLength,
                     @Cached("cachedFunction.getContext()") LLVMContext context,
-                    @Cached("cachedFunction.needsStackPointer()") boolean needsStackPointer) {
+                    @Cached("cachedFunction.needsStackPointer()") boolean needsStackPointer,
+                    @Cached("create()") LLVMGetStackNode getStack) {
         assert !(cachedFunction.getType().getReturnType() instanceof StructureType);
-        return directCall(arguments, callNode, packNode, context, needsStackPointer);
+        return directCall(arguments, callNode, packNode, getStack, context, needsStackPointer);
     }
 
-    private Object directCall(Object[] arguments, DirectCallNode callNode, PackForeignArgumentsNode packNode, LLVMContext context, boolean needsStackPointer) {
+    private Object directCall(Object[] arguments, DirectCallNode callNode, PackForeignArgumentsNode packNode, LLVMGetStackNode getStack, LLVMContext context, boolean needsStackPointer) {
         Object result;
         if (needsStackPointer) {
             assert getThreadingStack(context).checkThread();
-            long stackPointer = getThreadingStack(context).getStack().getStackPointer();
+            LLVMStack stack = getStack.executeWithTarget(getThreadingStack(context), Thread.currentThread());
+            long stackPointer = stack.getStackPointer();
             result = callNode.call(packNode.pack(arguments, stackPointer));
-            getThreadingStack(context).getStack().setStackPointer(stackPointer);
+            stack.setStackPointer(stackPointer);
         } else {
             result = callNode.call(packNode.pack(arguments, 0));
         }
@@ -156,19 +160,21 @@ abstract class LLVMForeignCallNode extends LLVMNode {
                     @Cached("createFastPackArguments(function, arguments.length)") PackForeignArgumentsNode packNode,
                     @Cached("arguments.length") int cachedLength,
                     @Cached("function.getContext()") LLVMContext context,
-                    @Cached("function.needsStackPointer()") boolean needsStackPointer) {
+                    @Cached("function.needsStackPointer()") boolean needsStackPointer,
+                    @Cached("create()") LLVMGetStackNode getStack) {
         assert !(function.getType().getReturnType() instanceof StructureType);
-        return directCall(arguments, callNode, packNode, context, needsStackPointer);
+        return directCall(arguments, callNode, packNode, getStack, context, needsStackPointer);
     }
 
     @Specialization
     public Object callIndirect(LLVMFunctionDescriptor function, Object[] arguments,
-                    @Cached("create()") IndirectCallNode callNode, @Cached("createSlowPackArguments()") SlowPackForeignArgumentsNode slowPack) {
+                    @Cached("create()") IndirectCallNode callNode, @Cached("createSlowPackArguments()") SlowPackForeignArgumentsNode slowPack, @Cached("create()") LLVMGetStackNode getStack) {
         assert !(function.getType().getReturnType() instanceof StructureType);
         assert function.getContext().getThreadingStack().checkThread();
-        long stackPointer = function.getContext().getThreadingStack().getStack().getStackPointer();
+        LLVMStack stack = getStack.executeWithTarget(function.getContext().getThreadingStack(), Thread.currentThread());
+        long stackPointer = stack.getStackPointer();
         Object result = callNode.call(getCallTarget(function), slowPack.pack(function, arguments, stackPointer));
-        function.getContext().getThreadingStack().getStack().setStackPointer(stackPointer);
+        stack.setStackPointer(stackPointer);
         return prepareValueForEscape.executeWithTarget(result, function.getContext());
     }
 
