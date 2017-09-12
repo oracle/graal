@@ -206,6 +206,7 @@ import com.oracle.truffle.llvm.nodes.cast.LLVMToI8NodeGen.LLVMToI8NoZeroExtNodeG
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMFenceNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMAddressDirectLoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI16LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI32LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI64LoadNodeGen;
@@ -1076,6 +1077,53 @@ class AsmFactory {
                     throw new AsmParseException("invalid operand type: " + dstType);
                 }
             }
+            case "cmpxchg": {
+                if (dstType instanceof PointerType) {
+                    // dstType = PrimitiveType.I64;
+                    dstPrimitiveType = PrimitiveKind.I64;
+                }
+                if (dstType instanceof PrimitiveType || dstType instanceof PointerType) {
+                    LLVMExpressionNode srcA = getOperandLoad(dstType, a);
+                    LLVMExpressionNode srcB = getOperandLoad(dstType, b);
+                    LLVMAMD64WriteValueNode dst1 = getStore(dstType, b);
+                    LLVMAMD64WriteValueNode dst2;
+                    LLVMExpressionNode accumulator;
+                    if (dstType instanceof PointerType) {
+                        dst2 = getRegisterStore("rax");
+                        accumulator = getOperandLoad(new PointerType(PrimitiveType.I8), new AsmRegisterOperand("rax"));
+                        out = LLVMAMD64CmpXchgqNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB);
+                    } else {
+                        switch (dstPrimitiveType) {
+                            case I8:
+                                dst2 = getRegisterStore("al");
+                                accumulator = getOperandLoad(PrimitiveType.I8, new AsmRegisterOperand("al"));
+                                out = LLVMAMD64CmpXchgbNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB);
+                                break;
+                            case I16:
+                                dst2 = getRegisterStore("ax");
+                                accumulator = getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("ax"));
+                                out = LLVMAMD64CmpXchgwNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB);
+                                break;
+                            case I32:
+                                dst2 = getRegisterStore("eax");
+                                accumulator = getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("eax"));
+                                out = LLVMAMD64CmpXchglNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB);
+                                break;
+                            case I64:
+                                dst2 = getRegisterStore("rax");
+                                accumulator = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rax"));
+                                out = LLVMAMD64CmpXchgqNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB);
+                                break;
+                            default:
+                                throw new AsmParseException("invalid operand type: " + dstType);
+                        }
+                    }
+                    statements.add(out);
+                    return;
+                } else {
+                    throw new AsmParseException("invalid operand type: " + dstType);
+                }
+            }
             case "and":
                 if (dstType instanceof PrimitiveType) {
                     LLVMExpressionNode srcA = getOperandLoad(dstType, a);
@@ -1765,6 +1813,8 @@ class AsmFactory {
             assert type instanceof PointerType || type == op.getType();
             if (type instanceof PointerType) {
                 switch (((PrimitiveType) op.getType()).getPrimitiveKind()) {
+                    case I8:
+                        return LLVMToI8NoZeroExtNodeGen.create(register);
                     case I16:
                         return LLVMToI16NoZeroExtNodeGen.create(register);
                     case I32:
@@ -1810,6 +1860,9 @@ class AsmFactory {
             Argument info = argInfo.get(op.getIndex());
             FrameSlot frame = getArgumentSlot(op.getIndex(), type);
             if (info.isMemory()) {
+                if (type instanceof PointerType) {
+                    return LLVMAddressDirectLoadNodeGen.create(LLVMAddressReadNodeGen.create(frame));
+                }
                 switch (((PrimitiveType) type).getPrimitiveKind()) {
                     case I8:
                         return LLVMI8LoadNodeGen.create(LLVMAddressReadNodeGen.create(frame));
@@ -1996,6 +2049,9 @@ class AsmFactory {
             Argument info = argInfo.get(op.getIndex());
             if (info.isMemory()) {
                 LLVMExpressionNode address = info.getAddress();
+                if (type instanceof PointerType) {
+                    return new LLVMAMD64Target(address);
+                }
                 switch (((PrimitiveType) type).getPrimitiveKind()) {
                     case I8:
                     case I16:
