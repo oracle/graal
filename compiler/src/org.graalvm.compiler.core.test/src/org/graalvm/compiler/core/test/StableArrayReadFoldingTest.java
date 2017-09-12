@@ -43,14 +43,12 @@ public class StableArrayReadFoldingTest extends GraalCompilerTest {
     }
 
     @Override
-    protected StructuredGraph parseForCompile(ResolvedJavaMethod method, CompilationIdentifier
-            compilationId, OptionValues options) {
+    protected StructuredGraph parseForCompile(ResolvedJavaMethod method, CompilationIdentifier compilationId, OptionValues options) {
         StructuredGraph graph = super.parseForCompile(method, compilationId, options);
         // Mimic @Stable array constants.
         for (ConstantNode constantNode : graph.getNodes().filter(ConstantNode.class).snapshot()) {
             if (getConstantReflection().readArrayLength(constantNode.asJavaConstant()) != null) {
-                ConstantNode newConstantNode =
-                        graph.unique(ConstantNode.forConstant(constantNode.asJavaConstant(), 1, true, getMetaAccess()));
+                ConstantNode newConstantNode = graph.unique(ConstantNode.forConstant(constantNode.asJavaConstant(), 1, true, getMetaAccess()));
                 constantNode.replaceAndDelete(newConstantNode);
             }
         }

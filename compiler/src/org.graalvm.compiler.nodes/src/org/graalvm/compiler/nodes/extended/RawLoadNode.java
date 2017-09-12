@@ -52,7 +52,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-
 /**
  * Load of a value from a location specified as an offset relative to an object. No null check is
  * performed before the load.
