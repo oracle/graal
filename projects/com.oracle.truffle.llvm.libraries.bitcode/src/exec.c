@@ -29,19 +29,41 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include <setjmp.h>
-#include "unsupported.h"
+#include <unistd.h>
 
-__attribute__((weak)) int setjmp(jmp_buf env) {
-  WARN_UNSUPPORTED(setjmp);
-  return 0;
+__attribute__((weak)) int execl(const char *path, const char *arg0, ...) {
+  fprintf(stderr, "ERROR: execl is unsupported!\n");
+  fprintf(stderr, "Tried to execute '%s' with arg0 '%s'\n", path, arg0);
+  abort();
 }
 
-__attribute__((weak)) int sigsetjmp(sigjmp_buf env, int savesigs) {
-  WARN_UNSUPPORTED(sigsetjmp);
-  return 0;
+__attribute__((weak)) int execle(const char *path, const char *arg0, ...) {
+  fprintf(stderr, "ERROR: execle is unsupported!\n");
+  fprintf(stderr, "Tried to execute '%s' with arg0 '%s'\n", path, arg0);
+  abort();
 }
-
-__attribute__((weak)) void longjmp(jmp_buf env, int val) { ERR_UNSUPPORTED(longjmp); }
-
-__attribute__((weak)) void siglongjmp(sigjmp_buf env, int val) { ERR_UNSUPPORTED(siglongjmp); }
+__attribute__((weak)) int execlp(const char *file, const char *arg0, ...) {
+  fprintf(stderr, "ERROR: execlp is unsupported!\n");
+  fprintf(stderr, "Tried to execute '%s' with arg0 '%s'\n", file, arg0);
+  abort();
+}
+__attribute__((weak)) int execv(const char *path, char *const argv[]) {
+  fprintf(stderr, "ERROR: execv is unsupported!\n");
+  fprintf(stderr, "Tried to execute '%s' with arg0 '%s'\n", path, *argv);
+  abort();
+}
+__attribute__((weak)) int execve(const char *path, char *const argv[], char *const envp[]) {
+  fprintf(stderr, "ERROR: execve is unsupported!\n");
+  fprintf(stderr, "Tried to execute '%s' with arg0 '%s'\n", path, *argv);
+  abort();
+}
+__attribute__((weak)) int execvp(const char *file, char *const argv[]) {
+  fprintf(stderr, "ERROR: execvp is unsupported!\n");
+  fprintf(stderr, "Tried to execute '%s' with arg0 '%s'\n", file, *argv);
+  abort();
+}
+__attribute__((weak)) int fexecve(int fd, char *const argv[], char *const envp[]) {
+  fprintf(stderr, "ERROR: fexecve is unsupported!\n");
+  fprintf(stderr, "Tried to execute fd %d with arg0 '%s'\n", fd, *argv);
+  abort();
+}

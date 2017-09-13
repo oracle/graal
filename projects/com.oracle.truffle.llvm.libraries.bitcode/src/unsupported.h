@@ -29,19 +29,11 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include <setjmp.h>
-#include "unsupported.h"
 
-__attribute__((weak)) int setjmp(jmp_buf env) {
-  WARN_UNSUPPORTED(setjmp);
-  return 0;
-}
+#define WARN_UNSUPPORTED(x) fprintf(stderr, "WARNING: " #x " is unsupported!\n")
 
-__attribute__((weak)) int sigsetjmp(sigjmp_buf env, int savesigs) {
-  WARN_UNSUPPORTED(sigsetjmp);
-  return 0;
-}
-
-__attribute__((weak)) void longjmp(jmp_buf env, int val) { ERR_UNSUPPORTED(longjmp); }
-
-__attribute__((weak)) void siglongjmp(sigjmp_buf env, int val) { ERR_UNSUPPORTED(siglongjmp); }
+#define ERR_UNSUPPORTED(x)                                                                                                                           \
+  {                                                                                                                                                  \
+    fprintf(stderr, "ERROR: " #x " is unsupported!\n");                                                                                              \
+    abort();                                                                                                                                         \
+  }

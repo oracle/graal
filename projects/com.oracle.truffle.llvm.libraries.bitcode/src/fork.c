@@ -27,21 +27,11 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <setjmp.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include "unsupported.h"
 
-__attribute__((weak)) int setjmp(jmp_buf env) {
-  WARN_UNSUPPORTED(setjmp);
-  return 0;
-}
+__attribute__((weak)) pid_t fork(void) { ERR_UNSUPPORTED(fork); }
 
-__attribute__((weak)) int sigsetjmp(sigjmp_buf env, int savesigs) {
-  WARN_UNSUPPORTED(sigsetjmp);
-  return 0;
-}
-
-__attribute__((weak)) void longjmp(jmp_buf env, int val) { ERR_UNSUPPORTED(longjmp); }
-
-__attribute__((weak)) void siglongjmp(sigjmp_buf env, int val) { ERR_UNSUPPORTED(siglongjmp); }
+__attribute__((weak)) pid_t vfork(void) { ERR_UNSUPPORTED(vfork); }
