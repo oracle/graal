@@ -101,7 +101,7 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
                 for (SourceModel.Variable var : sourceFunction.getGlobals()) {
                     if (var.getSymbol() instanceof GlobalValueSymbol) {
                         LLVMExpressionNode readNode = runtime.getGlobalAddress(symbols, (GlobalValueSymbol) var.getSymbol());
-                        LLVMExpressionNode decl = nodeFactory.createDebugDeclaration(var.getName(), var.getSourceType(), readNode, debugSlot);
+                        LLVMExpressionNode decl = nodeFactory.createDebugValue(var.getName(), var.getSourceType(), readNode, debugSlot, true);
                         visitor.addInstructionUnchecked(decl);
                     }
                 }

@@ -160,15 +160,7 @@ final class LLVMConstantGlobalValueProvider implements LLVMDebugValueProvider {
         if (isInNative(global)) {
             return new LLVMAllocationValueProvider(getNativeLocation(global));
         } else {
-            final LLVMDebugValueLoadNode literal = new LLVMDebugValueLoadNode(getManagedValue(global));
-            final LLVMToDebugValueNode toValue = LLVMToDebugValueNodeGen.create(literal);
-            // TODO can we really just pass null here?
-            final Object value = toValue.executeGeneric(null);
-            if (value instanceof LLVMDebugValueProvider) {
-                return (LLVMDebugValueProvider) value;
-            } else {
-                return null;
-            }
+            return LLVMToDebugValueNodeGen.create(null).executeWithTarget(getManagedValue(global));
         }
     }
 }

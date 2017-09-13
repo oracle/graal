@@ -34,58 +34,44 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueContainer;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChildren({@NodeChild(value = "container", type = LLVMExpressionNode.class), @NodeChild(value = "value", type = LLVMExpressionNode.class)})
-public abstract class LLVMDebugDeclaration extends LLVMExpressionNode {
+@NodeChildren({@NodeChild(value = "containerSlotRead", type = LLVMExpressionNode.class), @NodeChild(value = "valueProvider", type = LLVMExpressionNode.class)})
+public abstract class LLVMDebugWriteNode extends LLVMExpressionNode {
 
     private final String varName;
     private final LLVMSourceType varType;
 
     private final FrameSlot containerSlot;
+    private final boolean writeToGlobal;
 
-    public LLVMDebugDeclaration(String varName, LLVMSourceType varType, FrameSlot containerSlot) {
+    public LLVMDebugWriteNode(String varName, LLVMSourceType varType, FrameSlot containerSlot, boolean writeToGlobal) {
         this.varName = varName;
         this.varType = varType;
         this.containerSlot = containerSlot;
+        this.writeToGlobal = writeToGlobal;
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
+    @Specialization
+    public Object update(LLVMDebugValueContainer container, LLVMDebugValueProvider value) {
+        final LLVMDebugObject object = LLVMDebugObject.instantiate(varType, 0L, value);
+        if (writeToGlobal) {
+            LLVMDebugValueContainer.findOrAddGlobalsContainer(container).addMember(varName, object);
+        } else {
+            container.addMember(varName, object);
+        }
         return null;
     }
 
     @Specialization
-    public Object readAddress(LLVMDebugValueContainer container, LLVMAddress address) {
-        final LLVMDebugObject object = LLVMDebugObject.instantiate(varType, 0L, new LLVMAllocationValueProvider(address));
-        container.addMember(varName, object);
-        return null;
-    }
-
-    @Specialization
-    public Object readGlobal(LLVMDebugValueContainer container, LLVMGlobalVariable global) {
-        final LLVMDebugObject object = LLVMDebugObject.instantiate(varType, 0L, new LLVMConstantGlobalValueProvider(global));
-        final LLVMDebugValueContainer globalsContainer = LLVMDebugValueContainer.findOrAddGlobalsContainer(container);
-        globalsContainer.addMember(varName, object);
-        return null;
-    }
-
-    @Specialization
-    public Object initializeOnAddress(VirtualFrame frame, @SuppressWarnings("unused") Object defaultValue, LLVMAddress address) {
+    public Object init(VirtualFrame frame, @SuppressWarnings("unused") Object defaultValue, LLVMDebugValueProvider value) {
         final LLVMDebugValueContainer container = LLVMDebugValueContainer.createContainer();
         frame.setObject(containerSlot, container);
-        return readAddress(container, address);
-    }
-
-    @Specialization
-    public Object initializeOnGlobal(VirtualFrame frame, @SuppressWarnings("unused") Object defaultValue, LLVMGlobalVariable global) {
-        final LLVMDebugValueContainer container = LLVMDebugValueContainer.createContainer();
-        frame.setObject(containerSlot, container);
-        return readGlobal(container, global);
+        update(container, value);
+        return null;
     }
 }

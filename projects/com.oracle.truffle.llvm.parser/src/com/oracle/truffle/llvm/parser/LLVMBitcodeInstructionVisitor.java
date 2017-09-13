@@ -51,6 +51,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.InlineAsmConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.UndefinedConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.AllocateInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.BinaryOperationInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.BranchInstruction;
@@ -317,14 +318,10 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         if (runtime.getContext().getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
             if (isDeclaration) {
                 LLVMExpressionNode valueRead = null;
-                if (valueSymbol instanceof ValueInstruction && valueSymbol.getType() instanceof PointerType) {
-                    valueRead = symbols.resolve(valueSymbol);
-
-                } else if (valueSymbol instanceof FunctionParameter && valueSymbol.getType() instanceof PointerType) {
-                    valueRead = symbols.resolve(valueSymbol);
-
-                } else if (valueSymbol instanceof UndefinedConstant) {
+                if (valueSymbol instanceof UndefinedConstant || valueSymbol instanceof NullConstant) {
                     valueRead = symbols.resolve(new NullConstant(MetaType.DEBUG));
+                } else if (valueSymbol instanceof GlobalValueSymbol || valueSymbol.getType() instanceof PointerType) {
+                    valueRead = symbols.resolve(valueSymbol);
                 }
 
                 if (valueRead != null) {
@@ -334,7 +331,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             } else {
                 final FrameSlot containerSlot = frame.findOrAddFrameSlot(LLVMDebugValueContainer.FRAMESLOT_NAME, FrameSlotKind.Object);
                 final LLVMExpressionNode valueNode = symbols.resolve(valueSymbol);
-                addInstructionUnchecked(nodeFactory.createDebugValue(var.getName(), var.getSourceType(), valueNode, containerSlot));
+                addInstructionUnchecked(nodeFactory.createDebugValue(var.getName(), var.getSourceType(), valueNode, containerSlot, false));
             }
         }
 
