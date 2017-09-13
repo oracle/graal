@@ -62,12 +62,8 @@ final class GraphPrintVisitor implements GraphStructure<RootCallTarget, NodeElem
     }
 
     @Override
-    public NodeElement node(Object o) {
-        Object obj = o;
-        if (obj instanceof NodeElement) {
-            return (NodeElement) o;
-        }
-        return null;
+    public NodeElement node(Object obj) {
+        return obj instanceof NodeElement ? (NodeElement) obj : null;
     }
 
     @Override
