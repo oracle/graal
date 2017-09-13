@@ -37,7 +37,6 @@ gcc-5.2.0/gcc/testsuite/g++.dg/opt/dtor4.C
 gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr16372-1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/opt/cond1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/opt/call1.C
-gcc-5.2.0/gcc/testsuite/g++.dg/opt/builtins2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/opt/enum2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr19317-2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr14029.C
