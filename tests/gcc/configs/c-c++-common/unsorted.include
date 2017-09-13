@@ -93,3 +93,6 @@ gcc-5.2.0/gcc/testsuite/c-c++-common/simulate-thread/bitfields-1.c
 gcc-5.2.0/gcc/testsuite/c-c++-common/simulate-thread/bitfields-4.c
 gcc-5.2.0/gcc/testsuite/c-c++-common/simulate-thread/bitfields-2.c
 gcc-5.2.0/gcc/testsuite/c-c++-common/simulate-thread/bitfields-3.c
+gcc-5.2.0/gcc/testsuite/c-c++-common/int128-2.c
+gcc-5.2.0/gcc/testsuite/c-c++-common/torture/vector-subscript-2.c
+
