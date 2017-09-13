@@ -108,7 +108,7 @@ public abstract class BaseTestHarness {
         // abs
         Set<Path> availableSourceFiles = getFiles(sourceDir);
         // abs
-        Set<Path> compiledTests = collectTestCases(suiteDir, testDiscoveryPath);
+        Set<Path> compiledTests = collectTestCases(testDiscoveryPath);
 
         // abs
         Set<Path> greyList = compiledTests.stream().filter(t -> !tests.values().contains(t)).collect(Collectors.toSet());
@@ -128,9 +128,9 @@ public abstract class BaseTestHarness {
         return Paths.get(base.relativize(abs).toString());
     }
 
-    private static Set<Path> collectTestCases(Path suiteDir, String testDiscoveryPath) throws AssertionError {
+    private static Set<Path> collectTestCases(String testDiscoveryPath) throws AssertionError {
         try {
-            return Files.walk(suiteDir).filter(isExecutable).map(f -> f.getParent()).filter(p -> p.startsWith(Paths.get(suiteDir.toString(), testDiscoveryPath))).collect(Collectors.toSet());
+            return Files.walk(Paths.get(testDiscoveryPath)).filter(isExecutable).map(f -> f.getParent()).collect(Collectors.toSet());
         } catch (IOException e) {
             throw new AssertionError("Test cases not found", e);
         }
@@ -140,7 +140,7 @@ public abstract class BaseTestHarness {
      * Returns a Map whitelistEntry (relative path) -> testFolder (absolute path).
      */
     public static final Map<Path, Path> getWhiteListTestFolders(Path configDir, Path suiteDirectory) {
-        return getWhiteListEntries(configDir).stream().collect(Collectors.toMap(wl -> wl, wl -> Paths.get(suiteDirectory.toString(), removeFileEnding(wl.toString()))));
+        return getWhiteListEntries(configDir).stream().collect(Collectors.toMap(wl -> wl, wl -> Paths.get(suiteDirectory.toString(), removeFileEnding(wl.toString())).normalize()));
     }
 
     private static Set<Path> getWhiteListEntries(Path configDir) {
@@ -149,12 +149,10 @@ public abstract class BaseTestHarness {
             @Override
             public boolean test(Path f) {
                 if (TestOptions.FILE_EXTENSION_FILTER == null) {
-                    System.err.print(f.toString());
-                    System.err.println(" TRUE");
                     return true;
                 }
                 for (String e : TestOptions.FILE_EXTENSION_FILTER) {
-                    String fileName = f.toString().toLowerCase().trim();
+                    String fileName = f.toString().trim();
                     if (fileName.endsWith(e)) {
                         return true;
                     }
