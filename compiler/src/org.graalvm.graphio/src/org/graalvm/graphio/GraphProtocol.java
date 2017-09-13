@@ -356,7 +356,8 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         }
     }
 
-    private void writePoolObject(Object object) throws IOException {
+    private void writePoolObject(Object obj) throws IOException {
+        Object object = obj;
         if (object == null) {
             writeByte(POOL_NULL);
             return;
@@ -372,9 +373,13 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             } else if (versionMajor >= 4 && findNodeSourcePosition(object) != null) {
                 writeByte(POOL_NODE_SOURCE_POSITION);
             } else {
+                final Node node = findNode(object);
+                if (versionMajor == 4 && node != null) {
+                    object = classForNode(node);
+                }
                 if (findNodeClass(object) != null) {
                     writeByte(POOL_NODE_CLASS);
-                } else if (versionMajor >= 5 && findNode(object) != null) {
+                } else if (versionMajor >= 5 && node != null) {
                     writeByte(POOL_NODE);
                 } else if (findMethod(object) != null) {
                     writeByte(POOL_METHOD);

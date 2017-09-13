@@ -28,6 +28,7 @@ import java.nio.channels.WritableByteChannel;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.graalvm.graphio.GraphOutput;
 import org.graalvm.graphio.GraphStructure;
@@ -69,7 +70,7 @@ public final class NodeEncodingTest {
 
         assertEquals("Node is always requested", 1, node.nodeRequested);
         assertEquals("Nobody asks for id of a node in version 4.0", 0, node.idTested);
-        assertByte(false, 33, out.toByteArray());
+        assertByte(false, out.toByteArray(), 33);
         assertEquals("Node class of the node has been requested", 1, node.nodeClassRequested);
         assertEquals("Node class template name stored", 1, clazz.nameTemplateQueried);
         assertFalse("No to string ops", node.toStringRequested);
@@ -92,7 +93,7 @@ public final class NodeEncodingTest {
 
         assertEquals("Node is always requested", 1, node.nodeRequested);
         assertEquals("Nobody asks for id of a node in version 1.0", 0, node.idTested);
-        assertByte(false, 33, out.toByteArray());
+        assertByte(false, out.toByteArray(), 33);
         assertEquals("Node class was needed to find out it is not a NodeClass instance", 1, node.nodeClassRequested);
         assertEquals("Node class template name wasn't needed however", 0, clazz.nameTemplateQueried);
         assertTrue("Node sent as a string version 1.0", node.toStringRequested);
@@ -115,18 +116,47 @@ public final class NodeEncodingTest {
 
         assertEquals("Node is always requested", 1, node.nodeRequested);
         assertEquals("Id of our node is requested in version 5.0", 1, node.idTested);
-        assertByte(true, 33, out.toByteArray());
+        assertByte(true, out.toByteArray(), 33);
         assertTrue("Node class was needed at least once", 1 <= node.nodeClassRequested);
         assertEquals("Node class template name sent to server", 1, clazz.nameTemplateQueried);
         assertFalse("Node.toString() isn't needed", node.toStringRequested);
     }
 
-    private static void assertByte(boolean shouldBeFound, int value, byte[] arr) {
+    @Test
+    public void dumpingNodeTwiceInVersion4() throws Exception {
+        WritableByteChannel w = Channels.newChannel(out);
+        MockGraph graph = new MockGraph();
+        MockNodeClass clazz = new MockNodeClass("clazz");
+        MockNode node = new MockNode(clazz, 33); // random value otherwise not found in the stream
+        try (GraphOutput<MockGraph, ?> dump = GraphOutput.newBuilder(new MockStructure()).protocolVersion(4, 0).build(w)) {
+            Map<String, Object> props = new LinkedHashMap<>();
+            props.put("node1", node);
+            props.put("node2", node);
+            props.put("node3", node);
+            dump.beginGroup(graph, "test1", "t1", null, 0, props);
+            dump.endGroup();
+        }
+
+        assertEquals("Node requested three times", 3, node.nodeRequested);
+        assertEquals("Nobody asks for id of a node in version 4.0", 0, node.idTested);
+        // check there is no encoded string for object #3
+        assertByte(false, out.toByteArray(), 1, 0, 3);
+        assertEquals("Node class of the node has been requested three times", 3, node.nodeClassRequested);
+        assertEquals("Node class template name stored", 1, clazz.nameTemplateQueried);
+        assertFalse("No to string ops", node.toStringRequested);
+    }
+
+    private static void assertByte(boolean shouldBeFound, byte[] arr, int... value) {
         boolean found = false;
+        int at = 0;
         for (int i = 0; i < arr.length; i++) {
-            if (arr[i] == value) {
-                found = true;
-                break;
+            if (arr[i] == value[at]) {
+                if (++at == value.length) {
+                    found = true;
+                    break;
+                }
+            } else {
+                at = 0;
             }
         }
         if (shouldBeFound == found) {
