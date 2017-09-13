@@ -157,11 +157,11 @@ public final class SourceModel {
 
     private static final class Parser implements ModelVisitor, FunctionVisitor, InstructionVisitorAdapter {
 
-        private final LexicalScopeExtractor lexicalScopeExtractor = new LexicalScopeExtractor();
-        private final MDTypeExtractor typeExtractor = new MDTypeExtractor();
+        private final LexicalScopeExtractor lexicalScopeExtractor;
+        private final MDTypeExtractor typeExtractor;
+        private final SourceModel sourceModel;
 
         private final MetadataList moduleMetadata;
-        private final SourceModel sourceModel;
         private final Source bitcodeSource;
 
         private Function currentFunction = null;
@@ -172,7 +172,10 @@ public final class SourceModel {
         private Parser(MetadataList moduleMetadata, Source bitcodeSource) {
             this.moduleMetadata = moduleMetadata;
             this.bitcodeSource = bitcodeSource;
-            this.sourceModel = new SourceModel();
+            typeExtractor = new MDTypeExtractor();
+            this.typeExtractor.setScopeMetadata(moduleMetadata);
+            lexicalScopeExtractor = new LexicalScopeExtractor();
+            sourceModel = new SourceModel();
         }
 
         @Override

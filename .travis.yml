@@ -61,6 +61,7 @@ install:
   - ln -s $DRAGONEGG_LLVM/bin/llvm-config llvm-config-3.2
   - export PATH=`pwd`:$PATH
   - cd ..
+  - export CPPFLAGS=-g
 script:
   - $COMPILE_COMMAND && $TEST_COMMAND
 matrix:
