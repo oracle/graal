@@ -228,7 +228,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         if (moveFactory.canInlineConstant(constant)) {
             return new ConstantValue(toRegisterKind(kind), constant);
         } else {
-            return emitLoadConstant(kind, constant);
+            return emitLoadConstant(toRegisterKind(kind), constant);
         }
     }
 

@@ -1234,6 +1234,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     @SuppressWarnings("try")
     protected StructuredGraph parse(StructuredGraph.Builder builder, PhaseSuite<HighTierContext> graphBuilderSuite) {
         ResolvedJavaMethod javaMethod = builder.getMethod();
+        builder.speculationLog(getSpeculationLog());
         if (builder.getCancellable() == null) {
             builder.cancellable(getCancellable(javaMethod));
         }
