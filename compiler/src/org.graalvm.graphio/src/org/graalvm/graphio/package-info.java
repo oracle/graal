@@ -23,8 +23,8 @@
  */
 
 /**
- * Send your graphs to <b>IGV</b> via socket or file. This package allows you to easily encode any
- * graph-like data structure and send it for visualization to
+ * Send your graphs to <b>IGV</b> via a socket or a file. This package allows one to easily encode
+ * any graph-like data structure and send it for visualization to
  * <em>OracleLab's Ideal Graph Visualizer</em> tool. Assuming you already have your own data
  * structure that contains <b>nodes</b> and <b>edges</b> among them, creating a
  * {@link org.graalvm.graphio.GraphOutput} specialized for your data is a matter of implementing a
@@ -34,7 +34,7 @@
  *
  * Just a few methods makes it simple, doesn't it? The {@link org.graalvm.graphio.GraphStructure}
  * interface defines the set of operations that are needed by the <em>graph protocol</em> to encode
- * a graph into the <b>IGV</b> expected format. The graph structure is implemented as so called
+ * a graph into the <b>IGV</b> expected format. The graph structure is implemented as a so called
  * <a href="http://wiki.apidesign.org/wiki/Singletonizer">singletonizer</a> API pattern: there is no
  * need to change your data structures or implement some special interfaces - everything needed is
  * provided by implementing the {@link org.graalvm.graphio.GraphStructure} operations.

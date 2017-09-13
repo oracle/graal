@@ -93,7 +93,7 @@ public final class NodeEncodingTest {
         assertEquals("Node is always requested", 1, node.nodeRequested);
         assertEquals("Nobody asks for id of a node in version 1.0", 0, node.idTested);
         assertByte(false, 33, out.toByteArray());
-        assertEquals("Node class was needed to find out it is not NodeClass instance", 1, node.nodeClassRequested);
+        assertEquals("Node class was needed to find out it is not a NodeClass instance", 1, node.nodeClassRequested);
         assertEquals("Node class template name wasn't needed however", 0, clazz.nameTemplateQueried);
         assertTrue("Node sent as a string version 1.0", node.toStringRequested);
     }

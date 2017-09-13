@@ -132,8 +132,8 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
     protected abstract ResolvedJavaMethod findMethod(Object obj);
 
     /**
-     * Attempts to recognize provided object as node. Used to encode it with {@link #POOL_NODE} pool
-     * type.
+     * Attempts to recognize the provided object as a node. Used to encode it with
+     * {@link #POOL_NODE} pool type.
      * 
      * @param obj any object
      * @return <code>null</code> if it is not a node object, non-null otherwise
@@ -150,7 +150,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
     protected abstract NodeClass findNodeClass(Object obj);
 
     /**
-     * Returns NodeClass for given Node {@code obj}.
+     * Returns the NodeClass for a given Node {@code obj}.
      * 
      * @param obj instance of node
      * @return non-{@code null} instance of the node's class object
