@@ -317,8 +317,12 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         if (runtime.getContext().getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
             if (isDeclaration) {
                 LLVMExpressionNode valueRead = null;
-                if (valueSymbol instanceof AllocateInstruction) {
+                if (valueSymbol instanceof ValueInstruction && valueSymbol.getType() instanceof PointerType) {
                     valueRead = symbols.resolve(valueSymbol);
+
+                } else if (valueSymbol instanceof FunctionParameter && valueSymbol.getType() instanceof PointerType) {
+                    valueRead = symbols.resolve(valueSymbol);
+
                 } else if (valueSymbol instanceof UndefinedConstant) {
                     valueRead = symbols.resolve(new NullConstant(MetaType.DEBUG));
                 }
