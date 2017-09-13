@@ -43,7 +43,7 @@ public final class TestOptions {
         if (property != null && property.length() > 0) {
             return property.split(":");
         } else {
-            return null;
+            return new String[0];
         }
     }
 }

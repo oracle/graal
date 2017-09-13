@@ -99,7 +99,7 @@ public abstract class BaseTestHarness {
             System.err.println(String.format("Collected %d test folders.", tests.size()));
         }
 
-        return tests.keySet().stream().map(f -> new Object[]{tests.get(f), f.toString()}).collect(Collectors.toList());
+        return tests.keySet().stream().sorted().map(f -> new Object[]{tests.get(f), f.toString()}).collect(Collectors.toList());
     }
 
     private static Collection<Object[]> collectDiscoverRun(Path configPath, Path suiteDir, Path sourceDir, String testDiscoveryPath) throws AssertionError {
@@ -116,7 +116,7 @@ public abstract class BaseTestHarness {
         // rel
         Set<Path> availableSourceFilesRelative = availableSourceFiles.stream().map(e -> getRelative(sourceDir.getParent().toUri(), e.toUri())).collect(Collectors.toSet());
 
-        List<Object[]> collectedTests = greyList.stream().map(
+        List<Object[]> collectedTests = greyList.stream().sorted().map(
                         t -> new Object[]{t, availableSourceFilesRelative.stream().filter(s -> {
                             return s.toString().startsWith(getRelative(suiteDir.toUri(), t.toUri()).toString());
                         }).findAny().get().toString()}).collect(
@@ -148,7 +148,7 @@ public abstract class BaseTestHarness {
 
             @Override
             public boolean test(Path f) {
-                if (TestOptions.FILE_EXTENSION_FILTER == null) {
+                if (TestOptions.FILE_EXTENSION_FILTER.length == 0) {
                     return true;
                 }
                 for (String e : TestOptions.FILE_EXTENSION_FILTER) {
