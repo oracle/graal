@@ -33,7 +33,7 @@ public abstract class Attribute {
 
     public enum Kind {
 
-        UNUSED_0,
+        NONE,
 
         ALIGN, // code 1
         ALWAYSINLINE,
@@ -86,10 +86,16 @@ public abstract class Attribute {
         INACCESSIBLEMEMONLY,
         INACCESSIBLEMEMONLY_OR_ARGMEMONLY,
         ALLOCSIZE,
-        WRITEONLY;
+        WRITEONLY,
+        SPECULATABLE;
 
         public static Kind decode(long id) {
-            return values()[(int) id];
+            // NONE is not a valid attribute, but this default is in line with llvm
+            if (id > 0 && id < values().length) {
+                return values()[(int) id];
+            } else {
+                return NONE;
+            }
         }
 
         public String getIrString() {
