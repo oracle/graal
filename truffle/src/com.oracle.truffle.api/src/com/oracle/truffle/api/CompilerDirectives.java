@@ -262,7 +262,7 @@ public final class CompilerDirectives {
 
         /**
          * Determines whether execution should be transferred to the interpreter in the case that an
-         * exception is thrown accross this boundary.
+         * exception is thrown across this boundary.
          *
          * @since 0.28
          */

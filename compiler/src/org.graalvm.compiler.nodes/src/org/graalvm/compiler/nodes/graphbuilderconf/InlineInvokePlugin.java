@@ -57,7 +57,7 @@ public interface InlineInvokePlugin extends GraphBuilderPlugin {
          * Denotes a call site must not be inlined and the execution should be transferred to
          * interpreter in case of an exception.
          */
-        public static final InlineInfo DO_NOT_INLINE_DEOP_ON_EXCEPTION = new InlineInfo(null, null);
+        public static final InlineInfo DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION = new InlineInfo(null, null);
 
         private final ResolvedJavaMethod methodToInline;
         private final BytecodeProvider intrinsicBytecodeProvider;
