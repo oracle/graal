@@ -120,28 +120,32 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
     }
 
     /** Used by the splitting strategy to install new targets. */
-    synchronized void split() {
+    void split() {
         CompilerAsserts.neverPartOfCompilation();
 
-        if (splitCallTarget != null) {
-            return;
-        }
+        // Synchronize with atomic() as replace() also takes the same lock
+        // and we only want to take one lock to avoid deadlocks.
+        atomic(() -> {
+            if (splitCallTarget != null) {
+                return;
+            }
 
-        assert isCallTargetCloningAllowed();
-        OptimizedCallTarget currentTarget = getCallTarget();
-        OptimizedCallTarget splitTarget = getCallTarget().cloneUninitialized();
+            assert isCallTargetCloningAllowed();
+            OptimizedCallTarget currentTarget = getCallTarget();
+            OptimizedCallTarget splitTarget = getCallTarget().cloneUninitialized();
 
-        if (callCount >= 1) {
-            currentTarget.decrementKnownCallSites();
-        }
-        splitTarget.incrementKnownCallSites();
+            if (callCount >= 1) {
+                currentTarget.decrementKnownCallSites();
+            }
+            splitTarget.incrementKnownCallSites();
 
-        if (getParent() != null) {
-            // dummy replace to report the split, irrelevant if this node is not adopted
-            replace(this, "Split call node");
-        }
-        splitCallTarget = splitTarget;
-        runtime.getCompilationNotify().notifyCompilationSplit(this);
+            if (getParent() != null) {
+                // dummy replace to report the split, irrelevant if this node is not adopted
+                replace(this, "Split call node");
+            }
+            splitCallTarget = splitTarget;
+            runtime.getCompilationNotify().notifyCompilationSplit(this);
+        });
     }
 
     @Override
