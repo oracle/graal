@@ -291,7 +291,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         createFrameWrite(nodeFactory.createCompareExchangeInstruction(runtime, cmpxchg.getType(), elementType, ptrNode, cmpNode, newNode), cmpxchg);
     }
 
-    private void visitDebugIntrinsic(Symbol valueSymbol, Symbol sourceVariableSymbol, boolean isDeclaration) {
+    private void visitDebugIntrinsic(Symbol valueSymbol, Symbol sourceVariableSymbol, boolean isDeclaration, Integer valueOffset) {
         final SourceModel.Variable var;
         if (sourceVariableSymbol instanceof SourceModel.Variable) {
             var = (SourceModel.Variable) sourceVariableSymbol;
@@ -328,7 +328,9 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                     final FrameSlot containerSlot = frame.findOrAddFrameSlot(LLVMDebugValueContainer.FRAMESLOT_NAME, FrameSlotKind.Object);
                     addInstructionUnchecked(nodeFactory.createDebugDeclaration(var.getName(), var.getSourceType(), valueRead, containerSlot));
                 }
-            } else {
+            } else if (valueOffset != null && valueOffset == 0) {
+                // the dbg.value intrinsic may specify only parts of a variable by giving a value to
+                // be stored at an offset into the variable, but this never happens in practice
                 final FrameSlot containerSlot = frame.findOrAddFrameSlot(LLVMDebugValueContainer.FRAMESLOT_NAME, FrameSlotKind.Object);
                 final LLVMExpressionNode valueNode = symbols.resolve(valueSymbol);
                 addInstructionUnchecked(nodeFactory.createDebugValue(var.getName(), var.getSourceType(), valueNode, containerSlot, false));
@@ -337,6 +339,8 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         handleNullerInfo();
     }
+
+    private static final int LLVM_DBG_VALUE_OFFSET_INDEX = 1;
 
     @Override
     public void visit(VoidCallInstruction call) {
@@ -348,13 +352,14 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             switch (name) {
                 case SourceModel.LLVM_DBG_DECLARE_NAME: {
                     final int valueArgIndex = SourceModel.LLVM_DBG_DECLARE_LOCALREF_ARGINDEX;
-                    visitDebugIntrinsic(call.getArgument(descriptorArgIndex), call.getArgument(valueArgIndex), true);
+                    visitDebugIntrinsic(call.getArgument(descriptorArgIndex), call.getArgument(valueArgIndex), true, null);
                     return;
                 }
 
                 case SourceModel.LLVM_DBG_VALUE_NAME: {
                     final int valueArgIndex = SourceModel.LLVM_DBG_VALUE_LOCALREF_ARGINDEX;
-                    visitDebugIntrinsic(call.getArgument(descriptorArgIndex), call.getArgument(valueArgIndex), false);
+                    final Integer valueOffset = LLVMSymbolReadResolver.evaluateIntegerConstant(call.getArgument(LLVM_DBG_VALUE_OFFSET_INDEX));
+                    visitDebugIntrinsic(call.getArgument(descriptorArgIndex), call.getArgument(valueArgIndex), false, valueOffset);
                     return;
                 }
             }
