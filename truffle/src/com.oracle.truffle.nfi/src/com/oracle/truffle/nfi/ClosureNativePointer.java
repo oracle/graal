@@ -29,21 +29,61 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Container object for the two pointers (data and code) that make up a closure on the native side.
- * The native closure is reference counted, with the reference count being stored in this object.
- *
- * Every {@link LibFFIClosure} object has a reference to a {@link ClosureNativePointer} object.
- * Native code may have additional references that are manually counted using the
- * {@code newClosureRef} and {@code addClosureRef} functions.
- *
- * This object is kept alive in a map in the {@link NFIContext} as long as the reference count is
- * greater than zero. The reference from {@link NFIContext} to {@link ClosureNativePointer} is not
- * counted in the reference count. When the reference count drops to zero, it is removed from the
- * map in the context, and the GC can free this object, and subsequently destroy the closure on the
- * native side.
- *
- * When the {@link NFIContext} is disposed, all native references to all closures owned by this
- * context are released. If there are also no Java references left, then the native closure is
- * destroyed.
+ * There can be multiple references to a native closure object, both from the managed heap and from
+ * native code. This class manages these references using a {@link #refCount reference count}.
+ * <p>
+ * If the {@link NFIContext} dies, all native references to the closure will be implicitly released.
+ * <p>
+ * This diagram shows the references between the {@link ClosureNativePointer} object, the closure on
+ * the native side, and its users:
+ * <p>
+ * <img src="doc-files/native-alloc.svg">
+ * <p>
+ * The native data associated with a closure is stored in a {@code struct closure_data} on the
+ * native heap. The {@link ClosureNativePointer} object has a {@link #codePointer native pointer}
+ * into this structure. The lifetime of the managed {@link ClosureNativePointer} and the native
+ * {@code struct closure_data} are linked, when the {@link ClosureNativePointer} dies, the {@code
+ * struct closure_data} is deallocated. This is done by the {@link NativeDestructor}, which is
+ * triggered by a phantom reference on the {@link ClosureNativePointer}.
+ * <p>
+ * The native {@link struct closure_data} can be referenced from native code directly, or from
+ * {@link LibFFIClosure} objects in the managed heap. Both kinds of references are counted in the
+ * {@link #refCount}. The references from native code are manually counted using the
+ * {@code TruffleEnv::newClosureRef} and {@code TruffleEnv::releaseClosureRef} functions. The
+ * references from the {@link LibFFIClosure} objects are counted automatically using a phantom
+ * reference and the {@link ReleaseRef} destructor, which will be triggered when the
+ * {@link LibFFIClosure} object dies.
+ * <p>
+ * As long as the {@link #refCount} is greater than zero, there is one additional reference from a
+ * map in the {@link NFIContext}. This map is used to lookup the {@link ClosureNativePointer}
+ * reference from managed code. This reference also keeps the {@link ClosureNativePointer} object
+ * alive if there are only native references, but no other managed references.
+ * <p>
+ * The native {@code struct closure_data} needs a JNI reference to a {@link CallTarget}. This
+ * reference can only be freed after the {@link ClosureNativePointer} object dies. The
+ * {@link CallTarget} might have a reference to a cached {@link LibFFIClosure} object, which in turn
+ * has a reference to the {@link ClosureNativePointer}. This reference cycle would keep the whole
+ * structure alive indefinitely. To break that cycle, the NFI reference from the
+ * {@code struct closure_data} to the {@link CallTarget} is weak, but the {@link CallTarget} is kept
+ * alive by an additional strong reference from the {@link ClosureNativePointer} object. That way,
+ * the GC can collect the whole cycle of {@link ClosureNativePointer}, {@link CallTarget} and
+ * {@link LibFFIClosure} at once, and then the {@link NativeDestructor} can free the
+ * {@code struct closure_data} later.
+ * <p>
+ * Another problem that might keep the whole reference cycle alive is the {@link ReleaseRef}
+ * destructor that exists for each {@link LibFFIClosure} object. If the {@link LibFFIClosure} object
+ * is cached in the AST, this may produce a reference cycle from the {@link ReleaseRef} destructor
+ * back to the {@link LibFFIClosure}, preventing the {@link LibFFIClosure} from being collected,
+ * which in turn prevents the {@link ReleaseRef} destructor from triggering. Since the
+ * {@link LibFFIClosure} object is cached in the AST, it can only die if the {@link NFIContext} is
+ * disposed. Because of that, the {@link ReleaseRef} destructor can not be registered in the
+ * {@link NativeAllocation#getGlobalQueue global} queue, otherwise the reference from the destructor
+ * would keep everything alive. Therefore, the {@link ReleaseRef} destructor is enqueued in a local
+ * queue that can die at the same time as the {@link ClosureNativePointer}. Now, if the whole
+ * {@link NFIContext} dies, the GC can collect all objects involved in the reference cycle at once,
+ * including the {@link ReleaseRef} destructor. In that case, the reference count is not decremented
+ * for the {@link LibFFIClosure} objects, but that doesn't matter since the {@link NFIContext} is
+ * dead anyway.
  */
 final class ClosureNativePointer {
 
