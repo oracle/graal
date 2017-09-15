@@ -60,11 +60,11 @@ endif
 define OPT_RULES
 %/$(1).bc: %.c
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) clang -c -emit-llvm $(2) $(CPPFLAGS) -o $$@ $$<
+	$(QUIETLY) clang -c -emit-llvm $(2) $(CPPFLAGS) -g -o $$@ $$<
 
 %/$(1).bc: %.cpp
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) clang++ -c -emit-llvm $(2) $(CPPFLAGS) -o $$@ $$<
+	$(QUIETLY) clang++ -c -emit-llvm $(2) $(CPPFLAGS) -g -o $$@ $$<
 
 %/gcc_$(1).ll: %.c
 	@mkdir -p $$(shell dirname $$@)
