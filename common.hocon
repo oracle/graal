@@ -49,8 +49,6 @@ solaris : ${common} {
 
 darwin : ${common} {
   packages : {
-    # Brew does not support versions
-    mercurial : ""
     "pip:astroid" : "==1.1.0"
     "pip:pylint" : "==1.1.0"
   }
@@ -64,7 +62,7 @@ linux-amd64 : ${linux} {
 }
 
 darwin-amd64 : ${darwin} {
-  capabilities : [darwin, amd64]
+  capabilities : [darwin_next, amd64]
 }
 
 solaris-sparcv9 : ${solaris} {
