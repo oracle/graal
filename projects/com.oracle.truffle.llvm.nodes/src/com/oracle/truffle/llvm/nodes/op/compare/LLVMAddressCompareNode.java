@@ -44,6 +44,7 @@ import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressCompareNodeGen.ToComp
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
@@ -185,6 +186,15 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
             return globalAccess.getNativeLocation(address);
         }
 
+        @Specialization
+        protected LLVMAddress doManagedMalloc(LLVMVirtualAllocationAddress address) {
+            if (address.isNull()) {
+                return LLVMAddress.fromLong(address.getOffset());
+            } else {
+                return LLVMAddress.fromLong(getHashCode(address.getObject()) + address.getOffset());
+            }
+        }
+
         @Child private Node isNull = Message.IS_NULL.createNode();
 
         @Specialization
@@ -206,7 +216,7 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         }
 
         @TruffleBoundary
-        private static int getHashCode(TruffleObject address) {
+        private static int getHashCode(Object address) {
             return address.hashCode();
         }
 

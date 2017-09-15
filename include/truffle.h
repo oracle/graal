@@ -135,6 +135,7 @@ const char *truffle_string_to_cstr(const char *string);
 void truffle_free_cstr(const char *truffle_allocated_cstr);
 
 // Managed operations
+void *truffle_virtual_malloc(size_t size);
 void *truffle_managed_malloc(long size);
 void *truffle_managed_memcpy(void *destination, const void *source, size_t count);
 

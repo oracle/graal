@@ -44,6 +44,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleManagedMalloc.ManagedMallocObject;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
@@ -111,6 +112,11 @@ public abstract class LLVMDirectLoadNode {
         @Specialization
         public LLVMAddress executeAddress(LLVMAddress addr) {
             return LLVMMemory.getAddress(addr);
+        }
+
+        @Specialization
+        public LLVMAddress executeLLVMByteArrayAddress(LLVMVirtualAllocationAddress address) {
+            return LLVMAddress.fromLong(address.getI64());
         }
 
         @Specialization

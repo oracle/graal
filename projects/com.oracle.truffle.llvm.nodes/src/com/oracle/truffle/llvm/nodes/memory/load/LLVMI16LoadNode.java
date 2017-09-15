@@ -41,6 +41,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
@@ -75,6 +76,11 @@ public abstract class LLVMI16LoadNode extends LLVMExpressionNode {
     @Specialization
     public short executeShort(LLVMAddress addr) {
         return LLVMMemory.getI16(addr);
+    }
+
+    @Specialization
+    public short executeI16(LLVMVirtualAllocationAddress address) {
+        return address.getI16();
     }
 
     @Specialization

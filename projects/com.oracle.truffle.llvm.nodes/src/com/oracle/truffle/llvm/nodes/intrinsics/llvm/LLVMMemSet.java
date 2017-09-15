@@ -34,6 +34,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMProfiledMemSet;
@@ -69,6 +70,15 @@ public abstract class LLVMMemSet extends LLVMBuiltin {
     @Specialization
     public Object execute(LLVMGlobalVariable address, byte value, long length, int align, boolean isVolatile, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         profiledMemSet.memset(globalAccess.getNativeLocation(address), value, length);
+        return address;
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization
+    public Object execute(LLVMVirtualAllocationAddress address, byte value, long length, int align, boolean isVolatile, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        for (int i = 0; i < length; i++) {
+            address.writeI8(value);
+        }
         return address;
     }
 }

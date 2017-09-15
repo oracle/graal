@@ -48,6 +48,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
@@ -127,6 +128,12 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        public Object execute(LLVMVirtualAllocationAddress address, boolean value) {
+            address.writeI1(value);
+            return null;
+        }
+
+        @Specialization
         public Object execute(LLVMTruffleObject address, boolean value, @Cached("getContext()") LLVMContext context) {
             doForeignAccess(address, 1, value, context);
             return null;
@@ -161,6 +168,12 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         public Object execute(LLVMAddress address, byte value) {
             LLVMMemory.putI8(address, value);
+            return null;
+        }
+
+        @Specialization
+        public Object execute(LLVMVirtualAllocationAddress address, byte value) {
+            address.writeI8(value);
             return null;
         }
 
@@ -204,6 +217,12 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         public Object execute(LLVMGlobalVariable address, short value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             globalAccess.putI16(address, value);
+            return null;
+        }
+
+        @Specialization
+        public Object execute(LLVMVirtualAllocationAddress address, short value) {
+            address.writeI16(value);
             return null;
         }
 
@@ -258,6 +277,12 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        public Object execute(LLVMVirtualAllocationAddress address, int value) {
+            address.writeI32(value);
+            return null;
+        }
+
+        @Specialization
         public Object execute(LLVMTruffleObject address, int value, @Cached("getContext()") LLVMContext context) {
             doForeignAccess(address, LLVMExpressionNode.I32_SIZE_IN_BYTES, value, context);
             return null;
@@ -298,6 +323,12 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         public Object execute(LLVMAddress address, long value) {
             LLVMMemory.putI64(address, value);
+            return null;
+        }
+
+        @Specialization
+        public Object execute(LLVMVirtualAllocationAddress address, long value) {
+            address.writeI64(value);
             return null;
         }
 
@@ -367,6 +398,12 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        public Object execute(LLVMVirtualAllocationAddress address, float value) {
+            address.writeFloat(value);
+            return null;
+        }
+
+        @Specialization
         public Object execute(LLVMTruffleObject address, float value, @Cached("getContext()") LLVMContext context) {
             doForeignAccess(address, LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, value, context);
             return null;
@@ -407,6 +444,12 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         public Object execute(LLVMAddress address, double value) {
             LLVMMemory.putDouble(address, value);
+            return null;
+        }
+
+        @Specialization
+        public Object execute(LLVMVirtualAllocationAddress address, double value) {
+            address.writeDouble(value);
             return null;
         }
 
@@ -466,6 +509,12 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         public Object doAddress(LLVMAddress address, LLVMAddress value) {
             LLVMMemory.putAddress(address, value);
+            return null;
+        }
+
+        @Specialization
+        public Object doAddress(LLVMVirtualAllocationAddress address, LLVMAddress value) {
+            address.writeI64(value.getVal());
             return null;
         }
 
@@ -583,6 +632,12 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         public LLVMGlobalVariableStoreNode(LLVMGlobalVariable descriptor, SourceSection source) {
             this.descriptor = descriptor;
             this.source = source;
+        }
+
+        @Specialization
+        public Object executeNative(LLVMVirtualAllocationAddress value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            globalAccess.putManaged(descriptor, value);
+            return null;
         }
 
         @Specialization
