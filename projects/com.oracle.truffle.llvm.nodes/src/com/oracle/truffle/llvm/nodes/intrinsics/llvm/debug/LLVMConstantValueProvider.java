@@ -144,11 +144,11 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
             result <<= Long.SIZE - bitSize - bitOffset;
             if (signed) {
                 result >>= Long.SIZE - bitSize;
+                return BigInteger.valueOf(result);
             } else {
                 result >>>= Long.SIZE - bitSize;
+                return new BigInteger(Long.toUnsignedString(result));
             }
-
-            return BigInteger.valueOf(result);
         }
     }
 
