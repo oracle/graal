@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,11 +35,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleManagedMalloc.ManagedMallocObject;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
@@ -144,21 +139,16 @@ public abstract class LLVMDirectLoadNode {
         }
 
         @Specialization(guards = "!objectIsManagedMalloc(addr)")
-        public Object executeIndirectedForeign(LLVMTruffleObject addr, @Cached("createForeignReadNode()") Node foreignRead) {
-            try {
-                return toLLVM.executeWithTarget(ForeignAccess.sendRead(foreignRead, addr.getObject(), (int) (addr.getOffset() / LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES)));
-            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new UnsupportedOperationException(e);
-            }
+        public Object executeIndirectedForeign(LLVMTruffleObject addr, @Cached("createForeignReadNode()") LLVMForeignReadNode foreignRead) {
+            return foreignRead.execute(addr);
         }
 
         protected boolean objectIsManagedMalloc(LLVMTruffleObject addr) {
             return addr.getObject() instanceof ManagedMallocObject;
         }
 
-        protected Node createForeignReadNode() {
-            return Message.READ.createNode();
+        protected LLVMForeignReadNode createForeignReadNode() {
+            return new LLVMForeignReadNode(ForeignToLLVMType.POINTER, ADDRESS_SIZE_IN_BYTES);
         }
     }
 

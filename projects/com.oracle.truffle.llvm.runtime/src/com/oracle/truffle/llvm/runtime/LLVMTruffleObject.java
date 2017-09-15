@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 @ValueType
@@ -39,19 +40,33 @@ public final class LLVMTruffleObject {
     private final TruffleObject object;
     private final long offset;
     private final Type type;
+    private final LLVMSourceType baseType;
+
+    private static LLVMSourceType overrideBaseType(LLVMTruffleObject obj, Type newType) {
+        if (obj.getOffset() == 0) {
+            if (newType.getSourceType() != null) {
+                return newType.getSourceType();
+            } else {
+                return obj.getBaseType();
+            }
+        } else {
+            return obj.getBaseType();
+        }
+    }
 
     public LLVMTruffleObject(LLVMTruffleObject orig, Type type) {
-        this(orig.getObject(), orig.getOffset(), type);
+        this(orig.getObject(), orig.getOffset(), type, overrideBaseType(orig, type));
     }
 
     public LLVMTruffleObject(TruffleObject object, Type type) {
-        this(object, 0, type);
+        this(object, 0, type, type.getSourceType());
     }
 
-    private LLVMTruffleObject(TruffleObject object, long offset, Type type) {
+    private LLVMTruffleObject(TruffleObject object, long offset, Type type, LLVMSourceType baseType) {
         this.object = object;
         this.offset = offset;
         this.type = type;
+        this.baseType = baseType;
     }
 
     public long getOffset() {
@@ -67,7 +82,11 @@ public final class LLVMTruffleObject {
     }
 
     public LLVMTruffleObject increment(long incr, Type newType) {
-        return new LLVMTruffleObject(object, offset + incr, newType);
+        return new LLVMTruffleObject(object, offset + incr, newType, baseType);
+    }
+
+    public LLVMSourceType getBaseType() {
+        return baseType;
     }
 
     @TruffleBoundary

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,11 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ByteValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
@@ -45,26 +40,12 @@ import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMI8LoadNode extends LLVMExpressionNode {
-    @Child protected Node foreignRead = Message.READ.createNode();
-    @Child protected ForeignToLLVM toLLVM = ForeignToLLVM.create(ForeignToLLVMType.I8);
-
-    protected byte doForeignAccess(LLVMTruffleObject addr) {
-        try {
-            int index = (int) addr.getOffset();
-            Object value = ForeignAccess.sendRead(foreignRead, addr.getObject(), index);
-            return (byte) toLLVM.executeWithTarget(value);
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
-        }
-    }
 
     private final ByteValueProfile profile = ByteValueProfile.createIdentityProfile();
 
@@ -84,9 +65,13 @@ public abstract class LLVMI8LoadNode extends LLVMExpressionNode {
         return profile.profile(globalAccess.getI8(addr));
     }
 
+    static LLVMForeignReadNode createForeignRead() {
+        return new LLVMForeignReadNode(ForeignToLLVMType.I8, 1);
+    }
+
     @Specialization
-    public byte executeI8(LLVMTruffleObject addr) {
-        return doForeignAccess(addr);
+    public byte executeI8(LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+        return (byte) foreignRead.execute(addr);
     }
 
     @Specialization

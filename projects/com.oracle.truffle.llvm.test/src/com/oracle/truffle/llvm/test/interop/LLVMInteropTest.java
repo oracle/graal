@@ -360,7 +360,6 @@ public final class LLVMInteropTest {
     // implicit interop
     // structs not yet implemented
     @Test
-    @Ignore
     public void test030() throws Exception {
         Runner runner = new Runner("interop030");
         runner.run();

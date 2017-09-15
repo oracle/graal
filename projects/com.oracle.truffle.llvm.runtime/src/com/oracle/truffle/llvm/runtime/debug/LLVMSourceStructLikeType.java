@@ -81,6 +81,16 @@ public final class LLVMSourceStructLikeType extends LLVMSourceType {
         return null;
     }
 
+    @TruffleBoundary
+    public String getElementNameByOffset(long offset) {
+        for (LLVMSourceMemberType member : members) {
+            if (member.getOffset() == offset) {
+                return member.getName();
+            }
+        }
+        return null;
+    }
+
     @Override
     @TruffleBoundary
     public LLVMSourceType getElementType(long i) {
