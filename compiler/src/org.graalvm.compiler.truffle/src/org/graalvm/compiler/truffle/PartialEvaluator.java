@@ -274,8 +274,11 @@ public abstract class PartialEvaluator {
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
             TruffleBoundary truffleBoundary = original.getAnnotation(TruffleBoundary.class);
             if (truffleBoundary != null) {
-                return truffleBoundary.throwsControlFlowException() || !truffleBoundary.transferToInterpreterOnException() ? InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION
-                                : InlineInfo.DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION;
+                if (!truffleBoundary.throwsControlFlowException() && truffleBoundary.transferToInterpreterOnException()) {
+                    return InlineInfo.DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION;
+                } else {
+                    return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+                }
             }
             assert !builder.parsingIntrinsic();
 
@@ -354,10 +357,12 @@ public abstract class PartialEvaluator {
             }
             TruffleBoundary truffleBoundary = original.getAnnotation(TruffleBoundary.class);
             if (truffleBoundary != null) {
-                return truffleBoundary.throwsControlFlowException() || !truffleBoundary.transferToInterpreterOnException() ? InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION
-                                : InlineInfo.DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION;
+                if (!truffleBoundary.throwsControlFlowException() && truffleBoundary.transferToInterpreterOnException()) {
+                    return InlineInfo.DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION;
+                } else {
+                    return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+                }
             }
-
             if (original.equals(callSiteProxyMethod) || original.equals(callDirectMethod)) {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             }
