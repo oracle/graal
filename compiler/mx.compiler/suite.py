@@ -978,6 +978,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.lir.jtt",
         "org.graalvm.compiler.lir.amd64",
+        "org.graalvm.compiler.core.amd64",
         "JVMCI_HOTSPOT"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
