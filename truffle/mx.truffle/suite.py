@@ -489,6 +489,16 @@ suite = {
       "workingSets" : "Truffle,Tools",
     },
 
+    "com.oracle.truffle.tools.profiler" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : ["TRUFFLE_API"],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle,Tools",
+    },
+
     "com.oracle.truffle.tools.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -845,6 +855,17 @@ suite = {
          "com.oracle.truffle.nfi.test.native",
        ],
       "maven" : False,
+     },
+
+     "TRUFFLE_PROFILER": {
+       "dependencies": [
+            "com.oracle.truffle.tools.profiler",
+        ],
+        "distDependencies" : [
+            "sdk:GRAAL_SDK",
+            "TRUFFLE_API",
+        ],
+      "description" : "The truffle profiler, supporting CPU sampling and tracing. Memory tracing support is experimental"
      },
   },
 }
