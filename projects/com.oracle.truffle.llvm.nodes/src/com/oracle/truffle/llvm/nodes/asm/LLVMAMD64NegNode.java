@@ -32,24 +32,24 @@ package com.oracle.truffle.llvm.nodes.asm;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdateCPZSOFlagsNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild("valueNode")
 public abstract class LLVMAMD64NegNode extends LLVMExpressionNode {
-    @Child LLVMAMD64UpdateFlagsNode flags;
+    @Child protected LLVMAMD64UpdateCPZSOFlagsNode flags;
 
-    public LLVMAMD64NegNode(LLVMAMD64UpdateFlagsNode flags) {
+    public LLVMAMD64NegNode(LLVMAMD64UpdateCPZSOFlagsNode flags) {
         this.flags = flags;
     }
 
     public abstract static class LLVMAMD64NegbNode extends LLVMAMD64NegNode {
-        public LLVMAMD64NegbNode(LLVMAMD64UpdateFlagsNode flags) {
+        public LLVMAMD64NegbNode(LLVMAMD64UpdateCPZSOFlagsNode flags) {
             super(flags);
         }
 
         @Specialization
-        protected byte executeI16(VirtualFrame frame, byte value) {
+        protected byte executeI8(VirtualFrame frame, byte value) {
             byte result = (byte) -value;
             boolean cf = value != 0;
             boolean of = false;
@@ -59,7 +59,7 @@ public abstract class LLVMAMD64NegNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMAMD64NegwNode extends LLVMAMD64NegNode {
-        public LLVMAMD64NegwNode(LLVMAMD64UpdateFlagsNode flags) {
+        public LLVMAMD64NegwNode(LLVMAMD64UpdateCPZSOFlagsNode flags) {
             super(flags);
         }
 
@@ -74,7 +74,7 @@ public abstract class LLVMAMD64NegNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMAMD64NeglNode extends LLVMAMD64NegNode {
-        public LLVMAMD64NeglNode(LLVMAMD64UpdateFlagsNode flags) {
+        public LLVMAMD64NeglNode(LLVMAMD64UpdateCPZSOFlagsNode flags) {
             super(flags);
         }
 
@@ -89,7 +89,7 @@ public abstract class LLVMAMD64NegNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMAMD64NegqNode extends LLVMAMD64NegNode {
-        public LLVMAMD64NegqNode(LLVMAMD64UpdateFlagsNode flags) {
+        public LLVMAMD64NegqNode(LLVMAMD64UpdateCPZSOFlagsNode flags) {
             super(flags);
         }
 

@@ -38,7 +38,7 @@ public abstract class LLVMAMD64SarNode extends LLVMExpressionNode {
     @NodeChildren({@NodeChild("left"), @NodeChild("right")})
     public abstract static class LLVMAMD64SarbNode extends LLVMExpressionNode {
         @Specialization
-        protected byte executeI16(byte left, byte right) {
+        protected byte executeI8(byte left, byte right) {
             return (byte) (left >> right);
         }
     }

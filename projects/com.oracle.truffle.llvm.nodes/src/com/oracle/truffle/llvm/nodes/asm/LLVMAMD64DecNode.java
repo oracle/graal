@@ -31,25 +31,25 @@ package com.oracle.truffle.llvm.nodes.asm;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdatePZSOFlagsNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
 @NodeChild(value = "valueNode")
 public abstract class LLVMAMD64DecNode extends LLVMExpressionNode {
-    @Child LLVMAMD64UpdateFlagsNode flags;
+    @Child protected LLVMAMD64UpdatePZSOFlagsNode flags;
 
-    public LLVMAMD64DecNode(LLVMAMD64UpdateFlagsNode flags) {
+    public LLVMAMD64DecNode(LLVMAMD64UpdatePZSOFlagsNode flags) {
         this.flags = flags;
     }
 
     public abstract static class LLVMAMD64DecbNode extends LLVMAMD64DecNode {
-        public LLVMAMD64DecbNode(LLVMAMD64UpdateFlagsNode flags) {
+        public LLVMAMD64DecbNode(LLVMAMD64UpdatePZSOFlagsNode flags) {
             super(flags);
         }
 
         @Specialization
-        protected byte executeI16(VirtualFrame frame, byte value) {
+        protected byte executeI8(VirtualFrame frame, byte value) {
             byte result = (byte) (value - 1);
             boolean of = value == Byte.MIN_VALUE;
             flags.execute(frame, of, result);
@@ -58,7 +58,7 @@ public abstract class LLVMAMD64DecNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMAMD64DecwNode extends LLVMAMD64DecNode {
-        public LLVMAMD64DecwNode(LLVMAMD64UpdateFlagsNode flags) {
+        public LLVMAMD64DecwNode(LLVMAMD64UpdatePZSOFlagsNode flags) {
             super(flags);
         }
 
@@ -72,7 +72,7 @@ public abstract class LLVMAMD64DecNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMAMD64DeclNode extends LLVMAMD64DecNode {
-        public LLVMAMD64DeclNode(LLVMAMD64UpdateFlagsNode flags) {
+        public LLVMAMD64DeclNode(LLVMAMD64UpdatePZSOFlagsNode flags) {
             super(flags);
         }
 
@@ -86,7 +86,7 @@ public abstract class LLVMAMD64DecNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMAMD64DecqNode extends LLVMAMD64DecNode {
-        public LLVMAMD64DecqNode(LLVMAMD64UpdateFlagsNode flags) {
+        public LLVMAMD64DecqNode(LLVMAMD64UpdatePZSOFlagsNode flags) {
             super(flags);
         }
 

@@ -29,13 +29,11 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.support;
 
-import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 
-@NodeField(name = "slot", type = FrameSlot.class)
-public abstract class LLVMAMD64WriteBooleanNode extends Node {
+public class LLVMAMD64WriteBooleanNode extends Node {
     private final FrameSlot slot;
 
     public LLVMAMD64WriteBooleanNode(FrameSlot slot) {

@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.asm.amd64;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 class AsmImmediateOperand implements AsmOperand {
     private final String val;
@@ -66,6 +67,11 @@ class AsmImmediateOperand implements AsmOperand {
 
     public boolean isLabel() {
         return label;
+    }
+
+    @Override
+    public Type getType() {
+        return null;
     }
 
     @Override

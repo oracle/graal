@@ -57,9 +57,17 @@ public final class LLVMUnsupportedException extends RuntimeException {
     }
 
     private final UnsupportedReason reason;
+    private final String details;
 
     public LLVMUnsupportedException(UnsupportedReason reason) {
         super(reason.getDescription());
+        this.details = null;
+        this.reason = reason;
+    }
+
+    public LLVMUnsupportedException(UnsupportedReason reason, String details) {
+        super(reason.getDescription() + ": " + details);
+        this.details = details;
         this.reason = reason;
     }
 
@@ -67,4 +75,7 @@ public final class LLVMUnsupportedException extends RuntimeException {
         return reason;
     }
 
+    public String getDetails() {
+        return details;
+    }
 }

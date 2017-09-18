@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,67 +30,29 @@
 package com.oracle.truffle.llvm.nodes.asm.support;
 
 import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeField(name = "slot", type = FrameSlot.class)
-public abstract class LLVMAMD64WriteRegisterNode extends Node {
-    public static final long MASK_16 = 0xFFFFFFFFFFFF0000L;
-    public static final long MASK_32 = 0xFFFFFFFF00000000L;
+public abstract class LLVMAMD64ReadRegisterNode extends LLVMExpressionNode {
+    protected abstract FrameSlot getSlot();
 
-    private final FrameSlot slot;
-
-    public LLVMAMD64WriteRegisterNode(FrameSlot slot) {
-        this.slot = slot;
+    @Specialization(rewriteOn = FrameSlotTypeException.class)
+    protected long readI64(VirtualFrame frame) throws FrameSlotTypeException {
+        return frame.getLong(getSlot());
     }
 
-    protected FrameSlot getSlot() {
-        return slot;
+    @Specialization(rewriteOn = FrameSlotTypeException.class)
+    protected LLVMAddress readAddress(VirtualFrame frame) throws FrameSlotTypeException {
+        return (LLVMAddress) frame.getObject(getSlot());
     }
 
-    public static class LLVMAMD64WriteI16RegisterNode extends LLVMAMD64WriteRegisterNode {
-        @Child LLVMExpressionNode register;
-
-        public LLVMAMD64WriteI16RegisterNode(FrameSlot slot, LLVMExpressionNode register) {
-            super(slot);
-            this.register = register;
-        }
-
-        public void execute(VirtualFrame frame, short value) {
-            long reg = register.executeI64(frame);
-            long val = (reg & MASK_16) | Short.toUnsignedLong(value);
-            frame.setLong(getSlot(), val);
-        }
-
-    }
-
-    public static class LLVMAMD64WriteI32RegisterNode extends LLVMAMD64WriteRegisterNode {
-        @Child LLVMExpressionNode register;
-
-        public LLVMAMD64WriteI32RegisterNode(FrameSlot slot, LLVMExpressionNode register) {
-            super(slot);
-            this.register = register;
-        }
-
-        public void execute(VirtualFrame frame, int value) {
-            long reg = register.executeI64(frame);
-            long val = (reg & MASK_32) | Integer.toUnsignedLong(value);
-            frame.setLong(getSlot(), val);
-        }
-
-    }
-
-    public static class LLVMAMD64WriteI64RegisterNode extends LLVMAMD64WriteRegisterNode {
-
-        public LLVMAMD64WriteI64RegisterNode(FrameSlot slot) {
-            super(slot);
-        }
-
-        public void execute(VirtualFrame frame, long value) {
-            frame.setLong(getSlot(), value);
-        }
-
+    @Specialization(replaces = {"readI64", "readAddress"})
+    protected Object readObject(VirtualFrame frame) {
+        return frame.getValue(getSlot());
     }
 }

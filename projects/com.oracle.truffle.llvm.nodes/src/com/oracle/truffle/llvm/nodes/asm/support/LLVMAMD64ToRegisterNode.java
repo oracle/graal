@@ -35,7 +35,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMAMD64ToRegisterNode extends LLVMExpressionNode {
-    @NodeChildren({@NodeChild(value = "register", type = LLVMExpressionNode.class), @NodeChild(value = "from", type = LLVMExpressionNode.class)})
+    @NodeChildren({@NodeChild(value = "reg", type = LLVMExpressionNode.class), @NodeChild(value = "from", type = LLVMExpressionNode.class)})
     public abstract static class LLVMI8ToR64 extends LLVMAMD64ToRegisterNode {
         private final int shift;
         private final long mask;
@@ -46,81 +46,73 @@ public abstract class LLVMAMD64ToRegisterNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public long executeI64(long register, byte from) {
-            return (register & mask) | Byte.toUnsignedLong(from) << shift;
+        public long executeI64(long reg, byte from) {
+            return (reg & mask) | Byte.toUnsignedLong(from) << shift;
         }
 
         @Specialization
-        public long executeI64(long register, short from) {
-            return (register & mask) | (from & ~mask) << shift;
+        public long executeI64(long reg, short from) {
+            return (reg & mask) | (from & ~mask) << shift;
         }
 
         @Specialization
-        public long executeI64(long register, int from) {
-            return (register & mask) | (from & ~mask) << shift;
+        public long executeI64(long reg, int from) {
+            return (reg & mask) | (from & ~mask) << shift;
         }
 
         @Specialization
-        public long executeI64(long register, long from) {
-            return (register & mask) | (from & ~mask) << shift;
+        public long executeI64(long reg, long from) {
+            return (reg & mask) | (from & ~mask) << shift;
         }
     }
 
-    @NodeChildren({@NodeChild(value = "register", type = LLVMExpressionNode.class), @NodeChild(value = "from", type = LLVMExpressionNode.class)})
+    @NodeChildren({@NodeChild(value = "reg", type = LLVMExpressionNode.class), @NodeChild(value = "from", type = LLVMExpressionNode.class)})
     public abstract static class LLVMI16ToR64 extends LLVMAMD64ToRegisterNode {
-        private final long mask;
+        private final long mask = ~(long) LLVMExpressionNode.I16_MASK;
 
-        public LLVMI16ToR64() {
-            this.mask = ~(long) LLVMExpressionNode.I16_MASK;
+        @Specialization
+        public long executeI64(long reg, byte from) {
+            return (reg & mask) | Byte.toUnsignedLong(from);
         }
 
         @Specialization
-        public long executeI64(long register, byte from) {
-            return (register & mask) | Byte.toUnsignedLong(from);
+        public long executeI64(long reg, short from) {
+            return (reg & mask) | Short.toUnsignedLong(from);
         }
 
         @Specialization
-        public long executeI64(long register, short from) {
-            return (register & mask) | Short.toUnsignedLong(from);
+        public long executeI64(long reg, int from) {
+            return (reg & mask) | (from & ~mask);
         }
 
         @Specialization
-        public long executeI64(long register, int from) {
-            return (register & mask) | (from & ~mask);
-        }
-
-        @Specialization
-        public long executeI64(long register, long from) {
-            return (register & mask) | (from & ~mask);
+        public long executeI64(long reg, long from) {
+            return (reg & mask) | (from & ~mask);
         }
     }
 
-    @NodeChildren({@NodeChild(value = "register", type = LLVMExpressionNode.class), @NodeChild(value = "from", type = LLVMExpressionNode.class)})
+    @NodeChildren({@NodeChild(value = "from", type = LLVMExpressionNode.class)})
     public abstract static class LLVMI32ToR64 extends LLVMAMD64ToRegisterNode {
-        private final int mask;
+        private static final long MASK = 0xFFFFFFFFL;
 
-        public LLVMI32ToR64() {
-            this.mask = ~0xFFFFFFFF;
+        @Specialization
+        public long executeI64(byte from) {
+            return Byte.toUnsignedLong(from);
         }
 
         @Specialization
-        public long executeI64(long register, byte from) {
-            return (register & mask) | Byte.toUnsignedLong(from);
+        public long executeI64(short from) {
+            return Short.toUnsignedLong(from);
         }
 
         @Specialization
-        public long executeI64(long register, short from) {
-            return (register & mask) | Short.toUnsignedLong(from);
+        public long executeI64(int from) {
+            return Integer.toUnsignedLong(from);
         }
 
         @Specialization
-        public long executeI64(long register, int from) {
-            return (register & mask) | Integer.toUnsignedLong(from);
-        }
-
-        @Specialization
-        public long executeI64(long register, long from) {
-            return (register & mask) | (from & ~mask);
+        public long executeI64(long from) {
+            return from & MASK;
         }
     }
 }

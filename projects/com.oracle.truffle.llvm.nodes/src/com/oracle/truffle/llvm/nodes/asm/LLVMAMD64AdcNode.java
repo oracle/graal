@@ -33,24 +33,24 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdateCPZSOFlagsNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild("left"), @NodeChild("right"), @NodeChild("cf")})
 public abstract class LLVMAMD64AdcNode extends LLVMExpressionNode {
-    @Child LLVMAMD64UpdateFlagsNode flags;
+    @Child protected LLVMAMD64UpdateCPZSOFlagsNode flags;
 
-    private LLVMAMD64AdcNode(LLVMAMD64UpdateFlagsNode flags) {
+    private LLVMAMD64AdcNode(LLVMAMD64UpdateCPZSOFlagsNode flags) {
         this.flags = flags;
     }
 
     public abstract static class LLVMAMD64AdcbNode extends LLVMAMD64AdcNode {
-        public LLVMAMD64AdcbNode(LLVMAMD64UpdateFlagsNode flags) {
+        public LLVMAMD64AdcbNode(LLVMAMD64UpdateCPZSOFlagsNode flags) {
             super(flags);
         }
 
         @Specialization
-        protected byte executeI16(VirtualFrame frame, byte left, byte right, boolean cf) {
+        protected byte executeI8(VirtualFrame frame, byte left, byte right, boolean cf) {
             byte c = (byte) (cf ? 1 : 0);
             byte result = (byte) (left + right + c);
             boolean overflow = (result < 0 && left > 0 && right > 0) || (result > 0 && left < 0 && right < 0);
@@ -61,7 +61,7 @@ public abstract class LLVMAMD64AdcNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMAMD64AdcwNode extends LLVMAMD64AdcNode {
-        public LLVMAMD64AdcwNode(LLVMAMD64UpdateFlagsNode flags) {
+        public LLVMAMD64AdcwNode(LLVMAMD64UpdateCPZSOFlagsNode flags) {
             super(flags);
         }
 
@@ -77,7 +77,7 @@ public abstract class LLVMAMD64AdcNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMAMD64AdclNode extends LLVMAMD64AdcNode {
-        public LLVMAMD64AdclNode(LLVMAMD64UpdateFlagsNode flags) {
+        public LLVMAMD64AdclNode(LLVMAMD64UpdateCPZSOFlagsNode flags) {
             super(flags);
         }
 
@@ -93,7 +93,7 @@ public abstract class LLVMAMD64AdcNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMAMD64AdcqNode extends LLVMAMD64AdcNode {
-        public LLVMAMD64AdcqNode(LLVMAMD64UpdateFlagsNode flags) {
+        public LLVMAMD64AdcqNode(LLVMAMD64UpdateCPZSOFlagsNode flags) {
             super(flags);
         }
 

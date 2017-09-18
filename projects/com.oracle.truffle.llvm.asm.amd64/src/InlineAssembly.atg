@@ -63,8 +63,14 @@ PRODUCTIONS
 
 InlineAssembly<> =
   "\""
-  [ AssemblyInstruction
+  [ ( Prefix [ ";" ]
+    |							(. factory.setPrefix(null); .)
+    )
+    AssemblyInstruction
     { ( ";" | "\n" )
+      ( Prefix
+      |							(. factory.setPrefix(null); .)
+      )
       [ AssemblyInstruction ]
     }
   ]
@@ -73,6 +79,16 @@ InlineAssembly<> =
   .
 
 ////////////////////////////////////////////////////////////////////////////////
+Prefix =
+  ( "rep"
+  | "repz"
+  | "repe"
+  | "repne"
+  | "repnz"
+  | "lock"
+  )							(. factory.setPrefix(t.val); .)
+  .
+
 AssemblyInstruction<> =
   ( ZeroOp<>
   | UnOp8<>
@@ -87,7 +103,13 @@ AssemblyInstruction<> =
   | BinOp<>
   | IMulDiv<>
   | Jump<>
+  | Int<>
   )
+  .
+
+Int<> =							(. AsmImmediateOperand nr; .)
+  "int"
+  Immediate<out nr>					(. factory.createInt(nr); .)
   .
 
 Jump<> =						(. @SuppressWarnings("unused") String op; @SuppressWarnings("unused") AsmOperand bta; .)
@@ -140,7 +162,9 @@ ZeroOp<> =						(. String op; .)
   | "cli"
   | "cmc"
   | "lahf"
+  | "popf"
   | "popfw"
+  | "pushf"
   | "pushfw"
   | "sahf"
   | "stc"
@@ -149,6 +173,11 @@ ZeroOp<> =						(. String op; .)
   | "nop"
   | "rdtsc"
   | "cpuid"
+  | "xgetbv"
+  | "ud2"
+  | "mfence"
+  | "lfence"
+  | "sfence"
   )							(. op = t.val; .)
   							(. factory.createOperation(op); .)
   .
@@ -224,6 +253,63 @@ UnOp8<> =						(. String op; AsmOperand arg; .)
   | "notb"
   | "divb"
   | "mulb"
+  )							(. op = t.val; .)
+  Operand8<out arg>
+  							(. factory.createUnaryOperation(op, arg); .)
+  .
+
+UnOp16<> =						(. String op; AsmOperand arg; .)
+  ( "incw"
+  | "decw"
+  | "negw"
+  | "notw"
+  | "divw"
+  | "mulw"
+  | "pushw"
+  | "popw"
+  )							(. op = t.val; .)
+  Operand16<out arg>
+  							(. factory.createUnaryOperation(op, arg); .)
+  .
+
+UnOp32<> =						(. String op; AsmOperand arg; .)
+  ( "incl"
+  | "decl"
+  | "negl"
+  | "notl"
+  | "divl"
+  | "mull"
+  | "bswapl"
+  | "pushl"
+  | "popl"
+  )							(. op = t.val; .)
+  Operand32<out arg>
+  							(. factory.createUnaryOperation(op, arg); .)
+  .
+
+UnOp64<> =						(. String op; AsmOperand arg; .)
+  ( "incq"
+  | "decq"
+  | "negq"
+  | "notq"
+  | "divq"
+  | "mulq"
+  | "bswapq"
+  | "pushq"
+  | "popq"
+  )							(. op = t.val; .)
+  Operand64<out arg>
+  							(. factory.createUnaryOperation(op, arg); .)
+  .
+
+UnOp<> =						(. String op; AsmOperand arg; .)
+  ( "inc"
+  | "dec"
+  | "neg"
+  | "not"
+  | "bswap"
+  | "rdrand"
+  | "rdseed"
   | "seta"
   | "setae"
   | "setb"
@@ -254,55 +340,13 @@ UnOp8<> =						(. String op; AsmOperand arg; .)
   | "setpo"
   | "sets"
   | "setz"
-  )							(. op = t.val; .)
-  Operand8<out arg>
-  							(. factory.createUnaryOperation(op, arg); .)
-  .
-
-UnOp16<> =						(. String op; AsmOperand arg; .)
-  ( "incw"
-  | "decw"
-  | "negw"
-  | "notw"
-  | "divw"
-  | "mulw"
-  )							(. op = t.val; .)
-  Operand16<out arg>
-  							(. factory.createUnaryOperation(op, arg); .)
-  .
-
-UnOp32<> =						(. String op; AsmOperand arg; .)
-  ( "incl"
-  | "decl"
-  | "negl"
-  | "notl"
-  | "divl"
-  | "mull"
-  )							(. op = t.val; .)
-  Operand32<out arg>
-  							(. factory.createUnaryOperation(op, arg); .)
-  .
-
-UnOp64<> =						(. String op; AsmOperand arg; .)
-  ( "incq"
-  | "decq"
-  | "negq"
-  | "notq"
-  | "divq"
-  | "mulq"
-  )							(. op = t.val; .)
-  Operand64<out arg>
-  							(. factory.createUnaryOperation(op, arg); .)
-  .
-
-UnOp<> =						(. String op; AsmOperand arg; .)
-  ( "inc"
-  | "dec"
-  | "neg"
-  | "not"
+  | "push"
+  | "pop"
+  | "cmpxchg8b"
+  | "cmpxchg16b"
   )							(. op = t.val; .)
   Operand<out arg>
-  							(. factory.createUnaryOperation(op, arg); .)
+  							(. factory.createUnaryOperationImplicitSize(op, arg); .)
   .
 
 BinOp8<> =						(. String op; AsmOperand a, b; .)
@@ -326,6 +370,7 @@ BinOp8<> =						(. String op; AsmOperand a, b; .)
   | "shlb"
   | "shrb"
   | "testb"
+  | "cmpxchgb"
   )							(. op = t.val; .)
   Operand8<out a> "," Operand8<out b>
   							(. factory.createBinaryOperation(op, a, b); .)
@@ -375,6 +420,12 @@ BinOp16<> =						(. String op; AsmOperand a, b; .)
   | "orw"
   | "xorw"
   | "testw"
+  | "bsfw"
+  | "bsrw"
+  | "btw"
+  | "btcw"
+  | "btrw"
+  | "btsw"
   )							(. op = t.val; .)
   Operand16<out a> "," Operand16<out b>			(. factory.createBinaryOperation(op, a, b); .)
   |							(. String op; AsmOperand a, b; .)
@@ -439,6 +490,12 @@ BinOp32<> =						(. String op; AsmOperand a, b; .)
   | "orl"
   | "xorl"
   | "testl"
+  | "bsfl"
+  | "bsrl"
+  | "btl"
+  | "btcl"
+  | "btrl"
+  | "btsl"
   )							(. op = t.val; .)
   Operand32<out a> "," Operand32<out b>			(. factory.createBinaryOperation(op, a, b); .)
   |							(. String op; AsmOperand a, b; .)
@@ -509,6 +566,12 @@ BinOp64<> =						(. String op; AsmOperand a, b; .)
   | "orq"
   | "xorq"
   | "testq"
+  | "bsfq"
+  | "bsrq"
+  | "btq"
+  | "btcq"
+  | "btrq"
+  | "btsq"
   )							(. op = t.val; .)
   Operand64<out a> "," Operand64<out b>			(. factory.createBinaryOperation(op, a, b); .)
   |							(. String op; AsmOperand a, b; .)
@@ -566,7 +629,6 @@ BinOp<> =						(. String op; AsmOperand a, b; .)
   | "cmovs"
   | "cmovz"
   | "cmpxchg"
-  | "cmpxchg8b"
   | "mov"
   | "xadd"
   | "xchg"
@@ -588,9 +650,10 @@ BinOp<> =						(. String op; AsmOperand a, b; .)
   | "sar"
   | "shl"
   | "shr"
+  | "lea"
   )							(. op = t.val; .)
   Operand<out a> "," Operand<out b>
-  							(. factory.createBinaryOperation(op, a, b); .)
+  							(. factory.createBinaryOperationImplicitSize(op, a, b); .)
   .
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -637,18 +700,31 @@ Operand<out AsmOperand op> =				(. op = null; .)
   )
   .
 
-MemoryReference<out AsmMemoryOperand operand> =		(. String displacement = null; AsmOperand base = null, offset = null; long tmp; int scale = 1; .)
-  ( ident						(. displacement = t.val; .)
-  | Number<out tmp>					(. displacement = String.valueOf(tmp); .)
-  )
-  [ "("
-    Operand<out base>
+MemoryReference<out AsmMemoryOperand operand> =		(. String displacement = null;
+							   AsmOperand base = null;
+							   AsmOperand offset = null;
+							   long tmp;
+							   int scale = 1; .)
+  ( ( ident						(. displacement = t.val; .)
+    | Number<out tmp>					(. displacement = String.valueOf(tmp); .)
+    )
+    [ "("
+      [ Operand<out base> ]
+      [ "," Operand<out offset>
+        [ "," Number<out tmp>				(. scale = (int) tmp; .)
+        ]
+      ]
+      ")"
+    ]
+  | "("
+    [ Operand<out base> ]
     [ "," Operand<out offset>
       [ "," Number<out tmp>				(. scale = (int) tmp; .)
       ]
     ]
     ")"
-  ]							(. operand = new AsmMemoryOperand(displacement, base, offset, scale); .)
+  )
+							(. operand = new AsmMemoryOperand(displacement, base, offset, scale); .)
   .
 
 Register8<out AsmRegisterOperand reg> =
@@ -787,9 +863,19 @@ Immediate<out AsmImmediateOperand imm> =		(. long n; .)
   Number<out n>						(. imm = new AsmImmediateOperand(n); .)
   .
 
-Argument<out AsmArgumentOperand arg> =			(. long n; .)
+Argument<out AsmArgumentOperand arg> =			(. long n; arg = null; .)
   "$"
-  Number<out n>						(. arg = new AsmArgumentOperand((int) n); .)
+  ( Number<out n>					(. arg = new AsmArgumentOperand((int) n); .)
+  | "{" Number<out n>
+    ":"							(. int size = -1; int shift = 0; .)
+    ( "b"						(. size = 8; .)
+    | "h"						(. size = 8; shift = 8; .)
+    | "w"						(. size = 16; .)
+    | "k"						(. size = 32; .)
+    | "q"						(. size = 64; .)
+    )							(. arg = new AsmArgumentOperand((int) n, size, shift); .)
+    "}"
+  )
   .
 
 END InlineAssembly.

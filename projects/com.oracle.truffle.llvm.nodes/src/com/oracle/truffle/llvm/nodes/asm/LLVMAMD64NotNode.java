@@ -37,7 +37,7 @@ public abstract class LLVMAMD64NotNode extends LLVMExpressionNode {
     @NodeChild("valueNode")
     public abstract static class LLVMAMD64NotbNode extends LLVMExpressionNode {
         @Specialization
-        protected byte executeI16(byte value) {
+        protected byte executeI8(byte value) {
             return (byte) ~value;
         }
     }

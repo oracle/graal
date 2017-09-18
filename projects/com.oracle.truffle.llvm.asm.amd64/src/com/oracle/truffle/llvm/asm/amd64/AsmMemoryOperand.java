@@ -29,10 +29,13 @@
  */
 package com.oracle.truffle.llvm.asm.amd64;
 
+import com.oracle.truffle.llvm.runtime.types.Type;
+
 class AsmMemoryOperand implements AsmOperand {
     public static final int SCALE_1 = 1;
     public static final int SCALE_2 = 2;
     public static final int SCALE_4 = 4;
+    public static final int SCALE_8 = 8;
 
     private final String displacement;
     private final AsmOperand base;
@@ -47,7 +50,11 @@ class AsmMemoryOperand implements AsmOperand {
     }
 
     public int getDisplacement() {
-        return Integer.decode(displacement);
+        if (displacement == null) {
+            return 0;
+        } else {
+            return Integer.decode(displacement);
+        }
     }
 
     public AsmOperand getBase() {
@@ -70,15 +77,24 @@ class AsmMemoryOperand implements AsmOperand {
                 return 1;
             case SCALE_4:
                 return 2;
+            case SCALE_8:
+                return 3;
             default:
                 throw new AsmParseException("invalid scale: " + scale);
         }
     }
 
     @Override
+    public Type getType() {
+        return null;
+    }
+
+    @Override
     public String toString() {
         StringBuilder b = new StringBuilder();
-        b.append(displacement);
+        if (displacement != null) {
+            b.append(displacement);
+        }
         if (base != null || offset != null) {
             b.append("(");
             if (base != null) {

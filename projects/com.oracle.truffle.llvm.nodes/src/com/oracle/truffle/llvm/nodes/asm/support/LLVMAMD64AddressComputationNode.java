@@ -30,11 +30,11 @@
 package com.oracle.truffle.llvm.nodes.asm.support;
 
 import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChild(value = "base", type = LLVMExpressionNode.class)
 public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode {
     protected final int displacement;
 
@@ -42,18 +42,29 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         this.displacement = displacement;
     }
 
+    @NodeChild(value = "base", type = LLVMExpressionNode.class)
     public abstract static class LLVMAMD64AddressDisplacementComputationNode extends LLVMAMD64AddressComputationNode {
         public LLVMAMD64AddressDisplacementComputationNode(int displacement) {
             super(displacement);
         }
 
         @Specialization
-        public LLVMAddress executeLLVMAddress(LLVMAddress base) {
+        protected LLVMAddress executeLLVMAddress(LLVMAddress base) {
             return base.increment(displacement);
+        }
+
+        @Specialization
+        protected int executeLLVMAddress(int base) {
+            return base + displacement;
+        }
+
+        @Specialization
+        protected long executeLLVMAddress(long base) {
+            return base + displacement;
         }
     }
 
-    @NodeChild(value = "offset", type = LLVMExpressionNode.class)
+    @NodeChildren({@NodeChild(value = "base", type = LLVMExpressionNode.class), @NodeChild(value = "offset", type = LLVMExpressionNode.class)})
     public abstract static class LLVMAMD64AddressOffsetComputationNode extends LLVMAMD64AddressComputationNode {
         private final int shift;
 
@@ -63,8 +74,53 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         }
 
         @Specialization
-        public LLVMAddress executeLLVMAddress(LLVMAddress base, int offset) {
-            return base.increment(displacement + offset << shift);
+        protected int executeI64(int base, int offset) {
+            return base + displacement + (offset << shift);
+        }
+
+        @Specialization
+        protected long executeI64(long base, int offset) {
+            return base + displacement + (offset << shift);
+        }
+
+        @Specialization
+        protected long executeI64(long base, long offset) {
+            return base + displacement + (offset << shift);
+        }
+
+        @Specialization
+        protected LLVMAddress executeLLVMAddress(LLVMAddress base, int offset) {
+            return base.increment(displacement + (offset << shift));
+        }
+
+        @Specialization
+        protected LLVMAddress executeLLVMAddress(LLVMAddress base, long offset) {
+            return base.increment(displacement + (offset << shift));
+        }
+    }
+
+    @NodeChild(value = "offset", type = LLVMExpressionNode.class)
+    public abstract static class LLVMAMD64AddressNoBaseOffsetComputationNode extends LLVMAMD64AddressComputationNode {
+        private final int shift;
+
+        public LLVMAMD64AddressNoBaseOffsetComputationNode(int displacement, int shift) {
+            super(displacement);
+            this.shift = shift;
+        }
+
+        @Specialization
+        protected LLVMAddress executeLLVMAddress(int offset) {
+            return LLVMAddress.fromLong(displacement + (offset << shift));
+        }
+
+        @Specialization
+        protected long executeLLVMAddress(long offset) {
+            return displacement + (offset << shift);
+        }
+
+        @Specialization
+        protected LLVMAddress executeLLVMAddress(LLVMAddress offset) {
+            return LLVMAddress.fromLong(displacement + (offset.getVal() << shift));
         }
     }
 }

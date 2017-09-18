@@ -466,7 +466,7 @@ public class BasicNodeFactory implements NodeFactory {
             retOffsets = alloca.getOffsets();
         }
 
-        Parser asmParser = new Parser(asmExpression, asmFlags, argTypes, retType, retTypes, retOffsets);
+        Parser asmParser = new Parser(asmExpression, asmFlags, argTypes, retType, retTypes, retOffsets, sourceSection);
         LLVMInlineAssemblyRootNode assemblyRoot = asmParser.Parse();
         LLVMFunctionDescriptor asm = LLVMFunctionDescriptor.createDescriptor(runtime.getContext(), "<asm>", new FunctionType(MetaType.UNKNOWN, new Type[0], false), -1);
         asm.declareInSulong(Truffle.getRuntime().createCallTarget(assemblyRoot), false);

@@ -39,7 +39,7 @@ public abstract class LLVMAMD64RorNode extends LLVMExpressionNode {
     @NodeChildren({@NodeChild("left"), @NodeChild("right")})
     public abstract static class LLVMAMD64RorbNode extends LLVMExpressionNode {
         @Specialization
-        protected byte executeI16(byte left, byte right) {
+        protected byte executeI8(byte left, byte right) {
             return LLVMAMD64BarrelShifter.ror(left, right);
         }
     }
