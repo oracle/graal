@@ -48,18 +48,20 @@ static void __funcs_on_exit() {
 }
 
 __attribute__((weak)) int __cxa_atexit(void (*func)(void *), void *arg, void *dso) {
-  struct entry *entry = &head;
-  while (entry->next)
-    entry = entry->next;
-  entry->next = (struct entry *)malloc(sizeof(struct entry));
-  entry = entry->next;
+  struct entry *entry = entry = (struct entry *)malloc(sizeof(struct entry));
   entry->func = func;
   entry->arg = arg;
-  entry->next = NULL;
+  entry->next = head.next;
+  head.next = entry;
   return 0;
 }
 
-__attribute__((weak)) int atexit(void (*func)(void)) { return __cxa_atexit((void *)(void *)func, NULL, NULL); }
+static void caller(void *arg) {
+  void (*func)(void) = (void *)(void *)arg;
+  func();
+}
+
+__attribute__((weak)) int atexit(void (*func)(void)) { return __cxa_atexit(caller, func, NULL); }
 
 __attribute__((weak)) void exit(int status) {
   int64_t result;
