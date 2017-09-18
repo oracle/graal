@@ -669,8 +669,10 @@ public class BasicNodeFactory implements NodeFactory {
                 return LLVMFAbsNodeGen.create(args[1], sourceSection);
             case "@llvm.returnaddress":
                 return LLVMReturnAddressNodeGen.create(args[1], sourceSection);
+            case "@llvm.lifetime.start.p0i8":
             case "@llvm.lifetime.start":
                 return LLVMLifetimeStartNodeGen.create(args[1], args[2], sourceSection);
+            case "@llvm.lifetime.end.p0i8":
             case "@llvm.lifetime.end":
                 return LLVMLifetimeEndNodeGen.create(args[1], args[2], sourceSection);
             case "@llvm.invariant.start":
