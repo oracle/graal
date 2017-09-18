@@ -75,7 +75,7 @@ public abstract class AbstractLanguageLauncher extends Launcher {
 
         if (isAOT()) {
             assert nativeAccess != null;
-            nativeAccess.maybeExec(args, false, polyglotOptions, VMType.Native);
+            nativeAccess.maybeExec(args, false, polyglotOptions, getDefaultVMType());
         }
 
         for (String arg : unrecognizedArgs) {
@@ -94,7 +94,7 @@ public abstract class AbstractLanguageLauncher extends Launcher {
         if (isPolyglot()) {
             builder = Context.newBuilder().options(polyglotOptions);
         } else {
-            builder = Context.newBuilder(getLanguageId()).options(polyglotOptions);
+            builder = Context.newBuilder(getDefaultLanguages()).options(polyglotOptions);
         }
         if (!isAOT()) {
             builder.allowHostAccess(true);
@@ -158,4 +158,22 @@ public abstract class AbstractLanguageLauncher extends Launcher {
         printPolyglotVersions();
     }
 
+    /**
+     * The return value specifies the default VM when none of --jvm, --native options is used.
+     *
+     * @return the default VMType
+     */
+    protected VMType getDefaultVMType() {
+        return VMType.Native;
+    }
+
+    /**
+     * The return value specifies what languages should be available by default when not using
+     * polyglot. E.g. Ruby needs llvm as well.
+     *
+     * @return an array of required language ids
+     */
+    protected String[] getDefaultLanguages() {
+        return new String[]{getLanguageId()};
+    }
 }
