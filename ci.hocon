@@ -7,7 +7,7 @@ linux-amd64: {
 }
 
 darwin-amd64: {
-    capabilities: [darwin, amd64]
+    capabilities: [darwin_elcapitan, amd64]
 }
 
 common: {
