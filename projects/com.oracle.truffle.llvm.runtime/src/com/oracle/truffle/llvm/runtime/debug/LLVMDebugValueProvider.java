@@ -35,7 +35,7 @@ import java.math.BigInteger;
 
 public interface LLVMDebugValueProvider {
 
-    Object UNAVAILABLE_VALUE = "<unavailable>";
+    String UNAVAILABLE_VALUE = "<unavailable>";
 
     @TruffleBoundary
     static String toHexString(BigInteger value) {
@@ -48,7 +48,7 @@ public interface LLVMDebugValueProvider {
         return builder.toString();
     }
 
-    Object describeValue(long bitOffset, int bitSize);
+    String describeValue(long bitOffset, int bitSize);
 
     @TruffleBoundary
     default Object cannotInterpret(String intendedType, long bitOffset, int bitSize) {

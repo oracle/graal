@@ -47,7 +47,7 @@ public final class LLVMDebugValueContainer extends LLVMDebugObject {
     };
     private static final LLVMDebugValueProvider valueProvider = new LLVMDebugValueProvider() {
         @Override
-        public Object describeValue(long bitOffset, int bitSize) {
+        public String describeValue(long bitOffset, int bitSize) {
             return "Debug Value Container";
         }
 

@@ -39,7 +39,7 @@ final class LLVMUnavailableDebugValueProvider implements LLVMDebugValueProvider 
     }
 
     @Override
-    public Object describeValue(long bitOffset, int bitSize) {
+    public String describeValue(long bitOffset, int bitSize) {
         return UNAVAILABLE_VALUE;
     }
 
