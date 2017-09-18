@@ -61,7 +61,7 @@ public abstract class Launcher {
 
     private Engine tempEngine;
 
-    enum VMType {
+    public enum VMType {
         Native,
         JVM
     }
