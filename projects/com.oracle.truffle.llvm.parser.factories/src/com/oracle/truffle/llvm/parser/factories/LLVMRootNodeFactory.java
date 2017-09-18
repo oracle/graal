@@ -41,6 +41,8 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 class LLVMRootNodeFactory {
@@ -72,7 +74,7 @@ class LLVMRootNodeFactory {
     }
 
     private static Object[] createArgs(Source sourceFile, Object[] mainArgs, Type[] llvmRuntimeTypes) {
-        if (llvmRuntimeTypes.length != 1) {
+        if (llvmRuntimeTypes.length > 3) {
             throw new AssertionError(sourceFile + " " + Arrays.toString(llvmRuntimeTypes));
         }
         int mainArgsCount = mainArgs == null ? 0 : mainArgs.length;
@@ -82,7 +84,14 @@ class LLVMRootNodeFactory {
         if (mainArgsCount > 0) {
             System.arraycopy(mainArgs, 0, args, 1, mainArgsCount);
         }
-        return new Object[]{getArgs(args)};
+        int type = 0;
+        // Rust extra handling: main(i64,...)
+        if (llvmRuntimeTypes.length > 0 && llvmRuntimeTypes[0] instanceof PrimitiveType) {
+            if (((PrimitiveType) llvmRuntimeTypes[0]).getPrimitiveKind() == PrimitiveKind.I64) {
+                type = 1;
+            }
+        }
+        return new Object[]{getArgs(args), type};
     }
 
     private static String[] getStringArgs(Object[] args) {

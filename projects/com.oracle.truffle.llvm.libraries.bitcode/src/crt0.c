@@ -28,13 +28,28 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdlib.h>
+#include <stdio.h>
 
 int main(int argc, char **argv, char **envp);
 
-__attribute__((weak)) int _start(long *p) {
+__attribute__((weak)) int _start(long *p, int type) {
   int argc = p[0];
   char **argv = (void *)(p + 1);
   char **envp = argv + argc + 1;
-  exit(main(argc, argv, envp));
+
+  switch (type) {
+  /* C/C++/... */
+  default:
+  case 0:
+    exit(main(argc, argv, envp));
+    return 0;
+  /* Rust */
+  case 1: {
+    long (*i64main)(long argc, char **argv) = (long (*)(long, char **))main;
+    exit(i64main(argc, argv));
+    return 0;
+  }
+  }
+
   return 0;
 }
