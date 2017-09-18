@@ -36,6 +36,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
+import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 
 import java.math.BigInteger;
 
@@ -305,15 +306,15 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
         }
     }
 
-    static final class LLVM80BitFloat extends LLVMConstantValueProvider {
+    static final class BigFloat extends LLVMConstantValueProvider {
 
         private static boolean isValidBitsize(int bits) {
             return bits == LLVMDebugTypeConstants.LLVM80BIT_SIZE_ACTUAL || bits == LLVMDebugTypeConstants.LLVM80BIT_SIZE_SUGGESTED;
         }
 
-        private final com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat value;
+        private final LLVM80BitFloat value;
 
-        LLVM80BitFloat(com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat value) {
+        BigFloat(LLVM80BitFloat value) {
             this.value = value;
         }
 

@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
@@ -109,6 +110,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
+        @TruffleBoundary
         public Object readBigInteger(long bitOffset, int bitSize, boolean signed) {
             if (!canRead(bitOffset, bitSize)) {
                 return super.readBigInteger(bitOffset, bitSize, signed);
@@ -137,6 +139,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
+        @TruffleBoundary
         public Object readBigInteger(long bitOffset, int bitSize, boolean signed) {
             if (!canRead(bitOffset, bitSize)) {
                 return super.readBigInteger(bitOffset, bitSize, signed);
@@ -165,6 +168,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
+        @TruffleBoundary
         public Object readBigInteger(long bitOffset, int bitSize, boolean signed) {
             if (!canRead(bitOffset, bitSize)) {
                 return super.readBigInteger(bitOffset, bitSize, signed);
@@ -193,6 +197,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
+        @TruffleBoundary
         public Object readBigInteger(long bitOffset, int bitSize, boolean signed) {
             if (!canRead(bitOffset, bitSize)) {
                 return super.readBigInteger(bitOffset, bitSize, signed);

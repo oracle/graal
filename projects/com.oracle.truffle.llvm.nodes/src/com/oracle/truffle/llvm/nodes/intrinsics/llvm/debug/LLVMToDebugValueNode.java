@@ -114,7 +114,7 @@ public abstract class LLVMToDebugValueNode extends LLVMExpressionNode {
 
     @Specialization
     public LLVMDebugValueProvider from80BitFloat(LLVM80BitFloat value) {
-        return new LLVMConstantValueProvider.LLVM80BitFloat(value);
+        return new LLVMConstantValueProvider.BigFloat(value);
     }
 
     @Specialization
