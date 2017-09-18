@@ -100,9 +100,20 @@ class ClangCompiler(Tool):
         else:
             raise Exception('Unsupported input language')
 
+    def getImplicitArgs(self, tool, program):
+        if tool == 'clang' or tool == 'clang++':
+            llvmVersion = mx_sulong.getLLVMVersion(program)
+            # prevent clang 5 from adding the 'optnone' attribute which would stop us from using opt
+            if llvmVersion and llvmVersion.startswith('5'):
+                return ['-Xclang', '-disable-O0-optnone']
+
+        return []
+
     def run(self, inputFile, outputFile, flags):
         tool = self.getTool(inputFile)
-        return self.runTool([mx_sulong.findLLVMProgram(tool), '-c', '-emit-llvm', '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
+        program = mx_sulong.findLLVMProgram(tool)
+        implicitArgs = self.getImplicitArgs(tool, program)
+        return self.runTool([program, '-c', '-emit-llvm', '-o', outputFile] + flags + [inputFile] + implicitArgs, errorMsg='Cannot compile %s with %s' % (inputFile, tool))
 
     def compileReferenceFile(self, inputFile, outputFile, flags):
         tool = self.getTool(inputFile)

@@ -465,6 +465,11 @@ def getLLVMVersion(llvmProgram):
     else:
         return printLLVMVersion.group(3)
 
+# the makefiles do not check which version of clang they invoke
+mainLLVMVersion = getLLVMVersion('clang')
+if mainLLVMVersion and mainLLVMVersion.startswith('5'):
+    os.environ['SULONG_MAKE_CLANG_IMPLICIT_ARGS'] = "-Xclang -disable-O0-optnone"
+
 def getGCCVersion(gccProgram):
     """executes the program with --version and extracts the GCC version string"""
     versionString = getVersion(gccProgram)
@@ -521,7 +526,7 @@ def findInstalledProgram(program, supportedVersions, testSupportedVersion, searc
     return None
 
 def findLLVMProgram(llvmProgram, version=None):
-    """tries to find a supported version of an installed LLVM program; if the program is not found it downloads the LLVM binaries and checks there"""
+    """tries to find a supported version of the given LLVM program; exits if none can be found"""
     installedProgram = findInstalledLLVMProgram(llvmProgram, version)
 
     if installedProgram is None:
