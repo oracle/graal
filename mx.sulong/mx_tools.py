@@ -169,7 +169,7 @@ Tool.CLANG_CPP = ClangCompiler('clangcpp', [ProgrammingLanguage.C_PLUS_PLUS])
 Tool.GCC = GCCCompiler()
 Tool.GFORTRAN = GCCCompiler('gfortran', [ProgrammingLanguage.FORTRAN])
 
-Tool.BB_VECTORIZE = Opt('BB_VECTORIZE', ['-functionattrs', '-instcombine', '-always-inline', '-jump-threading', '-simplifycfg', '-mem2reg', '-bb-vectorize'])
+Tool.MISC_OPTS = Opt('MISC_OPTS', ['-functionattrs', '-instcombine', '-always-inline', '-jump-threading', '-simplifycfg', '-mem2reg'])
 Tool.MEM2REG = Opt('MEM2REG', ['-mem2reg'])
 
 Tool.CPP_OPT = Opt('CPP_OPT', ['-lowerinvoke', '-prune-eh', '-simplifycfg'])

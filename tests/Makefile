@@ -76,8 +76,8 @@ $(eval $(call OPT_RULES,O1))
 $(eval $(call OPT_RULES,O2))
 $(eval $(call OPT_RULES,O3))
 
-%_BB_VECTORIZE.bc: %.bc
-	$(QUIETLY) opt -o $@ -functionattrs -instcombine -always-inline -jump-threading -simplifycfg -mem2reg -bb-vectorize $<
+%_MISC_OPTS.bc: %.bc
+	$(QUIETLY) opt -o $@ -functionattrs -instcombine -always-inline -jump-threading -simplifycfg -mem2reg  $<
 
 %_MEM2REG.bc: %.bc
 	$(QUIETLY) opt -o $@ -mem2reg $<
