@@ -29,45 +29,28 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.store;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
-import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
-import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeChildren(value = {@NodeChild(type = LLVMExpressionNode.class, value = "pointerNode")})
 public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
-    @Child protected Node foreignWrite = Message.WRITE.createNode();
-    @Child protected LLVMDataEscapeNode dataEscape;
     protected final Type valueType;
+    private final int elementAccessSize;
 
     private final SourceSection sourceSection;
 
-    public LLVMStoreNode(Type valueType, SourceSection sourceSection) {
+    public LLVMStoreNode(Type valueType, int elementAccessSize, SourceSection sourceSection) {
         this.valueType = valueType;
-        this.dataEscape = LLVMDataEscapeNodeGen.create(valueType);
+        this.elementAccessSize = elementAccessSize;
         this.sourceSection = sourceSection;
     }
 
-    protected void doForeignAccess(LLVMTruffleObject addr, int stride, Object value, LLVMContext context) {
-        try {
-            ForeignAccess.sendWrite(foreignWrite, addr.getObject(), (int) (addr.getOffset() / stride), dataEscape.executeWithTarget(value, context));
-        } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
-        }
+    protected LLVMForeignWriteNode createForeignWrite() {
+        return LLVMForeignWriteNodeGen.create(valueType, elementAccessSize);
     }
 
     @Override

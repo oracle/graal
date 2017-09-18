@@ -36,8 +36,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
@@ -50,7 +48,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 public abstract class LLVMAddressStoreNode extends LLVMStoreNode {
 
     public LLVMAddressStoreNode(Type type, SourceSection source) {
-        super(type, source);
+        super(type, ADDRESS_SIZE_IN_BYTES, source);
     }
 
     @Specialization
@@ -132,15 +130,8 @@ public abstract class LLVMAddressStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    public Object execute(LLVMTruffleObject address, LLVMAddress value, @Cached(value = "getContext()") LLVMContext context) {
-        doForeignAccess(address, LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES, new LLVMTruffleAddress(value, valueType, context), context);
+    public Object execute(LLVMTruffleObject address, Object value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+        foreignWrite.execute(address, value);
         return null;
     }
-
-    @Specialization
-    public Object execute(LLVMTruffleObject address, Object value, @Cached(value = "getContext()") LLVMContext context) {
-        doForeignAccess(address, LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES, value, context);
-        return null;
-    }
-
 }

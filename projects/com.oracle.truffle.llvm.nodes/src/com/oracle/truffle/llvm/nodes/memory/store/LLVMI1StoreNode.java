@@ -36,7 +36,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
@@ -49,7 +48,7 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 public abstract class LLVMI1StoreNode extends LLVMStoreNode {
 
     public LLVMI1StoreNode(SourceSection source) {
-        super(PrimitiveType.I1, source);
+        super(PrimitiveType.I1, 1, source);
     }
 
     @Specialization
@@ -71,8 +70,8 @@ public abstract class LLVMI1StoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    public Object execute(LLVMTruffleObject address, boolean value, @Cached(value = "getContext()") LLVMContext context) {
-        doForeignAccess(address, 1, value, context);
+    public Object execute(LLVMTruffleObject address, boolean value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+        foreignWrite.execute(address, value);
         return null;
     }
 
@@ -86,5 +85,4 @@ public abstract class LLVMI1StoreNode extends LLVMStoreNode {
             throw new IllegalAccessError("Cannot access address: " + address.getValue());
         }
     }
-
 }

@@ -45,7 +45,7 @@ import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 public abstract class LLVMIVarBitStoreNode extends LLVMStoreNode {
 
     public LLVMIVarBitStoreNode(VariableBitWidthType type, SourceSection source) {
-        super(type, source);
+        super(type, 0, source);
     }
 
     @Specialization

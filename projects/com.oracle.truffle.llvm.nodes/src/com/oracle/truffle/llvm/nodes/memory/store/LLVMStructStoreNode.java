@@ -50,7 +50,7 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNode {
     public abstract int getStructSize();
 
     protected LLVMStructStoreNode(Type type, SourceSection source) {
-        super(type, source);
+        super(type, 0, source);
         profiledMemMove = new LLVMProfiledMemMove();
     }
 

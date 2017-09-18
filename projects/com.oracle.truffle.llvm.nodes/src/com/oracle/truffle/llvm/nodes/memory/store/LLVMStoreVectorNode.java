@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -52,7 +52,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
     public LLVMStoreVectorNode(Type type, SourceSection source) {
-        super(type, source);
+        super(type, 0, source);
     }
 
     @Specialization

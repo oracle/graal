@@ -45,7 +45,7 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
 
     public LLVM80BitFloatStoreNode(SourceSection source) {
-        super(PrimitiveType.X86_FP80, source);
+        super(PrimitiveType.X86_FP80, 10, source);
     }
 
     @Specialization
