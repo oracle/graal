@@ -74,6 +74,7 @@ supportedLLVMVersions = [
     '3.8',
     '3.9',
     '4.0',
+    '5.0',
 ]
 
 # the clang-format versions that can be used for formatting the test case C and C++ files
@@ -459,7 +460,7 @@ def getVersion(program):
 def getLLVMVersion(llvmProgram):
     """executes the program with --version and extracts the LLVM version string"""
     versionString = getVersion(llvmProgram)
-    printLLVMVersion = re.search(r'(clang |LLVM )?(version )?((3|4)\.\d)', versionString, re.IGNORECASE)
+    printLLVMVersion = re.search(r'(clang |LLVM )?(version )?((3|4|5)\.\d)', versionString, re.IGNORECASE)
     if printLLVMVersion is None:
         return None
     else:
