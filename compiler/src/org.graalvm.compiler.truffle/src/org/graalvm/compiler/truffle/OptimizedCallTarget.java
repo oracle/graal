@@ -409,6 +409,8 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             if (TruffleCompilerOptions.getValue(TruffleCompilationExceptionsArePrinted) || truffleCompilationExceptionsAreFatal) {
                 printException(t);
                 if (truffleCompilationExceptionsAreFatal) {
+                    log("Exiting VM due to " + (TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreFatal) ? TruffleCompilationExceptionsAreFatal.getName()
+                                    : TrufflePerformanceWarningsAreFatal.getName()) + "=true");
                     System.exit(-1);
                 }
             }

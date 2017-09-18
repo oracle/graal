@@ -544,7 +544,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     /**
      * Gets the map used to count the number of compilation failures or bailouts handled by each
      * action.
-     * 
+     *
      * @see CompilationWrapper#CompilationWrapper(DiagnosticsOutputDirectory, Map)
      */
     protected abstract Map<ExceptionAction, Integer> getCompilationProblemsPerAction();
@@ -570,6 +570,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
             @Override
             protected Void handleException(Throwable t) {
+                optimizedCallTarget.notifyCompilationFailed(t);
                 return null;
             }
 
