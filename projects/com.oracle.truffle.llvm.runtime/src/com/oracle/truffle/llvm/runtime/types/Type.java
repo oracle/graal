@@ -29,14 +29,20 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public abstract class Type {
 
-    private LLVMSourceType sourceType = null;
+    @CompilationFinal private Assumption assumption = Truffle.getRuntime().createAssumption();
+    @CompilationFinal private LLVMSourceType sourceType = null;
 
     public abstract int getBitSize();
 
@@ -55,11 +61,21 @@ public abstract class Type {
     public abstract int hashCode();
 
     public LLVMSourceType getSourceType() {
+        try {
+            assumption.check();
+        } catch (InvalidAssumptionException ex) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
         return sourceType;
     }
 
     public void setSourceType(LLVMSourceType sourceType) {
-        this.sourceType = sourceType;
+        if (!this.assumption.isValid() || this.sourceType != sourceType) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.sourceType = sourceType;
+            this.assumption.invalidate();
+            this.assumption = Truffle.getRuntime().createAssumption();
+        }
     }
 
     public static Type getIntegerType(int size) {
