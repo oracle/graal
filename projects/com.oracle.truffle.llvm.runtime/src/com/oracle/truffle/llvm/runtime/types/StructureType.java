@@ -91,7 +91,7 @@ public final class StructureType extends AggregateType {
 
     @Override
     public int getAlignment(DataSpecConverter targetDataLayout) {
-        return getLargestAlignment(targetDataLayout);
+        return isPacked ? 1 : getLargestAlignment(targetDataLayout);
     }
 
     @Override
@@ -106,7 +106,7 @@ public final class StructureType extends AggregateType {
 
         int padding = 0;
         if (!isPacked && sumByte != 0) {
-            padding = Type.getPadding(sumByte, getLargestAlignment(targetDataLayout));
+            padding = Type.getPadding(sumByte, getAlignment(targetDataLayout));
         }
 
         return sumByte + padding;
@@ -124,10 +124,10 @@ public final class StructureType extends AggregateType {
         int offset = 0;
         for (int i = 0; i < index; i++) {
             final Type elementType = types[i];
-            offset += elementType.getSize(targetDataLayout);
             if (!isPacked) {
                 offset += Type.getPadding(offset, elementType, targetDataLayout);
             }
+            offset += elementType.getSize(targetDataLayout);
         }
         if (!isPacked && getSize(targetDataLayout) > offset) {
             offset += Type.getPadding(offset, types[index], targetDataLayout);
