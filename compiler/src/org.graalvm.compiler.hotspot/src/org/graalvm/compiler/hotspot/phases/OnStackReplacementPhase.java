@@ -187,8 +187,8 @@ public class OnStackReplacementPhase extends Phase {
                 EntryProxyNode proxy = (EntryProxyNode) value;
                 /*
                  * We need to drop the stamp since the types we see during OSR may be too precise
-                 * (if a branch was not parsed for example).
-                 * In cases when this is possible, we narrow the OSRLocal stamp at usages.
+                 * (if a branch was not parsed for example). In cases when this is possible, we
+                 * insert a guard and narrow the OSRLocal stamp at its usages.
                  */
                 Stamp narrowedStamp = proxy.value().stamp();
                 Stamp unrestrictedStamp = proxy.stamp().unrestricted();
@@ -198,7 +198,7 @@ public class OnStackReplacementPhase extends Phase {
                 } else {
                     osrLocal = graph.addOrUnique(new OSRLocalNode(i, unrestrictedStamp));
                 }
-                OSRLocalSpeculationReason reason = new OSRLocalSpeculationReason(osrState.bci, i);
+                OSRLocalSpeculationReason reason = new OSRLocalSpeculationReason(osrState.bci, narrowedStamp, i);
                 if (graph.getSpeculationLog().maySpeculate(reason) && osrLocal instanceof OSRLocalNode && value.getStackKind().equals(JavaKind.Object) && !narrowedStamp.isUnrestricted()) {
                     speculationTargets.put((OSRLocalNode) osrLocal, Pair.create((ObjectStamp) narrowedStamp, reason));
                 }
@@ -306,10 +306,12 @@ public class OnStackReplacementPhase extends Phase {
 
     private static class OSRLocalSpeculationReason implements SpeculationReason {
         private int bci;
+        private Stamp speculatedStamp;
         private int localIndex;
 
-        OSRLocalSpeculationReason(int bci, int localIndex) {
+        OSRLocalSpeculationReason(int bci, Stamp speculatedStamp, int localIndex) {
             this.bci = bci;
+            this.speculatedStamp = speculatedStamp;
             this.localIndex = localIndex;
         }
 
@@ -317,14 +319,14 @@ public class OnStackReplacementPhase extends Phase {
         public boolean equals(Object obj) {
             if (obj instanceof OSRLocalSpeculationReason) {
                 OSRLocalSpeculationReason that = (OSRLocalSpeculationReason) obj;
-                return this.bci == that.bci && this.localIndex == that.localIndex;
+                return this.bci == that.bci && this.speculatedStamp.equals(that.speculatedStamp) && this.localIndex == that.localIndex;
             }
             return false;
         }
 
         @Override
         public int hashCode() {
-            return (bci << 16) ^ localIndex;
+            return (bci << 16) ^ speculatedStamp.hashCode() ^ localIndex;
         }
     }
 }
