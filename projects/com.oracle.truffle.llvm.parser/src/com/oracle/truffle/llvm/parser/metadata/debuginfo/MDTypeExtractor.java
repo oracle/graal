@@ -237,9 +237,16 @@ final class MDTypeExtractor implements MetadataVisitor {
     }
 
     private static void setAggregateProperties(boolean isVector, LLVMSourceArrayLikeType aggregate, long length, LLVMSourceType baseType) {
-        aggregate.setLength(length);
         aggregate.setBaseType(baseType);
-        final String nameFormatString = isVector ? "%s<%d>" : "%s[%d]";
+        final String nameFormatString;
+        if (length < 0) {
+            // this case happens for dynamically allocated arrays
+            aggregate.setLength(0);
+            nameFormatString = isVector ? "%s<?>" : "%s[?]";
+        } else {
+            aggregate.setLength(length);
+            nameFormatString = isVector ? "%s<%d>" : "%s[%d]";
+        }
         aggregate.setName(new Supplier<String>() {
             @Override
             @TruffleBoundary

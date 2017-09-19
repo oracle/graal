@@ -29,22 +29,27 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
-import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
 import java.math.BigInteger;
 
-final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
+final class LLVMAllocationValueProvider implements LLVMDebugValueProvider {
 
     private final LLVMAddress baseAddress;
 
-    LLVMAddressValueProvider(LLVMAddress baseAddress) {
+    LLVMAllocationValueProvider(LLVMAddress baseAddress) {
         this.baseAddress = baseAddress;
+    }
+
+    @Override
+    @TruffleBoundary
+    public String describeValue(long bitOffset, int bitSize) {
+        return String.format("%s (%d bits at offset %d bits)", baseAddress, bitSize, bitOffset);
     }
 
     @Override
@@ -52,13 +57,10 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
         return !LLVMAddress.nullPointer().equals(baseAddress);
     }
 
-    private static final int BOOLEAN_SIZE = 1;
-
     @Override
-    public boolean readBoolean(long bitOffset) {
-        if (!canRead(bitOffset, BOOLEAN_SIZE)) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Cannot read from " + baseAddress);
+    public Object readBoolean(long bitOffset) {
+        if (!canRead(bitOffset, LLVMDebugTypeConstants.BOOLEAN_SIZE)) {
+            return unavailable(bitOffset, LLVMDebugTypeConstants.BOOLEAN_SIZE);
 
         } else if (isByteAligned(bitOffset)) {
             return LLVMMemory.getI1(baseAddress.increment(bitOffset / Byte.SIZE));
@@ -70,80 +72,55 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
 
     @TruffleBoundary
     private boolean readUnalignedBoolean(long bitOffset) {
-        return readUnsignedInteger(bitOffset, BOOLEAN_SIZE).testBit(1);
+        final Object integerObject = readBigInteger(bitOffset, LLVMDebugTypeConstants.BOOLEAN_SIZE, false);
+        return integerObject instanceof BigInteger && !integerObject.equals(BigInteger.ZERO);
     }
 
     @Override
     public Object readFloat(long bitOffset) {
-        if (!canRead(bitOffset, Float.SIZE)) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Cannot read from " + baseAddress);
-
-        } else if (isByteAligned(bitOffset)) {
+        if (canRead(bitOffset, LLVMDebugTypeConstants.FLOAT_SIZE) && isByteAligned(bitOffset)) {
             return LLVMMemory.getFloat(baseAddress.increment(bitOffset / Byte.SIZE));
-
         } else {
-            return "Offset must be byte-aligned: " + bitOffset;
+            return unavailable(bitOffset, LLVMDebugTypeConstants.FLOAT_SIZE);
         }
     }
 
     @Override
     public Object readDouble(long bitOffset) {
-        if (!canRead(bitOffset, Double.SIZE)) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Cannot read from " + baseAddress);
-
-        } else if (isByteAligned(bitOffset)) {
+        if (canRead(bitOffset, LLVMDebugTypeConstants.DOUBLE_SIZE) && isByteAligned(bitOffset)) {
             return LLVMMemory.getDouble(baseAddress.increment(bitOffset / Byte.SIZE));
-
         } else {
-            return "Offset must be byte-aligned: " + bitOffset;
+            return unavailable(bitOffset, LLVMDebugTypeConstants.DOUBLE_SIZE);
         }
     }
 
     @Override
     public Object read80BitFloat(long bitOffset) {
-        if (!canRead(bitOffset, LLVM80BitFloat.BIT_WIDTH)) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Cannot read from " + baseAddress);
-
-        } else if (isByteAligned(bitOffset)) {
+        if (canRead(bitOffset, LLVMDebugTypeConstants.LLVM80BIT_SIZE_ACTUAL) && isByteAligned(bitOffset)) {
             return LLVMMemory.get80BitFloat(baseAddress.increment(bitOffset / Byte.SIZE));
-
         } else {
-            return "Offset must be byte-aligned: " + bitOffset;
+            return unavailable(bitOffset, LLVMDebugTypeConstants.LLVM80BIT_SIZE_ACTUAL);
         }
     }
 
     @Override
     public Object readAddress(long bitOffset) {
-        if (!canRead(bitOffset, LLVMAddress.WORD_LENGTH_BIT)) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Cannot read from " + baseAddress);
-
-        } else if (isByteAligned(bitOffset)) {
+        if (canRead(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE) && isByteAligned(bitOffset)) {
             return LLVMMemory.getAddress(baseAddress.increment(bitOffset / Byte.SIZE));
-
         } else {
-            return "Offset must be byte-aligned: " + bitOffset;
+            return unavailable(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE);
         }
     }
 
     @Override
-    @TruffleBoundary
     public Object readUnknown(long bitOffset, int bitSize) {
-        if (!canRead(bitOffset, LLVMAddress.WORD_LENGTH_BIT)) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Cannot read from " + baseAddress);
+        if (canRead(bitOffset, bitSize)) {
+            final Object integerObject = readBigInteger(bitOffset, bitSize, false);
+            if (integerObject instanceof BigInteger) {
+                return LLVMDebugValueProvider.toHexString((BigInteger) integerObject);
+            }
         }
-
-        final byte[] bytes = readUnsignedInteger(bitOffset, bitSize).toByteArray();
-        final StringBuilder builder = new StringBuilder(bytes.length * 2 + 2);
-        builder.append("0x");
-        for (byte b : bytes) {
-            builder.append(String.format("%02x", b));
-        }
-        return builder.toString();
+        return unavailable(bitOffset, bitSize);
     }
 
     @Override
@@ -161,75 +138,65 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
     }
 
     @Override
-    @TruffleBoundary
-    public BigInteger readUnsignedInteger(long bitOffset, int bitSize) {
-        if (!canRead(bitOffset, bitSize)) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Cannot read from " + baseAddress);
-        }
-
-        long byteOffset = bitOffset / Byte.SIZE;
-        long address = baseAddress.increment(byteOffset).getVal();
-
-        // the most common cases are byte-aligned integers
-        if (isByteAligned(bitOffset)) {
-            switch (bitSize) {
-                case Byte.SIZE:
-                    return BigInteger.valueOf(Byte.toUnsignedInt(LLVMMemory.getI8(address)));
-
-                case Short.SIZE:
-                    return BigInteger.valueOf(Short.toUnsignedInt(LLVMMemory.getI16(address)));
-
-                case Integer.SIZE:
-                    return BigInteger.valueOf(Integer.toUnsignedLong(LLVMMemory.getI32(address)));
-            }
-        }
-
-        return readBigInt(bitOffset, bitSize, false);
-    }
-
-    @Override
-    @TruffleBoundary
-    public BigInteger readSignedInteger(long bitOffset, int bitSize) {
-        if (!canRead(bitOffset, bitSize)) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Cannot read from " + baseAddress);
-        }
-
-        long byteOffset = bitOffset / Byte.SIZE;
-        long address = baseAddress.increment(byteOffset).getVal();
-
-        // the most common cases are byte-aligned integers
-        if (isByteAligned(bitOffset)) {
-            switch (bitSize) {
-                case Byte.SIZE:
-                    return BigInteger.valueOf(LLVMMemory.getI8(address));
-
-                case Short.SIZE:
-                    return BigInteger.valueOf(LLVMMemory.getI16(address));
-
-                case Integer.SIZE:
-                    return BigInteger.valueOf(LLVMMemory.getI32(address));
-
-                case Long.SIZE:
-                    return BigInteger.valueOf(LLVMMemory.getI64(address));
-            }
-        }
-
-        return readBigInt(bitOffset, bitSize, true);
-    }
-
-    @Override
     public LLVMDebugValueProvider dereferencePointer(long bitOffset) {
-        if (!canRead(bitOffset, LLVMAddress.WORD_LENGTH_BIT) || !isByteAligned(bitOffset)) {
+        if (!canRead(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE) || !isByteAligned(bitOffset)) {
             return null;
         }
 
         final LLVMAddress address = LLVMMemory.getAddress(baseAddress.increment(bitOffset / Byte.SIZE));
-        return new LLVMAddressValueProvider(address);
+        return new LLVMAllocationValueProvider(address);
     }
 
-    private BigInteger readBigInt(long bitOffset, int bitSize, boolean signed) {
+    @Override
+    public boolean isInteropValue() {
+        return false;
+    }
+
+    @Override
+    public Object asInteropValue() {
+        return null;
+    }
+
+    @Override
+    @TruffleBoundary
+    public Object readBigInteger(long bitOffset, int bitSize, boolean signed) {
+        if (!canRead(bitOffset, bitSize)) {
+            return unavailable(bitOffset, bitSize);
+        }
+
+        // the most common cases are byte-aligned integers
+        if (isByteAligned(bitOffset)) {
+            final long byteOffset = bitOffset / Byte.SIZE;
+            final long address = baseAddress.increment(byteOffset).getVal();
+            if (signed) {
+                switch (bitSize) {
+                    case LLVMDebugTypeConstants.BYTE_SIZE:
+                        return BigInteger.valueOf(LLVMMemory.getI8(address));
+
+                    case LLVMDebugTypeConstants.SHORT_SIZE:
+                        return BigInteger.valueOf(LLVMMemory.getI16(address));
+
+                    case LLVMDebugTypeConstants.INTEGER_SIZE:
+                        return BigInteger.valueOf(LLVMMemory.getI32(address));
+
+                    case LLVMDebugTypeConstants.LONG_SIZE:
+                        return BigInteger.valueOf(LLVMMemory.getI64(address));
+                }
+
+            } else {
+                switch (bitSize) {
+                    case LLVMDebugTypeConstants.BYTE_SIZE:
+                        return BigInteger.valueOf(Byte.toUnsignedInt(LLVMMemory.getI8(address)));
+
+                    case LLVMDebugTypeConstants.SHORT_SIZE:
+                        return BigInteger.valueOf(Short.toUnsignedInt(LLVMMemory.getI16(address)));
+
+                    case LLVMDebugTypeConstants.INTEGER_SIZE:
+                        return BigInteger.valueOf(Integer.toUnsignedLong(LLVMMemory.getI32(address)));
+                }
+            }
+        }
+
         final int paddingBefore = (int) (bitOffset % Byte.SIZE);
         int totalBitSize = bitSize + paddingBefore;
 

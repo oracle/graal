@@ -93,4 +93,7 @@ public final class LLVMGlobalVariable {
         return container instanceof UninitializedContainer;
     }
 
+    public String getName() {
+        return name;
+    }
 }

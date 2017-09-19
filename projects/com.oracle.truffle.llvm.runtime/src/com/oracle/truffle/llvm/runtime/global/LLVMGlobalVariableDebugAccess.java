@@ -27,60 +27,34 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.runtime.global;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
-import java.math.BigInteger;
+public final class LLVMGlobalVariableDebugAccess {
 
-public interface LLVMDebugValueProvider {
+    public static boolean isInitialized(LLVMGlobalVariable global) {
+        return !global.isUninitialized();
+    }
 
-    String UNAVAILABLE_VALUE = "<unavailable>";
+    public static boolean isInNative(LLVMGlobalVariable global) {
+        return global.getContainer() instanceof Container.NativeContainer;
+    }
 
-    @TruffleBoundary
-    static String toHexString(BigInteger value) {
-        final byte[] bytes = value.toByteArray();
-        final StringBuilder builder = new StringBuilder(bytes.length * 2 + 2);
-        builder.append("0x");
-        for (byte b : bytes) {
-            builder.append(String.format("%02x", b));
+    public static LLVMAddress getNativeLocation(LLVMGlobalVariable global) {
+        if (!isInNative(global)) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException("Global is not in native memory!");
         }
-        return builder.toString();
+        return global.getContainer().getNativeLocation(global);
     }
 
-    String describeValue(long bitOffset, int bitSize);
-
-    @TruffleBoundary
-    default Object cannotInterpret(String intendedType, long bitOffset, int bitSize) {
-        return String.format("<cannot interpret as %s: %s>", intendedType, describeValue(bitOffset, bitSize));
+    public static Object getManagedValue(LLVMGlobalVariable global) {
+        if (isInNative(global)) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException("Global is not managed!");
+        }
+        return global.getContainer().get(global);
     }
-
-    @TruffleBoundary
-    default Object unavailable(long bitOffset, int bitSize) {
-        return String.format("<unavailable: %s>", describeValue(bitOffset, bitSize));
-    }
-
-    boolean canRead(long bitOffset, int bits);
-
-    Object readBoolean(long bitOffset);
-
-    Object readFloat(long bitOffset);
-
-    Object readDouble(long bitOffset);
-
-    Object read80BitFloat(long bitOffset);
-
-    Object readAddress(long bitOffset);
-
-    Object readUnknown(long bitOffset, int bitSize);
-
-    Object computeAddress(long bitOffset);
-
-    Object readBigInteger(long bitOffset, int bitSize, boolean signed);
-
-    LLVMDebugValueProvider dereferencePointer(long bitOffset);
-
-    boolean isInteropValue();
-
-    Object asInteropValue();
 }

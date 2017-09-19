@@ -62,7 +62,17 @@ public abstract class LLVMToAddressNode extends LLVMExpressionNode {
 
     @Specialization
     public LLVMAddress executeI8(byte from) {
-        return LLVMAddress.fromLong(from);
+        return LLVMAddress.fromLong(LLVMExpressionNode.I8_MASK & (long) from);
+    }
+
+    @Specialization
+    public LLVMAddress executeI16(short from) {
+        return LLVMAddress.fromLong(LLVMExpressionNode.I16_MASK & (long) from);
+    }
+
+    @Specialization
+    public LLVMAddress executeI32(int from) {
+        return LLVMAddress.fromLong(LLVMExpressionNode.I32_MASK & from);
     }
 
     @Specialization

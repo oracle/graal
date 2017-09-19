@@ -147,11 +147,17 @@ public final class LLVMIVarBit {
 
     @TruffleBoundary
     private static BigInteger asBigInteger(LLVMIVarBit right) {
+        if (right.getBytes() == null) {
+            return BigInteger.ZERO;
+        }
         return new BigInteger(right.getBytes());
     }
 
     @TruffleBoundary
     public BigInteger asUnsignedBigInteger() {
+        if (arr == null || arr.length == 0) {
+            return BigInteger.ZERO;
+        }
         byte[] newArr = new byte[arr.length + 1];
         System.arraycopy(arr, 0, newArr, 1, arr.length);
         return new BigInteger(newArr);
@@ -159,7 +165,11 @@ public final class LLVMIVarBit {
 
     @TruffleBoundary
     public BigInteger asBigInteger() {
-        return new BigInteger(arr);
+        if (arr != null && arr.length != 0) {
+            return new BigInteger(arr);
+        } else {
+            return BigInteger.ZERO;
+        }
     }
 
     @TruffleBoundary
@@ -407,4 +417,14 @@ public final class LLVMIVarBit {
         return asBigInteger().compareTo(other.asBigInteger());
     }
 
+    @TruffleBoundary
+    public boolean isZero() {
+        return arr == null || arr.length == 0 || BigInteger.ZERO.equals(asBigInteger());
+    }
+
+    @Override
+    @TruffleBoundary
+    public String toString() {
+        return String.format("i%d %s", getBitSize(), asBigInteger().toString());
+    }
 }

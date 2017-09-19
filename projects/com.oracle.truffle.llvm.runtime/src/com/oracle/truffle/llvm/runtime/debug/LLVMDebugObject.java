@@ -36,8 +36,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 
 import java.math.BigInteger;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -51,6 +49,10 @@ public abstract class LLVMDebugObject implements TruffleObject {
     }
 
     private static final Object[] NO_KEYS = new Object[0];
+
+    private static final String INTEROP_VALUE = "<interop value>";
+    private static final String INTEROP_VALUE_KEY = "Unindexed Interop Value";
+    private static final Object[] INTEROP_KEYS = new Object[]{INTEROP_VALUE_KEY};
 
     protected final long offset;
 
@@ -78,7 +80,19 @@ public abstract class LLVMDebugObject implements TruffleObject {
      *
      * @return the keys or null
      */
-    public abstract Object[] getKeys();
+    public Object[] getKeys() {
+        if (value == null) {
+            return null;
+
+        } else if (value.isInteropValue()) {
+            return INTEROP_KEYS;
+
+        } else {
+            return getKeysSafe();
+        }
+    }
+
+    protected abstract Object[] getKeysSafe();
 
     /**
      * If this is a complex object return the member that is identified by the given key.
@@ -87,14 +101,38 @@ public abstract class LLVMDebugObject implements TruffleObject {
      *
      * @return the member or {@code null} if the key does not identify a member
      */
-    public abstract Object getMember(Object identifier);
+    public Object getMember(Object identifier) {
+        if (identifier == null) {
+            return null;
+
+        } else if (INTEROP_VALUE_KEY.equals(identifier)) {
+            return value.asInteropValue();
+
+        } else {
+            return getMemberSafe(identifier);
+        }
+    }
+
+    protected abstract Object getMemberSafe(Object identifier);
 
     /**
      * Return an object that represents the value of the referenced variable.
      *
      * @return the value of the referenced variable
      */
-    protected abstract Object getValue();
+    protected Object getValue() {
+        if (value == null) {
+            return "";
+
+        } else if (value.isInteropValue()) {
+            return INTEROP_VALUE;
+
+        } else {
+            return getValueSafe();
+        }
+    }
+
+    protected abstract Object getValueSafe();
 
     /**
      * A representation of the current value of the referenced variable for the debugger to show.
@@ -105,11 +143,6 @@ public abstract class LLVMDebugObject implements TruffleObject {
     @TruffleBoundary
     public String toString() {
         return Objects.toString(getValue());
-    }
-
-    @TruffleBoundary
-    Object cannotRead() {
-        return String.format("Cannot read %d bits from offset %d in %s", type.getSize(), offset, value);
     }
 
     @Override
@@ -124,28 +157,32 @@ public abstract class LLVMDebugObject implements TruffleObject {
         }
 
         @Override
-        protected Object getValue() {
+        protected Object getValueSafe() {
             final int size = (int) type.getSize();
-            if (!value.canRead(offset, size)) {
-                return cannotRead();
+
+            final Object idRead = value.readBigInteger(offset, size, false);
+            final BigInteger id;
+            if (idRead instanceof BigInteger) {
+                id = (BigInteger) idRead;
+            } else {
+                return value.describeValue(offset, size);
             }
 
-            final BigInteger id = value.readUnsignedInteger(offset, size);
             if (size >= Long.SIZE) {
-                return LLVMDebugObject.toHexString(id);
+                return LLVMDebugValueProvider.toHexString(id);
             }
 
             final Object enumVal = type.getElementName(id.longValue());
-            return enumVal != null ? enumVal : cannotRead();
+            return enumVal != null ? enumVal : LLVMDebugValueProvider.toHexString(id);
         }
 
         @Override
-        public Object[] getKeys() {
+        public Object[] getKeysSafe() {
             return NO_KEYS;
         }
 
         @Override
-        public Object getMember(Object identifier) {
+        public Object getMemberSafe(Object identifier) {
             return null;
         }
     }
@@ -155,27 +192,27 @@ public abstract class LLVMDebugObject implements TruffleObject {
         // in the order of their actual declaration in the containing type
         private final Object[] memberIdentifiers;
 
-        private final Map<Object, LLVMDebugObject> members;
-
-        Structured(LLVMDebugValueProvider value, long offset, LLVMSourceType type, Object[] memberIdentifiers, Map<Object, LLVMDebugObject> members) {
+        Structured(LLVMDebugValueProvider value, long offset, LLVMSourceType type, Object[] memberIdentifiers) {
             super(value, offset, type);
             this.memberIdentifiers = memberIdentifiers;
-            this.members = members;
         }
 
         @Override
-        public Object[] getKeys() {
+        public Object[] getKeysSafe() {
             return memberIdentifiers;
         }
 
         @Override
-        @TruffleBoundary
-        public LLVMDebugObject getMember(Object key) {
-            return members.get(key);
+        public Object getMemberSafe(Object key) {
+            if (key instanceof String) {
+                final LLVMSourceType elementType = type.getElementType((String) key);
+                return instantiate(elementType, offset + elementType.getOffset(), value);
+            }
+            return null;
         }
 
         @Override
-        public Object getValue() {
+        public Object getValueSafe() {
             return value.computeAddress(offset);
         }
     }
@@ -187,34 +224,22 @@ public abstract class LLVMDebugObject implements TruffleObject {
         }
 
         @Override
-        public Object[] getKeys() {
+        public Object[] getKeysSafe() {
             return NO_KEYS;
         }
 
         @Override
-        public Object getMember(Object identifier) {
+        public Object getMemberSafe(Object identifier) {
             return null;
         }
 
         @Override
-        public Object getValue() {
+        public Object getValueSafe() {
             final int size = (int) type.getSize();
-
-            if (!value.canRead(offset, size)) {
-                return cannotRead();
-            }
 
             LLVMSourceType actualType = this.type;
             if (actualType instanceof LLVMSourceDecoratorType) {
                 actualType = ((LLVMSourceDecoratorType) actualType).getTrueBaseType();
-            }
-
-            if (actualType.isPointer()) {
-                return value.readAddress(offset);
-            }
-
-            if (actualType.isAggregate()) {
-                return actualType.getName();
             }
 
             if (actualType instanceof LLVMSourceBasicType) {
@@ -229,21 +254,37 @@ public abstract class LLVMDebugObject implements TruffleObject {
                         return readFloating();
 
                     case SIGNED:
-                        return value.readSignedInteger(offset, size);
+                        return value.readBigInteger(offset, size, true);
 
-                    case SIGNED_CHAR:
-                        return (char) value.readSignedInteger(offset, size).byteValue();
+                    case SIGNED_CHAR: {
+                        final Object intRead = value.readBigInteger(offset, size, true);
+                        if (intRead instanceof BigInteger) {
+                            return (char) ((BigInteger) intRead).byteValue();
+                        } else {
+                            return intRead;
+                        }
+                    }
 
                     case UNSIGNED:
-                        return value.readUnsignedInteger(offset, size);
+                        return value.readBigInteger(offset, size, false);
 
-                    case UNSIGNED_CHAR:
-                        return (char) Byte.toUnsignedInt(value.readUnsignedInteger(offset, size).byteValue());
+                    case UNSIGNED_CHAR: {
+                        final Object intRead = value.readBigInteger(offset, size, false);
+                        if (intRead instanceof BigInteger) {
+                            return (char) Byte.toUnsignedInt(((BigInteger) intRead).byteValue());
+                        } else {
+                            return intRead;
+                        }
+                    }
                 }
             }
 
             return value.readUnknown(offset, size);
         }
+
+        // clang uses the x86_fp80 datatype to represent the long double type which is indicated in
+        // metadata to have 128 bits
+        private static final int LONGDOUBLE_SIZE = 128;
 
         private Object readFloating() {
             final int size = (int) type.getSize();
@@ -256,6 +297,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
                         return value.readDouble(offset);
 
                     case LLVM80BitFloat.BIT_WIDTH:
+                    case LONGDOUBLE_SIZE:
                         return value.read80BitFloat(offset);
 
                     default:
@@ -287,29 +329,25 @@ public abstract class LLVMDebugObject implements TruffleObject {
         }
 
         @Override
-        public Object[] getKeys() {
+        public Object[] getKeysSafe() {
             final LLVMDebugObject target = dereference();
             return target == null ? null : target.getKeys();
         }
 
         @Override
-        public Object getMember(Object identifier) {
+        public Object getMemberSafe(Object identifier) {
             final LLVMDebugObject target = dereference();
             return target == null ? "Cannot dereference pointer!" : target.getMember(identifier);
         }
 
         @Override
-        protected Object getValue() {
-            if (!value.canRead(offset, (int) type.getSize())) {
-                return cannotRead();
-            }
-
+        protected Object getValueSafe() {
             return value.readAddress(offset);
         }
 
         private LLVMDebugObject dereference() {
             // the pointer may change at runtime, so we cannot just cache the dereferenced object
-            if (pointerType == null || !pointerType.isSafeToDereference() || !value.canRead(offset, (int) type.getSize())) {
+            if (pointerType == null || !pointerType.isSafeToDereference()) {
                 return null;
             }
 
@@ -321,20 +359,18 @@ public abstract class LLVMDebugObject implements TruffleObject {
         }
     }
 
-    @TruffleBoundary
-    private static String toHexString(BigInteger value) {
-        final byte[] bytes = value.toByteArray();
-        final StringBuilder builder = new StringBuilder(bytes.length * 2 + 2);
-        builder.append("0x");
-        for (byte b : bytes) {
-            builder.append(String.format("%02x", b));
-        }
-        return builder.toString();
-    }
-
     public static LLVMDebugObject instantiate(LLVMSourceType type, long baseOffset, LLVMDebugValueProvider value) {
         if (type.isAggregate()) {
-            return instantiateAggregate(type, baseOffset, value);
+            int elementCount = type.getElementCount();
+            if (elementCount < 0) {
+                // happens for dynamically initialized arrays
+                elementCount = 0;
+            }
+            final Object[] memberIdentifiers = new Object[elementCount];
+            for (int i = 0; i < elementCount; i++) {
+                memberIdentifiers[i] = type.getElementName(i);
+            }
+            return new Structured(value, baseOffset, type, memberIdentifiers);
 
         } else if (type.isPointer()) {
             return new Pointer(value, baseOffset, type);
@@ -345,21 +381,5 @@ public abstract class LLVMDebugObject implements TruffleObject {
         } else {
             return new Primitive(value, baseOffset, type);
         }
-    }
-
-    @TruffleBoundary
-    private static LLVMDebugObject instantiateAggregate(LLVMSourceType type, long baseOffset, LLVMDebugValueProvider value) {
-        final Map<Object, LLVMDebugObject> members = new HashMap<>(type.getElementCount());
-        final Object[] memberIdentifiers = new Object[type.getElementCount()];
-        for (int i = 0; i < type.getElementCount(); i++) {
-            final LLVMSourceType elementType = type.getElementType(i);
-            final String elementName = type.getElementName(i);
-            final long newOffset = baseOffset + elementType.getOffset();
-
-            final LLVMDebugObject member = instantiate(elementType, newOffset, value);
-            memberIdentifiers[i] = elementName;
-            members.put(elementName, member);
-        }
-        return new Structured(value, baseOffset, type, memberIdentifiers, members);
     }
 }

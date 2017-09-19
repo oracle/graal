@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.MetadataConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
@@ -322,14 +323,20 @@ public final class SourceModel {
                 // the first argument should reference the allocation site of the variable
                 final long mdIndex = ((MetadataConstant) value).getValue();
                 value = MDSymbolExtractor.getSymbol(currentFunction.definition.getMetadata().getMDRef(mdIndex));
-            }
 
-            if (value instanceof ValueInstruction) {
-                ((ValueInstruction) value).setSourceVariable(true);
-            } else if (value instanceof FunctionParameter) {
-                ((FunctionParameter) value).setSourceVariable(true);
             } else {
                 return;
+            }
+
+            if (value == null) {
+                // this may happen if llvm optimizations removed a variable
+                value = new NullConstant(MetaType.DEBUG);
+
+            } else if (value instanceof ValueInstruction) {
+                ((ValueInstruction) value).setSourceVariable(true);
+
+            } else if (value instanceof FunctionParameter) {
+                ((FunctionParameter) value).setSourceVariable(true);
             }
 
             final Symbol mdLocalMDRef = call.getArgument(mdlocalArgumentIndex);
