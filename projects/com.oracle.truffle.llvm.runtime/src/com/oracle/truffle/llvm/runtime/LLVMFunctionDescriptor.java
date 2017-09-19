@@ -348,7 +348,12 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
     public TruffleObject getNativeFunction() {
         getFunction().resolve(this);
         assert getFunction() instanceof NativeFunction;
-        return ((NativeFunction) getFunction()).nativeFunction;
+        TruffleObject nativeFunction = ((NativeFunction) getFunction()).nativeFunction;
+        if (nativeFunction == null) {
+            CompilerDirectives.transferToInterpreter();
+            throw new LinkageError("Native function " + getName() + " not found");
+        }
+        return nativeFunction;
     }
 
     public String getName() {
@@ -367,6 +372,9 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
         if (nativeWrapper == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             nativeWrapper = getFunction().createNativeWrapper(this);
+            if (nativeWrapper == null) {
+                return 0;
+            }
             try {
                 nativePointer = ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), nativeWrapper);
             } catch (UnsupportedMessageException ex) {
