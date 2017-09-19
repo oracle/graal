@@ -75,7 +75,7 @@ class NFIContext {
         @Override
         public NativeEnv get() {
             NativeEnv ret = new NativeEnv(initializeNativeEnv(nativeContext));
-            NativeAllocation.registerNativeAllocation(ret, new FreeDestructor(ret.pointer));
+            NativeAllocation.getGlobalQueue().registerNativeAllocation(ret, new FreeDestructor(ret.pointer));
             return ret;
         }
     }

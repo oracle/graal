@@ -30,6 +30,8 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleTr
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.getOptions;
 import static org.graalvm.compiler.truffle.hotspot.UnsafeAccess.UNSAFE;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -38,21 +40,6 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.CompiledCode;
-import jdk.vm.ci.code.stack.StackIntrospection;
-import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
-import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.SpeculationLog;
-import jdk.vm.ci.runtime.JVMCI;
-import jdk.vm.ci.runtime.JVMCICompiler;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
@@ -109,6 +96,21 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CompiledCode;
+import jdk.vm.ci.code.stack.StackIntrospection;
+import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.runtime.JVMCI;
+import jdk.vm.ci.runtime.JVMCICompiler;
 
 /**
  * Implementation of the Truffle runtime when running on top of Graal.
@@ -232,9 +234,28 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         ResolvedJavaType type = metaAccess.lookupJavaType(OptimizedCallTarget.class);
         for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
             if (method.getAnnotation(TruffleCallBoundary.class) != null) {
-                ((HotSpotResolvedJavaMethod) method).setNotInlineable();
+                setNotInlineableOrCompileable(method);
             }
         }
+    }
+
+    /**
+     * Informs the VM to never compile or inline {@code method}.
+     */
+    private static void setNotInlineableOrCompileable(ResolvedJavaMethod method) {
+        // JDK-8180487 introduced a breaking API change so reflection is required.
+        Method[] methods = HotSpotResolvedJavaMethod.class.getMethods();
+        for (Method m : methods) {
+            if (m.getName().equals("setNotInlineable") || m.getName().equals("setNotInlineableOrCompileable")) {
+                try {
+                    m.invoke(method);
+                    return;
+                } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+                    throw new GraalError(e);
+                }
+            }
+        }
+        throw new GraalError("Could not find setNotInlineable or setNotInlineableOrCompileable in %s", HotSpotResolvedJavaMethod.class);
     }
 
     /**

@@ -735,12 +735,12 @@ class StdoutUnstripping:
     for the execution were not already being redirected and existing *.map files
     were detected in the arguments to the execution.
     """
-    def __init__(self, args, out, err):
+    def __init__(self, args, out, err, mapFiles=None):
         self.args = args
         self.out = out
         self.err = err
         self.capture = None
-        self.mapFiles = None
+        self.mapFiles = mapFiles
 
     def __enter__(self):
         if mx.get_opts().strip_jars and self.out is None and (self.err is None or self.err == subprocess.STDOUT):
@@ -972,9 +972,13 @@ def makegraaljdk(args):
         with open(join(jvmciDir, 'compiler-name'), 'w') as fp:
             print >> fp, 'graal'
         vmName = 'Graal'
+        mapFiles = set()
         for e in _jvmci_classpath:
             src = basename(e.get_path())
-            mx.log('Copying {} to {}'.format(src, jvmciDir))
+            mx.log('Copying {} to {}'.format(e.get_path(), jvmciDir))
+            candidate = e.get_path() + '.map'
+            if exists(candidate):
+                mapFiles.add(candidate)
             with open(join(dstJdk, 'release'), 'a') as fp:
                 d = e.dist()
                 s = d.suite
@@ -983,7 +987,11 @@ def makegraaljdk(args):
             shutil.copyfile(e.get_path(), join(jvmciDir, src))
         for e in _bootclasspath_appends:
             src = basename(e.classpath_repr())
-            mx.log('Copying {} to {}'.format(src, bootDir))
+            mx.log('Copying {} to {}'.format(e.classpath_repr(), bootDir))
+            candidate = e.classpath_repr() + '.map'
+            if exists(candidate):
+                mapFiles.add(candidate)
+
             with open(join(dstJdk, 'release'), 'a') as fp:
                 s = e.suite
                 print >> fp, '{}={}'.format(e.name, s.vc.parent(s.dir))
@@ -1008,7 +1016,8 @@ def makegraaljdk(args):
             mx.abort('Could not find "{}" in output of `java -version`:\n{}'.format(pattern.pattern, os.linesep.join(out.lines)))
 
         exe = join(dstJdk, 'bin', mx.exe_suffix('java'))
-        mx.run([exe, '-XX:+BootstrapJVMCI', '-version'])
+        with StdoutUnstripping(args=[], out=None, err=None, mapFiles=mapFiles) as u:
+            mx.run([exe, '-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
         if args.archive:
             mx.log('Archiving {}'.format(args.archive))
             create_archive(dstJdk, args.archive, basename(args.dest) + '/')

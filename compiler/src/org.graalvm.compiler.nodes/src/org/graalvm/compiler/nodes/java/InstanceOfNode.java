@@ -56,7 +56,7 @@ import jdk.vm.ci.meta.TriState;
 public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtualizable {
     public static final NodeClass<InstanceOfNode> TYPE = NodeClass.create(InstanceOfNode.class);
 
-    protected final ObjectStamp checkedStamp;
+    private ObjectStamp checkedStamp;
 
     private JavaTypeProfile profile;
     @OptionalInput(Anchor) protected AnchoringNode anchor;
@@ -126,6 +126,8 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
                 // The check will always succeed, the union of the two stamps is equal to the
                 // checked stamp.
                 return LogicConstantNode.tautology();
+            } else if (checkedStamp.alwaysNull()) {
+                return IsNullNode.create(object);
             } else if (checkedStamp.type().equals(meetStamp.type()) && checkedStamp.isExactType() == meetStamp.isExactType() && checkedStamp.alwaysNull() == meetStamp.alwaysNull()) {
                 assert checkedStamp.nonNull() != inputStamp.nonNull();
                 // The only difference makes the null-ness of the value => simplify the check.
@@ -203,5 +205,14 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
 
     public AnchoringNode getAnchor() {
         return anchor;
+    }
+
+    public ObjectStamp getCheckedStamp() {
+        return checkedStamp;
+    }
+
+    public void strengthenCheckedStamp(ObjectStamp newCheckedStamp) {
+        assert this.checkedStamp.join(newCheckedStamp).equals(newCheckedStamp) : "stamp can only improve";
+        this.checkedStamp = newCheckedStamp;
     }
 }
