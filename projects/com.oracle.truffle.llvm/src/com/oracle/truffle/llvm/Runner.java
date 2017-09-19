@@ -87,9 +87,6 @@ public final class Runner {
 
             LLVMParserResult parserResult = parseBitcodeFile(code, bytes, language, context);
             mainFunction = parserResult.getMainCallTarget();
-            if (mainFunction == null) {
-                mainFunction = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
-            }
             handleParserResult(context, parserResult);
             if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
                 return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
