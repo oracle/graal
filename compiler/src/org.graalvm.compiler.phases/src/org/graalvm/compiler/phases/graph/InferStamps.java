@@ -24,7 +24,6 @@ package org.graalvm.compiler.phases.graph;
 
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.EntryProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
@@ -55,12 +54,6 @@ public class InferStamps {
                     assert node.stamp().hasValues() : "We assume all Phi and Proxy stamps are legal before the analysis";
                     node.setStamp(node.stamp().empty());
                 }
-            }
-            // The OSR entry proxy is speculated to have the original stamp.
-            // If the speculation is not allowed, the OSR phase will enlarge the stamp.
-            if (n instanceof EntryProxyNode) {
-                EntryProxyNode proxy = (EntryProxyNode) n;
-                proxy.setStamp(proxy.getOriginalNode().stamp());
             }
         }
 

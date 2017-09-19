@@ -33,11 +33,8 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
 
 /**
- * Proxy node that is used in OSR.
- * Generally, this node drops the stamp information from the value, since the
+ * Proxy node that is used in OSR. This node drops the stamp information from the value, since the
  * types we see during OSR may be too precise (if a branch was not parsed for example).
- * However, during the first OSR compilation, we speculate that the stamp of this node
- * is more precise.
  */
 @NodeInfo(nameTemplate = "EntryProxy({i#value})", cycles = CYCLES_0, size = SIZE_0)
 public final class EntryProxyNode extends FloatingNode implements ValueProxy {
