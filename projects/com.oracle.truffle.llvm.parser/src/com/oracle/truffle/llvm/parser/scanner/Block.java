@@ -49,7 +49,11 @@ public enum Block {
     MODULE_STRTAB(19),
     FUNCTION_SUMMARY(20),
     OPERAND_BUNDLE_TAGS(21),
-    METADATA_KIND(22);
+    METADATA_KIND(22),
+    STRTAB(23),
+    FULL_LTO_GLOBALVAR_SUMMARY(24),
+    SYMTAB(25),
+    SYNC_SCOPE_NAMES(26);
 
     private final int id;
 

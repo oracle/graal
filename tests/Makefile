@@ -60,24 +60,24 @@ endif
 define OPT_RULES
 %/$(1).bc: %.c
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) clang -c -emit-llvm -$(1) $(CPPFLAGS) -o $$@ $$<
+	$(QUIETLY) clang -c -emit-llvm $(2) $(CPPFLAGS) -o $$@ $$<
 
 %/$(1).bc: %.cpp
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) clang++ -c -emit-llvm -$(1) $(CPPFLAGS) -o $$@ $$<
+	$(QUIETLY) clang++ -c -emit-llvm $(2) $(CPPFLAGS) -o $$@ $$<
 
 %/gcc_$(1).ll: %.c
 	@mkdir -p $$(shell dirname $$@)
 	$(QUIETLY) $(DRAGONEGG_GCC) -S --std=gnu99 -fplugin=$(DRAGONEGG) -fplugin-arg-dragonegg-emit-ir -$(1) $(CPPFLAGS) -o $$@ $$<
 endef
 
-$(eval $(call OPT_RULES,O0))
-$(eval $(call OPT_RULES,O1))
-$(eval $(call OPT_RULES,O2))
-$(eval $(call OPT_RULES,O3))
+$(eval $(call OPT_RULES,O0,-O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS}))
+$(eval $(call OPT_RULES,O1,-O1))
+$(eval $(call OPT_RULES,O2,-O2))
+$(eval $(call OPT_RULES,O3,-O3))
 
-%_BB_VECTORIZE.bc: %.bc
-	$(QUIETLY) opt -o $@ -functionattrs -instcombine -always-inline -jump-threading -simplifycfg -mem2reg -bb-vectorize $<
+%_MISC_OPTS.bc: %.bc
+	$(QUIETLY) opt -o $@ -functionattrs -instcombine -always-inline -jump-threading -simplifycfg -mem2reg $<
 
 %_MEM2REG.bc: %.bc
 	$(QUIETLY) opt -o $@ -mem2reg $<

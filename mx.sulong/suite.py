@@ -277,7 +277,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.sulong" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
-      "variants" : ['O0', 'O0_BB_VECTORIZE', 'O1', 'O2', 'O3', 'gcc_O0'],
+      "variants" : ['O0', 'O0_MISC_OPTS', 'O1', 'O2', 'O3', 'gcc_O0'],
       "buildEnv" : {
         "LDFLAGS" : "-lm",
         "OS" : "<os>",
@@ -286,7 +286,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.sulongcpp" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
-      "variants" : ['O0', 'O0_BB_VECTORIZE'],
+      "variants" : ['O0', 'O0_MISC_OPTS'],
       "buildEnv" : {
         "OS" : "<os>",
       },

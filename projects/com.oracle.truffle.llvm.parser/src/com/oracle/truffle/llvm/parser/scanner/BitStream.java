@@ -46,7 +46,7 @@ public final class BitStream {
     }
 
     public static BitStream createFromBlob(long[] args, int blobStartIndex) {
-        final byte[] blob = new byte[(args.length - 2) * Long.BYTES];
+        final byte[] blob = new byte[(args.length - blobStartIndex) * Long.BYTES];
         int to = 0;
         for (int from = blobStartIndex; from < args.length; from++) {
             final long l = args[from];

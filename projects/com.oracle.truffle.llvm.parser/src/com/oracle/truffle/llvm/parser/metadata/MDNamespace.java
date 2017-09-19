@@ -71,11 +71,23 @@ public final class MDNamespace extends MDName implements MDBaseNode {
     private static final int ARGINDEX_38_NAME = 3;
     private static final int ARGINDEX_38_LINE = 4;
 
+    private static final int RECORDSIZE_50 = 3;
+    private static final int ARGINDEX_50_NAME = 2;
+
     public static MDNamespace create38(long[] args, MetadataList md) {
         final MDReference scope = md.getMDRefOrNullRef(args[ARGINDEX_38_SCOPE]);
-        final MDReference file = md.getMDRefOrNullRef(args[ARGINDEX_38_FILE]);
-        final MDReference name = md.getMDRefOrNullRef(args[ARGINDEX_38_NAME]);
-        final long line = args[ARGINDEX_38_LINE];
+        final MDReference name;
+        final MDReference file;
+        final long line;
+        if (RECORDSIZE_50 != args.length) {
+            file = md.getMDRefOrNullRef(args[ARGINDEX_38_FILE]);
+            name = md.getMDRefOrNullRef(args[ARGINDEX_38_NAME]);
+            line = args[ARGINDEX_38_LINE];
+        } else {
+            name = md.getMDRefOrNullRef(args[ARGINDEX_50_NAME]);
+            file = MDReference.VOID;
+            line = -1L;
+        }
         return new MDNamespace(name, scope, file, line);
     }
 

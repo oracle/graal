@@ -1009,10 +1009,10 @@ public final class Function implements ParserListener {
     }
 
     private int getIndex(long index) {
-        if (mode == 0) {
-            return getIndexAbsolute(index);
-        } else {
+        if (mode >= 1) {
             return getIndexRelative(index);
+        } else {
+            return getIndexAbsolute(index);
         }
     }
 

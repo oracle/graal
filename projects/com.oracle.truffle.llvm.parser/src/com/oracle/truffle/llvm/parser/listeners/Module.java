@@ -47,12 +47,15 @@ import com.oracle.truffle.llvm.parser.scanner.Block;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
 public final class Module implements ParserListener {
 
     private final ModelModule module;
 
     private final ParameterAttributes paramAttributes = new ParameterAttributes();
+
+    private final StringTable stringTable = new StringTable();
 
     private int mode = 1;
 
@@ -63,29 +66,50 @@ public final class Module implements ParserListener {
         types = new Types(module);
     }
 
+    private static final int STRTAB_RECORD_OFFSET = 2;
+    private static final int STRTAB_RECORD_OFFSET_INDEX = 0;
+    private static final int STRTAB_RECORD_LENGTH_INDEX = 1;
+
+    private boolean useStrTab() {
+        return mode == 2;
+    }
+
+    private void readNameFromStrTab(long[] args, ValueSymbol target) {
+        final int offset = (int) args[STRTAB_RECORD_OFFSET_INDEX];
+        final int length = (int) args[STRTAB_RECORD_LENGTH_INDEX];
+        stringTable.requestName(offset, length, target);
+    }
+
     private static final int FUNCTION_TYPE = 0;
     private static final int FUNCTION_ISPROTOTYPE = 2;
     private static final int FUNCTION_LINKAGE = 3;
     private static final int FUNCTION_PARAMATTR = 4;
 
     private void createFunction(long[] args) {
-        Type type = types.get(args[FUNCTION_TYPE]);
+        final int recordOffset = useStrTab() ? STRTAB_RECORD_OFFSET : 0;
+        Type type = types.get(args[FUNCTION_TYPE + recordOffset]);
         if (type instanceof PointerType) {
             type = ((PointerType) type).getPointeeType();
         }
 
         final FunctionType functionType = (FunctionType) type;
-        final boolean isPrototype = args[FUNCTION_ISPROTOTYPE] != 0;
-        final Linkage linkage = Linkage.decode(args[FUNCTION_LINKAGE]);
+        final boolean isPrototype = args[FUNCTION_ISPROTOTYPE + recordOffset] != 0;
+        final Linkage linkage = Linkage.decode(args[FUNCTION_LINKAGE + recordOffset]);
 
-        final AttributesCodeEntry paramAttr = paramAttributes.getCodeEntry(args[FUNCTION_PARAMATTR]);
+        final AttributesCodeEntry paramAttr = paramAttributes.getCodeEntry(args[FUNCTION_PARAMATTR + recordOffset]);
 
         if (isPrototype) {
             final FunctionDeclaration function = new FunctionDeclaration(functionType, linkage, paramAttr);
             module.addFunctionDeclaration(function);
+            if (useStrTab()) {
+                readNameFromStrTab(args, function);
+            }
         } else {
             final FunctionDefinition function = new FunctionDefinition(functionType, linkage, paramAttr);
             module.addFunctionDefinition(function);
+            if (useStrTab()) {
+                readNameFromStrTab(args, function);
+            }
         }
     }
 
@@ -99,8 +123,9 @@ public final class Module implements ParserListener {
     private static final int GLOBALVAR_VISIBILITY = 6;
 
     private void createGlobalVariable(long[] args) {
-        final long typeField = args[GLOBALVAR_TYPE];
-        final long flagField = args[GLOBALVAR_FLAGS];
+        final int recordOffset = useStrTab() ? STRTAB_RECORD_OFFSET : 0;
+        final long typeField = args[GLOBALVAR_TYPE + recordOffset];
+        final long flagField = args[GLOBALVAR_FLAGS + recordOffset];
 
         Type type = types.get(typeField);
         if ((flagField & GLOBALVAR_EXPLICICTTYPE_MASK) != 0) {
@@ -108,13 +133,13 @@ public final class Module implements ParserListener {
         }
 
         final boolean isConstant = (flagField & GLOBALVAR_ISCONSTANT_MASK) != 0;
-        final int initialiser = (int) args[GLOBALVAR_INTITIALIZER];
-        final long linkage = args[GLOBALVAR_LINKAGE];
-        final int align = (int) args[GLOBALVAR_ALIGN];
+        final int initialiser = (int) args[GLOBALVAR_INTITIALIZER + recordOffset];
+        final long linkage = args[GLOBALVAR_LINKAGE + recordOffset];
+        final int align = (int) args[GLOBALVAR_ALIGN + recordOffset];
 
         long visibility = Visibility.DEFAULT.getEncodedValue();
-        if (GLOBALVAR_VISIBILITY < args.length) {
-            visibility = args[GLOBALVAR_VISIBILITY];
+        if (GLOBALVAR_VISIBILITY + recordOffset < args.length) {
+            visibility = args[GLOBALVAR_VISIBILITY + recordOffset];
         }
 
         final GlobalValueSymbol global;
@@ -122,6 +147,9 @@ public final class Module implements ParserListener {
             global = GlobalConstant.create(type, initialiser, align, linkage, visibility);
         } else {
             global = GlobalVariable.create(type, initialiser, align, linkage, visibility);
+        }
+        if (useStrTab()) {
+            readNameFromStrTab(args, global);
         }
         module.addGlobalSymbol(global);
     }
@@ -131,24 +159,34 @@ public final class Module implements ParserListener {
     private static final int GLOBALALIAS_NEW_LINKAGE = 3;
 
     private void createGlobalAliasNew(long[] args) {
-        final Type type = new PointerType(types.get(args[GLOBALALIAS_TYPE]));
+        final int recordOffset = useStrTab() ? STRTAB_RECORD_OFFSET : 0;
+        final Type type = new PointerType(types.get(args[GLOBALALIAS_TYPE + recordOffset]));
 
         // idx = 1 is address space information
-        final int value = (int) args[GLOBALALIAS_NEW_VALUE];
-        final long linkage = args[GLOBALALIAS_NEW_LINKAGE];
+        final int value = (int) args[GLOBALALIAS_NEW_VALUE + recordOffset];
+        final long linkage = args[GLOBALALIAS_NEW_LINKAGE + recordOffset];
 
-        module.addGlobalSymbol(GlobalAlias.create(type, value, linkage, Visibility.DEFAULT.ordinal()));
+        final GlobalAlias global = GlobalAlias.create(type, value, linkage, Visibility.DEFAULT.ordinal());
+        if (useStrTab()) {
+            readNameFromStrTab(args, global);
+        }
+        module.addGlobalSymbol(global);
     }
 
     private static final int GLOBALALIAS_OLD_VALUE = 1;
     private static final int GLOBALALIAS_OLD_LINKAGE = 2;
 
     private void createGlobalAliasOld(long[] args) {
-        final Type type = types.get(args[GLOBALALIAS_TYPE]);
-        int value = (int) args[GLOBALALIAS_OLD_VALUE];
-        long linkage = args[GLOBALALIAS_OLD_LINKAGE];
+        final int recordOffset = useStrTab() ? STRTAB_RECORD_OFFSET : 0;
+        final Type type = types.get(args[GLOBALALIAS_TYPE + recordOffset]);
+        int value = (int) args[GLOBALALIAS_OLD_VALUE + recordOffset];
+        long linkage = args[GLOBALALIAS_OLD_LINKAGE + recordOffset];
 
-        module.addGlobalSymbol(GlobalAlias.create(type, value, linkage, Visibility.DEFAULT.ordinal()));
+        final GlobalAlias global = GlobalAlias.create(type, value, linkage, Visibility.DEFAULT.ordinal());
+        if (useStrTab()) {
+            readNameFromStrTab(args, global);
+        }
+        module.addGlobalSymbol(global);
     }
 
     @Override
@@ -184,6 +222,9 @@ public final class Module implements ParserListener {
             case METADATA:
             case METADATA_KIND:
                 return new Metadata(types, module);
+
+            case STRTAB:
+                return stringTable;
 
             default:
                 return ParserListener.DEFAULT;
