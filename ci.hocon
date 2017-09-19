@@ -42,11 +42,7 @@ gateStyle: ${gateCommon} ${linux-amd64} {
     }
 }
 
-gateTest38-linux: ${gateCommon} ${linux-amd64} {
-    packages: {
-        llvm: "==3.8"
-    }
-
+gateTest-linux: ${gateCommon} ${linux-amd64} {
     downloads: {
         LIBGMP: {name: libgmp, version: "6.1.0", platformspecific: true}
     }
@@ -54,6 +50,18 @@ gateTest38-linux: ${gateCommon} ${linux-amd64} {
     environment: {
         CPPFLAGS: "-g -I$LIBGMP/include"
         LD_LIBRARY_PATH: "$LIBGMP/lib:$LD_LIBRARY_PATH"
+    }
+}
+
+gateTest38-linux: ${gateTest-linux} {
+    packages: {
+        llvm: "==3.8"
+    }
+}
+
+gateTest40-linux: ${gateTest-linux} {
+    packages: {
+        llvm: "==4.0.1"
     }
 }
 
@@ -138,6 +146,7 @@ builds = [
   ${gateTest38-linux} ${requireGCC} { name: gate-travis1, run: [[mx, travis1]] }
   ${gateTest38-linux} ${requireGCC} { name: gate-travis2, run: [[mx, travis2]] }
   ${gateTest38-linux} ${requireGCC} ${sulongSuite} { name: gate-sulong-v38-linux }
+  ${gateTest40-linux} ${requireGCC} ${sulongSuite} { name: gate-sulong-v40-linux }
   ${gateTest40-darwin} ${sulongSuite} { name: gate-sulong-v40-darwin }
   ${gateTest38-linux} { name: gate-var-v38, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, assembly], [mx, test, args], [mx, test, callback], [mx, test, vaargs]] }
   ${gateTest38-linux} ${ruby-downstream-test} { name: gate-ruby-downstream }
