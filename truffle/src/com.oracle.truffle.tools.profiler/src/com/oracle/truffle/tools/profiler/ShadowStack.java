@@ -45,6 +45,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Custom more efficient stack representations for profilers.
+ * 
+ * @since 0.29
  */
 final class ShadowStack {
 
@@ -55,15 +57,15 @@ final class ShadowStack {
         this.stackLimit = stackLimit;
     }
 
-    public ThreadLocalStack getStack(Thread thread) {
+    ThreadLocalStack getStack(Thread thread) {
         return stacks.get(thread);
     }
 
-    public Collection<ThreadLocalStack> getStacks() {
+    Collection<ThreadLocalStack> getStacks() {
         return stacks.values();
     }
 
-    public EventBinding<?> install(Instrumenter instrumenter, SourceSectionFilter filter, boolean compiledOnly) {
+    EventBinding<?> install(Instrumenter instrumenter, SourceSectionFilter filter, boolean compiledOnly) {
         return instrumenter.attachFactory(filter, new ExecutionEventNodeFactory() {
             public ExecutionEventNode create(EventContext context) {
                 boolean isRoot = instrumenter.queryTags(context.getInstrumentedNode()).contains(StandardTags.RootTag.class);
@@ -225,29 +227,29 @@ final class ShadowStack {
             }
         }
 
-        public SourceLocation[] getStack() {
+        SourceLocation[] getStack() {
             return stack;
         }
 
-        public Thread getThread() {
+        Thread getThread() {
             return thread;
         }
 
-        public boolean[] getCompiledStack() {
+        boolean[] getCompiledStack() {
             return compiledStack;
         }
 
-        public int getStackIndex() {
+        int getStackIndex() {
             return stackIndex;
         }
 
-        public boolean hasStackOverflowed() {
+        boolean hasStackOverflowed() {
             return stackOverflowed;
         }
 
-        public static final class CorrectedStackInfo {
+        static final class CorrectedStackInfo {
 
-            public static CorrectedStackInfo build(ThreadLocalStack stack) {
+            static CorrectedStackInfo build(ThreadLocalStack stack) {
                 SourceLocation[] localStack = stack.getStack();
                 boolean[] localCompiled = stack.getCompiledStack();
                 int localStackIndex = stack.getStackIndex();
@@ -283,15 +285,15 @@ final class ShadowStack {
                 this.length = length;
             }
 
-            public SourceLocation[] getStack() {
+            SourceLocation[] getStack() {
                 return stack;
             }
 
-            public boolean[] getCompiledStack() {
+            boolean[] getCompiledStack() {
                 return compiledStack;
             }
 
-            public int getLength() {
+            int getLength() {
                 return length;
             }
 

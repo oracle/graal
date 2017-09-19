@@ -50,11 +50,35 @@ import java.util.Map;
 
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
+/**
+ * Implementation of a memory tracing profiler for
+ * {@linkplain com.oracle.truffle.api.TruffleLanguage Truffle languages} built on top of the
+ * {@linkplain TruffleInstrument Truffle instrumentation framework}.
+ * <p>
+ * The tracer counts how many times each of the elements of interest (e.g. functions, statements,
+ * etc.) allocates memory, as well as meta data about the allocated object. It keeps a shadow stack
+ * during execution, and listens for {@link AllocationEvent allocation events}. On each event, the
+ * allocation information is associated to the top of the stack.
+ * <p>
+ * NOTE: This profiler is still experimental with limited capabilities.
+ *
+ * @since 0.29
+ */
 public final class MemoryTracer implements Closeable {
 
+    /**
+     * The {@linkplain TruffleInstrument instrument} for the memory tracer.
+     *
+     * @since 0.29
+     */
     @Registration(id = Instrument.ID, name = "Memory Tracer", version = "1.0", services = {MemoryTracer.class})
     public static final class Instrument extends TruffleInstrument {
 
+        /**
+         * A string used to identify the tracer, i.e. as the name of the tool.
+         *
+         * @since 0.29
+         */
         public static final String ID = "memtracer";
         static MemoryTracer tracer;
         List<OptionDescriptor> descriptors = new ArrayList<>();
@@ -110,25 +134,33 @@ public final class MemoryTracer implements Closeable {
         }
     }
 
-    private SourceSectionFilter filter = null;
-
-    public MemoryTracer(TruffleInstrument.Env env) {
+    MemoryTracer(TruffleInstrument.Env env) {
         this.env = env;
     }
 
+    private SourceSectionFilter filter = null;
+
     private final TruffleInstrument.Env env;
+
     private boolean closed = false;
+
     private boolean collecting = false;
+
     private EventBinding<?> activeBinding;
+
     private int stackLimit = 1000;
+
     private ShadowStack shadowStack;
+
     private EventBinding<?> stacksBinding;
+
     private final CallTreeNode<AllocationPayload> rootNode = new CallTreeNode<>(this, null);
+
     private boolean stackOverflowed = false;
 
     private static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).sourceIs(s -> !s.isInternal()).build();
 
-    public void resetTracer() {
+    void resetTracer() {
         assert Thread.holdsLock(this);
         if (activeBinding != null) {
             activeBinding.dispose();
@@ -147,6 +179,12 @@ public final class MemoryTracer implements Closeable {
         this.activeBinding = env.getInstrumenter().attachAllocationListener(AllocationEventFilter.ANY, new Listener());
     }
 
+    /**
+     * Controls whether the tracer is collecting data or not.
+     *
+     * @param collecting the new state of the tracer.
+     * @since 0.29
+     */
     public synchronized void setCollecting(boolean collecting) {
         if (closed) {
             throw new IllegalStateException("Memory Tracer is already closed.");
@@ -157,14 +195,27 @@ public final class MemoryTracer implements Closeable {
         }
     }
 
-    public Collection<CallTreeNode<AllocationPayload>> getRootNodes() {
-        return rootNode.getChildren();
-    }
-
+    /**
+     * @return whether or not the sampler is currently collecting data.
+     * @since 0.29
+     */
     public synchronized boolean isCollecting() {
         return collecting;
     }
 
+    /**
+     * @return The roots of the trees representing the profile of the execution.
+     * @since 0.29
+     */
+    public Collection<CallTreeNode<AllocationPayload>> getRootNodes() {
+        return rootNode.getChildren();
+    }
+
+    /**
+     * Erases all the data gathered by the tracer.
+     *
+     * @since 0.29
+     */
     public synchronized void clearData() {
         Map<SourceLocation, CallTreeNode<AllocationPayload>> rootChildren = rootNode.children;
         if (rootChildren != null) {
@@ -172,15 +223,30 @@ public final class MemoryTracer implements Closeable {
         }
     }
 
+    /**
+     * @return whether or not the sampler has collected any data so far.
+     * @since 0.29
+     */
     public synchronized boolean hasData() {
         Map<SourceLocation, CallTreeNode<AllocationPayload>> rootChildren = rootNode.children;
         return rootChildren != null && !rootChildren.isEmpty();
     }
 
+    /**
+     * @return size of the shadow stack
+     * @since 0.29
+     */
     public synchronized int getStackLimit() {
         return stackLimit;
     }
 
+    /**
+     * Sets the size of the shadow stack. Whether or not the shadow stack grew more than the
+     * provided size during execution can be checked with {@linkplain #hasStackOverflowed}
+     *
+     * @param stackLimit the new size of the shadow stack
+     * @since 0.29
+     */
     public synchronized void setStackLimit(int stackLimit) {
         verifyConfigAllowed();
         if (stackLimit < 1) {
@@ -189,15 +255,31 @@ public final class MemoryTracer implements Closeable {
         this.stackLimit = stackLimit;
     }
 
+    /**
+     * @return was the shadow stack size insufficient for the execution.
+     * @since 0.29
+     */
     public boolean hasStackOverflowed() {
         return stackOverflowed;
     }
 
+    /**
+     * Sets the {@link SourceSectionFilter filter} for the sampler. This allows the sampler to
+     * observe only parts of the executed source code.
+     *
+     * @param filter The new filter describing which part of the source code to sample
+     * @since 0.29
+     */
     public synchronized void setFilter(SourceSectionFilter filter) {
         verifyConfigAllowed();
         this.filter = filter;
     }
 
+    /**
+     * Closes the tracer for fuhrer use, deleting all the gathered data.
+     *
+     * @since 0.29
+     */
     @Override
     public void close() {
         assert Thread.holdsLock(this);
@@ -219,6 +301,17 @@ public final class MemoryTracer implements Closeable {
         }
     }
 
+    /**
+     * Creates a
+     * {@linkplain com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#findMetaObject(LanguageInfo, Object)
+     * meta object} histogram - a mapping from a {@link String textual} meta object representation
+     * to a {@link List} of {@link AllocationEventInfo} corresponding to that meta object. The
+     * {@linkplain com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#findMetaObject(LanguageInfo, Object)
+     * meta object} are language specific descriptions of allocated objects.
+     *
+     * @return the met object histogram
+     * @since 0.29
+     */
     public Map<String, List<AllocationEventInfo>> computeMetaObjectHistogram() {
         Map<String, List<AllocationEventInfo>> histogram = new HashMap<>();
         computeMetaObjectHistogramImpl(rootNode.getChildren(), histogram);
@@ -235,6 +328,14 @@ public final class MemoryTracer implements Closeable {
         }
     }
 
+    /**
+     * Creates a source location histogram - a mapping from a {@link SourceLocation source location}
+     * to a {@link List} of {@link CallTreeNode} corresponding to that source location. This gives
+     * an overview of the allocation profile of each {@link SourceLocation source location}.
+     *
+     * @return the source location histogram
+     * @since 0.29
+     */
     public Map<SourceLocation, List<CallTreeNode<AllocationPayload>>> computeSourceLocationHistogram() {
         Map<SourceLocation, List<CallTreeNode<AllocationPayload>>> histogram = new HashMap<>();
         computeSourceLocationHistogramImpl(rootNode.getChildren(), histogram);
@@ -298,49 +399,94 @@ public final class MemoryTracer implements Closeable {
         }
     }
 
+    /**
+     * Used as a template parameter for {@link CallTreeNode}. Holds information about
+     * {@link AllocationEventInfo allocation events}.
+     *
+     * @since 0.29
+     */
     public static final class AllocationPayload {
         private final List<AllocationEventInfo> events = new ArrayList<>();
 
         private long totalAllocations = 0;
 
+        /**
+         * @return Total number of allocations recorded while the associated element was on the
+         *         shadow stack
+         * @since 0.29
+         */
         public long getTotalAllocations() {
             return totalAllocations;
         }
 
+        /**
+         * Increases the number of total allocations recorded while the associated element was on
+         * the shadow stack.
+         *
+         * @since 0.29
+         */
         public void incrementTotalAllocations() {
             this.totalAllocations++;
         }
 
+        /**
+         * @return Information about all the {@link AllocationEventInfo allocation events} that
+         *         happened while the associated element was at the top of the shadow stack.
+         * @since 0.29
+         */
         public List<AllocationEventInfo> getEvents() {
             return events;
         }
     }
 
+    /**
+     * Stores informatino about a single {@link AllocationEvent}.
+     *
+     * @since 0.29
+     */
     public static final class AllocationEventInfo {
         private final LanguageInfo language;
         private final long allocated;
         private final boolean reallocation;
         private final String metaObjectString;
 
-        public AllocationEventInfo(LanguageInfo language, long allocated, boolean realocation, String metaObjectString) {
+        AllocationEventInfo(LanguageInfo language, long allocated, boolean realocation, String metaObjectString) {
             this.language = language;
             this.allocated = allocated;
             this.reallocation = realocation;
             this.metaObjectString = metaObjectString;
         }
 
+        /**
+         * @return The {@link LanguageInfo language} from which the allocation originated
+         * @since 0.29
+         */
         public LanguageInfo getLanguage() {
             return language;
         }
 
+        /**
+         * @return the amount of memory that was allocated
+         * @since 0.29
+         */
         public long getAllocated() {
             return allocated;
         }
 
+        /**
+         * @return Whether the allocation was a re-allocation
+         * @since 0.29
+         */
         public boolean isReallocation() {
             return reallocation;
         }
 
+        /**
+         * @return A String representation of the
+         *         {@linkplain com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#findMetaObject(LanguageInfo, Object)
+         *         meta object}
+         * @since 0.29
+         */
         public String getMetaObjectString() {
             return metaObjectString;
         }

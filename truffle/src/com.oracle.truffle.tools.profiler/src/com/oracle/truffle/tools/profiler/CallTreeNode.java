@@ -32,13 +32,22 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Represents a node in the call tree built up by sampling the shadow stack. Additional data can be
+ * attached to this class through the template parameter, allowing individual tools to attached
+ * needed data to the call tree.
+ *
+ * @param <T> The type of data that should be associated with this node.
+ * @since 0.29
+ */
 public final class CallTreeNode<T> {
 
-    protected final T payload;
-    protected final CallTreeNode<T> parent;
-    protected final SourceLocation sourceLocation;
-    protected Map<SourceLocation, CallTreeNode<T>> children;
-    protected final Object sync;
+    CallTreeNode(CallTreeNode<T> parent, SourceLocation sourceLocation, T payload) {
+        this.parent = parent;
+        this.sourceLocation = sourceLocation;
+        this.sync = parent.sync;
+        this.payload = payload;
+    }
 
     CallTreeNode(Object sync, T payload) {
         if (sync == null) {
@@ -50,13 +59,16 @@ public final class CallTreeNode<T> {
         this.payload = payload;
     }
 
-    CallTreeNode(CallTreeNode<T> parent, SourceLocation sourceLocation, T payload) {
-        this.parent = parent;
-        this.sourceLocation = sourceLocation;
-        this.sync = parent.sync;
-        this.payload = payload;
-    }
+    private final T payload;
+    private final CallTreeNode<T> parent;
+    private final SourceLocation sourceLocation;
+    Map<SourceLocation, CallTreeNode<T>> children;
+    private final Object sync;
 
+    /**
+     * @return the children of this {@link CallTreeNode}
+     * @since 0.29
+     */
     public Collection<CallTreeNode<T>> getChildren() {
         if (children == null) {
             return Collections.emptyList();
@@ -64,8 +76,65 @@ public final class CallTreeNode<T> {
         return Collections.unmodifiableCollection(children.values());
     }
 
+    /**
+     * @return the parent of this {@link CallTreeNode}
+     * @since 0.29
+     */
     public CallTreeNode<T> getParent() {
         return parent;
+    }
+
+    /**
+     * @return true if the parent chain contains a {@link CallTreeNode} with the same
+     *         {@link SourceLocation}, otherwise false
+     * @since 0.29
+     */
+    public boolean isRecursive() {
+        return isRecursiveImpl(this);
+    }
+
+    private boolean isRecursiveImpl(CallTreeNode<T> source) {
+        if (parent.sourceLocation == null) {
+            return false;
+        }
+        if (parent.sourceLocation.equals(source.sourceLocation)) {
+            return true;
+        }
+        return parent.isRecursiveImpl(source);
+    }
+
+    /**
+     * @return the {@link SourceSection} associated with this {@link CallTreeNode}
+     * @since 0.29
+     */
+    public SourceSection getSourceSection() {
+        return sourceLocation.getSourceSection();
+    }
+
+    /**
+     * @return The name of the {@linkplain com.oracle.truffle.api.nodes.RootNode root node} in which
+     *         the {@link SourceLocation} associated with this {@link CallTreeNode} appears
+     * @since 0.29
+     */
+    public String getRootName() {
+        return sourceLocation.getRootName();
+    }
+
+    /**
+     * @return A set of {@link com.oracle.truffle.api.instrumentation.StandardTags tags} for the
+     *         {@link SourceLocation} associated with this {@link CallTreeNode}
+     * @since 0.29
+     */
+    public Set<Class<?>> getTags() {
+        return sourceLocation.getTags();
+    }
+
+    /**
+     * @return The additional information attached to this node through the template parameter
+     * @since 0.29
+     */
+    public T getPayload() {
+        return payload;
     }
 
     CallTreeNode<T> findChild(SourceLocation childLocation) {
@@ -84,37 +153,8 @@ public final class CallTreeNode<T> {
         }
     }
 
-    public boolean isRecursive() {
-        return isRecursiveImpl(this);
-    }
-
-    private boolean isRecursiveImpl(CallTreeNode<T> source) {
-        if (parent.sourceLocation == null) {
-            return false;
-        }
-        if (parent.sourceLocation.equals(source.sourceLocation)) {
-            return true;
-        }
-        return parent.isRecursiveImpl(source);
-    }
-
-    public SourceSection getSourceSection() {
-        return sourceLocation.getSourceSection();
-    }
-
-    public String getRootName() {
-        return sourceLocation.getRootName();
-    }
-
-    public Set<Class<?>> getTags() {
-        return sourceLocation.getTags();
-    }
-
     SourceLocation getSourceLocation() {
         return sourceLocation;
     }
 
-    public T getPayload() {
-        return payload;
-    }
 }

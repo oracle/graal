@@ -24,6 +24,21 @@
  */
 package com.oracle.truffle.tools.profiler;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.EventBinding;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionKey;
+
 import java.io.Closeable;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -34,27 +49,31 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.options.OptionCategory;
-import org.graalvm.options.OptionDescriptor;
-import org.graalvm.options.OptionKey;
-
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.EventBinding;
-import com.oracle.truffle.api.instrumentation.EventContext;
-import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
-import com.oracle.truffle.api.instrumentation.Instrumenter;
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.source.SourceSection;
-
+/**
+ * Implementation of a tracing based profiler for {@linkplain com.oracle.truffle.api.TruffleLanguage
+ * Truffle languages} built on top of the {@linkplain TruffleInstrument Truffle instrumentation
+ * framework}.
+ * <p>
+ * The tracer counts how many times each of the elements of interest (e.g. functions, statements,
+ * etc.) are executed.
+ *
+ * @since 0.29
+ */
 public final class CPUTracer implements Closeable {
 
+    /**
+     * The {@linkplain TruffleInstrument instrument} for the CPU tracer.
+     *
+     * @since 0.29
+     */
     @TruffleInstrument.Registration(id = Instrument.ID, name = "CPU Tracer", version = "1.0", services = {CPUTracer.class})
     public static class Instrument extends TruffleInstrument {
+
+        /**
+         * A string used to identify the tracer, i.e. as the name of the tool.
+         *
+         * @since 0.29
+         */
         public static final String ID = "cputracer";
         static CPUTracer tracer;
 
@@ -106,21 +125,32 @@ public final class CPUTracer implements Closeable {
         }
     }
 
-    private static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().tagIs(RootTag.class).build();
-
-    private final Env env;
-    private boolean closed = false;
-    private boolean collecting = false;
-    private SourceSectionFilter filter = null;
-    private EventBinding<?> activeBinding;
-
-    private final Map<SourceSection, Counter> counters = new ConcurrentHashMap<>();
-
     CPUTracer(Env env) {
         this.env = env;
     }
 
+    private static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().tagIs(RootTag.class).build();
+
+    private final Env env;
+
+    private boolean closed = false;
+
+    private boolean collecting = false;
+
+    private SourceSectionFilter filter = null;
+
+    private EventBinding<?> activeBinding;
+
+    private final Map<SourceSection, Counter> counters = new ConcurrentHashMap<>();
+
+    /**
+     * Controls whether the tracer is collecting data or not.
+     *
+     * @param collecting the new state of the tracer.
+     * @since 0.29
+     */
     public synchronized void setCollecting(boolean collecting) {
+        verifyConfigAllowed();
         if (closed) {
             throw new IllegalStateException("CPUTracer is already closed.");
         }
@@ -130,28 +160,51 @@ public final class CPUTracer implements Closeable {
         }
     }
 
+    /**
+     * @return whether or not the sampler is currently collecting data.
+     * @since 0.29
+     */
     public synchronized boolean isCollecting() {
         return collecting;
     }
 
-    public void setFilter(SourceSectionFilter filter) {
+    /**
+     * Sets the {@link SourceSectionFilter filter} for the tracer. This allows the tracer to trace
+     * only parts of the executed source code.
+     *
+     * @param filter The filter describing which part of the source code to trace
+     */
+    public synchronized void setFilter(SourceSectionFilter filter) {
         verifyConfigAllowed();
         this.filter = filter;
     }
 
-    public SourceSectionFilter getFilter() {
+    /**
+     * @return The filter describing which part of the source code to sample
+     * @since 0.29
+     */
+    public synchronized SourceSectionFilter getFilter() {
         return filter;
     }
 
-    public Collection<Counter> getCounters() {
+    /**
+     * @return All the counters the tracer has gathered as an unmodifiable collection
+     * @since 0.29
+     */
+    public synchronized Collection<Counter> getCounters() {
         return Collections.unmodifiableCollection(counters.values());
     }
 
-    public void clearData() {
+    /**
+     * Erases all the data gathered by the tracer.
+     *
+     * @since 0.29
+     */
+    public synchronized void clearData() {
         counters.clear();
     }
 
-    private Counter getCounter(EventContext context) {
+    private synchronized Counter getCounter(EventContext context) {
         SourceSection sourceSection = context.getInstrumentedSourceSection();
         Counter counter = counters.get(sourceSection);
         if (counter == null) {
@@ -164,7 +217,7 @@ public final class CPUTracer implements Closeable {
         return counter;
     }
 
-    private void verifyConfigAllowed() {
+    private synchronized void verifyConfigAllowed() {
         assert Thread.holdsLock(this);
         if (closed) {
             throw new IllegalStateException("CPUTracer is already closed.");
@@ -173,7 +226,7 @@ public final class CPUTracer implements Closeable {
         }
     }
 
-    private void resetTracer() {
+    private synchronized void resetTracer() {
         assert Thread.holdsLock(this);
         if (activeBinding != null) {
             activeBinding.dispose();
@@ -187,19 +240,26 @@ public final class CPUTracer implements Closeable {
         if (f == null) {
             f = DEFAULT_FILTER;
         }
-        this.activeBinding = install(env.getInstrumenter(), f);
+        this.activeBinding = env.getInstrumenter().attachFactory(f, context -> new CounterNode(getCounter(context)));
     }
 
-    private EventBinding<?> install(Instrumenter instrumenter, SourceSectionFilter f) {
-        return instrumenter.attachFactory(f, context -> new CounterNode(getCounter(context)));
-    }
-
+    /**
+     * Closes the tracer for fuhrer use, deleting all the gathered data.
+     *
+     * @since 0.29
+     */
     @Override
-    public void close() {
+    public synchronized void close() {
         closed = true;
         clearData();
     }
 
+    /**
+     * Holds data on how many times a section of source code was executed. Differentiates between
+     * compiled and interpreted executions.
+     *
+     * @since 0.29
+     */
     public static final class Counter {
 
         private final SourceLocation location;
@@ -207,30 +267,56 @@ public final class CPUTracer implements Closeable {
         private long countInterpreted;
         private long countCompiled;
 
-        public Counter(SourceLocation location) {
+        Counter(SourceLocation location) {
             this.location = location;
         }
 
+        /**
+         * @return The name of the root not in which the source section associated with this counter
+         *         appears
+         * @since 0.29
+         */
         public String getRootName() {
             return location.getRootName();
         }
 
+        /**
+         * @return A set of {@link com.oracle.truffle.api.instrumentation.StandardTags tags} for the
+         *         {@link SourceLocation} associated with this {@link CallTreeNode}
+         * @since 0.29
+         */
         public Set<Class<?>> getTags() {
             return location.getTags();
         }
 
+        /**
+         * @return The source section for which this {@link Counter} is counting executions
+         * @since 0.29
+         */
         public SourceSection getSourceSection() {
             return location.getSourceSection();
         }
 
+        /**
+         * @return The number of times the associated source sections was executed as compiled code
+         * @since 0.29
+         */
         public long getCountCompiled() {
             return countCompiled;
         }
 
+        /**
+         * @return The number of times the associated source sections was interpreted
+         * @since 0.29
+         */
         public long getCountInterpreted() {
             return countInterpreted;
         }
 
+        /**
+         * @return The total number of times the associated source sections was executed
+         * @since 0.29
+         */
         public long getCount() {
             return countCompiled + countInterpreted;
         }

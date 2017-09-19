@@ -33,8 +33,10 @@ import com.oracle.truffle.api.source.SourceSection;
 import java.util.Objects;
 import java.util.Set;
 
-/*
- * source information of a particular source location in the profiler.
+/**
+ * Source information of a particular source location in the profiler.
+ * 
+ * @since 0.29
  */
 final class SourceLocation {
 

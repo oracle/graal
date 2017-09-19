@@ -49,11 +49,32 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * Implementation of a sampling based profiler for
+ * {@linkplain com.oracle.truffle.api.TruffleLanguage Truffle languages} built on top of the
+ * {@linkplain TruffleInstrument Truffle instrumentation framework}.
+ * <p>
+ * The sampler keeps a shadow stack during execution. This shadow stack is sampled at regular
+ * intervals, i.e. the state of the stack is copied and saved into trees of {@linkplain CallTreeNode
+ * nodes}, which represent the profile of the execution.
+ *
+ * @since 0.29
+ */
 public final class CPUSampler implements Closeable {
 
+    /**
+     * The {@linkplain TruffleInstrument instrument} for the CPU sampler.
+     *
+     * @since 0.29
+     */
     @TruffleInstrument.Registration(id = Instrument.ID, name = "CPU Sampler", version = "1.0", services = {CPUSampler.class})
     public static final class Instrument extends TruffleInstrument {
 
+        /**
+         * A string used to identify the sampler, i.e. as the name of the tool.
+         *
+         * @since 0.29
+         */
         public static final String ID = "cpusampler";
         static CPUSampler sampler;
         List<OptionDescriptor> descriptors = new ArrayList<>();
@@ -66,7 +87,7 @@ public final class CPUSampler implements Closeable {
                 sampler.setDelay(env.getOptions().get(CLI.DELAY_PERIOD));
                 sampler.setStackLimit(env.getOptions().get(CLI.STACK_LIMIT));
                 sampler.setFilter(getSourceSectionFilter(env));
-                sampler.setCompiled(env.getOptions().get(CLI.MODE) == CLI.Mode.COMPILED);
+                sampler.setExcludeInlinedRoots(env.getOptions().get(CLI.MODE) == CLI.Mode.COMPILED);
                 sampler.setCollecting(true);
             }
             env.registerService(sampler);
@@ -90,9 +111,11 @@ public final class CPUSampler implements Closeable {
             descriptors.add(OptionDescriptor.newBuilder(CLI.DELAY_PERIOD, ID + ".Delay").category(OptionCategory.USER).help("Delay the sampling for this many milliseconds (default: 0).").build());
             descriptors.add(OptionDescriptor.newBuilder(CLI.STACK_LIMIT, ID + ".StackLimit").category(OptionCategory.USER).help("Maximum number of maximum stack elements.").build());
             descriptors.add(OptionDescriptor.newBuilder(CLI.OUTPUT, ID + ".Output").category(OptionCategory.USER).help("Print a 'histogram' or 'calltree' as output (default:HISTOGRAM).").build());
-            descriptors.add(OptionDescriptor.newBuilder(CLI.MODE, ID + ".Mode").category(OptionCategory.USER).help("Describes level of sampling detail. " +
-                            "NOTE: Increased detail can lead to reduced accuracy. " +
-                            "Modes: 'compiled' (samples roots excluding inlined functions), 'roots' (samples roots including inlined functions) and 'statements' (samples all statements).").build());
+            // TODO The help for "Mode" is way too long and look ugly in the terminal. Needs to be
+            // addressed.
+            descriptors.add(OptionDescriptor.newBuilder(CLI.MODE, ID + ".Mode").category(OptionCategory.USER).help("Describes level of sampling detail. " + System.lineSeparator() +
+                            "NOTE: Increased detail can lead to reduced accuracy. " + System.lineSeparator() +
+                            "Modes: 'excludeInlinedRoots' (samples roots excluding inlined functions), 'roots' (samples roots including inlined functions) and 'statements' (samples all statements).").build());
             descriptors.add(OptionDescriptor.newBuilder(CLI.SAMPLE_INTERNAL, ID + ".SampleInternal").category(OptionCategory.USER).help("Capture internal elements (default:false).").build());
             descriptors.add(OptionDescriptor.newBuilder(CLI.FILTER_ROOT, ID + ".FilterRootName").category(OptionCategory.USER).help(
                             "Wildcard filter for program roots. (eg. Math.*, default:*).").build());
@@ -112,52 +135,169 @@ public final class CPUSampler implements Closeable {
         }
     }
 
+    /**
+     * Wrapper for information on how many times an element was seen on the shadow stack. Used as a
+     * template parameter of {@link CallTreeNode}. Differentiates between an execution in compiled
+     * code and in the interpreter.
+     *
+     * @since 0.29
+     */
+    public final class HitCounts {
+        int compiledHitCount;
+        int interpretedHitCount;
+
+        int selfCompiledHitCount;
+        int selfInterpretedHitCount;
+
+        long firstHitTime;
+        long lastHitTime;
+
+        /**
+         * @return The number of times the element was found bellow the top of the shadow stack as
+         *         compiled code
+         * @since 0.29
+         */
+        public int getCompiledHitCount() {
+            return compiledHitCount;
+        }
+
+        /**
+         * @return The number of times the element was found bellow the top of the shadow stack as
+         *         interpreted code
+         * @since 0.29
+         */
+        public int getInterpretedHitCount() {
+            return interpretedHitCount;
+        }
+
+        /**
+         * @return The number of times the element was found on the top of the shadow stack as
+         *         compiled code
+         * @since 0.29
+         */
+        public int getSelfCompiledHitCount() {
+            return selfCompiledHitCount;
+        }
+
+        /**
+         * @return The number of times the element was found on the top of the shadow stack as
+         *         interpreted code
+         * @since 0.29
+         */
+        public int getSelfInterpretedHitCount() {
+            return selfInterpretedHitCount;
+        }
+
+        /**
+         * @return When was the element first found on the stack
+         * @since 0.29
+         */
+        public long getFirstHitTime() {
+            return firstHitTime;
+        }
+
+        /**
+         * @return When was the element last found on the stack
+         * @since 0.29
+         */
+        public long getLastHitTime() {
+            return lastHitTime;
+        }
+
+        /**
+         * @return Total number of times the element was found on the top of the shadow stack
+         * @since 0.29
+         */
+        public int getSelfHitCount() {
+            return selfCompiledHitCount + selfInterpretedHitCount;
+        }
+
+        /**
+         * @return Total number of times the element was found bellow the top of the shadow stack
+         * @since 0.29
+         */
+        public int getHitCount() {
+            return compiledHitCount + interpretedHitCount;
+        }
+
+    }
+
     static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().tagIs(RootTag.class).build();
 
     private volatile boolean closed;
-    // sampling support
+
     private volatile boolean collecting;
+
     private long period = 1;
+
     private long delay = 0;
+
     private int stackLimit = 10000;
+
     private SourceSectionFilter filter;
+
     private boolean stackOverflowed = false;
+
+    private boolean excludeInlinedRoots;
 
     private AtomicLong samplesTaken = new AtomicLong(0);
 
-    private boolean compiled;
-
-    // sampling fields
     private Timer samplerThread;
+
     private TimerTask samplerTask;
+
     private ShadowStack shadowStack;
+
     private EventBinding<?> stacksBinding;
 
     private final CallTreeNode<HitCounts> rootNode = new CallTreeNode<>(this, new HitCounts());
+
     private final Env env;
 
     CPUSampler(Env env) {
         this.env = env;
     }
 
+    /**
+     * Controls whether the sampler is collecting data or not.
+     *
+     * @param collecting the new state of the sampler.
+     * @since 0.29
+     */
     public synchronized void setCollecting(boolean collecting) {
-        if (closed) {
-            throw new IllegalStateException("Profiler is already closed.");
-        }
+        verifyConfigAllowed();
         if (this.collecting != collecting) {
             this.collecting = collecting;
             resetSampling();
         }
     }
 
-    public void setCompiled(boolean compiled) {
-        this.compiled = compiled;
-    }
-
-    public boolean isCollecting() {
+    /**
+     * @return whether or not the sampler is currently collecting data.
+     * @since 0.29
+     */
+    public synchronized boolean isCollecting() {
         return collecting;
     }
 
+    /**
+     * Controls whether the sampler shoulde exclude inlined roots. This means that functions that
+     * are inlined during compilation do not appear on the shadow stack. This reduces overhead.
+     *
+     * @param excludeInlinedRoots the new state of the sampler
+     * @since 0.29
+     */
+    public synchronized void setExcludeInlinedRoots(boolean excludeInlinedRoots) {
+        verifyConfigAllowed();
+        this.excludeInlinedRoots = excludeInlinedRoots;
+    }
+
+    /**
+     * Sets the sampling period i.e. the time between two samples of the shadow stack are taken.
+     *
+     * @param samplePeriod the new sampling period.
+     * @since 0.29
+     */
     public synchronized void setPeriod(long samplePeriod) {
         verifyConfigAllowed();
         if (samplePeriod < 1) {
@@ -166,18 +306,33 @@ public final class CPUSampler implements Closeable {
         this.period = samplePeriod;
     }
 
+    /**
+     * @return the sampling period i.e. the time between two samples of the shadow stack are taken.
+     * @since 0.29
+     */
     public synchronized long getPeriod() {
         return period;
     }
 
-    void setDelay(long delay) {
+    /**
+     * Sets the delay period i.e. the time that is allowed to pass before the sampler starts taking
+     * samples.
+     *
+     * @param delay the delay period.
+     * @since 0.29
+     */
+    public synchronized void setDelay(long delay) {
+        verifyConfigAllowed();
         this.delay = delay;
     }
 
-    public synchronized int getStackLimit() {
-        return stackLimit;
-    }
-
+    /**
+     * Sets the size of the shadow stack. Whether or not the shadow stack grew more than the
+     * provided size during execution can be checked with {@linkplain #hasStackOverflowed}
+     *
+     * @param stackLimit the new size of the shadow stack
+     * @since 0.29
+     */
     public synchronized void setStackLimit(int stackLimit) {
         verifyConfigAllowed();
         if (stackLimit < 1) {
@@ -186,13 +341,112 @@ public final class CPUSampler implements Closeable {
         this.stackLimit = stackLimit;
     }
 
+    /**
+     * @return size of the shadow stack
+     * @since 0.29
+     */
+    public synchronized int getStackLimit() {
+        return stackLimit;
+    }
+
+    /**
+     * Sets the {@link SourceSectionFilter filter} for the sampler. This allows the sampler to
+     * observe only parts of the executed source code.
+     *
+     * @param filter The new filter describing which part of the source code to sample
+     * @since 0.29
+     */
     public synchronized void setFilter(SourceSectionFilter filter) {
         verifyConfigAllowed();
         this.filter = filter;
     }
 
+    /**
+     * @return The filter describing which part of the source code to sample
+     * @since 0.29
+     */
     public synchronized SourceSectionFilter getFilter() {
         return filter;
+    }
+
+    /**
+     * @return Total number of samples taken during execution
+     * @since 0.29
+     */
+    public long getTotalSamples() {
+        return samplesTaken.get();
+    }
+
+    /**
+     * @return was the shadow stack size insufficient for the execution.
+     * @since 0.29
+     */
+    public boolean hasStackOverflowed() {
+        return stackOverflowed;
+    }
+
+    /**
+     * @return The roots of the trees representing the profile of the execution.
+     * @since 0.29
+     */
+    public Collection<CallTreeNode<HitCounts>> getRootNodes() {
+        return rootNode.getChildren();
+    }
+
+    /**
+     * Erases all the data gathered by the sampler and resets the sample count to 0.
+     *
+     * @since 0.29
+     */
+    public synchronized void clearData() {
+        samplesTaken.set(0);
+        Map<SourceLocation, CallTreeNode<HitCounts>> rootChildren = rootNode.children;
+        if (rootChildren != null) {
+            rootChildren.clear();
+        }
+    }
+
+    /**
+     * @return whether or not the sampler has collected any data so far.
+     * @since 0.29
+     */
+    public synchronized boolean hasData() {
+        Map<SourceLocation, CallTreeNode<HitCounts>> rootChildren = rootNode.children;
+        return rootChildren != null && !rootChildren.isEmpty();
+    }
+
+    /**
+     * Closes the sampler for fuhrer use, deleting all the gathered data.
+     *
+     * @since 0.29
+     */
+    @Override
+    public synchronized void close() {
+        closed = true;
+        resetSampling();
+        clearData();
+    }
+
+    /**
+     * Creates a histogram - a mapping from a {@link SourceLocation source location} to a
+     * {@link List} of {@link CallTreeNode} corresponding to that source location. This gives an
+     * overview of the execution profile of each {@link SourceLocation source location}.
+     *
+     * @return the source location histogram based on the sampling data
+     * @since 0.29
+     */
+    public Map<SourceLocation, List<CallTreeNode<HitCounts>>> computeHistogram() {
+        Map<SourceLocation, List<CallTreeNode<HitCounts>>> histogram = new HashMap<>();
+        computeHistogramImpl(rootNode.getChildren(), histogram);
+        return histogram;
+    }
+
+    private void computeHistogramImpl(Collection<CallTreeNode<HitCounts>> children, Map<SourceLocation, List<CallTreeNode<HitCounts>>> histogram) {
+        for (CallTreeNode<HitCounts> treeNode : children) {
+            List<CallTreeNode<HitCounts>> nodes = histogram.computeIfAbsent(treeNode.getSourceLocation(), k -> new ArrayList<>());
+            nodes.add(treeNode);
+            computeHistogramImpl(treeNode.getChildren(), histogram);
+        }
     }
 
     private void resetSampling() {
@@ -213,7 +467,7 @@ public final class CPUSampler implements Closeable {
         }
         this.stackOverflowed = false;
         this.shadowStack = new ShadowStack(stackLimit);
-        this.stacksBinding = this.shadowStack.install(env.getInstrumenter(), f, compiled);
+        this.stacksBinding = this.shadowStack.install(env.getInstrumenter(), f, excludeInlinedRoots);
 
         this.samplerTask = new SamplingTimerTask();
         this.samplerThread.schedule(samplerTask, 0, period);
@@ -239,18 +493,6 @@ public final class CPUSampler implements Closeable {
         }
     }
 
-    public long getTotalSamples() {
-        return samplesTaken.get();
-    }
-
-    public boolean hasStackOverflowed() {
-        return stackOverflowed;
-    }
-
-    public Collection<CallTreeNode<HitCounts>> getRootNodes() {
-        return rootNode.getChildren();
-    }
-
     private void verifyConfigAllowed() {
         assert Thread.holdsLock(this);
         if (closed) {
@@ -258,84 +500,6 @@ public final class CPUSampler implements Closeable {
         } else if (collecting) {
             throw new IllegalStateException("Cannot change sampler configuration while collecting. Call setCollecting(false) to disable collection first.");
         }
-    }
-
-    public synchronized void clearData() {
-        samplesTaken.set(0);
-        Map<SourceLocation, CallTreeNode<HitCounts>> rootChildren = rootNode.children;
-        if (rootChildren != null) {
-            rootChildren.clear();
-        }
-    }
-
-    public synchronized boolean hasData() {
-        Map<SourceLocation, CallTreeNode<HitCounts>> rootChildren = rootNode.children;
-        return rootChildren != null && !rootChildren.isEmpty();
-    }
-
-    @Override
-    public synchronized void close() {
-        closed = true;
-        resetSampling();
-        clearData();
-    }
-
-    public Map<SourceLocation, List<CallTreeNode<HitCounts>>> computeHistogram() {
-        Map<SourceLocation, List<CallTreeNode<HitCounts>>> histogram = new HashMap<>();
-        computeHistogramImpl(rootNode.getChildren(), histogram);
-        return histogram;
-    }
-
-    private void computeHistogramImpl(Collection<CallTreeNode<HitCounts>> children, Map<SourceLocation, List<CallTreeNode<HitCounts>>> histogram) {
-        for (CallTreeNode<HitCounts> treeNode : children) {
-            List<CallTreeNode<HitCounts>> nodes = histogram.computeIfAbsent(treeNode.getSourceLocation(), k -> new ArrayList<>());
-            nodes.add(treeNode);
-            computeHistogramImpl(treeNode.getChildren(), histogram);
-        }
-    }
-
-    public final class HitCounts {
-        int compiledHitCount;
-        int interpretedHitCount;
-
-        int selfCompiledHitCount;
-        int selfInterpretedHitCount;
-
-        long firstHitTime;
-        long lastHitTime;
-
-        public int getCompiledHitCount() {
-            return compiledHitCount;
-        }
-
-        public int getInterpretedHitCount() {
-            return interpretedHitCount;
-        }
-
-        public int getSelfCompiledHitCount() {
-            return selfCompiledHitCount;
-        }
-
-        public int getSelfInterpretedHitCount() {
-            return selfInterpretedHitCount;
-        }
-
-        public long getFirstHitTime() {
-            return firstHitTime;
-        }
-
-        public long getLastHitTime() {
-            return lastHitTime;
-        }
-
-        public int getSelfHitCount() {
-            return selfCompiledHitCount + selfInterpretedHitCount;
-        }
-
-        public int getHitCount() {
-            return compiledHitCount + interpretedHitCount;
-        }
-
     }
 
     private class SamplingTimerTask extends TimerTask {
@@ -426,34 +590,34 @@ public final class CPUSampler implements Closeable {
         }
 
         static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output",
-                Output.HISTOGRAM,
-                (String string) -> {
-                    try {
-                        return Output.valueOf(string.toUpperCase());
-                    } catch (IllegalArgumentException e) {
-                        throw new IllegalArgumentException("Output can be: histogram or calltree");
-                    }
-                },
-                cliOutput -> {
-                    if (cliOutput == null) {
-                        throw new IllegalArgumentException();
-                    }
-                });
+                        Output.HISTOGRAM,
+                        (String string) -> {
+                            try {
+                                return Output.valueOf(string.toUpperCase());
+                            } catch (IllegalArgumentException e) {
+                                throw new IllegalArgumentException("Output can be: histogram or calltree");
+                            }
+                        },
+                        cliOutput -> {
+                            if (cliOutput == null) {
+                                throw new IllegalArgumentException();
+                            }
+                        });
 
         static final OptionType<Mode> CLI_MODE_TYPE = new OptionType<>("Mode",
-                Mode.COMPILED,
-                (String string) -> {
-                    try {
-                        return Mode.valueOf(string.toUpperCase());
-                    } catch (IllegalArgumentException e) {
-                        throw new IllegalArgumentException("Mode can be: compiled, roots or statements.");
-                    }
-                },
-                cliOutput -> {
-                    if (cliOutput == null) {
-                        throw new IllegalArgumentException();
-                    }
-                });
+                        Mode.COMPILED,
+                        (String string) -> {
+                            try {
+                                return Mode.valueOf(string.toUpperCase());
+                            } catch (IllegalArgumentException e) {
+                                throw new IllegalArgumentException("Mode can be: excludeInlinedRoots, roots or statements.");
+                            }
+                        },
+                        cliOutput -> {
+                            if (cliOutput == null) {
+                                throw new IllegalArgumentException();
+                            }
+                        });
 
         static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
         static final OptionKey<Mode> MODE = new OptionKey<>(Mode.COMPILED, CLI_MODE_TYPE);
@@ -519,7 +683,7 @@ public final class CPUSampler implements Closeable {
             out.println(String.format("Sampling Histogram. Recorded %s samples with period %dms", samples, sampler.getPeriod()));
             out.println("  Self Time: Time spent on the top of the stack.");
             out.println("  Total Time: Time the location spent on the stack. ");
-            out.println("  Opt %: Percent of time spent in compiled and therfore non-interpreted code.");
+            out.println("  Opt %: Percent of time spent in excludeInlinedRoots and therfore non-interpreted code.");
             out.println(sep);
             out.println(title);
             out.println(sep);
@@ -537,7 +701,7 @@ public final class CPUSampler implements Closeable {
             out.println(String.format("Sampling CallTree. Recorded %s samples with period %dms.", sampler.getTotalSamples(), sampler.getPeriod()));
             out.println("  Self Time: Time spent on the top of the stack.");
             out.println("  Total Time: Time spent somewhere on the stack. ");
-            out.println("  Opt %: Percent of time spent in compiled and therfore non-interpreted code.");
+            out.println("  Opt %: Percent of time spent in excludeInlinedRoots and therfore non-interpreted code.");
             out.println(sep);
             out.println(title);
             out.println(sep);
@@ -625,7 +789,7 @@ public final class CPUSampler implements Closeable {
             String location = getShortDescription(sourceSection);
 
             out.println(String.format(" %-" + Math.max(maxRootLength, 10) + "s | %s || %s | %s ", //
-                    prefix + rootName, totalTimes, selfTimes, location));
+                            prefix + rootName, totalTimes, selfTimes, location));
         }
 
         private static boolean needsColumnSpecifier(CallTreeNode<CPUSampler.HitCounts> firstNode) {
