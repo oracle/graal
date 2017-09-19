@@ -259,16 +259,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public Env getEnvForLanguage(Object vmObject, String mimeType) {
+        public Env getEnvForLanguage(Object vmObject, String languageId, String mimeType) {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) vmObject;
-            PolyglotLanguageContext context = languageContext.context.findLanguageContext(mimeType, true);
+            PolyglotLanguageContext context = languageContext.context.findLanguageContext(languageId, mimeType, true);
             context.ensureInitialized();
             return context.env;
         }
 
         @Override
-        public Env getEnvForInstrument(Object vmObject, String mimeType) {
-            PolyglotLanguageContext context = PolyglotContextImpl.requireContext().findLanguageContext(mimeType, true);
+        public Env getEnvForInstrument(Object vmObject, String languageId, String mimeType) {
+            PolyglotLanguageContext context = PolyglotContextImpl.requireContext().findLanguageContext(languageId, mimeType, true);
             context.ensureInitialized();
             return context.env;
         }

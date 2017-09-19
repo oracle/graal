@@ -31,11 +31,11 @@ import com.oracle.truffle.api.source.impl.SourceAccessor;
 final class SourceImpl extends Source implements Cloneable {
 
     SourceImpl(Content content) {
-        this(content, null, null, null, false, false);
+        this(content, null, null, null, null, false, false);
     }
 
-    SourceImpl(Content content, String mimeType, URI uri, String name, boolean internal, boolean interactive) {
-        super(content, mimeType, uri, name, internal, interactive);
+    SourceImpl(Content content, String mimeType, String language, URI uri, String name, boolean internal, boolean interactive) {
+        super(content, mimeType, language, uri, name, internal, interactive);
     }
 
     @Override

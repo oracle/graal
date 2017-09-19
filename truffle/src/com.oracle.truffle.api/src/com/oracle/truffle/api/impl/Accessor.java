@@ -147,9 +147,9 @@ public abstract class Accessor {
 
         public abstract Object getCurrentVM();
 
-        public abstract Env getEnvForLanguage(Object languageShared, String mimeType);
+        public abstract Env getEnvForLanguage(Object languageShared, String languageId, String mimeType);
 
-        public abstract Env getEnvForInstrument(Object vm, String mimeType);
+        public abstract Env getEnvForInstrument(Object vm, String languageId, String mimeType);
 
         public abstract Env getEnvForInstrument(LanguageInfo language);
 

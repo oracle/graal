@@ -1516,7 +1516,7 @@ public class PolyglotEngine {
         }
 
         @Override
-        public Env getEnvForLanguage(Object vmObject, String mimeType) {
+        public Env getEnvForLanguage(Object vmObject, String languageId, String mimeType) {
             return ((Language) vmObject).engine().findLanguage(mimeType, true).getEnv(true);
         }
 
@@ -1542,7 +1542,7 @@ public class PolyglotEngine {
         }
 
         @Override
-        public Env getEnvForInstrument(Object vmObject, String mimeType) {
+        public Env getEnvForInstrument(Object vmObject, String languageId, String mimeType) {
             PolyglotEngine currentVM = ((Instrument) vmObject).getRuntime().currentVM();
             if (currentVM == null) {
                 throw new IllegalStateException("No current engine found.");
