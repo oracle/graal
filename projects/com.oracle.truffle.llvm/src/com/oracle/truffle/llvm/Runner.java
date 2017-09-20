@@ -43,6 +43,12 @@ import java.util.function.Consumer;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.interop.CanResolve;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
@@ -57,16 +63,44 @@ public final class Runner {
 
     private final NodeFactory nodeFactory;
 
+    static final class NoMain implements TruffleObject {
+
+        private NoMain() {
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return NoMainMessageResolutionForeign.ACCESS;
+        }
+    }
+
+    @MessageResolution(receiverType = NoMain.class)
+    abstract static class NoMainMessageResolution {
+
+        @Resolve(message = "IS_NULL")
+        abstract static class IsNullNode extends Node {
+
+            @SuppressWarnings("unused")
+            Object access(NoMain boxed) {
+                return true;
+            }
+        }
+
+        @CanResolve
+        abstract static class CanResolvNoMain extends Node {
+
+            boolean test(TruffleObject object) {
+                return object instanceof NoMain;
+            }
+        }
+    }
+
     public Runner(NodeFactory nodeFactory) {
         this.nodeFactory = nodeFactory;
     }
 
     public CallTarget parse(LLVMLanguage language, LLVMContext context, Source code) throws IOException {
         try {
-            /*
-             * TODO: currently, we need to load the bitcode libraries first. Otherwise, sulong is
-             * not able to link external variables which were defined in those libraries.
-             */
             parseDynamicBitcodeLibraries(language, context);
 
             CallTarget mainFunction = null;
@@ -87,10 +121,12 @@ public final class Runner {
 
             LLVMParserResult parserResult = parseBitcodeFile(code, bytes, language, context);
             mainFunction = parserResult.getMainCallTarget();
-            handleParserResult(context, parserResult);
             if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
+                mainFunction = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
+            } else if (mainFunction == null) {
+                mainFunction = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(new NoMain()));
             }
+            handleParserResult(context, parserResult);
             return mainFunction;
         } catch (Throwable t) {
             throw new IOException("Error while trying to parse " + code.getPath(), t);
