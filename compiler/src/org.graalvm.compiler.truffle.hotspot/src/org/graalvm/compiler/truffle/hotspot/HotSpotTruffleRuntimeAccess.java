@@ -69,6 +69,11 @@ public class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
         return new HotSpotTruffleRuntime(new LazyGraalRuntime());
     }
 
+    @Override
+    public int getPriority() {
+        return 0;
+    }
+
     private static final class LazyGraalRuntime implements Supplier<GraalRuntime> {
 
         private volatile GraalRuntime graalRuntime;
