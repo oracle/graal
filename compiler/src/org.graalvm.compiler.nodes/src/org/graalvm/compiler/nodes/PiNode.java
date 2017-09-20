@@ -66,7 +66,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
 
     public static final NodeClass<PiNode> TYPE = NodeClass.create(PiNode.class);
     @Input ValueNode object;
-    protected final Stamp piStamp;
+    protected Stamp piStamp;
 
     public ValueNode object() {
         return object;
@@ -145,6 +145,11 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
 
     public final Stamp piStamp() {
         return piStamp;
+    }
+
+    public void strengthenPiStamp(Stamp newPiStamp) {
+        assert this.piStamp.join(newPiStamp).equals(newPiStamp) : "stamp can only improve";
+        this.piStamp = newPiStamp;
     }
 
     @Override

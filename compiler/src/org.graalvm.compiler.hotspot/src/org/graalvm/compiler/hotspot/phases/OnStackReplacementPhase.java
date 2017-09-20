@@ -22,10 +22,16 @@
  */
 package org.graalvm.compiler.hotspot.phases;
 
+import static jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.cfg.Loop;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
@@ -40,10 +46,13 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractLocalNode;
 import org.graalvm.compiler.nodes.EntryMarkerNode;
 import org.graalvm.compiler.nodes.EntryProxyNode;
+import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.ParameterNode;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -53,6 +62,7 @@ import org.graalvm.compiler.nodes.extended.OSRLockNode;
 import org.graalvm.compiler.nodes.extended.OSRMonitorEnterNode;
 import org.graalvm.compiler.nodes.extended.OSRStartNode;
 import org.graalvm.compiler.nodes.java.AccessMonitorNode;
+import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.MonitorEnterNode;
 import org.graalvm.compiler.nodes.java.MonitorExitNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
@@ -65,6 +75,9 @@ import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 
 import jdk.vm.ci.runtime.JVMCICompiler;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.MapCursor;
+import org.graalvm.util.Pair;
 
 public class OnStackReplacementPhase extends Phase {
 
@@ -162,6 +175,7 @@ public class OnStackReplacementPhase extends Phase {
         final int localsSize = osrState.localsSize();
         final int locksSize = osrState.locksSize();
 
+        EconomicMap<OSRLocalNode, Pair<ObjectStamp, SpeculationReason>> speculationTargets = EconomicMap.create();
         for (int i = 0; i < localsSize + locksSize; i++) {
             ValueNode value = null;
             if (i >= localsSize) {
@@ -172,20 +186,41 @@ public class OnStackReplacementPhase extends Phase {
             if (value instanceof EntryProxyNode) {
                 EntryProxyNode proxy = (EntryProxyNode) value;
                 /*
-                 * we need to drop the stamp since the types we see during OSR may be too precise
-                 * (if a branch was not parsed for example).
+                 * We need to drop the stamp since the types we see during OSR may be too precise
+                 * (if a branch was not parsed for example). In cases when this is possible, we
+                 * insert a guard and narrow the OSRLocal stamp at its usages.
                  */
-                Stamp s = proxy.stamp().unrestricted();
+                Stamp narrowedStamp = proxy.value().stamp();
+                Stamp unrestrictedStamp = proxy.stamp().unrestricted();
                 AbstractLocalNode osrLocal = null;
                 if (i >= localsSize) {
-                    osrLocal = graph.addOrUnique(new OSRLockNode(i - localsSize, s));
+                    osrLocal = graph.addOrUnique(new OSRLockNode(i - localsSize, unrestrictedStamp));
                 } else {
-                    osrLocal = graph.addOrUnique(new OSRLocalNode(i, s));
+                    osrLocal = graph.addOrUnique(new OSRLocalNode(i, unrestrictedStamp));
+                }
+                OSRLocalSpeculationReason reason = new OSRLocalSpeculationReason(osrState.bci, narrowedStamp, i);
+                if (graph.getSpeculationLog().maySpeculate(reason) && osrLocal instanceof OSRLocalNode && value.getStackKind().equals(JavaKind.Object) && !narrowedStamp.isUnrestricted()) {
+                    speculationTargets.put((OSRLocalNode) osrLocal, Pair.create((ObjectStamp) narrowedStamp, reason));
                 }
                 proxy.replaceAndDelete(osrLocal);
             } else {
                 assert value == null || value instanceof OSRLocalNode;
             }
+        }
+        // Speculate on the OSRLocal stamps that could be more precise.
+        MapCursor<OSRLocalNode, Pair<ObjectStamp, SpeculationReason>> cursor = speculationTargets.getEntries();
+        while (cursor.advance()) {
+            // Add guard.
+            OSRLocalNode osrLocal = cursor.getKey();
+            Pair<ObjectStamp, SpeculationReason> info = cursor.getValue();
+            LogicNode check = graph.addOrUnique(InstanceOfNode.createHelper(info.getLeft(), osrLocal, null, null));
+            JavaConstant constant = graph.getSpeculationLog().speculate(info.getRight());
+            FixedGuardNode guard = graph.add(new FixedGuardNode(check, DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile, constant, false));
+            graph.addAfterFixed(osrStart, guard);
+
+            // Replace with a more specific type at usages.
+            PiNode narrowed = graph.addOrUnique(new PiNode(osrLocal, info.getLeft()));
+            osrLocal.replaceAtMatchingUsages(narrowed, n -> n != narrowed && n != check);
         }
 
         osr.replaceAtUsages(InputType.Guard, osrStart);
@@ -267,5 +302,31 @@ public class OnStackReplacementPhase extends Phase {
     @Override
     public float codeSizeIncrease() {
         return 5.0f;
+    }
+
+    private static class OSRLocalSpeculationReason implements SpeculationReason {
+        private int bci;
+        private Stamp speculatedStamp;
+        private int localIndex;
+
+        OSRLocalSpeculationReason(int bci, Stamp speculatedStamp, int localIndex) {
+            this.bci = bci;
+            this.speculatedStamp = speculatedStamp;
+            this.localIndex = localIndex;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof OSRLocalSpeculationReason) {
+                OSRLocalSpeculationReason that = (OSRLocalSpeculationReason) obj;
+                return this.bci == that.bci && this.speculatedStamp.equals(that.speculatedStamp) && this.localIndex == that.localIndex;
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return (bci << 16) ^ speculatedStamp.hashCode() ^ localIndex;
+        }
     }
 }

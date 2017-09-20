@@ -39,6 +39,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -739,10 +740,20 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                     childContext.closeImpl(cancelIfExecuting, waitForPolyglotThreads);
                 }
 
+                LinkedList<PolyglotLanguageContext> contextsToDispose = new LinkedList<>();
                 for (PolyglotLanguageContext context : contexts) {
                     if (!context.isInitialized()) {
                         continue;
                     }
+                    // Dispose non-internal language contexts first,
+                    // they may depend on internal ones
+                    if (context.language.cache.isInternal()) {
+                        contextsToDispose.addLast(context);
+                    } else {
+                        contextsToDispose.addFirst(context);
+                    }
+                }
+                for (PolyglotLanguageContext context : contextsToDispose) {
                     try {
                         context.dispose();
                     } catch (Exception | Error ex) {

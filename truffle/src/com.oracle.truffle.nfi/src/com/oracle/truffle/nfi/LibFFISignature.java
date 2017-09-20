@@ -36,7 +36,7 @@ final class LibFFISignature {
 
     public static LibFFISignature create(NFIContext context, NativeSignature signature) {
         LibFFISignature ret = new LibFFISignature(context, signature);
-        NativeAllocation.registerNativeAllocation(ret, new FreeDestructor(ret.cif));
+        NativeAllocation.getGlobalQueue().registerNativeAllocation(ret, new FreeDestructor(ret.cif));
         return ret;
     }
 

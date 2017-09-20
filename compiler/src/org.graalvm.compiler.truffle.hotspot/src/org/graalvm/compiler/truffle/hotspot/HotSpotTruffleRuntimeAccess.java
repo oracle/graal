@@ -36,7 +36,10 @@ import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleRuntimeAccess;
+import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.runtime.JVMCICompiler;
 import jdk.vm.ci.services.Services;
@@ -56,6 +59,13 @@ public class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
         // initialize JVMCI to make sure the TruffleCompiler option is parsed
         Services.initializeJVMCI();
 
+        HotSpotJVMCIRuntimeProvider hsRuntime = (HotSpotJVMCIRuntimeProvider) JVMCI.getRuntime();
+        HotSpotVMConfigAccess config = new HotSpotVMConfigAccess(hsRuntime.getConfigStore());
+        boolean useCompiler = config.getFlag("UseCompiler", Boolean.class);
+        if (!useCompiler) {
+            // This happens, for example, when -Xint is given on the command line
+            return new DefaultTruffleRuntime();
+        }
         return new HotSpotTruffleRuntime(new LazyGraalRuntime());
     }
 

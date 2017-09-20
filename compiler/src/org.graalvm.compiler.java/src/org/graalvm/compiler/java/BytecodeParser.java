@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -374,6 +374,7 @@ import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvokeDynamicPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -1370,14 +1371,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     void genInvokeDynamic(JavaMethod target) {
-        if (target instanceof ResolvedJavaMethod) {
-            JavaConstant appendix = constantPool.lookupAppendix(stream.readCPI4(), Bytecodes.INVOKEDYNAMIC);
-            if (appendix != null) {
-                frameState.push(JavaKind.Object, ConstantNode.forConstant(appendix, metaAccess, graph));
-            }
-            ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(false));
-            appendInvoke(InvokeKind.Static, (ResolvedJavaMethod) target, args);
-        } else {
+        if (!(target instanceof ResolvedJavaMethod) || !genDynamicInvokeHelper((ResolvedJavaMethod) target, stream.readCPI4(), INVOKEDYNAMIC)) {
             handleUnresolvedInvoke(target, InvokeKind.Static);
         }
     }
@@ -1387,28 +1381,84 @@ public class BytecodeParser implements GraphBuilderContext {
         genInvokeVirtual(target);
     }
 
-    void genInvokeVirtual(JavaMethod target) {
-        if (callTargetIsResolved(target)) {
-            /*
-             * Special handling for runtimes that rewrite an invocation of MethodHandle.invoke(...)
-             * or MethodHandle.invokeExact(...) to a static adapter. HotSpot does this - see
-             * https://wikis.oracle.com/display/HotSpotInternals/Method+handles +and+invokedynamic
-             */
-            boolean hasReceiver = !((ResolvedJavaMethod) target).isStatic();
-            JavaConstant appendix = constantPool.lookupAppendix(stream.readCPI(), Bytecodes.INVOKEVIRTUAL);
-            if (appendix != null) {
-                frameState.push(JavaKind.Object, ConstantNode.forConstant(appendix, metaAccess, graph));
-            }
-            ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(hasReceiver));
-            if (hasReceiver) {
-                appendInvoke(InvokeKind.Virtual, (ResolvedJavaMethod) target, args);
-            } else {
-                appendInvoke(InvokeKind.Static, (ResolvedJavaMethod) target, args);
-            }
-        } else {
-            handleUnresolvedInvoke(target, InvokeKind.Virtual);
+    private boolean genDynamicInvokeHelper(ResolvedJavaMethod target, int cpi, int opcode) {
+        assert opcode == INVOKEDYNAMIC || opcode == INVOKEVIRTUAL;
+
+        InvokeDynamicPlugin invokeDynamicPlugin = graphBuilderConfig.getPlugins().getInvokeDynamicPlugin();
+
+        if (opcode == INVOKEVIRTUAL && invokeDynamicPlugin != null && !invokeDynamicPlugin.isResolvedDynamicInvoke(this, cpi, opcode)) {
+            // regular invokevirtual, let caller handle it
+            return false;
         }
 
+        if (GeneratePIC.getValue(options) && (invokeDynamicPlugin == null || !invokeDynamicPlugin.supportsDynamicInvoke(this, cpi, opcode))) {
+            // bail out if static compiler and no dynamic type support
+            append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+            return true;
+        }
+
+        JavaConstant appendix = constantPool.lookupAppendix(cpi, opcode);
+        ValueNode appendixNode = null;
+
+        if (appendix != null) {
+            if (invokeDynamicPlugin != null) {
+                invokeDynamicPlugin.recordDynamicMethod(this, cpi, opcode, target);
+
+                // Will perform runtime type checks and static initialization
+                FrameState stateBefore = frameState.create(bci(), getNonIntrinsicAncestor(), false, null, null);
+                appendixNode = invokeDynamicPlugin.genAppendixNode(this, cpi, opcode, appendix, stateBefore);
+            } else {
+                appendixNode = ConstantNode.forConstant(appendix, metaAccess, graph);
+            }
+
+            frameState.push(JavaKind.Object, appendixNode);
+
+        } else if (GeneratePIC.getValue(options)) {
+            // Need to emit runtime guard and perform static initialization.
+            // Not implemented yet.
+            append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+            return true;
+        }
+
+        boolean hasReceiver = (opcode == INVOKEDYNAMIC) ? false : !target.isStatic();
+        ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(hasReceiver));
+        if (hasReceiver) {
+            appendInvoke(InvokeKind.Virtual, target, args);
+        } else {
+            appendInvoke(InvokeKind.Static, target, args);
+        }
+
+        return true;
+    }
+
+    void genInvokeVirtual(JavaMethod target) {
+        if (!genInvokeVirtualHelper(target)) {
+            handleUnresolvedInvoke(target, InvokeKind.Virtual);
+        }
+    }
+
+    private boolean genInvokeVirtualHelper(JavaMethod target) {
+        if (!callTargetIsResolved(target)) {
+            return false;
+        }
+
+        ResolvedJavaMethod resolvedTarget = (ResolvedJavaMethod) target;
+        int cpi = stream.readCPI();
+
+        /*
+         * Special handling for runtimes that rewrite an invocation of MethodHandle.invoke(...) or
+         * MethodHandle.invokeExact(...) to a static adapter. HotSpot does this - see
+         * https://wiki.openjdk.java.net/display/HotSpot/Method+handles+and+invokedynamic
+         */
+
+        if (genDynamicInvokeHelper(resolvedTarget, cpi, INVOKEVIRTUAL)) {
+            return true;
+        }
+
+        ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(true));
+        appendInvoke(InvokeKind.Virtual, (ResolvedJavaMethod) target, args);
+
+        return true;
     }
 
     protected void genInvokeSpecial(int cpi, int opcode) {
@@ -2744,6 +2794,8 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private void createExceptionDispatch(ExceptionDispatchBlock block) {
+        lastInstr = finishInstruction(lastInstr, frameState);
+
         assert frameState.stackSize() == 1 : frameState;
         if (block.handler.isCatchAll()) {
             assert block.getSuccessorCount() == 1;
