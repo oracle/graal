@@ -34,6 +34,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ServiceLoader;
 
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.metadata.ScopeProvider;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceScope;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
@@ -54,7 +58,7 @@ import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
                 Sulong.SULONG_LIBRARY_MIME_TYPE, Sulong.LLVM_ELF_SHARED_MIME_TYPE, Sulong.LLVM_ELF_EXEC_MIME_TYPE}, internal = false, interactive = false)
 // TODO: remove Sulong.SULONG_LIBRARY_MIME_TYPE after GR-5904 is closed.
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class})
-public final class Sulong extends LLVMLanguage {
+public final class Sulong extends LLVMLanguage implements ScopeProvider<LLVMContext> {
 
     private static final List<Configuration> configurations = new ArrayList<>();
 
@@ -177,5 +181,10 @@ public final class Sulong extends LLVMLanguage {
         if (thread != threadingStack.getDefaultThread()) {
             threadingStack.initializeThread();
         }
+    }
+
+    @Override
+    public AbstractScope findScope(LLVMContext langContext, Node node, Frame frame) {
+        return new LLVMSourceScope(node);
     }
 }
