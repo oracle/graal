@@ -35,8 +35,11 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
@@ -50,7 +53,7 @@ public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
             bytes[i] = LLVMMemory.getI8(ptr);
             ptr += Byte.BYTES;
         }
-        return JavaInterop.asTruffleObject(bytes);
+        return new LLVMTruffleObject(JavaInterop.asTruffleObject(bytes), new PointerType(PrimitiveType.I8));
     }
 
 }

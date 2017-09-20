@@ -29,22 +29,28 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleManagedToHandle extends LLVMIntrinsic {
 
-    @Specialization(guards = "notLLVM(value)")
-    public LLVMAddress executeIntrinsic(TruffleObject value, @Cached("getContext()") LLVMContext context) {
-        LLVMAddress handle = context.getHandleForManagedObject(value);
-        return handle;
+    @Specialization
+    public LLVMAddress executeIntrinsic(LLVMTruffleObject value, @Cached("getContext()") LLVMContext context) {
+        if (value.getOffset() == 0) {
+            LLVMAddress handle = context.getHandleForManagedObject(value.getObject());
+            return handle;
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("cannot get a handle to pointer into the middle of foreign object");
+        }
     }
 }

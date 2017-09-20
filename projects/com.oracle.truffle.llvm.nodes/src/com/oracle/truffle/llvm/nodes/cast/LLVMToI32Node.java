@@ -75,11 +75,6 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
         return (int) globalAccess.getNativeLocation(from).getVal();
     }
 
-    @Specialization
-    public int executeLLVMTruffleObject(LLVMTruffleObject from) {
-        return (int) (executeTruffleObject(from.getObject()) + from.getOffset());
-    }
-
     @Child private Node isNull = Message.IS_NULL.createNode();
     @Child private Node isBoxed = Message.IS_BOXED.createNode();
     @Child private Node unbox = Message.UNBOX.createNode();
@@ -87,17 +82,20 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
     @Child private Node toNative = Message.TO_NATIVE.createNode();
     @Child private ForeignToLLVM convert = ForeignToLLVM.create(ForeignToLLVMType.I32);
 
-    @Specialization(guards = "notLLVM(from)")
-    public int executeTruffleObject(TruffleObject from) {
+    @Specialization
+    public int executeLLVMTruffleObject(LLVMTruffleObject from) {
+        TruffleObject base = from.getObject();
         try {
-            if (ForeignAccess.sendIsNull(isNull, from)) {
-                return 0;
-            } else if (ForeignAccess.sendIsBoxed(isBoxed, from)) {
-                return (int) convert.executeWithTarget(ForeignAccess.sendUnbox(unbox, from));
+            int ptr;
+            if (ForeignAccess.sendIsNull(isNull, base)) {
+                ptr = 0;
+            } else if (ForeignAccess.sendIsBoxed(isBoxed, base)) {
+                ptr = (int) convert.executeWithTarget(ForeignAccess.sendUnbox(unbox, base));
             } else {
-                TruffleObject n = (TruffleObject) ForeignAccess.sendToNative(toNative, from);
-                return (int) (ForeignAccess.sendAsPointer(asPointer, n));
+                TruffleObject n = (TruffleObject) ForeignAccess.sendToNative(toNative, base);
+                ptr = (int) (ForeignAccess.sendAsPointer(asPointer, n));
             }
+            return ptr + (int) from.getOffset();
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);

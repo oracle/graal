@@ -107,20 +107,6 @@ public final class LLVMTruffleWrite {
             doWrite(foreignWrite, value.getObject(), id, prepareValueForEscape.executeWithTarget(v, context));
             return null;
         }
-
-        @SuppressWarnings("unused")
-        @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)")
-        public Object executeIntrinsicTruffleObjectCached(TruffleObject value, LLVMAddress id, Object v, @Cached("pointerOf(id)") long cachedPtr,
-                        @Cached("readString(id)") String cachedId, @Cached("getContext()") LLVMContext context) {
-            doWrite(foreignWrite, value, cachedId, prepareValueForEscape.executeWithTarget(v, context));
-            return null;
-        }
-
-        @Specialization
-        public Object executeIntrinsicTruffleObject(TruffleObject value, LLVMAddress id, Object v, @Cached("getContext()") LLVMContext context) {
-            doWrite(foreignWrite, value, id, prepareValueForEscape.executeWithTarget(v, context));
-            return null;
-        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
@@ -137,12 +123,6 @@ public final class LLVMTruffleWrite {
         public Object executeIntrinsic(LLVMTruffleObject value, int id, Object v, @Cached("getContext()") LLVMContext context) {
             checkLLVMTruffleObject(value);
             doWriteIdx(foreignWrite, value.getObject(), id, prepareValueForEscape.executeWithTarget(v, context));
-            return null;
-        }
-
-        @Specialization
-        public Object executeIntrinsic(TruffleObject value, int id, Object v, @Cached("getContext()") LLVMContext context) {
-            doWriteIdx(foreignWrite, value, id, prepareValueForEscape.executeWithTarget(v, context));
             return null;
         }
     }

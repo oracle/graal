@@ -134,32 +134,6 @@ abstract class LLVMNativeConvertNode extends LLVMNode {
                 return 0;
             }
         }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "checkIsPointer(isPointer, address)")
-        long addressToNative(TruffleObject address, @Cached("createIsPointer()") Node isPointer, @Cached("createAsPointer()") Node asPointer) {
-            try {
-                return ForeignAccess.sendAsPointer(asPointer, address);
-            } catch (UnsupportedMessageException | ClassCastException e) {
-                CompilerDirectives.transferToInterpreter();
-                UnsupportedTypeException.raise(new Object[]{address});
-                return 0;
-            }
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"!checkIsPointer(isPointer, address)"})
-        long addressToNative(TruffleObject address, @Cached("createIsPointer()") Node isPointer, @Cached("createToNative()") Node toNative,
-                        @Cached("createAsPointer()") Node asPointer) {
-            try {
-                TruffleObject n = (TruffleObject) ForeignAccess.sendToNative(toNative, address);
-                return ForeignAccess.sendAsPointer(asPointer, n);
-            } catch (UnsupportedMessageException | ClassCastException e) {
-                CompilerDirectives.transferToInterpreter();
-                UnsupportedTypeException.raise(new Object[]{address});
-                return 0;
-            }
-        }
     }
 
     protected abstract static class NativeToAddress extends LLVMNativeConvertNode {

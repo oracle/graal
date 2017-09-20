@@ -37,8 +37,10 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
@@ -319,8 +321,8 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise("Index must be 0 for globals - but was " + index);
             }
-            TruffleObject convertedValue = (TruffleObject) toLLVM.executeWithTarget(value);
-            globalAccess.putTruffleObject(cachedReceiver, convertedValue);
+            LLVMBoxedPrimitive convertedValue = (LLVMBoxedPrimitive) toLLVM.executeWithTarget(value);
+            globalAccess.putBoxedPrimitive(cachedReceiver, convertedValue);
             return value;
         }
 
@@ -331,29 +333,34 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise("Index must be 0 for globals - but was " + index);
             }
-            TruffleObject convertedValue = (TruffleObject) toLLVM.executeWithTarget(value);
-            globalAccess.putTruffleObject(receiver.getDescriptor(), convertedValue);
+            LLVMBoxedPrimitive convertedValue = (LLVMBoxedPrimitive) toLLVM.executeWithTarget(value);
+            globalAccess.putBoxedPrimitive(receiver.getDescriptor(), convertedValue);
             return convertedValue;
         }
 
         @Specialization(guards = {"receiver.getDescriptor() == cachedReceiver", "isPointerTypeGlobal(globalAccess, cachedReceiver)", "notLLVM(value)"})
         public Object doGlobalTruffleObjectCached(LLVMSharedGlobalVariable receiver, int index, TruffleObject value,
+                        @Cached("getToTruffleObjectLLVMNode()") ForeignToLLVM toLLVM,
                         @Cached("receiver.getDescriptor()") LLVMGlobalVariable cachedReceiver, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             if (index != 0) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise("Index must be 0 for globals - but was " + index);
             }
-            globalAccess.putTruffleObject(cachedReceiver, value);
+            LLVMTruffleObject convertedValue = (LLVMTruffleObject) toLLVM.executeWithTarget(value);
+            globalAccess.putLLVMTruffleObject(cachedReceiver, convertedValue);
             return value;
         }
 
         @Specialization(guards = {"isPointerTypeGlobal(globalAccess, receiver)", "notLLVM(value)"}, replaces = "doGlobalTruffleObjectCached")
-        public Object doGlobalTruffleObject(LLVMSharedGlobalVariable receiver, int index, TruffleObject value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        public Object doGlobalTruffleObject(LLVMSharedGlobalVariable receiver, int index, TruffleObject value,
+                        @Cached("getToTruffleObjectLLVMNode()") ForeignToLLVM toLLVM,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             if (index != 0) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise("Index must be 0 for globals - but was " + index);
             }
-            globalAccess.putTruffleObject(receiver.getDescriptor(), value);
+            LLVMTruffleObject convertedValue = (LLVMTruffleObject) toLLVM.executeWithTarget(value);
+            globalAccess.putLLVMTruffleObject(receiver.getDescriptor(), convertedValue);
             return value;
         }
 

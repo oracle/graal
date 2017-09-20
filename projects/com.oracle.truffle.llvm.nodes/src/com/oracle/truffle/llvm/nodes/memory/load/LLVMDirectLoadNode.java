@@ -37,7 +37,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
@@ -154,22 +153,8 @@ public abstract class LLVMDirectLoadNode {
             }
         }
 
-        @Specialization(guards = {"!isManagedMalloc(addr)", "notLLVM(addr)"})
-        public Object executeForeign(TruffleObject addr, @Cached("createForeignReadNode()") Node foreignRead) {
-            try {
-                return toLLVM.executeWithTarget(ForeignAccess.sendRead(foreignRead, addr, 0));
-            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new UnsupportedOperationException(e);
-            }
-        }
-
         protected boolean objectIsManagedMalloc(LLVMTruffleObject addr) {
             return addr.getObject() instanceof ManagedMallocObject;
-        }
-
-        protected boolean isManagedMalloc(TruffleObject addr) {
-            return addr instanceof ManagedMallocObject;
         }
 
         protected Node createForeignReadNode() {

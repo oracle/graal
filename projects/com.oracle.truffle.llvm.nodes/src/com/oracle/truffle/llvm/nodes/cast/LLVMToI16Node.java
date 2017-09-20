@@ -107,23 +107,20 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
             return (short) globalAccess.getNativeLocation(from).getVal();
         }
 
-        @Specialization
-        public short executeLLVMTruffleObject(LLVMTruffleObject from) {
-            return (short) (executeTruffleObject(from.getObject()) + from.getOffset());
-        }
-
         @Child private Node isNull = Message.IS_NULL.createNode();
         @Child private Node isBoxed = Message.IS_BOXED.createNode();
         @Child private Node unbox = Message.UNBOX.createNode();
         @Child private ForeignToLLVM toShort = ForeignToLLVM.create(ForeignToLLVMType.I16);
 
-        @Specialization(guards = "notLLVM(from)")
-        public short executeTruffleObject(TruffleObject from) {
-            if (ForeignAccess.sendIsNull(isNull, from)) {
-                return 0;
-            } else if (ForeignAccess.sendIsBoxed(isBoxed, from)) {
+        @Specialization
+        public short executeLLVMTruffleObject(LLVMTruffleObject from) {
+            TruffleObject base = from.getObject();
+            if (ForeignAccess.sendIsNull(isNull, base)) {
+                return (short) from.getOffset();
+            } else if (ForeignAccess.sendIsBoxed(isBoxed, base)) {
                 try {
-                    return (short) toShort.executeWithTarget(ForeignAccess.sendUnbox(unbox, from));
+                    short ptr = (short) toShort.executeWithTarget(ForeignAccess.sendUnbox(unbox, base));
+                    return (short) (ptr + from.getOffset());
                 } catch (UnsupportedMessageException e) {
                     CompilerDirectives.transferToInterpreter();
                     throw new IllegalStateException(e);
