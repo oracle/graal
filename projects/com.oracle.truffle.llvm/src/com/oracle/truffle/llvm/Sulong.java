@@ -37,6 +37,7 @@ import java.util.ServiceLoader;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -128,13 +129,15 @@ public final class Sulong extends LLVMLanguage {
     public static int executeMain(File file, String[] args) throws Exception {
         org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.NAME, file).build();
         Context context = Context.newBuilder().arguments(LLVMLanguage.NAME, args).build();
-        int result;
         try {
-            result = context.eval(source).asInt();
+            Value result = context.eval(source);
+            if (result.isNull()) {
+                throw new LinkageError("No main function found.");
+            }
+            return result.asInt();
         } finally {
             context.close();
         }
-        return result;
     }
 
     @Override
