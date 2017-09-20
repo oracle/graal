@@ -112,7 +112,7 @@ public final class LLVMDebugValueContainer extends LLVMDebugObject {
         }
     };
 
-    private final Map<Object, Object> members;
+    private final Map<Object, LLVMDebugObject> members;
 
     @TruffleBoundary
     private LLVMDebugValueContainer() {
@@ -121,7 +121,7 @@ public final class LLVMDebugValueContainer extends LLVMDebugObject {
     }
 
     @TruffleBoundary
-    public void addMember(Object key, Object element) {
+    public void addMember(Object key, LLVMDebugObject element) {
         members.put(key, element);
     }
 
@@ -133,7 +133,7 @@ public final class LLVMDebugValueContainer extends LLVMDebugObject {
 
     @Override
     @TruffleBoundary
-    public Object getMemberSafe(Object identifier) {
+    public LLVMDebugObject getMemberSafe(Object identifier) {
         return members.get(identifier);
     }
 
