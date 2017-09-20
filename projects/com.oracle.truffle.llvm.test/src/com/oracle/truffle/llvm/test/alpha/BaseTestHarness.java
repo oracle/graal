@@ -99,7 +99,7 @@ public abstract class BaseTestHarness {
             System.err.println(String.format("Collected %d test folders.", tests.size()));
         }
 
-        return tests.keySet().stream().map(f -> new Object[]{tests.get(f), f.toString()}).collect(Collectors.toList());
+        return tests.keySet().stream().sorted().map(f -> new Object[]{tests.get(f), f.toString()}).collect(Collectors.toList());
     }
 
     private static Collection<Object[]> collectDiscoverRun(Path configPath, Path suiteDir, Path sourceDir, String testDiscoveryPath) throws AssertionError {
@@ -108,7 +108,7 @@ public abstract class BaseTestHarness {
         // abs
         Set<Path> availableSourceFiles = getFiles(sourceDir);
         // abs
-        Set<Path> compiledTests = collectTestCases(suiteDir, testDiscoveryPath);
+        Set<Path> compiledTests = collectTestCases(testDiscoveryPath);
 
         // abs
         Set<Path> greyList = compiledTests.stream().filter(t -> !tests.values().contains(t)).collect(Collectors.toSet());
@@ -116,7 +116,7 @@ public abstract class BaseTestHarness {
         // rel
         Set<Path> availableSourceFilesRelative = availableSourceFiles.stream().map(e -> getRelative(sourceDir.getParent().toUri(), e.toUri())).collect(Collectors.toSet());
 
-        List<Object[]> collectedTests = greyList.stream().map(
+        List<Object[]> collectedTests = greyList.stream().sorted().map(
                         t -> new Object[]{t, availableSourceFilesRelative.stream().filter(s -> {
                             return s.toString().startsWith(getRelative(suiteDir.toUri(), t.toUri()).toString());
                         }).findAny().get().toString()}).collect(
@@ -128,9 +128,9 @@ public abstract class BaseTestHarness {
         return Paths.get(base.relativize(abs).toString());
     }
 
-    private static Set<Path> collectTestCases(Path suiteDir, String testDiscoveryPath) throws AssertionError {
+    private static Set<Path> collectTestCases(String testDiscoveryPath) throws AssertionError {
         try {
-            return Files.walk(suiteDir).filter(isExecutable).map(f -> f.getParent()).filter(p -> p.startsWith(Paths.get(suiteDir.toString(), testDiscoveryPath))).collect(Collectors.toSet());
+            return Files.walk(Paths.get(testDiscoveryPath)).filter(isExecutable).map(f -> f.getParent()).collect(Collectors.toSet());
         } catch (IOException e) {
             throw new AssertionError("Test cases not found", e);
         }
@@ -140,16 +140,26 @@ public abstract class BaseTestHarness {
      * Returns a Map whitelistEntry (relative path) -> testFolder (absolute path).
      */
     public static final Map<Path, Path> getWhiteListTestFolders(Path configDir, Path suiteDirectory) {
-        return getWhiteListEntries(configDir).stream().collect(Collectors.toMap(wl -> wl, wl -> Paths.get(suiteDirectory.toString(), removeFileEnding(wl.toString()))));
+        return getWhiteListEntries(configDir).stream().collect(Collectors.toMap(wl -> wl, wl -> Paths.get(suiteDirectory.toString(), removeFileEnding(wl.toString())).normalize()));
     }
 
     private static Set<Path> getWhiteListEntries(Path configDir) {
-        Predicate<Path> fortranFilter;
-        if (TestOptions.IGNORE_FORTRAN) {
-            fortranFilter = f -> (!f.toString().trim().endsWith(".f90") && !f.toString().trim().endsWith(".F90"));
-        } else {
-            fortranFilter = f -> true;
-        }
+        Predicate<Path> filter = new Predicate<Path>() {
+
+            @Override
+            public boolean test(Path f) {
+                if (TestOptions.FILE_EXTENSION_FILTER.length == 0) {
+                    return true;
+                }
+                for (String e : TestOptions.FILE_EXTENSION_FILTER) {
+                    String fileName = f.toString().trim();
+                    if (fileName.endsWith(e)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        };
         try {
             return Files.walk(configDir).filter(isIncludeFile).flatMap(f -> {
                 try {
@@ -157,7 +167,7 @@ public abstract class BaseTestHarness {
                 } catch (IOException e) {
                     throw new AssertionError("Error creating whitelist.", e);
                 }
-            }).map(s -> Paths.get(s)).filter(fortranFilter).collect(Collectors.toSet());
+            }).map(s -> Paths.get(s)).filter(filter).collect(Collectors.toSet());
         } catch (IOException e) {
             throw new AssertionError("Error creating whitelist.", e);
         }

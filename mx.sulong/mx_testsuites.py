@@ -62,16 +62,21 @@ def runNWCCSuite(vmArgs):
     compileSuite(['nwcc'])
     return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.NWCCSuite")
 
-def runGCCSuite32(vmArgs):
+def runGCCSuite_c(vmArgs):
+    """runs the LLVM test suite"""
+    compileSuite(['gcc_c'])
+    return run(vmArgs + ['-Dsulongtest.fileExtensionFilter=.c'], "com.oracle.truffle.llvm.test.alpha.GCCSuite")
+
+def runGCCSuite_cpp(vmArgs):
+    """runs the LLVM test suite"""
+    compileSuite(['gcc_cpp'])
+    return run(vmArgs + ['-Dsulongtest.fileExtensionFilter=.cpp:.C:.cc'], "com.oracle.truffle.llvm.test.alpha.GCCSuite")
+
+def runGCCSuite_fortran(vmArgs):
     """runs the LLVM test suite"""
     mx_sulong.ensureDragonEggExists()
-    compileSuite(['gcc32'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.GCCSuite", extraLibs=["libgfortran.so.3"])
-
-def runGCCSuite38(vmArgs):
-    """runs the LLVM test suite"""
-    compileSuite(['gcc38'])
-    return run(vmArgs + ['-Dsulongtest.ignoreFortran=true'], "com.oracle.truffle.llvm.test.alpha.GCCSuite")
+    compileSuite(['gcc_fortran'])
+    return run(vmArgs + ['-Dsulongtest.fileExtensionFilter=.f90:.f:.f03'], "com.oracle.truffle.llvm.test.alpha.GCCSuite", extraLibs=["libgfortran.so.3"])
 
 def compileOtherTests():
     print("Compiling Other with clang -O0", end='')
@@ -126,30 +131,32 @@ def compileInlineAssemblySuite():
     print("Compiling Assembly Suite with -O0 ", end='')
     mx_tools.printProgress(mx_tools.multicompileFolder(_assemblySuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC))
 
-def compileV32GCCSuite():
+def compileGCCSuite_C_files():
     deleteCachedTests('gcc')
     ensureGCCSuiteExists()
     excludes = mx_tools.collectExcludePattern(os.path.join(_gccSuiteDir, "configs/"))
     print("Compiling GCC Suite reference executables ", end='')
-    mx_tools.printProgress(mx_tools.multicompileRefFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_CPP, mx_tools.Tool.CLANG_C, mx_tools.Tool.GFORTRAN], ['-Iinclude'], excludes=excludes))
+    mx_tools.printProgress(mx_tools.multicompileRefFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_C], ['-Iinclude'], excludes=excludes))
+    print("Compiling GCC files with C ", end='')
+    mx_tools.printProgress(mx_tools.multicompileFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_C], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, optimizers=[mx_tools.Tool.C_OPT], excludes=excludes))
+
+def compileGCCSuite_CPP_files():
+    deleteCachedTests('gcc')
+    ensureGCCSuiteExists()
+    excludes = mx_tools.collectExcludePattern(os.path.join(_gccSuiteDir, "configs/"))
+    print("Compiling GCC Suite reference executables ", end='')
+    mx_tools.printProgress(mx_tools.multicompileRefFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_CPP], ['-Iinclude'], excludes=excludes))
+    print("Compiling GCC files with CPP ", end='')
+    mx_tools.printProgress(mx_tools.multicompileFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_CPP], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, optimizers=[mx_tools.Tool.CPP_OPT], excludes=excludes))
+
+def compileGCCSuite_GFortran_files():
+    deleteCachedTests('gcc')
+    ensureGCCSuiteExists()
+    excludes = mx_tools.collectExcludePattern(os.path.join(_gccSuiteDir, "configs/"))
+    print("Compiling GCC Suite reference executables ", end='')
+    mx_tools.printProgress(mx_tools.multicompileRefFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.GFORTRAN], ['-Iinclude'], excludes=excludes))
     print("Compiling GCC files with GFORTRAN ", end='')
     mx_tools.printProgress(mx_tools.multicompileFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.GFORTRAN], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
-    print("Compiling GCC files with CPP ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_CPP], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, optimizers=[mx_tools.Tool.CPP_OPT], excludes=excludes))
-    print("Compiling GCC files with C ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_C], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, optimizers=[mx_tools.Tool.C_OPT], excludes=excludes))
-
-def compileV38GCCSuite():
-    deleteCachedTests('gcc')
-    ensureGCCSuiteExists()
-    excludes = mx_tools.collectExcludePattern(os.path.join(_gccSuiteDir, "configs/"))
-    print("Compiling GCC Suite reference executables ", end='')
-    mx_tools.printProgress(mx_tools.multicompileRefFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_CPP, mx_tools.Tool.CLANG_C], ['-Iinclude'], excludes=excludes))
-    print("Compiling GCC files with CPP ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_CPP], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, optimizers=[mx_tools.Tool.CPP_OPT], excludes=excludes))
-    print("Compiling GCC files with C ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_C], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, optimizers=[mx_tools.Tool.C_OPT], excludes=excludes))
-
 
 def compileParserTurtureSuite():
     ensureGCCSuiteExists()
@@ -181,9 +188,10 @@ testSuites = {
     'vaargs' : (compileOtherTests, runVAargsTests),
     'nwcc' : (compileNWCCSuite, runNWCCSuite),
     'assembly' : (compileInlineAssemblySuite, runInlineAssemblySuite),
-    'gcc32' : (compileV32GCCSuite, runGCCSuite32),
+    'gcc_c' : (compileGCCSuite_C_files, runGCCSuite_c),
+    'gcc_cpp' : (compileGCCSuite_CPP_files, runGCCSuite_cpp),
+    'gcc_fortran' : (compileGCCSuite_GFortran_files, runGCCSuite_fortran),
     'llvm' : (compileLLVMSuite, runLLVMSuite),
-    'gcc38' : (compileV38GCCSuite, runGCCSuite38),
     'shootout' : (compileShootoutSuite, runShootoutSuite),
     'parserTorture' : (compileParserTurtureSuite, runParserTortureSuite),
     'type' : (None, runTypeTests),

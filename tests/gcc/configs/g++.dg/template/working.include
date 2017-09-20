@@ -18,7 +18,6 @@ gcc-5.2.0/gcc/testsuite/g++.dg/template/conv5.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/const1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/ctor2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/koenig6.C
-gcc-5.2.0/gcc/testsuite/g++.dg/template/ref1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/qualified-id4.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/typedef24.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/sfinae17.C

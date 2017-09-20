@@ -130,12 +130,15 @@ ruby-downstream-test: {
 builds = [
   ${gateStyle} { name: gate-style, run: [[mx, check, --verbose, checkstyle, mdl, canonicalizeprojects, httpcheck, checkoverlap, clangformatcheck, pylint, eclipseformat ]] }
   ${gateTest38-linux} ${requireJDT} { name: gate-full-build, run: [[mx, check, --verbose, ecj, findbugs]] }
-  ${gateTest38-linux} ${requireGCC} { name: gate-suite-gcc, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, gcc32]] }
+
+  ${gateTest38-linux} { name: gate-suite-gcc_c, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, gcc_c]] }
+  ${gateTest38-linux} { name: gate-suite-gcc_cpp, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, gcc_cpp]] }
+  ${gateTest38-linux} ${requireGCC} { name: gate-suite-gcc_fortran, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, gcc_fortran]] }
+
   ${gateTest38-linux} ${requireGCC} { name: gate-travis1, run: [[mx, travis1]] }
   ${gateTest38-linux} ${requireGCC} { name: gate-travis2, run: [[mx, travis2]] }
   ${gateTest38-linux} ${requireGCC} ${sulongSuite} { name: gate-sulong-v38-linux }
   ${gateTest40-darwin} ${sulongSuite} { name: gate-sulong-v40-darwin }
-  ${gateTest38-linux} { name: gate-gcc-v38, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, gcc38]] }
   ${gateTest38-linux} { name: gate-var-v38, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, assembly], [mx, test, args], [mx, test, callback], [mx, test, vaargs]] }
   ${gateTest38-linux} ${ruby-downstream-test} { name: gate-ruby-downstream }
 
