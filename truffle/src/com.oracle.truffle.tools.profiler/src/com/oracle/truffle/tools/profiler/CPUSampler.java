@@ -112,11 +112,8 @@ public final class CPUSampler implements Closeable {
             descriptors.add(OptionDescriptor.newBuilder(CLI.DELAY_PERIOD, ID + ".Delay").category(OptionCategory.USER).help("Delay the sampling for this many milliseconds (default: 0).").build());
             descriptors.add(OptionDescriptor.newBuilder(CLI.STACK_LIMIT, ID + ".StackLimit").category(OptionCategory.USER).help("Maximum number of maximum stack elements.").build());
             descriptors.add(OptionDescriptor.newBuilder(CLI.OUTPUT, ID + ".Output").category(OptionCategory.USER).help("Print a 'histogram' or 'calltree' as output (default:HISTOGRAM).").build());
-            // TODO The help for "Mode" is way too long and look ugly in the terminal. Needs to be
-            // addressed.
-            descriptors.add(OptionDescriptor.newBuilder(CLI.MODE, ID + ".Mode").category(OptionCategory.USER).help("Describes level of sampling detail. " + System.lineSeparator() +
-                            "NOTE: Increased detail can lead to reduced accuracy. " + System.lineSeparator() +
-                            "Modes: 'excludeInlinedRoots' (samples roots excluding inlined functions), 'roots' (samples roots including inlined functions) and 'statements' (samples all statements).").build());
+            descriptors.add(OptionDescriptor.newBuilder(CLI.MODE, ID + ".Mode").category(OptionCategory.USER).help("Describes level of sampling detail. NOTE: Increased detail can lead to reduced accuracy. Modes:" + System.lineSeparator() +
+                            "'compiled' - samples roots excluding inlined functions (default)" + System.lineSeparator() + "'roots' - samples roots including inlined functions" + System.lineSeparator() + "'statements' - samples all statements.").build());
             descriptors.add(OptionDescriptor.newBuilder(CLI.SAMPLE_INTERNAL, ID + ".SampleInternal").category(OptionCategory.USER).help("Capture internal elements (default:false).").build());
             descriptors.add(OptionDescriptor.newBuilder(CLI.FILTER_ROOT, ID + ".FilterRootName").category(OptionCategory.USER).help(
                             "Wildcard filter for program roots. (eg. Math.*, default:*).").build());
@@ -611,7 +608,7 @@ public final class CPUSampler implements Closeable {
                             try {
                                 return Mode.valueOf(string.toUpperCase());
                             } catch (IllegalArgumentException e) {
-                                throw new IllegalArgumentException("Mode can be: excludeInlinedRoots, roots or statements.");
+                                throw new IllegalArgumentException("Mode can be: compiled, roots or statements.");
                             }
                         },
                         cliOutput -> {
@@ -693,7 +690,7 @@ public final class CPUSampler implements Closeable {
             out.println(String.format("Sampling Histogram. Recorded %s samples with period %dms", samples, sampler.getPeriod()));
             out.println("  Self Time: Time spent on the top of the stack.");
             out.println("  Total Time: Time the location spent on the stack. ");
-            out.println("  Opt %: Percent of time spent in excludeInlinedRoots and therfore non-interpreted code.");
+            out.println("  Opt %: Percent of time spent in compiled and therfore non-interpreted code.");
             out.println(sep);
             out.println(title);
             out.println(sep);
@@ -711,7 +708,7 @@ public final class CPUSampler implements Closeable {
             out.println(String.format("Sampling CallTree. Recorded %s samples with period %dms.", sampler.getTotalSamples(), sampler.getPeriod()));
             out.println("  Self Time: Time spent on the top of the stack.");
             out.println("  Total Time: Time spent somewhere on the stack. ");
-            out.println("  Opt %: Percent of time spent in excludeInlinedRoots and therfore non-interpreted code.");
+            out.println("  Opt %: Percent of time spent in compiled and therfore non-interpreted code.");
             out.println(sep);
             out.println(title);
             out.println(sep);

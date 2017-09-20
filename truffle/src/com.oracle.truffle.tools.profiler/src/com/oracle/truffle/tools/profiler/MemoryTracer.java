@@ -530,7 +530,6 @@ public final class MemoryTracer implements Closeable {
         static final OptionKey<Boolean> TRACE_INTERNAL = new OptionKey<>(false);
         static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
         static final OptionKey<Object[]> FILTER_FILE = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
-        // TODO Is this enough? Should we check if the argument is a real language?
         static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>("");
 
         static void handleOutput(TruffleInstrument.Env env, MemoryTracer tracer, List<OptionDescriptor> descriptors) {
