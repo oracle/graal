@@ -34,6 +34,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.NativeAllocator;
@@ -83,6 +84,8 @@ abstract class Container {
     abstract void putFunction(LLVMGlobalVariable global, LLVMFunction value);
 
     abstract void putBoxedPrimitive(LLVMGlobalVariable global, LLVMBoxedPrimitive value);
+
+    abstract void putManaged(LLVMGlobalVariable global, LLVMVirtualAllocationAddress value);
 
     abstract void putGlobal(LLVMGlobalVariable global, LLVMGlobalVariable value);
 
@@ -191,6 +194,13 @@ abstract class Container {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             global.getContainer().putFunction(global, value);
+        }
+
+        @Override
+        void putManaged(LLVMGlobalVariable global, LLVMVirtualAllocationAddress value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            global.setContainer(new NativeContainer(type, resolver.resolve()));
+            global.getContainer().putManaged(global, value);
         }
 
         @Override
@@ -334,6 +344,12 @@ abstract class Container {
 
         @Override
         void putTruffleObject(LLVMGlobalVariable global, TruffleObject value) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException("Cannot store managed object to native memory");
+        }
+
+        @Override
+        void putManaged(LLVMGlobalVariable global, LLVMVirtualAllocationAddress value) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Cannot store managed object to native memory");
         }
@@ -567,6 +583,13 @@ abstract class Container {
         }
 
         @Override
+        void putManaged(LLVMGlobalVariable global, LLVMVirtualAllocationAddress value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            CachedManagedContainer newContainer = new CachedManagedContainer(type, allocator, value, 0);
+            global.setContainer(newContainer);
+        }
+
+        @Override
         void putBoxedPrimitive(LLVMGlobalVariable global, LLVMBoxedPrimitive value) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             CachedManagedContainer newContainer = new CachedManagedContainer(type, allocator, value, 0);
@@ -665,6 +688,18 @@ abstract class Container {
         }
 
         @Override
+        void putManaged(LLVMGlobalVariable global, LLVMVirtualAllocationAddress value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (++changes >= CACHING_TRIES_BEFORE_SWITCHING_TO_GENERIC) {
+                GenericManagedContainer newContainer = new GenericManagedContainer(type, allocator, value);
+                global.setContainer(newContainer);
+            } else {
+                CachedManagedContainer newContainer = new CachedManagedContainer(type, allocator, value, changes);
+                global.setContainer(newContainer);
+            }
+        }
+
+        @Override
         void putBoxedPrimitive(LLVMGlobalVariable global, LLVMBoxedPrimitive value) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             if (++changes >= CACHING_TRIES_BEFORE_SWITCHING_TO_GENERIC) {
@@ -723,6 +758,8 @@ abstract class Container {
                 LLVMMemory.putAddress(address, ((LLVMGlobalVariable) managedValue).getContainer().getNativeLocation((LLVMGlobalVariable) managedValue));
             } else if (managedValue instanceof TruffleObject || managedValue instanceof LLVMTruffleObject) {
                 throw new IllegalStateException("Cannot resolve address of a foreign TruffleObject: " + managedValue);
+            } else if (managedValue instanceof LLVMVirtualAllocationAddress) {
+                throw new IllegalStateException("Cannot resolve address of a managed allocation.");
             } else if (managedValue == null) {
                 // nothing to do
             } else {
@@ -773,6 +810,20 @@ abstract class Container {
 
         @Override
         void putFunction(LLVMGlobalVariable global, LLVMFunction value) {
+            if (value != managedValue) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                if (++changes >= CACHING_TRIES_BEFORE_SWITCHING_TO_GENERIC) {
+                    GenericManagedContainer newContainer = new GenericManagedContainer(type, allocator, value);
+                    global.setContainer(newContainer);
+                } else {
+                    CachedManagedContainer newContainer = new CachedManagedContainer(type, allocator, value, changes);
+                    global.setContainer(newContainer);
+                }
+            }
+        }
+
+        @Override
+        void putManaged(LLVMGlobalVariable global, LLVMVirtualAllocationAddress value) {
             if (value != managedValue) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 if (++changes >= CACHING_TRIES_BEFORE_SWITCHING_TO_GENERIC) {
@@ -867,6 +918,13 @@ abstract class Container {
         }
 
         @Override
+        void putManaged(LLVMGlobalVariable global, LLVMVirtualAllocationAddress value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            GenericManagedContainer newContainer = new GenericManagedContainer(type, allocator, value);
+            global.setContainer(newContainer);
+        }
+
+        @Override
         void putBoxedPrimitive(LLVMGlobalVariable global, LLVMBoxedPrimitive value) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             GenericManagedContainer newContainer = new GenericManagedContainer(type, allocator, value);
@@ -917,6 +975,8 @@ abstract class Container {
                 LLVMMemory.putAddress(address, ((LLVMGlobalVariable) managedValue).getContainer().getNativeLocation((LLVMGlobalVariable) managedValue));
             } else if (managedValue instanceof TruffleObject || managedValue instanceof LLVMTruffleObject) {
                 throw new IllegalStateException("Cannot resolve address of a foreign TruffleObject: " + managedValue);
+            } else if (managedValue instanceof LLVMVirtualAllocationAddress) {
+                throw new IllegalStateException("Cannot resolve address of a managed allocation");
             } else if (managedValue == null) {
                 // nothing to do
             } else {
@@ -941,6 +1001,11 @@ abstract class Container {
 
         @Override
         void putFunction(LLVMGlobalVariable global, LLVMFunction value) {
+            this.managedValue = value;
+        }
+
+        @Override
+        void putManaged(LLVMGlobalVariable global, LLVMVirtualAllocationAddress value) {
             this.managedValue = value;
         }
 

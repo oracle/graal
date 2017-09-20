@@ -39,6 +39,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
@@ -57,6 +58,18 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
     @Specialization
     public LLVMAddress executePointee(LLVMAddress addr, int val) {
         int incr = getTypeWidth() * val;
+        return addr.increment(incr);
+    }
+
+    @Specialization
+    public LLVMVirtualAllocationAddress executeTruffleObject(LLVMVirtualAllocationAddress addr, int val) {
+        int incr = getTypeWidth() * val;
+        return addr.increment(incr);
+    }
+
+    @Specialization
+    public LLVMVirtualAllocationAddress executeTruffleObject(LLVMVirtualAllocationAddress addr, long val) {
+        long incr = getTypeWidth() * val;
         return addr.increment(incr);
     }
 

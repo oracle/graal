@@ -42,6 +42,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.FloatValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
@@ -72,6 +73,11 @@ public abstract class LLVMFloatLoadNode extends LLVMExpressionNode {
     @Specialization
     public float executeFloat(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         return profile.profile(globalAccess.getFloat(addr));
+    }
+
+    @Specialization
+    public float executeFloat(LLVMVirtualAllocationAddress address) {
+        return address.getFloat();
     }
 
     @Specialization

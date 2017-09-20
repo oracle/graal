@@ -42,6 +42,7 @@ import com.oracle.truffle.api.profiles.IntValueProfile;
 import com.oracle.truffle.api.profiles.LongValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.Container.CachedLLVMAddressContainer;
@@ -265,6 +266,12 @@ public final class LLVMGlobalVariableAccess extends Node {
         Container container = getContainer.executeWithTarget(global.getContainer());
         CompilerAsserts.partialEvaluationConstant(container.getClass());
         container.putFunction(global, value);
+    }
+
+    public void putManaged(LLVMGlobalVariable global, LLVMVirtualAllocationAddress value) {
+        Container container = getContainer.executeWithTarget(global.getContainer());
+        CompilerAsserts.partialEvaluationConstant(container.getClass());
+        container.putManaged(global, value);
     }
 
     public void putBoxedPrimitive(LLVMGlobalVariable global, LLVMBoxedPrimitive value) {

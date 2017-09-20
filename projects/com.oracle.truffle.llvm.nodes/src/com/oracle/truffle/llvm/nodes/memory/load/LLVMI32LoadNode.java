@@ -42,6 +42,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.IntValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
@@ -73,6 +74,11 @@ public abstract class LLVMI32LoadNode extends LLVMExpressionNode {
     public int executeI32(LLVMAddress addr) {
         int val = LLVMMemory.getI32(addr);
         return profile.profile(val);
+    }
+
+    @Specialization
+    public int executeI32(LLVMVirtualAllocationAddress address) {
+        return address.getI32();
     }
 
     @Specialization

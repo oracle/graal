@@ -34,8 +34,10 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMProfiledMemMove;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -50,8 +52,45 @@ public abstract class LLVMMemCopy {
 
         @SuppressWarnings("unused")
         @Specialization
+        public Object executeVoid(LLVMVirtualAllocationAddress target, LLVMVirtualAllocationAddress source, int length, int align, boolean isVolatile) {
+            LLVMMemCopy.copy(target, source, length);
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        public Object executeVoid(LLVMVirtualAllocationAddress target, LLVMAddress source, int length, int align, boolean isVolatile) {
+            LLVMMemCopy.copy(target, source.getVal(), length);
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        public Object executeVoid(LLVMAddress target, LLVMVirtualAllocationAddress source, int length, int align, boolean isVolatile) {
+            LLVMMemCopy.copy(target.getVal(), source, length);
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
         public Object executeVoid(LLVMAddress target, LLVMAddress source, int length, int align, boolean isVolatile) {
             profiledMemMove.memmove(target, source, length);
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        public Object executeVoid(LLVMGlobalVariable target, LLVMVirtualAllocationAddress source, int length, int align, boolean isVolatile,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            LLVMMemCopy.copy(globalAccess.getNativeLocation(target).getVal(), source, length);
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        public Object executeVoid(LLVMVirtualAllocationAddress target, LLVMGlobalVariable source, int length, int align, boolean isVolatile,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            LLVMMemCopy.copy(target, globalAccess.getNativeLocation(source).getVal(), length);
             return null;
         }
 
@@ -88,8 +127,45 @@ public abstract class LLVMMemCopy {
 
         @SuppressWarnings("unused")
         @Specialization
+        public Object executeVoid(LLVMVirtualAllocationAddress target, LLVMVirtualAllocationAddress source, long length, int align, boolean isVolatile) {
+            LLVMMemCopy.copy(target, source, length);
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        public Object executeVoid(LLVMVirtualAllocationAddress target, LLVMAddress source, long length, int align, boolean isVolatile) {
+            LLVMMemCopy.copy(target, source.getVal(), length);
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        public Object executeVoid(LLVMAddress target, LLVMVirtualAllocationAddress source, long length, int align, boolean isVolatile) {
+            LLVMMemCopy.copy(target.getVal(), source, length);
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
         public Object executeVoid(LLVMAddress target, LLVMAddress source, long length, int align, boolean isVolatile) {
             profiledMemMove.memmove(target, source, length);
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        public Object executeVoid(LLVMGlobalVariable target, LLVMVirtualAllocationAddress source, long length, int align, boolean isVolatile,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            LLVMMemCopy.copy(globalAccess.getNativeLocation(target).getVal(), source, length);
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        public Object executeVoid(LLVMVirtualAllocationAddress target, LLVMGlobalVariable source, long length, int align, boolean isVolatile,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            LLVMMemCopy.copy(target, globalAccess.getNativeLocation(source).getVal(), length);
             return null;
         }
 
@@ -115,6 +191,39 @@ public abstract class LLVMMemCopy {
             return null;
         }
 
+    }
+
+    private static void copy(LLVMVirtualAllocationAddress target, long source, long length) {
+        long sourcePointer = source;
+        LLVMVirtualAllocationAddress targetAddress = target;
+        for (long i = 0; i < length; i++) {
+            byte value = LLVMMemory.getI8(sourcePointer);
+            targetAddress.writeI8(value);
+            targetAddress = targetAddress.increment(1);
+            sourcePointer++;
+        }
+    }
+
+    private static void copy(long target, LLVMVirtualAllocationAddress source, long length) {
+        LLVMVirtualAllocationAddress sourcePointer = source;
+        long targetAddress = target;
+        for (long i = 0; i < length; i++) {
+            byte value = sourcePointer.getI8();
+            sourcePointer = sourcePointer.increment(1);
+            LLVMMemory.putI8(targetAddress, value);
+            targetAddress++;
+        }
+    }
+
+    private static void copy(LLVMVirtualAllocationAddress target, LLVMVirtualAllocationAddress source, long length) {
+        LLVMVirtualAllocationAddress sourcePointer = source;
+        LLVMVirtualAllocationAddress targetAddress = target;
+        for (long i = 0; i < length; i++) {
+            byte value = sourcePointer.getI8();
+            sourcePointer = sourcePointer.increment(1);
+            targetAddress.writeI8(value);
+            targetAddress = targetAddress.increment(1);
+        }
     }
 
 }

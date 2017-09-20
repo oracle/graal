@@ -114,6 +114,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleStringAsCStri
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleUnboxNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleWriteFactory.LLVMTruffleWriteToIndexNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleWriteFactory.LLVMTruffleWriteToNameNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMVirtualMallocNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicExpressionNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMCallocNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMFreeNodeGen;
@@ -356,6 +357,15 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
                                 LLVMRunDestructorFunctionsNodeGen.create());
             }
         });
+
+        factories.put("@truffle_virtual_malloc", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@truffle_virtual_malloc",
+                                LLVMVirtualMallocNodeGen.create(LLVMArgNodeGen.create(1)));
+            }
+        });
+
     }
 
     protected void registerTruffleIntrinsics() {
