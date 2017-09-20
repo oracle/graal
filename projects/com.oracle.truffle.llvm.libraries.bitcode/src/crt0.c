@@ -42,14 +42,13 @@ __attribute__((weak)) int _start(long *p, int type) {
   default:
   case 0:
     exit(main(argc, argv, envp));
-    return 0;
+    break;
   /* Rust */
   case 1: {
     long (*i64main)(long argc, char **argv) = (long (*)(long, char **))main;
     exit(i64main(argc, argv));
-    return 0;
+    break;
   }
   }
-
-  return 0;
+  abort();
 }

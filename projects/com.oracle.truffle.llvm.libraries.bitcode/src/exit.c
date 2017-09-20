@@ -28,7 +28,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdint.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include "syscall.h"
 
 struct entry {
@@ -40,11 +40,14 @@ struct entry {
 static struct entry head = { NULL, NULL, NULL };
 
 static void __funcs_on_exit() {
-  struct entry *entry = &head;
-  while (entry->next) {
-    entry = entry->next;
+  struct entry *entry = head.next;
+  while (entry) {
+    struct entry *old = entry;
     entry->func(entry->arg);
+    entry = entry->next;
+    free(old);
   }
+  head.next = NULL;
 }
 
 __attribute__((weak)) int __cxa_atexit(void (*func)(void *), void *arg, void *dso) {
