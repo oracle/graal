@@ -174,7 +174,7 @@ class NodeFactoryFactory {
                     builder.string("(arguments[" + index + "] == null || ");
                 }
                 builder.string("arguments[" + index + "] instanceof ");
-                builder.type(ElementUtils.boxType(context, param.asType()));
+                builder.type(ElementUtils.eraseGenericTypes(ElementUtils.boxType(context, param.asType())));
                 if (!param.asType().getKind().isPrimitive()) {
                     builder.string(")");
                 }
