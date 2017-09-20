@@ -43,6 +43,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Timer;
@@ -638,7 +639,16 @@ public final class CPUSampler implements Closeable {
                 out.println("-------------------------------------------------------------------------------- ");
                 out.println("ERROR: Shadow stack has overflowed its capacity of " + env.getOptions().get(STACK_LIMIT) + " during execution!");
                 out.println("The gathered data is incomplete and incorrect!");
-                String name = descriptors.stream().filter(e -> e.getKey().equals(STACK_LIMIT)).findFirst().get().getName();
+                String name = "";
+                Iterator<OptionDescriptor> iterator = descriptors.iterator();
+                while (iterator.hasNext()) {
+                    OptionDescriptor descriptor = iterator.next();
+                    if (descriptor.getKey().equals(STACK_LIMIT)) {
+                        name = descriptor.getName();
+                        break;
+                    }
+                }
+                assert !name.equals("");
                 out.println("Use --" + name + "=<" + STACK_LIMIT.getType().getName() + "> to set stack capacity.");
                 out.println("-------------------------------------------------------------------------------- ");
                 return;

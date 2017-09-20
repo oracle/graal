@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -538,7 +539,16 @@ public final class MemoryTracer implements Closeable {
                 out.println("-------------------------------------------------------------------------------- ");
                 out.println("ERROR: Shadow stack has overflowed its capacity of " + env.getOptions().get(STACK_LIMIT) + " during execution!");
                 out.println("The gathered data is incomplete and incorrect!");
-                String name = descriptors.stream().filter(e -> e.getKey().equals(STACK_LIMIT)).findFirst().get().getName();
+                String name = "";
+                Iterator<OptionDescriptor> iterator = descriptors.iterator();
+                while (iterator.hasNext()) {
+                    OptionDescriptor descriptor = iterator.next();
+                    if (descriptor.getKey().equals(STACK_LIMIT)) {
+                        name = descriptor.getName();
+                        break;
+                    }
+                }
+                assert !name.equals("");
                 out.println("Use --" + name + "=<" + STACK_LIMIT.getType().getName() + "> to set stack capacity.");
                 out.println("-------------------------------------------------------------------------------- ");
                 return;
@@ -560,7 +570,11 @@ public final class MemoryTracer implements Closeable {
             final Map<String, List<MemoryTracer.AllocationEventInfo>> histogram = tracer.computeMetaObjectHistogram();
             final List<String> keys = new ArrayList<>(histogram.keySet());
             keys.sort((o1, o2) -> Integer.compare(histogram.get(o2).size(), histogram.get(o1).size()));
-            final int metaObjectMax = histogram.keySet().stream().map((s) -> s.length()).max(Integer::compareTo).orElse(1);
+            int metaObjectMax = 1;
+            Iterator<String> iterator = histogram.keySet().iterator();
+            while (iterator.hasNext()) {
+                metaObjectMax = Math.max(metaObjectMax, iterator.next().length());
+            }
             final long totalAllocations = getTotalAllocationCount(tracer);
 
             String format = " %-" + metaObjectMax + "s | %15s ";
@@ -582,7 +596,12 @@ public final class MemoryTracer implements Closeable {
         private static void printLocationHistogram(PrintStream out, MemoryTracer tracer) {
             final Map<SourceLocation, List<CallTreeNode<MemoryTracer.AllocationPayload>>> histogram = tracer.computeSourceLocationHistogram();
             final List<SourceLocation> keys = getSortedSourceLocations(histogram);
-            final int nameMax = histogram.values().stream().map((nodes) -> nodes.get(0).getRootName().length()).max(Integer::compareTo).orElse(1);
+            int nameMax = 1;
+            Iterator<List<CallTreeNode<AllocationPayload>>> iterator = histogram.values().iterator();
+            while (iterator.hasNext()) {
+                List<CallTreeNode<AllocationPayload>> callTreeNodes = iterator.next();
+                nameMax = Math.max(nameMax, callTreeNodes.get(0).getRootName().length());
+            }
             final long totalAllocations = getTotalAllocationCount(tracer);
 
             String format = " %-" + nameMax + "s | %15s | %15s | %8s";
