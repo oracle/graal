@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.debug;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 import java.util.function.Supplier;
 
@@ -40,12 +41,12 @@ public final class LLVMSourceArrayLikeType extends LLVMSourceType {
     @CompilationFinal private LLVMSourceType baseType;
     @CompilationFinal private long length;
 
-    public LLVMSourceArrayLikeType(long size, long align, long offset) {
-        this(LLVMSourceType.UNKNOWN_TYPE::getName, size, align, offset, LLVMSourceType.UNKNOWN_TYPE, 1L);
+    public LLVMSourceArrayLikeType(long size, long align, long offset, LLVMSourceLocation location) {
+        this(LLVMSourceType.UNKNOWN_TYPE::getName, size, align, offset, LLVMSourceType.UNKNOWN_TYPE, 1L, location);
     }
 
-    private LLVMSourceArrayLikeType(Supplier<String> name, long size, long align, long offset, LLVMSourceType baseType, long length) {
-        super(size, align, offset);
+    private LLVMSourceArrayLikeType(Supplier<String> name, long size, long align, long offset, LLVMSourceType baseType, long length, LLVMSourceLocation location) {
+        super(size, align, offset, location);
         setName(name);
         this.baseType = baseType;
         this.length = length;
@@ -71,7 +72,7 @@ public final class LLVMSourceArrayLikeType extends LLVMSourceType {
 
     @Override
     public LLVMSourceType getOffset(long newOffset) {
-        return new LLVMSourceArrayLikeType(this::getName, getSize(), getAlign(), newOffset, baseType, length);
+        return new LLVMSourceArrayLikeType(this::getName, getSize(), getAlign(), newOffset, baseType, length, getLocation());
     }
 
     @Override

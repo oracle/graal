@@ -36,6 +36,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.metadata.ScopeProvider;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceScope;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
@@ -197,6 +204,17 @@ public final class Sulong extends LLVMLanguage implements ScopeProvider<LLVMCont
         if (thread != threadingStack.getDefaultThread()) {
             threadingStack.initializeThread();
         }
+    }
+
+    @Override
+    protected SourceSection findSourceLocation(LLVMContext context, Object value) {
+        if (value instanceof LLVMSourceType) {
+            final LLVMSourceLocation location = ((LLVMSourceType) value).getLocation();
+            if (location != null) {
+                return location.getSourceSection();
+            }
+        }
+        return null;
     }
 
     @Override

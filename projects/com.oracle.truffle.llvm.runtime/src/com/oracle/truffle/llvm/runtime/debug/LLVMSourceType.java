@@ -32,12 +32,13 @@ package com.oracle.truffle.llvm.runtime.debug;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 import java.util.function.Supplier;
 
 public abstract class LLVMSourceType {
 
-    public static final LLVMSourceType UNKNOWN_TYPE = new LLVMSourceType(() -> "<unknown>", 0, 0, 0) {
+    public static final LLVMSourceType UNKNOWN_TYPE = new LLVMSourceType(() -> "<unknown>", 0, 0, 0, null) {
 
         @Override
         public LLVMSourceType getOffset(long newOffset) {
@@ -45,27 +46,29 @@ public abstract class LLVMSourceType {
         }
     };
 
-    public static final LLVMSourceType VOID_TYPE = new LLVMSourceType(() -> "void", 0, 0, 0) {
+    public static final LLVMSourceType VOID_TYPE = new LLVMSourceType(() -> "void", 0, 0, 0, null) {
         @Override
         public LLVMSourceType getOffset(long newOffset) {
             return this;
         }
     };
 
+    private final LLVMSourceLocation location;
     private final long size;
     private final long align;
     private final long offset;
     @CompilationFinal private Supplier<String> nameSupplier;
 
-    public LLVMSourceType(Supplier<String> nameSupplier, long size, long align, long offset) {
+    public LLVMSourceType(Supplier<String> nameSupplier, long size, long align, long offset, LLVMSourceLocation location) {
         this.nameSupplier = nameSupplier;
         this.size = size;
         this.align = align;
         this.offset = offset;
+        this.location = location;
     }
 
-    LLVMSourceType(long size, long align, long offset) {
-        this(UNKNOWN_TYPE::getName, size, align, offset);
+    LLVMSourceType(long size, long align, long offset, LLVMSourceLocation location) {
+        this(UNKNOWN_TYPE::getName, size, align, offset, location);
     }
 
     @TruffleBoundary
@@ -118,6 +121,10 @@ public abstract class LLVMSourceType {
 
     public LLVMSourceType getElementType(@SuppressWarnings("unused") String name) {
         return null;
+    }
+
+    public LLVMSourceLocation getLocation() {
+        return location;
     }
 
     @Override

@@ -39,7 +39,7 @@ public final class LLVMDebugValueContainer extends LLVMDebugObject {
 
     public static final String FRAMESLOT_NAME = "\tSource-Level Values";
     private static final String GLOBALS_CONTAINER_NAME = "\tGlobal Variables";
-    private static final LLVMSourceType TYPE = new LLVMSourceType(() -> "", 0, 0, 0) {
+    private static final LLVMSourceType TYPE = new LLVMSourceType(() -> "", 0, 0, 0, null) {
         @Override
         public LLVMSourceType getOffset(long newOffset) {
             return this;

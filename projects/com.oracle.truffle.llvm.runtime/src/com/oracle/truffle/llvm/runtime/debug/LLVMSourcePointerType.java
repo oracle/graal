@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.debug;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 import java.util.function.Supplier;
 
@@ -40,12 +41,12 @@ public final class LLVMSourcePointerType extends LLVMSourceType {
 
     @CompilationFinal private LLVMSourceType baseType;
 
-    public LLVMSourcePointerType(long size, long align, long offset, boolean isSafeToDereference) {
-        this(LLVMSourceType.UNKNOWN_TYPE::getName, size, align, offset, LLVMSourceType.UNKNOWN_TYPE, isSafeToDereference);
+    public LLVMSourcePointerType(long size, long align, long offset, boolean isSafeToDereference, LLVMSourceLocation location) {
+        this(LLVMSourceType.UNKNOWN_TYPE::getName, size, align, offset, LLVMSourceType.UNKNOWN_TYPE, isSafeToDereference, location);
     }
 
-    private LLVMSourcePointerType(Supplier<String> nameSupplier, long size, long align, long offset, LLVMSourceType baseType, boolean isSafeToDereference) {
-        super(nameSupplier, size, align, offset);
+    private LLVMSourcePointerType(Supplier<String> nameSupplier, long size, long align, long offset, LLVMSourceType baseType, boolean isSafeToDereference, LLVMSourceLocation location) {
+        super(nameSupplier, size, align, offset, location);
         this.baseType = baseType;
         this.isSafeToDereference = isSafeToDereference;
     }
@@ -65,7 +66,7 @@ public final class LLVMSourcePointerType extends LLVMSourceType {
 
     @Override
     public LLVMSourceType getOffset(long newOffset) {
-        return new LLVMSourcePointerType(this::getName, getSize(), getAlign(), newOffset, baseType, isSafeToDereference);
+        return new LLVMSourcePointerType(this::getName, getSize(), getAlign(), newOffset, baseType, isSafeToDereference, getLocation());
     }
 
     @Override

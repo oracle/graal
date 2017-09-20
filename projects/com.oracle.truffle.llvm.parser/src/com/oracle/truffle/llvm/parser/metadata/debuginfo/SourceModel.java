@@ -33,6 +33,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
+import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.parser.metadata.MetadataList;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
@@ -52,6 +53,8 @@ import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFile;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
@@ -81,17 +84,20 @@ public final class SourceModel {
 
     public static final class Function {
 
+        private final Source bitcodeSource;
+
         private final FunctionDefinition definition;
 
         private final List<Variable> locals;
 
         private final List<Variable> globals;
 
-        private final Map<Instruction, SourceSection> instructions = new HashMap<>();
+        private final Map<Instruction, LLVMSourceLocation> instructions = new HashMap<>();
 
-        private SourceSection lexicalScope;
+        private LLVMSourceLocation lexicalScope;
 
-        private Function(FunctionDefinition definition, List<Variable> globals) {
+        private Function(Source bitcodeSource, FunctionDefinition definition, List<Variable> globals) {
+            this.bitcodeSource = bitcodeSource;
             this.definition = definition;
             this.globals = globals;
             this.locals = new ArrayList<>();
@@ -106,11 +112,23 @@ public final class SourceModel {
         }
 
         public SourceSection getSourceSection() {
-            return lexicalScope;
+            SourceSection section = null;
+            if (lexicalScope != null) {
+                section = lexicalScope.getSourceSection(true);
+            }
+
+            if (section == null) {
+                final String sourceText = String.format("%s:%s", bitcodeSource.getName(), definition.getName());
+                final Source irSource = Source.newBuilder(sourceText).mimeType(LLVMSourceFile.getMimeType(null)).name(sourceText).build();
+                section = irSource.createSection(1);
+            }
+
+            return section;
         }
 
         public SourceSection getSourceSection(Instruction instruction) {
-            return instructions.get(instruction);
+            final LLVMSourceLocation scope = instructions.get(instruction);
+            return scope != null ? scope.getSourceSection(false) : null;
         }
     }
 
@@ -158,8 +176,9 @@ public final class SourceModel {
 
     private static final class Parser implements ModelVisitor, FunctionVisitor, InstructionVisitorAdapter {
 
-        private final LexicalScopeExtractor lexicalScopeExtractor;
-        private final MDTypeExtractor typeExtractor;
+        private final DITypeIdentifier typeIdentifier;
+        private final DIScopeExtractor scopeExtractor;
+        private final DITypeExtractor typeExtractor;
         private final SourceModel sourceModel;
 
         private final MetadataList moduleMetadata;
@@ -167,59 +186,30 @@ public final class SourceModel {
 
         private Function currentFunction = null;
 
-        private SourceSection currentScopeStart = null;
-        private SourceSection currentScopeEnd = null;
-
         private Parser(MetadataList moduleMetadata, Source bitcodeSource) {
             this.moduleMetadata = moduleMetadata;
             this.bitcodeSource = bitcodeSource;
-            typeExtractor = new MDTypeExtractor();
-            this.typeExtractor.setScopeMetadata(moduleMetadata);
-            lexicalScopeExtractor = new LexicalScopeExtractor();
+            typeIdentifier = new DITypeIdentifier();
+            typeIdentifier.setMetadata(moduleMetadata);
+            scopeExtractor = new DIScopeExtractor(typeIdentifier);
+            typeExtractor = new DITypeExtractor(scopeExtractor, typeIdentifier);
             sourceModel = new SourceModel();
         }
 
         @Override
         public void visit(FunctionDefinition function) {
-            currentFunction = new Function(function, sourceModel.globals);
-            currentScopeStart = lexicalScopeExtractor.get(function);
-            currentScopeEnd = currentScopeStart;
-            typeExtractor.setScopeMetadata(function.getMetadata());
+            currentFunction = new Function(bitcodeSource, function, sourceModel.globals);
+            typeIdentifier.setMetadata(function.getMetadata());
+
+            if (function.hasAttachedMetadata()) {
+                final MDBaseNode scopeRef = function.getMetadataAttachment(MDKind.DBG_NAME);
+                currentFunction.lexicalScope = scopeExtractor.resolve(scopeRef);
+            }
 
             function.accept(this);
             function.setSourceFunction(currentFunction);
 
-            SourceSection lexicalScope;
-            if (currentScopeStart != null && currentScopeEnd != null) {
-                if (currentScopeStart != currentScopeEnd) {
-                    final int startIndex = currentScopeStart.getCharIndex();
-                    final int length = currentScopeEnd.getCharEndIndex() - startIndex;
-                    final Source source = currentScopeStart.getSource();
-                    // Truffle breakpoints are only hit if the text referenced by the SourceSection
-                    // of the corresponding node is fully contained in its rootnode's
-                    // sourcesection's text
-                    try {
-                        lexicalScope = source.createSection(startIndex, length);
-                    } catch (Throwable ignored) {
-                        // this might fail in case the source file was modified after compilation
-                        lexicalScope = null;
-                    }
-
-                } else {
-                    lexicalScope = currentScopeStart;
-                }
-
-            } else {
-                // debug information is not available or the current function is not included in it
-                final String sourceText = String.format("%s:%s", bitcodeSource.getName(), function.getName());
-                final Source irSource = Source.newBuilder(sourceText).mimeType(LexicalScopeExtractor.MIMETYPE_PLAINTEXT).name(sourceText).build();
-                lexicalScope = irSource.createSection(1);
-            }
-            currentFunction.lexicalScope = lexicalScope;
-
-            typeExtractor.setScopeMetadata(moduleMetadata);
-            currentScopeEnd = null;
-            currentScopeStart = null;
+            typeIdentifier.setMetadata(moduleMetadata);
             currentFunction = null;
         }
 
@@ -261,30 +251,12 @@ public final class SourceModel {
 
         @Override
         public void defaultAction(Instruction instruction) {
-            final SourceSection instructionScope = lexicalScopeExtractor.get(instruction);
-            if (instructionScope != null) {
-                currentFunction.instructions.put(instruction, instructionScope);
-            } else {
-                return;
-            }
-
-            if (currentScopeStart == null || currentScopeEnd == null) {
-                currentScopeStart = instructionScope;
-                currentScopeEnd = instructionScope;
-                return;
-            }
-
-            if (!currentScopeStart.getSource().equals(instructionScope.getSource())) {
-                // inlined functions should not extend the scope
-                return;
-            }
-
-            if (currentScopeEnd.getCharEndIndex() < instructionScope.getCharEndIndex()) {
-                currentScopeEnd = instructionScope;
-            }
-
-            if (currentScopeStart.getCharIndex() > instructionScope.getCharIndex()) {
-                currentScopeStart = instructionScope;
+            final MDLocation loc = instruction.getDebugLocation();
+            if (loc != null) {
+                final LLVMSourceLocation scope = scopeExtractor.resolve(loc);
+                if (scope != null) {
+                    currentFunction.instructions.put(instruction, scope);
+                }
             }
         }
 
