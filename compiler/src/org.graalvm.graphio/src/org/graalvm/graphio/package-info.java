@@ -32,9 +32,9 @@
  *
  * {@link org.graalvm.graphio.GraphSnippets#acmeGraphStructure}
  *
- * Just a few methods makes it simple, doesn't it? The {@link org.graalvm.graphio.GraphStructure}
- * interface defines the set of operations that are needed by the <em>graph protocol</em> to encode
- * a graph into the <b>IGV</b> expected format. The graph structure is implemented as a so called
+ * The {@link org.graalvm.graphio.GraphStructure} interface defines the set of operations that are
+ * needed by the <em>graph protocol</em> to encode a graph into the <b>IGV</b> expected format. The
+ * graph structure is implemented as a so called
  * <a href="http://wiki.apidesign.org/wiki/Singletonizer">singletonizer</a> API pattern: there is no
  * need to change your data structures or implement some special interfaces - everything needed is
  * provided by implementing the {@link org.graalvm.graphio.GraphStructure} operations.
