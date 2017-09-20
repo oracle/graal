@@ -35,6 +35,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
 import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
+import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.parser.metadata.MetadataList;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
@@ -119,7 +120,7 @@ public final class SourceModel {
 
         public SourceSection getSourceSection(Instruction instruction) {
             final LLVMSourceLocation scope = instructions.get(instruction);
-            return scope != null ? scope.getSourceSection() : null;
+            return scope != null ? scope.getSourceSection(false) : null;
         }
 
         public LLVMSourceLocation getLexicalScope() {
@@ -177,6 +178,9 @@ public final class SourceModel {
 
     private static final class Parser implements ModelVisitor, FunctionVisitor, InstructionVisitorAdapter {
 
+        private final DITypeIdentifier typeIdentifier;
+        private final DIScopeExtractor scopeExtractor;
+        private final DITypeExtractor typeExtractor;
         private static MDBaseNode getDebugInfo(MetadataAttachmentHolder holder) {
             if (holder.hasAttachedMetadata()) {
                 return holder.getMetadataAttachment(MDKind.DBG_NAME);
@@ -236,13 +240,12 @@ public final class SourceModel {
 
         @Override
         public void visit(FunctionDefinition function) {
-            currentFunction = new Function(bitcodeSource, function);
+            currentFunction = new Function(bitcodeSource, function, sourceModel.globals);
             typeIdentifier.setMetadata(function.getMetadata());
 
-            final MDBaseNode debugInfo = getDebugInfo(function);
-            if (debugInfo != null) {
-                final LLVMSourceLocation scope = scopeExtractor.resolve(debugInfo);
-                currentFunction.setLexicalScope(scope);
+            if (function.hasAttachedMetadata()) {
+                final MDBaseNode scopeRef = function.getMetadataAttachment(MDKind.DBG_NAME);
+                currentFunction.setLexicalScope(scopeExtractor.resolve(scopeRef));
             }
 
             function.accept(this);
