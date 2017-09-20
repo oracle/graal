@@ -20,23 +20,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.dsl.test.processor;
+package com.oracle.truffle.api.dsl.test;
 
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeFactory;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
-public class NodeFactoryTest {
+/**
+ * Tests a {@link NodeFactory} for a {@link Node} with parametrized type(s) in constructor.
+ */
+public class NodeFactoryParametrizedTypesTest {
 
-    /**
-     * Tests a {@link NodeFactory} for a {@link Node} with parametrized type(s) in constructor.
-     */
     @GenerateNodeFactory
-    abstract class MyNode extends Node {
-        private final NodeFactory<? extends MyNode> factory;
+    abstract static class BaseNode extends Node {
+        public Object execute(@SuppressWarnings("unused") VirtualFrame frame) {
+            throw new UnsupportedOperationException();
+        }
+    }
 
-        MyNode(final NodeFactory<? extends MyNode> factory) {
-            this.factory = factory;
+    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
+    abstract static class BinaryNode extends BaseNode {
+
+        BinaryNode(@SuppressWarnings("unused") final NodeFactory<? extends BinaryNode> factory) {
+        }
+
+        abstract Object executeBinary(Object left, Object right);
+
+        @Specialization
+        Object executeForeign(@SuppressWarnings("unused") TruffleObject left, @SuppressWarnings("unused") TruffleObject right) {
+            throw new UnsupportedOperationException("Unsupported");
         }
     }
 }
