@@ -40,6 +40,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -54,6 +55,7 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+import java.util.function.Supplier;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.util.EconomicMap;
@@ -98,6 +100,7 @@ public final class DebugContext implements AutoCloseable {
     CloseableCounter currentMemUseTracker;
     Scope lastClosedScope;
     Throwable lastExceptionThrown;
+    private IgvDumpChannel sharedChannel;
 
     /**
      * Stores the {@link MetricKey} values.
@@ -376,7 +379,7 @@ public final class DebugContext implements AutoCloseable {
             List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
             List<DebugVerifyHandler> verifyHandlers = new ArrayList<>();
             for (DebugHandlersFactory factory : factories) {
-                for (DebugHandler handler : factory.createHandlers(options)) {
+                for (DebugHandler handler : factory.createHandlers(this::sharedChannel, options)) {
                     if (handler instanceof DebugDumpHandler) {
                         dumpHandlers.add((DebugDumpHandler) handler);
                     } else {
@@ -392,6 +395,13 @@ public final class DebugContext implements AutoCloseable {
         } else {
             metricsEnabled = immutable.hasUnscopedMetrics() || immutable.listMetrics;
         }
+    }
+
+    private WritableByteChannel sharedChannel(Supplier<Path> pathProvider) {
+        if (sharedChannel == null) {
+            sharedChannel = new IgvDumpChannel(pathProvider, immutable.options);
+        }
+        return sharedChannel;
     }
 
     /**
@@ -1090,7 +1100,7 @@ public final class DebugContext implements AutoCloseable {
             OptionValues options = getOptions();
             dumpHandlers = new ArrayList<>();
             for (DebugHandlersFactory factory : DebugHandlersFactory.LOADER) {
-                for (DebugHandler handler : factory.createHandlers(options)) {
+                for (DebugHandler handler : factory.createHandlers(this::sharedChannel, options)) {
                     if (handler instanceof DebugDumpHandler) {
                         dumpHandlers.add((DebugDumpHandler) handler);
                     }

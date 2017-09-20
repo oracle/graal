@@ -260,7 +260,7 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
     private StructuredGraph currentGraph;
     private Path currentDirectory;
 
-    private Path getDirectory(StructuredGraph graph) throws IOException {
+    private Path getDirectory(StructuredGraph graph) {
         if (graph == currentGraph) {
             return currentDirectory;
         }

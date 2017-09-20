@@ -29,11 +29,15 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.channels.WritableByteChannel;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Formatter;
 import java.util.List;
 
+import java.util.function.Function;
+import java.util.function.Supplier;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
@@ -60,7 +64,7 @@ public class DebugContextTest {
         final ByteArrayOutputStream logOutput = new ByteArrayOutputStream();
         DebugHandlersFactory handlers = new DebugHandlersFactory() {
             @Override
-            public List<DebugHandler> createHandlers(OptionValues options) {
+            public List<DebugHandler> createHandlers(Function<Supplier<Path>, WritableByteChannel> createOutput, OptionValues options) {
                 return Arrays.asList(new DebugDumpHandler() {
                     @Override
                     public void dump(DebugContext ignore, Object object, String format, Object... arguments) {

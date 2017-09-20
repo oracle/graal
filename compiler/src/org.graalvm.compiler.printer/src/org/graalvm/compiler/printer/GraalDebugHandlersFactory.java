@@ -22,30 +22,22 @@
  */
 package org.graalvm.compiler.printer;
 
-import static org.graalvm.compiler.debug.DebugOptions.PrintBinaryGraphPort;
-import static org.graalvm.compiler.debug.DebugOptions.PrintBinaryGraphs;
-import static org.graalvm.compiler.debug.DebugOptions.PrintGraphHost;
-import static org.graalvm.compiler.debug.DebugOptions.PrintXmlGraphPort;
-import static org.graalvm.compiler.debug.DebugOptions.ShowDumpFiles;
-
 import java.io.File;
 import java.io.IOException;
-import java.io.InterruptedIOException;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.nio.channels.ClosedByInterruptException;
-import java.nio.channels.FileChannel;
-import java.nio.channels.SocketChannel;
+import java.io.OutputStream;
+import java.nio.channels.Channels;
+import java.nio.channels.WritableByteChannel;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.Assertions;
@@ -54,8 +46,10 @@ import org.graalvm.compiler.debug.DebugDumpHandler;
 import org.graalvm.compiler.debug.DebugHandler;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugOptions;
-import org.graalvm.compiler.debug.TTY;
+import static org.graalvm.compiler.debug.DebugOptions.PrintBinaryGraphs;
+import static org.graalvm.compiler.debug.DebugOptions.ShowDumpFiles;
 import org.graalvm.compiler.debug.PathUtilities;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodeinfo.Verbosity;
@@ -78,13 +72,9 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
     }
 
     @Override
-    public List<DebugHandler> createHandlers(OptionValues options) {
+    public List<DebugHandler> createHandlers(Function<Supplier<Path>, WritableByteChannel> sharedOutput, OptionValues options) {
         List<DebugHandler> handlers = new ArrayList<>();
-        if (DebugOptions.PrintGraphFile.getValue(options)) {
-            handlers.add(new GraphPrinterDumpHandler((graph) -> createFilePrinter(graph, options, snippetReflection)));
-        } else {
-            handlers.add(new GraphPrinterDumpHandler((graph) -> createNetworkPrinter(graph, options, snippetReflection)));
-        }
+        handlers.add(new GraphPrinterDumpHandler((graph) -> createPrinter(graph, sharedOutput, options)));
         if (DebugOptions.PrintCanonicalGraphStrings.getValue(options)) {
             handlers.add(new GraphPrinterDumpHandler((graph) -> createStringPrinter(snippetReflection)));
         }
@@ -99,81 +89,15 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
         return handlers;
     }
 
-    private static class NodeDumper implements DebugDumpHandler {
-        @Override
-        public void dump(DebugContext debug, Object object, String format, Object... arguments) {
-            if (object instanceof Node) {
-                Node node = (Node) object;
-                String location = GraphUtil.approxSourceLocation(node);
-                String nodeName = node.toString(Verbosity.Debugger);
-                if (location != null) {
-                    debug.log("Context obj %s (approx. location: %s)", nodeName, location);
-                } else {
-                    debug.log("Context obj %s", nodeName);
-                }
-            }
+    private GraphPrinter createPrinter(Graph graph, Function<Supplier<Path>, WritableByteChannel> outputSupplier, OptionValues options) throws IOException {
+        WritableByteChannel channel = outputSupplier.apply(() -> createDumpPath(options, graph, PrintBinaryGraphs.getValue(options) ? "bgv" : "gv.xml", false));
+        if (DebugOptions.PrintBinaryGraphs.getValue(options)) {
+            return new BinaryGraphPrinter(channel, snippetReflection);
+        } else {
+            OutputStream out = Channels.newOutputStream(channel);
+            return new IdealGraphPrinter(out, true, snippetReflection);
         }
     }
-
-    private static CanonicalStringGraphPrinter createStringPrinter(SnippetReflectionProvider snippetReflection) {
-        return new CanonicalStringGraphPrinter(snippetReflection);
-    }
-
-    public static String sanitizedFileName(String n) {
-        /*
-         * First ensure that the name does not contain the directory separator (which would be
-         * considered a valid path).
-         */
-        String name = n.replace(File.separatorChar, '_');
-
-        try {
-            Paths.get(name);
-            return name;
-        } catch (InvalidPathException e) {
-            // fall through
-        }
-        StringBuilder buf = new StringBuilder(name.length());
-        for (int i = 0; i < name.length(); i++) {
-            char c = name.charAt(i);
-            try {
-                Paths.get(String.valueOf(c));
-            } catch (InvalidPathException e) {
-                buf.append('_');
-            }
-            buf.append(c);
-        }
-        return buf.toString();
-    }
-
-    private static GraphPrinter createNetworkPrinter(Graph graph, OptionValues options, SnippetReflectionProvider snippetReflection) throws IOException {
-        String host = PrintGraphHost.getValue(options);
-        int port = PrintBinaryGraphs.getValue(options) ? PrintBinaryGraphPort.getValue(options) : PrintXmlGraphPort.getValue(options);
-        try {
-            GraphPrinter printer;
-            if (DebugOptions.PrintBinaryGraphs.getValue(options)) {
-                printer = new BinaryGraphPrinter(SocketChannel.open(new InetSocketAddress(host, port)), snippetReflection);
-            } else {
-                printer = new IdealGraphPrinter(new Socket(host, port).getOutputStream(), true, snippetReflection);
-            }
-            TTY.println("Connected to the IGV on %s:%d", host, port);
-            return printer;
-        } catch (ClosedByInterruptException | InterruptedIOException e) {
-            /*
-             * Interrupts should not count as errors because they may be caused by a cancelled Graal
-             * compilation. ClosedByInterruptException occurs if the SocketChannel could not be
-             * opened. InterruptedIOException occurs if new Socket(..) was interrupted.
-             */
-            return null;
-        } catch (IOException e) {
-            if (!DebugOptions.PrintGraphFile.hasBeenSet(options)) {
-                return createFilePrinter(graph, options, snippetReflection);
-            } else {
-                throw new IOException(String.format("Could not connect to the IGV on %s:%d", host, port), e);
-            }
-        }
-    }
-
-    private static final AtomicInteger unknownCompilationId = new AtomicInteger();
 
     /**
      * Creates a new file or directory for dumping based on a given graph and a file extension.
@@ -183,9 +107,8 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
      *            path separated by a {@code "."}
      * @param createDirectory specifies if this is a request to create a directory instead of a file
      * @return the created directory or file
-     * @throws IOException if there was an error creating the directory or file
      */
-    static Path createDumpPath(OptionValues options, Graph graph, String extension, boolean createDirectory) throws IOException {
+    static Path createDumpPath(OptionValues options, Graph graph, String extension, boolean createDirectory) {
         CompilationIdentifier compilationId = CompilationIdentifier.INVALID_COMPILATION_ID;
         String id = null;
         String label = null;
@@ -203,12 +126,19 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
             id = "UnknownCompilation-" + unknownCompilationId.incrementAndGet();
         }
         String ext = PathUtilities.formatExtension(extension);
-        Path result = createUnique(DebugOptions.getDumpDirectory(options), id, label, ext, createDirectory);
+        Path result;
+        try {
+            result = createUnique(DebugOptions.getDumpDirectory(options), id, label, ext, createDirectory);
+        } catch (IOException ex) {
+            throw rethrowSilently(RuntimeException.class, ex);
+        }
         if (ShowDumpFiles.getValue(options) || Assertions.assertionsEnabled()) {
             TTY.println("Dumping debug output to %s", result.toAbsolutePath().toString());
         }
         return result;
     }
+
+    private static final AtomicInteger unknownCompilationId = new AtomicInteger();
 
     /**
      * A maximum file name length supported by most file systems. There is no platform independent
@@ -218,7 +148,7 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
 
     private static final String ELLIPSIS = "...";
 
-    private static Path createUnique(Path dumpDir, String id, String label, String ext, boolean createDirectory) throws IOException {
+    private static Path createUnique(Path dumpDir, String id, String label, String ext, boolean createDirectory) {
         String timestamp = "";
         for (;;) {
             int fileNameLengthWithoutLabel = timestamp.length() + ext.length() + id.length() + "[]".length();
@@ -249,6 +179,8 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
                 }
             } catch (FileAlreadyExistsException e) {
                 timestamp = "_" + Long.toString(System.currentTimeMillis());
+            } catch (IOException ex) {
+                throw rethrowSilently(RuntimeException.class, ex);
             }
         }
     }
@@ -263,18 +195,55 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
         }
     }
 
-    private static GraphPrinter createFilePrinter(Graph graph, OptionValues options, SnippetReflectionProvider snippetReflection) throws IOException {
-        Path path = createDumpPath(options, graph, PrintBinaryGraphs.getValue(options) ? "bgv" : "gv.xml", false);
+    public static String sanitizedFileName(String n) {
+        /*
+         * First ensure that the name does not contain the directory separator (which would be
+         * considered a valid path).
+         */
+        String name = n.replace(File.separatorChar, '_');
+
         try {
-            GraphPrinter printer;
-            if (DebugOptions.PrintBinaryGraphs.getValue(options)) {
-                printer = new BinaryGraphPrinter(FileChannel.open(path, StandardOpenOption.WRITE), snippetReflection);
-            } else {
-                printer = new IdealGraphPrinter(Files.newOutputStream(path), true, snippetReflection);
+            Paths.get(name);
+            return name;
+        } catch (InvalidPathException e) {
+            // fall through
+        }
+        StringBuilder buf = new StringBuilder(name.length());
+        for (int i = 0; i < name.length(); i++) {
+            char c = name.charAt(i);
+            try {
+                Paths.get(String.valueOf(c));
+            } catch (InvalidPathException e) {
+                buf.append('_');
             }
-            return printer;
-        } catch (IOException e) {
-            throw new IOException(String.format("Failed to open %s to dump IGV graphs", path), e);
+            buf.append(c);
+        }
+        return buf.toString();
+    }
+
+    private static class NodeDumper implements DebugDumpHandler {
+        @Override
+        public void dump(DebugContext debug, Object object, String format, Object... arguments) {
+            if (object instanceof Node) {
+                Node node = (Node) object;
+                String location = GraphUtil.approxSourceLocation(node);
+                String nodeName = node.toString(Verbosity.Debugger);
+                if (location != null) {
+                    debug.log("Context obj %s (approx. location: %s)", nodeName, location);
+                } else {
+                    debug.log("Context obj %s", nodeName);
+                }
+            }
         }
     }
+
+    private static CanonicalStringGraphPrinter createStringPrinter(SnippetReflectionProvider snippetReflection) {
+        return new CanonicalStringGraphPrinter(snippetReflection);
+    }
+
+    @SuppressWarnings({"unused", "unchecked"})
+    private static <E extends Exception> E rethrowSilently(Class<E> type, Throwable ex) throws E {
+        throw (E) ex;
+    }
+
 }
