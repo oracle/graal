@@ -43,7 +43,6 @@ import org.graalvm.compiler.loop.phases.LoopTransformations;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.AbstractLocalNode;
 import org.graalvm.compiler.nodes.EntryMarkerNode;
 import org.graalvm.compiler.nodes.EntryProxyNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
@@ -75,9 +74,6 @@ import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 
 import jdk.vm.ci.runtime.JVMCICompiler;
-import org.graalvm.util.EconomicMap;
-import org.graalvm.util.MapCursor;
-import org.graalvm.util.Pair;
 
 public class OnStackReplacementPhase extends Phase {
 
@@ -175,7 +171,6 @@ public class OnStackReplacementPhase extends Phase {
         final int localsSize = osrState.localsSize();
         final int locksSize = osrState.locksSize();
 
-        EconomicMap<OSRLocalNode, Pair<ObjectStamp, SpeculationReason>> speculationTargets = EconomicMap.create();
         for (int i = 0; i < localsSize + locksSize; i++) {
             ValueNode value = null;
             if (i >= localsSize) {
@@ -192,35 +187,31 @@ public class OnStackReplacementPhase extends Phase {
                  */
                 Stamp narrowedStamp = proxy.value().stamp();
                 Stamp unrestrictedStamp = proxy.stamp().unrestricted();
-                AbstractLocalNode osrLocal;
+                ValueNode osrLocal;
                 if (i >= localsSize) {
                     osrLocal = graph.addOrUnique(new OSRLockNode(i - localsSize, unrestrictedStamp));
                 } else {
                     osrLocal = graph.addOrUnique(new OSRLocalNode(i, unrestrictedStamp));
                 }
+                // Speculate on the OSRLocal stamps that could be more precise.
                 OSRLocalSpeculationReason reason = new OSRLocalSpeculationReason(osrState.bci, narrowedStamp, i);
                 if (graph.getSpeculationLog().maySpeculate(reason) && osrLocal instanceof OSRLocalNode && value.getStackKind().equals(JavaKind.Object) && !narrowedStamp.isUnrestricted()) {
-                    speculationTargets.put((OSRLocalNode) osrLocal, Pair.create((ObjectStamp) narrowedStamp, reason));
+                    // Add guard.
+                    LogicNode check = graph.addOrUnique(InstanceOfNode.createHelper((ObjectStamp) narrowedStamp, osrLocal, null, null));
+                    JavaConstant constant = graph.getSpeculationLog().speculate(reason);
+                    FixedGuardNode guard = graph.add(new FixedGuardNode(check, DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile, constant, false));
+                    graph.addAfterFixed(osrStart, guard);
+
+                    // Replace with a more specific type at usages.
+                    // We know that we are at the root,
+                    // so we need to replace the proxy in the state.
+                    proxy.replaceAtMatchingUsages(osrLocal, n -> n == osrState);
+                    osrLocal = graph.addOrUnique(new PiNode(osrLocal, narrowedStamp, guard));
                 }
                 proxy.replaceAndDelete(osrLocal);
             } else {
                 assert value == null || value instanceof OSRLocalNode;
             }
-        }
-        // Speculate on the OSRLocal stamps that could be more precise.
-        MapCursor<OSRLocalNode, Pair<ObjectStamp, SpeculationReason>> cursor = speculationTargets.getEntries();
-        while (cursor.advance()) {
-            // Add guard.
-            OSRLocalNode osrLocal = cursor.getKey();
-            Pair<ObjectStamp, SpeculationReason> info = cursor.getValue();
-            LogicNode check = graph.addOrUnique(InstanceOfNode.createHelper(info.getLeft(), osrLocal, null, null));
-            JavaConstant constant = graph.getSpeculationLog().speculate(info.getRight());
-            FixedGuardNode guard = graph.add(new FixedGuardNode(check, DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile, constant, false));
-            graph.addAfterFixed(osrStart, guard);
-
-            // Replace with a more specific type at usages.
-            PiNode narrowed = graph.addOrUnique(new PiNode(osrLocal, info.getLeft(), guard));
-            osrLocal.replaceAtMatchingUsages(narrowed, n -> n != narrowed && n != check);
         }
 
         osr.replaceAtUsages(InputType.Guard, osrStart);
