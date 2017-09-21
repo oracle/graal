@@ -11,6 +11,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Deprecated all String based API in Source and SourceSection and replaced it with CharSequence based APIs. Automated migration with Jackpot rules is available (run `mx jackpot --apply`).
 * Added [Source.Builder.language](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/source/Source.Builder.html#language-java.lang.String-) and [Source.getLanguage](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/source/Source.html#getLanguage--) to be able to set/get source langauge in addition to MIME type.
 * Added the [inCompilationRoot](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/CompilerDirectives.html#inCompilationRoot--) compiler directive.
+* Deprecated TruffleBoundary#throwsControlFlowException and introduced TruffleBoundary#transferToInterpreterOnException.
 
 ## Version 0.27
 16-Aug-2017
