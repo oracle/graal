@@ -39,4 +39,4 @@ bin/%.bc: bin/%.noopt.bc
 
 bin/%.noopt.bc: src/%.c
 	@mkdir -p bin
-	clang -c -emit-llvm -o $@ ${SULONG_MAKE_CLANG_IMPLICIT_ARGS} $+
+	clang -c -emit-llvm -o $@ ${CFLAGS} $+

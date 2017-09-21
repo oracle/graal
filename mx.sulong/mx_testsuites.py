@@ -320,6 +320,7 @@ class SulongTestSuite(mx.NativeProject):
         env['TESTS'] = ' '.join(self.getTests())
         env['VARIANTS'] = ' '.join(self.getVariants())
         env['BUILD_REF'] = '1' if self.getBuildRef() else '0'
+        env['SULONG_MAKE_CLANG_IMPLICIT_ARGS'] = mx_sulong.getClangImplicitArgs()
         if SulongTestSuite.haveDragonegg():
             env['DRAGONEGG'] = mx_sulong.dragonEggPath()
             env['DRAGONEGG_GCC'] = mx_sulong.getGCC()

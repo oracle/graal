@@ -467,9 +467,14 @@ def getLLVMVersion(llvmProgram):
         return printLLVMVersion.group(3)
 
 # the makefiles do not check which version of clang they invoke
-mainLLVMVersion = getLLVMVersion('clang')
-if mainLLVMVersion and mainLLVMVersion.startswith('5'):
-    os.environ['SULONG_MAKE_CLANG_IMPLICIT_ARGS'] = "-Xclang -disable-O0-optnone"
+def getClangImplicitArgs():
+    mainLLVMVersion = getLLVMVersion('clang')
+    if mainLLVMVersion and mainLLVMVersion.startswith('5'):
+        return "-Xclang -disable-O0-optnone"
+    else:
+        return ""
+
+mx_subst.path_substitutions.register_no_arg('clangImplicitArgs', getClangImplicitArgs)
 
 def getGCCVersion(gccProgram):
     """executes the program with --version and extracts the GCC version string"""
