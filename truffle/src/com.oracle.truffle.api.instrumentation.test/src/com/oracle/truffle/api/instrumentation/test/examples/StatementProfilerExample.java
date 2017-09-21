@@ -41,7 +41,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.SourceSection;
 
-@Registration(id = StatementProfilerExample.ID)
+@Registration(id = StatementProfilerExample.ID, services = Object.class)
 public class StatementProfilerExample extends TruffleInstrument {
 
     public static final String ID = "test-profiler";

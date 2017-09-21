@@ -1207,7 +1207,7 @@ public abstract class TruffleLanguage<C> {
         public CallTarget parse(Source source, String... argumentNames) {
             CompilerAsserts.neverPartOfCompilation();
             checkDisposed();
-            return AccessAPI.engineAccess().getEnvForLanguage(vmObject, source.getMimeType()).spi.parse(source, null, null, argumentNames);
+            return AccessAPI.engineAccess().getEnvForLanguage(vmObject, source.getLanguage(), source.getMimeType()).spi.parse(source, null, null, argumentNames);
         }
 
         /**

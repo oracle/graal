@@ -354,7 +354,7 @@ public abstract class TruffleInstrument {
          * @since 0.12
          */
         public CallTarget parse(Source source, String... argumentNames) throws IOException {
-            TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(vmObject, source.getMimeType());
+            TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(vmObject, source.getLanguage(), source.getMimeType());
             return AccessorInstrumentHandler.langAccess().parse(env, source, null, argumentNames);
         }
 

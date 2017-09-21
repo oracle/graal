@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.instrumentation.test;
+
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 
 /**
- * A service that provides access to a {@link TruffleRuntime} implementation.
- *
- * @since 0.8 or earlier
+ * An instrument whose functionality can be enabled or disabled.
  */
-public interface TruffleRuntimeAccess {
+abstract class EnableableInstrument extends TruffleInstrument {
 
-    /**
-     * Gets the {@link TruffleRuntime} implementation available via this access object.
-     *
-     * @since 0.8 or earlier
-     */
-    TruffleRuntime getRuntime();
+    private Env env;
 
-    /**
-     * Allows disambiguation if more than one {@link TruffleRuntime} implementation is available.
-     *
-     * @since 0.28
-     */
-    default int getPriority() {
-        return 0;
+    @Override
+    protected final void onCreate(Env newEnv) {
+        newEnv.registerService(this);
+        this.env = newEnv;
+        setEnabled(true);
     }
+
+    @Override
+    protected final void onDispose(Env oldEnv) {
+        setEnabled(false);
+    }
+
+    protected final Env getEnv() {
+        return env;
+    }
+
+    public abstract void setEnabled(boolean enabled);
+
 }

@@ -22,182 +22,6 @@
  */
 package org.graalvm.compiler.java;
 
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.code.site.InfopointReason;
-import jdk.vm.ci.meta.ConstantPool;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaField;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaMethod;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.JavaTypeProfile;
-import jdk.vm.ci.meta.JavaTypeProfile.ProfiledType;
-import jdk.vm.ci.meta.LineNumberTable;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ProfilingInfo;
-import jdk.vm.ci.meta.RawConstant;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
-import jdk.vm.ci.meta.TriState;
-import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.bytecode.Bytecode;
-import org.graalvm.compiler.bytecode.BytecodeDisassembler;
-import org.graalvm.compiler.bytecode.BytecodeLookupSwitch;
-import org.graalvm.compiler.bytecode.BytecodeProvider;
-import org.graalvm.compiler.bytecode.BytecodeStream;
-import org.graalvm.compiler.bytecode.BytecodeSwitch;
-import org.graalvm.compiler.bytecode.BytecodeTableSwitch;
-import org.graalvm.compiler.bytecode.Bytecodes;
-import org.graalvm.compiler.bytecode.Bytes;
-import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
-import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
-import org.graalvm.compiler.core.common.PermanentBailoutException;
-import org.graalvm.compiler.core.common.calc.Condition;
-import org.graalvm.compiler.core.common.calc.FloatConvert;
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.core.common.type.ObjectStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.StampPair;
-import org.graalvm.compiler.core.common.type.TypeReference;
-import org.graalvm.compiler.core.common.util.Util;
-import org.graalvm.compiler.debug.Assertions;
-import org.graalvm.compiler.debug.CounterKey;
-import org.graalvm.compiler.debug.DebugCloseable;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.graph.Graph.Mark;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.java.BciBlockMapping.BciBlock;
-import org.graalvm.compiler.java.BciBlockMapping.ExceptionDispatchBlock;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.AbstractMergeNode;
-import org.graalvm.compiler.nodes.BeginNode;
-import org.graalvm.compiler.nodes.BeginStateSplitNode;
-import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.ControlSplitNode;
-import org.graalvm.compiler.nodes.DeoptimizeNode;
-import org.graalvm.compiler.nodes.EndNode;
-import org.graalvm.compiler.nodes.EntryMarkerNode;
-import org.graalvm.compiler.nodes.EntryProxyNode;
-import org.graalvm.compiler.nodes.FieldLocationIdentity;
-import org.graalvm.compiler.nodes.FixedGuardNode;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.FullInfopointNode;
-import org.graalvm.compiler.nodes.IfNode;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.InvokeNode;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.KillingBeginNode;
-import org.graalvm.compiler.nodes.LogicConstantNode;
-import org.graalvm.compiler.nodes.LogicNegationNode;
-import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.LoopBeginNode;
-import org.graalvm.compiler.nodes.LoopEndNode;
-import org.graalvm.compiler.nodes.LoopExitNode;
-import org.graalvm.compiler.nodes.MergeNode;
-import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.PiNode;
-import org.graalvm.compiler.nodes.ReturnNode;
-import org.graalvm.compiler.nodes.StartNode;
-import org.graalvm.compiler.nodes.StateSplit;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.UnwindNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.AddNode;
-import org.graalvm.compiler.nodes.calc.AndNode;
-import org.graalvm.compiler.nodes.calc.CompareNode;
-import org.graalvm.compiler.nodes.calc.ConditionalNode;
-import org.graalvm.compiler.nodes.calc.DivNode;
-import org.graalvm.compiler.nodes.calc.FloatConvertNode;
-import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
-import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
-import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
-import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.calc.LeftShiftNode;
-import org.graalvm.compiler.nodes.calc.MulNode;
-import org.graalvm.compiler.nodes.calc.NarrowNode;
-import org.graalvm.compiler.nodes.calc.NegateNode;
-import org.graalvm.compiler.nodes.calc.NormalizeCompareNode;
-import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
-import org.graalvm.compiler.nodes.calc.OrNode;
-import org.graalvm.compiler.nodes.calc.RemNode;
-import org.graalvm.compiler.nodes.calc.RightShiftNode;
-import org.graalvm.compiler.nodes.calc.SignExtendNode;
-import org.graalvm.compiler.nodes.calc.SignedDivNode;
-import org.graalvm.compiler.nodes.calc.SignedRemNode;
-import org.graalvm.compiler.nodes.calc.SubNode;
-import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
-import org.graalvm.compiler.nodes.calc.XorNode;
-import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
-import org.graalvm.compiler.nodes.extended.AnchoringNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
-import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
-import org.graalvm.compiler.nodes.extended.LoadHubNode;
-import org.graalvm.compiler.nodes.extended.LoadMethodNode;
-import org.graalvm.compiler.nodes.extended.MembarNode;
-import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
-import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.InvocationPluginReceiver;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvokeDynamicPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.ProfilingPlugin;
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
-import org.graalvm.compiler.nodes.java.FinalFieldBarrierNode;
-import org.graalvm.compiler.nodes.java.InstanceOfNode;
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
-import org.graalvm.compiler.nodes.java.LoadIndexedNode;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.java.MonitorEnterNode;
-import org.graalvm.compiler.nodes.java.MonitorExitNode;
-import org.graalvm.compiler.nodes.java.MonitorIdNode;
-import org.graalvm.compiler.nodes.java.NewArrayNode;
-import org.graalvm.compiler.nodes.java.NewInstanceNode;
-import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
-import org.graalvm.compiler.nodes.java.RegisterFinalizerNode;
-import org.graalvm.compiler.nodes.java.StoreFieldNode;
-import org.graalvm.compiler.nodes.java.StoreIndexedNode;
-import org.graalvm.compiler.nodes.spi.StampProvider;
-import org.graalvm.compiler.nodes.type.StampTool;
-import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.util.ValueMergeUtil;
-import org.graalvm.util.EconomicMap;
-import org.graalvm.util.Equivalence;
-import org.graalvm.word.LocationIdentity;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Formatter;
-import java.util.List;
-
 import static java.lang.String.format;
 import static java.lang.reflect.Modifier.STATIC;
 import static java.lang.reflect.Modifier.SYNCHRONIZED;
@@ -434,6 +258,183 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PAT
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_DURING_PARSING;
 import static org.graalvm.compiler.nodes.type.StampTool.isPointerNonNull;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Formatter;
+import java.util.List;
+
+import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.bytecode.Bytecode;
+import org.graalvm.compiler.bytecode.BytecodeDisassembler;
+import org.graalvm.compiler.bytecode.BytecodeLookupSwitch;
+import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.bytecode.BytecodeStream;
+import org.graalvm.compiler.bytecode.BytecodeSwitch;
+import org.graalvm.compiler.bytecode.BytecodeTableSwitch;
+import org.graalvm.compiler.bytecode.Bytecodes;
+import org.graalvm.compiler.bytecode.Bytes;
+import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
+import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
+import org.graalvm.compiler.core.common.PermanentBailoutException;
+import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.calc.FloatConvert;
+import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.core.common.type.TypeReference;
+import org.graalvm.compiler.core.common.util.Util;
+import org.graalvm.compiler.debug.Assertions;
+import org.graalvm.compiler.debug.CounterKey;
+import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.graph.Graph.Mark;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.java.BciBlockMapping.BciBlock;
+import org.graalvm.compiler.java.BciBlockMapping.ExceptionDispatchBlock;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.AbstractMergeNode;
+import org.graalvm.compiler.nodes.BeginNode;
+import org.graalvm.compiler.nodes.BeginStateSplitNode;
+import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.ControlSplitNode;
+import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.EndNode;
+import org.graalvm.compiler.nodes.EntryMarkerNode;
+import org.graalvm.compiler.nodes.EntryProxyNode;
+import org.graalvm.compiler.nodes.FieldLocationIdentity;
+import org.graalvm.compiler.nodes.FixedGuardNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.FullInfopointNode;
+import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.InvokeNode;
+import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
+import org.graalvm.compiler.nodes.KillingBeginNode;
+import org.graalvm.compiler.nodes.LogicConstantNode;
+import org.graalvm.compiler.nodes.LogicNegationNode;
+import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.LoopBeginNode;
+import org.graalvm.compiler.nodes.LoopEndNode;
+import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.compiler.nodes.MergeNode;
+import org.graalvm.compiler.nodes.ParameterNode;
+import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.ReturnNode;
+import org.graalvm.compiler.nodes.StartNode;
+import org.graalvm.compiler.nodes.StateSplit;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.UnwindNode;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.calc.AndNode;
+import org.graalvm.compiler.nodes.calc.CompareNode;
+import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.nodes.calc.DivNode;
+import org.graalvm.compiler.nodes.calc.FloatConvertNode;
+import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
+import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
+import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
+import org.graalvm.compiler.nodes.calc.IsNullNode;
+import org.graalvm.compiler.nodes.calc.LeftShiftNode;
+import org.graalvm.compiler.nodes.calc.MulNode;
+import org.graalvm.compiler.nodes.calc.NarrowNode;
+import org.graalvm.compiler.nodes.calc.NegateNode;
+import org.graalvm.compiler.nodes.calc.NormalizeCompareNode;
+import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
+import org.graalvm.compiler.nodes.calc.OrNode;
+import org.graalvm.compiler.nodes.calc.RemNode;
+import org.graalvm.compiler.nodes.calc.RightShiftNode;
+import org.graalvm.compiler.nodes.calc.SignExtendNode;
+import org.graalvm.compiler.nodes.calc.SignedDivNode;
+import org.graalvm.compiler.nodes.calc.SignedRemNode;
+import org.graalvm.compiler.nodes.calc.SubNode;
+import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
+import org.graalvm.compiler.nodes.calc.XorNode;
+import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
+import org.graalvm.compiler.nodes.extended.AnchoringNode;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
+import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
+import org.graalvm.compiler.nodes.extended.LoadHubNode;
+import org.graalvm.compiler.nodes.extended.LoadMethodNode;
+import org.graalvm.compiler.nodes.extended.MembarNode;
+import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
+import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvokeDynamicPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
+import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.InvocationPluginReceiver;
+import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.ProfilingPlugin;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
+import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
+import org.graalvm.compiler.nodes.java.FinalFieldBarrierNode;
+import org.graalvm.compiler.nodes.java.InstanceOfNode;
+import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.nodes.java.LoadIndexedNode;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.java.MonitorEnterNode;
+import org.graalvm.compiler.nodes.java.MonitorExitNode;
+import org.graalvm.compiler.nodes.java.MonitorIdNode;
+import org.graalvm.compiler.nodes.java.NewArrayNode;
+import org.graalvm.compiler.nodes.java.NewInstanceNode;
+import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
+import org.graalvm.compiler.nodes.java.RegisterFinalizerNode;
+import org.graalvm.compiler.nodes.java.StoreFieldNode;
+import org.graalvm.compiler.nodes.java.StoreIndexedNode;
+import org.graalvm.compiler.nodes.spi.StampProvider;
+import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.util.ValueMergeUtil;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.Equivalence;
+import org.graalvm.word.LocationIdentity;
+
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.code.site.InfopointReason;
+import jdk.vm.ci.meta.ConstantPool;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaField;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.JavaTypeProfile.ProfiledType;
+import jdk.vm.ci.meta.LineNumberTable;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.RawConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
+import jdk.vm.ci.meta.TriState;
 
 /**
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
@@ -1035,7 +1036,7 @@ public class BytecodeParser implements GraphBuilderContext {
         deopt.updateNodeSourcePosition(() -> createBytecodePosition());
     }
 
-    private AbstractBeginNode handleException(ValueNode exceptionObject, int bci, boolean deoptimizeOnly) {
+    private AbstractBeginNode handleException(ValueNode exceptionObject, int bci) {
         assert bci == BytecodeFrame.BEFORE_BCI || bci == bci() : "invalid bci";
         debug.log("Creating exception dispatch edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, (profilingInfo == null ? "" : profilingInfo.getExceptionSeen(bci)));
 
@@ -1057,12 +1058,8 @@ public class BytecodeParser implements GraphBuilderContext {
         this.controlFlowSplit = true;
         FixedWithNextNode finishedDispatch = finishInstruction(dispatchBegin, dispatchState);
 
-        if (deoptimizeOnly) {
-            DeoptimizeNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter));
-            dispatchBegin.setNext(BeginNode.begin(deoptimizeNode));
-        } else {
-            createHandleExceptionTarget(finishedDispatch, bci, dispatchState);
-        }
+        createHandleExceptionTarget(finishedDispatch, bci, dispatchState);
+
         return dispatchBegin;
     }
 
@@ -1218,7 +1215,7 @@ public class BytecodeParser implements GraphBuilderContext {
         ValueNode exception = frameState.pop(JavaKind.Object);
         FixedGuardNode nullCheck = append(new FixedGuardNode(graph.addOrUniqueWithInputs(IsNullNode.create(exception)), NullCheckException, InvalidateReprofile, true));
         ValueNode nonNullException = graph.maybeAddOrUnique(PiNode.create(exception, exception.stamp().join(objectNonNull()), nullCheck));
-        lastInstr.setNext(handleException(nonNullException, bci(), false));
+        lastInstr.setNext(handleException(nonNullException, bci()));
     }
 
     protected LogicNode createInstanceOf(TypeReference type, ValueNode object) {
@@ -1283,7 +1280,7 @@ public class BytecodeParser implements GraphBuilderContext {
         lastInstr = falseSucc;
 
         exception.setStateAfter(createFrameState(bci(), exception));
-        exception.setNext(handleException(exception, bci(), false));
+        exception.setNext(handleException(exception, bci()));
         EXPLICIT_EXCEPTIONS.increment(debug);
         return nonNullReceiver;
     }
@@ -1295,7 +1292,7 @@ public class BytecodeParser implements GraphBuilderContext {
         lastInstr = trueSucc;
 
         exception.setStateAfter(createFrameState(bci(), exception));
-        exception.setNext(handleException(exception, bci(), false));
+        exception.setNext(handleException(exception, bci()));
     }
 
     protected ValueNode genArrayLength(ValueNode x) {
@@ -1535,8 +1532,8 @@ public class BytecodeParser implements GraphBuilderContext {
     @Override
     public void handleReplacedInvoke(CallTargetNode callTarget, JavaKind resultType) {
         BytecodeParser intrinsicCallSiteParser = getNonIntrinsicAncestor();
-        ExceptionEdgeAction exceptionEdgeAction = intrinsicCallSiteParser == null ? getActionForInvokeExceptionEdge(null) : intrinsicCallSiteParser.getActionForInvokeExceptionEdge(null);
-        createNonInlinedInvoke(exceptionEdgeAction, bci(), callTarget, resultType);
+        boolean withExceptionEdge = intrinsicCallSiteParser == null ? !omitInvokeExceptionEdge(null) : !intrinsicCallSiteParser.omitInvokeExceptionEdge(null);
+        createNonInlinedInvoke(withExceptionEdge, bci(), callTarget, resultType);
     }
 
     protected Invoke appendInvoke(InvokeKind initialInvokeKind, ResolvedJavaMethod initialTargetMethod, ValueNode[] args) {
@@ -1606,7 +1603,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
         int invokeBci = bci();
         JavaTypeProfile profile = getProfileForInvoke(invokeKind);
-        ExceptionEdgeAction edgeAction = getActionForInvokeExceptionEdge(inlineInfo);
+        boolean withExceptionEdge = !omitInvokeExceptionEdge(inlineInfo);
         boolean partialIntrinsicExit = false;
         if (intrinsicContext != null && intrinsicContext.isCallToOriginal(targetMethod)) {
             partialIntrinsicExit = true;
@@ -1617,7 +1614,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 // must use the same context as the call to the intrinsic.
                 invokeBci = intrinsicCallSiteParser.bci();
                 profile = intrinsicCallSiteParser.getProfileForInvoke(invokeKind);
-                edgeAction = intrinsicCallSiteParser.getActionForInvokeExceptionEdge(inlineInfo);
+                withExceptionEdge = !intrinsicCallSiteParser.omitInvokeExceptionEdge(inlineInfo);
             } else {
                 // We are parsing the intrinsic for the root compilation or for inlining,
                 // This call is a partial intrinsic exit, and we do not have profile information
@@ -1627,7 +1624,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 assert intrinsicContext.isPostParseInlined();
                 invokeBci = BytecodeFrame.UNKNOWN_BCI;
                 profile = null;
-                edgeAction = graph.method().getAnnotation(Snippet.class) == null ? ExceptionEdgeAction.INCLUDE_AND_HANDLE : ExceptionEdgeAction.OMIT;
+                withExceptionEdge = graph.method().getAnnotation(Snippet.class) == null;
             }
 
             if (originalMethod.isStatic()) {
@@ -1643,7 +1640,7 @@ public class BytecodeParser implements GraphBuilderContext {
             assert checkPartialIntrinsicExit(intrinsicCallSiteParser == null ? null : intrinsicCallSiteParser.currentInvoke.args, args);
             targetMethod = originalMethod;
         }
-        Invoke invoke = createNonInlinedInvoke(edgeAction, invokeBci, args, targetMethod, invokeKind, resultType, returnType, profile);
+        Invoke invoke = createNonInlinedInvoke(withExceptionEdge, invokeBci, args, targetMethod, invokeKind, resultType, returnType, profile);
         if (partialIntrinsicExit) {
             // This invoke must never be later inlined as it might select the intrinsic graph.
             // Until there is a mechanism to guarantee that any late inlining will not select
@@ -1701,14 +1698,14 @@ public class BytecodeParser implements GraphBuilderContext {
         } else {
             for (int i = 0; i < recursiveArgs.length; i++) {
                 ValueNode arg = GraphUtil.unproxify(recursiveArgs[i]);
-                assert arg instanceof ParameterNode && ((ParameterNode) arg).index() == i : String.format("argument %d of call denoting partial intrinsic exit should be a %s with index %d, not %s",
-                                i, ParameterNode.class.getSimpleName(), i, arg);
+                assert arg instanceof ParameterNode && ((ParameterNode) arg).index() == i : String.format("argument %d of call denoting partial intrinsic exit should be a %s with index %d, not %s", i,
+                                ParameterNode.class.getSimpleName(), i, arg);
             }
         }
         return true;
     }
 
-    protected Invoke createNonInlinedInvoke(ExceptionEdgeAction exceptionEdge, int invokeBci, ValueNode[] invokeArgs, ResolvedJavaMethod targetMethod,
+    protected Invoke createNonInlinedInvoke(boolean withExceptionEdge, int invokeBci, ValueNode[] invokeArgs, ResolvedJavaMethod targetMethod,
                     InvokeKind invokeKind, JavaKind resultType, JavaType returnType, JavaTypeProfile profile) {
 
         StampPair returnStamp = graphBuilderConfig.getPlugins().getOverridingStamp(this, returnType, false);
@@ -1717,7 +1714,7 @@ public class BytecodeParser implements GraphBuilderContext {
         }
 
         MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, targetMethod, invokeArgs, returnStamp, profile));
-        Invoke invoke = createNonInlinedInvoke(exceptionEdge, invokeBci, callTarget, resultType);
+        Invoke invoke = createNonInlinedInvoke(withExceptionEdge, invokeBci, callTarget, resultType);
 
         for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
             plugin.notifyNotInlined(this, targetMethod, invoke);
@@ -1726,11 +1723,11 @@ public class BytecodeParser implements GraphBuilderContext {
         return invoke;
     }
 
-    protected Invoke createNonInlinedInvoke(ExceptionEdgeAction exceptionEdge, int invokeBci, CallTargetNode callTarget, JavaKind resultType) {
-        if (exceptionEdge == ExceptionEdgeAction.OMIT) {
+    protected Invoke createNonInlinedInvoke(boolean withExceptionEdge, int invokeBci, CallTargetNode callTarget, JavaKind resultType) {
+        if (!withExceptionEdge) {
             return createInvoke(invokeBci, callTarget, resultType);
         } else {
-            Invoke invoke = createInvokeWithException(invokeBci, callTarget, resultType, exceptionEdge);
+            Invoke invoke = createInvokeWithException(invokeBci, callTarget, resultType);
             AbstractBeginNode beginNode = graph.add(KillingBeginNode.create(LocationIdentity.any()));
             invoke.setNext(beginNode);
             lastInstr = beginNode;
@@ -1739,29 +1736,20 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     /**
-     * Describes what should be done with the exception edge of an invocation. The edge can be
-     * omitted or included. An included edge can handle the exception or transfer execution to the
-     * interpreter for handling (deoptimize).
+     * If the method returns true, the invocation of the given {@link MethodCallTargetNode call
+     * target} does not need an exception edge.
      */
-    protected enum ExceptionEdgeAction {
-        OMIT,
-        INCLUDE_AND_HANDLE,
-        INCLUDE_AND_DEOPTIMIZE
-    }
-
-    protected ExceptionEdgeAction getActionForInvokeExceptionEdge(InlineInfo lastInlineInfo) {
+    protected boolean omitInvokeExceptionEdge(InlineInfo lastInlineInfo) {
         if (lastInlineInfo == InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION) {
-            return ExceptionEdgeAction.INCLUDE_AND_HANDLE;
+            return false;
         } else if (lastInlineInfo == InlineInfo.DO_NOT_INLINE_NO_EXCEPTION) {
-            return ExceptionEdgeAction.OMIT;
-        } else if (lastInlineInfo == InlineInfo.DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION) {
-            return ExceptionEdgeAction.INCLUDE_AND_DEOPTIMIZE;
+            return true;
         } else if (graphBuilderConfig.getBytecodeExceptionMode() == BytecodeExceptionMode.CheckAll) {
-            return ExceptionEdgeAction.INCLUDE_AND_HANDLE;
+            return false;
         } else if (graphBuilderConfig.getBytecodeExceptionMode() == BytecodeExceptionMode.ExplicitOnly) {
-            return ExceptionEdgeAction.INCLUDE_AND_HANDLE;
+            return false;
         } else if (graphBuilderConfig.getBytecodeExceptionMode() == BytecodeExceptionMode.OmitAll) {
-            return ExceptionEdgeAction.OMIT;
+            return true;
         } else {
             assert graphBuilderConfig.getBytecodeExceptionMode() == BytecodeExceptionMode.Profile;
             // be conservative if information was not recorded (could result in endless
@@ -1771,12 +1759,12 @@ public class BytecodeParser implements GraphBuilderContext {
                     if (profilingInfo != null) {
                         TriState exceptionSeen = profilingInfo.getExceptionSeen(bci());
                         if (exceptionSeen == TriState.FALSE) {
-                            return ExceptionEdgeAction.OMIT;
+                            return true;
                         }
                     }
                 }
             }
-            return ExceptionEdgeAction.INCLUDE_AND_HANDLE;
+            return false;
         }
     }
 
@@ -1978,7 +1966,7 @@ public class BytecodeParser implements GraphBuilderContext {
                     }
 
                     lastInstr = intrinsicGuard.nonIntrinsicBranch;
-                    createNonInlinedInvoke(getActionForInvokeExceptionEdge(null), bci(), args, targetMethod, invokeKind, resultType, returnType, intrinsicGuard.profile);
+                    createNonInlinedInvoke(omitInvokeExceptionEdge(null), bci(), args, targetMethod, invokeKind, resultType, returnType, intrinsicGuard.profile);
 
                     EndNode nonIntrinsicEnd = append(new EndNode());
                     AbstractMergeNode mergeNode = graph.add(new MergeNode());
@@ -2315,7 +2303,7 @@ public class BytecodeParser implements GraphBuilderContext {
             if (calleeBeforeUnwindNode != null) {
                 ValueNode calleeUnwindValue = parser.getUnwindValue();
                 assert calleeUnwindValue != null;
-                calleeBeforeUnwindNode.setNext(handleException(calleeUnwindValue, bci(), false));
+                calleeBeforeUnwindNode.setNext(handleException(calleeUnwindValue, bci()));
             }
         }
     }
@@ -2331,7 +2319,7 @@ public class BytecodeParser implements GraphBuilderContext {
         return invoke;
     }
 
-    protected InvokeWithExceptionNode createInvokeWithException(int invokeBci, CallTargetNode callTarget, JavaKind resultType, ExceptionEdgeAction exceptionEdgeAction) {
+    protected InvokeWithExceptionNode createInvokeWithException(int invokeBci, CallTargetNode callTarget, JavaKind resultType) {
         if (currentBlock != null && stream.nextBCI() > currentBlock.endBci) {
             /*
              * Clear non-live locals early so that the exception handler entry gets the cleared
@@ -2340,7 +2328,7 @@ public class BytecodeParser implements GraphBuilderContext {
             frameState.clearNonLiveLocals(currentBlock, liveness, false);
         }
 
-        AbstractBeginNode exceptionEdge = handleException(null, bci(), exceptionEdgeAction == ExceptionEdgeAction.INCLUDE_AND_DEOPTIMIZE);
+        AbstractBeginNode exceptionEdge = handleException(null, bci());
         InvokeWithExceptionNode invoke = append(new InvokeWithExceptionNode(callTarget, exceptionEdge, invokeBci));
         frameState.pushReturn(resultType, invoke);
         invoke.setStateAfter(createFrameState(stream.nextBCI(), invoke));
