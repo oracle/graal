@@ -31,7 +31,7 @@
 **/build.xml
 **/core.*
 **/eclipse-launches/
-**/env/
+**/env
 **/hs_err_pid*.log
 **/javadoc/**/*
 **/mx.imports/
