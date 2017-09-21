@@ -128,6 +128,7 @@ public abstract class Source {
     private final URI uri;
     private final String name;
     private String mimeType;
+    private String languageId;
     private final boolean internal;
     private final boolean interactive;
     private volatile TextMap textMap;
@@ -250,9 +251,10 @@ public abstract class Source {
         return builder.toString();
     }
 
-    Source(Content content, String mimeType, URI uri, String name, boolean internal, boolean interactive) {
+    Source(Content content, String mimeType, String languageId, URI uri, String name, boolean internal, boolean interactive) {
         this.content = content;
         this.mimeType = mimeType;
+        this.languageId = languageId;
         this.name = name;
         this.internal = internal;
         this.interactive = interactive;
@@ -683,6 +685,17 @@ public abstract class Source {
         return mimeType;
     }
 
+    /**
+     * Returns the language this source was created with.
+     *
+     * @return the language of this source or <code>null</code>, if unknown
+     * @since 0.28
+     * @see Builder#language(java.lang.String)
+     */
+    public String getLanguage() {
+        return languageId;
+    }
+
     final boolean equalAttributes(Source other) {
         return Objects.equals(getMimeType(), other.getMimeType()) &&
                         Objects.equals(getName(), other.getName()) &&
@@ -742,6 +755,7 @@ public abstract class Source {
         private String name;
         private String path;
         private String mime;
+        private String language;
         private CharSequence content;
         private boolean internal;
         private boolean interactive;
@@ -770,7 +784,7 @@ public abstract class Source {
         }
 
         /**
-         * Explicitly assignes a {@link Source#getMimeType() MIME type} to the {@link #build()
+         * Explicitly assigns a {@link Source#getMimeType() MIME type} to the {@link #build()
          * to-be-built} {@link Source}. This method returns the builder parametrized with
          * {@link Source} type parameter to signal to the compiler that it is safe to call
          * {@link #build()} method and create an instance of a {@link Source}. Example:
@@ -785,6 +799,24 @@ public abstract class Source {
         public Builder<E1, RuntimeException, E3> mimeType(String newMimeType) {
             Objects.requireNonNull(newMimeType);
             this.mime = newMimeType;
+            return (Builder<E1, RuntimeException, E3>) this;
+        }
+
+        /**
+         * Assigns a language ID to the {@link #build() to-be-built} {@link Source}. After a
+         * language ID is set, it's not necessary to assign the MIME type.
+         *
+         * @param newLanguage the id of the language
+         * @return instance of <code>this</code> builder
+         * @since 0.28
+         */
+        @SuppressWarnings("unchecked")
+        public Builder<E1, RuntimeException, E3> language(String newLanguage) {
+            Objects.requireNonNull(newLanguage);
+            if (this.mime == null) {
+                this.mime = "x-unknown";
+            }
+            this.language = newLanguage;
             return (Builder<E1, RuntimeException, E3>) this;
         }
 
@@ -918,7 +950,7 @@ public abstract class Source {
                 if (content != null) {
                     holder.code = content;
                 }
-                SourceImpl ret = new SourceImpl(holder, type, uri, name, internal, interactive);
+                SourceImpl ret = new SourceImpl(holder, type, language, uri, name, internal, interactive);
                 if (ret.getName() == null) {
                     throw raise(RuntimeException.class, new MissingNameException());
                 }
