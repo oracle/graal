@@ -219,7 +219,7 @@ public class OnStackReplacementPhase extends Phase {
             graph.addAfterFixed(osrStart, guard);
 
             // Replace with a more specific type at usages.
-            PiNode narrowed = graph.addOrUnique(new PiNode(osrLocal, info.getLeft()));
+            PiNode narrowed = graph.addOrUnique(new PiNode(osrLocal, info.getLeft(), guard));
             osrLocal.replaceAtMatchingUsages(narrowed, n -> n != narrowed && n != check);
         }
 
