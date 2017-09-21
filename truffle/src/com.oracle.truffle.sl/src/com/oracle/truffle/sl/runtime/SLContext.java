@@ -233,8 +233,10 @@ public final class SLContext {
      */
 
     public static Object fromForeignValue(Object a) {
-        if (a instanceof Long || a instanceof BigInteger || a instanceof String) {
+        if (a instanceof Long || a instanceof BigInteger || a instanceof String || a instanceof Boolean) {
             return a;
+        } else if (a instanceof Character) {
+            return String.valueOf(a);
         } else if (a instanceof Number) {
             return fromForeignNumber(a);
         } else if (a instanceof TruffleObject) {
