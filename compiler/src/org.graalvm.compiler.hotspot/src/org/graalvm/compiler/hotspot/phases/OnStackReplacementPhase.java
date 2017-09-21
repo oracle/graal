@@ -192,7 +192,7 @@ public class OnStackReplacementPhase extends Phase {
                  */
                 Stamp narrowedStamp = proxy.value().stamp();
                 Stamp unrestrictedStamp = proxy.stamp().unrestricted();
-                AbstractLocalNode osrLocal = null;
+                AbstractLocalNode osrLocal;
                 if (i >= localsSize) {
                     osrLocal = graph.addOrUnique(new OSRLockNode(i - localsSize, unrestrictedStamp));
                 } else {
