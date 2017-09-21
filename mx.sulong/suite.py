@@ -240,6 +240,9 @@ suite = {
       "results" : [
         "bin/libsulong.bc",
       ],
+      "buildEnv" : {
+        "CFLAGS" : "<clangImplicitArgs>",
+      },
       "license" : "BSD-new",
     },
     "com.oracle.truffle.llvm.libraries.native" : {
