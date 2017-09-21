@@ -58,9 +58,10 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.api.vm.PolyglotRuntime;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
 
 /**
  * A test of {@link AllocationReporter}.
@@ -68,22 +69,21 @@ import com.oracle.truffle.api.vm.PolyglotRuntime;
 public class AllocationReporterTest {
 
     private TestAllocationReporter allocation;
-    private PolyglotEngine engine;
-    private PolyglotRuntime.Instrument instrument;
+    private Engine engine;
+    private org.graalvm.polyglot.Context context;
+    private Instrument instrument;
 
     @Before
     public void setUp() {
-        PolyglotRuntime runtime = PolyglotRuntime.newBuilder().build();
-        instrument = runtime.getInstruments().get("testAllocationReporter");
-        instrument.setEnabled(true);
+        engine = Engine.create();
+        instrument = engine.getInstruments().get("testAllocationReporter");
         allocation = instrument.lookup(TestAllocationReporter.class);
-        engine = PolyglotEngine.newBuilder().runtime(runtime).build();
+        context = org.graalvm.polyglot.Context.newBuilder().engine(engine).build();
     }
 
     @After
     public void tearDown() {
-        instrument.setEnabled(false);
-        engine.dispose();
+        engine.close();
     }
 
     /**
@@ -102,12 +102,12 @@ public class AllocationReporterTest {
 
     private void doTestAllocationReport(long[] estimatedSizes, long[] computedSizes) {
         // Items to allocate:
-        Source source = Source.newBuilder(
+        Source source = Source.create(AllocationReporterLanguage.ID,
                         "NEW\n" +
                                         "10\n" +
                                         "12345678901234\n" +
                                         "-1000\n" +
-                                        "8767584273645748301282734657402983457843901293874657867582034875\n").name("Allocations").mimeType(AllocationReporterLanguage.MIME_TYPE).build();
+                                        "8767584273645748301282734657402983457843901293874657867582034875\n");
         AtomicInteger consumerCalls = new AtomicInteger(0);
         allocation.setAllocationConsumers(
                         // NEW
@@ -188,13 +188,14 @@ public class AllocationReporterTest {
                             assertEquals(computedSizes[4], info.newSize);
                             consumerCalls.incrementAndGet();
                         });
-        engine.eval(source);
+        context.eval(source);
         assertEquals(10, consumerCalls.get());
     }
 
     @Test
     public void testFailedAllocations() {
-        Source source = Source.newBuilder("CanNotAllocateThisValue").name("FailedAllocations").mimeType(AllocationReporterLanguage.MIME_TYPE).build();
+        // failed allocation
+        Source source = Source.create(AllocationReporterLanguage.ID, "CanNotAllocateThisValue");
         AtomicInteger consumerCalls = new AtomicInteger(0);
         allocation.setAllocationConsumers(
                         (info) -> {
@@ -205,15 +206,17 @@ public class AllocationReporterTest {
                             consumerCalls.incrementAndGet();
                         });
         try {
-            engine.eval(source);
+            context.eval(source);
             fail();
-        } catch (NumberFormatException ex) {
+        } catch (PolyglotException ex) {
             // O.K.
+            assertTrue(ex.getMessage(), ex.getMessage().contains("NumberFormatException"));
         }
         assertEquals(1, consumerCalls.get());
         consumerCalls.set(0);
 
-        source = Source.newBuilder("12345678901234").name("TooBigAllocations").mimeType(AllocationReporterLanguage.MIME_TYPE).build();
+        // too big allocation
+        source = Source.create(AllocationReporterLanguage.ID, "12345678901234");
         allocation.setAllocationConsumers(
                         (info) -> {
                             assertTrue(info.will);
@@ -229,16 +232,18 @@ public class AllocationReporterTest {
                             consumerCalls.incrementAndGet();
                         });
         try {
-            engine.eval(source);
+            context.eval(source);
             fail();
-        } catch (OutOfMemoryError ex) {
+        } catch (PolyglotException ex) {
             // O.K.
-            assertEquals("Denied allocation of 8 bytes.", ex.getMessage());
+            assertTrue(ex.getMessage(), ex.getMessage().contains("OutOfMemoryError") &&
+                            ex.getMessage().contains("Denied allocation of 8 bytes."));
         }
         assertEquals(1, consumerCalls.get());
         consumerCalls.set(0);
 
-        source = Source.newBuilder("12345678901234->9876758023873465783492873465784938746502897345634897856").name("TooBigReallocations").mimeType(AllocationReporterLanguage.MIME_TYPE).build();
+        // Too big reallocation
+        source = Source.create(AllocationReporterLanguage.ID, "12345678901234->9876758023873465783492873465784938746502897345634897856");
         allocation.setAllocationConsumers(
                         (info) -> {
                             assertTrue(info.will);
@@ -252,10 +257,12 @@ public class AllocationReporterTest {
                             consumerCalls.incrementAndGet();
                         });
         try {
-            engine.eval(source);
+            context.eval(source);
             fail();
-        } catch (OutOfMemoryError ex) {
-            assertEquals("Denied an unknown reallocation.", ex.getMessage());
+        } catch (PolyglotException ex) {
+            // O.K.
+            assertTrue(ex.getMessage(), ex.getMessage().contains("OutOfMemoryError") &&
+                            ex.getMessage().contains("Denied an unknown reallocation."));
         }
         assertEquals(1, consumerCalls.get());
     }
@@ -265,11 +272,11 @@ public class AllocationReporterTest {
     public void testWrongAllocations() {
         // Test of wrong allocation reports
         // A call to allocated() without a prior notifyWill... fails:
-        Source source = Source.newBuilder("WRONG").name("AllocatedWithoutWill").mimeType(AllocationReporterLanguage.MIME_TYPE).build();
+        Source source = Source.create(AllocationReporterLanguage.ID, "WRONG");
         AtomicInteger consumerCalls = new AtomicInteger(0);
         allocation.setAllocationConsumers((info) -> consumerCalls.incrementAndGet());
         try {
-            engine.eval(source);
+            context.eval(source);
             fail();
         } catch (AssertionError err) {
             assertEquals("onEnter() was not called", err.getMessage());
@@ -279,25 +286,25 @@ public class AllocationReporterTest {
         // Have one notifyWillReallocate() call caused by NEW,
         // but denied to suppress the notifyAllocated().
         // Then call notifyAllocated() alone:
-        source = Source.newBuilder("10->10").name("willReallocate").mimeType(AllocationReporterLanguage.MIME_TYPE).build();
+        source = Source.create(AllocationReporterLanguage.ID, "10->10");
         allocation.setAllocationConsumers(
                         (info) -> {
                             consumerCalls.incrementAndGet();
                             throw new OutOfMemoryError("Denied one allocation.");
                         });
         try {
-            engine.eval(source);
+            context.eval(source);
             fail();
         } catch (OutOfMemoryError err) {
             // O.K.
         }
         assertEquals(1, consumerCalls.get());
-        source = Source.newBuilder("WRONG").name("AllocatedAfterDifferentWill").mimeType(AllocationReporterLanguage.MIME_TYPE).build();
+        source = Source.create(AllocationReporterLanguage.ID, "WRONG");
         allocation.setAllocationConsumers(
                         (info) -> consumerCalls.incrementAndGet(),
                         (info) -> consumerCalls.incrementAndGet());
         try {
-            engine.eval(source);
+            context.eval(source);
             fail();
         } catch (AssertionError err) {
             assertEquals("A different reallocated value. Was: 10 now is: NewObject", err.getMessage());
@@ -306,12 +313,12 @@ public class AllocationReporterTest {
         consumerCalls.set(0);
 
         // Exposal of internal values is not allowed
-        source = Source.newBuilder("INTERNAL").name("AllocatedInternalValue").mimeType(AllocationReporterLanguage.MIME_TYPE).build();
+        source = Source.create(AllocationReporterLanguage.ID, "INTERNAL");
         allocation.setAllocationConsumers(
                         (info) -> consumerCalls.incrementAndGet(),
                         (info) -> consumerCalls.incrementAndGet());
         try {
-            engine.eval(source);
+            context.eval(source);
             fail();
         } catch (AssertionError err) {
             assertEquals("Wrong value class, TruffleObject is required. Was: " + AllocationReporterLanguage.AllocValue.class.getName(), err.getMessage());
@@ -326,9 +333,8 @@ public class AllocationReporterTest {
     }
 
     private void doTestReallocationReport(long[] estimatedSizes, long[] computedSizes) {
-        Source source = Source.newBuilder(
-                        "NEW->10\n" + "8767584273645748301282734657402983457843901293874657867582034875->987364758928736457840187265789\n").name("Allocations").mimeType(
-                                        AllocationReporterLanguage.MIME_TYPE).build();
+        Source source = Source.create(AllocationReporterLanguage.ID,
+                        "NEW->10\n" + "8767584273645748301282734657402983457843901293874657867582034875->987364758928736457840187265789\n");
         AtomicInteger consumerCalls = new AtomicInteger(0);
         allocation.setAllocationConsumers(
                         // NEW -> 10
@@ -361,16 +367,16 @@ public class AllocationReporterTest {
                             assertEquals(computedSizes[3], info.newSize);
                             consumerCalls.incrementAndGet();
                         });
-        engine.eval(source);
+        context.eval(source);
         assertEquals(4, consumerCalls.get());
     }
 
     @Test
     public void testNestedAllocations() {
-        Source source = Source.newBuilder(
+        Source source = Source.create(AllocationReporterLanguage.ID,
                         "NEW { NEW }\n" +
                                         "10 { 20 30 { 1234567890123456789 } }\n" +
-                                        "12345678901234->897654123210445621235489 { 10->NEW { 20->NEW } 30->NEW }\n").name("NestedAllocations").mimeType(AllocationReporterLanguage.MIME_TYPE).build();
+                                        "12345678901234->897654123210445621235489 { 10->NEW { 20->NEW } 30->NEW }\n");
         AtomicInteger consumerCalls = new AtomicInteger(0);
         allocation.setAllocationConsumers(
                         // NEW { NEW }
@@ -515,18 +521,18 @@ public class AllocationReporterTest {
                             assertEquals(5, info.newSize);
                             consumerCalls.incrementAndGet();
                         });
-        engine.eval(source);
+        context.eval(source);
         assertEquals(20, consumerCalls.get());
     }
 
     @Test
     public void testUnregister() {
-        Source source = Source.newBuilder(
+        Source source = Source.create(AllocationReporterLanguage.ID,
                         "NEW\n" +
                                         "10\n" +
                                         "12345678901234\n" +
                                         "-1000\n" +
-                                        "8767584273645748301282734657402983457843901293874657867582034875\n").name("Allocations").mimeType(AllocationReporterLanguage.MIME_TYPE).build();
+                                        "8767584273645748301282734657402983457843901293874657867582034875\n");
         AtomicInteger consumerCalls = new AtomicInteger(0);
         allocation.setAllocationConsumers(
                         (info) -> consumerCalls.incrementAndGet(),
@@ -546,7 +552,7 @@ public class AllocationReporterTest {
 
                         (info) -> consumerCalls.incrementAndGet(),
                         (info) -> consumerCalls.incrementAndGet());
-        engine.eval(source);
+        context.eval(source);
         assertEquals(3, consumerCalls.get());
     }
 
@@ -560,18 +566,18 @@ public class AllocationReporterTest {
         }
 
         // Test of AllocationReporter property change listener notifications
-        instrument.setEnabled(false);
-        Source source = Source.newBuilder("NEW").name("AllocateLanguageWakeUp").mimeType(AllocationReporterLanguage.MIME_TYPE).build();
+        allocation.setEnabled(false);
+        Source source = Source.create(AllocationReporterLanguage.ID, "NEW");
         allocation.setAllocationConsumers((info) -> {
         }, (info) -> {
         });
-        engine.eval(source);
-        AllocationReporter reporter = (AllocationReporter) engine.findGlobalSymbol(AllocationReporter.class.getSimpleName()).get();
+        context.eval(source);
+        AllocationReporter reporter = (AllocationReporter) context.importSymbol(AllocationReporter.class.getSimpleName()).asHostObject();
         AtomicInteger listenerCalls = new AtomicInteger(0);
         AllocationReporterListener activatedListener = AllocationReporterListener.register(listenerCalls, reporter);
         assertEquals(0, listenerCalls.get());
         assertFalse(reporter.isActive());
-        instrument.setEnabled(true);
+        allocation.setEnabled(true);
         assertEquals(1, listenerCalls.get());
         activatedListener.unregister();
         listenerCalls.set(0);
@@ -579,7 +585,7 @@ public class AllocationReporterTest {
         AllocationDeactivatedListener deactivatedListener = AllocationDeactivatedListener.register(listenerCalls, reporter);
         assertEquals(0, listenerCalls.get());
         assertTrue(reporter.isActive());
-        instrument.setEnabled(false);
+        allocation.setEnabled(false);
         assertEquals(1, listenerCalls.get());
         deactivatedListener.unregister();
     }
@@ -596,9 +602,10 @@ public class AllocationReporterTest {
      * <li>{ &lt;command&gt; ... } allocations nested under the previous command</li>
      * </ul>
      */
-    @TruffleLanguage.Registration(mimeType = AllocationReporterLanguage.MIME_TYPE, name = "Allocation Reporter Language", version = "1.0")
+    @TruffleLanguage.Registration(id = AllocationReporterLanguage.ID, mimeType = AllocationReporterLanguage.MIME_TYPE, name = "Allocation Reporter Language", version = "1.0")
     public static class AllocationReporterLanguage extends TruffleLanguage<AllocationReporter> {
 
+        public static final String ID = "truffle-allocation-reporter-language";
         public static final String MIME_TYPE = "application/x-truffle-allocation-reporter-language";
         public static final String PROP_SIZE_CALLS = "sizeCalls";
 
@@ -627,7 +634,7 @@ public class AllocationReporterTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            final Source code = request.getSource();
+            final com.oracle.truffle.api.source.Source code = request.getSource();
             return Truffle.getRuntime().createCallTarget(new RootNode(this) {
 
                 @Node.Child private AllocNode alloc = parse(code.getCharacters().toString());
@@ -772,7 +779,7 @@ public class AllocationReporterTest {
             public Object execute(VirtualFrame frame) {
                 Object value;
                 if (newValue == null) { // No allocation
-                    value = null;
+                    value = InstrumentationTestLanguage.Null.INSTANCE;
                     execChildren(frame);
                 } else if (oldValue == null) {
                     // new allocation
@@ -912,23 +919,21 @@ public class AllocationReporterTest {
         }
     }
 
-    @TruffleInstrument.Registration(id = "testAllocationReporter")
-    public static class TestAllocationReporter extends TruffleInstrument implements AllocationListener {
+    @TruffleInstrument.Registration(id = "testAllocationReporter", services = TestAllocationReporter.class)
+    public static class TestAllocationReporter extends EnableableInstrument implements AllocationListener {
 
         private EventBinding<TestAllocationReporter> allocationEventBinding;
         private Consumer<AllocationInfo>[] allocationConsumers;
         private int consumersIndex = 0;
 
         @Override
-        protected void onCreate(TruffleInstrument.Env env) {
-            env.registerService(this);
-            LanguageInfo testLanguage = env.getLanguages().get(AllocationReporterLanguage.MIME_TYPE);
-            allocationEventBinding = env.getInstrumenter().attachAllocationListener(AllocationEventFilter.newBuilder().languages(testLanguage).build(), this);
-        }
-
-        @Override
-        protected void onDispose(Env env) {
-            allocationEventBinding.dispose();
+        public void setEnabled(boolean enabled) {
+            if (enabled) {
+                LanguageInfo testLanguage = getEnv().getLanguages().get(AllocationReporterLanguage.ID);
+                allocationEventBinding = getEnv().getInstrumenter().attachAllocationListener(AllocationEventFilter.newBuilder().languages(testLanguage).build(), this);
+            } else {
+                allocationEventBinding.dispose();
+            }
         }
 
         @SafeVarargs
