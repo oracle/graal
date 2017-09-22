@@ -685,7 +685,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         assureEnabled(engine.getInstruments().get("testInstrumentAll"));
         run("STATEMENT");
 
-        Assert.assertEquals(1, TestInstrumentAll1.onStatement);
+        // An implicit root node + statement
+        Assert.assertEquals(2, TestInstrumentAll1.onStatement);
     }
 
     @Registration(id = "testInstrumentAll", services = Object.class)
@@ -721,7 +722,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         assureEnabled(engine.getInstruments().get("testInstrumentNonInstrumentable"));
         run("DEFINE(foo, ROOT())");
 
-        Assert.assertEquals(0, TestInstrumentNonInstrumentable1.onStatement);
+        // DEFINE is not instrumentable, only ROOT is.
+        Assert.assertEquals(1, TestInstrumentNonInstrumentable1.onStatement);
     }
 
     @Registration(id = "testInstrumentNonInstrumentable", services = Object.class)
@@ -1292,7 +1294,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         TestLangInitialized.initializationEvents = true;
         TestLangInitialized service = instrument.lookup(TestLangInitialized.class);
         run("LOOP(2, STATEMENT())");
-        assertEquals("[StatementNode, false, ExpressionNode, false, ExpressionNode, false, LoopNode, true, StatementNode, true, StatementNode, true]", service.getEnteredNodes());
+        assertEquals("[FunctionRootNode, false, StatementNode, false, ExpressionNode, false, ExpressionNode, false, FunctionRootNode, true, LoopNode, true, StatementNode, true, StatementNode, true]",
+                        service.getEnteredNodes());
         engine.close();
         engine = null;
     }
@@ -1307,7 +1310,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         TestLangInitialized.initializationEvents = false;
         TestLangInitialized service = instrument.lookup(TestLangInitialized.class);
         run("LOOP(2, STATEMENT())");
-        assertEquals("[LoopNode, true, StatementNode, true, StatementNode, true]", service.getEnteredNodes());
+        assertEquals("[FunctionRootNode, true, LoopNode, true, StatementNode, true, StatementNode, true]", service.getEnteredNodes());
         engine.close();
         engine = null;
     }
@@ -1322,7 +1325,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         TestLangInitialized.initializationEvents = true;
         TestLangInitialized service = instrument.lookup(TestLangInitialized.class);
         run("LOOP(2, STATEMENT())");
-        assertEquals("[StatementNode, false, ExpressionNode, false, ExpressionNode, false, LoopNode, true, StatementNode, true, StatementNode, true, StatementNode, true, ExpressionNode, true, ExpressionNode, true]",
+        assertEquals("[FunctionRootNode, false, StatementNode, false, ExpressionNode, false, ExpressionNode, false, " +
+                        "FunctionRootNode, true, LoopNode, true, StatementNode, true, StatementNode, true, FunctionRootNode, true, StatementNode, true, ExpressionNode, true, ExpressionNode, true]",
                         service.getEnteredNodes());
         engine.close();
         engine = null;
@@ -1339,7 +1343,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         TestLangInitialized.initializationEvents = false;
         TestLangInitialized service = instrument.lookup(TestLangInitialized.class);
         run("LOOP(2, STATEMENT())");
-        assertEquals("[LoopNode, true, StatementNode, true, StatementNode, true, StatementNode, true, ExpressionNode, true, ExpressionNode, true]", service.getEnteredNodes());
+        assertEquals("[FunctionRootNode, true, LoopNode, true, StatementNode, true, StatementNode, true, FunctionRootNode, true, StatementNode, true, ExpressionNode, true, ExpressionNode, true]",
+                        service.getEnteredNodes());
         engine.close();
         engine = null;
     }

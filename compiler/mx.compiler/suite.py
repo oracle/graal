@@ -1152,6 +1152,7 @@ suite = {
       "dependencies" : [
         "mx:JMH_1_18",
         "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_INSTRUMENT_TEST",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
@@ -1533,6 +1534,7 @@ suite = {
       ],
       "distDependencies" : [
         "GRAAL_TEST",
+        "truffle:TRUFFLE_INSTRUMENT_TEST",
       ],
     },
 

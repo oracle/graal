@@ -76,7 +76,7 @@ public class ProfilerTest extends AbstractInstrumentationTest {
         assertEvalOut(source, "");
 
         counters = profiler.getCounters();
-        Assert.assertEquals(4, counters.size());
+        Assert.assertEquals(8, counters.size());
         Assert.assertTrue(profiler.isCollecting());
         Assert.assertFalse(profiler.isTiming());
         Assert.assertTrue(profiler.hasData());
@@ -154,7 +154,7 @@ public class ProfilerTest extends AbstractInstrumentationTest {
         Assert.assertFalse(profiler.hasData());
 
         counters = profiler.getCounters();
-        Assert.assertEquals(4, counters.size());
+        Assert.assertEquals(8, counters.size());
 
         for (int i = 0; i < 10000; i++) {
             assertEvalOut(source, "");
@@ -197,7 +197,7 @@ public class ProfilerTest extends AbstractInstrumentationTest {
         assertEvalOut(source, "");
 
         counters = profiler.getCounters();
-        Assert.assertEquals(4, counters.size());
+        Assert.assertEquals(8, counters.size());
         Assert.assertTrue(profiler.isCollecting());
         Assert.assertFalse(profiler.isTiming());
         Assert.assertTrue(profiler.hasData());
