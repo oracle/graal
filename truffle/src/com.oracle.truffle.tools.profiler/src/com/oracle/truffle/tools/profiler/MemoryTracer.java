@@ -34,6 +34,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionKey;
@@ -44,10 +45,13 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
@@ -159,7 +163,12 @@ public final class MemoryTracer implements Closeable {
 
     private boolean stackOverflowed = false;
 
-    private static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).sourceIs(s -> !s.isInternal()).build();
+    private static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).sourceIs(new SourceSectionFilter.SourcePredicate() {
+        @Override
+        public boolean test(Source source) {
+            return !source.isInternal();
+        }
+    }).build();
 
     void resetTracer() {
         assert Thread.holdsLock(this);
@@ -322,7 +331,12 @@ public final class MemoryTracer implements Closeable {
     private void computeMetaObjectHistogramImpl(Collection<CallTreeNode<AllocationPayload>> children, Map<String, List<AllocationEventInfo>> histogram) {
         for (CallTreeNode<AllocationPayload> treeNode : children) {
             for (AllocationEventInfo info : treeNode.getPayload().getEvents()) {
-                List<AllocationEventInfo> nodes = histogram.computeIfAbsent(info.getMetaObjectString(), (String k) -> new ArrayList<>());
+                List<AllocationEventInfo> nodes = histogram.computeIfAbsent(info.getMetaObjectString(), new Function<String, List<AllocationEventInfo>>() {
+                    @Override
+                    public List<AllocationEventInfo> apply(String s) {
+                        return new ArrayList<>();
+                    }
+                });
                 nodes.add(info);
             }
             computeMetaObjectHistogramImpl(treeNode.getChildren(), histogram);
@@ -345,7 +359,12 @@ public final class MemoryTracer implements Closeable {
 
     private void computeSourceLocationHistogramImpl(Collection<CallTreeNode<AllocationPayload>> children, Map<SourceLocation, List<CallTreeNode<AllocationPayload>>> histogram) {
         for (CallTreeNode<AllocationPayload> treeNode : children) {
-            List<CallTreeNode<AllocationPayload>> nodes = histogram.computeIfAbsent(treeNode.getSourceLocation(), k -> new ArrayList<>());
+            List<CallTreeNode<AllocationPayload>> nodes = histogram.computeIfAbsent(treeNode.getSourceLocation(), new Function<SourceLocation, List<CallTreeNode<AllocationPayload>>>() {
+                @Override
+                public List<CallTreeNode<AllocationPayload>> apply(SourceLocation sourceLocation) {
+                    return new ArrayList<>();
+                }
+            });
             nodes.add(treeNode);
             computeSourceLocationHistogramImpl(treeNode.getChildren(), histogram);
         }
@@ -503,21 +522,27 @@ public final class MemoryTracer implements Closeable {
 
         static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Format",
                         Output.LOCATION_HISTOGRAM,
-                        (String string) -> {
-                            switch (string) {
-                                case "typehistogram":
-                                    return Output.TYPE_HISTOGRAM;
-                                case "histogram":
-                                    return Output.LOCATION_HISTOGRAM;
-                                case "calltree":
-                                    return Output.CALLTREE;
-                                default:
-                                    return null;
+                        new Function<String, Output>() {
+                            @Override
+                            public Output apply(String s) {
+                                switch (s) {
+                                    case "typehistogram":
+                                        return Output.TYPE_HISTOGRAM;
+                                    case "histogram":
+                                        return Output.LOCATION_HISTOGRAM;
+                                    case "calltree":
+                                        return Output.CALLTREE;
+                                    default:
+                                        return null;
+                                }
                             }
                         },
-                        cliOutput -> {
-                            if (cliOutput == null) {
-                                throw new IllegalArgumentException();
+                        new Consumer<Output>() {
+                            @Override
+                            public void accept(Output output) {
+                                if (output == null) {
+                                    throw new IllegalArgumentException();
+                                }
                             }
                         });
 
@@ -568,7 +593,12 @@ public final class MemoryTracer implements Closeable {
         private static void printMetaObjectHistogram(PrintStream out, MemoryTracer tracer) {
             final Map<String, List<MemoryTracer.AllocationEventInfo>> histogram = tracer.computeMetaObjectHistogram();
             final List<String> keys = new ArrayList<>(histogram.keySet());
-            keys.sort((o1, o2) -> Integer.compare(histogram.get(o2).size(), histogram.get(o1).size()));
+            keys.sort(new Comparator<String>() {
+                @Override
+                public int compare(String o1, String o2) {
+                    return Integer.compare(histogram.get(o2).size(), histogram.get(o1).size());
+                }
+            });
             int metaObjectMax = 1;
             Iterator<String> iterator = histogram.keySet().iterator();
             while (iterator.hasNext()) {
@@ -665,26 +695,29 @@ public final class MemoryTracer implements Closeable {
 
         private static List<SourceLocation> getSortedSourceLocations(Map<SourceLocation, List<CallTreeNode<MemoryTracer.AllocationPayload>>> histogram) {
             List<SourceLocation> keys = new ArrayList<>(histogram.keySet());
-            Collections.sort(keys, (SourceLocation sl1, SourceLocation sl2) -> {
-                int sl1Self = 0;
-                int sl1Total = 0;
-                for (CallTreeNode<MemoryTracer.AllocationPayload> node : histogram.get(sl1)) {
-                    sl1Self += node.getPayload().getEvents().size();
-                    sl1Total += node.isRecursive() ? 0 : node.getPayload().getTotalAllocations();
-                }
+            Collections.sort(keys, new Comparator<SourceLocation>() {
+                @Override
+                public int compare(SourceLocation sl1, SourceLocation sl2) {
+                    int sl1Self = 0;
+                    int sl1Total = 0;
+                    for (CallTreeNode<MemoryTracer.AllocationPayload> node : histogram.get(sl1)) {
+                        sl1Self += node.getPayload().getEvents().size();
+                        sl1Total += node.isRecursive() ? 0 : node.getPayload().getTotalAllocations();
+                    }
 
-                int sl2Self = 0;
-                int sl2Total = 0;
-                for (CallTreeNode<MemoryTracer.AllocationPayload> node : histogram.get(sl2)) {
-                    sl2Self += node.getPayload().getEvents().size();
-                    sl2Total += node.isRecursive() ? 0 : node.getPayload().getTotalAllocations();
-                }
+                    int sl2Self = 0;
+                    int sl2Total = 0;
+                    for (CallTreeNode<MemoryTracer.AllocationPayload> node : histogram.get(sl2)) {
+                        sl2Self += node.getPayload().getEvents().size();
+                        sl2Total += node.isRecursive() ? 0 : node.getPayload().getTotalAllocations();
+                    }
 
-                int result = Integer.compare(sl2Self, sl1Self);
-                if (result == 0) {
-                    return Integer.compare(sl2Total, sl1Total);
+                    int result = Integer.compare(sl2Self, sl1Self);
+                    if (result == 0) {
+                        return Integer.compare(sl2Total, sl1Total);
+                    }
+                    return result;
                 }
-                return result;
             });
             return keys;
         }

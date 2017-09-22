@@ -35,25 +35,58 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 abstract class ProfilerCLI {
 
-    static final OptionType<Object[]> WILDCARD_FILTER_TYPE = new OptionType<>("Expression",
-                    new Object[0],
-                    ProfilerCLI::createWildcardExpressions,
-                    objects -> {
+    static final OptionType<Object[]> WILDCARD_FILTER_TYPE = new OptionType<>("Expression", new Object[0],
+                    new Function<String, Object[]>() {
+                        @Override
+                        public Object[] apply(String filterWildcardExpression) {
+                            if (filterWildcardExpression == null) {
+                                return null;
+                            }
+                            String[] expressions = filterWildcardExpression.split(",");
+                            Object[] builtExpressions = new Object[expressions.length];
+                            for (int i = 0; i < expressions.length; i++) {
+                                String expression = expressions[i];
+                                expression = expression.trim();
+                                Object result = expression;
+                                if (expression.contains("?") || expression.contains("*")) {
+                                    try {
+                                        result = Pattern.compile(wildcardToRegex(expression));
+                                    } catch (PatternSyntaxException e) {
+                                        throw new IllegalArgumentException(
+                                                        String.format("Invalid wildcard pattern %s.", expression), e);
+                                    }
+                                }
+                                builtExpressions[i] = result;
+                            }
+                            return builtExpressions;
+                        }
+                    }, new Consumer<Object[]>() {
+                        @Override
+                        public void accept(Object[] objects) {
+
+                        }
                     });
 
-    static SourceSectionFilter buildFilter(boolean roots, boolean statements, boolean calls, boolean internals, Object[] filterRootName, Object[] filterFile, String filterLanguage) {
+    static SourceSectionFilter buildFilter(boolean roots, boolean statements, boolean calls, boolean internals,
+                    Object[] filterRootName, Object[] filterFile, String filterLanguage) {
         SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder();
         if (!internals || filterFile != null || filterLanguage != null) {
-            builder.sourceIs((Source source) -> {
-                boolean internal = (internals || !source.isInternal());
-                boolean file = testWildcardExpressions(source.getPath(), filterFile);
-                boolean mimeType = filterLanguage.equals("") || source.getMimeType().equals(filterLanguage);
-                return internal && file && mimeType;
+            builder.sourceIs(new SourceSectionFilter.SourcePredicate() {
+                @Override
+                public boolean test(Source source) {
+                    boolean internal = (internals || !source.isInternal());
+                    boolean file = testWildcardExpressions(source.getPath(), filterFile);
+                    boolean mimeType = filterLanguage.equals("") || source.getMimeType().equals(filterLanguage);
+                    return internal && file && mimeType;
+                }
             });
         }
 
@@ -69,10 +102,16 @@ abstract class ProfilerCLI {
         }
 
         if (!roots && !statements && !calls) {
-            throw new IllegalArgumentException("No elements specified. Either roots, statements or calls must remain enabled.");
+            throw new IllegalArgumentException(
+                            "No elements specified. Either roots, statements or calls must remain enabled.");
         }
         builder.tagIs(tags.toArray(new Class<?>[0]));
-        builder.rootNameIs(t -> testWildcardExpressions(t, filterRootName));
+        builder.rootNameIs(new Predicate<String>() {
+            @Override
+            public boolean test(String s) {
+                return testWildcardExpressions(s, filterRootName);
+            }
+        });
 
         return builder.build();
     }
@@ -150,28 +189,6 @@ abstract class ProfilerCLI {
             }
         }
         return false;
-    }
-
-    private static Object[] createWildcardExpressions(String filterWildcardExpression) {
-        if (filterWildcardExpression == null) {
-            return null;
-        }
-        String[] expressions = filterWildcardExpression.split(",");
-        Object[] builtExpressions = new Object[expressions.length];
-        for (int i = 0; i < expressions.length; i++) {
-            String expression = expressions[i];
-            expression = expression.trim();
-            Object result = expression;
-            if (expression.contains("?") || expression.contains("*")) {
-                try {
-                    result = Pattern.compile(wildcardToRegex(expression));
-                } catch (PatternSyntaxException e) {
-                    throw new IllegalArgumentException(String.format("Invalid wildcard pattern %s.", expression), e);
-                }
-            }
-            builtExpressions[i] = result;
-        }
-        return builtExpressions;
     }
 
     private static String wildcardToRegex(String wildcard) {

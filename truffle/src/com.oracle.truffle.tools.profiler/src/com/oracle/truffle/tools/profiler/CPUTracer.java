@@ -29,6 +29,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -44,15 +45,16 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Implementation of a tracing based profiler for {@linkplain com.oracle.truffle.api.TruffleLanguage
- * Truffle languages} built on top of the {@linkplain TruffleInstrument Truffle instrumentation
- * framework}.
+ * Implementation of a tracing based profiler for
+ * {@linkplain com.oracle.truffle.api.TruffleLanguage Truffle languages} built on top of the
+ * {@linkplain TruffleInstrument Truffle instrumentation framework}.
  * <p>
  * The tracer counts how many times each of the elements of interest (e.g. functions, statements,
  * etc.) are executed.
@@ -240,7 +242,12 @@ public final class CPUTracer implements Closeable {
         if (f == null) {
             f = DEFAULT_FILTER;
         }
-        this.activeBinding = env.getInstrumenter().attachFactory(f, context -> new CounterNode(getCounter(context)));
+        this.activeBinding = env.getInstrumenter().attachFactory(f, new ExecutionEventNodeFactory() {
+            @Override
+            public ExecutionEventNode create(EventContext context) {
+                return new CounterNode(getCounter(context));
+            }
+        });
     }
 
     /**
@@ -357,7 +364,12 @@ public final class CPUTracer implements Closeable {
 
         static void printTracerHistogram(PrintStream out, CPUTracer tracer) {
             List<CPUTracer.Counter> counters = new ArrayList<>(tracer.getCounters());
-            counters.sort((o1, o2) -> Long.compare(o2.getCount(), o1.getCount()));
+            counters.sort(new Comparator<Counter>() {
+                @Override
+                public int compare(Counter o1, Counter o2) {
+                    return Long.compare(o2.getCount(), o1.getCount());
+                }
+            });
             int length = computeNameLength(counters, 50);
             String format = " %-" + length + "s | %20s | %20s | %20s | %s";
             String title = String.format(format, "Name", "Total Count", "Interpreted Count", "Compiled Count", "Location");
