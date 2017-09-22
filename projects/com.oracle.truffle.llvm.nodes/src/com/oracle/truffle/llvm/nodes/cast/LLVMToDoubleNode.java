@@ -39,6 +39,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI64Node.LLVMToI64BitNode;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
@@ -65,13 +66,15 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
     @Child private Node isBoxed = Message.IS_BOXED.createNode();
     @Child private Node unbox = Message.UNBOX.createNode();
 
-    @Specialization(guards = "notLLVM(from)")
-    public double executeTruffleObject(TruffleObject from) {
-        if (ForeignAccess.sendIsNull(isNull, from)) {
-            return 0.0;
-        } else if (ForeignAccess.sendIsBoxed(isBoxed, from)) {
+    @Specialization
+    public double executeTruffleObject(LLVMTruffleObject from) {
+        TruffleObject base = from.getObject();
+        if (ForeignAccess.sendIsNull(isNull, base)) {
+            return from.getOffset();
+        } else if (ForeignAccess.sendIsBoxed(isBoxed, base)) {
             try {
-                return (double) toDouble.executeWithTarget(ForeignAccess.sendUnbox(unbox, from));
+                double unboxed = (double) toDouble.executeWithTarget(ForeignAccess.sendUnbox(unbox, base));
+                return unboxed + from.getOffset();
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(e);

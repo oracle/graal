@@ -122,30 +122,6 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
 
     @SuppressWarnings("unused")
     @Specialization(limit = "2", guards = {"constantPointer(id, cachedPtr)", "value == cachedValue"})
-    public Object doIntrinsicReceiverCachedTruffleObjectCached(VirtualFrame frame, TruffleObject value, LLVMAddress id,
-                    @Cached("value") TruffleObject cachedValue,
-                    @Cached("pointerOf(id)") long cachedPtr,
-                    @Cached("readString(id)") String cachedId, @Cached("getContext()") LLVMContext context,
-                    @Cached("create()") LLVMGetStackNode getStack) {
-        return doInvoke(frame, cachedValue, cachedId, context, getStack);
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)", replaces = "doIntrinsicReceiverCachedTruffleObjectCached")
-    public Object doIntrinsicTruffleObjectCached(VirtualFrame frame, TruffleObject value, LLVMAddress id, @Cached("pointerOf(id)") long cachedPtr,
-                    @Cached("readString(id)") String cachedId, @Cached("getContext()") LLVMContext context,
-                    @Cached("create()") LLVMGetStackNode getStack) {
-        return doInvoke(frame, value, cachedId, context, getStack);
-    }
-
-    @Specialization
-    public Object doIntrinsicTruffleObject(VirtualFrame frame, TruffleObject value, LLVMAddress id, @Cached("getContext()") LLVMContext context,
-                    @Cached("create()") LLVMGetStackNode getStack) {
-        return doInvoke(frame, value, id, context, getStack);
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization(limit = "2", guards = {"constantPointer(id, cachedPtr)", "value == cachedValue"})
     public Object doIntrinsicReceiverCachedLLVMTruffleObjectCached(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id,
                     @Cached("value") LLVMTruffleObject cachedValue,
                     @Cached("pointerOf(id)") long cachedPtr,

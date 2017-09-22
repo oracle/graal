@@ -72,23 +72,20 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
         return (byte) globalAccess.getNativeLocation(from).getVal();
     }
 
-    @Specialization
-    public byte executeLLVMTruffleObject(LLVMTruffleObject from) {
-        return (byte) (executeTruffleObject(from.getObject()) + from.getOffset());
-    }
-
     @Child private Node isNull = Message.IS_NULL.createNode();
     @Child private Node isBoxed = Message.IS_BOXED.createNode();
     @Child private Node unbox = Message.UNBOX.createNode();
     @Child private ForeignToLLVM convert = ForeignToLLVM.create(ForeignToLLVMType.I8);
 
-    @Specialization(guards = "notLLVM(from)")
-    public byte executeTruffleObject(TruffleObject from) {
-        if (ForeignAccess.sendIsNull(isNull, from)) {
-            return 0;
-        } else if (ForeignAccess.sendIsBoxed(isBoxed, from)) {
+    @Specialization
+    public byte executeLLVMTruffleObject(LLVMTruffleObject from) {
+        TruffleObject base = from.getObject();
+        if (ForeignAccess.sendIsNull(isNull, base)) {
+            return (byte) from.getOffset();
+        } else if (ForeignAccess.sendIsBoxed(isBoxed, base)) {
             try {
-                return (byte) convert.executeWithTarget(ForeignAccess.sendUnbox(unbox, from));
+                byte ptr = (byte) convert.executeWithTarget(ForeignAccess.sendUnbox(unbox, base));
+                return (byte) (ptr + from.getOffset());
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(e);

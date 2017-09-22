@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ByteValueProfile;
 import com.oracle.truffle.api.profiles.DoubleValueProfile;
@@ -248,12 +247,6 @@ public final class LLVMGlobalVariableAccess extends Node {
             byteProfile = ByteValueProfile.createIdentityProfile();
         }
         return byteProfile.profile(value);
-    }
-
-    public void putTruffleObject(LLVMGlobalVariable global, TruffleObject value) {
-        Container container = getContainer.executeWithTarget(global.getContainer());
-        CompilerAsserts.partialEvaluationConstant(container.getClass());
-        container.putTruffleObject(global, value);
     }
 
     public void putLLVMTruffleObject(LLVMGlobalVariable global, LLVMTruffleObject value) {

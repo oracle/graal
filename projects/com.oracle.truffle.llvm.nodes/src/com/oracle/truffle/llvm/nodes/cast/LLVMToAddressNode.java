@@ -36,7 +36,6 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -102,8 +101,8 @@ public abstract class LLVMToAddressNode extends LLVMExpressionNode {
         return LLVMAddress.fromLong((long) toLong.executeWithTarget(from.getValue()));
     }
 
-    protected static boolean checkIsPointer(Node isPointer, TruffleObject object) {
-        return ForeignAccess.sendIsPointer(isPointer, object);
+    protected static boolean checkIsPointer(Node isPointer, LLVMTruffleObject object) {
+        return ForeignAccess.sendIsPointer(isPointer, object.getObject());
     }
 
     protected static Node createIsPointer() {
@@ -115,11 +114,11 @@ public abstract class LLVMToAddressNode extends LLVMExpressionNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"checkIsPointer(isPointer, obj)", "notLLVM(obj)"})
-    public LLVMAddress fromNativePointer(TruffleObject obj, @Cached("createIsPointer()") Node isPointer, @Cached("createAsPointer()") Node asPointer) {
+    @Specialization(guards = {"checkIsPointer(isPointer, obj)"})
+    public LLVMAddress fromNativePointer(LLVMTruffleObject obj, @Cached("createIsPointer()") Node isPointer, @Cached("createAsPointer()") Node asPointer) {
         try {
-            long raw = ForeignAccess.sendAsPointer(asPointer, obj);
-            return LLVMAddress.fromLong(raw);
+            long raw = ForeignAccess.sendAsPointer(asPointer, obj.getObject());
+            return LLVMAddress.fromLong(raw + obj.getOffset());
         } catch (UnsupportedMessageException ex) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Foreign value is not a pointer!", ex);
@@ -127,8 +126,8 @@ public abstract class LLVMToAddressNode extends LLVMExpressionNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"!checkIsPointer(isPointer, from)", "notLLVM(from)"})
-    public LLVMTruffleObject executeTruffleObject(TruffleObject from, @Cached("createIsPointer()") Node isPointer) {
+    @Specialization(guards = {"!checkIsPointer(isPointer, from)"})
+    public LLVMTruffleObject executeTruffleObject(LLVMTruffleObject from, @Cached("createIsPointer()") Node isPointer) {
         return new LLVMTruffleObject(from, getType());
     }
 }

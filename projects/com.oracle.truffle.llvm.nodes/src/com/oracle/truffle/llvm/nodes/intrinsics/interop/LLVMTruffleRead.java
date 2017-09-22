@@ -103,18 +103,6 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
             checkLLVMTruffleObject(value);
             return doRead(value.getObject(), id, foreignRead, toLLVM);
         }
-
-        @SuppressWarnings("unused")
-        @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)")
-        public Object executeIntrinsicCached(TruffleObject value, LLVMAddress id, @Cached("pointerOf(id)") long cachedPtr,
-                        @Cached("readString(id)") String cachedId) {
-            return doRead(value, cachedId, foreignRead, toLLVM);
-        }
-
-        @Specialization
-        public Object executeIntrinsic(TruffleObject value, LLVMAddress id) {
-            return doRead(value, id, foreignRead, toLLVM);
-        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
@@ -131,11 +119,6 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
         public Object executeIntrinsic(LLVMTruffleObject value, int id) {
             checkLLVMTruffleObject(value);
             return doReadIdx(value.getObject(), id, foreignRead, toLLVM);
-        }
-
-        @Specialization
-        public Object executeIntrinsic(TruffleObject value, int id) {
-            return doReadIdx(value, id, foreignRead, toLLVM);
         }
     }
 

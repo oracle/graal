@@ -35,12 +35,12 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
@@ -75,12 +75,14 @@ public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
     @Child private Node isNull = Message.IS_NULL.createNode();
 
-    @Specialization(guards = "notLLVM(from)")
-    public Object executeTruffleObject(TruffleObject from) {
-        if (ForeignAccess.sendIsNull(isNull, from)) {
-            return LLVMFunctionHandle.createHandle(0);
-        } else if (ForeignAccess.sendIsExecutable(isExecutable, from)) {
-            return from;
+    @Specialization
+    public Object executeTruffleObject(LLVMTruffleObject from) {
+        if (from.getOffset() == 0) {
+            if (ForeignAccess.sendIsNull(isNull, from.getObject())) {
+                return LLVMFunctionHandle.createHandle(0);
+            } else if (ForeignAccess.sendIsExecutable(isExecutable, from.getObject())) {
+                return from;
+            }
         }
         CompilerDirectives.transferToInterpreter();
         throw new IllegalStateException("Not a function");

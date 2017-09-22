@@ -114,19 +114,6 @@ public abstract class LLVMTruffleExecute extends LLVMIntrinsic {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = "value == cachedValue", limit = "2")
-    public Object doIntrinsicCachedTruffleObject(VirtualFrame frame, TruffleObject value, @Cached("value") TruffleObject cachedValue, @Cached("getContext()") LLVMContext context,
-                    @Cached("create()") LLVMGetStackNode getStack) {
-        return doExecute(frame, cachedValue, context, getStack);
-    }
-
-    @Specialization(replaces = "doIntrinsicCachedTruffleObject")
-    public Object doIntrinsicTruffleObject(VirtualFrame frame, TruffleObject value, @Cached("getContext()") LLVMContext context,
-                    @Cached("create()") LLVMGetStackNode getStack) {
-        return doExecute(frame, value, context, getStack);
-    }
-
-    @SuppressWarnings("unused")
     @Specialization(guards = "value == cachedValue")
     public Object doIntrinsicCachedLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject value, @Cached("value") LLVMTruffleObject cachedValue, @Cached("getContext()") LLVMContext context,
                     @Cached("create()") LLVMGetStackNode getStack) {

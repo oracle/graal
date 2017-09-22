@@ -42,6 +42,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
@@ -109,7 +110,7 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
             return VarArgArea.OVERFLOW_AREA;
         } else if (arg instanceof LLVMFloatVector && ((LLVMFloatVector) arg).getLength() <= 2) {
             return VarArgArea.FP_AREA;
-        } else if (arg instanceof TruffleObject) {
+        } else if (arg instanceof LLVMTruffleObject) {
             return VarArgArea.GP_AREA;
         } else {
             throw new AssertionError(arg);
@@ -267,13 +268,17 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
 
                 if (argument instanceof LLVMBoxedPrimitive) {
                     arguments[n] = ((LLVMBoxedPrimitive) argument).getValue();
-                } else if (argument instanceof TruffleObject && notLLVM((TruffleObject) argument) && ForeignAccess.sendIsPointer(isPointer, (TruffleObject) argument)) {
-                    arguments[n] = ForeignAccess.sendAsPointer(asPointer, (TruffleObject) argument);
-                } else if (argument instanceof TruffleObject && notLLVM((TruffleObject) argument) && ForeignAccess.sendIsBoxed(isBoxed, (TruffleObject) argument)) {
-                    arguments[n] = ForeignAccess.sendUnbox(unbox, (TruffleObject) argument);
-                } else if (argument instanceof TruffleObject && notLLVM((TruffleObject) argument)) {
-                    TruffleObject nativeObject = (TruffleObject) ForeignAccess.sendToNative(toNative, (TruffleObject) argument);
-                    arguments[n] = ForeignAccess.sendAsPointer(asPointer, nativeObject);
+                } else if (argument instanceof LLVMTruffleObject) {
+                    LLVMTruffleObject obj = (LLVMTruffleObject) argument;
+
+                    if (ForeignAccess.sendIsPointer(isPointer, obj.getObject())) {
+                        arguments[n] = ForeignAccess.sendAsPointer(asPointer, obj.getObject()) + obj.getOffset();
+                    } else if (obj.getOffset() == 0 && ForeignAccess.sendIsBoxed(isBoxed, obj.getObject())) {
+                        arguments[n] = ForeignAccess.sendUnbox(unbox, obj.getObject());
+                    } else {
+                        TruffleObject nativeObject = (TruffleObject) ForeignAccess.sendToNative(toNative, obj.getObject());
+                        arguments[n] = ForeignAccess.sendAsPointer(asPointer, nativeObject) + obj.getOffset();
+                    }
                 }
             }
         } catch (UnsupportedMessageException e) {

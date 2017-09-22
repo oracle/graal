@@ -36,7 +36,6 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressCompareNodeGen.LLVMAddressEQNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressCompareNodeGen.LLVMAddressNEQNodeGen;
@@ -203,15 +202,6 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
                 return LLVMAddress.fromLong(address.getOffset());
             } else {
                 return LLVMAddress.fromLong(getHashCode(address.getObject()) + address.getOffset());
-            }
-        }
-
-        @Specialization(guards = "notLLVM(address)")
-        protected LLVMAddress doTruffleObject(TruffleObject address) {
-            if (ForeignAccess.sendIsNull(isNull, address)) {
-                return LLVMAddress.nullPointer();
-            } else {
-                return LLVMAddress.fromLong(getHashCode(address));
             }
         }
 

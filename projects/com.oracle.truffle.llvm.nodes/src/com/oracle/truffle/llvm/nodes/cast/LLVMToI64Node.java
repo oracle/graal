@@ -76,11 +76,6 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
         return globalAccess.getNativeLocation(from).getVal();
     }
 
-    @Specialization
-    public long executeLLVMTruffleObject(LLVMTruffleObject from) {
-        return (executeTruffleObject(from.getObject()) + from.getOffset());
-    }
-
     @Child private Node isNull = Message.IS_NULL.createNode();
     @Child private Node isBoxed = Message.IS_BOXED.createNode();
     @Child private Node asPointer = Message.AS_POINTER.createNode();
@@ -88,17 +83,20 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
     @Child private Node unbox = Message.UNBOX.createNode();
     @Child private ForeignToLLVM convert = ForeignToLLVM.create(ForeignToLLVMType.I64);
 
-    @Specialization(guards = "notLLVM(from)")
-    public long executeTruffleObject(TruffleObject from) {
+    @Specialization
+    public long executeTruffleObject(LLVMTruffleObject from) {
+        TruffleObject base = from.getObject();
         try {
-            if (ForeignAccess.sendIsNull(isNull, from)) {
-                return 0;
-            } else if (ForeignAccess.sendIsBoxed(isBoxed, from)) {
-                return (long) convert.executeWithTarget(ForeignAccess.sendUnbox(unbox, from));
+            long ptr;
+            if (ForeignAccess.sendIsNull(isNull, base)) {
+                ptr = 0;
+            } else if (ForeignAccess.sendIsBoxed(isBoxed, base)) {
+                ptr = (long) convert.executeWithTarget(ForeignAccess.sendUnbox(unbox, base));
             } else {
-                TruffleObject n = (TruffleObject) ForeignAccess.sendToNative(toNative, from);
-                return ForeignAccess.sendAsPointer(asPointer, n);
+                TruffleObject n = (TruffleObject) ForeignAccess.sendToNative(toNative, base);
+                ptr = ForeignAccess.sendAsPointer(asPointer, n);
             }
+            return ptr + from.getOffset();
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);

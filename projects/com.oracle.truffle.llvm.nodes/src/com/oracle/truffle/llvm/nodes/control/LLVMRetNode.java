@@ -36,15 +36,16 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Instrumentable;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
@@ -240,10 +241,14 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
         }
 
         @Specialization
-        public Object execute(TruffleObject retResult) {
+        public Object execute(LLVMFunctionDescriptor retResult) {
             return retResult;
         }
 
+        @Specialization
+        public Object execute(LLVMTruffleObject retResult) {
+            return retResult;
+        }
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)

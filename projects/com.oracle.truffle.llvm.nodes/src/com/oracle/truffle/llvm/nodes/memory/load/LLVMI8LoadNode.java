@@ -35,7 +35,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
@@ -50,7 +49,6 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMI8LoadNode extends LLVMExpressionNode {
@@ -100,10 +98,4 @@ public abstract class LLVMI8LoadNode extends LLVMExpressionNode {
             throw new IllegalAccessError("Cannot access address: " + addr.getValue());
         }
     }
-
-    @Specialization(guards = "notLLVM(addr)")
-    public byte executeI8(TruffleObject addr) {
-        return executeI8(new LLVMTruffleObject(addr, PrimitiveType.I8));
-    }
-
 }

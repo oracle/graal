@@ -77,8 +77,6 @@ abstract class Container {
 
     abstract void putAddress(LLVMGlobalVariable global, LLVMAddress value);
 
-    abstract void putTruffleObject(LLVMGlobalVariable global, TruffleObject value);
-
     abstract void putLLVMTruffleObject(LLVMGlobalVariable global, LLVMTruffleObject value);
 
     abstract void putFunction(LLVMGlobalVariable global, LLVMFunction value);
@@ -175,12 +173,6 @@ abstract class Container {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             global.getContainer().putAddress(global, value);
-        }
-
-        @Override
-        void putTruffleObject(LLVMGlobalVariable global, TruffleObject value) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Cannot store managed object to native memory");
         }
 
         @Override
@@ -340,12 +332,6 @@ abstract class Container {
         @Override
         void putAddress(LLVMGlobalVariable global, LLVMAddress value) {
             LLVMMemory.putAddress(address, value);
-        }
-
-        @Override
-        void putTruffleObject(LLVMGlobalVariable global, TruffleObject value) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Cannot store managed object to native memory");
         }
 
         @Override
@@ -562,13 +548,6 @@ abstract class Container {
         }
 
         @Override
-        void putTruffleObject(LLVMGlobalVariable global, TruffleObject value) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            CachedManagedContainer newContainer = new CachedManagedContainer(type, allocator, value, 0);
-            global.setContainer(newContainer);
-        }
-
-        @Override
         void putLLVMTruffleObject(LLVMGlobalVariable global, LLVMTruffleObject value) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             CachedManagedContainer newContainer = new CachedManagedContainer(type, allocator, value, 0);
@@ -648,18 +627,6 @@ abstract class Container {
                     CachedLLVMAddressContainer newContainer = new CachedLLVMAddressContainer(type, allocator, value.getVal(), changes);
                     global.setContainer(newContainer);
                 }
-            }
-        }
-
-        @Override
-        void putTruffleObject(LLVMGlobalVariable global, TruffleObject value) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (++changes >= CACHING_TRIES_BEFORE_SWITCHING_TO_GENERIC) {
-                GenericManagedContainer newContainer = new GenericManagedContainer(type, allocator, value);
-                global.setContainer(newContainer);
-            } else {
-                CachedManagedContainer newContainer = new CachedManagedContainer(type, allocator, value, changes);
-                global.setContainer(newContainer);
             }
         }
 
@@ -781,20 +748,6 @@ abstract class Container {
         }
 
         @Override
-        void putTruffleObject(LLVMGlobalVariable global, TruffleObject value) {
-            if (managedValue != value) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (++changes >= CACHING_TRIES_BEFORE_SWITCHING_TO_GENERIC) {
-                    GenericManagedContainer newContainer = new GenericManagedContainer(type, allocator, value);
-                    global.setContainer(newContainer);
-                } else {
-                    CachedManagedContainer newContainer = new CachedManagedContainer(type, allocator, value, changes);
-                    global.setContainer(newContainer);
-                }
-            }
-        }
-
-        @Override
         void putLLVMTruffleObject(LLVMGlobalVariable global, LLVMTruffleObject value) {
             if (value != managedValue) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -897,13 +850,6 @@ abstract class Container {
         }
 
         @Override
-        void putTruffleObject(LLVMGlobalVariable global, TruffleObject value) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            GenericManagedContainer newContainer = new GenericManagedContainer(type, allocator, value);
-            global.setContainer(newContainer);
-        }
-
-        @Override
         void putLLVMTruffleObject(LLVMGlobalVariable global, LLVMTruffleObject value) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             GenericManagedContainer newContainer = new GenericManagedContainer(type, allocator, value);
@@ -986,11 +932,6 @@ abstract class Container {
 
         @Override
         void putAddress(LLVMGlobalVariable global, LLVMAddress value) {
-            this.managedValue = value;
-        }
-
-        @Override
-        void putTruffleObject(LLVMGlobalVariable global, TruffleObject value) {
             this.managedValue = value;
         }
 

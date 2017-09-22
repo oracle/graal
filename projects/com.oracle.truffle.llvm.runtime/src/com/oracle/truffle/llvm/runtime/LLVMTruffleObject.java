@@ -40,15 +40,17 @@ public final class LLVMTruffleObject {
     private final long offset;
     private final Type type;
 
-    public LLVMTruffleObject(TruffleObject object, long offset, Type type) {
-        this.object = object;
-        this.offset = offset;
-        this.type = type;
+    public LLVMTruffleObject(LLVMTruffleObject orig, Type type) {
+        this(orig.getObject(), orig.getOffset(), type);
     }
 
     public LLVMTruffleObject(TruffleObject object, Type type) {
+        this(object, 0, type);
+    }
+
+    private LLVMTruffleObject(TruffleObject object, long offset, Type type) {
         this.object = object;
-        this.offset = 0;
+        this.offset = offset;
         this.type = type;
     }
 
@@ -62,6 +64,10 @@ public final class LLVMTruffleObject {
 
     public Type getType() {
         return type;
+    }
+
+    public LLVMTruffleObject increment(long incr, Type newType) {
+        return new LLVMTruffleObject(object, offset + incr, newType);
     }
 
     @TruffleBoundary

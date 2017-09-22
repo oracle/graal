@@ -234,25 +234,24 @@ public abstract class LLVMExpressionNode extends LLVMNode {
         @Child private Node isNull = Message.IS_NULL.createNode();
         @Child private Node toNative = Message.TO_NATIVE.createNode();
 
-        @Specialization(guards = "notLLVM(pointer)")
-        LLVMAddress nativeToAddress(TruffleObject pointer) {
+        @Specialization
+        LLVMAddress nativeToAddress(LLVMTruffleObject pointer) {
+            TruffleObject object = pointer.getObject();
             try {
-                if (ForeignAccess.sendIsNull(isNull, pointer)) {
-                    return LLVMAddress.nullPointer();
-                } else if (ForeignAccess.sendIsPointer(isPointer, pointer)) {
-                    return LLVMAddress.fromLong(ForeignAccess.sendAsPointer(asPointer, pointer));
+                LLVMAddress base;
+                if (ForeignAccess.sendIsNull(isNull, object)) {
+                    base = LLVMAddress.nullPointer();
+                } else if (ForeignAccess.sendIsPointer(isPointer, object)) {
+                    base = LLVMAddress.fromLong(ForeignAccess.sendAsPointer(asPointer, object));
                 } else {
-                    TruffleObject n = (TruffleObject) ForeignAccess.sendToNative(toNative, pointer);
-                    return LLVMAddress.fromLong(ForeignAccess.sendAsPointer(asPointer, n));
+                    TruffleObject n = (TruffleObject) ForeignAccess.sendToNative(toNative, object);
+                    base = LLVMAddress.fromLong(ForeignAccess.sendAsPointer(asPointer, n));
                 }
+                return base.increment(pointer.getOffset());
             } catch (UnsupportedMessageException | ClassCastException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Cannot convert " + pointer + " to LLVMAddress", e);
             }
-        }
-
-        protected boolean notLLVM(TruffleObject pointer) {
-            return LLVMExpressionNode.notLLVM(pointer);
         }
 
         protected static final LLVMGlobalVariableAccess createGlobalAccess() {
