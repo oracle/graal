@@ -38,8 +38,11 @@ import com.oracle.truffle.llvm.parser.metadata.MDCompileUnit;
 import com.oracle.truffle.llvm.parser.metadata.MDCompositeType;
 import com.oracle.truffle.llvm.parser.metadata.MDDerivedType;
 import com.oracle.truffle.llvm.parser.metadata.MDFile;
+import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
+import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDLexicalBlock;
 import com.oracle.truffle.llvm.parser.metadata.MDLexicalBlockFile;
+import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.parser.metadata.MDModule;
 import com.oracle.truffle.llvm.parser.metadata.MDNamespace;
@@ -82,6 +85,35 @@ final class DIScopeExtractor {
             child.setParent(parent);
         }
 
+        private void copyFile(LLVMSourceLocation scope, MDBaseNode fileRef) {
+            if (fileRef != MDReference.VOID) {
+                final LLVMSourceLocation fileScope = resolve(fileRef);
+                if (fileScope != null) {
+                    scope.copyFile(fileScope);
+                }
+            }
+        }
+
+        private void visit(MDBaseNode scopeRef, MDBaseNode parentRef, MDBaseNode fileRef, long line, long column) {
+            if (scopes.containsKey(scopeRef)) {
+                return;
+            }
+
+            final LLVMSourceLocation scope = new LLVMSourceLocation(line, column);
+            scopes.put(scopeRef, scope);
+
+            copyFile(scope, fileRef);
+            linkToParent(scope, parentRef);
+        }
+
+        private void visit(MDBaseNode scopeRef, MDBaseNode parentRef, MDBaseNode fileRef, long line) {
+            visit(scopeRef, parentRef, fileRef, line, -1L);
+        }
+
+        private void visit(MDBaseNode scopeRef, MDBaseNode parentRef, MDBaseNode fileRef) {
+            visit(scopeRef, parentRef, fileRef, -1L);
+        }
+
         @Override
         public void visit(MDLocation md) {
             if (scopes.containsKey(md)) {
@@ -104,7 +136,7 @@ final class DIScopeExtractor {
                 return;
             }
 
-            final LLVMSourceLocation scope = new LLVMSourceLocation();
+            final LLVMSourceLocation scope = new LLVMSourceLocation(-1L, -1L);
             scopes.put(md, scope);
 
             String file = null;
@@ -124,40 +156,17 @@ final class DIScopeExtractor {
 
         @Override
         public void visit(MDLexicalBlock md) {
-            if (scopes.containsKey(md)) {
-                return;
-            }
-
-            final LLVMSourceLocation scope = new LLVMSourceLocation(md.getLine(), md.getColumn());
-            scopes.put(md, scope);
-
-            final LLVMSourceLocation fileScope = resolve(md.getFile());
-            scope.copyFile(fileScope);
-
-            linkToParent(scope, md.getScope());
+            visit(md, md.getScope(), md.getFile(), md.getLine(), md.getColumn());
         }
 
         @Override
         public void visit(MDLexicalBlockFile md) {
-            if (scopes.containsKey(md)) {
-                return;
-            }
-
-            final LLVMSourceLocation scope = new LLVMSourceLocation();
-            scopes.put(md, scope);
-
-            linkToParent(scope, md.getFile());
+            visit(md, md.getFile(), md.getFile());
         }
 
         @Override
         public void visit(MDSubprogram md) {
-            if (scopes.containsKey(md)) {
-                return;
-            }
-
-            final LLVMSourceLocation scope = new LLVMSourceLocation(md.getLine());
-            scopes.put(md, scope);
-            linkToParent(scope, md.getScope());
+            visit(md, md.getScope(), MDReference.VOID, md.getLine());
         }
 
         @Override
@@ -167,48 +176,19 @@ final class DIScopeExtractor {
 
         @Override
         public void visit(MDCompositeType md) {
-            if (scopes.containsKey(md)) {
-                return;
-            }
-
-            final LLVMSourceLocation scope = new LLVMSourceLocation(md.getLine());
-            scopes.put(md, scope);
-
-            final LLVMSourceLocation fileScope = resolve(md.getFile());
-            scope.copyFile(fileScope);
-
-            linkToParent(scope, md.getScope());
+            visit(md, md.getScope(), md.getFile(), md.getLine());
         }
 
         @Override
         public void visit(MDDerivedType md) {
-            if (scopes.containsKey(md)) {
-                return;
-            }
-
-            final LLVMSourceLocation scope = new LLVMSourceLocation(md.getLine());
-            scopes.put(md, scope);
-
-            final LLVMSourceLocation fileScope = resolve(md.getFile());
-            scope.copyFile(fileScope);
-
-            linkToParent(scope, md.getScope());
+            visit(md, md.getScope(), md.getFile(), md.getLine());
         }
 
         @Override
         public void visit(MDBasicType md) {
-            if (scopes.containsKey(md)) {
-                return;
-            }
-
-            final LLVMSourceLocation scope = new LLVMSourceLocation(md.getLine());
-            scopes.put(md, scope);
-
-            final LLVMSourceLocation fileScope = resolve(md.getFile());
-            scope.copyFile(fileScope);
-
             // A basic type can, according to the llvm implementation, also act as scope. It does
             // however not have a parent scope there. At most a file is given.
+            visit(md, MDReference.VOID, md.getFile(), md.getLine());
         }
 
         @Override
@@ -217,57 +197,71 @@ final class DIScopeExtractor {
                 return;
             }
 
-            final LLVMSourceLocation scope = new LLVMSourceLocation();
+            final LLVMSourceLocation scope = new LLVMSourceLocation(-1L, -1L);
             scopes.put(md, scope);
 
-            // TODO splitdebugfilename
             final MDReference fileRef = md.getFile();
-            if (fileRef != null) {
+            if (fileRef != MDReference.VOID) {
                 final MDBaseNode fileNode = fileRef.get();
-                if (fileNode instanceof MDString) {
+                if (fileNode instanceof MDFile) {
+                    copyFile(scope, fileRef);
+                    return;
+
+                } else if (fileNode instanceof MDString) {
                     // old-format metadata
                     String file = ((MDString) fileNode).getString();
                     String directory = null;
                     final MDReference dirRef = md.getDirectory();
-                    if (dirRef != null) {
+                    if (dirRef != MDReference.VOID) {
                         final MDBaseNode dirNode = dirRef.get();
                         if (dirNode instanceof MDString) {
                             directory = ((MDString) dirNode).getString();
                         }
                     }
                     scope.setFile(new LLVMSourceFile(file, directory));
-                } else if (fileRef != MDReference.VOID) {
-                    final LLVMSourceLocation file = resolve(fileRef);
-                    scope.copyFile(file);
+                    return;
+
+                }
+            }
+
+            final MDReference splitDbgFilenameRef = md.getSplitdebugFilename();
+            if (splitDbgFilenameRef != MDReference.VOID) {
+                final MDBaseNode splitDbgFileNameNode = splitDbgFilenameRef.get();
+                if (splitDbgFileNameNode instanceof MDString) {
+                    scope.setFile(new LLVMSourceFile(((MDString) splitDbgFileNameNode).getString(), null));
                 }
             }
         }
 
         @Override
         public void visit(MDNamespace md) {
-            if (scopes.containsKey(md)) {
-                return;
-            }
-
-            final LLVMSourceLocation scope = new LLVMSourceLocation(md.getLine());
-            scopes.put(md, scope);
-
-            final LLVMSourceLocation fileScope = resolve(md.getFile());
-            scope.copyFile(fileScope);
-
-            linkToParent(scope, md.getScope());
+            visit(md, md.getScope(), md.getFile(), md.getLine());
         }
 
         @Override
         public void visit(MDModule md) {
+            visit(md, md.getScope(), MDReference.VOID);
+        }
+
+        @Override
+        public void visit(MDGlobalVariable md) {
+            visit(md, md.getScope(), md.getFile(), md.getLine());
+        }
+
+        @Override
+        public void visit(MDLocalVariable md) {
+            visit(md, md.getScope(), md.getFile(), md.getLine());
+        }
+
+        @Override
+        public void visit(MDGlobalVariableExpression md) {
             if (scopes.containsKey(md)) {
                 return;
             }
 
-            final LLVMSourceLocation scope = new LLVMSourceLocation();
+            scopes.put(md, null);
+            final LLVMSourceLocation scope = resolve(md.getGlobalVariable());
             scopes.put(md, scope);
-
-            linkToParent(scope, md.getScope());
         }
 
         @Override
@@ -285,6 +279,10 @@ final class DIScopeExtractor {
 
         @Override
         public void visit(MDReference mdRef) {
+            if (scopes.containsKey(mdRef)) {
+                return;
+            }
+
             if (mdRef != MDReference.VOID) {
                 final LLVMSourceLocation target = resolve(mdRef.get());
                 if (target != null) {

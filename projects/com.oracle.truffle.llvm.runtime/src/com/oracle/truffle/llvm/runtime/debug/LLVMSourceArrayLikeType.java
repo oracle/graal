@@ -113,4 +113,14 @@ public final class LLVMSourceArrayLikeType extends LLVMSourceType {
         }
         return getElementType(i);
     }
+
+    @Override
+    public LLVMSourceLocation getElementDeclaration(long i) {
+        return getLocation();
+    }
+
+    @Override
+    public LLVMSourceLocation getElementDeclaration(String name) {
+        return getLocation();
+    }
 }

@@ -51,6 +51,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NativeIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceVariable;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
@@ -189,9 +190,9 @@ public interface NodeFactory {
 
     LLVMExpressionNode createVarArgCompoundValue(LLVMParserRuntime runtime, int length, int alignment, LLVMExpressionNode parameterNode);
 
-    LLVMExpressionNode createDebugDeclaration(String varName, LLVMSourceType type, LLVMExpressionNode valueProvider, FrameSlot sourceValuesContainerSlot);
+    LLVMExpressionNode createDebugDeclaration(LLVMSourceVariable variable, LLVMExpressionNode valueProvider, FrameSlot sourceValuesContainerSlot);
 
-    LLVMExpressionNode createDebugValue(String varName, LLVMSourceType type, LLVMExpressionNode valueProvider, FrameSlot sourceValuesContainerSlot, boolean isGlobal);
+    LLVMExpressionNode createDebugValue(LLVMSourceVariable variable, LLVMExpressionNode valueProvider, FrameSlot sourceValuesContainerSlot, boolean isGlobal);
 
     LLVMExpressionNode registerSourceType(FrameSlot valueSlot, LLVMSourceType type);
 

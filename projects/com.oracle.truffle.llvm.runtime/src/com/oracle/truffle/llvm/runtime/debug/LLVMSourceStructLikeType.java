@@ -114,4 +114,27 @@ public final class LLVMSourceStructLikeType extends LLVMSourceType {
         }
         return null;
     }
+
+    @Override
+    @TruffleBoundary
+    public LLVMSourceLocation getElementDeclaration(long i) {
+        if (0 <= i && i < members.size()) {
+            return members.get((int) i).getLocation();
+        }
+        return null;
+    }
+
+    @Override
+    @TruffleBoundary
+    public LLVMSourceLocation getElementDeclaration(String name) {
+        if (name == null) {
+            return null;
+        }
+        for (final LLVMSourceMemberType member : members) {
+            if (name.equals(member.getName())) {
+                return member.getLocation();
+            }
+        }
+        return null;
+    }
 }

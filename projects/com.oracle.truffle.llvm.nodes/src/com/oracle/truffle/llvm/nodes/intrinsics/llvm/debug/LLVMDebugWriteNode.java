@@ -37,32 +37,30 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueContainer;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceVariable;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild(value = "containerSlotRead", type = LLVMExpressionNode.class), @NodeChild(value = "valueProvider", type = LLVMExpressionNode.class)})
 public abstract class LLVMDebugWriteNode extends LLVMExpressionNode {
 
-    private final String varName;
-    private final LLVMSourceType varType;
+    private final LLVMSourceVariable variable;
 
     private final FrameSlot containerSlot;
     private final boolean writeToGlobal;
 
-    public LLVMDebugWriteNode(String varName, LLVMSourceType varType, FrameSlot containerSlot, boolean writeToGlobal) {
-        this.varName = varName;
-        this.varType = varType;
+    public LLVMDebugWriteNode(LLVMSourceVariable variable, FrameSlot containerSlot, boolean writeToGlobal) {
+        this.variable = variable;
         this.containerSlot = containerSlot;
         this.writeToGlobal = writeToGlobal;
     }
 
     @Specialization
     public Object update(LLVMDebugValueContainer container, LLVMDebugValueProvider value) {
-        final LLVMDebugObject object = LLVMDebugObject.instantiate(varType, 0L, value);
+        final LLVMDebugObject object = LLVMDebugObject.instantiate(variable.getType(), 0L, value, variable.getLocation());
         if (writeToGlobal) {
-            LLVMDebugValueContainer.findOrAddGlobalsContainer(container).addMember(varName, object);
+            LLVMDebugValueContainer.findOrAddGlobalsContainer(container).addMember(variable.getName(), object);
         } else {
-            container.addMember(varName, object);
+            container.addMember(variable.getName(), object);
         }
         return null;
     }

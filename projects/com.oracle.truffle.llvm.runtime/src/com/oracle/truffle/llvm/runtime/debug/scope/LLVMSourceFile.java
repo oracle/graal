@@ -29,16 +29,16 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.scope;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public final class LLVMSourceFile {
 
-    static final String MIMETYPE_PLAINTEXT = "text/plain";
+    private static final String MIMETYPE_PLAINTEXT = "text/plain";
     private static final String UNAVAILABLE_NAME = "<unavailable source>";
 
     private final String file;
@@ -58,6 +58,7 @@ public final class LLVMSourceFile {
         return resolvedSource;
     }
 
+    @TruffleBoundary
     private void resolveSource() {
         if (file == null) {
             return;
@@ -66,6 +67,7 @@ public final class LLVMSourceFile {
         final Path path = getFullPath(file, directory);
         if (path == null) {
             return;
+
         }
 
         final File sourceFile = path.toFile();
@@ -78,11 +80,12 @@ public final class LLVMSourceFile {
 
         try {
             resolvedSource = Source.newBuilder(sourceFile).mimeType(mimeType).name(name).build();
-        } catch (IOException ignored) {
+        } catch (Throwable ignored) {
             // resolvedSource will stay null which indicates an error in any case
         }
     }
 
+    @TruffleBoundary
     public static String getMimeType(String path) {
         if (path == null) {
             return MIMETYPE_PLAINTEXT;
@@ -109,6 +112,7 @@ public final class LLVMSourceFile {
         }
     }
 
+    @TruffleBoundary
     static String toName(LLVMSourceFile file) {
         if (file == null) {
             return UNAVAILABLE_NAME;
@@ -123,6 +127,7 @@ public final class LLVMSourceFile {
         return fullPath != null ? fullPath.toString() : UNAVAILABLE_NAME;
     }
 
+    @TruffleBoundary
     private static Path getFullPath(String file, String directory) {
         if (file == null) {
             return null;

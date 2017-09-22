@@ -123,6 +123,14 @@ public abstract class LLVMSourceType {
         return null;
     }
 
+    public LLVMSourceLocation getElementDeclaration(@SuppressWarnings("unused") long i) {
+        return null;
+    }
+
+    public LLVMSourceLocation getElementDeclaration(@SuppressWarnings("unused") String name) {
+        return null;
+    }
+
     public LLVMSourceLocation getLocation() {
         return location;
     }

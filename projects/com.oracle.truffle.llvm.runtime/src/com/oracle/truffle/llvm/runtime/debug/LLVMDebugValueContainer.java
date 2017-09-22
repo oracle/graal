@@ -116,7 +116,7 @@ public final class LLVMDebugValueContainer extends LLVMDebugObject {
 
     @TruffleBoundary
     private LLVMDebugValueContainer() {
-        super(valueProvider, 0, TYPE);
+        super(valueProvider, 0, TYPE, null);
         members = new HashMap<>();
     }
 

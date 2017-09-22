@@ -260,6 +260,7 @@ import com.oracle.truffle.llvm.runtime.NativeAllocator;
 import com.oracle.truffle.llvm.runtime.NativeIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.NativeResolver;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceVariable;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
@@ -1495,17 +1496,17 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createDebugDeclaration(String varName, LLVMSourceType type, LLVMExpressionNode valueProvider, FrameSlot sourceValuesContainerSlot) {
+    public LLVMExpressionNode createDebugDeclaration(LLVMSourceVariable variable, LLVMExpressionNode valueProvider, FrameSlot sourceValuesContainerSlot) {
         final LLVMExpressionNode containerProvider = LLVMFrameReadWriteFactory.createFrameRead(MetaType.DEBUG, sourceValuesContainerSlot);
         final LLVMToDebugDeclarationNode valueNode = LLVMToDebugDeclarationNodeGen.create(valueProvider);
-        return LLVMDebugWriteNodeGen.create(varName, type, sourceValuesContainerSlot, false, containerProvider, valueNode);
+        return LLVMDebugWriteNodeGen.create(variable, sourceValuesContainerSlot, false, containerProvider, valueNode);
     }
 
     @Override
-    public LLVMExpressionNode createDebugValue(String varName, LLVMSourceType type, LLVMExpressionNode valueProvider, FrameSlot sourceValuesContainerSlot, boolean isGlobal) {
+    public LLVMExpressionNode createDebugValue(LLVMSourceVariable variable, LLVMExpressionNode valueProvider, FrameSlot sourceValuesContainerSlot, boolean isGlobal) {
         final LLVMExpressionNode containerProvider = LLVMFrameReadWriteFactory.createFrameRead(MetaType.DEBUG, sourceValuesContainerSlot);
         final LLVMToDebugValueNode debugValue = LLVMToDebugValueNodeGen.create(valueProvider);
-        return LLVMDebugWriteNodeGen.create(varName, type, sourceValuesContainerSlot, isGlobal, containerProvider, debugValue);
+        return LLVMDebugWriteNodeGen.create(variable, sourceValuesContainerSlot, isGlobal, containerProvider, debugValue);
     }
 
     @Override

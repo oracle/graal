@@ -53,6 +53,7 @@ import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceVariable;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFile;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
@@ -128,26 +129,27 @@ public final class SourceModel {
 
         public SourceSection getSourceSection(Instruction instruction) {
             final LLVMSourceLocation scope = instructions.get(instruction);
-            return scope != null ? scope.getSourceSection(false) : null;
+            return scope != null ? scope.getSourceSection() : null;
         }
     }
 
     public static final class Variable implements Symbol {
 
-        private final String name;
-
         private final Symbol symbol;
 
-        private final LLVMSourceType type;
+        private final LLVMSourceVariable variable;
 
-        private Variable(String name, Symbol symbol, LLVMSourceType type) {
-            this.name = name;
+        private Variable(Symbol symbol, LLVMSourceVariable variable) {
             this.symbol = symbol;
-            this.type = type;
+            this.variable = variable;
+        }
+
+        public LLVMSourceVariable getVariable() {
+            return variable;
         }
 
         public String getName() {
-            return name;
+            return variable.getName();
         }
 
         public Symbol getSymbol() {
@@ -155,7 +157,7 @@ public final class SourceModel {
         }
 
         public LLVMSourceType getSourceType() {
-            return type;
+            return variable.getType();
         }
 
         @Override
@@ -165,7 +167,7 @@ public final class SourceModel {
 
         @Override
         public String toString() {
-            return name;
+            return variable.getName();
         }
     }
 
@@ -224,8 +226,9 @@ public final class SourceModel {
             }
 
             final String name = MDNameExtractor.getName(md);
+            final LLVMSourceLocation location = scopeExtractor.resolve(md);
             final LLVMSourceType type = typeExtractor.parseType(md);
-            Variable globalVar = new Variable(name, global, type);
+            Variable globalVar = new Variable(global, new LLVMSourceVariable(name, location, type));
             sourceModel.globals.add(globalVar);
         }
 
@@ -315,9 +318,10 @@ public final class SourceModel {
             if (mdLocalMDRef instanceof MetadataConstant) {
                 final long mdIndex = ((MetadataConstant) mdLocalMDRef).getValue();
                 final MDBaseNode mdLocal = currentFunction.definition.getMetadata().getMDRef(mdIndex);
+                final LLVMSourceLocation location = scopeExtractor.resolve(mdLocal);
                 final LLVMSourceType type = typeExtractor.parseType(mdLocal);
                 final String varName = MDNameExtractor.getName(mdLocal);
-                final Variable var = new Variable(varName, value, type);
+                final Variable var = new Variable(value, new LLVMSourceVariable(varName, location, type));
                 currentFunction.locals.add(var);
 
                 // ensure that lifetime analysis does not kill the variable before it is used in

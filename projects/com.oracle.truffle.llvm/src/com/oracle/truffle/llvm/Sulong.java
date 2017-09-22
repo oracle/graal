@@ -208,11 +208,14 @@ public final class Sulong extends LLVMLanguage implements ScopeProvider<LLVMCont
 
     @Override
     protected SourceSection findSourceLocation(LLVMContext context, Object value) {
+        LLVMSourceLocation location = null;
         if (value instanceof LLVMSourceType) {
-            final LLVMSourceLocation location = ((LLVMSourceType) value).getLocation();
-            if (location != null) {
-                return location.getSourceSection();
-            }
+            location = ((LLVMSourceType) value).getLocation();
+        } else if (value instanceof LLVMDebugObject) {
+            location = ((LLVMDebugObject) value).getDeclaration();
+        }
+        if (location != null) {
+            return location.getSourceSection();
         }
         return null;
     }
