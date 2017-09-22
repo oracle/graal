@@ -66,8 +66,8 @@ gateTest40-linux: ${gateTest-linux} {
 }
 
 darwin-llvm : {
-    environment: {
-        PATH: "/usr/local/opt/llvm/bin/:$PATH"
+    packages: {
+        llvm: "==4.0.1"
     }
 }
 
