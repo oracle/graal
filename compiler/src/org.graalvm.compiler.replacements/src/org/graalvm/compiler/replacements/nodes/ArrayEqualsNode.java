@@ -23,7 +23,6 @@
 package org.graalvm.compiler.replacements.nodes;
 
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1024;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
