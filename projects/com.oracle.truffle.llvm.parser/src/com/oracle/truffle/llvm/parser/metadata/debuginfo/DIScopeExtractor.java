@@ -124,6 +124,35 @@ final class DIScopeExtractor {
             visit(kind, scopeRef, parentRef, fileRef, DEFAULT_LINE);
         }
 
+        private void copyFile(LLVMSourceLocation scope, MDBaseNode fileRef) {
+            if (fileRef != MDReference.VOID) {
+                final LLVMSourceLocation fileScope = resolve(fileRef);
+                if (fileScope != null) {
+                    scope.copyFile(fileScope);
+                }
+            }
+        }
+
+        private void visit(MDBaseNode scopeRef, MDBaseNode parentRef, MDBaseNode fileRef, long line, long column) {
+            if (scopes.containsKey(scopeRef)) {
+                return;
+            }
+
+            final LLVMSourceLocation scope = new LLVMSourceLocation(line, column);
+            scopes.put(scopeRef, scope);
+
+            copyFile(scope, fileRef);
+            linkToParent(scope, parentRef);
+        }
+
+        private void visit(MDBaseNode scopeRef, MDBaseNode parentRef, MDBaseNode fileRef, long line) {
+            visit(scopeRef, parentRef, fileRef, line, -1L);
+        }
+
+        private void visit(MDBaseNode scopeRef, MDBaseNode parentRef, MDBaseNode fileRef) {
+            visit(scopeRef, parentRef, fileRef, -1L);
+        }
+
         @Override
         public void visit(MDLocation md) {
             if (scopes.containsKey(md)) {

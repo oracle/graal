@@ -56,6 +56,7 @@ import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceVariable;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFile;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
@@ -120,7 +121,7 @@ public final class SourceModel {
 
         public SourceSection getSourceSection(Instruction instruction) {
             final LLVMSourceLocation scope = instructions.get(instruction);
-            return scope != null ? scope.getSourceSection(false) : null;
+            return scope != null ? scope.getSourceSection() : null;
         }
 
         public LLVMSourceLocation getLexicalScope() {
