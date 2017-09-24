@@ -38,48 +38,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.oracle.truffle.sl.test;
 
-package com.oracle.truffle.sl.parser;
+import java.io.IOException;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
+public class SLParseErrorTest {
+    private Context context;
 
-public class SLParseError extends RuntimeException implements TruffleException {
-
-    public static final long serialVersionUID = 1L;
-    private final Source source;
-    private final int line;
-    private final int column;
-    private final int length;
-    private volatile Node node;
-
-    public SLParseError(Source source, int line, int column, int length, String message) {
-        super(message);
-        this.source = source;
-        this.line = line;
-        this.column = column;
-        this.length = length;
+    @Before
+    public void setUp() {
+        context = Context.create("sl");
     }
 
-    @Override
-    public Node getLocation() {
-        Node n = node;
-        if (n == null) {
-            n = new Node() {
-                @Override
-                public SourceSection getSourceSection() {
-                    return source.createSection(line, column, length);
-                }
-            };
-            node = n;
+    @After
+    public void tearDown() {
+        context = null;
+    }
+
+    @Test
+    public void testParseError() throws IOException {
+        try {
+            final Source src = Source.newBuilder("sl", "function testSyntaxError(a) {break;} function main() {return testSyntaxError;}", "testSyntaxError.sl").build();
+            context.eval(src);
+            Assert.assertTrue("Should not reach here.", false);
+        } catch (PolyglotException e) {
+            Assert.assertTrue("Should be a syntax error.", e.isSyntaxError());
+            Assert.assertNotNull("Should have source section.", e.getSourceLocation());
         }
-        return n;
-    }
-
-    @Override
-    public boolean isSyntaxError() {
-        return true;
     }
 }
