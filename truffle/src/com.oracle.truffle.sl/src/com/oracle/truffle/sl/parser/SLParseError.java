@@ -67,12 +67,13 @@ public class SLParseError extends RuntimeException implements TruffleException {
     public Node getLocation() {
         Node n = node;
         if (n == null) {
-            n = node = new Node() {
+            n = new Node() {
                 @Override
                 public SourceSection getSourceSection() {
                     return source.createSection(line, column, length);
                 }
             };
+            node = n;
         }
         return n;
     }
