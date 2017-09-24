@@ -48,6 +48,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
+import com.oracle.truffle.sl.nodes.expression.SLUnboxNodeGen;
 
 @NodeInfo(shortName = "if", description = "The node implementing a condional statement")
 public final class SLIfNode extends SLStatementNode {
@@ -75,7 +76,7 @@ public final class SLIfNode extends SLStatementNode {
     private final ConditionProfile condition = ConditionProfile.createCountingProfile();
 
     public SLIfNode(SLExpressionNode conditionNode, SLStatementNode thenPartNode, SLStatementNode elsePartNode) {
-        this.conditionNode = conditionNode;
+        this.conditionNode = SLUnboxNodeGen.create(conditionNode);
         this.thenPartNode = thenPartNode;
         this.elsePartNode = elsePartNode;
     }
