@@ -147,9 +147,9 @@ public abstract class Accessor {
 
         public abstract Object getCurrentVM();
 
-        public abstract Env getEnvForLanguage(Object languageShared, String mimeType);
+        public abstract Env getEnvForLanguage(Object languageShared, String languageId, String mimeType);
 
-        public abstract Env getEnvForInstrument(Object vm, String mimeType);
+        public abstract Env getEnvForInstrument(Object vm, String languageId, String mimeType);
 
         public abstract Env getEnvForInstrument(LanguageInfo language);
 
@@ -162,6 +162,8 @@ public abstract class Accessor {
         public abstract Map<String, LanguageInfo> getLanguages(Object vmInstance);
 
         public abstract Map<String, InstrumentInfo> getInstruments(Object vmInstance);
+
+        public abstract org.graalvm.polyglot.SourceSection createSourceSection(Object vmObject, org.graalvm.polyglot.Source source, SourceSection sectionImpl);
 
         public abstract <T> T lookup(InstrumentInfo info, Class<T> serviceClass);
 
@@ -459,7 +461,10 @@ public abstract class Accessor {
             // O.K.
         } else if (this.getClass().getSimpleName().endsWith("TruffleTCKAccessor")) {
             // O.K.
+        } else if (this.getClass().getSimpleName().endsWith("TestAccessor")) {
+            // O.K.
         } else {
+            assert this.getClass().getSimpleName().endsWith("VMAccessor");
             SPI = this.engineSupport();
         }
     }

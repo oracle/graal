@@ -50,7 +50,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * of communication from the instrument to the user.
  */
 // BEGIN: com.oracle.truffle.api.instrumentation.test.examples.CoverageExample
-@Registration(id = CoverageExample.ID)
+@Registration(id = CoverageExample.ID, services = Object.class)
 public final class CoverageExample extends TruffleInstrument {
 
     public static final String ID = "test-coverage";

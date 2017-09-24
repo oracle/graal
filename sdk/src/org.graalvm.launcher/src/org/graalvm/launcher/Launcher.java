@@ -734,10 +734,14 @@ public abstract class Launcher {
             indent.append(' ');
         }
         String desc = description != null ? description : "";
+        String[] descLines = desc.split(System.lineSeparator());
         if (option.length() >= 45 && description != null) {
-            System.out.println(String.format("%s%s%n%s%-45s%s", indent, option, indent, "", desc));
+            System.out.println(String.format("%s%s%n%s%-45s%s", indent, option, indent, "", descLines[0]));
         } else {
-            System.out.println(String.format("%s%-45s%s", indent, option, desc));
+            System.out.println(String.format("%s%-45s%s", indent, option, descLines[0]));
+        }
+        for (int i = 1; i < descLines.length; i++) {
+            System.out.println(String.format("%s%-45s%s", indent, "", descLines[i]));
         }
     }
 

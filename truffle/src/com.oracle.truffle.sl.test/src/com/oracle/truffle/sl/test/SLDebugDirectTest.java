@@ -44,6 +44,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import static com.oracle.truffle.tck.DebuggerTester.getSourceImpl;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.LinkedList;
@@ -68,14 +70,13 @@ import com.oracle.truffle.api.interop.ForeignAccess.Factory;
 import com.oracle.truffle.api.interop.ForeignAccess.Factory26;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.api.vm.PolyglotEngine.Value;
-import com.oracle.truffle.sl.SLLanguage;
-import java.util.concurrent.Callable;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
 
 public class SLDebugDirectTest {
     private static final Object UNASSIGNED = new Object();
@@ -84,7 +85,8 @@ public class SLDebugDirectTest {
     private final LinkedList<Runnable> run = new LinkedList<>();
     private SuspendedEvent suspendedEvent;
     private Throwable ex;
-    protected PolyglotEngine engine;
+    private Engine engine;
+    private Context context;
     protected final ByteArrayOutputStream out = new ByteArrayOutputStream();
     protected final ByteArrayOutputStream err = new ByteArrayOutputStream();
     private DebuggerSession session;
@@ -92,26 +94,27 @@ public class SLDebugDirectTest {
     @Before
     public void before() {
         suspendedEvent = null;
-        engine = PolyglotEngine.newBuilder().setOut(out).setErr(err).build();
-        debugger = Debugger.find(engine);
+        engine = Engine.newBuilder().out(out).err(err).build();
+        debugger = engine.getInstruments().get("debugger").lookup(Debugger.class);
         session = debugger.startSession((event) -> {
             suspendedEvent = event;
             performWork();
             suspendedEvent = null;
 
         });
+        context = Context.newBuilder().engine(engine).build();
         run.clear();
     }
 
     @After
     public void dispose() {
-        if (engine != null) {
-            engine.dispose();
-        }
+        session.close();
+        context.close();
+        engine.close();
     }
 
     private static Source createFactorial() {
-        return Source.newBuilder("function test() {\n" +
+        return Source.newBuilder("sl", "function test() {\n" +
                         "  res = fac(2);\n" + "  println(res);\n" +
                         "  return res;\n" +
                         "}\n" +
@@ -121,11 +124,11 @@ public class SLDebugDirectTest {
                         "  nMinusOne = n - 1;\n" +
                         "  nMOFact = fac(nMinusOne);\n" +
                         "  res = n * nMOFact;\n" +
-                        "  return res;\n" + "}\n").name("factorial.sl").mimeType(SLLanguage.MIME_TYPE).build();
+                        "  return res;\n" + "}\n", "factorial.sl").buildLiteral();
     }
 
     private static Source createFactorialWithDebugger() {
-        return Source.newBuilder("function test() {\n" +
+        return Source.newBuilder("sl", "function test() {\n" +
                         "  res = fac(2);\n" +
                         "  println(res);\n" +
                         "  return res;\n" +
@@ -139,11 +142,11 @@ public class SLDebugDirectTest {
                         "  debugger;\n" +
                         "  res = n * nMOFact;\n" +
                         "  return res;\n" +
-                        "}\n").name("factorial.sl").mimeType(SLLanguage.MIME_TYPE).build();
+                        "}\n", "factorial.sl").buildLiteral();
     }
 
     private static Source createInteropComputation() {
-        return Source.newBuilder("function test() {\n" +
+        return Source.newBuilder("sl", "function test() {\n" +
                         "}\n" +
                         "function interopFunction(notifyHandler) {\n" +
                         "  executing = true;\n" +
@@ -151,7 +154,7 @@ public class SLDebugDirectTest {
                         "    executing = notifyHandler.isExecuting;\n" +
                         "  }\n" +
                         "  return executing;\n" +
-                        "}\n").name("interopComputation.sl").mimeType(SLLanguage.MIME_TYPE).build();
+                        "}\n", "interopComputation.sl").buildLiteral();
     }
 
     protected final String getOut() {
@@ -170,8 +173,8 @@ public class SLDebugDirectTest {
     public void testBreakpoint() throws Throwable {
         final Source factorial = createFactorial();
 
-        session.install(Breakpoint.newBuilder(factorial).lineIs(8).build());
-        engine.eval(factorial);
+        session.install(Breakpoint.newBuilder(getSourceImpl(factorial)).lineIs(8).build());
+        context.eval(factorial);
         assertExecutedOK();
 
         assertLocation("fac", 8, true,
@@ -181,19 +184,19 @@ public class SLDebugDirectTest {
                         UNASSIGNED, "res", UNASSIGNED);
         continueExecution();
 
-        Value value = engine.findGlobalSymbol("test").execute();
+        Value value = context.importSymbol("test").execute();
         assertExecutedOK();
         Assert.assertEquals("2\n", getOut());
-        Number n = value.as(Number.class);
-        assertNotNull(n);
-        assertEquals("Factorial computed OK", 2, n.intValue());
+        Assert.assertTrue(value.isNumber());
+        int n = value.asInt();
+        assertEquals("Factorial computed OK", 2, n);
     }
 
     @Test
     public void testDebuggerBreakpoint() throws Throwable {
         final Source factorial = createFactorialWithDebugger();
 
-        engine.eval(factorial);
+        context.eval(factorial);
         assertExecutedOK();
 
         assertLocation("fac", 12, true,
@@ -203,27 +206,18 @@ public class SLDebugDirectTest {
                         "1", "res", UNASSIGNED);
         continueExecution();
 
-        Value value = engine.findGlobalSymbol("test").execute();
+        Value value = context.importSymbol("test").execute();
         assertExecutedOK();
         Assert.assertEquals("2\n", getOut());
-        Number n = value.as(Number.class);
-        assertNotNull(n);
-        assertEquals("Factorial computed OK", 2, n.intValue());
+        Assert.assertTrue(value.isNumber());
+        int n = value.asInt();
+        assertEquals("Factorial computed OK", 2, n);
     }
 
     @Test
     public void stepInStepOver() throws Throwable {
-        doStepInStepOver(true);
-    }
-
-    @Test
-    public void stepInStepOverWithJavaInterop() throws Throwable {
-        doStepInStepOver(false);
-    }
-
-    private void doStepInStepOver(boolean direct) throws Throwable {
         final Source factorial = createFactorial();
-        engine.eval(factorial);
+        context.eval(factorial);
 
         session.suspendNextExecution();
 
@@ -263,27 +257,23 @@ public class SLDebugDirectTest {
         assertLocation("test", 3, true, "println(res)", "res", "2");
         stepOut();
 
-        Value value = engine.findGlobalSymbol("test");
-        Number result;
-        if (direct) {
-            value = value.execute();
-            result = value.as(Number.class);
-        } else {
-            final TruffleObject fn = (TruffleObject) value.get();
-            Callable<?> test = JavaInterop.asJavaFunction(Callable.class, fn);
-            result = (Number) test.call();
-        }
+        Value value = context.importSymbol("test");
+        assertTrue(value.canExecute());
+        Value resultValue = value.execute();
+        String resultStr = resultValue.toString();
+        Number result = resultValue.asInt();
         assertExecutedOK();
 
         assertNotNull(result);
         assertEquals("Factorial computed OK", 2, result.intValue());
+        assertEquals("Factorial computed OK", "2", resultStr);
     }
 
     @Test
     public void testPause() throws Throwable {
         final Source interopComp = createInteropComputation();
 
-        engine.eval(interopComp);
+        context.eval(interopComp);
         assertExecutedOK();
 
         final ExecNotifyHandler nh = new ExecNotifyHandler();
@@ -314,28 +304,27 @@ public class SLDebugDirectTest {
             nh.pauseDone();
         });
 
-        Value value = engine.findGlobalSymbol("interopFunction").execute(nh);
+        Value value = context.importSymbol("interopFunction").execute(nh);
 
         assertExecutedOK();
-        // Assert.assertFalse(debugger.isExecuting());
-        Boolean n = value.as(Boolean.class);
-        assertNotNull(n);
+        assertTrue(value.isBoolean());
+        boolean n = value.asBoolean();
         assertTrue("Interop computation OK", !n);
     }
 
     private static Source createNull() {
-        return Source.newBuilder("function nullTest() {\n" +
+        return Source.newBuilder("sl", "function nullTest() {\n" +
                         "  res = doNull();\n" +
                         "  return res;\n" +
                         "}\n" +
                         "function doNull() {\n" +
-                        "}\n").name("nullTest.sl").mimeType(SLLanguage.MIME_TYPE).build();
+                        "}\n", "nullTest.sl").buildLiteral();
     }
 
     @Test
     public void testNull() throws Throwable {
         final Source nullTest = createNull();
-        engine.eval(nullTest);
+        context.eval(nullTest);
 
         session.suspendNextExecution();
 
@@ -344,10 +333,10 @@ public class SLDebugDirectTest {
         assertLocation("nullTest", 3, true, "return res", "res", "NULL");
         continueExecution();
 
-        Value value = engine.findGlobalSymbol("nullTest").execute();
+        Value value = context.importSymbol("nullTest").execute();
         assertExecutedOK();
 
-        String val = value.as(String.class);
+        String val = value.toString();
         assertNotNull(val);
         assertEquals("SL displays null as NULL", "NULL", val);
     }

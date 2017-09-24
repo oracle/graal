@@ -38,37 +38,43 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.sl.nodes.interop;
+package com.oracle.truffle.sl.test;
 
-import com.oracle.truffle.sl.runtime.SLBigNumber;
-import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.TypeSystemReference;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.sl.nodes.SLTypes;
-import java.math.BigInteger;
+import java.io.IOException;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
-/**
- * The node for converting a foreign primitive or boxed primitive value to an SL value.
- */
-@TypeSystemReference(SLTypes.class)
-public abstract class SLTypeToForeignNode extends Node {
+public class SLInteropPrimitiveTest {
+    private Context context;
 
-    public abstract Object executeConvert(Object value);
-
-    @Specialization
-    static long fromLong(long value) {
-        return value;
+    @Before
+    public void setUp() {
+        context = Context.create("sl");
     }
 
-    @Specialization
-    static TruffleObject fromObject(BigInteger value) {
-        return new SLBigNumber(value);
+    @After
+    public void tearDown() {
+        context = null;
     }
 
-    @Fallback
-    static Object identity(Object value) {
-        return value;
+    @Test
+    public void testBoolean() throws IOException {
+        final Source src = Source.newBuilder("sl", "function testBoolean(a,b) {return a == b;} function main() {return testBoolean;}", "testBoolean.sl").build();
+        final Value fnc = context.eval(src);
+        Assert.assertTrue(fnc.canExecute());
+        fnc.execute(true, false);
+    }
+
+    @Test
+    public void testChar() throws IOException {
+        final Source src = Source.newBuilder("sl", "function testChar(a,b) {return a == b;} function main() {return testChar;}", "testChar.sl").build();
+        final Value fnc = context.eval(src);
+        Assert.assertTrue(fnc.canExecute());
+        fnc.execute('a', 'b');
     }
 }

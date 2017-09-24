@@ -135,24 +135,32 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         return FILENAME_EXTENSION;
     }
 
+    /**
+     * Set configuration data to the language. Possible values are:
+     * <ul>
+     * <li>{@link ReturnLanguageEnv#KEY} with a {@link ReturnLanguageEnv} value,</li>
+     * <li>"initSource" with a {@link org.graalvm.polyglot.Source} value,</li>
+     * <li>"runInitAfterExec" with a {@link Boolean} value.</li>
+     * </ul>
+     */
+    public static Map<String, Object> envConfig;
+
     @Override
     protected Context createContext(TruffleLanguage.Env env) {
-        Object envReturner = env.getConfig().get(ReturnLanguageEnv.KEY);
-        if (envReturner != null) {
-            ((ReturnLanguageEnv) envReturner).env = env;
-        }
-        Object[] sharedContext = (Object[]) env.getConfig().get("context");
-        if (sharedContext == null || sharedContext[0] == null) {
-            Source initSource = (Source) env.getConfig().get("initSource");
-            Boolean runInitAfterExec = (Boolean) env.getConfig().get("runInitAfterExec");
-            Context c = new Context(env.out(), env.err(), env.lookup(AllocationReporter.class), initSource, runInitAfterExec);
-            if (sharedContext != null) {
-                sharedContext[0] = c;
+        Source initSource = null;
+        Boolean runInitAfterExec = null;
+        if (envConfig != null) {
+            Object envReturner = envConfig.get(ReturnLanguageEnv.KEY);
+            if (envReturner != null) {
+                ((ReturnLanguageEnv) envReturner).env = env;
             }
-            return c;
-        } else {
-            return forkContext((Context) sharedContext[0]);
+            org.graalvm.polyglot.Source initPolyglotSource = (org.graalvm.polyglot.Source) envConfig.get("initSource");
+            if (initPolyglotSource != null) {
+                initSource = AbstractInstrumentationTest.sourceToImpl(initPolyglotSource);
+            }
+            runInitAfterExec = (Boolean) envConfig.get("runInitAfterExec");
         }
+        return new Context(env.out(), env.err(), env.lookup(AllocationReporter.class), initSource, runInitAfterExec);
     }
 
     @Override
@@ -168,10 +176,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                 context.afterTarget = rct;
             }
         }
-    }
-
-    protected Context forkContext(Context context) {
-        return context;
     }
 
     @Override
@@ -506,7 +510,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         @Override
         public Object execute(VirtualFrame frame) {
             defineFunction();
-            return null;
+            return Null.INSTANCE;
         }
 
         @TruffleBoundary
@@ -685,7 +689,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
         @Override
         public Object execute(VirtualFrame frame) {
-            Object returnValue = null;
+            Object returnValue = Null.INSTANCE;
             for (int i = 0; infinite || i < loopCount; i++) {
                 returnValue = super.execute(frame);
             }
@@ -732,7 +736,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                 }
             }
             writeAndFlush(writer, what);
-            return null;
+            return Null.INSTANCE;
         }
 
         @TruffleBoundary

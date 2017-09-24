@@ -63,12 +63,12 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     private final TVMCI.Test<CallTarget> testTvmci = new TVMCI.Test<CallTarget>() {
 
         @Override
-        public CallTarget createTestCallTarget(String testName, RootNode testNode) {
+        public CallTarget createTestCallTarget(RootNode testNode) {
             return createCallTarget(testNode);
         }
 
         @Override
-        public void finishWarmup(CallTarget callTarget) {
+        public void finishWarmup(CallTarget callTarget, String testName) {
             // do nothing if we have no compiler
         }
     };
