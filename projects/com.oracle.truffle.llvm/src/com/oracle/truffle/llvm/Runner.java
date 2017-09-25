@@ -56,6 +56,7 @@ import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -190,6 +191,13 @@ public final class Runner {
     }
 
     public static void disposeContext(LLVMContext context) {
+        LLVMFunctionDescriptor atexitDescriptor = context.getGlobalScope().getFunctionDescriptor(context, "@__sulong_funcs_on_exit");
+        if (atexitDescriptor != null) {
+            RootCallTarget atexit = atexitDescriptor.getLLVMIRFunction();
+            long stackPointer = context.getThreadingStack().getStack().getStackPointer();
+            atexit.call(stackPointer);
+            context.getThreadingStack().getStack().setStackPointer(stackPointer);
+        }
         assert context.getThreadingStack().checkThread();
         for (RootCallTarget destructorFunction : context.getDestructorFunctions()) {
             try (StackPointer stackPointer = context.getThreadingStack().getStack().takeStackPointer()) {

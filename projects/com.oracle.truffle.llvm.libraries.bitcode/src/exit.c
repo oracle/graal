@@ -39,7 +39,7 @@ struct entry {
 
 static struct entry head = { NULL, NULL, NULL };
 
-static void __funcs_on_exit() {
+void __sulong_funcs_on_exit() {
   struct entry *entry = head.next;
   while (entry) {
     struct entry *old = entry;
@@ -68,7 +68,7 @@ __attribute__((weak)) int atexit(void (*func)(void)) { return __cxa_atexit(calle
 
 __attribute__((weak)) void exit(int status) {
   int64_t result;
-  __funcs_on_exit();
+  __sulong_funcs_on_exit();
   __SYSCALL_1(result, SYS_exit, status);
   for (;;) {
     __SYSCALL_1(result, SYS_exit, status);

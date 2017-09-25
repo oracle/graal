@@ -1060,6 +1060,50 @@ public final class LLVMInteropTest {
         Assert.assertTrue(test6.execute().asInt() != 0);
     }
 
+    @Test
+    public void testConstruct001() {
+        Runner runner = new Runner("construct001");
+        final StringBuilder buf = new StringBuilder();
+        runner.export(new ProxyExecutable() {
+            @Override
+            public Object execute(Value... t) {
+                Assert.assertEquals("argument count", 1, t.length);
+                if (t[0].isString()) {
+                    buf.append(t[0].asString());
+                } else {
+                    Assert.fail("unexpected value type");
+                }
+                return 0;
+            }
+        }, "callback");
+        runner.load();
+        Assert.assertEquals("construct\n", buf.toString());
+        runner.close();
+        Assert.assertEquals("construct\ndestruct\n", buf.toString());
+    }
+
+    @Test
+    public void testConstruct002() {
+        Runner runner = new Runner("construct002");
+        final StringBuilder buf = new StringBuilder();
+        runner.export(new ProxyExecutable() {
+            @Override
+            public Object execute(Value... t) {
+                Assert.assertEquals("argument count", 1, t.length);
+                if (t[0].isString()) {
+                    buf.append(t[0].asString());
+                } else {
+                    Assert.fail("unexpected value type");
+                }
+                return 0;
+            }
+        }, "callback");
+        runner.load();
+        Assert.assertEquals("construct\n", buf.toString());
+        runner.close();
+        Assert.assertEquals("construct\natexit\ndestruct\n", buf.toString());
+    }
+
     private static Map<String, Object> makeObjectA() {
         HashMap<String, Object> values = new HashMap<>();
         values.put("valueBool", true);
@@ -1157,6 +1201,10 @@ public final class LLVMInteropTest {
             context.exportSymbol(name, foreignObject);
         }
 
+        void close() {
+            context.close();
+        }
+
         Value load() {
             try {
                 File file = new File(TEST_DIR.toFile(), testName + "/" + FILENAME);
@@ -1172,6 +1220,5 @@ public final class LLVMInteropTest {
         int run() {
             return load().asInt();
         }
-
     }
 }
