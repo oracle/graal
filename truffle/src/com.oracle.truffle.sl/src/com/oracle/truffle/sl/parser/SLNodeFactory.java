@@ -51,6 +51,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.nodes.SLBinaryNode;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
@@ -82,6 +83,7 @@ import com.oracle.truffle.sl.nodes.expression.SLMulNodeGen;
 import com.oracle.truffle.sl.nodes.expression.SLParenExpressionNode;
 import com.oracle.truffle.sl.nodes.expression.SLStringLiteralNode;
 import com.oracle.truffle.sl.nodes.expression.SLSubNodeGen;
+import com.oracle.truffle.sl.nodes.expression.SLUnboxNodeGen;
 import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
 import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
 import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNodeGen;
@@ -339,51 +341,65 @@ public class SLNodeFactory {
         if (leftNode == null || rightNode == null) {
             return null;
         }
+        final SLExpressionNode leftUnboxed;
+        if (leftNode instanceof SLBinaryNode) {  // SLBinaryNode never returns boxed value
+            leftUnboxed = leftNode;
+        } else {
+            leftUnboxed = SLUnboxNodeGen.create(leftNode);
+            leftUnboxed.setSourceSection(leftNode.getSourceSection());
+        }
+        final SLExpressionNode rightUnboxed;
+        if (rightNode instanceof SLBinaryNode) {  // SLBinaryNode never returns boxed value
+            rightUnboxed = rightNode;
+        } else {
+            rightUnboxed = SLUnboxNodeGen.create(rightNode);
+            rightUnboxed.setSourceSection(rightNode.getSourceSection());
+        }
 
         final SLExpressionNode result;
         switch (opToken.val) {
             case "+":
-                result = SLAddNodeGen.create(leftNode, rightNode);
+                result = SLAddNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "*":
-                result = SLMulNodeGen.create(leftNode, rightNode);
+                result = SLMulNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "/":
-                result = SLDivNodeGen.create(leftNode, rightNode);
+                result = SLDivNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "-":
-                result = SLSubNodeGen.create(leftNode, rightNode);
+                result = SLSubNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "<":
-                result = SLLessThanNodeGen.create(leftNode, rightNode);
+                result = SLLessThanNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "<=":
-                result = SLLessOrEqualNodeGen.create(leftNode, rightNode);
+                result = SLLessOrEqualNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case ">":
-                result = SLLogicalNotNodeGen.create(SLLessOrEqualNodeGen.create(leftNode, rightNode));
+                result = SLLogicalNotNodeGen.create(SLLessOrEqualNodeGen.create(leftUnboxed, rightUnboxed));
                 break;
             case ">=":
-                result = SLLogicalNotNodeGen.create(SLLessThanNodeGen.create(leftNode, rightNode));
+                result = SLLogicalNotNodeGen.create(SLLessThanNodeGen.create(leftUnboxed, rightUnboxed));
                 break;
             case "==":
-                result = SLEqualNodeGen.create(leftNode, rightNode);
+                result = SLEqualNodeGen.create(leftUnboxed, rightUnboxed);
                 break;
             case "!=":
-                result = SLLogicalNotNodeGen.create(SLEqualNodeGen.create(leftNode, rightNode));
+                result = SLLogicalNotNodeGen.create(SLEqualNodeGen.create(leftUnboxed, rightUnboxed));
                 break;
             case "&&":
-                result = new SLLogicalAndNode(leftNode, rightNode);
+                result = new SLLogicalAndNode(leftUnboxed, rightUnboxed);
                 break;
             case "||":
-                result = new SLLogicalOrNode(leftNode, rightNode);
+                result = new SLLogicalOrNode(leftUnboxed, rightUnboxed);
                 break;
             default:
                 throw new RuntimeException("unexpected operation: " + opToken.val);
         }
 
-        int start = leftNode.getSourceSection().getCharIndex();
-        int length = rightNode.getSourceSection().getCharEndIndex() - start;
+        int start = leftUnboxed.getSourceSection().getCharIndex();
+        int length = rightUnboxed.getSourceSection().getCharEndIndex() - start;
         result.setSourceSection(source.createSection(start, length));
 
         return result;
