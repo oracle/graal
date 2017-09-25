@@ -75,6 +75,7 @@ public final class CPUSampler implements Closeable {
 
         /**
          * Default constructor.
+         * 
          * @since 0.29
          */
         public Instrument() {
@@ -118,7 +119,6 @@ public final class CPUSampler implements Closeable {
             final String filterLanguage = env.getOptions().get(CLI.FILTER_LANGUAGE);
             return CLI.buildFilter(true, statements, false, internals, filterRootName, filterFile, filterLanguage);
         }
-
 
         /**
          * @return A list of the options provided by the {@link CPUSampler}.

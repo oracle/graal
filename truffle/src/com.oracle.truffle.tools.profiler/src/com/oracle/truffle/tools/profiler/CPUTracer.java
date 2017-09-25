@@ -73,6 +73,7 @@ public final class CPUTracer implements Closeable {
 
         /**
          * Default constructor.
+         * 
          * @since 0.29
          */
         public Instrument() {
@@ -198,7 +199,7 @@ public final class CPUTracer implements Closeable {
      * only parts of the executed source code.
      *
      * @param filter The filter describing which part of the source code to trace
-     *               @since 0.29
+     * @since 0.29
      */
     public synchronized void setFilter(SourceSectionFilter filter) {
         verifyConfigAllowed();

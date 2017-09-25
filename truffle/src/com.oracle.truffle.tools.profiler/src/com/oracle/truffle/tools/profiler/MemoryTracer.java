@@ -81,6 +81,7 @@ public final class MemoryTracer implements Closeable {
 
         /**
          * Default constructor.
+         * 
          * @since 0.29
          */
         public Instrument() {
@@ -122,7 +123,6 @@ public final class MemoryTracer implements Closeable {
             final String filterLanguage = env.getOptions().get(CLI.FILTER_LANGUAGE);
             return CLI.buildFilter(roots, statements, calls, internals, filterRootName, filterFile, filterLanguage);
         }
-
 
         /**
          * @return A list of the options provided by the {@link MemoryTracer}.
