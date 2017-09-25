@@ -126,6 +126,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexMul;
 import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMLangStartNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMPanicNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMProcessExitNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMPrintStackTraceNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunConstructorFunctionsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunDestructorFunctionsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunGlobalVariableInitalizationNodeGen;
@@ -366,6 +367,12 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
             }
         });
 
+        factories.put("@__sulong_print_stacktrace", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@__sulong_print_stacktrace", LLVMPrintStackTraceNodeGen.create());
+            }
+        });
     }
 
     protected void registerTruffleIntrinsics() {

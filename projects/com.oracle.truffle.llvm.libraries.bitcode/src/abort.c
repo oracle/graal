@@ -27,76 +27,22 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <stdio.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include "syscall.h"
 
-#ifndef __linux__
-#define SYS_exit_group 231
-#endif
+#define ABORT_STATUS 134
 
-struct entry {
-  struct entry *next;
-  void (*func)(void *);
-  void *arg;
-};
+void __sulong_print_stacktrace();
+void __clear_exit_handlers();
 
-static struct entry head = { NULL, NULL, NULL };
-
-void __sulong_funcs_on_exit() {
-  struct entry *entry = head.next;
-  while (entry) {
-    struct entry *old = entry;
-    entry->func(entry->arg);
-    entry = entry->next;
-    head.next = entry;
-    free(old);
-  }
-  head.next = NULL;
-}
-
-void __clear_exit_handlers() {
-  struct entry *entry = head.next;
-  while (entry) {
-    struct entry *old = entry;
-    entry = entry->next;
-    free(old);
-  }
-  head.next = NULL;
-}
-
-__attribute__((weak)) int __cxa_atexit(void (*func)(void *), void *arg, void *dso) {
-  struct entry *entry = entry = (struct entry *)malloc(sizeof(struct entry));
-  entry->func = func;
-  entry->arg = arg;
-  entry->next = head.next;
-  head.next = entry;
-  return 0;
-}
-
-static void caller(void *arg) {
-  void (*func)(void) = (void *)(void *)arg;
-  func();
-}
-
-__attribute__((weak)) int atexit(void (*func)(void)) { return __cxa_atexit(caller, func, NULL); }
-
-__attribute__((weak)) void exit(int status) {
+__attribute__((weak)) void abort() {
   int64_t result;
-  __sulong_funcs_on_exit();
-  __SYSCALL_1(result, SYS_exit_group, status);
-  for (;;) { // this should never be executed
-    __SYSCALL_1(result, SYS_exit_group, status);
-  }
-}
-
-__attribute__((weak)) void _exit(int status) {
-  int64_t result;
+  fprintf(stderr, "abort()\n\n");
+  __sulong_print_stacktrace();
   __clear_exit_handlers();
-  __SYSCALL_1(result, SYS_exit_group, status);
-  for (;;) { // this should never be executed
-    __SYSCALL_1(result, SYS_exit_group, status);
+  __SYSCALL_1(result, SYS_exit, ABORT_STATUS);
+  for (;;) {
+    __SYSCALL_1(result, SYS_exit, ABORT_STATUS);
   }
 }
-
-__attribute__((weak)) void _Exit(int status) { _exit(status); }
