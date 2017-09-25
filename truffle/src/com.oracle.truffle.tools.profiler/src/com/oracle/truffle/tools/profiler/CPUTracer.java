@@ -52,9 +52,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Implementation of a tracing based profiler for
- * {@linkplain com.oracle.truffle.api.TruffleLanguage Truffle languages} built on top of the
- * {@linkplain TruffleInstrument Truffle instrumentation framework}.
+ * Implementation of a tracing based profiler for {@linkplain com.oracle.truffle.api.TruffleLanguage
+ * Truffle languages} built on top of the {@linkplain TruffleInstrument Truffle instrumentation
+ * framework}.
  * <p>
  * The tracer counts how many times each of the elements of interest (e.g. functions, statements,
  * etc.) are executed.
