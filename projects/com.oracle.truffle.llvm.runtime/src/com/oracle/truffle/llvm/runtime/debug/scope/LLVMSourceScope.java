@@ -62,12 +62,14 @@ public final class LLVMSourceScope extends ScopeProvider.AbstractScope {
     @TruffleBoundary
     protected Object getVariables(Frame frame) {
         final Map<Object, LLVMDebugObject> vars = new HashMap<>();
-        for (final FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
-            final Object value = frame.getValue(slot);
-            if (value instanceof LLVMDebugValueContainer) {
-                final LLVMDebugValueContainer container = (LLVMDebugValueContainer) value;
-                for (final Object identifier : container.getKeys()) {
-                    vars.put(identifier, container.getMemberSafe(identifier));
+        if (frame != null) {
+            for (final FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
+                final Object value = frame.getValue(slot);
+                if (value instanceof LLVMDebugValueContainer) {
+                    final LLVMDebugValueContainer container = (LLVMDebugValueContainer) value;
+                    for (final Object identifier : container.getKeys()) {
+                        vars.put(identifier, container.getMemberSafe(identifier));
+                    }
                 }
             }
         }
