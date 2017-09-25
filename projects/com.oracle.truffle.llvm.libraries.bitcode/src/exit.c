@@ -45,6 +45,17 @@ void __sulong_funcs_on_exit() {
     struct entry *old = entry;
     entry->func(entry->arg);
     entry = entry->next;
+    head.next = entry;
+    free(old);
+  }
+  head.next = NULL;
+}
+
+void __clear_funcs_on_exit() {
+  struct entry *entry = head.next;
+  while (entry) {
+    struct entry *old = entry;
+    entry = entry->next;
     free(old);
   }
   head.next = NULL;
@@ -69,8 +80,19 @@ __attribute__((weak)) int atexit(void (*func)(void)) { return __cxa_atexit(calle
 __attribute__((weak)) void exit(int status) {
   int64_t result;
   __sulong_funcs_on_exit();
-  __SYSCALL_1(result, SYS_exit, status);
+  __SYSCALL_1(result, SYS_exit_group, status);
   for (;;) {
-    __SYSCALL_1(result, SYS_exit, status);
+    __SYSCALL_1(result, SYS_exit_group, status);
   }
 }
+
+__attribute__((weak)) void _exit(int status) {
+  int64_t result;
+  __clear_funcs_on_exit();
+  __SYSCALL_1(result, SYS_exit_group, status);
+  for (;;) {
+    __SYSCALL_1(result, SYS_exit_group, status);
+  }
+}
+
+__attribute__((weak)) void _Exit(int status) { _exit(status); }
