@@ -44,6 +44,7 @@ import java.math.BigInteger;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.nodes.SLBinaryNode;
 import com.oracle.truffle.sl.runtime.SLFunction;
@@ -95,6 +96,14 @@ public abstract class SLEqualNode extends SLBinaryNode {
     @Specialization
     protected boolean equal(SLNull left, SLNull right) {
         /* There is only the singleton instance of SLNull, so we do not need equals(). */
+        return left == right;
+    }
+
+    /**
+     * Specialization for foreign {@link TruffleObject}s.
+     */
+    @Specialization
+    protected boolean equal(TruffleObject left, TruffleObject right) {
         return left == right;
     }
 
