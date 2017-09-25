@@ -74,6 +74,13 @@ public final class CPUSampler implements Closeable {
     public static final class Instrument extends TruffleInstrument {
 
         /**
+         * Default constructor.
+         * @since 0.29
+         */
+        public Instrument() {
+        }
+
+        /**
          * A string used to identify the sampler, i.e. as the name of the tool.
          *
          * @since 0.29
@@ -82,6 +89,12 @@ public final class CPUSampler implements Closeable {
         static CPUSampler sampler;
         List<OptionDescriptor> descriptors = new ArrayList<>();
 
+        /**
+         * Called to create the Instrument.
+         *
+         * @param env environment information for the instrument
+         * @since 0.29
+         */
         @Override
         protected void onCreate(Env env) {
             sampler = new CPUSampler(env);
@@ -106,6 +119,11 @@ public final class CPUSampler implements Closeable {
             return CLI.buildFilter(true, statements, false, internals, filterRootName, filterFile, filterLanguage);
         }
 
+
+        /**
+         * @return A list of the options provided by the {@link CPUSampler}.
+         * @since 0.29
+         */
         @SuppressWarnings("deprecation")
         @Override
         protected List<OptionDescriptor> describeOptions() {
@@ -128,6 +146,12 @@ public final class CPUSampler implements Closeable {
             return descriptors;
         }
 
+        /**
+         * Called when the Instrument is to be disposed.
+         *
+         * @param env environment information for the instrument
+         * @since 0.29
+         */
         @Override
         protected void onDispose(Env env) {
             if (env.getOptions().get(CLI.ENABLED)) {
@@ -145,6 +169,10 @@ public final class CPUSampler implements Closeable {
      * @since 0.29
      */
     public final class HitCounts {
+
+        HitCounts() {
+        }
+
         int compiledHitCount;
         int interpretedHitCount;
 

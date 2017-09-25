@@ -80,6 +80,13 @@ public final class MemoryTracer implements Closeable {
     public static final class Instrument extends TruffleInstrument {
 
         /**
+         * Default constructor.
+         * @since 0.29
+         */
+        public Instrument() {
+        }
+
+        /**
          * A string used to identify the tracer, i.e. as the name of the tool.
          *
          * @since 0.29
@@ -88,6 +95,12 @@ public final class MemoryTracer implements Closeable {
         static MemoryTracer tracer;
         List<OptionDescriptor> descriptors = new ArrayList<>();
 
+        /**
+         * Called to create the Instrument.
+         *
+         * @param env environment information for the instrument
+         * @since 0.29
+         */
         @Override
         protected void onCreate(Env env) {
             tracer = new MemoryTracer(env);
@@ -110,6 +123,11 @@ public final class MemoryTracer implements Closeable {
             return CLI.buildFilter(roots, statements, calls, internals, filterRootName, filterFile, filterLanguage);
         }
 
+
+        /**
+         * @return A list of the options provided by the {@link MemoryTracer}.
+         * @since 0.29
+         */
         @SuppressWarnings("deprecation")
         @Override
         protected List<OptionDescriptor> describeOptions() {
@@ -130,6 +148,12 @@ public final class MemoryTracer implements Closeable {
             return descriptors;
         }
 
+        /**
+         * Called when the Instrument is to be disposed.
+         *
+         * @param env environment information for the instrument
+         * @since 0.29
+         */
         @Override
         protected void onDispose(Env env) {
             if (env.getOptions().get(CLI.ENABLED)) {
@@ -426,6 +450,10 @@ public final class MemoryTracer implements Closeable {
      * @since 0.29
      */
     public static final class AllocationPayload {
+
+        AllocationPayload() {
+        }
+
         private final List<AllocationEventInfo> events = new ArrayList<>();
 
         private long totalAllocations = 0;
