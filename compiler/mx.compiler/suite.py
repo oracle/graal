@@ -87,9 +87,14 @@ suite = {
       "sha1" : "74adc57e75a578994ddee223bc428a15f48870a8",
     },
 
-    "JOL_INTERNALS" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/truffle/jol/jol-internals.jar"],
-      "sha1" : "508bcd26a4d7c4c44048990c6ea789a3b11a62dc",
+    "JOL_CLI" : {
+      "sha1" : "45dd0cf195b16e70710a8d6d763cda614cf6f31e",
+      "maven" : {
+        "groupId" : "org.openjdk.jol",
+        "artifactId" : "jol-cli",
+        "version" : "0.9",
+        "suffix" : "full",
+      },
     },
 
     "BATIK" : {
