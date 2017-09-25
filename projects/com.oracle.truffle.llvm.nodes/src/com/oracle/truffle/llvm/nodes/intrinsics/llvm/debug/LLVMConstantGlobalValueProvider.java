@@ -160,7 +160,8 @@ final class LLVMConstantGlobalValueProvider implements LLVMDebugValueProvider {
         if (isInNative(global)) {
             return new LLVMAllocationValueProvider(getNativeLocation(global));
         } else {
-            return LLVMToDebugValueNodeGen.create(null).executeWithTarget(getManagedValue(global));
+            // todo replace construction with constructor argument
+            return LLVMToDebugValueNodeGen.create().executeWithTarget(getManagedValue(global));
         }
     }
 }

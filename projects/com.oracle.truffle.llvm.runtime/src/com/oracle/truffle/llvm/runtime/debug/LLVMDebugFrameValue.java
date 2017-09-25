@@ -29,64 +29,24 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+public final class LLVMDebugFrameValue {
 
-import java.math.BigInteger;
+    private final LLVMSourceVariable variable;
+    private final LLVMDebugValueProvider.Builder builder;
+    private final Object value;
 
-public interface LLVMDebugValueProvider {
-
-    String UNAVAILABLE_VALUE = "<unavailable>";
-
-    @TruffleBoundary
-    static String toHexString(BigInteger value) {
-        final byte[] bytes = value.toByteArray();
-        final StringBuilder builder = new StringBuilder(bytes.length * 2 + 2);
-        builder.append("0x");
-        for (byte b : bytes) {
-            builder.append(String.format("%02x", b));
-        }
-        return builder.toString();
+    public LLVMDebugFrameValue(LLVMSourceVariable variable, LLVMDebugValueProvider.Builder builder, Object value) {
+        this.variable = variable;
+        this.builder = builder;
+        this.value = value;
     }
 
-    interface Builder {
-
-        LLVMDebugValueProvider build(Object irValue);
-
+    public LLVMSourceVariable getVariable() {
+        return variable;
     }
 
-    String describeValue(long bitOffset, int bitSize);
-
-    @TruffleBoundary
-    default Object cannotInterpret(String intendedType, long bitOffset, int bitSize) {
-        return String.format("<cannot interpret as %s: %s>", intendedType, describeValue(bitOffset, bitSize));
+    public LLVMDebugObject getValue() {
+        final LLVMDebugValueProvider valueProvider = builder.build(value);
+        return LLVMDebugObject.instantiate(variable.getType(), 0L, valueProvider, variable.getLocation());
     }
-
-    @TruffleBoundary
-    default Object unavailable(long bitOffset, int bitSize) {
-        return String.format("<unavailable: %s>", describeValue(bitOffset, bitSize));
-    }
-
-    boolean canRead(long bitOffset, int bits);
-
-    Object readBoolean(long bitOffset);
-
-    Object readFloat(long bitOffset);
-
-    Object readDouble(long bitOffset);
-
-    Object read80BitFloat(long bitOffset);
-
-    Object readAddress(long bitOffset);
-
-    Object readUnknown(long bitOffset, int bitSize);
-
-    Object computeAddress(long bitOffset);
-
-    Object readBigInteger(long bitOffset, int bitSize, boolean signed);
-
-    LLVMDebugValueProvider dereferencePointer(long bitOffset);
-
-    boolean isInteropValue();
-
-    Object asInteropValue();
 }

@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
-import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -42,7 +41,7 @@ import com.oracle.truffle.llvm.runtime.debug.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
@@ -52,10 +51,14 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
-@NodeChild(value = "valueSource", type = LLVMExpressionNode.class)
-public abstract class LLVMToDebugValueNode extends LLVMExpressionNode {
+public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebugValueProvider.Builder {
 
     public abstract LLVMDebugValueProvider executeWithTarget(Object target);
+
+    @Override
+    public LLVMDebugValueProvider build(Object irValue) {
+        return executeWithTarget(irValue);
+    }
 
     @Specialization
     public LLVMDebugValueProvider fromBoolean(boolean value) {
@@ -89,7 +92,7 @@ public abstract class LLVMToDebugValueNode extends LLVMExpressionNode {
 
     @Specialization
     public LLVMDebugValueProvider fromBoxedPrimitive(LLVMBoxedPrimitive value) {
-        return LLVMToDebugValueNodeGen.create(null).executeWithTarget(value.getValue());
+        return executeWithTarget(value.getValue());
     }
 
     @Specialization

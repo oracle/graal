@@ -34,6 +34,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.metadata.ScopeProvider;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugFrameValue;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueContainer;
 
@@ -70,6 +71,9 @@ public final class LLVMSourceScope extends ScopeProvider.AbstractScope {
                     for (final Object identifier : container.getKeys()) {
                         vars.put(identifier, container.getMemberSafe(identifier));
                     }
+                } else if (value instanceof LLVMDebugFrameValue) {
+                    final LLVMDebugFrameValue frameValue = (LLVMDebugFrameValue) value;
+                    vars.put(frameValue.getVariable().getName(), frameValue.getValue());
                 }
             }
         }
