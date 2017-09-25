@@ -67,7 +67,7 @@ public class ScopeTest extends AbstractInstrumentationTest {
     public void testDefaultScope() throws Throwable {
         assureEnabled(engine.getInstruments().get("testScopeInstrument"));
         TestScopeInstrument.INSTANCE.setTester(new DefaultScopeTester());
-        run("ROOT(DEFINE(testFunction,\nROOT(\nVARIABLE(a, 10),\nVARIABLE(b, 20),\nSTATEMENT)),\nCALL(testFunction))");
+        run("ROOT(DEFINE(\ntestFunction,ROOT(\nVARIABLE(a, 10),\nVARIABLE(b, 20),\nSTATEMENT)),\nCALL(testFunction))");
         TestScopeInstrument.INSTANCE.checkForFailure();
     }
 

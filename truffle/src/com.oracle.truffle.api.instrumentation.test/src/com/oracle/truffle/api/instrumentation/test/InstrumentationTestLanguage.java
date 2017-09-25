@@ -313,7 +313,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                 case "EXPRESSION":
                     return new ExpressionNode(childArray);
                 case "ROOT":
-                    return new InstrumentableRootNode(childArray);
+                    return new FunctionRootNode(childArray);
                 case "STATEMENT":
                     return new StatementNode(childArray);
                 case "CONSTANT":
@@ -377,7 +377,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         private final String name;
         private final SourceSection sourceSection;
         private final RootCallTarget afterTarget;
-        @Children private final BaseNode[] expressions;
+        @Child private InstrumentedNode functionRoot;
 
         protected InstrumentationTestRootNode(InstrumentationTestLanguage lang, String name, SourceSection sourceSection, BaseNode... expressions) {
             this(lang, name, sourceSection, null, expressions);
@@ -388,7 +388,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             this.name = name;
             this.sourceSection = sourceSection;
             this.afterTarget = afterTarget;
-            this.expressions = expressions;
+            this.functionRoot = new FunctionRootNode(expressions);
+            functionRoot.setSourceSection(sourceSection);
         }
 
         @Override
@@ -406,12 +407,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         @ExplodeLoop
         public Object execute(VirtualFrame frame) {
             Object returnValue = Null.INSTANCE;
-            for (int i = 0; i < expressions.length; i++) {
-                BaseNode baseNode = expressions[i];
-                if (baseNode != null) {
-                    returnValue = baseNode.execute(frame);
-                }
-            }
+            returnValue = functionRoot.execute(frame);
             if (afterTarget != null) {
                 afterTarget.call();
             }
@@ -455,7 +451,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         public Object execute(VirtualFrame frame) {
             Object returnValue = Null.INSTANCE;
             for (BaseNode child : children) {
-                returnValue = child.execute(frame);
+                if (child != null) {
+                    returnValue = child.execute(frame);
+                }
             }
             return returnValue;
         }
@@ -463,7 +461,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         @Override
         protected final boolean isTaggedWith(Class<?> tag) {
             if (tag == StandardTags.RootTag.class) {
-                return this instanceof InstrumentableRootNode;
+                return this instanceof FunctionRootNode;
             } else if (tag == StandardTags.CallTag.class) {
                 return this instanceof CallNode;
             } else if (tag == StandardTags.StatementTag.class) {
@@ -482,9 +480,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
     }
 
-    private static final class InstrumentableRootNode extends InstrumentedNode {
+    private static final class FunctionRootNode extends InstrumentedNode {
 
-        InstrumentableRootNode(BaseNode[] children) {
+        FunctionRootNode(BaseNode[] children) {
             super(children);
         }
 
@@ -504,7 +502,13 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
         DefineNode(InstrumentationTestLanguage lang, String identifier, SourceSection source, BaseNode[] children) {
             this.identifier = identifier;
-            this.target = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(lang, identifier, source, children));
+            String code = source.getCharacters().toString();
+            int index = code.indexOf('(') + 1;
+            while (Character.isWhitespace(code.charAt(index))) {
+                index++;
+            }
+            SourceSection functionSection = source.getSource().createSection(source.getCharIndex() + index, source.getCharLength() - index - 1);
+            this.target = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(lang, identifier, functionSection, children));
         }
 
         @Override
