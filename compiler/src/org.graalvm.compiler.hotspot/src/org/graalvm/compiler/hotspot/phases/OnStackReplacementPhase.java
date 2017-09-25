@@ -197,7 +197,7 @@ public class OnStackReplacementPhase extends Phase {
                 OSRLocalSpeculationReason reason = new OSRLocalSpeculationReason(osrState.bci, narrowedStamp, i);
                 if (graph.getSpeculationLog().maySpeculate(reason) && osrLocal instanceof OSRLocalNode && value.getStackKind().equals(JavaKind.Object) && !narrowedStamp.isUnrestricted()) {
                     // Add guard.
-                    LogicNode check = graph.addOrUnique(InstanceOfNode.createHelper((ObjectStamp) narrowedStamp, osrLocal, null, null));
+                    LogicNode check = graph.addOrUniqueWithInputs(InstanceOfNode.createHelper((ObjectStamp) narrowedStamp, osrLocal, null, null));
                     JavaConstant constant = graph.getSpeculationLog().speculate(reason);
                     FixedGuardNode guard = graph.add(new FixedGuardNode(check, DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile, constant, false));
                     graph.addAfterFixed(osrStart, guard);
