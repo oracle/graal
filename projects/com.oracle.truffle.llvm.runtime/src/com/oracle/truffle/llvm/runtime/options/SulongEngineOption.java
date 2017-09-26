@@ -148,7 +148,7 @@ public final class SulongEngineOption {
         path.addAll(Arrays.asList(libraryPath));
 
         if (graalHome != null && !graalHome.equals("")) {
-            String[] graalHomePath = new String[]{Paths.get(graalHome).toString(), Paths.get(graalHome, "jre", "languages", "llvm").toString(), Paths.get(graalHome, "languages", "llvm").toString()};
+            String[] graalHomePath = new String[]{Paths.get(graalHome).toString(), Paths.get(graalHome, "jre", "languages", "llvm").toString()};
             path.addAll(Arrays.asList(graalHomePath));
         }
         return path;
