@@ -393,7 +393,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             this.name = name;
             this.sourceSection = sourceSection;
             this.afterTarget = afterTarget;
-            this.functionRoot = new FunctionRootNode(expressions);
+            if (expressions.length == 1 && expressions[0] instanceof FunctionRootNode) {
+                // It contains just a ROOT
+                this.functionRoot = (FunctionRootNode) expressions[0];
+            } else {
+                this.functionRoot = new FunctionRootNode(expressions);
+            }
             functionRoot.setSourceSection(sourceSection);
         }
 
@@ -509,6 +514,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             this.identifier = identifier;
             String code = source.getCharacters().toString();
             int index = code.indexOf('(') + 1;
+            index = code.indexOf(',', index) + 1;
             while (Character.isWhitespace(code.charAt(index))) {
                 index++;
             }
