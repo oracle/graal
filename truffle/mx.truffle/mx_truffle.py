@@ -29,6 +29,8 @@
 import os
 from os.path import exists
 import re
+import zipfile
+from collections import OrderedDict
 
 import mx
 
@@ -186,6 +188,55 @@ mx.update_commands(_suite, {
     'javadoc' : [javadoc, '[SL args|@VM options]'],
     'sl' : [sl, '[SL args|@VM options]'],
 })
+
+def _unittest_config_participant_tck(config):
+    def create_filter(requiredResource):
+        def has_resource(jar):
+            with zipfile.ZipFile(jar, "r") as zf:
+                try:
+                    zf.getinfo(requiredResource)
+                except KeyError:
+                    return False
+                else:
+                    return True
+        return has_resource
+
+    def import_visitor(suite, suite_import, filter, collector, **extra_args):
+        suite_collector(mx.suite(suite_import.name), filter, collector)
+
+    def suite_collector(suite, filter, collector):
+        def dependency_visitor(dep, edge):
+            if dep.isJARDistribution():
+                collector[dep.path] = None
+        for dist in suite.dists:
+            if dist.isJARDistribution() and filter(dist.path):
+                dist.walk_deps(visit=dependency_visitor, ignoredEdges=[mx.DEP_ANNOTATION_PROCESSOR, mx.DEP_BUILD])
+                collector[dist.path] = None
+        suite.visit_imports(import_visitor, filter=filter, collector=collector)
+
+    providers = OrderedDict()
+    suite_collector(mx.primary_suite(), create_filter("META-INF/services/org.graalvm.polyglot.tck.LanguageProvider"), providers)
+    languages = OrderedDict()
+    suite_collector(mx.primary_suite(), create_filter("META-INF/truffle/language"), languages)
+    vmArgs, mainClass, mainClassArgs = config
+    cpIndex, cpValue = mx.find_classpath_arg(vmArgs);
+    cpBuilder = OrderedDict();
+    if cpValue:
+        for cpElement in cpValue.split(os.pathsep):
+            cpBuilder[cpElement] = None
+    for langCpElement in languages:
+        cpBuilder[langCpElement] = None
+    for providerCpElement in providers:
+        cpBuilder[providerCpElement] = None
+    cpValue = os.pathsep.join((e for e in cpBuilder))
+    if cpIndex:
+        vmArgs[cpIndex] = cpValue
+    else:
+        vmArgs.append("-cp")
+        vmArgs.append(cpValue)
+    return (vmArgs, mainClass, mainClassArgs)
+
+mx_unittest.add_config_participant(_unittest_config_participant_tck)
 
 """
 Merges META-INF/truffle/language and META-INF/truffle/instrument files.

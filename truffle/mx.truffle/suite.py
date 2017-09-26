@@ -468,6 +468,10 @@ suite = {
       "dependencies" : [
         "TRUFFLE_API",
         "mx:JUNIT",
+        "sdk:POLYGLOT_TCK"
+      ],
+      "uses":[
+        "org.graalvm.polyglot.tck.LanguageProvider"
       ],
       "generatedDependencies" : [
         "com.oracle.truffle.tutorial",
@@ -704,7 +708,10 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.tck"
       ],
-      "distDependencies" : ["TRUFFLE_API"],
+      "distDependencies" : [
+        "TRUFFLE_API",
+        "sdk:POLYGLOT_TCK",
+      ],
       "exclude" : ["mx:JUNIT"],
       "description" : """A collection of tests that can certify language implementation to be compliant
         with most recent requirements of the Truffle infrastructure and tooling.""",
