@@ -272,13 +272,39 @@ public abstract class TruffleLanguage<C> {
         boolean interactive() default true;
 
         /**
-         * Returns <code>true</code> if this language is intended to be used internally only.
-         * Internal languages cannot be used directly, only by using it from another non-internal
-         * language.
+         * Returns <code>true</code> if this language is intended for internal use only. Internal
+         * languages cannot be used in the host environment directly, they can only be used from
+         * other languages or from instruments.
          *
          * @since 0.27
          */
         boolean internal() default false;
+
+        /**
+         * Specifies a list of languages that this language depends on. Languages are referenced
+         * using their {@link #id()}. This has the following effects:
+         * <ul>
+         * <li>This language has always access to dependent languages if this language is
+         * accessible.
+         * <li>This language is finalized before dependent language contexts are
+         * {@link TruffleLanguage#finalizeContext(Object) finalized}.
+         * <li>This language is disposed before dependent language contexts are
+         * {@link TruffleLanguage#disposeContext(Object) disposed}.
+         * </ul>
+         * <p>
+         * {@link #internal() Non-internal} languages implicitly depend on all internal languages.
+         * Therefore by default non-internal languages are disposed and finalized before internal
+         * languages.
+         * <p>
+         * Dependent languages references are optional. If a dependent language is not installed and
+         * the language needs to fail in such a case then the language should fail on
+         * {@link TruffleLanguage#initializeContext(Object) context initialization}. Cycles in
+         * dependencies will cause an {@link IllegalStateException} when one of the cyclic languages
+         * is {@link org.graalvm.polyglot.Context#initialize(String) initialized}.
+         *
+         * @since 0.29
+         */
+        String[] dependentLanguages() default {};
     }
 
     /**
@@ -328,14 +354,47 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Disposes the context created by
-     * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)}. A language can be asked
-     * by its user to <em>clean-up</em>. In such case the language is supposed to dispose any
-     * resources acquired before and <em>dispose</em> the <code>context</code> - e.g. render it
-     * useless for any future calls.
+     * Performs language context finalization actions that are necessary before language contexts
+     * are {@link #disposeContext(Object) disposed}. All installed languages must remain usable
+     * after finalization. The finalization order can be influenced by specifying
+     * {@link Registration#dependentLanguages() language dependencies}. By default internal
+     * languages are finalized last, otherwise the default order is unspecified but deterministic.
+     * <p>
+     * While finalization code is run, other language contexts may become initialized. In such a
+     * case, the finalization order may be non-deterministic and/or not respect the order specified
+     * by language dependencies.
      *
-     * @param context the context {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)
-     *            created by the language}
+     * @see Registration#dependentLanguages() for specifying language dependencies.
+     * @param context the context created by
+     *            {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)}
+     * @since 0.29
+     */
+    protected void finalizeContext(C context) {
+    }
+
+    /**
+     * Disposes the context created by
+     * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)}. A dispose cleans up all
+     * resources associated with a context. The context may become unusable after it was disposed.
+     * It is not allowed to run guest language code while disposing a context. Finalization code
+     * should be run in {@link #finalizeContext(Object)} instead. Finalization will be performed
+     * prior to context {@link #disposeContext(Object) disposal}.
+     * <p>
+     * The disposal order can be influenced by specifying {@link Registration#dependentLanguages()
+     * language dependencies}. By default internal languages are disposed last, otherwise the
+     * default order is unspecified but deterministic. During disposal no other language must be
+     * accessed using the {@link Env language environment}.
+     * <p>
+     * All threads {@link Env#createThread(Runnable) created} by a language must be stopped after
+     * dispose was called. The languages are responsible for fulfilling that contract otherwise an
+     * {@link AssertionError} is thrown. It is recommended to join all threads that were disposed.
+     *
+     * @param context the context created by
+     *            {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)}
+     * @see #finalizeContext(Object) to run finalization code for a context.
+     * @see #disposeThread(Object, Thread) to perform disposal actions when a thread is no longer
+     *      used.
+     *
      * @since 0.8 or earlier
      */
     protected void disposeContext(C context) {
@@ -607,7 +666,9 @@ public abstract class TruffleLanguage<C> {
      * Invoked before a context is accessed from a new thread. This allows the language to perform
      * initialization actions for each thread before guest language code is executed. Also for
      * languages that deny access from multiple threads at the same time, multiple threads may be
-     * initialized if they are used sequentially.
+     * initialized if they are used sequentially. This method will be invoked before the context is
+     * {@link #initializeContext(Object) initialized} for the thread the context will be initialized
+     * with.
      * <p>
      * The {@link Thread#currentThread() current thread} may differ from the initialized thread.
      * <p>
@@ -1627,6 +1688,11 @@ public abstract class TruffleLanguage<C> {
         @Override
         public void initializeMultiThreading(Env env) {
             env.getSpi().initializeMultiThreading(env.context);
+        }
+
+        @Override
+        public void finalizeContext(Env env) {
+            env.getSpi().finalizeContext(env.context);
         }
 
         @Override

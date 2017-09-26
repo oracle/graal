@@ -322,33 +322,86 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     }
 
     private Map<String, PolyglotLanguage> initializeLanguages(Map<String, LanguageInfo> infos) {
-        Map<String, PolyglotLanguage> langs = new LinkedHashMap<>();
-        Map<String, LanguageCache> cachedLanguages = LanguageCache.languages();
-        Set<LanguageCache> uniqueLanguages = new LinkedHashSet<>();
-        uniqueLanguages.addAll(cachedLanguages.values());
-        this.hostLanguage = createLanguage(createHostLanguageCache(), HOST_LANGUAGE_INDEX);
+        Map<String, PolyglotLanguage> polyglotLanguages = new LinkedHashMap<>();
+        Map<String, LanguageCache> cachedLanguages = new HashMap<>();
+        List<LanguageCache> sortedLanguages = new ArrayList<>();
+        for (LanguageCache lang : LanguageCache.languages().values()) {
+            String id = lang.getId();
+            if (!cachedLanguages.containsKey(id)) {
+                sortedLanguages.add(lang);
+                cachedLanguages.put(id, lang);
+            }
+        }
+        Collections.sort(sortedLanguages);
+
+        LinkedHashSet<LanguageCache> serializedLanguages = new LinkedHashSet<>();
+        Set<String> visitedIds = new HashSet<>();
+        Set<String> languageReferences = new HashSet<>();
+        Map<String, RuntimeException> initErrors = new HashMap<>();
+
+        for (LanguageCache language : sortedLanguages) {
+            languageReferences.addAll(language.getDependentLanguages());
+        }
+
+        // visit / initialize internal languages first to model the implicit
+        // dependency of every public language to every internal language
+        for (LanguageCache language : sortedLanguages) {
+            if (language.isInternal() && !languageReferences.contains(language.getId())) {
+                visitedIds.clear();
+                visitLanguage(visitedIds, initErrors, cachedLanguages, serializedLanguages, language);
+            }
+        }
+
+        for (LanguageCache language : sortedLanguages) {
+            if (!language.isInternal() && !languageReferences.contains(language.getId())) {
+                visitedIds.clear();
+                visitLanguage(visitedIds, initErrors, cachedLanguages, serializedLanguages, language);
+            }
+        }
+
+        this.hostLanguage = createLanguage(createHostLanguageCache(), HOST_LANGUAGE_INDEX, null);
 
         int index = 1;
-        for (LanguageCache cache : uniqueLanguages) {
-            PolyglotLanguage languageImpl = createLanguage(cache, index);
+        for (LanguageCache cache : serializedLanguages) {
+            PolyglotLanguage languageImpl = createLanguage(cache, index, initErrors.get(cache.getId()));
 
             String id = languageImpl.cache.getId();
             verifyId(id, cache.getClassName());
-            if (langs.containsKey(id)) {
-                throw failDuplicateId(id, languageImpl.cache.getClassName(), langs.get(id).cache.getClassName());
+            if (polyglotLanguages.containsKey(id)) {
+                throw failDuplicateId(id, languageImpl.cache.getClassName(), polyglotLanguages.get(id).cache.getClassName());
             }
-            langs.put(id, languageImpl);
+            polyglotLanguages.put(id, languageImpl);
             infos.put(id, languageImpl.info);
             index++;
         }
 
         this.hostLanguage.ensureInitialized();
 
-        return langs;
+        return polyglotLanguages;
     }
 
-    private PolyglotLanguage createLanguage(LanguageCache cache, int index) {
-        PolyglotLanguage languageImpl = new PolyglotLanguage(this, cache, index, index == HOST_LANGUAGE_INDEX);
+    private void visitLanguage(Set<String> visitedIds, Map<String, RuntimeException> initErrors, Map<String, LanguageCache> cachedLanguages, LinkedHashSet<LanguageCache> serializedLanguages,
+                    LanguageCache language) {
+        Set<String> dependencies = language.getDependentLanguages();
+        for (String dependency : dependencies) {
+            LanguageCache dependentLanguage = cachedLanguages.get(dependency);
+            if (dependentLanguage == null) {
+                // dependent languages are optional
+                continue;
+            }
+            if (visitedIds.contains(dependency)) {
+                initErrors.put(language.getId(), new PolyglotIllegalStateException("Illegal cyclic language dependency found:" + language.getId() + " -> " + dependency));
+                continue;
+            }
+            visitedIds.add(dependency);
+            visitLanguage(visitedIds, initErrors, cachedLanguages, serializedLanguages, dependentLanguage);
+            visitedIds.remove(dependency);
+        }
+        serializedLanguages.add(language);
+    }
+
+    private PolyglotLanguage createLanguage(LanguageCache cache, int index, RuntimeException initError) {
+        PolyglotLanguage languageImpl = new PolyglotLanguage(this, cache, index, index == HOST_LANGUAGE_INDEX, initError);
         languageImpl.info = NODES.createLanguage(languageImpl, cache.getId(), cache.getName(), cache.getVersion(), cache.getMimeTypes());
         Language language = impl.getAPIAccess().newLanguage(languageImpl);
         languageImpl.api = language;

@@ -260,6 +260,8 @@ public abstract class Accessor {
 
         public abstract void disposeThread(Env env, Thread thread);
 
+        public abstract void finalizeContext(Env localEnv);
+
     }
 
     public abstract static class InstrumentSupport {

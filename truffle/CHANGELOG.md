@@ -7,6 +7,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * [SourceSectionFilter.Builder.includeInternal](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/instrumentation/SourceSectionFilter.Builder.html#includeInternal-boolean-) added to be able to exclude internal code from instrumentation.
 * Debugger step filtering is extended with [include of internal code](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/debug/SuspensionFilter.Builder.html#includeInternal-boolean-) and [source filter](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/debug/SuspensionFilter.Builder.html#sourceIs-java.util.function.Predicate-). By default, debugger now does not step into internal code, unless a step filter that is set to include internal code is applied.
 * [DebugScope.getSourceSection](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/debug/DebugScope.html#getSourceSection--) added to provide source section of a scope.
+* Truffle languages are being [finalized](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage##finalizeContext-C-) before disposal. This allows languages to run code with all languages still in a valid state. It is no longer allowed to access other languages during language disposal.
+* Truffle languages can now declare dependent languages. This allows to take influence on the disposal order.
 
 ## Version 0.28
 4-Oct-2017
