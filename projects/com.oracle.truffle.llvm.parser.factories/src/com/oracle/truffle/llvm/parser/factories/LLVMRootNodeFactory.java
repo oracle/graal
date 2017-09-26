@@ -46,6 +46,11 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 class LLVMRootNodeFactory {
+    private static final long AT_NULL = 0;
+    private static final long AT_PLATFORM = 15;
+    private static final long AT_EXECFN = 31;
+
+    private static final String PLATFORM = "x86_64";
 
     static LLVMGlobalRootNode createGlobalRootNode(
                     LLVMParserRuntime runtime,
@@ -121,8 +126,8 @@ class LLVMRootNodeFactory {
         String[] args = getStringArgs(mainArgs);
         String[] env = getenv();
 
-        int offset = (args.length + env.length + 5) * ptrsz; // 3 = argc (long), two NULL pointers
-                                                             // and AT_NULL
+        int offset = (args.length + env.length + 3 + 3 * 2) * ptrsz; // 3 = argc (long), two NULL
+                                                                     // pointers and 3 auxv entries
         int size = offset;
 
         for (String arg : args) {
@@ -131,6 +136,7 @@ class LLVMRootNodeFactory {
         for (String var : env) {
             size += var.length() + 1;
         }
+        size += PLATFORM.length() + args[0].length() + 2;
 
         LLVMAddress memory = LLVMHeap.allocateMemory(size);
         LLVMAddress ptr = memory;
@@ -158,8 +164,24 @@ class LLVMRootNodeFactory {
         LLVMMemory.putAddress(ptr, LLVMAddress.nullPointer());
         ptr = ptr.increment(ptrsz);
 
+        // auxv
+        LLVMAddress platform = valuePtr;
+        valuePtr = putCString(valuePtr, PLATFORM);
+        LLVMAddress execfn = valuePtr;
+        valuePtr = putCString(valuePtr, args[0]);
+
+        // AT_EXECFN = argv[0]
+        LLVMMemory.putI64(ptr, AT_EXECFN);
+        ptr = ptr.increment(LLVMExpressionNode.I64_SIZE_IN_BYTES);
+        LLVMMemory.putAddress(ptr, execfn);
+        ptr = ptr.increment(LLVMExpressionNode.I64_SIZE_IN_BYTES);
+        // AT_PLATFORM = "x86_64"
+        LLVMMemory.putI64(ptr, AT_PLATFORM);
+        ptr = ptr.increment(LLVMExpressionNode.I64_SIZE_IN_BYTES);
+        LLVMMemory.putAddress(ptr, platform);
+        ptr = ptr.increment(LLVMExpressionNode.I64_SIZE_IN_BYTES);
         // AT_NULL = 0
-        LLVMMemory.putI64(ptr, 0);
+        LLVMMemory.putI64(ptr, AT_NULL);
         ptr = ptr.increment(LLVMExpressionNode.I64_SIZE_IN_BYTES);
         LLVMMemory.putI64(ptr, 0);
         ptr = ptr.increment(LLVMExpressionNode.I64_SIZE_IN_BYTES);

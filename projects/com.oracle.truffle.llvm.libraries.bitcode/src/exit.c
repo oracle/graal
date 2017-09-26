@@ -81,7 +81,7 @@ __attribute__((weak)) void exit(int status) {
   int64_t result;
   __sulong_funcs_on_exit();
   __SYSCALL_1(result, SYS_exit_group, status);
-  for (;;) {
+  for (;;) { // this should never be executed
     __SYSCALL_1(result, SYS_exit_group, status);
   }
 }
@@ -90,7 +90,7 @@ __attribute__((weak)) void _exit(int status) {
   int64_t result;
   __clear_funcs_on_exit();
   __SYSCALL_1(result, SYS_exit_group, status);
-  for (;;) {
+  for (;;) { // this should never be executed
     __SYSCALL_1(result, SYS_exit_group, status);
   }
 }
