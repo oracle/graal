@@ -38,6 +38,7 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.source.SourceSection;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 
 import java.io.Closeable;
@@ -118,9 +119,8 @@ public final class CPUTracer implements Closeable {
          * @return A list of the options provided by the {@link CPUTracer}.
          * @since 0.29
          */
-        @SuppressWarnings("deprecation")
         @Override
-        protected List<OptionDescriptor> describeOptions() {
+        protected OptionDescriptors getOptionDescriptors() {
             List<OptionDescriptor> descriptors = new ArrayList<>();
             descriptors.add(OptionDescriptor.newBuilder(CLI.ENABLED, ID).category(OptionCategory.USER).help("Enable the CPU tracer (default: false).").build());
             descriptors.add(OptionDescriptor.newBuilder(CLI.TRACE_ROOTS, ID + ".TraceRoots").category(OptionCategory.USER).help("Capture roots when tracing (default:true).").build());
@@ -133,7 +133,7 @@ public final class CPUTracer implements Closeable {
                             "Wildcard filter for source file paths. (eg. *program*.sl, default:*).").build());
             descriptors.add(OptionDescriptor.newBuilder(CLI.FILTER_LANGUAGE, ID + ".FilterLanguage").category(OptionCategory.USER).help(
                             "Only profile languages with mime-type. (eg. +, default:no filter).").build());
-            return descriptors;
+            return OptionDescriptors.create(descriptors);
         }
 
         /**

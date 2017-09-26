@@ -33,6 +33,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.source.SourceSection;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionType;
 
@@ -75,7 +76,7 @@ public final class CPUSampler implements Closeable {
 
         /**
          * Default constructor.
-         * 
+         *
          * @since 0.29
          */
         public Instrument() {
@@ -88,7 +89,7 @@ public final class CPUSampler implements Closeable {
          */
         public static final String ID = "cpusampler";
         static CPUSampler sampler;
-        List<OptionDescriptor> descriptors = new ArrayList<>();
+        OptionDescriptors descriptors = null;
 
         /**
          * Called to create the Instrument.
@@ -121,28 +122,29 @@ public final class CPUSampler implements Closeable {
         }
 
         /**
-         * @return A list of the options provided by the {@link CPUSampler}.
+         * @return All the {@link OptionDescriptors options} provided by the {@link CPUSampler}.
          * @since 0.29
          */
-        @SuppressWarnings("deprecation")
         @Override
-        protected List<OptionDescriptor> describeOptions() {
-            descriptors.add(OptionDescriptor.newBuilder(CLI.ENABLED, ID).category(OptionCategory.USER).help("Enable the CPU sampler.").build());
-            descriptors.add(OptionDescriptor.newBuilder(CLI.SAMPLE_PERIOD, ID + ".Period").category(OptionCategory.USER).help("Period in milliseconds to sample the stack.").build());
-            descriptors.add(OptionDescriptor.newBuilder(CLI.DELAY_PERIOD, ID + ".Delay").category(OptionCategory.USER).help("Delay the sampling for this many milliseconds (default: 0).").build());
-            descriptors.add(OptionDescriptor.newBuilder(CLI.STACK_LIMIT, ID + ".StackLimit").category(OptionCategory.USER).help("Maximum number of maximum stack elements.").build());
-            descriptors.add(OptionDescriptor.newBuilder(CLI.OUTPUT, ID + ".Output").category(OptionCategory.USER).help("Print a 'histogram' or 'calltree' as output (default:HISTOGRAM).").build());
-            descriptors.add(OptionDescriptor.newBuilder(CLI.MODE, ID + ".Mode").category(OptionCategory.USER).help(
+        protected OptionDescriptors getOptionDescriptors() {
+            List<OptionDescriptor> descriptorList = new ArrayList<>();
+            descriptorList.add(OptionDescriptor.newBuilder(CLI.ENABLED, ID).category(OptionCategory.USER).help("Enable the CPU sampler.").build());
+            descriptorList.add(OptionDescriptor.newBuilder(CLI.SAMPLE_PERIOD, ID + ".Period").category(OptionCategory.USER).help("Period in milliseconds to sample the stack.").build());
+            descriptorList.add(OptionDescriptor.newBuilder(CLI.DELAY_PERIOD, ID + ".Delay").category(OptionCategory.USER).help("Delay the sampling for this many milliseconds (default: 0).").build());
+            descriptorList.add(OptionDescriptor.newBuilder(CLI.STACK_LIMIT, ID + ".StackLimit").category(OptionCategory.USER).help("Maximum number of maximum stack elements.").build());
+            descriptorList.add(OptionDescriptor.newBuilder(CLI.OUTPUT, ID + ".Output").category(OptionCategory.USER).help("Print a 'histogram' or 'calltree' as output (default:HISTOGRAM).").build());
+            descriptorList.add(OptionDescriptor.newBuilder(CLI.MODE, ID + ".Mode").category(OptionCategory.USER).help(
                             "Describes level of sampling detail. NOTE: Increased detail can lead to reduced accuracy. Modes:" + System.lineSeparator() +
                                             "'compiled' - samples roots excluding inlined functions (default)" + System.lineSeparator() + "'roots' - samples roots including inlined functions" +
                                             System.lineSeparator() + "'statements' - samples all statements.").build());
-            descriptors.add(OptionDescriptor.newBuilder(CLI.SAMPLE_INTERNAL, ID + ".SampleInternal").category(OptionCategory.USER).help("Capture internal elements (default:false).").build());
-            descriptors.add(OptionDescriptor.newBuilder(CLI.FILTER_ROOT, ID + ".FilterRootName").category(OptionCategory.USER).help(
+            descriptorList.add(OptionDescriptor.newBuilder(CLI.SAMPLE_INTERNAL, ID + ".SampleInternal").category(OptionCategory.USER).help("Capture internal elements (default:false).").build());
+            descriptorList.add(OptionDescriptor.newBuilder(CLI.FILTER_ROOT, ID + ".FilterRootName").category(OptionCategory.USER).help(
                             "Wildcard filter for program roots. (eg. Math.*, default:*).").build());
-            descriptors.add(OptionDescriptor.newBuilder(CLI.FILTER_FILE, ID + ".FilterFile").category(OptionCategory.USER).help(
+            descriptorList.add(OptionDescriptor.newBuilder(CLI.FILTER_FILE, ID + ".FilterFile").category(OptionCategory.USER).help(
                             "Wildcard filter for source file paths. (eg. *program*.sl, default:*).").build());
-            descriptors.add(OptionDescriptor.newBuilder(CLI.FILTER_LANGUAGE, ID + ".FilterLanguage").category(OptionCategory.USER).help(
+            descriptorList.add(OptionDescriptor.newBuilder(CLI.FILTER_LANGUAGE, ID + ".FilterLanguage").category(OptionCategory.USER).help(
                             "Only profile languages with mime-type. (eg. +, default:no filter).").build());
+            descriptors = OptionDescriptors.create(descriptorList);
             return descriptors;
         }
 
@@ -663,7 +665,7 @@ public final class CPUSampler implements Closeable {
 
         static final OptionKey<Boolean> SAMPLE_INTERNAL = new OptionKey<>(false);
 
-        static void handleOutput(Env env, CPUSampler sampler, List<OptionDescriptor> descriptors) {
+        static void handleOutput(Env env, CPUSampler sampler, OptionDescriptors descriptors) {
             PrintStream out = new PrintStream(env.out());
             if (sampler.hasStackOverflowed()) {
                 out.println("-------------------------------------------------------------------------------- ");
