@@ -200,9 +200,6 @@ gcc-5.2.0/gcc/testsuite/g++.dg/ext/align1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/alignof1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/alignof2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/always_inline-1.C
-gcc-5.2.0/gcc/testsuite/g++.dg/ext/always_inline-2.C
-gcc-5.2.0/gcc/testsuite/g++.dg/ext/always_inline-3.C
-gcc-5.2.0/gcc/testsuite/g++.dg/ext/always_inline-4.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/array1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/asmspecInvalid.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/atomic-1.C
@@ -725,6 +722,5 @@ gcc-5.2.0/gcc/testsuite/g++.dg/warn/pr35602.C
 gcc-5.2.0/gcc/testsuite/g++.dg/warn/pr36069.C
 gcc-5.2.0/gcc/testsuite/g++.dg/warn/pr36921.C
 gcc-5.2.0/gcc/testsuite/g++.dg/warn/pr36954.C
-gcc-5.2.0/gcc/testsuite/g++.dg/warn/pragma-system_header3.C
 gcc-5.2.0/gcc/testsuite/g++.dg/warn/write-strings.C
 gcc-5.2.0/gcc/testsuite/g++.dg/warn/write-strings-default.C
