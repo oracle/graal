@@ -176,7 +176,6 @@ public final class CPUTracer implements Closeable {
      * @since 0.29
      */
     public synchronized void setCollecting(boolean collecting) {
-        verifyConfigAllowed();
         if (closed) {
             throw new IllegalStateException("CPUTracer is already closed.");
         }
