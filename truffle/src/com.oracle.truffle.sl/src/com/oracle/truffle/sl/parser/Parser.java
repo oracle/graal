@@ -82,13 +82,13 @@ public class Parser {
 
     void SynErr(int n) {
         if (errDist >= minErrDist)
-            errors.SynErr(la.line, la.col, n);
+            errors.SynErr(la.line, la.col, la.val.length(), n);
         errDist = 0;
     }
 
     public void SemErr(String msg) {
         if (errDist >= minErrDist)
-            errors.SemErr(t.line, t.col, msg);
+            errors.SemErr(t.line, t.col, t.val.length(), msg);
         errDist = 0;
     }
 
@@ -484,10 +484,16 @@ public class Parser {
         parser.Parse();
         if (parser.errors.errors.size() > 0) {
             StringBuilder msg = new StringBuilder("Error(s) parsing script:\n");
-            for (String error : parser.errors.errors) {
-                msg.append(error).append("\n");
+            for (Errors.ErrorDescription error : parser.errors.errors) {
+                msg.append(error.message).append("\n");
             }
-            throw new SLParseError(msg.toString());
+            final Errors.ErrorDescription desc = parser.errors.errors.get(0);
+            throw new SLParseError(
+                    source,
+                    desc.line,
+                    desc.column,
+                    desc.length,
+                    msg.toString());
         }
         return parser.factory.getAllFunctions();
     }
@@ -495,10 +501,24 @@ public class Parser {
 
 class Errors {
 
-    protected final List<String> errors = new ArrayList<>();
+    final class ErrorDescription {
+        final int line;
+        final int column;
+        final int length;
+        final String message;
+
+        ErrorDescription(final int line, final int column, final int length, final String message) {
+            this.line = line;
+            this.column = column;
+            this.length = length;
+            this.message = message;
+        }
+    }
+
+    protected final List<ErrorDescription> errors = new ArrayList<>();
     public String errMsgFormat = "-- line {0} col {1}: {2}"; // 0=line, 1=column, 2=text
 
-    protected void printMsg(int line, int column, String msg) {
+    protected void printMsg(int line, int column, int length, String msg) {
         StringBuffer b = new StringBuffer(errMsgFormat);
         int pos = b.indexOf("{0}");
         if (pos >= 0) {
@@ -513,10 +533,10 @@ class Errors {
         pos = b.indexOf("{2}");
         if (pos >= 0)
             b.replace(pos, pos + 3, msg);
-        errors.add(b.toString());
+        errors.add(new ErrorDescription(line, column, length, b.toString()));
     }
 
-    public void SynErr(int line, int col, int n) {
+    public void SynErr(int line, int col, int length, int n) {
         String s;
         switch (n) {
 			case 0: s = "EOF expected"; break;
@@ -562,24 +582,17 @@ class Errors {
                 s = "error " + n;
                 break;
         }
-        printMsg(line, col, s);
+        printMsg(line, col, length, s);
     }
 
-    public void SemErr(int line, int col, String s) {
-        printMsg(line, col, s);
+    public void SemErr(int line, int col, int length, String s) {
+        printMsg(line, col, length, s);
     }
 
-    public void SemErr(String s) {
-        errors.add(s);
+    public void Warning(int line, int col, int length, String s) {
+        printMsg(line, col, length, s);
     }
 
-    public void Warning(int line, int col, String s) {
-        printMsg(line, col, s);
-    }
-
-    public void Warning(String s) {
-        errors.add(s);
-    }
 } // Errors
 
 class FatalError extends RuntimeException {

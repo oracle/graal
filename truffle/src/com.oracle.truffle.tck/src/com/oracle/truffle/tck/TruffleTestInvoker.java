@@ -227,7 +227,7 @@ final class TruffleTestInvoker<T extends CallTarget> extends TVMCI.TestAccessor<
             public void evaluate() throws Throwable {
                 ArrayList<T> callTargets = new ArrayList<>(testNodes.length);
                 for (RootNode testNode : testNodes) {
-                    callTargets.add(createTestCallTarget(testName, testNode));
+                    callTargets.add(createTestCallTarget(testNode));
                 }
 
                 Object[] args = callTargets.toArray();
@@ -236,7 +236,7 @@ final class TruffleTestInvoker<T extends CallTarget> extends TVMCI.TestAccessor<
                 }
 
                 for (T callTarget : callTargets) {
-                    finishWarmup(callTarget);
+                    finishWarmup(callTarget, testName);
                 }
                 truffleMethod.invokeExplosively(test, args);
             }

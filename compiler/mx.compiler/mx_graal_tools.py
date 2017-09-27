@@ -201,16 +201,24 @@ def hcfdis(args):
 
 def jol(args):
     """Java Object Layout"""
-    joljar = mx.library('JOL_INTERNALS').get_path(resolve=True)
-    candidates = mx.findclass(args, logToConsole=False, matcher=lambda s, classname: s == classname or classname.endswith('.' + s) or classname.endswith('$' + s))
+    joljar = mx.library('JOL_CLI').get_path(resolve=True)
 
-    if len(candidates) > 0:
-        candidates = mx.select_items(sorted(candidates))
-    else:
-        # mx.findclass can be mistaken, don't give up yet
-        candidates = args
+    commands = ['estimates', 'externals', 'footprint', 'heapdump', 'heapdumpstats', 'idealpack', 'internals', 'shapes', 'string-compress', 'help']
+    command = 'internals'
+    if len(args) == 0:
+        command = 'help'
+    elif args[0] in commands:
+        command, args = args[0], args[1:]
 
-    mx.run_java(['-javaagent:' + joljar, '-cp', os.pathsep.join([mx.classpath(jdk=mx.get_jdk()), joljar]), "org.openjdk.jol.MainObjectInternals"] + candidates)
+    # classpath operations
+    if command in ['estimates', 'externals', 'footprint', 'internals']:
+        candidates = mx.findclass(args, logToConsole=False, matcher=lambda s, classname: s == classname or classname.endswith('.' + s) or classname.endswith('$' + s))
+        if len(candidates) > 0:
+            args = mx.select_items(sorted(candidates))
+        if len(args) > 0:
+            args = ['-cp', mx.classpath(jdk=mx.get_jdk())] + args
+
+    mx.run_java(['-javaagent:' + joljar, '-cp', joljar, 'org.openjdk.jol.Main', command] + args)
 
 mx.update_commands(_suite, {
     'c1visualizer' : [c1visualizer, ''],

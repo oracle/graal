@@ -34,6 +34,8 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.nfi.LibFFIFunctionMessageResolution.CachedExecuteNode;
+import com.oracle.truffle.nfi.LibFFIFunctionMessageResolutionFactory.CachedExecuteNodeGen;
 import com.oracle.truffle.nfi.LibFFILibraryMessageResolutionFactory.CachedLookupSymbolNodeGen;
 
 @MessageResolution(receiverType = LibFFILibrary.class)
@@ -75,6 +77,18 @@ class LibFFILibraryMessageResolution {
 
         public TruffleObject access(LibFFILibrary receiver, String symbol) {
             return cached.executeLookup(receiver, symbol);
+        }
+    }
+
+    @Resolve(message = "INVOKE")
+    abstract static class InvokeSymbolNode extends Node {
+
+        @Child private CachedLookupSymbolNode cached = CachedLookupSymbolNodeGen.create();
+        @Child private CachedExecuteNode exec = CachedExecuteNodeGen.create();
+
+        public Object access(LibFFILibrary receiver, String symbol, Object... args) {
+            LibFFIFunction obj = (LibFFIFunction) cached.executeLookup(receiver, symbol);
+            return exec.execute(obj, args);
         }
     }
 

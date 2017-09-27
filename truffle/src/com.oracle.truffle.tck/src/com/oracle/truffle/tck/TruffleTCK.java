@@ -2327,7 +2327,7 @@ public abstract class TruffleTCK {
 
     private void assertIsObjectOfLanguage(Object obj) throws Exception {
         PolyglotRuntime.Instrument instr = vm().getRuntime().getInstruments().get(TckInstrument.ID);
-        TruffleLanguage.Env env = TruffleTCKAccessor.engineAccess().getEnvForInstrument(instr, mimeType());
+        TruffleLanguage.Env env = TruffleTCKAccessor.engineAccess().getEnvForInstrument(instr, null, mimeType());
         assertTrue(obj.toString(), TruffleTCKAccessor.langAccess().isObjectOfLanguage(env, obj));
     }
 

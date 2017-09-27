@@ -1516,7 +1516,7 @@ public class PolyglotEngine {
         }
 
         @Override
-        public Env getEnvForLanguage(Object vmObject, String mimeType) {
+        public Env getEnvForLanguage(Object vmObject, String languageId, String mimeType) {
             return ((Language) vmObject).engine().findLanguage(mimeType, true).getEnv(true);
         }
 
@@ -1542,7 +1542,7 @@ public class PolyglotEngine {
         }
 
         @Override
-        public Env getEnvForInstrument(Object vmObject, String mimeType) {
+        public Env getEnvForInstrument(Object vmObject, String languageId, String mimeType) {
             PolyglotEngine currentVM = ((Instrument) vmObject).getRuntime().currentVM();
             if (currentVM == null) {
                 throw new IllegalStateException("No current engine found.");
@@ -1798,6 +1798,11 @@ public class PolyglotEngine {
         @Override
         public Thread createThread(Object vmObject, Runnable runnable, Object context) {
             throw new IllegalStateException("createThread is not supported.");
+        }
+
+        @Override
+        public org.graalvm.polyglot.SourceSection createSourceSection(Object vmObject, org.graalvm.polyglot.Source source, SourceSection sectionImpl) {
+            throw new UnsupportedOperationException("Not supported in legacy engine.");
         }
 
     }

@@ -83,13 +83,18 @@ suite = {
     },
 
     "IDEALGRAPHVISUALIZER_DIST" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/idealgraphvisualizer/idealgraphvisualizer-47.zip"],
-      "sha1" : "36bb490f20460820d2f8de52003697fdc970b462",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/idealgraphvisualizer/idealgraphvisualizer-124.zip"],
+      "sha1" : "74adc57e75a578994ddee223bc428a15f48870a8",
     },
 
-    "JOL_INTERNALS" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/truffle/jol/jol-internals.jar"],
-      "sha1" : "508bcd26a4d7c4c44048990c6ea789a3b11a62dc",
+    "JOL_CLI" : {
+      "sha1" : "45dd0cf195b16e70710a8d6d763cda614cf6f31e",
+      "maven" : {
+        "groupId" : "org.openjdk.jol",
+        "artifactId" : "jol-cli",
+        "version" : "0.9",
+        "suffix" : "full",
+      },
     },
 
     "BATIK" : {
@@ -464,6 +469,7 @@ suite = {
         "mx:JUNIT",
         "org.graalvm.compiler.api.test",
         "org.graalvm.compiler.graph",
+        "org.graalvm.graphio",
       ],
       "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
       "javaCompliance" : "1.8",
@@ -978,6 +984,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.lir.jtt",
         "org.graalvm.compiler.lir.amd64",
+        "org.graalvm.compiler.core.amd64",
         "JVMCI_HOTSPOT"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -1151,6 +1158,7 @@ suite = {
       "dependencies" : [
         "mx:JMH_1_18",
         "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_INSTRUMENT_TEST",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
@@ -1532,6 +1540,7 @@ suite = {
       ],
       "distDependencies" : [
         "GRAAL_TEST",
+        "truffle:TRUFFLE_INSTRUMENT_TEST",
       ],
     },
 

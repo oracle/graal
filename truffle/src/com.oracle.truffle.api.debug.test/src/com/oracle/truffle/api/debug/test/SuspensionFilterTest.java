@@ -24,6 +24,10 @@
  */
 package com.oracle.truffle.api.debug.test;
 
+import java.util.Collections;
+import java.util.HashMap;
+
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -32,17 +36,20 @@ import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.debug.SuspensionFilter;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.tck.DebuggerTester;
+
+import org.graalvm.polyglot.Source;
 
 public class SuspensionFilterTest extends AbstractDebugTest {
 
+    @After
+    public void tearDown() {
+        InstrumentationTestLanguage.envConfig = null;
+    }
+
     @Test
     public void testSuspendInInitialization() {
-        Source initSource = Source.newBuilder("STATEMENT(EXPRESSION)").name("<init>").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
-        resetContext(new DebuggerTester(engineBuilder -> {
-            return engineBuilder.config(InstrumentationTestLanguage.MIME_TYPE, "initSource", initSource);
-        }));
+        Source initSource = Source.newBuilder(InstrumentationTestLanguage.ID, "STATEMENT(EXPRESSION)", "<init>").buildLiteral();
+        InstrumentationTestLanguage.envConfig = Collections.singletonMap("initSource", initSource);
         final Source source = testSource("ROOT(\n" +
                         "  DEFINE(foo, \n" +
                         "    STATEMENT(CONSTANT(42))\n" +
@@ -67,10 +74,8 @@ public class SuspensionFilterTest extends AbstractDebugTest {
 
     @Test
     public void testSuspendAfterInitialization() {
-        Source initSource = Source.newBuilder("STATEMENT(EXPRESSION)").name("<init>").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
-        resetContext(new DebuggerTester(engineBuilder -> {
-            return engineBuilder.config(InstrumentationTestLanguage.MIME_TYPE, "initSource", initSource);
-        }));
+        Source initSource = Source.newBuilder(InstrumentationTestLanguage.ID, "STATEMENT(EXPRESSION)", "<init>").buildLiteral();
+        InstrumentationTestLanguage.envConfig = Collections.singletonMap("initSource", initSource);
         final Source source = testSource("ROOT(\n" +
                         "  STATEMENT(CONSTANT(42))\n" +
                         ")\n");
@@ -93,10 +98,10 @@ public class SuspensionFilterTest extends AbstractDebugTest {
     public void testSuspendAfterInitialization2() {
         // Suspend after initialization code finishes,
         // but can step into the same code that was executed during initialization, later on.
-        Source initSource = Source.newBuilder("STATEMENT(EXPRESSION)").name("<init>").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
-        resetContext(new DebuggerTester(engineBuilder -> {
-            return engineBuilder.config(InstrumentationTestLanguage.MIME_TYPE, "initSource", initSource).config(InstrumentationTestLanguage.MIME_TYPE, "runInitAfterExec", true);
-        }));
+        Source initSource = Source.newBuilder(InstrumentationTestLanguage.ID, "STATEMENT(EXPRESSION)", "<init>").buildLiteral();
+        InstrumentationTestLanguage.envConfig = new HashMap<>();
+        InstrumentationTestLanguage.envConfig.put("initSource", initSource);
+        InstrumentationTestLanguage.envConfig.put("runInitAfterExec", true);
         final Source source = testSource("ROOT(\n" +
                         "  STATEMENT(CONSTANT(42))\n" +
                         ")\n");
@@ -137,10 +142,8 @@ public class SuspensionFilterTest extends AbstractDebugTest {
                         "  ), \n" +
                         "  STATEMENT(CALL(initFoo))\n" +
                         ")\n";
-        Source initSource = Source.newBuilder(initCode).name("<init>").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
-        resetContext(new DebuggerTester(engineBuilder -> {
-            return engineBuilder.config(InstrumentationTestLanguage.MIME_TYPE, "initSource", initSource);
-        }));
+        Source initSource = Source.newBuilder(InstrumentationTestLanguage.ID, initCode, "<init>").buildLiteral();
+        InstrumentationTestLanguage.envConfig = Collections.singletonMap("initSource", initSource);
         final Source source = testSource("ROOT(\n" +
                         "  STATEMENT(CONSTANT(42))\n" +
                         ")\n");
@@ -150,8 +153,8 @@ public class SuspensionFilterTest extends AbstractDebugTest {
         try (DebuggerSession session = startSession()) {
             session.setSteppingFilter(suspensionFilter);
             session.suspendNextExecution();
-            Breakpoint bp4 = Breakpoint.newBuilder(initSource).lineIs(4).build();
-            Breakpoint bp6 = Breakpoint.newBuilder(initSource).lineIs(6).build();
+            Breakpoint bp4 = Breakpoint.newBuilder(getSourceImpl(initSource)).lineIs(4).build();
+            Breakpoint bp6 = Breakpoint.newBuilder(getSourceImpl(initSource)).lineIs(6).build();
             session.install(bp4);
             session.install(bp6);
             startEval(source);

@@ -27,26 +27,29 @@ package com.oracle.truffle.api.debug.test;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
 
 public class TimeBoxingTest {
 
-    @Test(expected = ThreadDeath.class)
+    @Test
     public void testTimeBoxing() throws Exception {
-        final PolyglotEngine engine = PolyglotEngine.newBuilder().build();
-        Source source = Source.newBuilder("ROOT(LOOP(infinity,STATEMENT))").mimeType(InstrumentationTestLanguage.MIME_TYPE).name("NotEnoughTime").build();
+        final Context context = Context.create();
+        Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(LOOP(infinity,STATEMENT))", "NotEnoughTime").buildLiteral();
 
         new Timer().schedule(new TimerTask() {
             @Override
             public void run() {
-                Debugger.find(engine).startSession(new SuspendedCallback() {
+                Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
+                debugger.startSession(new SuspendedCallback() {
                     public void onSuspend(SuspendedEvent event) {
                         event.prepareKill();
                     }
@@ -54,7 +57,12 @@ public class TimeBoxingTest {
             }
         }, 1000);
 
-        engine.eval(source); // throws KillException extends ThreadDeath
+        try {
+            context.eval(source); // throws KillException, wrapped by PolyglotException
+            Assert.fail();
+        } catch (PolyglotException pex) {
+            Assert.assertEquals("com.oracle.truffle.api.debug.KillException", pex.getMessage());
+        }
     }
 
 }

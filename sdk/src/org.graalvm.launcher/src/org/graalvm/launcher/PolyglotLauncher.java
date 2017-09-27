@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -95,7 +96,7 @@ public final class PolyglotLauncher extends Launcher {
     private void launch(String[] args) {
         List<String> arguments = new ArrayList<>(Arrays.asList(args));
         if (isAOT()) {
-            nativeAccess.maybeExec(arguments, true, null, VMType.Native);
+            nativeAccess.maybeExec(arguments, true, Collections.emptyMap(), VMType.Native);
             nativeAccess.setGraalVMProperties();
         }
 
