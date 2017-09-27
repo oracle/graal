@@ -25,9 +25,9 @@
 package com.oracle.truffle.api.instrumentation.test;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -127,7 +127,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
     public static final Class<?> BLOCK = BlockNode.class;
 
     public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT};
-    public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE", "ARGUMENT", "PRINT"};
+    public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE", "ARGUMENT", "PRINT",
+                    "ALLOCATION"};
 
     // used to test that no getSourceSection calls happen in certain situations
     private static int rootSourceSectionQueryCount;
@@ -329,6 +330,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                     return new VariableNode(idents[0], idents[1], childArray, lang.getContextReference());
                 case "PRINT":
                     return new PrintNode(idents[0], idents[1], childArray);
+                case "ALLOCATION":
+                    return new AllocationNode(new BaseNode[0]);
                 default:
                     throw new AssertionError();
             }
@@ -593,6 +596,20 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             } else {
                 return null;
             }
+        }
+    }
+
+    private static class AllocationNode extends InstrumentedNode {
+
+        public AllocationNode(BaseNode[] children) {
+            super(children);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            getCurrentContext(InstrumentationTestLanguage.class).allocationReporter.onEnter(null, 0, 1);
+            getCurrentContext(InstrumentationTestLanguage.class).allocationReporter.onReturnValue("Not Important", 0, 1);
+            return null;
         }
     }
 
