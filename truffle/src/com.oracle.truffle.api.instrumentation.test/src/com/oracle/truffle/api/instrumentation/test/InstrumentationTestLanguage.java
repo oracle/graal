@@ -128,7 +128,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
     public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT};
     public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE", "ARGUMENT", "PRINT",
-                    "ALLOCATION"};
+                    "ALLOCATION", "WASTE_TIME"};
 
     // used to test that no getSourceSection calls happen in certain situations
     private static int rootSourceSectionQueryCount;
@@ -332,6 +332,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                     return new PrintNode(idents[0], idents[1], childArray);
                 case "ALLOCATION":
                     return new AllocationNode(new BaseNode[0]);
+                case "WASTE_TIME":
+                    return new WasteTime(new BaseNode[0]);
                 default:
                     throw new AssertionError();
             }
@@ -610,6 +612,24 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             getCurrentContext(InstrumentationTestLanguage.class).allocationReporter.onEnter(null, 0, 1);
             getCurrentContext(InstrumentationTestLanguage.class).allocationReporter.onReturnValue("Not Important", 0, 1);
             return null;
+        }
+    }
+
+    private static class WasteTime extends InstrumentedNode {
+
+        public static int state = 0;
+        private int wasteCount = 1000;
+
+        public WasteTime(BaseNode[] children) {
+            super(children);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            for (int i = 0; i < wasteCount; i++) {
+                state++;
+            }
+            return state;
         }
     }
 
