@@ -499,6 +499,20 @@ suite = {
       "workingSets" : "Truffle,Tools",
     },
 
+    "com.oracle.truffle.tools.profiler.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+          "com.oracle.truffle.tools.profiler",
+          "com.oracle.truffle.api.instrumentation.test",
+          "mx:JUNIT"
+          ],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle,Tools",
+    },
+
     "com.oracle.truffle.tools.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -859,13 +873,24 @@ suite = {
 
      "TRUFFLE_PROFILER": {
        "dependencies": [
-            "com.oracle.truffle.tools.profiler",
-        ],
-        "distDependencies" : [
-            "sdk:GRAAL_SDK",
-            "TRUFFLE_API",
-        ],
-      "description" : "The truffle profiler, supporting CPU sampling and tracing. Memory tracing support is experimental"
+         "com.oracle.truffle.tools.profiler",
+       ],
+       "distDependencies" : [
+         "sdk:GRAAL_SDK",
+         "TRUFFLE_API",
+       ],
+       "description" : "The truffle profiler, supporting CPU sampling and tracing. Memory tracing support is experimental"
+     },
+
+     "TRUFFLE_PROFILER_TEST": {
+       "dependencies": [
+         "com.oracle.truffle.tools.profiler.test",
+       ],
+       # "distDependencies" : [
+       #   "sdk:GRAAL_SDK",
+       #   "TRUFFLE_API",
+       # ],
+       "description" : "Tests for the truffle profiler."
      },
   },
 }
