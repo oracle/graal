@@ -71,6 +71,8 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
 
     private MDReference compileUnit;
 
+    private MDReference compileUnit;
+
     private MDSubprogram(MDReference scope, MDReference name, MDReference displayName, MDReference linkageName, MDReference file, long line, MDReference type, boolean isLocalToUnit,
                     boolean isDefinedInCompileUnit, long scopeLine, MDReference containingType, long virtuality, long virtualIndex, long flags, boolean isOptimized,
                     MDReference templateParams, MDReference declaration, MDReference variables, MDReference function, MDReference compileUnit) {

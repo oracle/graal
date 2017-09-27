@@ -199,6 +199,14 @@ public final class LLVMSourceLocation {
         this.compileUnit = compileUnit;
     }
 
+    public LLVMSourceLocation getCompileUnit() {
+        return compileUnit;
+    }
+
+    public void setCompileUnit(LLVMSourceLocation compileUnit) {
+        this.compileUnit = compileUnit;
+    }
+
     private SourceSection resolvedSection = null;
 
     public SourceSection getSourceSection() {

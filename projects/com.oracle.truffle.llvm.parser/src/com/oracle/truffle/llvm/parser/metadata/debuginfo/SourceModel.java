@@ -56,7 +56,6 @@ import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceVariable;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFile;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
@@ -241,7 +240,7 @@ public final class SourceModel {
 
         @Override
         public void visit(FunctionDefinition function) {
-            currentFunction = new Function(bitcodeSource, function, sourceModel.globals);
+            currentFunction = new Function(bitcodeSource, function);
             typeIdentifier.setMetadata(function.getMetadata());
 
             if (function.hasAttachedMetadata()) {

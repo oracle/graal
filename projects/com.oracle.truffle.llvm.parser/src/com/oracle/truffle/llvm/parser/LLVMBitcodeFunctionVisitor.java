@@ -87,21 +87,6 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         ArrayList<LLVMLivenessAnalysis.NullerInformation> blockNullerInfos = liveness.getNullableWithinBlock()[block.getBlockIndex()];
         LLVMBitcodeInstructionVisitor visitor = new LLVMBitcodeInstructionVisitor(frame, labels, blockPhis, nodeFactory, argCount, symbols, runtime, blockNullerInfos, function.getSourceFunction());
 
-        if (addGlobalVISlot) {
-            FrameSlot debugSlot = frame.findFrameSlot(LLVMDebugValueContainer.FRAMESLOT_NAME);
-            final SourceModel.Function sourceFunction = function.getSourceFunction();
-            if (sourceFunction != null) {
-                for (SourceModel.Variable var : sourceFunction.getGlobals()) {
-                    if (var.getSymbol() instanceof GlobalValueSymbol) {
-                        LLVMExpressionNode readNode = runtime.getGlobalAddress(symbols, (GlobalValueSymbol) var.getSymbol());
-                        LLVMExpressionNode decl = nodeFactory.createDebugValue(var.getVariable(), readNode, debugSlot, true);
-                        visitor.addInstructionUnchecked(decl);
-                    }
-                }
-            }
-            addGlobalVISlot = false;
-        }
-
         for (int i = 0; i < block.getInstructionCount(); i++) {
             Instruction instruction = block.getInstruction(i);
             visitor.setInstructionIndex(i);

@@ -46,6 +46,9 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
+import java.util.ArrayList;
+import java.util.List;
+
 final class MDSymbolLinkUpgrade implements MDFollowRefVisitor {
 
     static void perform(MetadataList metadata) {
@@ -58,6 +61,9 @@ final class MDSymbolLinkUpgrade implements MDFollowRefVisitor {
     }
 
     private final MDKind dbgKind;
+    private final List<MDBaseNode> visited;
+
+    private MDCompileUnit currentCU;
 
     private MDCompileUnit currentCU;
 
@@ -99,6 +105,12 @@ final class MDSymbolLinkUpgrade implements MDFollowRefVisitor {
 
     @Override
     public void visit(MDSubprogram md) {
+        if (visited.contains(md)) {
+            return;
+        } else {
+            visited.add(md);
+        }
+
         final Symbol valueSymbol = MDSymbolExtractor.getSymbol(md.getFunction());
         if (valueSymbol instanceof FunctionDefinition) {
             final FunctionDefinition function = (FunctionDefinition) valueSymbol;
@@ -111,6 +123,12 @@ final class MDSymbolLinkUpgrade implements MDFollowRefVisitor {
 
     @Override
     public void visit(MDGlobalVariable mdGlobal) {
+        if (visited.contains(mdGlobal)) {
+            return;
+        } else {
+            visited.add(mdGlobal);
+        }
+
         final Symbol symbol = MDSymbolExtractor.getSymbol(mdGlobal.getVariable());
         if (symbol instanceof GlobalValueSymbol) {
             final GlobalValueSymbol global = (GlobalValueSymbol) symbol;
