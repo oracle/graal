@@ -876,7 +876,6 @@ suite = {
          "com.oracle.truffle.tools.profiler",
        ],
        "distDependencies" : [
-         "sdk:GRAAL_SDK",
          "TRUFFLE_API",
        ],
        "description" : "The truffle profiler, supporting CPU sampling and tracing. Memory tracing support is experimental"
@@ -886,10 +885,10 @@ suite = {
        "dependencies": [
          "com.oracle.truffle.tools.profiler.test",
        ],
-       # "distDependencies" : [
-       #   "sdk:GRAAL_SDK",
-       #   "TRUFFLE_API",
-       # ],
+       "distDependencies" : [
+         "TRUFFLE_INSTRUMENT_TEST",
+         "TRUFFLE_PROFILER",
+       ],
        "description" : "Tests for the truffle profiler."
      },
   },
