@@ -418,6 +418,11 @@ public final class LLVMIVarBit {
     }
 
     @TruffleBoundary
+    public int unsignedCompare(LLVMIVarBit other) {
+        return asUnsignedBigInteger().compareTo(other.asUnsignedBigInteger());
+    }
+
+    @TruffleBoundary
     public boolean isZero() {
         return arr == null || arr.length == 0 || BigInteger.ZERO.equals(asBigInteger());
     }

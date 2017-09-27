@@ -166,6 +166,10 @@ import com.oracle.truffle.llvm.nodes.op.compare.LLVMIVarCompareNodeFactory.LLVMI
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMIVarCompareNodeFactory.LLVMIVarSignedGreaterThanNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMIVarCompareNodeFactory.LLVMIVarSignedLessOrEqualNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMIVarCompareNodeFactory.LLVMIVarSignedLessThanNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMIVarCompareNodeFactory.LLVMIVarUnsignedGreaterOrEqualNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMIVarCompareNodeFactory.LLVMIVarUnsignedGreaterThanNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMIVarCompareNodeFactory.LLVMIVarUnsignedLessOrEqualNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMIVarCompareNodeFactory.LLVMIVarUnsignedLessThanNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMNeqNodeGen;
 import com.oracle.truffle.llvm.parser.instructions.LLVMFloatComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMIntegerComparisonType;
@@ -334,6 +338,14 @@ final class LLVMComparisonFactory {
                 return LLVMIVarSignedGreaterThanNodeGen.create(left, right);
             case SIGNED_LESS_EQUALS:
                 return LLVMIVarSignedLessOrEqualNodeGen.create(left, right);
+            case UNSIGNED_LESS_THAN:
+                return LLVMIVarUnsignedLessThanNodeGen.create(left, right);
+            case UNSIGNED_GREATER_EQUALS:
+                return LLVMIVarUnsignedGreaterOrEqualNodeGen.create(left, right);
+            case UNSIGNED_GREATER_THAN:
+                return LLVMIVarUnsignedGreaterThanNodeGen.create(left, right);
+            case UNSIGNED_LESS_EQUALS:
+                return LLVMIVarUnsignedLessOrEqualNodeGen.create(left, right);
             default:
                 throw new AssertionError(condition);
         }
