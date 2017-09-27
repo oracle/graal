@@ -35,16 +35,12 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.LLVMLivenessAnalysis.LLVMLivenessAnalysisResult;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
-import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueContainer;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -61,11 +57,9 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
     private final FunctionDefinition function;
     private final LLVMLivenessAnalysisResult liveness;
 
-    private boolean addGlobalVISlot;
-
     LLVMBitcodeFunctionVisitor(LLVMParserRuntime runtime, FrameDescriptor frame, Map<String, Integer> labels,
                     Map<InstructionBlock, List<Phi>> phis, NodeFactory nodeFactory, int argCount, LLVMSymbolReadResolver symbols, FunctionDefinition functionDefinition,
-                    LLVMLivenessAnalysisResult liveness, boolean addGlobalVISlot) {
+                    LLVMLivenessAnalysisResult liveness) {
         this.runtime = runtime;
         this.frame = frame;
         this.labels = labels;
@@ -77,7 +71,6 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         this.liveness = liveness;
 
         this.blocks = new ArrayList<>();
-        this.addGlobalVISlot = addGlobalVISlot;
     }
 
     public List<LLVMExpressionNode> getBlocks() {
@@ -93,21 +86,6 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         List<Phi> blockPhis = phis.get(block);
         ArrayList<LLVMLivenessAnalysis.NullerInformation> blockNullerInfos = liveness.getNullableWithinBlock()[block.getBlockIndex()];
         LLVMBitcodeInstructionVisitor visitor = new LLVMBitcodeInstructionVisitor(frame, labels, blockPhis, nodeFactory, argCount, symbols, runtime, blockNullerInfos, function.getSourceFunction());
-
-        if (addGlobalVISlot) {
-            FrameSlot debugSlot = frame.findFrameSlot(LLVMDebugValueContainer.FRAMESLOT_NAME);
-            final SourceModel.Function sourceFunction = function.getSourceFunction();
-            if (sourceFunction != null) {
-                for (SourceModel.Variable var : sourceFunction.getGlobals()) {
-                    if (var.getSymbol() instanceof GlobalValueSymbol) {
-                        LLVMExpressionNode readNode = runtime.getGlobalAddress(symbols, (GlobalValueSymbol) var.getSymbol());
-                        LLVMExpressionNode decl = nodeFactory.createDebugValue(var.getVariable(), readNode, debugSlot, true);
-                        visitor.addInstructionUnchecked(decl);
-                    }
-                }
-            }
-            addGlobalVISlot = false;
-        }
 
         for (int i = 0; i < block.getInstructionCount(); i++) {
             Instruction instruction = block.getInstruction(i);

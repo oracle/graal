@@ -221,7 +221,7 @@ public final class Sulong extends LLVMLanguage implements ScopeProvider<LLVMCont
     }
 
     @Override
-    public AbstractScope findScope(LLVMContext langContext, Node node, Frame frame) {
-        return new LLVMSourceScope(node);
+    public AbstractScope findScope(LLVMContext context, Node node, Frame frame) {
+        return LLVMSourceScope.create(node, context);
     }
 }

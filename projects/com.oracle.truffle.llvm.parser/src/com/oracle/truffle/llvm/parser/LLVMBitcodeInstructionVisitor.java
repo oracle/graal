@@ -333,7 +333,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                 // be stored at an offset into the variable, but this never happens in practice
                 final FrameSlot frameSlot = frame.findOrAddFrameSlot(var.getVariable(), MetaType.DEBUG, FrameSlotKind.Object);
                 final LLVMExpressionNode valueNode = symbols.resolve(valueSymbol);
-                final LLVMExpressionNode debugValue = nodeFactory.createDebugValue(var.getVariable(), valueNode, frameSlot, false);
+                final LLVMExpressionNode debugValue = nodeFactory.createDebugValue(var.getVariable(), valueNode, frameSlot);
                 addInstructionUnchecked(debugValue);
             }
         }

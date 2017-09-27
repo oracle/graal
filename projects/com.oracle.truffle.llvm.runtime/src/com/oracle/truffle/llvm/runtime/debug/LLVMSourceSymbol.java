@@ -29,18 +29,21 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-public final class LLVMSourceVariable {
+public final class LLVMSourceSymbol {
 
     private final String name;
     private final LLVMSourceLocation location;
     private final LLVMSourceType type;
+    private final boolean isGlobal;
 
-    public LLVMSourceVariable(String name, LLVMSourceLocation location, LLVMSourceType type) {
+    public LLVMSourceSymbol(String name, LLVMSourceLocation location, LLVMSourceType type, boolean isGlobal) {
         this.name = name;
         this.location = location;
         this.type = type;
+        this.isGlobal = isGlobal;
     }
 
     public String getName() {
@@ -55,8 +58,42 @@ public final class LLVMSourceVariable {
         return type;
     }
 
+    public boolean isGlobal() {
+        return isGlobal;
+    }
+
     @Override
     public String toString() {
         return name;
+    }
+
+    @Override
+    @TruffleBoundary
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        final LLVMSourceSymbol symbol = (LLVMSourceSymbol) o;
+
+        if (isGlobal != symbol.isGlobal) {
+            return false;
+        }
+
+        if (!name.equals(symbol.name)) {
+            return false;
+        }
+
+        return location != null ? !location.equals(symbol.location) : symbol.location != null;
+    }
+
+    @Override
+    @TruffleBoundary
+    public int hashCode() {
+        return name.hashCode();
     }
 }

@@ -27,35 +27,41 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
+package com.oracle.truffle.llvm.runtime.debug;
 
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-@NodeChild(value = "valueRead", type = LLVMExpressionNode.class)
-public abstract class LLVMDebugFrameWriteNode extends LLVMExpressionNode {
+import java.util.HashMap;
 
-    private final FrameSlot frameSlot;
+public class LLVMSourceContext {
 
-    private final LLVMSourceSymbol variable;
-    private final LLVMDebugValueProvider.Builder valueProcessor;
+    private final HashMap<String, LLVMSourceLocation> sourceScopes;
+    private final HashMap<LLVMSourceSymbol, LLVMDebugValue> globals;
 
-    protected LLVMDebugFrameWriteNode(FrameSlot frameSlot, LLVMSourceSymbol variable, LLVMDebugValueProvider.Builder valueProcessor) {
-        this.frameSlot = frameSlot;
-        this.variable = variable;
-        this.valueProcessor = valueProcessor;
+    @TruffleBoundary
+    public LLVMSourceContext() {
+        sourceScopes = new HashMap<>();
+        globals = new HashMap<>();
     }
 
-    @Specialization
-    public Object write(VirtualFrame frame, Object llvmValue) {
-        final LLVMDebugValue value = new LLVMDebugValue(variable, valueProcessor, llvmValue);
-        frame.setObject(frameSlot, value);
-        return null;
+    @TruffleBoundary
+    public void registerSourceScope(String symbolName, LLVMSourceLocation scope) {
+        sourceScopes.put(symbolName, scope);
+    }
+
+    @TruffleBoundary
+    public LLVMSourceLocation getSourceScope(String symbolName) {
+        return sourceScopes.get(symbolName);
+    }
+
+    @TruffleBoundary
+    public void registerGlobal(LLVMSourceSymbol symbol, LLVMDebugValue value) {
+        globals.put(symbol, value);
+    }
+
+    @TruffleBoundary
+    public LLVMDebugValue getGlobal(LLVMSourceSymbol symbol) {
+        return globals.get(symbol);
     }
 }

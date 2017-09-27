@@ -31,15 +31,22 @@ package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
+import com.oracle.truffle.llvm.parser.metadata.MDCompileUnit;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
+import com.oracle.truffle.llvm.parser.metadata.MDNode;
+import com.oracle.truffle.llvm.parser.metadata.MDOldNode;
 import com.oracle.truffle.llvm.parser.metadata.MDReference;
 import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
+import com.oracle.truffle.llvm.parser.metadata.MDTypedValue;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.metadata.MetadataList;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+
+import java.util.ArrayList;
+import java.util.List;
 
 final class UpgradeMDToFunctionMappingVisitor implements MDFollowRefVisitor {
 
@@ -48,28 +55,82 @@ final class UpgradeMDToFunctionMappingVisitor implements MDFollowRefVisitor {
     }
 
     private final MetadataList metadata;
+    private final List<MDBaseNode> visited;
+
+    private MDCompileUnit currentCU;
 
     private UpgradeMDToFunctionMappingVisitor(MetadataList metadata) {
         this.metadata = metadata;
+        this.visited = new ArrayList<>(metadata.size());
+        this.currentCU = null;
+    }
+
+    @Override
+    public void visit(MDCompileUnit md) {
+        currentCU = md;
+        md.getSubprograms().accept(this);
+        currentCU = null;
+    }
+
+    @Override
+    public void visit(MDNode md) {
+        if (visited.contains(md)) {
+            return;
+        } else {
+            visited.add(md);
+        }
+
+        for (MDReference elt : md) {
+            elt.accept(this);
+        }
+    }
+
+    @Override
+    public void visit(MDOldNode md) {
+        if (visited.contains(md)) {
+            return;
+        } else {
+            visited.add(md);
+        }
+
+        for (MDTypedValue elt : md) {
+            if (elt instanceof MDReference) {
+                ((MDReference) elt).accept(this);
+            }
+        }
     }
 
     @Override
     public void visit(MDSubprogram md) {
+        if (visited.contains(md)) {
+            return;
+        } else {
+            visited.add(md);
+        }
+
         final Symbol valueSymbol = MDSymbolExtractor.getSymbol(md.getFunction());
         if (valueSymbol instanceof FunctionDefinition) {
             final FunctionDefinition function = (FunctionDefinition) valueSymbol;
             attachSymbol(function, md);
         }
+        if (currentCU != null && md.getCompileUnit() != MDReference.VOID) {
+            md.setCompileUnit(MDReference.fromNode(md));
+        }
     }
 
     @Override
     public void visit(MDGlobalVariable mdGlobal) {
+        if (visited.contains(mdGlobal)) {
+            return;
+        } else {
+            visited.add(mdGlobal);
+        }
+
         final Symbol symbol = MDSymbolExtractor.getSymbol(mdGlobal.getVariable());
         if (symbol instanceof GlobalValueSymbol) {
             final GlobalValueSymbol global = (GlobalValueSymbol) symbol;
             attachSymbol(global, mdGlobal);
         }
-
     }
 
     private void attachSymbol(MetadataAttachmentHolder container, MDBaseNode ref) {

@@ -52,17 +52,16 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruc
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceVariable;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFile;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public final class SourceModel {
@@ -89,27 +88,13 @@ public final class SourceModel {
 
         private final FunctionDefinition definition;
 
-        private final List<Variable> locals;
-
-        private final List<Variable> globals;
-
         private final Map<Instruction, LLVMSourceLocation> instructions = new HashMap<>();
 
         private LLVMSourceLocation lexicalScope;
 
-        private Function(Source bitcodeSource, FunctionDefinition definition, List<Variable> globals) {
+        private Function(Source bitcodeSource, FunctionDefinition definition) {
             this.bitcodeSource = bitcodeSource;
             this.definition = definition;
-            this.globals = globals;
-            this.locals = new ArrayList<>();
-        }
-
-        public List<Variable> getGlobals() {
-            return globals;
-        }
-
-        public List<Variable> getLocals() {
-            return locals;
         }
 
         public SourceSection getSourceSection() {
@@ -131,20 +116,24 @@ public final class SourceModel {
             final LLVMSourceLocation scope = instructions.get(instruction);
             return scope != null ? scope.getSourceSection() : null;
         }
+
+        public LLVMSourceLocation getLexicalScope() {
+            return lexicalScope;
+        }
     }
 
     public static final class Variable implements Symbol {
 
         private final Symbol symbol;
 
-        private final LLVMSourceVariable variable;
+        private final LLVMSourceSymbol variable;
 
-        private Variable(Symbol symbol, LLVMSourceVariable variable) {
+        private Variable(Symbol symbol, LLVMSourceSymbol variable) {
             this.symbol = symbol;
             this.variable = variable;
         }
 
-        public LLVMSourceVariable getVariable() {
+        public LLVMSourceSymbol getVariable() {
             return variable;
         }
 
@@ -171,12 +160,19 @@ public final class SourceModel {
         }
     }
 
-    private final List<Variable> globals = new ArrayList<>();
-
     private SourceModel() {
+        globals = new HashMap<>();
+    }
+
+    private final Map<LLVMSourceSymbol, GlobalValueSymbol> globals;
+
+    public Map<LLVMSourceSymbol, GlobalValueSymbol> getGlobals() {
+        return Collections.unmodifiableMap(globals);
     }
 
     private static final class Parser implements ModelVisitor, FunctionVisitor, InstructionVisitorAdapter {
+
+        private final Map<MDBaseNode, LLVMSourceSymbol> parsedVariables;
 
         private final DITypeIdentifier typeIdentifier;
         private final DIScopeExtractor scopeExtractor;
@@ -191,6 +187,7 @@ public final class SourceModel {
         private Parser(MetadataList moduleMetadata, Source bitcodeSource) {
             this.moduleMetadata = moduleMetadata;
             this.bitcodeSource = bitcodeSource;
+            this.parsedVariables = new HashMap<>();
             typeIdentifier = new DITypeIdentifier();
             typeIdentifier.setMetadata(moduleMetadata);
             scopeExtractor = new DIScopeExtractor(typeIdentifier);
@@ -198,9 +195,34 @@ public final class SourceModel {
             sourceModel = new SourceModel();
         }
 
+        private LLVMSourceSymbol getSourceVariable(MDBaseNode mdVariable, boolean isGlobal) {
+            if (parsedVariables.containsKey(mdVariable)) {
+                return parsedVariables.get(mdVariable);
+            }
+
+            LLVMSourceLocation location = scopeExtractor.resolve(mdVariable);
+            final LLVMSourceType type = typeExtractor.parseType(mdVariable);
+            final String varName = MDNameExtractor.getName(mdVariable);
+
+            final LLVMSourceSymbol variable = new LLVMSourceSymbol(varName, location, type, isGlobal);
+            parsedVariables.put(mdVariable, variable);
+
+            if (location != null) {
+                // this is currently the line/column where the variable was declared, we want the
+                // scope
+                location = location.getParent();
+            }
+
+            if (location != null) {
+                location.addSymbol(variable);
+            }
+
+            return variable;
+        }
+
         @Override
         public void visit(FunctionDefinition function) {
-            currentFunction = new Function(bitcodeSource, function, sourceModel.globals);
+            currentFunction = new Function(bitcodeSource, function);
             typeIdentifier.setMetadata(function.getMetadata());
 
             if (function.hasAttachedMetadata()) {
@@ -220,16 +242,13 @@ public final class SourceModel {
                 return;
             }
 
-            final MDBaseNode md = global.getMetadataAttachment(MDKind.DBG_NAME);
-            if (md == null) {
-                return;
+            final MDBaseNode mdGlobal = global.getMetadataAttachment(MDKind.DBG_NAME);
+            if (mdGlobal != null) {
+                final LLVMSourceSymbol symbol = getSourceVariable(mdGlobal, true);
+                if (symbol != null) {
+                    sourceModel.globals.put(symbol, global);
+                }
             }
-
-            final String name = MDNameExtractor.getName(md);
-            final LLVMSourceLocation location = scopeExtractor.resolve(md);
-            final LLVMSourceType type = typeExtractor.parseType(md);
-            Variable globalVar = new Variable(global, new LLVMSourceVariable(name, location, type));
-            sourceModel.globals.add(globalVar);
         }
 
         @Override
@@ -318,11 +337,9 @@ public final class SourceModel {
             if (mdLocalMDRef instanceof MetadataConstant) {
                 final long mdIndex = ((MetadataConstant) mdLocalMDRef).getValue();
                 final MDBaseNode mdLocal = currentFunction.definition.getMetadata().getMDRef(mdIndex);
-                final LLVMSourceLocation location = scopeExtractor.resolve(mdLocal);
-                final LLVMSourceType type = typeExtractor.parseType(mdLocal);
-                final String varName = MDNameExtractor.getName(mdLocal);
-                final Variable var = new Variable(value, new LLVMSourceVariable(varName, location, type));
-                currentFunction.locals.add(var);
+
+                final LLVMSourceSymbol variable = getSourceVariable(mdLocal, false);
+                final Variable var = new Variable(value, variable);
 
                 // ensure that lifetime analysis does not kill the variable before it is used in
                 // the call

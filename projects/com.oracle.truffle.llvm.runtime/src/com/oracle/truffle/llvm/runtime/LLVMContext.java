@@ -53,6 +53,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.NativeLookup.UnsupportedNativeTypeException;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayoutConverter.DataSpecConverterImpl;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
@@ -87,6 +88,7 @@ public final class LLVMContext {
     private final Object handlesLock;
     private final IdentityHashMap<TruffleObject, LLVMAddress> toNative;
     private final HashMap<LLVMAddress, TruffleObject> toManaged;
+    private final LLVMSourceContext sourceContext;
 
     private final Env env;
     private final LLVMScope globalScope;
@@ -159,6 +161,7 @@ public final class LLVMContext {
         this.handlesLock = new Object();
         this.functionPointerRegistry = new LLVMFunctionPointerRegistry();
         this.globalScope = LLVMScope.createGlobalScope(this);
+        this.sourceContext = new LLVMSourceContext();
 
         Object mainArgs = env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
         this.mainArguments = mainArgs == null ? env.getApplicationArguments() : (Object[]) mainArgs;
@@ -522,6 +525,10 @@ public final class LLVMContext {
 
     public void setDataLayoutConverter(DataSpecConverterImpl layout) {
         this.targetDataLayout = layout;
+    }
+
+    public LLVMSourceContext getSourceContext() {
+        return sourceContext;
     }
 
 }

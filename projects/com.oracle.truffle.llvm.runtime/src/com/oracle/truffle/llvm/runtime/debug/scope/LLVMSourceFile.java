@@ -85,6 +85,16 @@ public final class LLVMSourceFile {
         }
     }
 
+    @Override
+    @TruffleBoundary
+    public String toString() {
+        if (resolvedSource == null) {
+            return String.format("<unresolved source: %s>", super.toString());
+        } else {
+            return resolvedSource.getName();
+        }
+    }
+
     @TruffleBoundary
     public static String getMimeType(String path) {
         if (path == null) {
@@ -125,6 +135,34 @@ public final class LLVMSourceFile {
 
         final Path fullPath = getFullPath(file.file, file.directory);
         return fullPath != null ? fullPath.toString() : UNAVAILABLE_NAME;
+    }
+
+    @Override
+    @TruffleBoundary
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        LLVMSourceFile that = (LLVMSourceFile) o;
+
+        if (file != null ? !file.equals(that.file) : that.file != null) {
+            return false;
+        }
+
+        return directory != null ? directory.equals(that.directory) : that.directory == null;
+    }
+
+    @Override
+    @TruffleBoundary
+    public int hashCode() {
+        int result = file != null ? file.hashCode() : 0;
+        result = 31 * result + (directory != null ? directory.hashCode() : 0);
+        return result;
     }
 
     @TruffleBoundary

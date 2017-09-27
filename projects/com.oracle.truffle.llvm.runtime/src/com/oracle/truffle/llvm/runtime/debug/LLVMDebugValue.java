@@ -29,19 +29,19 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
-public final class LLVMDebugFrameValue {
+public final class LLVMDebugValue {
 
-    private final LLVMSourceVariable variable;
+    private final LLVMSourceSymbol variable;
     private final LLVMDebugValueProvider.Builder builder;
     private final Object value;
 
-    public LLVMDebugFrameValue(LLVMSourceVariable variable, LLVMDebugValueProvider.Builder builder, Object value) {
+    public LLVMDebugValue(LLVMSourceSymbol variable, LLVMDebugValueProvider.Builder builder, Object value) {
         this.variable = variable;
         this.builder = builder;
         this.value = value;
     }
 
-    public LLVMSourceVariable getVariable() {
+    public LLVMSourceSymbol getVariable() {
         return variable;
     }
 

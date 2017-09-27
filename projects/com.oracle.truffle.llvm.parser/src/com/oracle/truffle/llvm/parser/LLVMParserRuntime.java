@@ -61,6 +61,9 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayoutConverter;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -113,6 +116,16 @@ public final class LLVMParserRuntime {
 
         RootCallTarget constructorFunctions = runtime.getConstructors(module.getGlobals());
         RootCallTarget destructorFunctions = runtime.getDestructors(module.getGlobals());
+
+        Map<LLVMSourceSymbol, GlobalValueSymbol> sourceGlobals = parserResult.getSourceModel().getGlobals();
+        if (!sourceGlobals.isEmpty() && context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
+            LLVMSourceContext sourceContext = context.getSourceContext();
+            for (LLVMSourceSymbol symbol : sourceGlobals.keySet()) {
+                final LLVMExpressionNode symbolNode = runtime.getGlobalVariable(symbolResolver, sourceGlobals.get(symbol));
+                final LLVMDebugValue value = nodeFactory.createGlobalVariableDebug(symbol, symbolNode);
+                sourceContext.registerGlobal(symbol, value);
+            }
+        }
 
         RootCallTarget mainFunctionCallTarget;
         if (runtime.getScope().functionExists("@main")) {

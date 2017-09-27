@@ -36,6 +36,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
@@ -48,6 +49,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
@@ -222,6 +224,14 @@ public final class FunctionDefinition extends IRScope implements Constant, Value
         CompilerAsserts.neverPartOfCompilation();
         final String formalArgs = parameters.stream().map(FunctionParameter::getName).collect(Collectors.joining(", "));
         return String.format("FunctionDefinition %s(%s) {%d blocks}", name, formalArgs, blocks == null ? 0 : blocks.length);
+    }
+
+    public LLVMSourceLocation getLexicalScope() {
+        return sourceFunction != null ? sourceFunction.getLexicalScope() : null;
+    }
+
+    public SourceSection getSourceSection() {
+        return sourceFunction != null ? sourceFunction.getSourceSection() : null;
     }
 
     public SourceModel.Function getSourceFunction() {
