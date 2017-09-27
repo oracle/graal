@@ -127,7 +127,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
     public static final Class<?> BLOCK = BlockNode.class;
 
     public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT};
-    public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "LOOP", "STATEMENT", "CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE", "ARGUMENT", "PRINT"};
+    public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE", "ARGUMENT", "PRINT"};
 
     // used to test that no getSourceSection calls happen in certain situations
     private static int rootSourceSectionQueryCount;
@@ -241,7 +241,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
             int argumentIndex = 0;
             int numberOfIdents = 0;
-            if (tag.equals("DEFINE") || tag.equals("ARGUMENT") || tag.equals("CALL") || tag.equals("LOOP") || tag.equals("CONSTANT")) {
+            if (tag.equals("DEFINE") || tag.equals("ARGUMENT") || tag.equals("CALL") || tag.equals("RECURSIVE_CALL") || tag.equals("LOOP") || tag.equals("CONSTANT")) {
                 numberOfIdents = 1;
             } else if (tag.equals("VARIABLE") || tag.equals("PRINT")) {
                 numberOfIdents = 2;
@@ -311,6 +311,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                     return new ArgumentNode(idents[0], childArray);
                 case "CALL":
                     return new CallNode(idents[0], childArray);
+                case "RECURSIVE_CALL":
+                    return new RecurisveCallNode(idents[0], childArray);
                 case "LOOP":
                     return new LoopNode(parseIdent(idents[0]), childArray);
                 case "BLOCK":
@@ -473,7 +475,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             if (tag == StandardTags.RootTag.class) {
                 return this instanceof FunctionRootNode;
             } else if (tag == StandardTags.CallTag.class) {
-                return this instanceof CallNode;
+                return this instanceof CallNode || this instanceof RecurisveCallNode;
             } else if (tag == StandardTags.StatementTag.class) {
                 return this instanceof StatementNode;
             }
@@ -560,6 +562,37 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                 callNode = insert(Truffle.getRuntime().createDirectCallNode(target));
             }
             return callNode.call(new Object[0]);
+        }
+    }
+
+    private static class RecurisveCallNode extends InstrumentedNode {
+
+        @Child private DirectCallNode callNode;
+        private final String identifier;
+        private final int depth = 10;
+        private int currentDepth = 0;
+
+        RecurisveCallNode(String identifier, BaseNode[] children) {
+            super(children);
+            this.identifier = identifier;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            if (currentDepth < depth) {
+                currentDepth++;
+                if (callNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    Context context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+                    CallTarget target = context.callTargets.get(identifier);
+                    callNode = insert(Truffle.getRuntime().createDirectCallNode(target));
+                }
+                Object retval = callNode.call(new Object[0]);
+                currentDepth--;
+                return retval;
+            } else {
+                return null;
+            }
         }
     }
 
