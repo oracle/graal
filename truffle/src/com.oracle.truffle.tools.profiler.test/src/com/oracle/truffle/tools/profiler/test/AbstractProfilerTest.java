@@ -42,7 +42,7 @@ public abstract class AbstractProfilerTest {
 
     // @formatter:off
     protected final Source defaultSource = makeSource(
-            "ROOT(" + 
+            "ROOT(" +
                     "DEFINE(foo,ROOT(STATEMENT))," +
                     "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(foo)))))," +
                     "DEFINE(baz,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(bar)))))," +
