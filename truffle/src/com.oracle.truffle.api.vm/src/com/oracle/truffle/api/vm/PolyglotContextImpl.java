@@ -513,8 +513,14 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
             if (language != null) {
                 return contexts[language.index];
             }
+
         }
         if (mimeType != null) {
+            // we need to interpret mime types for compatibility.
+            PolyglotLanguage language = engine.idToLanguage.get(mimeType);
+            if (language != null) {
+                return contexts[language.index];
+            }
             for (PolyglotLanguageContext context : contexts) {
                 if (context.language.cache.getMimeTypes().contains(mimeType)) {
                     return context;
