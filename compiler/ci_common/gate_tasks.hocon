@@ -2,33 +2,33 @@
 
 builds += [
   # Darwin AMD64
-  ${gateTest}           ${labsjdk8}   ${gateDarwinAMD64}  {name: "gate-compiler-test-8-darwin-amd64", targets : [weekly]}
-  ${gateTest}           ${labsjdk9}   ${gateDarwinAMD64}  {name: "gate-compiler-test-9-darwin-amd64", targets : [weekly]}
+  ${gateTest}           ${labsjdk8}   ${gateDarwinAMD64}  {name: "weekly-test-compiler-test-8-darwin-amd64", targets : [weekly]}
+  ${gateTest}           ${labsjdk9}   ${gateDarwinAMD64}  {name: "weekly-test-compiler-test-9-darwin-amd64", targets : [weekly]}
 # ${gateTestBenchmark}  ${labsjdk8}   ${gateDarwinAMD64}  {name: "gate-compiler-benchmarktest-8-darwin-amd64", targets : [weekly]}
 
   # Linux AMD64
   ${gateTest}          ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-test-8-linux-amd64"}
   ${gateTest}          ${labsjdk9}       ${gateLinuxAMD64}   {name: "gate-compiler-test-9-linux-amd64"}
   ${gateTestCTW}       ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-ctw-8-linux-amd64"}
-  ${gateTestCTW}       ${labsjdk9}       ${gateLinuxAMD64}   {name: "gate-compiler-ctw-9-linux-amd64", targets : [weekly]}
-  ${gateTest}          ${labsjdk8Debug}  ${gateLinuxAMD64}   {name: "gate-compiler-test-8-linux-amd64-fastdebug", timelimit: "1:00:00", targets : [weekly]}
+  ${gateTestCTW}       ${labsjdk9}       ${gateLinuxAMD64}   {name: "weekly-test-compiler-ctw-9-linux-amd64", targets : [weekly]}
+  ${gateTest}          ${labsjdk8Debug}  ${gateLinuxAMD64}   {name: "weekly-test-compiler-test-8-linux-amd64-fastdebug", timelimit: "1:00:00", targets : [weekly]}
   ${gateTestBenchmark} ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-benchmarktest-8-linux-amd64"}
-  ${gateTestBenchmark} ${labsjdk8Debug}  ${gateLinuxAMD64}   {name: "gate-compiler-benchmarktest-8-linux-amd64-fastdebug", targets : [weekly]}
+  ${gateTestBenchmark} ${labsjdk8Debug}  ${gateLinuxAMD64}   {name: "weekly-test-compiler-benchmarktest-8-linux-amd64-fastdebug", targets : [weekly]}
   ${gateStyle}         ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-style-linux-amd64"}
 
   # Solaris SPARC
   ${gateTest}          ${labsjdk8}       ${gateSolarisSPARC} {name: "gate-compiler-test-8-solaris-sparcv9",                    timelimit: "1:00:00"}
   ${gateTest}          ${labsjdk9}       ${gateSolarisSPARC} {name: "gate-compiler-test-9-solaris-sparcv9",                    timelimit: "1:00:00"}
   ${gateTestCTW}       ${labsjdk8}       ${gateSolarisSPARC} {name: "gate-compiler-ctw-8-solaris-sparcv9",                     timelimit: "1:00:00"}
-  ${gateTestCTW}       ${labsjdk9}       ${gateSolarisSPARC} {name: "gate-compiler-ctw-9-solaris-sparcv9",                     timelimit: "1:00:00", targets : [weekly]}
-  ${gateTest}          ${labsjdk8Debug}  ${gateSolarisSPARC} {name: "gate-compiler-test-8-solaris-sparcv9-fastdebug",          timelimit: "1:00:00", targets : [weekly]}
+  ${gateTestCTW}       ${labsjdk9}       ${gateSolarisSPARC} {name: "weekly-test-compiler-ctw-9-solaris-sparcv9",                     timelimit: "1:00:00", targets : [weekly]}
+  ${gateTest}          ${labsjdk8Debug}  ${gateSolarisSPARC} {name: "weekly-test-compiler-test-8-solaris-sparcv9-fastdebug",          timelimit: "1:00:00", targets : [weekly]}
   ${gateTestBenchmark} ${labsjdk8}       ${gateSolarisSPARC} {name: "gate-compiler-benchmarktest-8-solaris-sparcv9",           timelimit: "1:00:00"}
 # ${gateTestBenchmark} ${labsjdk8Debug}  ${gateSolarisSPARC} {name: "gate-compiler-benchmarktest-8-solaris-sparcv9-fastdebug", timelimit: "1:00:00"}
 
   # Linux SPARC
-  ${gateTest}          ${labsjdk8}       ${gateLinuxSPARC}   {name: "gate-compiler-test-8-linux-sparcv9",                      timelimit: "1:00:00", targets : [weekly]}
+  ${gateTest}          ${labsjdk8}       ${gateLinuxSPARC}   {name: "weekly-test-compiler-test-8-linux-sparcv9",                      timelimit: "1:00:00", targets : [weekly]}
 
   # TraceRA
-  ${gateTest}          ${labsjdk8}       ${gateLinuxAMD64TraceRA} {name: "gate-compiler-test-8-linux-amd64-tracera", targets : [weekly]}
-  ${gateTest}          ${labsjdk8}       ${gateLinuxAMD64TraceRABU} {name: "gate-compiler-test-8-linux-amd64-tracera-bu", targets : [weekly]}
+  ${gateTest}          ${labsjdk8}       ${gateLinuxAMD64TraceRA} {name: "weekly-test-compiler-test-8-linux-amd64-tracera", targets : [weekly]}
+  ${gateTest}          ${labsjdk8}       ${gateLinuxAMD64TraceRABU} {name: "weekly-test-compiler-test-8-linux-amd64-tracera-bu", targets : [weekly]}
 ]
