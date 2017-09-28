@@ -889,7 +889,8 @@ suite = {
          "TRUFFLE_INSTRUMENT_TEST",
          "TRUFFLE_PROFILER",
        ],
-       "description" : "Tests for the truffle profiler."
+       "description" : "Tests for the truffle profiler.",
+       "maven" : False,
      },
   },
 }
