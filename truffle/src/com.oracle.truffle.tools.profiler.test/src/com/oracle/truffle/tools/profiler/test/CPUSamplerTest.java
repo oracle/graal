@@ -205,14 +205,13 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         }
         Collection<CallTreeNode<CPUSampler.HitCounts>> children = sampler.getRootNodes();
 
-        // 10 recursions, base foo and bar = 12
+        // 10 recursive calls, base foo and bar = 12
         for (int i = 0; i < 12; i++) {
             Assert.assertEquals(1, children.size());
             CallTreeNode<CPUSampler.HitCounts> call = children.iterator().next();
             Assert.assertTrue(call.getTags().contains(StandardTags.CallTag.class));
             children = call.getChildren();
         }
-        Assert.assertEquals(0, children.size());
     }
 
     @Test
