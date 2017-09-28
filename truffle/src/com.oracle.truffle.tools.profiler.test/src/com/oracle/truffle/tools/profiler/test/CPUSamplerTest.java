@@ -40,6 +40,8 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
     private CPUSampler sampler;
 
+    final int executionCount = 1000;
+
     @Before
     public void setupSampler() {
         for (PolyglotRuntime.Instrument instrument : engine.getRuntime().getInstruments().values()) {
@@ -92,7 +94,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
         sampler.setCollecting(true);
-        for (int i = 0; i < 10_000; i++) {
+        for (int i = 0; i < executionCount; i++) {
             execute(defaultSourceForSampling);
         }
 
@@ -135,7 +137,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
         sampler.setCollecting(true);
-        for (int i = 0; i < 10_000; i++) {
+        for (int i = 0; i < executionCount; i++) {
             execute(defaultRecursiveSourceForSampling);
         }
 
@@ -170,7 +172,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     public void testCorrectCallStructure() {
         sampler.setFilter(NO_INTERNAL_CALL_TAG_FILTER);
         sampler.setCollecting(true);
-        for (int i = 0; i < 10_000; i++) {
+        for (int i = 0; i < executionCount; i++) {
             execute(defaultSourceForSampling);
         }
         Collection<CallTreeNode<CPUSampler.HitCounts>> children = sampler.getRootNodes();
@@ -200,7 +202,8 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     public void testCorrectCallStructureRecursive() {
         sampler.setFilter(NO_INTERNAL_CALL_TAG_FILTER);
         sampler.setCollecting(true);
-        for (int i = 0; i < 10_000; i++) {
+
+        for (int i = 0; i < executionCount; i++) {
             execute(defaultRecursiveSourceForSampling);
         }
         Collection<CallTreeNode<CPUSampler.HitCounts>> children = sampler.getRootNodes();
@@ -219,7 +222,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
         sampler.setStackLimit(2);
         sampler.setCollecting(true);
-        for (int i = 0; i < 10_000; i++) {
+        for (int i = 0; i < executionCount; i++) {
             execute(defaultSourceForSampling);
         }
         Assert.assertTrue(sampler.hasStackOverflowed());
