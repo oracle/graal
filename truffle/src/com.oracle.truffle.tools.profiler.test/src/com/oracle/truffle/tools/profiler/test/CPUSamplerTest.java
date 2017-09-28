@@ -220,7 +220,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         sampler.setStackLimit(2);
         sampler.setCollecting(true);
         for (int i = 0; i < 10_000; i++) {
-            execute(defaultRecursiveSourceForSampling);
+            execute(defaultSourceForSampling);
         }
         Assert.assertTrue(sampler.hasStackOverflowed());
     }
