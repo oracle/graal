@@ -57,73 +57,73 @@ public class TypeDescriptorTest {
     }
 
     @Test
-    public void testNarrowPrimitive() {
+    public void testPrimitive() {
         for (TypeDescriptor td1 : PREDEFINED) {
             for (TypeDescriptor td2 : PREDEFINED) {
-                Assert.assertTrue(td1 == td2 || td1.narrow(td2) == null);
+                Assert.assertTrue(td1 == td2 || !td1.isAssignable(td2));
             }
         }
     }
 
     @Test
-    public void testNarrowArray() {
+    public void testArray() {
         final TypeDescriptor numArray = TypeDescriptor.array(TypeDescriptor.NUMBER);
         final TypeDescriptor strArray = TypeDescriptor.array(TypeDescriptor.STRING);
         final TypeDescriptor numArrayArray = TypeDescriptor.array(TypeDescriptor.array(TypeDescriptor.NUMBER));
 
         for (TypeDescriptor td : PREDEFINED) {
-            Assert.assertNull(numArray.narrow(td));
-            Assert.assertNull(strArray.narrow(td));
-            Assert.assertNull(numArrayArray.narrow(td));
+            Assert.assertFalse(numArray.isAssignable(td));
+            Assert.assertFalse(strArray.isAssignable(td));
+            Assert.assertFalse(numArrayArray.isAssignable(td));
         }
 
         Arrays.stream(PREDEFINED).filter((td) -> td != TypeDescriptor.ARRAY).forEach((td) -> {
-            Assert.assertNull(td.narrow(numArray));
-            Assert.assertNull(td.narrow(strArray));
-            Assert.assertNull(td.narrow(numArrayArray));
+            Assert.assertFalse(td.isAssignable(numArray));
+            Assert.assertFalse(td.isAssignable(strArray));
+            Assert.assertFalse(td.isAssignable(numArrayArray));
         });
-        Assert.assertEquals(numArray, TypeDescriptor.ARRAY.narrow(numArray));
-        Assert.assertEquals(strArray, TypeDescriptor.ARRAY.narrow(strArray));
-        Assert.assertEquals(numArrayArray, TypeDescriptor.ARRAY.narrow(numArrayArray));
+        Assert.assertTrue(TypeDescriptor.ARRAY.isAssignable(numArray));
+        Assert.assertTrue(TypeDescriptor.ARRAY.isAssignable(strArray));
+        Assert.assertTrue(TypeDescriptor.ARRAY.isAssignable(numArrayArray));
 
-        Assert.assertNull(numArray.narrow(strArray));
-        Assert.assertNull(numArray.narrow(numArrayArray));
-        Assert.assertNull(strArray.narrow(numArray));
-        Assert.assertNull(strArray.narrow(numArrayArray));
-        Assert.assertNull(numArrayArray.narrow(numArray));
-        Assert.assertNull(numArrayArray.narrow(strArray));
-        Assert.assertEquals(numArray, numArray.narrow(numArray));
-        Assert.assertEquals(strArray, strArray.narrow(strArray));
-        Assert.assertEquals(numArrayArray, numArrayArray.narrow(numArrayArray));
+        Assert.assertFalse(numArray.isAssignable(strArray));
+        Assert.assertFalse(numArray.isAssignable(numArrayArray));
+        Assert.assertFalse(strArray.isAssignable(numArray));
+        Assert.assertFalse(strArray.isAssignable(numArrayArray));
+        Assert.assertFalse(numArrayArray.isAssignable(numArray));
+        Assert.assertFalse(numArrayArray.isAssignable(strArray));
+        Assert.assertTrue(numArray.isAssignable(numArray));
+        Assert.assertTrue(strArray.isAssignable(strArray));
+        Assert.assertTrue(numArrayArray.isAssignable(numArrayArray));
 
         final TypeDescriptor objOrArrayNum = TypeDescriptor.union(
                         TypeDescriptor.OBJECT,
                         numArray);
-        Assert.assertEquals(numArray, TypeDescriptor.ARRAY.narrow(objOrArrayNum));
+        Assert.assertTrue(TypeDescriptor.ARRAY.isAssignable(objOrArrayNum));
     }
 
     @Test
-    public void testNarrowUnion() {
+    public void testUnion() {
         final TypeDescriptor numOrBool = TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.BOOLEAN);
         final TypeDescriptor numOrBoolOrStr = TypeDescriptor.union(numOrBool, TypeDescriptor.STRING);
         Arrays.stream(PREDEFINED).filter((td) -> td != TypeDescriptor.NUMBER && td != TypeDescriptor.BOOLEAN).forEach((td) -> {
-            Assert.assertNull(td.narrow(numOrBool));
-            Assert.assertNull(numOrBool.narrow(td));
+            Assert.assertFalse(td.isAssignable(numOrBool));
+            Assert.assertFalse(numOrBool.isAssignable(td));
         });
 
-        Assert.assertEquals(TypeDescriptor.BOOLEAN, numOrBool.narrow(TypeDescriptor.BOOLEAN));
-        Assert.assertEquals(TypeDescriptor.BOOLEAN, numOrBoolOrStr.narrow(TypeDescriptor.BOOLEAN));
-        Assert.assertEquals(TypeDescriptor.BOOLEAN, TypeDescriptor.BOOLEAN.narrow(numOrBool));
-        Assert.assertEquals(TypeDescriptor.BOOLEAN, TypeDescriptor.BOOLEAN.narrow(numOrBoolOrStr));
-        Assert.assertEquals(TypeDescriptor.NUMBER, numOrBool.narrow(TypeDescriptor.NUMBER));
-        Assert.assertEquals(TypeDescriptor.NUMBER, numOrBoolOrStr.narrow(TypeDescriptor.NUMBER));
-        Assert.assertEquals(TypeDescriptor.NUMBER, TypeDescriptor.NUMBER.narrow(numOrBool));
-        Assert.assertEquals(TypeDescriptor.NUMBER, TypeDescriptor.NUMBER.narrow(numOrBoolOrStr));
-        Assert.assertEquals(TypeDescriptor.STRING, numOrBoolOrStr.narrow(TypeDescriptor.STRING));
-        Assert.assertEquals(TypeDescriptor.STRING, TypeDescriptor.STRING.narrow(numOrBoolOrStr));
+        Assert.assertTrue(numOrBool.isAssignable(TypeDescriptor.BOOLEAN));
+        Assert.assertTrue(numOrBoolOrStr.isAssignable(TypeDescriptor.BOOLEAN));
+        Assert.assertTrue(TypeDescriptor.BOOLEAN.isAssignable(numOrBool));
+        Assert.assertTrue(TypeDescriptor.BOOLEAN.isAssignable(numOrBoolOrStr));
+        Assert.assertTrue(numOrBool.isAssignable(TypeDescriptor.NUMBER));
+        Assert.assertTrue(numOrBoolOrStr.isAssignable(TypeDescriptor.NUMBER));
+        Assert.assertTrue(TypeDescriptor.NUMBER.isAssignable(numOrBool));
+        Assert.assertTrue(TypeDescriptor.NUMBER.isAssignable(numOrBoolOrStr));
+        Assert.assertTrue(numOrBoolOrStr.isAssignable(TypeDescriptor.STRING));
+        Assert.assertTrue(TypeDescriptor.STRING.isAssignable(numOrBoolOrStr));
 
-        Assert.assertEquals(numOrBool, numOrBoolOrStr.narrow(numOrBool));
-        Assert.assertEquals(numOrBool, numOrBool.narrow(numOrBoolOrStr));
+        Assert.assertTrue(numOrBoolOrStr.isAssignable(numOrBool));
+        Assert.assertTrue(numOrBool.isAssignable(numOrBoolOrStr));
 
         final TypeDescriptor arrNumberOrBool = TypeDescriptor.union(
                         TypeDescriptor.array(TypeDescriptor.NUMBER),
@@ -134,18 +134,14 @@ public class TypeDescriptorTest {
         final TypeDescriptor arrBoolOrString = TypeDescriptor.union(
                         TypeDescriptor.array(TypeDescriptor.BOOLEAN),
                         TypeDescriptor.STRING);
-        Assert.assertEquals(TypeDescriptor.array(TypeDescriptor.NUMBER),
-                        arrNumberOrBool.narrow(arrNumberOrString));
-        Assert.assertNull(arrNumberOrBool.narrow(arrBoolOrString));
+        Assert.assertTrue(arrNumberOrBool.isAssignable(arrNumberOrString));
+        Assert.assertFalse(arrNumberOrBool.isAssignable(arrBoolOrString));
 
         final TypeDescriptor arrNumBool = TypeDescriptor.array(numOrBool);
         final TypeDescriptor arrNum = TypeDescriptor.array(TypeDescriptor.NUMBER);
         final TypeDescriptor numOrBoolOrArrNumBool = TypeDescriptor.union(numOrBool, arrNumBool);
-        Assert.assertEquals(arrNum,
-                        numOrBoolOrArrNumBool.narrow(arrNum));
-
+        Assert.assertTrue(numOrBoolOrArrNumBool.isAssignable(arrNum));
         final TypeDescriptor objOrArrNum = TypeDescriptor.union(TypeDescriptor.OBJECT, arrNum);
-        Assert.assertEquals(arrNum,
-                        numOrBoolOrArrNumBool.narrow(objOrArrNum));
+        Assert.assertTrue(numOrBoolOrArrNumBool.isAssignable(objOrArrNum));
     }
 }

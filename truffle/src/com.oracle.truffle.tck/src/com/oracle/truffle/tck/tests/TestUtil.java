@@ -35,12 +35,13 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.tck.Snippet;
+import org.graalvm.polyglot.tck.SnippetRun;
 import org.graalvm.polyglot.tck.TypeDescriptor;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
-import org.junit.Assert;
 
 final class TestUtil {
     private static final int MAX_FAILURES = Integer.getInteger("tck.maxFailures", 100);
@@ -55,10 +56,6 @@ final class TestUtil {
         return filterLanguages(
                         context,
                         LANGUAGE == null ? null : (lang) -> LANGUAGE.equals(lang));
-    }
-
-    static boolean isAssignable(final TypeDescriptor toType, final TypeDescriptor fromType) {
-        return toType.narrow(fromType) != null;
     }
 
     static Set<? extends String> getRequiredValueLanguages(final TestContext context) {
@@ -99,30 +96,18 @@ final class TestUtil {
         return testRuns;
     }
 
-    static TypeDescriptor validateResult(
+    static void validateResult(
+                    final TestRun testRun,
                     final Value result,
-                    final TestRun testRun) {
-        TypeDescriptor resultType = TypeDescriptor.forValue(result);
-        final TypeDescriptor narrowedType = testRun.getSnippet().getReturnType().narrow(resultType);
-        Assert.assertNotNull(String.format(
-                        "Result of : %s is out of type bounds. Expected: %s, Got: %s.",
-                        testRun,
-                        testRun.getSnippet().getReturnType(),
-                        resultType),
-                        narrowedType);
-        verifyToString(testRun, result);
-        verifyInterop(result);
-        final Consumer<? super Value> verifier = testRun.getSnippet().getResultVerifier();
-        if (verifier != null) {
-            try {
-                verifier.accept(result);
-            } catch (AssertionError e) {
-                throw new AssertionError(
-                                String.format("Validation of : %s failed.", testRun),
-                                e);
-            }
+                    final PolyglotException exception) {
+        final Consumer<? super SnippetRun> verifier = testRun.getSnippet().getResultVerifier();
+        if (exception == null) {
+            verifier.accept(SnippetRun.create(testRun.getActualParameters(), result));
+            verifyToString(testRun, result);
+            verifyInterop(result);
+        } else {
+            verifier.accept(SnippetRun.create(testRun.getActualParameters(), exception));
         }
-        return narrowedType;
     }
 
     static List<List<Pair<String, ? extends Snippet>>> findApplicableParameters(
@@ -134,7 +119,7 @@ final class TestUtil {
             params.add(new ArrayList<>());
             final TypeDescriptor paramTypeDesc = opParameterTypes.get(i);
             for (Pair<String, ? extends Snippet> constructor : valueConstructors) {
-                if (isAssignable(paramTypeDesc, constructor.getValue().getReturnType())) {
+                if (paramTypeDesc.isAssignable(constructor.getValue().getReturnType())) {
                     params.get(i).add(constructor);
                 }
             }

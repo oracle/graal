@@ -31,6 +31,7 @@ import org.graalvm.polyglot.Value;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.PolyglotException;
 import org.junit.AfterClass;
 import org.junit.Assume;
 import org.junit.Before;
@@ -73,14 +74,16 @@ public class StatementTest {
     @Test
     public void testStatement() {
         Assume.assumeThat(testRun, TEST_RESULT_MATCHER);
-        boolean success = false;
+        Value result = null;
         try {
-            final Value res = testRun.getSnippet().getExecutableValue().execute(testRun.getActualParameters().toArray());
-            TestUtil.validateResult(res, testRun);
-            success = true;
+            try {
+                result = testRun.getSnippet().getExecutableValue().execute(testRun.getActualParameters().toArray());
+                TestUtil.validateResult(testRun, result, null);
+            } catch (PolyglotException pe) {
+                TestUtil.validateResult(testRun, null, pe);
+            }
         } finally {
-            TEST_RESULT_MATCHER.accept(Pair.of(testRun, success));
+            TEST_RESULT_MATCHER.accept(Pair.of(testRun, result != null));
         }
     }
-
 }

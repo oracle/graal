@@ -164,7 +164,7 @@ final class TestContext implements Closeable {
 
     private static Predicate<Snippet> newTypePredicate(TypeDescriptor type, List<? extends TypeDescriptor> parameterTypes) {
         return (Snippet op) -> {
-            if (type != null && !TestUtil.isAssignable(op.getReturnType(), type)) {
+            if (type != null && !op.getReturnType().isAssignable(type)) {
                 return false;
             }
             if (parameterTypes != null) {
@@ -173,7 +173,7 @@ final class TestContext implements Closeable {
                     return false;
                 }
                 for (int i = 0; i < parameterTypes.size(); i++) {
-                    if (!TestUtil.isAssignable(opParameterTypes.get(i), parameterTypes.get(i))) {
+                    if (!opParameterTypes.get(i).isAssignable(parameterTypes.get(i))) {
                         return false;
                     }
                 }

@@ -51,13 +51,16 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.function.Consumer;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.tck.LanguageProvider;
 import org.graalvm.polyglot.tck.Snippet;
+import org.graalvm.polyglot.tck.SnippetRun;
 import org.graalvm.polyglot.tck.TypeDescriptor;
+import org.junit.Assert;
 
-public class SLLanguageProvider implements LanguageProvider {
+public class SLTCKLanguageProvider implements LanguageProvider {
     private static final String ID = "sl";
     private static final String PATTERN_VALUE_FNC = "function %s() {return %s;}";
     private static final String PATTERN_BIN_OP_FNC = "function %s(a,b) {return a %s b;}";
@@ -79,13 +82,10 @@ public class SLLanguageProvider implements LanguageProvider {
     @Override
     public Collection<? extends Snippet> createValueConstructors(Context context) {
         final Collection<Snippet> res = new ArrayList<>();
-        // boolean
         res.add(createValueConstructor(context, "1 == 2", "boolean", "createBoolean", TypeDescriptor.BOOLEAN));
-        // number
         res.add(createValueConstructor(context, "1", "number", "createNumber", TypeDescriptor.NUMBER));
-        // string
+        res.add(createValueConstructor(context, "9223372036854775808", "bigNumber", "createBigNumber", TypeDescriptor.NUMBER));
         res.add(createValueConstructor(context, "\"string\"", "string", "createString", TypeDescriptor.STRING));
-        // object
         final Snippet.Builder opb = Snippet.newBuilder(
                         "object",
                         eval(
@@ -111,27 +111,60 @@ public class SLLanguageProvider implements LanguageProvider {
         res.add(opb.build());
         opb = Snippet.newBuilder("+", fnc, TypeDescriptor.STRING).parameterTypes(any, TypeDescriptor.STRING);
         res.add(opb.build());
-        res.add(createBinaryOperator(context, "-", "sub", TypeDescriptor.NUMBER, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER));
-        res.add(createBinaryOperator(context, "*", "mul", TypeDescriptor.NUMBER, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER));
-        res.add(createBinaryOperator(context, "/", "div", TypeDescriptor.NUMBER, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER));
-        res.add(createBinaryOperator(context, "==", "eq", TypeDescriptor.BOOLEAN, any, any));
-        res.add(createBinaryOperator(context, "!=", "neq", TypeDescriptor.BOOLEAN, any, any));
-        res.add(createBinaryOperator(context, "<=", "le", TypeDescriptor.BOOLEAN, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER));
-        res.add(createBinaryOperator(context, ">=", "ge", TypeDescriptor.BOOLEAN, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER));
-        res.add(createBinaryOperator(context, "<", "l", TypeDescriptor.BOOLEAN, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER));
-        res.add(createBinaryOperator(context, ">", "g", TypeDescriptor.BOOLEAN, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER));
-        // res.add(createBinaryOperator(context, "||", "or", TypeDescriptor.BOOLEAN,
-        // TypeDescriptor.BOOLEAN, TypeDescriptor.BOOLEAN));
-        // res.add(createBinaryOperator(context, "&&", "land", TypeDescriptor.BOOLEAN,
-        // TypeDescriptor.BOOLEAN, TypeDescriptor.BOOLEAN));
+        res.add(createBinaryOperator(context, "-", "sub", TypeDescriptor.NUMBER, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER).build());
+        res.add(createBinaryOperator(context, "*", "mul", TypeDescriptor.NUMBER, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER).build());
+        res.add(createBinaryOperator(context, "/", "div", TypeDescriptor.NUMBER, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER).resultVerifier((snippetRun) -> {
+            final Value dividend = snippetRun.getParameters().get(0);
+            final Value divider = snippetRun.getParameters().get(1);
+            final PolyglotException exception = snippetRun.getException();
+            if (dividend.isNumber() && divider.fitsInDouble() && divider.asDouble() == 0) {
+                Assert.assertNotNull(exception);
+            } else if (exception != null) {
+                throw new AssertionError(null, exception);
+            } else {
+                Assert.assertTrue(TypeDescriptor.NUMBER.isAssignable(TypeDescriptor.forValue(snippetRun.getResult())));
+            }
+        }).build());
+        res.add(createBinaryOperator(context, "==", "eq", TypeDescriptor.BOOLEAN, any, any).build());
+        res.add(createBinaryOperator(context, "!=", "neq", TypeDescriptor.BOOLEAN, any, any).build());
+        res.add(createBinaryOperator(context, "<=", "le", TypeDescriptor.BOOLEAN, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER).build());
+        res.add(createBinaryOperator(context, ">=", "ge", TypeDescriptor.BOOLEAN, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER).build());
+        res.add(createBinaryOperator(context, "<", "l", TypeDescriptor.BOOLEAN, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER).build());
+        res.add(createBinaryOperator(context, ">", "g", TypeDescriptor.BOOLEAN, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER).build());
+        res.add(createBinaryOperator(context, "||", "or", TypeDescriptor.BOOLEAN, TypeDescriptor.BOOLEAN, any).resultVerifier((snippetRun) -> {
+            final Value firstParam = snippetRun.getParameters().get(0);
+            final Value secondParam = snippetRun.getParameters().get(1);
+            final PolyglotException exception = snippetRun.getException();
+            if (firstParam.isBoolean() && !firstParam.asBoolean() && !secondParam.isBoolean()) {
+                Assert.assertNotNull(exception);
+            } else if (exception != null) {
+                throw new AssertionError(null, exception);
+            } else {
+                Assert.assertTrue(TypeDescriptor.BOOLEAN.isAssignable(TypeDescriptor.forValue(snippetRun.getResult())));
+            }
+        }).build());
+        res.add(createBinaryOperator(context, "&&", "land", TypeDescriptor.BOOLEAN, TypeDescriptor.BOOLEAN, any).resultVerifier((snippetRun) -> {
+            final Value firstParam = snippetRun.getParameters().get(0);
+            final Value secondParam = snippetRun.getParameters().get(1);
+            final PolyglotException exception = snippetRun.getException();
+            if (firstParam.isBoolean() && firstParam.asBoolean() && !secondParam.isBoolean()) {
+                Assert.assertNotNull(exception);
+            } else if (exception != null) {
+                throw new AssertionError(null, exception);
+            } else {
+                Assert.assertTrue(TypeDescriptor.BOOLEAN.isAssignable(TypeDescriptor.forValue(snippetRun.getResult())));
+            }
+        }).build());
         return Collections.unmodifiableCollection(res);
     }
 
     @Override
     public Collection<? extends Snippet> createStatements(Context context) {
         final Collection<Snippet> res = new ArrayList<>();
+        final TypeDescriptor any = TypeDescriptor.union(TypeDescriptor.BOOLEAN, TypeDescriptor.NUMBER, TypeDescriptor.STRING, TypeDescriptor.OBJECT);
         res.add(createStatement(context, "if", "iffnc", "if ({1}) '{'\n{0}=1;\n'}' else '{'\n{0}=0;\n'}'", TypeDescriptor.NUMBER, TypeDescriptor.BOOLEAN));
         res.add(createStatement(context, "while", "whilefnc", "while ({1}) '{'break;\n'}'", TypeDescriptor.NUMBER, TypeDescriptor.BOOLEAN));
+        res.add(createStatement(context, "assign", "assignfnc", "{1} = {0};", any, any));
         return res;
     }
 
@@ -139,7 +172,7 @@ public class SLLanguageProvider implements LanguageProvider {
     public Collection<? extends Snippet> createScripts(Context context) {
         try {
             final Collection<Snippet> res = new ArrayList<>();
-            Path root = SLTestRunner.getRootViaResourceURL(SLLanguageProvider.class, new String[]{"tck/scripts"});
+            Path root = SLTestRunner.getRootViaResourceURL(SLTCKLanguageProvider.class, new String[]{"tck/scripts"});
             Files.walk(root).filter((p) -> Files.isRegularFile(p) && p.getFileName().toString().endsWith(".sl")).map((p) -> {
                 return loadScript(context, p, TypeDescriptor.NULL, null);
             }).forEach(res::add);
@@ -153,7 +186,7 @@ public class SLLanguageProvider implements LanguageProvider {
     public Collection<? extends Source> createInvalidSyntaxScripts(Context context) {
         try {
             final Collection<Source> res = new ArrayList<>();
-            Path root = SLTestRunner.getRootViaResourceURL(SLLanguageProvider.class, new String[]{"tests/error/parser"});
+            Path root = SLTestRunner.getRootViaResourceURL(SLTCKLanguageProvider.class, new String[]{"tests/error/parser"});
             Files.walk(root).filter((p) -> Files.isRegularFile(p) && p.getFileName().toString().endsWith(".sl")).map((p) -> {
                 try {
                     return createSource(p);
@@ -180,7 +213,7 @@ public class SLLanguageProvider implements LanguageProvider {
         return opb.build();
     }
 
-    private Snippet createBinaryOperator(
+    private Snippet.Builder createBinaryOperator(
                     final Context context,
                     final String operator,
                     final String functionName,
@@ -188,8 +221,7 @@ public class SLLanguageProvider implements LanguageProvider {
                     final TypeDescriptor ltype,
                     final TypeDescriptor rtype) {
         final Value fnc = eval(context, String.format(PATTERN_BIN_OP_FNC, functionName, operator), functionName);
-        final Snippet.Builder opb = Snippet.newBuilder(operator, fnc, type).parameterTypes(ltype, rtype);
-        return opb.build();
+        return Snippet.newBuilder(operator, fnc, type).parameterTypes(ltype, rtype);
     }
 
     private Snippet createStatement(
@@ -215,7 +247,7 @@ public class SLLanguageProvider implements LanguageProvider {
                     final Context context,
                     final Path resourceName,
                     final TypeDescriptor type,
-                    final Consumer<Value> verifier) {
+                    final Consumer<? super SnippetRun> verifier) {
         try {
             final Source src = createSource(resourceName);
             return Snippet.newBuilder(src.getName(), context.eval(src), type).resultVerifier(verifier).build();

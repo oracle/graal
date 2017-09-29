@@ -41,6 +41,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.tck.Snippet;
 import org.graalvm.polyglot.tck.TypeDescriptor;
 import org.junit.AfterClass;
@@ -169,7 +170,7 @@ public class ErrorTypeTest {
             return false;
         }
         for (int i = 0; i < into.size(); i++) {
-            if (!TestUtil.isAssignable(into.get(i), from.get(i))) {
+            if (!into.get(i).isAssignable(from.get(i))) {
                 return false;
             }
         }
@@ -184,18 +185,22 @@ public class ErrorTypeTest {
     @Test
     public void testErrorType() {
         Assume.assumeThat(testRun, TEST_RESULT_MATCHER);
-        boolean exception = false;
+        boolean passed = false;
         try {
             try {
                 testRun.getSnippet().getExecutableValue().execute(testRun.getActualParameters().toArray());
             } catch (PolyglotException pe) {
-                exception = true;
+                try {
+                    TestUtil.validateResult(testRun, null, pe);
+                } catch (AssertionError e) {
+                    passed = true;
+                }
             }
-            if (!exception) {
+            if (!passed) {
                 throw new AssertionError("Expected exception.");
             }
         } finally {
-            TEST_RESULT_MATCHER.accept(Pair.of(testRun, exception));
+            TEST_RESULT_MATCHER.accept(Pair.of(testRun, passed));
         }
     }
 }

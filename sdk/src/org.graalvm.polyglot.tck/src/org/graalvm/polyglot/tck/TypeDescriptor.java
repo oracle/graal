@@ -77,19 +77,9 @@ public final class TypeDescriptor {
         return impl.toString();
     }
 
-    public TypeDescriptor narrow(TypeDescriptor byType) {
-        final TypeDescriptorImpl narrowedImpl = impl.narrow(impl, byType.impl);
-        if (narrowedImpl == null) {
-            return null;
-        }
-        if (narrowedImpl == impl) {
-            return this;
-        }
-        if (narrowedImpl == byType.impl) {
-            return byType;
-        }
-        final TypeDescriptor result = isPredefined(narrowedImpl);
-        return result != null ? result : new TypeDescriptor(narrowedImpl);
+    public boolean isAssignable(final TypeDescriptor fromType) {
+        final TypeDescriptorImpl narrowedImpl = impl.narrow(impl, fromType.impl);
+        return narrowedImpl != null;
     }
 
     public static TypeDescriptor union(TypeDescriptor... types) {
