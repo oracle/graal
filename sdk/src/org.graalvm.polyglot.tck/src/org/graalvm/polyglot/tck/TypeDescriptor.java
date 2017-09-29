@@ -34,16 +34,63 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.graalvm.polyglot.Value;
 
+/**
+ * Represents a type of a polyglot value. Types include primitive types, null type, object type,
+ * array type with an optional content type and union type.
+ */
 public final class TypeDescriptor {
 
+    /**
+     * The NULL type represents a type of null or undefined value.
+     *
+     * @see Value#isNull().
+     */
     public static final TypeDescriptor NULL = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.NULL));
+    /**
+     * Represents a boolean type.
+     *
+     * @see Value#isBoolean().
+     */
     public static final TypeDescriptor BOOLEAN = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.BOOLEAN));
+    /**
+     * Represents a numeric type.
+     *
+     * @see Value#isNumber().
+     */
     public static final TypeDescriptor NUMBER = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.NUMBER));
+    /**
+     * Represents a string type.
+     *
+     * @see Value#isString().
+     */
     public static final TypeDescriptor STRING = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.STRING));
-    public static final TypeDescriptor HOST_OBJECT = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.HOST_OBJECT));
-    public static final TypeDescriptor NATIVE_POINTER = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.NATIVE_POINTER));
+    /**
+     * Represents an object created by a guest language.
+     *
+     * @see Value#hasMembers().
+     */
     public static final TypeDescriptor OBJECT = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.OBJECT));
+    /**
+     * Represents an array with any content type. Any array type, including those with content type,
+     * is assignable to this type. This array type is not assignable to any array type having a
+     * content type.
+     *
+     * @see #isAssignable(org.graalvm.polyglot.tck.TypeDescriptor).
+     * @see Value#hasMembers().
+     */
     public static final TypeDescriptor ARRAY = new TypeDescriptor(new ArrayImpl(null));
+    /**
+     * Represents a host object.
+     *
+     * @see Value#isHostObject().
+     */
+    public static final TypeDescriptor HOST_OBJECT = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.HOST_OBJECT));
+    /**
+     * Represents a native pointer.
+     *
+     * @see Value#isNativePointer().
+     */
+    public static final TypeDescriptor NATIVE_POINTER = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.NATIVE_POINTER));
 
     private static final TypeDescriptor[] PREDEFINED_TYPES = new TypeDescriptor[]{
                     NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, NATIVE_POINTER, OBJECT, ARRAY
@@ -56,11 +103,17 @@ public final class TypeDescriptor {
         this.impl = impl;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public int hashCode() {
         return impl.hashCode();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean equals(Object obj) {
         if (obj == this) {
@@ -72,16 +125,36 @@ public final class TypeDescriptor {
         return impl.equals(((TypeDescriptor) obj).impl);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String toString() {
         return impl.toString();
     }
 
+    /**
+     * Checks if the given type is assignable to this type. The primitive types are assignable only
+     * to itself or to an union type containing the given primitive type. The array type with a
+     * component type can be assigned to itself, to an array type without a component type and to an
+     * union type containing the given array type or an array type without a component type. The
+     * union type can be assigned to a type for which the intersection of the union type and the
+     * type is non-empty.
+     *
+     * @param fromType the type to assign
+     * @return true if the fromType is assignable to this type
+     */
     public boolean isAssignable(final TypeDescriptor fromType) {
         final TypeDescriptorImpl narrowedImpl = impl.narrow(impl, fromType.impl);
         return narrowedImpl != null;
     }
 
+    /**
+     * Creates a new union type.
+     *
+     * @param types the types to include in the union
+     * @return the union type containing the given types
+     */
     public static TypeDescriptor union(TypeDescriptor... types) {
         Objects.requireNonNull(types);
         final Set<TypeDescriptor> typesSet = new HashSet<>();
@@ -136,10 +209,23 @@ public final class TypeDescriptor {
         return impls.size() == 1 ? impls.iterator().next() : new UnionImpl(impls);
     }
 
+    /**
+     * Creates a new array type with given component type. To create a multi-dimensional array use
+     * an array type as a component type.
+     *
+     * @param componentType the required component type.
+     * @return an array type with given component
+     */
     public static TypeDescriptor array(TypeDescriptor componentType) {
         return componentType == null ? ARRAY : new TypeDescriptor(new ArrayImpl(componentType.impl));
     }
 
+    /**
+     * Creates a type for given {@link Value}.
+     *
+     * @param value the value to create {@link TypeDescriptor} for
+     * @return the type of value, may by an union type containing more primitive or array types.
+     */
     public static TypeDescriptor forValue(final Value value) {
         final List<TypeDescriptor> descs = new ArrayList<>();
         if (value.isNull()) {

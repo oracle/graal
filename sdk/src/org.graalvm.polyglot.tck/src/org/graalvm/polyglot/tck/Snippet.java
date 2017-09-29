@@ -33,6 +33,11 @@ import java.util.stream.Collectors;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
+/**
+ * The unit of execution with assigned parameters and result types. The {@link Snippet} represents
+ * an execution of value constructor, statement, expression and script. The {@link Snippet} provides
+ * parameter(s) and return types used to chain the {@link Snippet}s.
+ */
 public final class Snippet {
     private final String id;
     private final Value executableValue;
@@ -56,31 +61,72 @@ public final class Snippet {
         this.verifier = verifier == null ? new DefaultResultVerifier() : verifier;
     }
 
+    /**
+     * Returns the identifier of a snippet. The {@link Snippet}s from a single
+     * {@link LanguageProvider} with the same identifier but different types are treated as
+     * overloads.
+     *
+     * @return the {@link Snippet} identifier
+     */
     public String getId() {
         return id;
     }
 
+    /**
+     * Returns the function executing the {@link Snippet}.
+     *
+     * @return the executable {@link Value}
+     */
     public Value getExecutableValue() {
         return executableValue;
     }
 
+    /**
+     * Returns the {@link Snippet} return type.
+     *
+     * @return the return type
+     */
     public TypeDescriptor getReturnType() {
         return type;
     }
 
+    /**
+     * Returns the types of {@link Snippet} formal parameters.
+     *
+     * @return the parameter types
+     */
     public List<? extends TypeDescriptor> getParameterTypes() {
         return parameterTypes;
     }
 
+    /**
+     * Returns the {@link ResultVerifier} to verify the execution result.
+     *
+     * @return either a custom or the default {@link ResultVerifier}.
+     * @see ResultVerifier#accept(org.graalvm.polyglot.tck.ResultVerifier.SnippetRun).
+     */
     public ResultVerifier getResultVerifier() {
         return verifier;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String toString() {
         return new StringBuilder(id).append(parameterTypes.stream().map(Object::toString).collect(Collectors.joining(", ", "(", ")"))).append(':').append(type).toString();
     }
 
+    /**
+     * Creates a new {@link Snippet} builder object.
+     *
+     * @param id the {@link Snippet} identifier The {@link Snippet}s from a single
+     *            {@link LanguageProvider} with the same identifier but different types are treated
+     *            as overloads.
+     * @param executableValue the executable {@link Value} used to execute the {@link Snippet}
+     * @param executableReturnType the {@link Snippet return type
+     * @return the new {@link Builder}
+     */
     public static Builder newBuilder(
                     final String id,
                     final Value executableValue,
@@ -88,6 +134,9 @@ public final class Snippet {
         return new Builder(id, executableValue, executableReturnType);
     }
 
+    /**
+     * The builder of a {@link Snippet}.
+     */
     public static final class Builder {
         private final String id;
         private final Value executableValue;
@@ -108,17 +157,35 @@ public final class Snippet {
             this.parameterTypes = new ArrayList<>();
         }
 
+        /**
+         * Sets the {@link Snippet} formal parameter types.
+         *
+         * @param parameterTypes the types of {@link Snippet}'s parameters
+         * @return this {@link Builder}
+         */
         public Builder parameterTypes(@SuppressWarnings("hiding") final TypeDescriptor... parameterTypes) {
             Objects.requireNonNull(parameterTypes);
             this.parameterTypes = Arrays.asList(parameterTypes);
             return this;
         }
 
+        /**
+         * Sets a custom verifier of a result of the {@link Snippet} execution.
+         *
+         * @param resultVerifier the custom {@link ResultVerifier}
+         * @return this {@link Builder}
+         * @see ResultVerifier#accept(org.graalvm.polyglot.tck.ResultVerifier.SnippetRun).
+         */
         public Builder resultVerifier(final ResultVerifier resultVerifier) {
             this.verifier = resultVerifier;
             return this;
         }
 
+        /**
+         * Creates a new {@link Snippet} configured by this {@link Builder}.
+         *
+         * @return the {@link Snippet}
+         */
         public Snippet build() {
             return new Snippet(id, executableValue, executableReturnType, Collections.unmodifiableList(parameterTypes), verifier);
         }

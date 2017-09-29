@@ -164,7 +164,7 @@ GraalVM removes the isolation between programming languages and enables interope
       "dependencies" : [
         "org.graalvm.polyglot.tck",
       ],
-      "distDependencies" : [],
+      "distDependencies" : ["sdk:GRAAL_SDK"],
       "maven" : {
         "groupId" : "org.graalvm",
         "artifactId" : "polyglot-tck"
