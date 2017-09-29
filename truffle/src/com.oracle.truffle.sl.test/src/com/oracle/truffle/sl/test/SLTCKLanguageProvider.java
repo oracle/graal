@@ -49,14 +49,13 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.function.Consumer;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.tck.LanguageProvider;
+import org.graalvm.polyglot.tck.ResultVerifier;
 import org.graalvm.polyglot.tck.Snippet;
-import org.graalvm.polyglot.tck.SnippetRun;
 import org.graalvm.polyglot.tck.TypeDescriptor;
 import org.junit.Assert;
 
@@ -120,7 +119,7 @@ public class SLTCKLanguageProvider implements LanguageProvider {
             if (dividend.isNumber() && divider.fitsInDouble() && divider.asDouble() == 0) {
                 Assert.assertNotNull(exception);
             } else if (exception != null) {
-                throw new AssertionError(null, exception);
+                throw exception;
             } else {
                 Assert.assertTrue(TypeDescriptor.NUMBER.isAssignable(TypeDescriptor.forValue(snippetRun.getResult())));
             }
@@ -138,7 +137,7 @@ public class SLTCKLanguageProvider implements LanguageProvider {
             if (firstParam.isBoolean() && !firstParam.asBoolean() && !secondParam.isBoolean()) {
                 Assert.assertNotNull(exception);
             } else if (exception != null) {
-                throw new AssertionError(null, exception);
+                throw exception;
             } else {
                 Assert.assertTrue(TypeDescriptor.BOOLEAN.isAssignable(TypeDescriptor.forValue(snippetRun.getResult())));
             }
@@ -150,7 +149,7 @@ public class SLTCKLanguageProvider implements LanguageProvider {
             if (firstParam.isBoolean() && firstParam.asBoolean() && !secondParam.isBoolean()) {
                 Assert.assertNotNull(exception);
             } else if (exception != null) {
-                throw new AssertionError(null, exception);
+                throw exception;
             } else {
                 Assert.assertTrue(TypeDescriptor.BOOLEAN.isAssignable(TypeDescriptor.forValue(snippetRun.getResult())));
             }
@@ -247,7 +246,7 @@ public class SLTCKLanguageProvider implements LanguageProvider {
                     final Context context,
                     final Path resourceName,
                     final TypeDescriptor type,
-                    final Consumer<? super SnippetRun> verifier) {
+                    final ResultVerifier verifier) {
         try {
             final Source src = createSource(resourceName);
             return Snippet.newBuilder(src.getName(), context.eval(src), type).resultVerifier(verifier).build();

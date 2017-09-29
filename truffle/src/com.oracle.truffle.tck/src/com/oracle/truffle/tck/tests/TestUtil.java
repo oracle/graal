@@ -37,8 +37,8 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.tck.ResultVerifier;
 import org.graalvm.polyglot.tck.Snippet;
-import org.graalvm.polyglot.tck.SnippetRun;
 import org.graalvm.polyglot.tck.TypeDescriptor;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
@@ -100,13 +100,13 @@ final class TestUtil {
                     final TestRun testRun,
                     final Value result,
                     final PolyglotException exception) {
-        final Consumer<? super SnippetRun> verifier = testRun.getSnippet().getResultVerifier();
+        final ResultVerifier verifier = testRun.getSnippet().getResultVerifier();
         if (exception == null) {
-            verifier.accept(SnippetRun.create(testRun.getActualParameters(), result));
+            verifier.accept(ResultVerifier.SnippetRun.create(testRun.getActualParameters(), result));
             verifyToString(testRun, result);
             verifyInterop(result);
         } else {
-            verifier.accept(SnippetRun.create(testRun.getActualParameters(), exception));
+            verifier.accept(ResultVerifier.SnippetRun.create(testRun.getActualParameters(), exception));
         }
     }
 

@@ -41,7 +41,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.tck.Snippet;
 import org.graalvm.polyglot.tck.TypeDescriptor;
 import org.junit.AfterClass;
@@ -192,8 +191,12 @@ public class ErrorTypeTest {
             } catch (PolyglotException pe) {
                 try {
                     TestUtil.validateResult(testRun, null, pe);
-                } catch (AssertionError e) {
-                    passed = true;
+                } catch (PolyglotException e) {
+                    if (pe.equals(e)) {
+                        passed = true;
+                    } else {
+                        throw e;
+                    }
                 }
             }
             if (!passed) {

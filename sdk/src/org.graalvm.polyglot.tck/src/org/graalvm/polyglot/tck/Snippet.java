@@ -29,7 +29,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -39,14 +38,14 @@ public final class Snippet {
     private final Value executableValue;
     private final TypeDescriptor type;
     private final List<? extends TypeDescriptor> parameterTypes;
-    private final Consumer<? super SnippetRun> verifier;
+    private final ResultVerifier verifier;
 
     private Snippet(
                     final String id,
                     final Value executableValue,
                     final TypeDescriptor type,
                     final List<? extends TypeDescriptor> parameterTypes,
-                    final Consumer<? super SnippetRun> verifier) {
+                    final ResultVerifier verifier) {
         if (!executableValue.canExecute()) {
             throw new IllegalArgumentException("The executableValue has to be executable.");
         }
@@ -73,7 +72,7 @@ public final class Snippet {
         return parameterTypes;
     }
 
-    public Consumer<? super SnippetRun> getResultVerifier() {
+    public ResultVerifier getResultVerifier() {
         return verifier;
     }
 
@@ -94,7 +93,7 @@ public final class Snippet {
         private final Value executableValue;
         private TypeDescriptor executableReturnType;
         private List<TypeDescriptor> parameterTypes;
-        private Consumer<? super SnippetRun> verifier;
+        private ResultVerifier verifier;
 
         private Builder(
                         final String id,
@@ -115,7 +114,7 @@ public final class Snippet {
             return this;
         }
 
-        public Builder resultVerifier(final Consumer<? super SnippetRun> resultVerifier) {
+        public Builder resultVerifier(final ResultVerifier resultVerifier) {
             this.verifier = resultVerifier;
             return this;
         }
@@ -125,13 +124,13 @@ public final class Snippet {
         }
     }
 
-    private final class DefaultResultVerifier implements Consumer<SnippetRun> {
+    private final class DefaultResultVerifier implements ResultVerifier {
 
         @Override
-        public void accept(final SnippetRun snippetRun) {
+        public void accept(final SnippetRun snippetRun) throws PolyglotException {
             final PolyglotException exception = snippetRun.getException();
             if (exception != null) {
-                throw new AssertionError(null, exception);
+                throw exception;
             }
             final TypeDescriptor resultType = TypeDescriptor.forValue(snippetRun.getResult());
             if (!getReturnType().isAssignable(resultType)) {
