@@ -73,14 +73,16 @@ public final class AllocationReporter {
 
     final LanguageInfo language;
     private final PropChangeSupport propSupport = new PropChangeSupport(this);
-    private ThreadLocal<LinkedList<Reference<Object>>> valueCheck;
+    private final ThreadLocal<LinkedList<Reference<Object>>> valueCheck;
 
     @CompilationFinal private volatile Assumption listenersNotChangedAssumption = Truffle.getRuntime().createAssumption();
     @CompilationFinal(dimensions = 1) private volatile AllocationListener[] listeners = null;
 
     AllocationReporter(LanguageInfo language) {
         this.language = language;
-        assert (valueCheck = new ThreadLocal<>()) != null;
+        boolean assertions = false;
+        assert (assertions = true) == true;
+        valueCheck = (assertions) ? new ThreadLocal<>() : null;
     }
 
     /**
@@ -210,14 +212,20 @@ public final class AllocationReporter {
      * @since 0.27
      */
     public void onEnter(Object valueToReallocate, long oldSize, long newSizeEstimate) {
-        assert enterSizeCheck(valueToReallocate, oldSize, newSizeEstimate);
-        assert valueToReallocate == null || allocateValueCheck(valueToReallocate);
+        if (valueCheck != null) {
+            enterSizeCheck(valueToReallocate, oldSize, newSizeEstimate);
+            if (valueToReallocate != null) {
+                allocateValueCheck(valueToReallocate);
+            }
+        }
         notifyAllocateOrReallocate(valueToReallocate, oldSize, newSizeEstimate);
     }
 
     @ExplodeLoop
     private void notifyAllocateOrReallocate(Object value, long oldSize, long newSizeEstimate) {
-        assert setValueCheck(value);
+        if (valueCheck != null) {
+            setValueCheck(value);
+        }
         CompilerAsserts.partialEvaluationConstant(this);
         if (!listenersNotChangedAssumption.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -256,8 +264,10 @@ public final class AllocationReporter {
      * @since 0.27
      */
     public void onReturnValue(Object value, long oldSize, long newSize) {
-        assert allocateValueCheck(value);
-        assert allocatedCheck(value, oldSize, newSize);
+        if (valueCheck != null) {
+            allocateValueCheck(value);
+            allocatedCheck(value, oldSize, newSize);
+        }
         notifyAllocated(value, oldSize, newSize);
     }
 
@@ -277,11 +287,10 @@ public final class AllocationReporter {
     }
 
     @TruffleBoundary
-    private static boolean enterSizeCheck(Object valueToReallocate, long oldSize, long newSizeEstimate) {
+    private static void enterSizeCheck(Object valueToReallocate, long oldSize, long newSizeEstimate) {
         assert (newSizeEstimate == SIZE_UNKNOWN || newSizeEstimate > 0) : "Wrong new size estimate = " + newSizeEstimate;
         assert valueToReallocate != null || oldSize == 0 : "Old size must be 0 for new allocations. Was: " + oldSize;
         assert valueToReallocate == null || (oldSize > 0 || oldSize == SIZE_UNKNOWN) : "Old size of a re-allocated value must be positive or unknown. Was: " + oldSize;
-        return true;
     }
 
     @TruffleBoundary
@@ -296,38 +305,34 @@ public final class AllocationReporter {
     }
 
     @TruffleBoundary
-    private static boolean allocateValueCheck(Object value) {
+    private static void allocateValueCheck(Object value) {
         if (value == null) {
             throw new NullPointerException("No allocated value.");
         }
         // Strings are O.K.
         if (value instanceof String) {
-            return true;
+            return;
         }
         // Primitive types are O.K.
         if (value instanceof Boolean || value instanceof Byte || value instanceof Character ||
                         value instanceof Short || value instanceof Integer || value instanceof Long ||
                         value instanceof Float || value instanceof Double) {
-            return true;
+            return;
         }
         // TruffleObject is O.K.
         boolean isTO = InstrumentationHandler.ACCESSOR.isTruffleObject(value);
         assert isTO : "Wrong value class, TruffleObject is required. Was: " + value.getClass().getName();
-        return isTO;
     }
 
     @TruffleBoundary
-    private boolean allocatedCheck(Object value, long oldSize, long newSize) {
+    private void allocatedCheck(Object value, long oldSize, long newSize) {
         LinkedList<Reference<Object>> list = valueCheck.get();
-        if (list != null && !list.isEmpty()) {
-            assert list != null && !list.isEmpty() : "onEnter() was not called";
-            Object orig = list.removeLast().get();
-            assert orig == null || orig == value : "A different reallocated value. Was: " + orig + " now is: " + value;
-            assert orig == null && oldSize == 0 || orig != null : "Old size must be 0 for new allocations. Was: " + oldSize;
-            assert orig != null && (oldSize > 0 || oldSize == SIZE_UNKNOWN) || orig == null : "Old size of a re-allocated value must be positive or unknown. Was: " + oldSize;
-            assert newSize == SIZE_UNKNOWN || newSize > 0 : "New value size must be positive or unknown. Was: " + newSize;
-        }
-        return true;
+        assert list != null && !list.isEmpty() : "onEnter() was not called";
+        Object orig = list.removeLast().get();
+        assert orig == null || orig == value : "A different reallocated value. Was: " + orig + " now is: " + value;
+        assert orig == null && oldSize == 0 || orig != null : "Old size must be 0 for new allocations. Was: " + oldSize;
+        assert orig != null && (oldSize > 0 || oldSize == SIZE_UNKNOWN) || orig == null : "Old size of a re-allocated value must be positive or unknown. Was: " + oldSize;
+        assert newSize == SIZE_UNKNOWN || newSize > 0 : "New value size must be positive or unknown. Was: " + newSize;
     }
 }
 

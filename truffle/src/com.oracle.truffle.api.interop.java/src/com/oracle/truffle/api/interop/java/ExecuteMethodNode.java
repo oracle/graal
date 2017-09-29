@@ -121,9 +121,9 @@ abstract class ExecuteMethodNode extends Node {
                     @Cached(value = "getArgTypes(args)", dimensions = 1) Type[] cachedArgTypes,
                     @Cached("create()") ToJavaNode toJavaNode,
                     @Cached("selectOverload(method, args, languageContext, toJavaNode)") SingleMethodDesc overload,
-                    @Cached(value = "getTypes(overload, overload.getParameterCount())", dimensions = 1) TypeAndClass<?>[] types) {
+                    @Cached(value = "getTypes(overload, args.length)", dimensions = 1) TypeAndClass<?>[] types) {
         assert overload == selectOverload(method, args, languageContext, toJavaNode);
-        assert Arrays.equals(types, getTypes(selectOverload(method, args, languageContext, toJavaNode), args.length));
+        assert Arrays.equals(types, getTypes(overload, args.length));
         Object[] convertedArguments = new Object[cachedArgTypes.length];
         for (int i = 0; i < cachedArgTypes.length; i++) {
             convertedArguments[i] = toJavaNode.execute(args[i], types[i], languageContext);
@@ -511,6 +511,9 @@ abstract class ExecuteMethodNode extends Node {
             ret = method.invoke(obj, arguments);
         } catch (IllegalArgumentException ex) {
             throw UnsupportedTypeException.raise(arguments);
+        } catch (RuntimeException | Error ex) {
+            CompilerDirectives.transferToInterpreter();
+            throw ex;
         } catch (Throwable ex) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(ex);

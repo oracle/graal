@@ -82,8 +82,8 @@ public final class Scope {
         ScopeProvider scopeProvider = instrumentEnv.lookup(languageInfo, ScopeProvider.class);
         AbstractScope ascope;
         if (scopeProvider != null) {
-            TruffleLanguage.Env env = Access.ENGINE.getEnvForInstrument(languageInfo);
-            Object context = Access.LANGS.getContext(env);
+            TruffleLanguage.Env env = ScopeAccessor.engine().getEnvForInstrument(languageInfo);
+            Object context = ScopeAccessor.langs().getContext(env);
             ascope = scopeProvider.findScope(context, node, frame);
         } else {
             ascope = new DefaultScopeVariables(node);
@@ -149,13 +149,6 @@ public final class Scope {
      */
     public Object getArguments(Frame frame) {
         return ascope.getArguments(frame);
-    }
-
-    static class Access {
-
-        static final Accessor.LanguageSupport LANGS = ScopeAccessor.langs();
-        static final Accessor.EngineSupport ENGINE = ScopeAccessor.engine();
-
     }
 
     static class ScopeAccessor extends Accessor {

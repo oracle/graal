@@ -45,8 +45,9 @@ import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tck.DebuggerTester;
+
+import org.graalvm.polyglot.Source;
 
 /**
  * Framework for testing the Truffle {@linkplain Debugger Debugging API}.
@@ -54,7 +55,7 @@ import com.oracle.truffle.tck.DebuggerTester;
 public abstract class AbstractDebugTest {
 
     private DebuggerTester tester;
-    private ArrayDeque<DebuggerTester> sessionStack = new ArrayDeque<>();
+    private final ArrayDeque<DebuggerTester> sessionStack = new ArrayDeque<>();
 
     AbstractDebugTest() {
     }
@@ -107,6 +108,11 @@ public abstract class AbstractDebugTest {
         }
     }
 
+    @SuppressWarnings("static-method")
+    protected final com.oracle.truffle.api.source.Source getSourceImpl(Source source) {
+        return DebuggerTester.getSourceImpl(source);
+    }
+
     protected File testFile(String code) throws IOException {
         File file = File.createTempFile("TestFile", FILENAME_EXTENSION).getCanonicalFile();
         try (Writer w = new FileWriter(file)) {
@@ -117,13 +123,13 @@ public abstract class AbstractDebugTest {
     }
 
     protected Source testSource(String code) {
-        return Source.newBuilder(code).mimeType(InstrumentationTestLanguage.MIME_TYPE).name("test code").build();
+        return Source.create(InstrumentationTestLanguage.ID, code);
     }
 
     protected SuspendedEvent checkState(SuspendedEvent suspendedEvent, final int expectedLineNumber, final boolean expectedIsBefore, final String expectedCode, final String... expectedFrame) {
         final int actualLineNumber = suspendedEvent.getSourceSection().getStartLine();
         Assert.assertEquals(expectedLineNumber, actualLineNumber);
-        final String actualCode = suspendedEvent.getSourceSection().getCode();
+        final String actualCode = suspendedEvent.getSourceSection().getCharacters().toString();
         Assert.assertEquals(expectedCode, actualCode);
         final boolean actualIsBefore = suspendedEvent.isHaltedBefore();
         Assert.assertEquals(expectedIsBefore, actualIsBefore);

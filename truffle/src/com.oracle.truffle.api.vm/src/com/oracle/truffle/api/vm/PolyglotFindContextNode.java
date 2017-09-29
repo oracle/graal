@@ -24,20 +24,16 @@
  */
 package com.oracle.truffle.api.vm;
 
-import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 import static com.oracle.truffle.api.vm.VMAccessor.NODES;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Env;
 
 @SuppressWarnings("deprecation")
 final class PolyglotFindContextNode<C> extends com.oracle.truffle.api.impl.FindContextNode<C> {
     private final PolyglotLanguage polyglotLanguage;
-    private final Env env;
 
-    PolyglotFindContextNode(Env env) {
-        this.env = env;
-        this.polyglotLanguage = (PolyglotLanguage) NODES.getEngineObject(LANGUAGE.getLanguageInfo(env));
+    PolyglotFindContextNode(PolyglotLanguage polyglotLanguage) {
+        this.polyglotLanguage = polyglotLanguage;
     }
 
     @SuppressWarnings("unchecked")
@@ -49,6 +45,6 @@ final class PolyglotFindContextNode<C> extends com.oracle.truffle.api.impl.FindC
     @SuppressWarnings("unchecked")
     @Override
     public TruffleLanguage<C> getTruffleLanguage() {
-        return (TruffleLanguage<C>) NODES.getLanguageSpi(LANGUAGE.getLanguageInfo(env));
+        return (TruffleLanguage<C>) NODES.getLanguageSpi(polyglotLanguage.info);
     }
 }

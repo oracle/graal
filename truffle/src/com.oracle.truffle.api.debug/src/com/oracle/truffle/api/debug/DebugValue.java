@@ -30,9 +30,10 @@ import java.util.Map;
 import java.util.Objects;
 
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
@@ -435,7 +436,7 @@ public abstract class DebugValue {
         private final DebugScope scope;
 
         PropertyValue(Debugger debugger, RootNode root, TruffleObject object, Map.Entry<Object, Object> property, DebugScope scope) {
-            this(debugger, root, null, JavaInterop.getKeyInfo(object, property.getKey()), property, scope);
+            this(debugger, root, null, ForeignAccess.sendKeyInfo(Message.KEY_INFO.createNode(), object, property.getKey()), property, scope);
         }
 
         private PropertyValue(Debugger debugger, RootNode root, LanguageInfo preferredLanguage, int keyInfo, Map.Entry<Object, Object> property, DebugScope scope) {
@@ -525,7 +526,7 @@ public abstract class DebugValue {
 
         PropertyNamedValue(Debugger debugger, RootNode root, TruffleObject object,
                         Map<Object, Object> map, String name, DebugScope scope) {
-            this(debugger, root, null, JavaInterop.getKeyInfo(object, name), map, name, scope);
+            this(debugger, root, null, ForeignAccess.sendKeyInfo(Message.KEY_INFO.createNode(), object, name), map, name, scope);
         }
 
         private PropertyNamedValue(Debugger debugger, RootNode root, LanguageInfo preferredLanguage,

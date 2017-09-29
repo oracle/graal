@@ -155,7 +155,7 @@ public class LoopFragmentInside extends LoopFragment {
 
     /**
      * Duplicate the body within the loop after the current copy copy of the body.
-     * 
+     *
      * @param loop
      * @param updateLimit true if the iteration limit should be adjusted.
      */

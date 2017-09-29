@@ -41,7 +41,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.TYPE})
 public @interface NodeFields {
-
+    /** @since 0.8 or earlier */
     NodeField[] value() default {};
 
 }

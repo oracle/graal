@@ -696,7 +696,7 @@ public class GraphPrintVisitor implements Closeable {
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
     public @interface CustomGraphPrintHandler {
-
+        /** @since 0.8 or earlier */
         Class<? extends GraphPrintHandler> handler();
     }
 

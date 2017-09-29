@@ -41,11 +41,45 @@
 
 package com.oracle.truffle.sl.parser;
 
-public class SLParseError extends RuntimeException {
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
+
+public class SLParseError extends RuntimeException implements TruffleException {
 
     public static final long serialVersionUID = 1L;
+    private final Source source;
+    private final int line;
+    private final int column;
+    private final int length;
+    private volatile Node node;
 
-    public SLParseError(String s) {
-        super(s);
+    public SLParseError(Source source, int line, int column, int length, String message) {
+        super(message);
+        this.source = source;
+        this.line = line;
+        this.column = column;
+        this.length = length;
+    }
+
+    @Override
+    public Node getLocation() {
+        Node n = node;
+        if (n == null) {
+            n = new Node() {
+                @Override
+                public SourceSection getSourceSection() {
+                    return source.createSection(line, column, length);
+                }
+            };
+            node = n;
+        }
+        return n;
+    }
+
+    @Override
+    public boolean isSyntaxError() {
+        return true;
     }
 }

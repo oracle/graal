@@ -44,9 +44,9 @@ class PolyglotLanguage extends AbstractLanguageImpl implements VMObject {
     Language api;
     LanguageInfo info;
     final int index;
-    final boolean host;
+    private final boolean host;
 
-    OptionDescriptors options;
+    private OptionDescriptors options;
     private volatile OptionValuesImpl optionValues;
 
     volatile boolean initialized;

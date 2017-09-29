@@ -1,14 +1,12 @@
 # overlay version
-overlay = d7d8755e92c891ace88cdc197e08671bf8665f07
+overlay = 2c3c4952c2ad7dc321526f6c976051fd70e5c872
 
 # labsjdk* are JDKs based on OracleJDK binaries
 # openjdk* are JDKs based on OpenJDK binaries
 jdks: {
-  openjdk8 : {name : openjdk, version : "8u141-jvmci-0.32", platformspecific: true}
-  labsjdk8 : {name : labsjdk, version : "8u141-jvmci-0.32", platformspecific: true}
-  labsjdk9 : {name : labsjdk, version : "9-20170810-210536", platformspecific: true}
-  labsjdk9EA : {name : labsjdk, version : "9+181", platformspecific: true}
-  labsjdk8Debug : {name : labsjdk, version : "8u141-jvmci-0.32-fastdebug", platformspecific: true}
+  labsjdk8 : {name : labsjdk, version : "8u141-jvmci-0.36", platformspecific: true}
+  labsjdk9 : {name : labsjdk, version : "9+181", platformspecific: true}
+  labsjdk8Debug : {name : labsjdk, version : "8u141-jvmci-0.36-fastdebug", platformspecific: true}
 }
 
 # Overlay placeholder for pinning mx to a specific revision
@@ -17,11 +15,10 @@ mx : {}
 labsjdk8 :      { downloads : { JAVA_HOME : ${jdks.labsjdk8} }}
 labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug} }}
 
-openjdk8 :      { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
+# GR-5675
+# openjdk8 :      { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
 labsjdk9 :      { downloads : { JAVA_HOME : ${jdks.labsjdk9},   EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
-labsjdk9EA :    { downloads : { JAVA_HOME : ${jdks.labsjdk9EA}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
-
 
 common : ${mx} {
   timelimit : "30:00"
@@ -50,8 +47,6 @@ solaris : ${common} {
 
 darwin : ${common} {
   packages : {
-    # Brew does not support versions
-    mercurial : ""
     "pip:astroid" : "==1.1.0"
     "pip:pylint" : "==1.1.0"
   }
@@ -65,7 +60,7 @@ linux-amd64 : ${linux} {
 }
 
 darwin-amd64 : ${darwin} {
-  capabilities : [darwin, amd64]
+  capabilities : [darwin_next, amd64]
 }
 
 solaris-sparcv9 : ${solaris} {

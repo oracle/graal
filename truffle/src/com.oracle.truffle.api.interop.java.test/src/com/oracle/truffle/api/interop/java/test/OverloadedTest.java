@@ -138,6 +138,14 @@ public class OverloadedTest {
         assertEquals("BigInteger", num.parameter);
     }
 
+    @Test
+    public void testVarArgs() throws InteropException {
+        TruffleObject stringClass = JavaInterop.asTruffleObject(String.class);
+        assertEquals("bla", ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), stringClass, "format", "bla"));
+        assertEquals("42", ForeignAccess.sendInvoke(Message.createInvoke(2).createNode(), stringClass, "format", "%d", 42));
+        assertEquals("1337", ForeignAccess.sendInvoke(Message.createInvoke(3).createNode(), stringClass, "format", "%d%d", 13, 37));
+    }
+
     public interface Identity<T> {
         T getId();
     }

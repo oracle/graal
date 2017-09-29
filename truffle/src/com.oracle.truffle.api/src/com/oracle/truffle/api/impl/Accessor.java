@@ -35,6 +35,7 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -146,9 +147,9 @@ public abstract class Accessor {
 
         public abstract Object getCurrentVM();
 
-        public abstract Env getEnvForLanguage(Object languageShared, String mimeType);
+        public abstract Env getEnvForLanguage(Object languageShared, String languageId, String mimeType);
 
-        public abstract Env getEnvForInstrument(Object vm, String mimeType);
+        public abstract Env getEnvForInstrument(Object vm, String languageId, String mimeType);
 
         public abstract Env getEnvForInstrument(LanguageInfo language);
 
@@ -161,6 +162,8 @@ public abstract class Accessor {
         public abstract Map<String, LanguageInfo> getLanguages(Object vmInstance);
 
         public abstract Map<String, InstrumentInfo> getInstruments(Object vmInstance);
+
+        public abstract org.graalvm.polyglot.SourceSection createSourceSection(Object vmObject, org.graalvm.polyglot.Source source, SourceSection sectionImpl);
 
         public abstract <T> T lookup(InstrumentInfo info, Class<T> serviceClass);
 
@@ -189,6 +192,10 @@ public abstract class Accessor {
         public abstract void leaveInternalContext(Object impl, Object prev);
 
         public abstract void closeInternalContext(Object impl);
+
+        public abstract boolean isCreateThreadAllowed(Object vmObject);
+
+        public abstract Thread createThread(Object vmObject, Runnable runnable, Object context);
 
     }
 
@@ -245,6 +252,14 @@ public abstract class Accessor {
 
         public abstract void onThrowable(RootNode root, Throwable e);
 
+        public abstract boolean isThreadAccessAllowed(LanguageInfo env, Thread current, boolean singleThread);
+
+        public abstract void initializeThread(Env env, Thread current);
+
+        public abstract void initializeMultiThreading(Env env);
+
+        public abstract void disposeThread(Env env, Thread thread);
+
     }
 
     public abstract static class InstrumentSupport {
@@ -298,7 +313,7 @@ public abstract class Accessor {
     }
 
     private static Accessor.LanguageSupport API;
-    private static Accessor.EngineSupport SPI;
+    @CompilationFinal private static Accessor.EngineSupport SPI;
     private static Accessor.Nodes NODES;
     private static Accessor.InstrumentSupport INSTRUMENTHANDLER;
     private static Accessor.DumpSupport DUMP;
@@ -446,7 +461,10 @@ public abstract class Accessor {
             // O.K.
         } else if (this.getClass().getSimpleName().endsWith("TruffleTCKAccessor")) {
             // O.K.
+        } else if (this.getClass().getSimpleName().endsWith("TestAccessor")) {
+            // O.K.
         } else {
+            assert this.getClass().getSimpleName().endsWith("VMAccessor");
             SPI = this.engineSupport();
         }
     }

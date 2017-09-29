@@ -24,23 +24,25 @@
  */
 package com.oracle.truffle.nfi.test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.nfi.test.interop.TestCallback;
-import com.oracle.truffle.nfi.types.NativeSimpleType;
-import com.oracle.truffle.tck.TruffleRunner;
-import com.oracle.truffle.tck.TruffleRunner.Inject;
-import java.util.ArrayList;
-import java.util.Collection;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.core.Is.is;
+
+import java.util.ArrayList;
+import java.util.Collection;
+
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.nfi.test.interop.TestCallback;
+import com.oracle.truffle.nfi.types.NativeSimpleType;
+import com.oracle.truffle.tck.TruffleRunner;
+import com.oracle.truffle.tck.TruffleRunner.Inject;
 
 @RunWith(Parameterized.class)
 @Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
@@ -98,8 +100,8 @@ public class ImplicitConvertNFITest extends NFITest {
         if (type == NativeSimpleType.POINTER) {
             Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
             TruffleObject obj = (TruffleObject) ret;
-            Assert.assertTrue("isBoxed", JavaInterop.isBoxed(obj));
-            ret = JavaInterop.unbox(obj);
+            Assert.assertTrue("isBoxed", isBoxed(obj));
+            ret = unbox(obj);
             Assert.assertThat("unboxed return value", ret, is(instanceOf(Long.class)));
         } else {
             Assert.assertThat("return value", ret, is(instanceOf(Number.class)));

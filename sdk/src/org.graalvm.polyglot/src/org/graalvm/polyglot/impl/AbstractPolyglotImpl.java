@@ -125,7 +125,7 @@ public abstract class AbstractPolyglotImpl {
             this.engineImpl = engineImpl;
         }
 
-        public abstract Source build(String language, Object origin, URI uri, String name, String content, boolean interactive, boolean internal) throws IOException;
+        public abstract Source build(String language, Object origin, URI uri, String name, CharSequence content, boolean interactive, boolean internal) throws IOException;
 
         public abstract String getName(Object impl);
 
@@ -143,9 +143,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract int getLength(Object impl);
 
-        public abstract String getCode(Object impl);
+        public abstract CharSequence getCode(Object impl);
 
-        public abstract String getCode(Object impl, int lineNumber);
+        public abstract CharSequence getCode(Object impl, int lineNumber);
 
         public abstract int getLineCount(Object impl);
 
@@ -192,7 +192,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract int getCharEndIndex(Object impl);
 
-        public abstract String getCode(Object impl);
+        public abstract CharSequence getCode(Object impl);
 
         public abstract String toString(Object impl);
 
@@ -247,7 +247,7 @@ public abstract class AbstractPolyglotImpl {
         public abstract OptionDescriptors getOptions();
 
         public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
-                        Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages);
+                        boolean allowCreateThread, Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages);
 
     }
 

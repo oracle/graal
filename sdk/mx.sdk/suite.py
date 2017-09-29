@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.90.02",
+  "mxversion" : "5.124.5",
   "name" : "sdk",
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/graalvm/graal",
@@ -23,7 +23,17 @@ suite = {
   "snippetsPattern" : ".*(Snippets|doc-files).*",
   "defaultLicense" : "GPLv2-CPE",
   "imports": {},
-  "libraries" : {},
+  "libraries" : {
+    "JLINE" : {
+      "sha1" : "fdedd5f2522122102f0b3db85fe7aa563a009926",
+      "maven" : {
+        "groupId" : "jline",
+        "artifactId" : "jline",
+        "version" : "2.14.5",
+      },
+      "license" : "BSD-new"
+    },
+  },
   "projects" : {
     "org.graalvm.options" : {
       "subDir" : "src",
@@ -67,10 +77,23 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.word",
+        "org.graalvm.options",
       ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "1.8",
       "workingSets" : "API,SDK",
+    },
+    "org.graalvm.launcher" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.polyglot",
+        "org.graalvm.nativeimage",
+        "JLINE",
+      ],
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle,Tools",
+      "checkstyle" : "org.graalvm.word",
     },
   },
   "licenses" : {
@@ -79,16 +102,23 @@ suite = {
       "url" : "http://opensource.org/licenses/UPL",
     }
   },
-    # ------------- Distributions -------------
+  # ------------- Distributions -------------
   "distributions" : {
     "GRAAL_SDK" : {
       "subDir" : "src",
-      "moduleName" : "org.graalvm.sdk",
+      "moduleName" : "org.graalvm.graal_sdk",
       "dependencies" : [
         "org.graalvm.polyglot",
         "org.graalvm.nativeimage",
       ],
       "distDependencies" : [],
+      "maven" : {
+        "groupId" : "org.graalvm",
+        "artifactId" : "graal-sdk"
+      },
+      "javadocType": "api",
+      "description" : """GraalVM is an ecosystem for compiling and running applications written in multiple languages.
+GraalVM removes the isolation between programming languages and enables interoperability in a shared runtime.""",
     },
     "WORD_API" : {
       "subDir" : "src",
@@ -101,6 +131,18 @@ suite = {
       "overlaps" : [
         "GRAAL_SDK",
       ],
+      "maven" : False,
     },
- },
+    "LAUNCHER_COMMON" : {
+      "subDir" : "src",
+      "moduleName" : "org.graalvm.launcher",
+      "dependencies" : [
+        "org.graalvm.launcher",
+      ],
+      "distDependencies" : [
+        "GRAAL_SDK",
+      ],
+      "maven": False,
+    },
+  },
 }

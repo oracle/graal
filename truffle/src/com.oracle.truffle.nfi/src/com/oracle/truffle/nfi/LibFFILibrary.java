@@ -41,7 +41,7 @@ final class LibFFILibrary implements TruffleObject {
     static LibFFILibrary create(long handle) {
         assert handle != 0;
         LibFFILibrary ret = new LibFFILibrary(handle);
-        NativeAllocation.registerNativeAllocation(ret, new Destructor(handle));
+        NativeAllocation.getGlobalQueue().registerNativeAllocation(ret, new Destructor(handle));
         return ret;
     }
 

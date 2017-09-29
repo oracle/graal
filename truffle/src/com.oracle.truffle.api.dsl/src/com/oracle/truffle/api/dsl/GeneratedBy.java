@@ -37,9 +37,10 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface GeneratedBy {
-
+    /** @since 0.8 or earlier */
     Class<?> value();
 
+    /** @since 0.8 or earlier */
     String methodName() default "";
 
 }

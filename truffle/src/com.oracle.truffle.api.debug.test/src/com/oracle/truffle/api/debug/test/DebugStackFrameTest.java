@@ -39,7 +39,8 @@ import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.source.Source;
+
+import org.graalvm.polyglot.Source;
 
 public class DebugStackFrameTest extends AbstractDebugTest {
 
@@ -73,7 +74,9 @@ public class DebugStackFrameTest extends AbstractDebugTest {
                 // assign from one stack frame to another one
                 frame.getScope().getDeclaredValue("a").set(aValue);
                 assertEquals(aStringValue, frame.getScope().getDeclaredValue("a").as(String.class));
+                event.prepareContinue();
             });
+            expectDone();
         }
     }
 

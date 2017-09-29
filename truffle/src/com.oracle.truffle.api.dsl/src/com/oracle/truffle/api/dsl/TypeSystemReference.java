@@ -42,7 +42,11 @@ import java.lang.annotation.Target;
 @Target({ElementType.TYPE})
 public @interface TypeSystemReference {
 
-    /** The {@link TypeSystem} java type. */
+    /**
+     * The {@link TypeSystem} java type.
+     * 
+     * @since 0.8 or earlier
+     */
     Class<?> value();
 
 }

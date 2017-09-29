@@ -58,6 +58,11 @@ public abstract class SLTypeToForeignNode extends Node {
     public abstract Object executeConvert(Object value);
 
     @Specialization
+    static long fromLong(long value) {
+        return value;
+    }
+
+    @Specialization
     static TruffleObject fromObject(BigInteger value) {
         return new SLBigNumber(value);
     }

@@ -49,7 +49,7 @@ public final class ImageSingletons {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public static <T> void add(Class<T> key, T value) {
-        SUPPORT.add(key, value);
+        ImageSingletonsSupport.get().add(key, value);
     }
 
     /**
@@ -60,7 +60,7 @@ public final class ImageSingletons {
      * {@code null}.
      */
     public static <T> T lookup(Class<T> key) {
-        return SUPPORT.lookup(key);
+        return ImageSingletonsSupport.get().lookup(key);
     }
 
     /**
@@ -68,20 +68,10 @@ public final class ImageSingletons {
      * the call to this method can be replaced with the constant {@code true} of {@code false}.
      */
     public static boolean contains(Class<?> key) {
-        return SUPPORT.contains(key);
+        return ImageSingletonsSupport.get().contains(key);
     }
 
     private ImageSingletons() {
     }
 
-    /** Implementation-specific singleton that stores the registration data. */
-    private static final ImageSingletonsSupport SUPPORT;
-
-    static {
-        try {
-            SUPPORT = (ImageSingletonsSupport) Class.forName("com.oracle.svm.hosted.ImageSingletonsSupportImpl", true, Thread.currentThread().getContextClassLoader()).newInstance();
-        } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | SecurityException | ClassNotFoundException ex) {
-            throw new Error("Class path of native image generator is not set up correctly");
-        }
-    }
 }

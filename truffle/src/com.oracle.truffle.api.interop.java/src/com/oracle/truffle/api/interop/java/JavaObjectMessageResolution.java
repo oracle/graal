@@ -54,7 +54,12 @@ class JavaObjectMessageResolution {
             if (obj == null) {
                 return 0;
             }
-            return Array.getLength(obj);
+            try {
+                return Array.getLength(obj);
+            } catch (IllegalArgumentException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw UnsupportedMessageException.raise(Message.GET_SIZE);
+            }
         }
 
     }
@@ -127,6 +132,8 @@ class JavaObjectMessageResolution {
     @Resolve(message = "NEW")
     abstract static class NewNode extends Node {
         @Child private ExecuteMethodNode doExecute;
+        @Child private ToJavaNode toJava;
+        private static final TypeAndClass<Integer> INT_TYPE = new TypeAndClass<>(null, int.class);
 
         public Object access(JavaObject receiver, Object[] args) {
             if (TruffleOptions.AOT) {
@@ -134,6 +141,18 @@ class JavaObjectMessageResolution {
             }
 
             if (receiver.isClass()) {
+                if (receiver.clazz.isArray()) {
+                    if (args.length != 1) {
+                        throw ArityException.raise(1, args.length);
+                    }
+                    if (toJava == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        toJava = insert(ToJavaNode.create());
+                    }
+                    int length = (int) toJava.execute(args[0], INT_TYPE, receiver.languageContext);
+                    return JavaInterop.asTruffleObject(Array.newInstance(receiver.clazz.getComponentType(), length), receiver.languageContext);
+                }
+
                 JavaClassDesc classDesc = JavaClassDesc.forClass(receiver.clazz);
                 JavaMethodDesc method = classDesc.lookupConstructor();
                 if (method != null) {
@@ -172,7 +191,11 @@ class JavaObjectMessageResolution {
         @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
 
         public Object access(JavaObject object) {
-            return JavaInterop.isPrimitive(object.obj) ? object.obj : JavaObject.NULL;
+            if (JavaInterop.isPrimitive(object.obj)) {
+                return object.obj;
+            } else {
+                return UnsupportedMessageException.raise(Message.UNBOX);
+            }
         }
 
     }

@@ -27,7 +27,6 @@ package com.oracle.truffle.api.source;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.io.StringReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -54,10 +53,10 @@ final class URLSourceImpl extends Content {
         } catch (URISyntaxException ex) {
             throw new IOException("Bad URL: " + url, ex);
         }
-        this.code = Source.read(new InputStreamReader(c.getInputStream()));
+        this.code = enforceCharSequenceContract(Source.read(new InputStreamReader(c.getInputStream())));
     }
 
-    URLSourceImpl(URL url, String code, String name) throws IOException {
+    URLSourceImpl(URL url, CharSequence code, String name) throws IOException {
         this.url = url;
         this.name = name;
         try {
@@ -66,9 +65,9 @@ final class URLSourceImpl extends Content {
             throw new IOException("Bad URL: " + url, ex);
         }
         if (code != null) {
-            this.code = code;
+            this.code = enforceCharSequenceContract(code);
         } else {
-            this.code = Source.read(new InputStreamReader(url.openStream()));
+            this.code = enforceCharSequenceContract(Source.read(new InputStreamReader(url.openStream())));
         }
     }
 
@@ -94,11 +93,11 @@ final class URLSourceImpl extends Content {
 
     @Override
     public Reader getReader() {
-        return new StringReader(code);
+        return new CharSequenceReader(code);
     }
 
     @Override
-    public String getCode() {
+    public CharSequence getCharacters() {
         return code;
     }
 

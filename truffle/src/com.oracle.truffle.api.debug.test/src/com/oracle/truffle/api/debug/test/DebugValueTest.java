@@ -37,9 +37,10 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -71,9 +72,9 @@ public class DebugValueTest extends AbstractDebugTest {
                 assertEquals("Integer", value42.getMetaObject().as(String.class));
                 assertEquals("Infinity", frame.getScope().getDeclaredValue("inf").getMetaObject().as(String.class));
                 SourceSection integerSS = value42.getSourceLocation();
-                assertEquals("source integer", integerSS.getCode());
+                assertEquals("source integer", integerSS.getCharacters());
                 SourceSection infinitySS = frame.getScope().getDeclaredValue("inf").getSourceLocation();
-                assertEquals("source infinity", infinitySS.getCode());
+                assertEquals("source infinity", infinitySS.getCharacters());
             });
 
             expectDone();
@@ -90,11 +91,11 @@ public class DebugValueTest extends AbstractDebugTest {
                         "  ARGUMENT(a), \n" +
                         "  STATEMENT()\n" +
                         "))\n");
-        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
-        engine.eval(source);
-        PolyglotEngine.Value functionValue = engine.findGlobalSymbol("function");
+        Context context = Context.create();
+        context.eval(source);
+        Value functionValue = context.importSymbol("function");
         assertNotNull(functionValue);
-        Debugger debugger = Debugger.find(engine);
+        Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
 
         // Test of the default attribute values:
         NoAttributesTruffleObject nao = new NoAttributesTruffleObject();
@@ -114,7 +115,7 @@ public class DebugValueTest extends AbstractDebugTest {
             event.prepareContinue();
             suspended[0] = true;
         });
-        session.install(Breakpoint.newBuilder(source).lineIs(3).build());
+        session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(3).build());
         functionValue.execute(nao);
         session.close();
         assertTrue(suspended[0]);
@@ -144,7 +145,7 @@ public class DebugValueTest extends AbstractDebugTest {
             event.prepareContinue();
             suspended[0] = true;
         });
-        session.install(Breakpoint.newBuilder(source).lineIs(3).build());
+        session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(3).build());
         functionValue.execute(mao);
         session.close();
         assertTrue(suspended[0]);

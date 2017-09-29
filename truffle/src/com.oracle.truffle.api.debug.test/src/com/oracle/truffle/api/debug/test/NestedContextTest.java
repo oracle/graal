@@ -36,8 +36,8 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
 
 public class NestedContextTest extends AbstractDebugTest {
 
@@ -57,7 +57,7 @@ public class NestedContextTest extends AbstractDebugTest {
                         ")\n");
         pushContext();
         try (DebuggerSession session = startSession()) {
-            Breakpoint breakpoint3 = session.install(Breakpoint.newBuilder(testSource).lineIs(3).build());
+            Breakpoint breakpoint3 = session.install(Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(3).build());
 
             session.suspendNextExecution();
             startEval(testSource);
@@ -89,19 +89,20 @@ public class NestedContextTest extends AbstractDebugTest {
                         "  STATEMENT\n" +
                         ")\n");
 
-        final PolyglotEngine engine = PolyglotEngine.newBuilder().build();
+        final Context context = Context.create();
 
         final AtomicInteger suspensionCount = new AtomicInteger(0);
-        try (DebuggerSession session = Debugger.find(engine).startSession(new SuspendedCallback() {
+        Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
+        try (DebuggerSession session = debugger.startSession(new SuspendedCallback() {
             public void onSuspend(SuspendedEvent event) {
                 checkState(event, 3, true, "STATEMENT");
                 // recursive evaluation should not trigger a suspended event
-                engine.eval(testSource);
+                context.eval(testSource);
                 suspensionCount.incrementAndGet();
             }
         })) {
-            session.install(Breakpoint.newBuilder(testSource).lineIs(3).build());
-            engine.eval(testSource);
+            session.install(Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(3).build());
+            context.eval(testSource);
         }
 
     }

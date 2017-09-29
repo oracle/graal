@@ -45,9 +45,14 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import static com.oracle.truffle.tck.DebuggerTester.getSourceImpl;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -65,14 +70,13 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.tck.DebuggerTester;
-import java.util.Collection;
-import java.util.Iterator;
-import static org.junit.Assert.fail;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
 
 public class SLDebugTest {
 
@@ -93,7 +97,7 @@ public class SLDebugTest {
     }
 
     private static Source slCode(String code) {
-        return Source.newBuilder(code).name("testing").mimeType(SLLanguage.MIME_TYPE).build();
+        return Source.create("sl", code);
     }
 
     private DebuggerSession startSession() {
@@ -112,7 +116,7 @@ public class SLDebugTest {
                     final String... expectedFrame) {
         final int actualLineNumber = suspendedEvent.getSourceSection().getStartLine();
         Assert.assertEquals(expectedLineNumber, actualLineNumber);
-        final String actualCode = suspendedEvent.getSourceSection().getCode();
+        final String actualCode = suspendedEvent.getSourceSection().getCharacters().toString();
         Assert.assertEquals(expectedCode, actualCode);
         final boolean actualIsBefore = suspendedEvent.isHaltedBefore();
         Assert.assertEquals(expectedIsBefore, actualIsBefore);
@@ -174,7 +178,7 @@ public class SLDebugTest {
         try (DebuggerSession session = startSession()) {
 
             startEval(factorial);
-            Breakpoint breakpoint = session.install(Breakpoint.newBuilder(factorial).lineIs(6).build());
+            Breakpoint breakpoint = session.install(Breakpoint.newBuilder(getSourceImpl(factorial)).lineIs(6).build());
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, "fac", 6, true, "return 1", "n", "1");
@@ -294,7 +298,7 @@ public class SLDebugTest {
         }
     }
 
-    @Test(expected = ThreadDeath.class)
+    @Test(expected = PolyglotException.class)
     public void testTimeboxing() throws Throwable {
         final Source endlessLoop = slCode("function main() {\n" +
                         "  i = 1; \n" +
@@ -304,13 +308,13 @@ public class SLDebugTest {
                         "  return i; \n" +
                         "}\n");
 
-        final PolyglotEngine engine = PolyglotEngine.newBuilder().build();
+        final Context context = Context.create("sl");
 
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                Debugger.find(engine).startSession(new SuspendedCallback() {
+                context.getEngine().getInstruments().get("debugger").lookup(Debugger.class).startSession(new SuspendedCallback() {
                     public void onSuspend(SuspendedEvent event) {
                         event.prepareKill();
                     }
@@ -318,7 +322,7 @@ public class SLDebugTest {
             }
         }, 1000);
 
-        engine.eval(endlessLoop);
+        context.eval(endlessLoop);
     }
 
     @Test
@@ -361,7 +365,7 @@ public class SLDebugTest {
                         "function doNull() {}\n");
 
         try (DebuggerSession session = startSession()) {
-            session.install(Breakpoint.newBuilder(varsSource).lineIs(10).build());
+            session.install(Breakpoint.newBuilder(getSourceImpl(varsSource)).lineIs(10).build());
             startEval(varsSource);
 
             expectSuspended((SuspendedEvent event) -> {
@@ -521,7 +525,7 @@ public class SLDebugTest {
                         "function doNull() {}\n");
 
         try (DebuggerSession session = startSession()) {
-            session.install(Breakpoint.newBuilder(varsSource).lineIs(9).build());
+            session.install(Breakpoint.newBuilder(getSourceImpl(varsSource)).lineIs(9).build());
             startEval(varsSource);
 
             expectSuspended((SuspendedEvent event) -> {
@@ -561,7 +565,7 @@ public class SLDebugTest {
                         "function doNull() {}\n");
 
         try (DebuggerSession session = startSession()) {
-            session.install(Breakpoint.newBuilder(varsSource).lineIs(7).build());
+            session.install(Breakpoint.newBuilder(getSourceImpl(varsSource)).lineIs(7).build());
             startEval(varsSource);
 
             expectSuspended((SuspendedEvent event) -> {
@@ -581,7 +585,7 @@ public class SLDebugTest {
                 Assert.assertNotNull(sourceLocation);
                 assertEquals(9, sourceLocation.getStartLine());
                 assertEquals(9, sourceLocation.getEndLine());
-                assertEquals("doNull() {}", sourceLocation.getCode());
+                assertEquals("doNull() {}", sourceLocation.getCharacters());
             });
 
             expectDone();
@@ -601,7 +605,7 @@ public class SLDebugTest {
                         "}\n");
 
         try (DebuggerSession session = startSession()) {
-            session.install(Breakpoint.newBuilder(stackSource).lineIs(6).build());
+            session.install(Breakpoint.newBuilder(getSourceImpl(stackSource)).lineIs(6).build());
             startEval(stackSource);
 
             expectSuspended((SuspendedEvent event) -> {
@@ -640,11 +644,11 @@ public class SLDebugTest {
                         "  return multiply.multiply(n, fac, n - 1);\n" +
                         "}\n");
 
-        PolyglotEngine engine = PolyglotEngine.newBuilder().setOut(System.out).setErr(System.err).build();
-        engine.eval(stackSource);
-        PolyglotEngine.Value fac = engine.findGlobalSymbol("fac");
+        Context context = Context.create("sl");
+        context.eval(stackSource);
+        Value fac = context.importSymbol("fac");
         Object multiply = new Multiply();
-        Debugger debugger = Debugger.find(engine);
+        Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
         boolean[] done = new boolean[1];
         try (DebuggerSession session = debugger.startSession((event) -> {
             Iterator<DebugStackFrame> sfIt = event.getStackFrames().iterator();
@@ -678,15 +682,14 @@ public class SLDebugTest {
             // Some more internal frames remain
             while (sfIt.hasNext()) {
                 dsf = sfIt.next();
-                assertEquals(null, dsf.getName());
                 assertNull(dsf.getSourceSection());
                 assertTrue(dsf.isInternal());
             }
             done[0] = true;
         })) {
             Assert.assertNotNull(session);
-            PolyglotEngine.Value ret = fac.execute(new Object[]{10, multiply});
-            assertNumber(ret.get(), 3628800L);
+            Value ret = fac.execute(new Object[]{10, multiply});
+            assertNumber(ret.asLong(), 3628800L);
         }
         assertTrue(done[0]);
     }

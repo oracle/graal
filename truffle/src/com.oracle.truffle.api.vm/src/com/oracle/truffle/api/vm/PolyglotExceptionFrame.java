@@ -81,7 +81,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
     public StackTraceElement toHostFrame() {
         if (stackTrace == null) {
             String declaringClass = "<" + language.getId() + ">";
-            String methodName = rootName;
+            String methodName = rootName == null ? "" : rootName;
             String fileName = sourceLocation != null ? sourceLocation.getSource().getName() : "Unknown";
             int startLine = sourceLocation != null ? sourceLocation.getStartLine() : -1;
             stackTrace = new StackTraceElement(declaringClass, methodName, fileName, startLine);

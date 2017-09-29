@@ -44,9 +44,10 @@ import com.oracle.truffle.api.nodes.Node;
 @Target({ElementType.TYPE})
 @Repeatable(NodeFields.class)
 public @interface NodeField {
-
+    /** @since 0.8 or earlier */
     String name();
 
+    /** @since 0.8 or earlier */
     Class<?> type();
 
 }

@@ -63,7 +63,7 @@ public final class DefaultCallTarget implements RootCallTarget {
         try {
             return getRootNode().execute(frame);
         } catch (Throwable t) {
-            ((DefaultTruffleRuntime) Truffle.getRuntime()).getTvmci().onThrowable(rootNode, t);
+            getRuntime().getTvmci().onThrowable(rootNode, t);
             throw t;
         } finally {
             getRuntime().popFrame();
@@ -79,6 +79,9 @@ public final class DefaultCallTarget implements RootCallTarget {
         getRuntime().pushFrame(frame, this);
         try {
             return getRootNode().execute(frame);
+        } catch (Throwable t) {
+            getRuntime().getTvmci().onThrowable(rootNode, t);
+            throw t;
         } finally {
             getRuntime().popFrame();
         }

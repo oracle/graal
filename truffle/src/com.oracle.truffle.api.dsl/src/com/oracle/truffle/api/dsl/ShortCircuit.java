@@ -38,7 +38,7 @@ import java.lang.annotation.Target;
 @Target({ElementType.METHOD})
 @Deprecated
 public @interface ShortCircuit {
-
+    /** @since 0.8 or earlier */
     String value();
 
 }

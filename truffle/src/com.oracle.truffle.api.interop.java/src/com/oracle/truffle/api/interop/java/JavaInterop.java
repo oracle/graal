@@ -34,10 +34,10 @@ import org.graalvm.polyglot.proxy.Proxy;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
@@ -229,6 +230,16 @@ public final class JavaInterop {
      */
     public static boolean isJavaObject(TruffleObject foreignObject) {
         return foreignObject instanceof JavaObject;
+    }
+
+    /**
+     * Returns <code>true</code> if the argument is Java host language object wrapped using Truffle
+     * interop.
+     *
+     * @since 0.28
+     */
+    public static boolean isJavaObject(Object object) {
+        return object instanceof JavaObject;
     }
 
     /**
@@ -417,7 +428,9 @@ public final class JavaInterop {
      *         <code>false</code> otherwise.
      * @see Message#IS_NULL
      * @since 0.18
+     * @deprecated use {@link ForeignAccess#sendIsNull(Node, TruffleObject)} instead.
      */
+    @Deprecated
     public static boolean isNull(TruffleObject foreignObject) {
         if (foreignObject == null) {
             return true;
@@ -438,7 +451,9 @@ public final class JavaInterop {
      * @return <code>true</code> when the object represents an array, <code>false</code> otherwise.
      * @see Message#HAS_SIZE
      * @since 0.18
+     * @deprecated use {@link ForeignAccess#sendHasSize(Node, TruffleObject)} instead.
      */
+    @Deprecated
     public static boolean isArray(TruffleObject foreignObject) {
         if (foreignObject == null) {
             return false;
@@ -455,7 +470,9 @@ public final class JavaInterop {
      *         <code>false</code> otherwise.
      * @see Message#IS_BOXED
      * @since 0.18
+     * @deprecated use {@link ForeignAccess#sendIsBoxed(Node, TruffleObject)} instead.
      */
+    @Deprecated
     public static boolean isBoxed(TruffleObject foreignObject) {
         if (foreignObject == null) {
             return false;
@@ -474,7 +491,9 @@ public final class JavaInterop {
      *         unboxing was not possible.
      * @see Message#UNBOX
      * @since 0.18
+     * @deprecated use {@link ForeignAccess#sendUnbox(Node, TruffleObject)} instead.
      */
+    @Deprecated
     public static Object unbox(TruffleObject foreignObject) {
         if (foreignObject == null) {
             return null;
@@ -495,7 +514,9 @@ public final class JavaInterop {
      * @see Message#KEY_INFO
      * @see KeyInfo
      * @since 0.26
+     * @deprecated use {@link ForeignAccess#sendKeyInfo(Node, TruffleObject, Object)} instead.
      */
+    @Deprecated
     public static int getKeyInfo(TruffleObject foreignObject, Object propertyName) {
         CompilerAsserts.neverPartOfCompilation();
         int infoBits = ForeignAccess.sendKeyInfo(Message.KEY_INFO.createNode(), foreignObject, propertyName);

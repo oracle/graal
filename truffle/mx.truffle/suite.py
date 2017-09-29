@@ -662,7 +662,7 @@ suite = {
         "com.oracle.truffle.api.object.dsl",
       ],
       "distDependencies" : [
-	    "sdk:GRAAL_SDK"
+        "sdk:GRAAL_SDK"
       ],
       "description" : """Truffle is a multi-language framework for executing dynamic languages
         that achieves high performance when combined with Graal.""",
@@ -792,6 +792,22 @@ suite = {
       "allowsJavadocWarnings": True,
      },
 
+    "TRUFFLE_INSTRUMENT_TEST" : {
+      "subDir" : "src",
+      "javaCompliance" : "1.8",
+      "dependencies" : [
+        "com.oracle.truffle.api.instrumentation.test",
+      ],
+      "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_18"],
+      "distDependencies" : [
+        "TRUFFLE_API",
+        "TRUFFLE_DSL_PROCESSOR",
+        "TRUFFLE_DEBUG",
+      ],
+      "description" : "Instrumentation tests including InstrumentationTestLanguage.",
+      "allowsJavadocWarnings": True,
+    },
+
      "TRUFFLE_TEST" : {
        "subDir" : "src",
        "javaCompliance" : "1.8",
@@ -814,6 +830,7 @@ suite = {
          "TRUFFLE_NFI",
          "TRUFFLE_DSL_PROCESSOR",
          "TRUFFLE_DEBUG",
+         "TRUFFLE_INSTRUMENT_TEST",
          "TRUFFLE_TEST_NATIVE",
          "TRUFFLE_TCK",
       ],

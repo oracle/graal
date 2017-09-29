@@ -36,9 +36,9 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.ReflectionUtils;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
 
 public class DebuggerSessionTest extends AbstractDebugTest {
 
@@ -394,7 +394,7 @@ public class DebuggerSessionTest extends AbstractDebugTest {
 
         DebuggerSession session = startSession();
 
-        session.install(Breakpoint.newBuilder(testSource).lineIs(3).build());
+        session.install(Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(3).build());
         session.suspendNextExecution();
         startEval(testSource);
         expectSuspended((SuspendedEvent event) -> {
@@ -413,22 +413,23 @@ public class DebuggerSessionTest extends AbstractDebugTest {
                         "STATEMENT,\n" +
                         "STATEMENT)");
 
-        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
+        Context context = Context.create();
         final AtomicBoolean suspend = new AtomicBoolean();
-        DebuggerSession session = Debugger.find(engine).startSession(new SuspendedCallback() {
+        Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
+        DebuggerSession session = debugger.startSession(new SuspendedCallback() {
             public void onSuspend(SuspendedEvent event) {
                 suspend.set(true);
             }
         });
-        engine.eval(testSource);
+        context.eval(testSource);
 
-        engine.dispose();
+        context.close();
 
         // if the engine disposes the session should still work
         session.suspendNextExecution();
         suspend(session, Thread.currentThread());
         suspendAll(session);
-        session.install(Breakpoint.newBuilder(testSource).lineIs(2).build());
+        session.install(Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(2).build());
         resume(session, Thread.currentThread());
         session.resumeAll();
         session.getDebugger();
@@ -455,7 +456,7 @@ public class DebuggerSessionTest extends AbstractDebugTest {
         }
 
         try {
-            session.install(Breakpoint.newBuilder(testSource).lineIs(2).build());
+            session.install(Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(2).build());
             Assert.fail();
         } catch (IllegalStateException e) {
         }

@@ -75,7 +75,12 @@ abstract class PolyglotValue extends AbstractValueImpl {
     public Value getMetaObject(Object receiver) {
         Object prev = languageContext.enter();
         try {
-            return newValue(LANGUAGE.findMetaObject(languageContext.env, receiver));
+            Object metaObject = LANGUAGE.findMetaObject(languageContext.env, receiver);
+            if (metaObject != null) {
+                return newValue(metaObject);
+            } else {
+                return null;
+            }
         } catch (Throwable e) {
             throw wrapGuestException(languageContext, e);
         } finally {
@@ -87,15 +92,6 @@ abstract class PolyglotValue extends AbstractValueImpl {
         return languageContext.language.api;
     }
 
-    @SuppressWarnings("serial")
-    static class EngineUnsupportedException extends UnsupportedOperationException {
-
-        EngineUnsupportedException(String message) {
-            super(message);
-        }
-
-    }
-
     @Override
     protected RuntimeException unsupported(Object receiver, String message, String useToCheck) {
         Object prev = languageContext.enter();
@@ -104,7 +100,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             String typeName = LANGUAGE.toStringIfVisible(languageContext.env, metaObject, false);
             String languageName = getLanguage().getName();
 
-            throw new EngineUnsupportedException(
+            throw new PolyglotUnsupportedException(
                             String.format("Unsupported operation %s.%s for type %s and language %s. You can ensure that the operation is supported using %s.%s.",
                                             Value.class.getSimpleName(), message, typeName, languageName, Value.class.getSimpleName(), useToCheck));
         } catch (Throwable e) {
@@ -863,7 +859,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         }
 
         private static PolyglotException error(String message, Exception cause) {
-            throw new UnsupportedOperationException(message, cause);
+            throw new PolyglotUnsupportedException(message, cause);
         }
 
         private Object asPrimitive(Object receiver) {

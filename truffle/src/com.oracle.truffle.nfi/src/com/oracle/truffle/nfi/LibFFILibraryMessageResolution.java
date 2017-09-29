@@ -28,11 +28,14 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.CanResolve;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.nfi.LibFFIFunctionMessageResolution.CachedExecuteNode;
+import com.oracle.truffle.nfi.LibFFIFunctionMessageResolutionFactory.CachedExecuteNodeGen;
 import com.oracle.truffle.nfi.LibFFILibraryMessageResolutionFactory.CachedLookupSymbolNodeGen;
 
 @MessageResolution(receiverType = LibFFILibrary.class)
@@ -74,6 +77,39 @@ class LibFFILibraryMessageResolution {
 
         public TruffleObject access(LibFFILibrary receiver, String symbol) {
             return cached.executeLookup(receiver, symbol);
+        }
+    }
+
+    @Resolve(message = "INVOKE")
+    abstract static class InvokeSymbolNode extends Node {
+
+        @Child private CachedLookupSymbolNode cached = CachedLookupSymbolNodeGen.create();
+        @Child private CachedExecuteNode exec = CachedExecuteNodeGen.create();
+
+        public Object access(LibFFILibrary receiver, String symbol, Object... args) {
+            LibFFIFunction obj = (LibFFIFunction) cached.executeLookup(receiver, symbol);
+            return exec.execute(obj, args);
+        }
+    }
+
+    @Resolve(message = "KEY_INFO")
+    abstract static class KeyInfoNode extends Node {
+
+        private final ContextReference<NFIContext> ctxRef = NFILanguage.getCurrentContextReference();
+
+        private static final int READABLE = KeyInfo.newBuilder().setReadable(true).build();
+        private static final int NOT_EXISTING = 0;
+
+        public int access(LibFFILibrary receiver, String symbol) {
+            if (receiver.findSymbol(symbol) == null) {
+                try {
+                    ctxRef.get().lookupSymbol(receiver, symbol);
+                } catch (UnsatisfiedLinkError ex) {
+                    return NOT_EXISTING;
+                }
+            }
+
+            return READABLE;
         }
     }
 

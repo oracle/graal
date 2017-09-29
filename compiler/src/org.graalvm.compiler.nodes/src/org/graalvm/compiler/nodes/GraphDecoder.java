@@ -951,8 +951,22 @@ public class GraphDecoder {
             int phiNodeOrderId = readOrderId(methodScope);
 
             ValueNode phiInput = (ValueNode) ensureNodeCreated(methodScope, phiInputScope, phiInputOrderId);
-
             ValueNode existing = (ValueNode) lookupNode(phiNodeScope, phiNodeOrderId);
+
+            if (existing != null && merge.phiPredecessorCount() == 1) {
+                /*
+                 * When exploding loops and the code after the loop (FULL_EXPLODE_UNTIL_RETURN),
+                 * then an existing value can already be registered: Parsing of the code before the
+                 * loop registers it when preparing for the later merge. The code after the loop,
+                 * which starts with a clone of the values that were created before the loop, sees
+                 * the stale value when processing the merge the first time. We can safely ignore
+                 * the stale value because it will never be needed to be merged (we are exploding
+                 * until we hit a return).
+                 */
+                assert methodScope.loopExplosion == LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN && phiNodeScope.loopIteration > 0;
+                existing = null;
+            }
+
             if (lazyPhi && (existing == null || existing == phiInput)) {
                 /* Phi function not yet necessary. */
                 registerNode(phiNodeScope, phiNodeOrderId, phiInput, true, false);

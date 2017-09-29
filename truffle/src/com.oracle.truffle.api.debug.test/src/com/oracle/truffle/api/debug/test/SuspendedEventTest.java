@@ -42,7 +42,7 @@ import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
-import com.oracle.truffle.api.source.Source;
+import org.graalvm.polyglot.Source;
 
 public class SuspendedEventTest extends AbstractDebugTest {
 
@@ -128,15 +128,17 @@ public class SuspendedEventTest extends AbstractDebugTest {
 
     @Test
     public void testIsInternal() throws Throwable {
-        final Source source = Source.newBuilder("ROOT(\n" +
-                        "  DEFINE(bar, ROOT(STATEMENT)),\n" +
-                        "  DEFINE(foo, STATEMENT, \n" +
-                        "              STATEMENT(CALL(bar))),\n" +
-                        "  STATEMENT(CALL(foo))\n" +
-                        ")\n").mimeType(InstrumentationTestLanguage.MIME_TYPE).internal().name("internal test code").build();
+        final Source source = Source.newBuilder(InstrumentationTestLanguage.ID,
+                        "ROOT(\n" +
+                                        "  DEFINE(bar, ROOT(STATEMENT)),\n" +
+                                        "  DEFINE(foo, STATEMENT, \n" +
+                                        "              STATEMENT(CALL(bar))),\n" +
+                                        "  STATEMENT(CALL(foo))\n" +
+                                        ")\n",
+                        "internal test code").internal(true).build();
 
         try (DebuggerSession session = startSession()) {
-            session.install(Breakpoint.newBuilder(source).lineIs(2).build());
+            session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(2).build());
             startEval(source);
 
             expectSuspended((SuspendedEvent event) -> {
@@ -166,7 +168,7 @@ public class SuspendedEventTest extends AbstractDebugTest {
                         ")\n");
 
         try (DebuggerSession session = startSession()) {
-            final Breakpoint breakpoint = session.install(Breakpoint.newBuilder(source).lineIs(4).build());
+            final Breakpoint breakpoint = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(4).build());
             startEval(source);
 
             expectSuspended((SuspendedEvent event) -> {

@@ -103,7 +103,7 @@ public class EngineAPITest {
         try {
             engine.getLanguage("someUnknownId");
             fail();
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalStateException e) {
         }
 
         assertNull(engine.getLanguages().get("someUnknownId"));
@@ -180,7 +180,7 @@ public class EngineAPITest {
             // not allowed to access
             Assert.assertTrue(context.initialize(LanguageSPITestLanguage.ID));
             fail();
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalStateException e) {
         }
         context.close();
     }

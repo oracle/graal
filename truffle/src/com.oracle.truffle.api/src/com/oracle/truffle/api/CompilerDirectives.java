@@ -100,6 +100,18 @@ public final class CompilerDirectives {
     }
 
     /**
+     * Returns a boolean value indicating whether the method is executed in the root of a Truffle
+     * compilation.
+     *
+     * @return {@code false} when executed in the interpreter or in an inlined {@link CallTarget},
+     *         {@code true} when in non-inlined compiled code.
+     * @since 0.28 or earlier
+     */
+    public static boolean inCompilationRoot() {
+        return false;
+    }
+
+    /**
      * Returns a boolean indicating whether or not a given value is seen as constant in optimized
      * code. If this method is called in the interpreter this method will always return
      * <code>true</code>.
@@ -241,11 +253,25 @@ public final class CompilerDirectives {
     public @interface TruffleBoundary {
         /**
          * Determines whether this method throws a {@link ControlFlowException}.
+         *
+         * @since 0.8 or earlier
+         * @deprecated use {@link #transferToInterpreterOnException()}
          */
+        @Deprecated
         boolean throwsControlFlowException() default false;
 
         /**
+         * Determines whether execution should be transferred to the interpreter in the case that an
+         * exception is thrown across this boundary.
+         *
+         * @since 0.28
+         */
+        boolean transferToInterpreterOnException() default true;
+
+        /**
          * Considers this Truffle boundary invoke as an inlining candidate.
+         *
+         * @since 0.27
          */
         boolean allowInlining() default false;
     }

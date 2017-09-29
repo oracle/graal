@@ -52,6 +52,7 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.Builder;
 import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
@@ -160,11 +161,12 @@ public final class DebuggerSession implements Closeable {
 
     private EventBinding<? extends ExecutionEventNodeFactory> callBinding;
     private EventBinding<? extends ExecutionEventNodeFactory> statementBinding;
+    private EventBinding<? extends ExecutionEventNodeFactory> rootBinding;
 
     private final ConcurrentHashMap<Thread, SuspendedEvent> currentSuspendedEventMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Thread, SteppingStrategy> strategyMap = new ConcurrentHashMap<>();
     private volatile boolean suspendNext;
-    private boolean suspendAll;
+    private volatile boolean suspendAll;
     private final StableBoolean stepping = new StableBoolean(false);
     private final StableBoolean ignoreLanguageContextInitialization = new StableBoolean(false);
     private final StableBoolean breakpointsActive = new StableBoolean(true);
@@ -335,7 +337,7 @@ public final class DebuggerSession implements Closeable {
         updateStepping();
     }
 
-    private SteppingStrategy getSteppingStrategy(Object value) {
+    private SteppingStrategy getSteppingStrategy(Thread value) {
         return strategyMap.get(value);
     }
 
@@ -345,7 +347,7 @@ public final class DebuggerSession implements Closeable {
         boolean needsStepping = suspendNext || suspendAll;
         if (!needsStepping) {
             // iterating concurrent hashmap should be save
-            for (Object t : strategyMap.keySet()) {
+            for (Thread t : strategyMap.keySet()) {
                 SteppingStrategy s = strategyMap.get(t);
                 assert s != null;
                 if (!s.isDone()) {
@@ -360,16 +362,26 @@ public final class DebuggerSession implements Closeable {
 
     private void addBindings() {
         if (statementBinding == null) {
-            Builder builder = SourceSectionFilter.newBuilder().tagIs(CallTag.class);
-            this.callBinding = debugger.getInstrumenter().attachFactory(builder.build(), new ExecutionEventNodeFactory() {
+            // The order of registered instrumentations matters.
+            // It's important to instrument root nodes first to intercept stack changes,
+            // then instrument statements, and
+            // call bindings need to be called after statements.
+            Builder builder = SourceSectionFilter.newBuilder().tagIs(RootTag.class);
+            this.rootBinding = debugger.getInstrumenter().attachFactory(builder.build(), new ExecutionEventNodeFactory() {
                 public ExecutionEventNode create(EventContext context) {
-                    return new CallSteppingNode(context);
+                    return new RootSteppingDepthNode();
                 }
             });
             builder = SourceSectionFilter.newBuilder().tagIs(StatementTag.class);
             this.statementBinding = debugger.getInstrumenter().attachFactory(builder.build(), new ExecutionEventNodeFactory() {
                 public ExecutionEventNode create(EventContext context) {
                     return new StatementSteppingNode(context);
+                }
+            });
+            builder = SourceSectionFilter.newBuilder().tagIs(CallTag.class);
+            this.callBinding = debugger.getInstrumenter().attachFactory(builder.build(), new ExecutionEventNodeFactory() {
+                public ExecutionEventNode create(EventContext context) {
+                    return new CallSteppingNode(context);
                 }
             });
         }
@@ -381,6 +393,8 @@ public final class DebuggerSession implements Closeable {
             callBinding.dispose();
             statementBinding.dispose();
             callBinding = null;
+            rootBinding.dispose();
+            rootBinding = null;
             statementBinding = null;
             if (Debugger.TRACE) {
                 trace("disabled stepping");
@@ -763,7 +777,15 @@ public final class DebuggerSession implements Closeable {
         @Override
         protected void onEnter(VirtualFrame frame) {
             if (stepping.get()) {
-                notifyCallback(this, frame.materialize(), null, null);
+                doEnter(frame.materialize());
+            }
+        }
+
+        @TruffleBoundary
+        private void doEnter(MaterializedFrame frame) {
+            SteppingStrategy steppingStrategy;
+            if (suspendNext || suspendAll || (steppingStrategy = getSteppingStrategy(Thread.currentThread())) != null && steppingStrategy.isActive()) {
+                notifyCallback(this, frame, null, null);
             }
         }
 
@@ -792,20 +814,69 @@ public final class DebuggerSession implements Closeable {
         @Override
         public void onReturnValue(VirtualFrame frame, Object result) {
             if (stepping.get()) {
-                notifyCallback(this, frame.materialize(), result, null);
+                doReturn(frame.materialize(), result);
             }
         }
 
         @Override
         public void onReturnExceptional(VirtualFrame frame, Throwable exception) {
             if (stepping.get()) {
-                notifyCallback(this, frame.materialize(), null, null);
+                doReturn(frame.materialize(), null);
+            }
+        }
+
+        @TruffleBoundary
+        private void doReturn(MaterializedFrame frame, Object result) {
+            SteppingStrategy steppingStrategy = strategyMap.get(Thread.currentThread());
+            if (steppingStrategy != null && steppingStrategy.isStopAfterCall()) {
+                notifyCallback(this, frame, result, null);
             }
         }
 
         @Override
         SteppingLocation getSteppingLocation() {
             return SteppingLocation.AFTER_CALL;
+        }
+
+    }
+
+    private final class RootSteppingDepthNode extends ExecutionEventNode {
+
+        @Override
+        protected void onEnter(VirtualFrame frame) {
+            if (stepping.get()) {
+                doEnter();
+            }
+        }
+
+        @Override
+        public void onReturnValue(VirtualFrame frame, Object result) {
+            if (stepping.get()) {
+                doReturn();
+            }
+        }
+
+        @Override
+        public void onReturnExceptional(VirtualFrame frame, Throwable exception) {
+            if (stepping.get()) {
+                doReturn();
+            }
+        }
+
+        @TruffleBoundary
+        private void doEnter() {
+            SteppingStrategy steppingStrategy = strategyMap.get(Thread.currentThread());
+            if (steppingStrategy != null) {
+                steppingStrategy.notifyCallEntry();
+            }
+        }
+
+        @TruffleBoundary
+        private void doReturn() {
+            SteppingStrategy steppingStrategy = strategyMap.get(Thread.currentThread());
+            if (steppingStrategy != null) {
+                steppingStrategy.notifyCallExit();
+            }
         }
 
     }

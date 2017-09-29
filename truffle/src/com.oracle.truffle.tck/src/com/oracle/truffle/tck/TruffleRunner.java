@@ -128,6 +128,8 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
 
         /**
          * Defines the {@link RootNode root node} of the Truffle tree that should be tested.
+         * 
+         * @since 0.25
          */
         Class<? extends RootNode> value();
     }
@@ -157,6 +159,8 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
 
         /**
          * The number of warmup iterations to run before a test is compiled.
+         * 
+         * @since 0.25
          */
         int value();
     }

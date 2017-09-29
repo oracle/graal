@@ -135,24 +135,32 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         return FILENAME_EXTENSION;
     }
 
+    /**
+     * Set configuration data to the language. Possible values are:
+     * <ul>
+     * <li>{@link ReturnLanguageEnv#KEY} with a {@link ReturnLanguageEnv} value,</li>
+     * <li>"initSource" with a {@link org.graalvm.polyglot.Source} value,</li>
+     * <li>"runInitAfterExec" with a {@link Boolean} value.</li>
+     * </ul>
+     */
+    public static Map<String, Object> envConfig;
+
     @Override
     protected Context createContext(TruffleLanguage.Env env) {
-        Object envReturner = env.getConfig().get(ReturnLanguageEnv.KEY);
-        if (envReturner != null) {
-            ((ReturnLanguageEnv) envReturner).env = env;
-        }
-        Object[] sharedContext = (Object[]) env.getConfig().get("context");
-        if (sharedContext == null || sharedContext[0] == null) {
-            Source initSource = (Source) env.getConfig().get("initSource");
-            Boolean runInitAfterExec = (Boolean) env.getConfig().get("runInitAfterExec");
-            Context c = new Context(env.out(), env.err(), env.lookup(AllocationReporter.class), initSource, runInitAfterExec);
-            if (sharedContext != null) {
-                sharedContext[0] = c;
+        Source initSource = null;
+        Boolean runInitAfterExec = null;
+        if (envConfig != null) {
+            Object envReturner = envConfig.get(ReturnLanguageEnv.KEY);
+            if (envReturner != null) {
+                ((ReturnLanguageEnv) envReturner).env = env;
             }
-            return c;
-        } else {
-            return forkContext((Context) sharedContext[0]);
+            org.graalvm.polyglot.Source initPolyglotSource = (org.graalvm.polyglot.Source) envConfig.get("initSource");
+            if (initPolyglotSource != null) {
+                initSource = AbstractInstrumentationTest.sourceToImpl(initPolyglotSource);
+            }
+            runInitAfterExec = (Boolean) envConfig.get("runInitAfterExec");
         }
+        return new Context(env.out(), env.err(), env.lookup(AllocationReporter.class), initSource, runInitAfterExec);
     }
 
     @Override
@@ -168,10 +176,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                 context.afterTarget = rct;
             }
         }
-    }
-
-    protected Context forkContext(Context context) {
-        return context;
     }
 
     @Override
@@ -204,7 +208,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         Parser(InstrumentationTestLanguage lang, Source source) {
             this.lang = lang;
             this.source = source;
-            this.code = source.getCode();
+            this.code = source.getCharacters().toString();
         }
 
         public BaseNode parse() {
@@ -309,7 +313,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                 case "EXPRESSION":
                     return new ExpressionNode(childArray);
                 case "ROOT":
-                    return new InstrumentableRootNode(childArray);
+                    return new FunctionRootNode(childArray);
                 case "STATEMENT":
                     return new StatementNode(childArray);
                 case "CONSTANT":
@@ -373,7 +377,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         private final String name;
         private final SourceSection sourceSection;
         private final RootCallTarget afterTarget;
-        @Children private final BaseNode[] expressions;
+        @Child private InstrumentedNode functionRoot;
 
         protected InstrumentationTestRootNode(InstrumentationTestLanguage lang, String name, SourceSection sourceSection, BaseNode... expressions) {
             this(lang, name, sourceSection, null, expressions);
@@ -384,7 +388,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             this.name = name;
             this.sourceSection = sourceSection;
             this.afterTarget = afterTarget;
-            this.expressions = expressions;
+            this.functionRoot = new FunctionRootNode(expressions);
+            functionRoot.setSourceSection(sourceSection);
         }
 
         @Override
@@ -402,12 +407,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         @ExplodeLoop
         public Object execute(VirtualFrame frame) {
             Object returnValue = Null.INSTANCE;
-            for (int i = 0; i < expressions.length; i++) {
-                BaseNode baseNode = expressions[i];
-                if (baseNode != null) {
-                    returnValue = baseNode.execute(frame);
-                }
-            }
+            returnValue = functionRoot.execute(frame);
             if (afterTarget != null) {
                 afterTarget.call();
             }
@@ -451,7 +451,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         public Object execute(VirtualFrame frame) {
             Object returnValue = Null.INSTANCE;
             for (BaseNode child : children) {
-                returnValue = child.execute(frame);
+                if (child != null) {
+                    returnValue = child.execute(frame);
+                }
             }
             return returnValue;
         }
@@ -459,7 +461,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         @Override
         protected final boolean isTaggedWith(Class<?> tag) {
             if (tag == StandardTags.RootTag.class) {
-                return this instanceof InstrumentableRootNode;
+                return this instanceof FunctionRootNode;
             } else if (tag == StandardTags.CallTag.class) {
                 return this instanceof CallNode;
             } else if (tag == StandardTags.StatementTag.class) {
@@ -478,9 +480,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
     }
 
-    private static final class InstrumentableRootNode extends InstrumentedNode {
+    private static final class FunctionRootNode extends InstrumentedNode {
 
-        InstrumentableRootNode(BaseNode[] children) {
+        FunctionRootNode(BaseNode[] children) {
             super(children);
         }
 
@@ -500,13 +502,19 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
         DefineNode(InstrumentationTestLanguage lang, String identifier, SourceSection source, BaseNode[] children) {
             this.identifier = identifier;
-            this.target = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(lang, identifier, source, children));
+            String code = source.getCharacters().toString();
+            int index = code.indexOf('(') + 1;
+            while (Character.isWhitespace(code.charAt(index))) {
+                index++;
+            }
+            SourceSection functionSection = source.getSource().createSection(source.getCharIndex() + index, source.getCharLength() - index - 1);
+            this.target = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(lang, identifier, functionSection, children));
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             defineFunction();
-            return null;
+            return Null.INSTANCE;
         }
 
         @TruffleBoundary
@@ -685,7 +693,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
         @Override
         public Object execute(VirtualFrame frame) {
-            Object returnValue = null;
+            Object returnValue = Null.INSTANCE;
             for (int i = 0; infinite || i < loopCount; i++) {
                 returnValue = super.execute(frame);
             }
@@ -732,7 +740,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                 }
             }
             writeAndFlush(writer, what);
-            return null;
+            return Null.INSTANCE;
         }
 
         @TruffleBoundary

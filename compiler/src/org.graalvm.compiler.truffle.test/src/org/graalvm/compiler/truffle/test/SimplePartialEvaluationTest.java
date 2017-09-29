@@ -36,6 +36,7 @@ import org.graalvm.compiler.truffle.test.nodes.InliningNullCheckNode1;
 import org.graalvm.compiler.truffle.test.nodes.InliningNullCheckNode2;
 import org.graalvm.compiler.truffle.test.nodes.LambdaTestNode;
 import org.graalvm.compiler.truffle.test.nodes.LoadLocalTestNode;
+import org.graalvm.compiler.truffle.test.nodes.LoopExplosionPhiNode;
 import org.graalvm.compiler.truffle.test.nodes.LoopTestNode;
 import org.graalvm.compiler.truffle.test.nodes.NestedExplodedLoopTestNode;
 import org.graalvm.compiler.truffle.test.nodes.NeverPartOfCompilationTestNode;
@@ -320,5 +321,15 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         OptimizedCallTarget compilable = compileHelper("inliningNullCheck2", rootNode, new Object[0]);
 
         Assert.assertEquals(42, compilable.call(new Object[0]));
+    }
+
+    @Test
+    public void loopExplosionPhi() {
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new LoopExplosionPhiNode();
+        RootNode rootNode = new RootTestNode(fd, "loopExplosionPhi", result);
+        OptimizedCallTarget compilable = compileHelper("loopExplosionPhi", rootNode, new Object[0]);
+
+        Assert.assertEquals(1, compilable.call(new Object[0]));
     }
 }

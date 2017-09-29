@@ -24,17 +24,12 @@
  */
 package com.oracle.truffle.nfi.test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.nfi.test.interop.NullObject;
-import com.oracle.truffle.nfi.test.interop.TestCallback;
-import com.oracle.truffle.tck.TruffleRunner;
-import com.oracle.truffle.tck.TruffleRunner.Inject;
-import java.util.ArrayList;
-import java.util.Collection;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
+
+import java.util.ArrayList;
+import java.util.Collection;
+
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -42,6 +37,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.nfi.test.interop.NullObject;
+import com.oracle.truffle.nfi.test.interop.TestCallback;
+import com.oracle.truffle.tck.TruffleRunner;
+import com.oracle.truffle.tck.TruffleRunner.Inject;
 
 @RunWith(Parameterized.class)
 @Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
@@ -79,7 +81,7 @@ public class NullNFITest extends NFITest {
         Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
 
         TruffleObject obj = (TruffleObject) ret;
-        Assert.assertTrue("isNull", JavaInterop.isNull(obj));
+        Assert.assertTrue("isNull", isNull(obj));
     }
 
     private String getExpected() {
@@ -112,8 +114,8 @@ public class NullNFITest extends NFITest {
         Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
 
         TruffleObject obj = (TruffleObject) ret;
-        Assert.assertTrue("isBoxed", JavaInterop.isBoxed(obj));
-        Assert.assertEquals("return value", expected, JavaInterop.unbox(obj));
+        Assert.assertTrue("isBoxed", isBoxed(obj));
+        Assert.assertEquals("return value", expected, unbox(obj));
     }
 
     public class TestNullCallbackArgNode extends SendExecuteNode {
@@ -127,7 +129,7 @@ public class NullNFITest extends NFITest {
     public void testNullCallbackArg(@Inject(TestNullCallbackArgNode.class) CallTarget callTarget) {
         TruffleObject nullCallback = new TestCallback(1, (args) -> {
             Assert.assertThat("callback argument", args[0], is(instanceOf(TruffleObject.class)));
-            Assert.assertTrue("isNull", JavaInterop.isNull((TruffleObject) args[0]));
+            Assert.assertTrue("isNull", isNull((TruffleObject) args[0]));
             return null;
         });
 
@@ -153,7 +155,7 @@ public class NullNFITest extends NFITest {
         Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
 
         TruffleObject obj = (TruffleObject) ret;
-        Assert.assertTrue("isBoxed", JavaInterop.isBoxed(obj));
-        Assert.assertEquals("return value", expected, JavaInterop.unbox(obj));
+        Assert.assertTrue("isBoxed", isBoxed(obj));
+        Assert.assertEquals("return value", expected, unbox(obj));
     }
 }

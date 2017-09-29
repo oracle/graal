@@ -53,6 +53,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
+import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 
@@ -160,8 +161,7 @@ public class OptionProcessor extends AbstractProcessor {
                 originatingElementsList.add(enclosing);
                 declaringClass = enclosing.getSimpleName() + separator + declaringClass;
                 separator = ".";
-            } else {
-                assert enclosing.getKind() == ElementKind.PACKAGE;
+            } else if (enclosing.getKind() == ElementKind.PACKAGE) {
                 enclosingPackage = (PackageElement) enclosing;
             }
             enclosing = enclosing.getEnclosingElement();
@@ -179,18 +179,27 @@ public class OptionProcessor extends AbstractProcessor {
             if (help.startsWith("file:")) {
                 String path = help.substring("file:".length());
                 Filer filer = processingEnv.getFiler();
-                try (BufferedReader br = new BufferedReader(new InputStreamReader(filer.getResource(StandardLocation.CLASS_OUTPUT, enclosingPackage.getQualifiedName(), path).openInputStream()))) {
-                    help = br.readLine();
-                    if (help == null) {
-                        help = "";
+                try {
+                    FileObject file;
+                    try {
+                        file = filer.getResource(StandardLocation.SOURCE_PATH, enclosingPackage.getQualifiedName(), path);
+                    } catch (IllegalArgumentException | IOException e) {
+                        // Handle the case when a compiler doesn't support the SOURCE_PATH location
+                        file = filer.getResource(StandardLocation.CLASS_OUTPUT, enclosingPackage.getQualifiedName(), path);
                     }
-                    String line = br.readLine();
-                    List<String> lines = new ArrayList<>();
-                    while (line != null) {
-                        lines.add(line);
-                        line = br.readLine();
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(file.openInputStream()))) {
+                        help = br.readLine();
+                        if (help == null) {
+                            help = "";
+                        }
+                        String line = br.readLine();
+                        List<String> lines = new ArrayList<>();
+                        while (line != null) {
+                            lines.add(line);
+                            line = br.readLine();
+                        }
+                        extraHelp = lines.toArray(new String[lines.size()]);
                     }
-                    extraHelp = lines.toArray(new String[lines.size()]);
                 } catch (IOException e) {
                     String msg = String.format("Error reading %s containing the help text for option field: %s", path, e);
                     processingEnv.getMessager().printMessage(Kind.ERROR, msg, element);

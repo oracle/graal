@@ -469,7 +469,7 @@ public class SimpleREPLClient implements com.oracle.truffle.tools.debug.shell.RE
             final int listSize = listSizeOption.getInt();
 
             final int fileLineCount = whereSource.getLineCount();
-            final String code = whereSource.getCode();
+            final String code = whereSource.getCharacters().toString();
 
             writer.println("Frame " + selectedFrameNumber + " in " + whereSource.getName());
             final int halfListSize = listSize / 2;
@@ -1113,7 +1113,7 @@ public class SimpleREPLClient implements com.oracle.truffle.tools.debug.shell.RE
             clientContext.displayReply(printSource.getName() + ":");
             final int lastLineNumber = Math.min(start + listSize - 1, printSource.getLineCount());
             for (int line = start; line <= lastLineNumber; line++) {
-                writer.format(CODE_LINE_FORMAT, line, printSource.getCode(line));
+                writer.format(CODE_LINE_FORMAT, line, printSource.getCharacters(line));
             }
             return lastLineNumber;
         }

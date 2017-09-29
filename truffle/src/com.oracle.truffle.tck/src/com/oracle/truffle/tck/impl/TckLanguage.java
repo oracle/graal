@@ -50,7 +50,7 @@ public final class TckLanguage extends TruffleLanguage<Env> {
     protected CallTarget parse(ParsingRequest request) throws Exception {
         Source code = request.getSource();
         final RootNode root;
-        final String txt = code.getCode();
+        final String txt = code.getCharacters().toString();
         if (txt.startsWith("TCK42:")) {
             int nextColon = txt.indexOf(":", 6);
             String mimeType = txt.substring(6, nextColon);
