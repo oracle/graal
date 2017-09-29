@@ -62,31 +62,6 @@ public class VerifyGraphAddUsage extends VerifyPhase<PhaseContext> {
         ALLOWED_CLASSES.add(LoweringProvider.class);
     }
 
-//    private static final String[] AllowedPackagePrefixes;
-
-//    private static String getPackageName(Class<?> c) {
-//        String classNameWithPackage = c.getName();
-//        String simpleName = c.getSimpleName();
-//        return classNameWithPackage.substring(0, classNameWithPackage.length() - simpleName.length() - 1);
-//    }
-//
-//    static {
-//        try {
-//            AllowedPackagePrefixes = new String[]{getPackageName(PermanentBailoutException.class), "jdk.vm.ci"};
-//        } catch (Throwable t) {
-//            throw new GraalError(t);
-//        }
-//    }
-
-//    private static boolean matchesPrefix(String packageName) {
-//        for (String allowedPackagePrefix : AllowedPackagePrefixes) {
-//            if (packageName.startsWith(allowedPackagePrefix)) {
-//                return true;
-//            }
-//        }
-//        return false;
-//    }
-
     @Override
     protected boolean verify(StructuredGraph graph, PhaseContext context) {
         boolean allowed = false;
