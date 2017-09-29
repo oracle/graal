@@ -73,6 +73,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.phases.verify.VerifyBailoutUsage;
 import org.graalvm.compiler.phases.verify.VerifyCallerSensitiveMethods;
 import org.graalvm.compiler.phases.verify.VerifyDebugUsage;
+import org.graalvm.compiler.phases.verify.VerifyGraphAddUsage;
 import org.graalvm.compiler.phases.verify.VerifyInstanceOfUsage;
 import org.graalvm.compiler.phases.verify.VerifyUpdateUsages;
 import org.graalvm.compiler.phases.verify.VerifyUsageWithEquals;
@@ -381,6 +382,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         new VerifyUpdateUsages().apply(graph, context);
         new VerifyBailoutUsage().apply(graph, context);
         new VerifyInstanceOfUsage().apply(graph, context);
+        new VerifyGraphAddUsage().apply(graph, context);
         if (graph.method().isBridge()) {
             BridgeMethodUtils.getBridgedMethod(graph.method());
         }
