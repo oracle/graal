@@ -716,6 +716,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         final CallTarget execute;
         final CallTarget canInstantiate;
         final CallTarget newInstance;
+        final CallTarget executeVoid;
         final CallTarget asPrimitive;
 
         final Class<?> receiverType;
@@ -737,6 +738,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             this.putMember = Truffle.getRuntime().createCallTarget(new PutMemberNode(this));
             this.isNull = Truffle.getRuntime().createCallTarget(new IsNullNode(this));
             this.execute = Truffle.getRuntime().createCallTarget(new ExecuteNode(this));
+            this.executeVoid = Truffle.getRuntime().createCallTarget(new ExecuteVoidNode(this));
             this.canExecute = Truffle.getRuntime().createCallTarget(new CanExecuteNode(this));
             this.newInstance = Truffle.getRuntime().createCallTarget(new NewInstanceNode(this));
             this.canInstantiate = Truffle.getRuntime().createCallTarget(new CanInstantiateNode(this));
@@ -840,6 +842,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
         @Override
         public boolean canExecute(Object receiver) {
             return (boolean) canExecute.call(receiver);
+        }
+
+        @Override
+        public void executeVoid(Object receiver, Object[] arguments) {
+            executeVoid.call(receiver, arguments);
         }
 
         @Override
@@ -1377,21 +1384,19 @@ abstract class PolyglotValue extends AbstractValueImpl {
             }
         }
 
-        private static class ExecuteNode extends InteropNode {
+        private abstract static class AbstractExecuteNode extends InteropNode {
 
-            @Child private Node executeNode = Message.createExecute(0).createNode();
-            private final ToGuestValuesNode toGuestValues = interop.languageContext.createToGuestValues();
-            private final ToHostValueNode toHostValue = interop.languageContext.createToHostValue();
+            @Child protected Node executeNode = Message.createExecute(0).createNode();
+            protected final ToGuestValuesNode toGuestValues = interop.languageContext.createToGuestValues();
 
-            protected ExecuteNode(Interop interop) {
+            protected AbstractExecuteNode(Interop interop) {
                 super(interop);
             }
 
-            @Override
-            protected Object executeImpl(Object receiver, Object[] args) {
+            protected final Object executeShared(Object receiver, Object[] args) {
                 try {
                     Object[] executeArgs = (Object[]) args[1];
-                    return toHostValue.execute(ForeignAccess.sendExecute(executeNode, (TruffleObject) receiver, toGuestValues.execute(executeArgs)));
+                    return ForeignAccess.sendExecute(executeNode, (TruffleObject) receiver, toGuestValues.execute(executeArgs));
                 } catch (UnsupportedTypeException e) {
                     CompilerDirectives.transferToInterpreter();
                     throw handleUnsupportedType(e);
@@ -1413,6 +1418,40 @@ abstract class PolyglotValue extends AbstractValueImpl {
             private PolyglotException handleUnsupportedType(UnsupportedTypeException e) {
                 String arguments = interop.formatSuppliedValues(e);
                 return error(String.format("Invalid arguments provided %s when executing %s.", arguments, toString()), e);
+            }
+
+        }
+
+        private static class ExecuteVoidNode extends AbstractExecuteNode {
+
+            protected ExecuteVoidNode(Interop interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Object executeImpl(Object receiver, Object[] args) {
+                executeShared(receiver, args);
+                return null;
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "executeVoid";
+            }
+
+        }
+
+        private static class ExecuteNode extends AbstractExecuteNode {
+
+            private final ToHostValueNode toHostValue = interop.languageContext.createToHostValue();
+
+            protected ExecuteNode(Interop interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Object executeImpl(Object receiver, Object[] args) {
+                return toHostValue.execute(executeShared(receiver, args));
             }
 
             @Override

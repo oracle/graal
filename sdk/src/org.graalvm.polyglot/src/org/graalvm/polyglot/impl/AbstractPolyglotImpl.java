@@ -443,6 +443,14 @@ public abstract class AbstractPolyglotImpl {
             throw unsupported(receiver, "newInstance(Object...)", "canInstantiate()");
         }
 
+        public void executeVoid(Object receiver, Object[] arguments) {
+            executeVoidUnsupported(receiver);
+        }
+
+        public final void executeVoidUnsupported(Object receiver) {
+            throw unsupported(receiver, "executeVoid(Object...)", "canExecute()");
+        }
+
         public boolean isString(Object receiver) {
             return false;
         }

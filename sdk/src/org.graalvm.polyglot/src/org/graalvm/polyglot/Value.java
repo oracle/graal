@@ -186,6 +186,15 @@ public final class Value {
      *
      * @since 1.0
      */
+    public void executeVoid(Object... arguments) {
+        impl.executeVoid(receiver, arguments);
+    }
+
+    /**
+     *
+     *
+     * @since 1.0
+     */
     public boolean isString() {
         return impl.isString(receiver);
     }

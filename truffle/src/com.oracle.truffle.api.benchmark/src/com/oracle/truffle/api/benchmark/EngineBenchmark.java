@@ -32,6 +32,7 @@ import org.graalvm.polyglot.Value;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
 import com.oracle.truffle.api.CallTarget;
@@ -75,6 +76,11 @@ public class EngineBenchmark extends TruffleBenchmark {
         final Value value = context.eval(source);
         final Integer intValue = 42;
         final Value hostValue = context.lookup(TEST_LANGUAGE, "context");
+
+        @TearDown
+        public void tearDown() {
+            context.close();
+        }
     }
 
     @Benchmark
@@ -85,6 +91,11 @@ public class EngineBenchmark extends TruffleBenchmark {
     @Benchmark
     public void executePolyglot1(ContextState state) {
         state.value.execute();
+    }
+
+    @Benchmark
+    public void executePolyglot1Void(ContextState state) {
+        state.value.executeVoid();
     }
 
     @Benchmark
@@ -115,6 +126,11 @@ public class EngineBenchmark extends TruffleBenchmark {
                 return constant;
             }
         });
+
+        @TearDown
+        public void tearDown() {
+            context.close();
+        }
     }
 
     @Benchmark
@@ -191,7 +207,7 @@ public class EngineBenchmark extends TruffleBenchmark {
     /*
      * Test language that ensures that only engine overhead is tested.
      */
-    @TruffleLanguage.Registration(id = TEST_LANGUAGE, name = "", version = "", mimeType = "")
+    @TruffleLanguage.Registration(id = TEST_LANGUAGE, name = "", version = "", mimeType = TEST_LANGUAGE)
     public static class BenchmarkTestLanguage extends TruffleLanguage<BenchmarkContext> {
 
         @Override
