@@ -143,6 +143,7 @@ abstract class LibFFIType {
                     buffer.putPointer(number.longValue(), size);
                     break;
                 default:
+                    CompilerDirectives.transferToInterpreter();
                     throw new AssertionError(simpleType.name());
             }
         }
@@ -169,6 +170,7 @@ abstract class LibFFIType {
                 case DOUBLE:
                     return buffer.getDouble();
                 default:
+                    CompilerDirectives.transferToInterpreter();
                     throw new AssertionError(simpleType.name());
             }
         }
@@ -208,6 +210,7 @@ abstract class LibFFIType {
                 case POINTER:
                     return new NativePointer(primitive);
                 default:
+                    CompilerDirectives.transferToInterpreter();
                     throw new AssertionError(simpleType.name());
             }
         }
@@ -467,6 +470,7 @@ abstract class LibFFIType {
                     }
                     break;
                 default:
+                    CompilerDirectives.transferToInterpreter();
                     throw new AssertionError(elementType.name());
             }
 
@@ -484,6 +488,7 @@ abstract class LibFFIType {
 
         @Override
         protected Object doDeserialize(NativeArgumentBuffer buffer) {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Arrays can only be passed from Java to native");
         }
 
@@ -646,6 +651,7 @@ abstract class LibFFIType {
 
         @Override
         protected Object doDeserialize(NativeArgumentBuffer buffer) {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError("environment pointer can not be used as return type");
         }
 
