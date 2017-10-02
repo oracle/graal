@@ -37,6 +37,8 @@ import org.graalvm.polyglot.Value;
  * The unit of execution with assigned parameters and result types. The {@link Snippet} represents
  * an execution of value constructor, statement, expression and script. The {@link Snippet} provides
  * parameter(s) and return types used to chain the {@link Snippet}s.
+ *
+ * @since 0.29
  */
 public final class Snippet {
     private final String id;
@@ -67,6 +69,7 @@ public final class Snippet {
      * overloads.
      *
      * @return the {@link Snippet} identifier
+     * @since 0.29
      */
     public String getId() {
         return id;
@@ -76,6 +79,7 @@ public final class Snippet {
      * Returns the function executing the {@link Snippet}.
      *
      * @return the executable {@link Value}
+     * @since 0.29
      */
     public Value getExecutableValue() {
         return executableValue;
@@ -85,6 +89,7 @@ public final class Snippet {
      * Returns the {@link Snippet} return type.
      *
      * @return the return type
+     * @since 0.29
      */
     public TypeDescriptor getReturnType() {
         return type;
@@ -94,6 +99,7 @@ public final class Snippet {
      * Returns the types of {@link Snippet} formal parameters.
      *
      * @return the parameter types
+     * @since 0.29
      */
     public List<? extends TypeDescriptor> getParameterTypes() {
         return parameterTypes;
@@ -104,6 +110,7 @@ public final class Snippet {
      *
      * @return either a custom or the default {@link ResultVerifier}.
      * @see ResultVerifier#accept(org.graalvm.polyglot.tck.ResultVerifier.SnippetRun).
+     * @since 0.29
      */
     public ResultVerifier getResultVerifier() {
         return verifier;
@@ -111,6 +118,8 @@ public final class Snippet {
 
     /**
      * {@inheritDoc}
+     *
+     * @since 0.29
      */
     @Override
     public String toString() {
@@ -124,8 +133,9 @@ public final class Snippet {
      *            {@link LanguageProvider} with the same identifier but different types are treated
      *            as overloads.
      * @param executableValue the executable {@link Value} used to execute the {@link Snippet}
-     * @param executableReturnType the {@link Snippet return type
+     * @param executableReturnType the {@link Snippet} return type
      * @return the new {@link Builder}
+     * @since 0.29
      */
     public static Builder newBuilder(
                     final String id,
@@ -136,6 +146,8 @@ public final class Snippet {
 
     /**
      * The builder of a {@link Snippet}.
+     *
+     * @since 0.29
      */
     public static final class Builder {
         private final String id;
@@ -162,6 +174,7 @@ public final class Snippet {
          *
          * @param parameterTypes the types of {@link Snippet}'s parameters
          * @return this {@link Builder}
+         * @since 0.29
          */
         public Builder parameterTypes(@SuppressWarnings("hiding") final TypeDescriptor... parameterTypes) {
             Objects.requireNonNull(parameterTypes);
@@ -175,6 +188,7 @@ public final class Snippet {
          * @param resultVerifier the custom {@link ResultVerifier}
          * @return this {@link Builder}
          * @see ResultVerifier#accept(org.graalvm.polyglot.tck.ResultVerifier.SnippetRun).
+         * @since 0.29
          */
         public Builder resultVerifier(final ResultVerifier resultVerifier) {
             this.verifier = resultVerifier;
@@ -185,6 +199,7 @@ public final class Snippet {
          * Creates a new {@link Snippet} configured by this {@link Builder}.
          *
          * @return the {@link Snippet}
+         * @since 0.29
          */
         public Snippet build() {
             return new Snippet(id, executableValue, executableReturnType, Collections.unmodifiableList(parameterTypes), verifier);
