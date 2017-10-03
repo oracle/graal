@@ -38,13 +38,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.sl.test;
+package com.oracle.truffle.sl.tck;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -169,30 +167,18 @@ public class SLTCKLanguageProvider implements LanguageProvider {
 
     @Override
     public Collection<? extends Snippet> createScripts(Context context) {
-        try {
-            final Collection<Snippet> res = new ArrayList<>();
-            Path root = SLTestRunner.getRootViaResourceURL(SLTCKLanguageProvider.class, new String[]{"tck/scripts"});
-            Files.walk(root).filter((p) -> Files.isRegularFile(p) && p.getFileName().toString().endsWith(".sl")).map((p) -> {
-                return loadScript(context, p, TypeDescriptor.NULL, null);
-            }).forEach(res::add);
-            return Collections.unmodifiableCollection(res);
-        } catch (IOException ioe) {
-            throw new AssertionError("IOException while creating a test script.", ioe);
-        }
+        final Collection<Snippet> res = new ArrayList<>();
+        res.add(loadScript(context, "resources/Ackermann.sl", TypeDescriptor.NULL, null));
+        res.add(loadScript(context, "resources/Fibonacci.sl", TypeDescriptor.NULL, null));
+        return Collections.unmodifiableCollection(res);
     }
 
     @Override
     public Collection<? extends Source> createInvalidSyntaxScripts(Context context) {
         try {
             final Collection<Source> res = new ArrayList<>();
-            Path root = SLTestRunner.getRootViaResourceURL(SLTCKLanguageProvider.class, new String[]{"tests/error/parser"});
-            Files.walk(root).filter((p) -> Files.isRegularFile(p) && p.getFileName().toString().endsWith(".sl")).map((p) -> {
-                try {
-                    return createSource(p);
-                } catch (IOException ioe) {
-                    throw new AssertionError("IOException while creating a test script.", ioe);
-                }
-            }).forEach(res::add);
+            res.add(createSource("resources/InvalidSyntax01.sl"));
+            res.add(createSource("resources/InvalidSyntax02.sl"));
             return Collections.unmodifiableCollection(res);
         } catch (IOException ioe) {
             throw new AssertionError("IOException while creating a test script.", ioe);
@@ -212,7 +198,7 @@ public class SLTCKLanguageProvider implements LanguageProvider {
         return opb.build();
     }
 
-    private Snippet.Builder createBinaryOperator(
+    private static Snippet.Builder createBinaryOperator(
                     final Context context,
                     final String operator,
                     final String functionName,
@@ -223,7 +209,7 @@ public class SLTCKLanguageProvider implements LanguageProvider {
         return Snippet.newBuilder(operator, fnc, type).parameterTypes(ltype, rtype);
     }
 
-    private Snippet createStatement(
+    private static Snippet createStatement(
                     final Context context,
                     final String id,
                     final String functionName,
@@ -242,9 +228,9 @@ public class SLTCKLanguageProvider implements LanguageProvider {
         return Snippet.newBuilder(id, fnc, returnType).parameterTypes(paramTypes).build();
     }
 
-    private Snippet loadScript(
+    private static Snippet loadScript(
                     final Context context,
-                    final Path resourceName,
+                    final String resourceName,
                     final TypeDescriptor type,
                     final ResultVerifier verifier) {
         try {
@@ -255,9 +241,10 @@ public class SLTCKLanguageProvider implements LanguageProvider {
         }
     }
 
-    private static Source createSource(final Path resource) throws IOException {
-        final String scriptName = resource.getFileName().toString();
-        final Reader in = new InputStreamReader(Files.newInputStream(resource), "UTF-8");
+    private static Source createSource(final String resourceName) throws IOException {
+        int slashIndex = resourceName.lastIndexOf('/');
+        String scriptName = slashIndex >= 0 ? resourceName.substring(slashIndex + 1) : resourceName;
+        final Reader in = new InputStreamReader(SLTCKLanguageProvider.class.getResourceAsStream(resourceName), "UTF-8");
         return Source.newBuilder(ID, in, scriptName).build();
     }
 

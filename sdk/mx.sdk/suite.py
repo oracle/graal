@@ -103,11 +103,10 @@ suite = {
       ],
       "exports" : [
         "<package-info>",  # exports all packages containing package-info.java
-        "org.graalvm.polyglot.tck",
       ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "1.8",
-      "workingSets" : "API,SDK",
+      "workingSets" : "API,SDK,Test",
     },
   },
   "licenses" : {
@@ -164,7 +163,9 @@ GraalVM removes the isolation between programming languages and enables interope
       "dependencies" : [
         "org.graalvm.polyglot.tck",
       ],
-      "distDependencies" : ["sdk:GRAAL_SDK"],
+      "distDependencies" : [
+        "GRAAL_SDK",
+      ],
       "maven" : {
         "groupId" : "org.graalvm",
         "artifactId" : "polyglot-tck"

@@ -190,6 +190,22 @@ suite = {
       "jacoco" : "exclude",
     },
 
+    "com.oracle.truffle.sl.tck" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "sdk:POLYGLOT_TCK"
+      ],
+      "exports" : [
+        "com.oracle.truffle.sl.tck",
+      ],
+      "checkstyle" : "com.oracle.truffle.sl",
+      "javaCompliance" : "1.8",
+      "workingSets" : "SimpleLanguage,Test",
+      "license" : "UPL",
+    },
+
     "com.oracle.truffle.dsl.processor" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -779,6 +795,22 @@ suite = {
           "TRUFFLE_TCK",
           "TRUFFLE_DSL_PROCESSOR",
           "TRUFFLE_SL"
+      ],
+      "license" : "UPL",
+      "maven" : False
+    },
+
+    "TRUFFLE_SL_TCK" : {
+      "subDir" : "src",
+      "javaCompliance" : "1.8",
+      "dependencies" : [
+        "com.oracle.truffle.sl.tck"
+      ],
+      "exclude" : [
+        "mx:JUNIT",
+      ],
+      "distDependencies" : [
+        "sdk:POLYGLOT_TCK"
       ],
       "license" : "UPL",
       "maven" : False
