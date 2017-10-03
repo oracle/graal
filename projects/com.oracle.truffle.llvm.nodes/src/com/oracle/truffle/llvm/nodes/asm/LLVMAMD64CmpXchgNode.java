@@ -46,7 +46,7 @@ public abstract class LLVMAMD64CmpXchgNode extends LLVMExpressionNode {
     @Child protected LLVMAMD64WriteValueNode out1;
     @Child protected LLVMAMD64WriteValueNode out2;
 
-    protected ConditionProfile profile;
+    protected final ConditionProfile profile;
 
     private LLVMAMD64CmpXchgNode(LLVMAMD64UpdateCPAZSOFlagsNode flags, LLVMAMD64WriteValueNode out1, LLVMAMD64WriteValueNode out2) {
         this.flags = flags;

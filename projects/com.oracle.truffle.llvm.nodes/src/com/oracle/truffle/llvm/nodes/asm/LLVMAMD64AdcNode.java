@@ -33,12 +33,17 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdateCPZSOFlagsNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild("left"), @NodeChild("right"), @NodeChild("cf")})
 public abstract class LLVMAMD64AdcNode extends LLVMExpressionNode {
     @Child protected LLVMAMD64UpdateCPZSOFlagsNode flags;
+
+    protected final ConditionProfile noCfProfile = ConditionProfile.createCountingProfile();
+    protected final ConditionProfile smallLeftProfile = ConditionProfile.createCountingProfile();
+    protected final ConditionProfile smallRightProfile = ConditionProfile.createCountingProfile();
 
     private static boolean carry(byte left, byte right) {
         byte result = (byte) (left + right);
@@ -95,13 +100,13 @@ public abstract class LLVMAMD64AdcNode extends LLVMExpressionNode {
             byte result = (byte) (left + right + c);
             boolean overflow;
             boolean carry;
-            if (!cf) {
+            if (noCfProfile.profile(!cf)) {
                 overflow = (result < 0 && left > 0 && right > 0) || (result >= 0 && left < 0 && right < 0);
                 carry = ((left < 0 || right < 0) && result >= 0) || (left < 0 && right < 0);
-            } else if (left != -1) {
+            } else if (smallLeftProfile.profile(left != -1)) {
                 overflow = overflow((byte) (left + 1), right);
                 carry = carry((byte) (left + 1), right);
-            } else if (right != -1) {
+            } else if (smallRightProfile.profile(right != -1)) {
                 overflow = overflow(left, (byte) (right + 1));
                 carry = carry(left, (byte) (right + 1));
             } else {
@@ -124,13 +129,13 @@ public abstract class LLVMAMD64AdcNode extends LLVMExpressionNode {
             short result = (short) (left + right + c);
             boolean overflow;
             boolean carry;
-            if (!cf) {
+            if (noCfProfile.profile(!cf)) {
                 overflow = (result < 0 && left > 0 && right > 0) || (result >= 0 && left < 0 && right < 0);
                 carry = ((left < 0 || right < 0) && result >= 0) || (left < 0 && right < 0);
-            } else if (left != -1) {
+            } else if (smallLeftProfile.profile(left != -1)) {
                 overflow = overflow((short) (left + 1), right);
                 carry = carry((short) (left + 1), right);
-            } else if (right != -1) {
+            } else if (smallRightProfile.profile(right != -1)) {
                 overflow = overflow(left, (short) (right + 1));
                 carry = carry(left, (short) (right + 1));
             } else {
@@ -153,13 +158,13 @@ public abstract class LLVMAMD64AdcNode extends LLVMExpressionNode {
             int result = left + right + c;
             boolean overflow;
             boolean carry;
-            if (!cf) {
+            if (noCfProfile.profile(!cf)) {
                 overflow = (result < 0 && left > 0 && right > 0) || (result >= 0 && left < 0 && right < 0);
                 carry = ((left < 0 || right < 0) && result >= 0) || (left < 0 && right < 0);
-            } else if (left != -1) {
+            } else if (smallLeftProfile.profile(left != -1)) {
                 overflow = overflow(left + 1, right);
                 carry = carry(left + 1, right);
-            } else if (right != -1) {
+            } else if (smallRightProfile.profile(right != -1)) {
                 overflow = overflow(left, right + 1);
                 carry = carry(left, right + 1);
             } else {
@@ -182,13 +187,13 @@ public abstract class LLVMAMD64AdcNode extends LLVMExpressionNode {
             long result = left + right + c;
             boolean overflow;
             boolean carry;
-            if (!cf) {
+            if (noCfProfile.profile(!cf)) {
                 overflow = (result < 0 && left > 0 && right > 0) || (result >= 0 && left < 0 && right < 0);
                 carry = ((left < 0 || right < 0) && result >= 0) || (left < 0 && right < 0);
-            } else if (left != -1) {
+            } else if (smallLeftProfile.profile(left != -1)) {
                 overflow = overflow(left + 1, right);
                 carry = carry(left + 1, right);
-            } else if (right != -1) {
+            } else if (smallRightProfile.profile(right != -1)) {
                 overflow = overflow(left, right + 1);
                 carry = carry(left, right + 1);
             } else {
