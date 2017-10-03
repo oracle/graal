@@ -30,7 +30,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
 /**
@@ -60,7 +59,7 @@ public final class Snippet {
         this.executableValue = executableValue;
         this.type = type;
         this.parameterTypes = parameterTypes;
-        this.verifier = verifier == null ? new DefaultResultVerifier() : verifier;
+        this.verifier = verifier;
     }
 
     /**
@@ -202,25 +201,12 @@ public final class Snippet {
          * @since 0.29
          */
         public Snippet build() {
-            return new Snippet(id, executableValue, executableReturnType, Collections.unmodifiableList(parameterTypes), verifier);
-        }
-    }
-
-    private final class DefaultResultVerifier implements ResultVerifier {
-
-        @Override
-        public void accept(final SnippetRun snippetRun) throws PolyglotException {
-            final PolyglotException exception = snippetRun.getException();
-            if (exception != null) {
-                throw exception;
-            }
-            final TypeDescriptor resultType = TypeDescriptor.forValue(snippetRun.getResult());
-            if (!getReturnType().isAssignable(resultType)) {
-                throw new AssertionError(String.format(
-                                "Result is out of type bounds. Expected: %s, Got: %s.",
-                                getReturnType(),
-                                resultType));
-            }
+            return new Snippet(
+                            id,
+                            executableValue,
+                            executableReturnType,
+                            Collections.unmodifiableList(parameterTypes),
+                            verifier != null ? verifier : ResultVerifier.createDefaultResultVerifier());
         }
     }
 }

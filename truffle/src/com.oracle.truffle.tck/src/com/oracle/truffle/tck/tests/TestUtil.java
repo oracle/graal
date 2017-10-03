@@ -102,11 +102,11 @@ final class TestUtil {
                     final PolyglotException exception) {
         final ResultVerifier verifier = testRun.getSnippet().getResultVerifier();
         if (exception == null) {
-            verifier.accept(ResultVerifier.SnippetRun.create(testRun.getActualParameters(), result));
+            verifier.accept(ResultVerifier.SnippetRun.create(testRun.getSnippet(), testRun.getActualParameters(), result));
             verifyToString(testRun, result);
             verifyInterop(result);
         } else {
-            verifier.accept(ResultVerifier.SnippetRun.create(testRun.getActualParameters(), exception));
+            verifier.accept(ResultVerifier.SnippetRun.create(testRun.getSnippet(), testRun.getActualParameters(), exception));
         }
     }
 

@@ -63,11 +63,13 @@ public interface ResultVerifier extends Consumer<ResultVerifier.SnippetRun> {
      * @since 0.29
      */
     final class SnippetRun {
+        private final Snippet snippet;
         private final List<? extends Value> parameters;
         private final Value result;
         private final PolyglotException exception;
 
-        private SnippetRun(final List<? extends Value> parameters, Value result, PolyglotException exception) {
+        private SnippetRun(final Snippet snippet, final List<? extends Value> parameters, Value result, PolyglotException exception) {
+            this.snippet = snippet;
             this.parameters = parameters;
             this.result = result;
             this.exception = exception;
@@ -104,33 +106,52 @@ public interface ResultVerifier extends Consumer<ResultVerifier.SnippetRun> {
             return exception;
         }
 
+        Snippet getSnippet() {
+            return snippet;
+        }
+
         /**
          * Creates a new {@link SnippetRun} for successful execution.
          *
+         * @param snippet the executed {@link Snippet}
          * @param parameters the actual parameters of snippet execution
          * @param result the result of snippet execution
          * @return the {@link SnippetRun}
          * @since 0.29
          */
-        public static SnippetRun create(final List<? extends Value> parameters, final Value result) {
+        public static SnippetRun create(final Snippet snippet, final List<? extends Value> parameters, final Value result) {
+            Objects.requireNonNull(snippet, "Snippet has to be given.");
             Objects.requireNonNull(parameters, "Parameters has to be given.");
             Objects.requireNonNull(result, "Result has to be given.");
-            return new SnippetRun(parameters, result, null);
+            return new SnippetRun(snippet, parameters, result, null);
         }
 
         /**
          * Creates a new {@link SnippetRun} for failed execution.
          *
+         * @param snippet the executed {@link Snippet}
          * @param parameters the actual parameters of snippet execution
          * @param exception the {@link PolyglotException} thrown during snippet execution
          * @return the {@link SnippetRun}
          * @since 0.29
          */
-        public static SnippetRun create(final List<? extends Value> parameters, final PolyglotException exception) {
+        public static SnippetRun create(final Snippet snippet, final List<? extends Value> parameters, final PolyglotException exception) {
             return new SnippetRun(
+                            Objects.requireNonNull(snippet, "Snippet has to be given."),
                             Objects.requireNonNull(parameters, "Parameters has to be given."),
                             null,
                             Objects.requireNonNull(exception, "Exception has to be given."));
         }
+    }
+
+    /**
+     * Creates a default {@link ResultVerifier}. The default {@link ResultVerifier} tests that the
+     * result type is in bounds specified by the {@link Snippet}.
+     *
+     * @return the default {@link ResultVerifier}
+     * @since 0.29
+     */
+    static ResultVerifier createDefaultResultVerifier() {
+        return DefaultResultVerifier.INSTANCE;
     }
 }
