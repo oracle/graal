@@ -26,7 +26,8 @@ package com.oracle.truffle.api.debug;
 
 import java.util.function.Predicate;
 
-import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 
 /**
  * A filter to skip certain suspension locations. An instance of this filter can be provided to
@@ -36,22 +37,22 @@ import com.oracle.truffle.api.source.SourceSection;
  * @see DebuggerSession#setSteppingFilter(com.oracle.truffle.api.debug.SuspensionFilter)
  * @since 0.26
  */
-public class SuspensionFilter {
+public final class SuspensionFilter {
 
     private final boolean ignoreLanguageContextInitialization;
-    private final boolean ignoreInternal;
-    private final Predicate<SourceSection> sourceFilter;
+    private final boolean includeInternal;
+    private final Predicate<Source> sourcePredicate;
 
-    SuspensionFilter() {
+    private SuspensionFilter() {
         this.ignoreLanguageContextInitialization = false;
-        this.ignoreInternal = false;
-        this.sourceFilter = null;
+        this.includeInternal = false;
+        this.sourcePredicate = null;
     }
 
-    private SuspensionFilter(boolean ignoreLanguageContextInitialization, boolean ignoreInternal, Predicate<SourceSection> sourceFilter) {
+    private SuspensionFilter(boolean ignoreLanguageContextInitialization, boolean includeInternal, Predicate<Source> sourcePredicate) {
         this.ignoreLanguageContextInitialization = ignoreLanguageContextInitialization;
-        this.ignoreInternal = ignoreInternal;
-        this.sourceFilter = sourceFilter;
+        this.includeInternal = includeInternal;
+        this.sourcePredicate = sourcePredicate;
     }
 
     /**
@@ -72,12 +73,18 @@ public class SuspensionFilter {
         return ignoreLanguageContextInitialization;
     }
 
-    public boolean isIgnoreInternal() {
-        return ignoreInternal;
+    /**
+     * Test if execution of {@link RootNode#isInternal() internal code} is included.
+     */
+    boolean isInternalIncluded() {
+        return includeInternal;
     }
 
-    public Predicate<SourceSection> getSourceFilter() {
-        return sourceFilter;
+    /**
+     * Get a {@link Predicate} that filters based on a {@link Source}.
+     */
+    Predicate<Source> getSourcePredicate() {
+        return sourcePredicate;
     }
 
     /**
@@ -88,14 +95,15 @@ public class SuspensionFilter {
     public final class Builder {
 
         private boolean ignoreLanguageContextInitialization;
-        private boolean ignoreInternal;
-        private Predicate<SourceSection> sourceFilter;
+        private boolean includeInternal = false;
+        private Predicate<Source> sourcePredicate;
 
         private Builder() {
         }
 
         /**
-         * Set to ignore language initialization code.
+         * Set to ignore language initialization code. The language initialization code is not
+         * ignored by default.
          *
          * @param ignore <code>true</code> to ignore execution of language context initialization
          *            code, <code>false</code> not to ignore it.
@@ -106,13 +114,29 @@ public class SuspensionFilter {
             return this;
         }
 
-        public Builder ignoreInternal(boolean ignore) {
-            this.ignoreInternal = ignore;
+        /**
+         * Set to include or exclude {@link RootNode#isInternal() internal code} in the filter.
+         * Internal code is excluded by default.
+         *
+         * @param internal <code>true</code> to include execution of internal code,
+         *            <code>false</code> to exclude it.
+         * @since 0.29
+         */
+        public Builder includeInternal(boolean internal) {
+            this.includeInternal = internal;
             return this;
         }
 
-        public Builder sourceFilter(Predicate<SourceSection> filter) {
-            this.sourceFilter = filter;
+        /**
+         * Set a {@link Predicate} that filters based on a {@link Source}. The predicate must always
+         * return the same result for a source instance otherwise the behavior is undefined. The
+         * predicate should be able run on multiple threads at the same time.
+         *
+         * @param filter a source section filter
+         * @since 0.29
+         */
+        public Builder sourceIs(Predicate<Source> filter) {
+            this.sourcePredicate = filter;
             return this;
         }
 
@@ -122,7 +146,7 @@ public class SuspensionFilter {
          * @since 0.26
          */
         public SuspensionFilter build() {
-            return new SuspensionFilter(ignoreLanguageContextInitialization, ignoreInternal, sourceFilter);
+            return new SuspensionFilter(ignoreLanguageContextInitialization, includeInternal, sourcePredicate);
         }
     }
 }

@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -56,10 +57,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
-import java.util.Set;
-import java.util.function.Predicate;
 
 /**
  * Client access to {@link PolyglotEngine} {@linkplain Debugger debugging services}.
@@ -172,24 +170,22 @@ public final class DebuggerSession implements Closeable {
     private volatile boolean suspendAll;
     private final StableBoolean stepping = new StableBoolean(false);
     private final StableBoolean ignoreLanguageContextInitialization = new StableBoolean(false);
-    private final StableBoolean ignoreInternal = new StableBoolean(false);
-    private volatile Predicate<SourceSection> sourceFilter;
+    private boolean includeInternal = false;
+    private Predicate<Source> sourceFilter;
     private final StableBoolean breakpointsActive = new StableBoolean(true);
-    private final SuspensionFilterCompound steppingFilter = new SuspensionFilterCompound();
 
     private final int sessionId;
 
     private volatile boolean closed;
 
-    DebuggerSession(Debugger debugger, SuspendedCallback callback, Set<SuspensionFilter> steppingFilters) {
+    DebuggerSession(Debugger debugger, SuspendedCallback callback) {
         this.sessionId = SESSIONS.incrementAndGet();
         this.debugger = debugger;
         this.callback = callback;
-        steppingFilter.setOthers(steppingFilters);
         if (Debugger.TRACE) {
             trace("open with callback %s", callback);
         }
-        addBindings();
+        addBindings(includeInternal, sourceFilter);
     }
 
     private void trace(String msg, Object... parameters) {
@@ -222,19 +218,17 @@ public final class DebuggerSession implements Closeable {
      * @since 0.26
      */
     public void setSteppingFilter(SuspensionFilter steppingFilter) {
-        this.steppingFilter.setMain(steppingFilter);
-        steppingFilterUpdated();
-    }
-
-    void notifyDebugSteppingFilters(Set<SuspensionFilter> steppingFilters) {
-        steppingFilter.setOthers(steppingFilters);
-        steppingFilterUpdated();
-    }
-
-    private void steppingFilterUpdated() {
         this.ignoreLanguageContextInitialization.set(steppingFilter.isIgnoreLanguageContextInitialization());
-        this.ignoreInternal.set(steppingFilter.isIgnoreInternal());
-        this.sourceFilter = steppingFilter.getSourceFilter();
+        synchronized (this) {
+            boolean oldIncludeInternal = this.includeInternal;
+            this.includeInternal = steppingFilter.isInternalIncluded();
+            Predicate<Source> oldSourceFilter = this.sourceFilter;
+            this.sourceFilter = steppingFilter.getSourcePredicate();
+            if (oldIncludeInternal != this.includeInternal || oldSourceFilter != this.sourceFilter) {
+                removeBindings();
+                addBindings(this.includeInternal, this.sourceFilter);
+            }
+        }
     }
 
     /**
@@ -379,31 +373,42 @@ public final class DebuggerSession implements Closeable {
         stepping.set(needsStepping);
     }
 
-    private void addBindings() {
+    private void addBindings(boolean includeInternalCode, Predicate<Source> sFilter) {
         if (statementBinding == null) {
             // The order of registered instrumentations matters.
             // It's important to instrument root nodes first to intercept stack changes,
             // then instrument statements, and
             // call bindings need to be called after statements.
-            Builder builder = SourceSectionFilter.newBuilder().tagIs(RootTag.class);
-            this.rootBinding = debugger.getInstrumenter().attachFactory(builder.build(), new ExecutionEventNodeFactory() {
+            this.rootBinding = createBinding(RootTag.class, includeInternalCode, sFilter, new ExecutionEventNodeFactory() {
                 public ExecutionEventNode create(EventContext context) {
                     return new RootSteppingDepthNode();
                 }
             });
-            builder = SourceSectionFilter.newBuilder().tagIs(StatementTag.class);
-            this.statementBinding = debugger.getInstrumenter().attachFactory(builder.build(), new ExecutionEventNodeFactory() {
+            this.statementBinding = createBinding(StatementTag.class, includeInternalCode, sFilter, new ExecutionEventNodeFactory() {
                 public ExecutionEventNode create(EventContext context) {
                     return new StatementSteppingNode(context);
                 }
             });
-            builder = SourceSectionFilter.newBuilder().tagIs(CallTag.class);
-            this.callBinding = debugger.getInstrumenter().attachFactory(builder.build(), new ExecutionEventNodeFactory() {
+            this.callBinding = createBinding(CallTag.class, includeInternalCode, sFilter, new ExecutionEventNodeFactory() {
                 public ExecutionEventNode create(EventContext context) {
                     return new CallSteppingNode(context);
                 }
             });
         }
+    }
+
+    private EventBinding<? extends ExecutionEventNodeFactory> createBinding(Class<?> tag, boolean includeInternalCode, Predicate<Source> sFilter, ExecutionEventNodeFactory factory) {
+        Builder builder = SourceSectionFilter.newBuilder().tagIs(tag);
+        builder.includeInternal(includeInternalCode);
+        if (sFilter != null) {
+            builder.sourceIs(new SourceSectionFilter.SourcePredicate() {
+                @Override
+                public boolean test(Source source) {
+                    return sFilter.test(source);
+                }
+            });
+        }
+        return debugger.getInstrumenter().attachFactory(builder.build(), factory);
     }
 
     private void removeBindings() {
@@ -539,12 +544,7 @@ public final class DebuggerSession implements Closeable {
     void notifyCallback(DebuggerNode source, MaterializedFrame frame, Object returnValue, BreakpointConditionFailure conditionFailure) {
         // SuspensionFilter:
         if (source.isStepNode()) {
-            if (ignoreLanguageContextInitialization.get() && !source.getContext().isLanguageContextInitialized() ||
-                ignoreInternal.get() && source.getContext().getInstrumentedNode().getRootNode().isInternal()) {
-                return;
-            }
-            Predicate<SourceSection> filter = sourceFilter;
-            if (filter != null && !filter.test(source.getContext().getInstrumentedSourceSection())) {
+            if (ignoreLanguageContextInitialization.get() && !source.getContext().isLanguageContextInitialized()) {
                 return;
             }
         }
@@ -935,36 +935,6 @@ public final class DebuggerSession implements Closeable {
                 this.value = value;
                 Assumption old = this.unchanged;
                 unchanged = Truffle.getRuntime().createAssumption("Unchanged boolean");
-                old.invalidate();
-            }
-        }
-
-    }
-
-    private static final class StableReference<T> {
-
-        @CompilationFinal private volatile Assumption unchanged;
-        @CompilationFinal private volatile T value;
-
-        StableReference() {
-            this.value = null;
-            this.unchanged = Truffle.getRuntime().createAssumption("Unchanged reference");
-        }
-
-        T get() {
-            if (unchanged.isValid()) {
-                return value;
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                return value;
-            }
-        }
-
-        void set(T value) {
-            if (this.value != value) {
-                this.value = value;
-                Assumption old = this.unchanged;
-                unchanged = Truffle.getRuntime().createAssumption("Unchanged reference");
                 old.invalidate();
             }
         }

@@ -24,8 +24,6 @@
  */
 package com.oracle.truffle.api.debug;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,7 +31,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CopyOnWriteArraySet;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -92,7 +89,6 @@ public final class Debugger {
     private final Set<DebuggerSession> sessions = new HashSet<>();
     private final List<Breakpoint> breakpoints = new ArrayList<>();
     final Breakpoint alwaysHaltBreakpoint;
-    private volatile Set<SuspensionFilter> steppingFilters;
 
     Debugger(Env env) {
         this.env = env;
@@ -112,7 +108,7 @@ public final class Debugger {
      * @since 0.17
      */
     public DebuggerSession startSession(SuspendedCallback callback) {
-        DebuggerSession session = new DebuggerSession(this, callback, steppingFilters);
+        DebuggerSession session = new DebuggerSession(this, callback);
         Breakpoint[] bpts;
         synchronized (this) {
             sessions.add(session);
@@ -211,46 +207,6 @@ public final class Debugger {
         }
         if (Debugger.TRACE) {
             trace("disposed debugger breakpoint %s", breakpoint);
-        }
-    }
-
-    /**
-     * Adds a stepping filter that applies to all its sessions.
-     *
-     * @param steppingFilter the stepping filter
-     * @return a closeable that can be used to close (remove) the filter
-     * @since 0.29
-     */
-    public Closeable addSteppingFilter(SuspensionFilter steppingFilter) {
-        synchronized (this) {
-            if (steppingFilters == null) {
-                steppingFilters = new CopyOnWriteArraySet<>();
-            }
-            steppingFilters.add(steppingFilter);
-            notifySteppingFiltersChanged();
-        }
-        return new Closeable() {
-            @Override
-            public void close() throws IOException {
-                synchronized (Debugger.this) {
-                    if (steppingFilters != null) {
-                        boolean removed = steppingFilters.remove(steppingFilter);
-                        if (removed) {
-                            if (steppingFilters.isEmpty()) {
-                                steppingFilters = null;
-                            }
-                            notifySteppingFiltersChanged();
-                        }
-                    }
-                }
-            }
-        };
-    }
-
-    private void notifySteppingFiltersChanged() {
-        assert Thread.holdsLock(this);
-        for (DebuggerSession session : sessions) {
-            session.notifyDebugSteppingFilters(steppingFilters);
         }
     }
 
