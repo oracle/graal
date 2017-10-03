@@ -56,7 +56,10 @@ import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * Client access to {@link PolyglotEngine} {@linkplain Debugger debugging services}.
@@ -169,16 +172,20 @@ public final class DebuggerSession implements Closeable {
     private volatile boolean suspendAll;
     private final StableBoolean stepping = new StableBoolean(false);
     private final StableBoolean ignoreLanguageContextInitialization = new StableBoolean(false);
+    private final StableBoolean ignoreInternal = new StableBoolean(false);
+    private volatile Predicate<SourceSection> sourceFilter;
     private final StableBoolean breakpointsActive = new StableBoolean(true);
+    private final SuspensionFilterCompound steppingFilter = new SuspensionFilterCompound();
 
     private final int sessionId;
 
     private volatile boolean closed;
 
-    DebuggerSession(Debugger debugger, SuspendedCallback callback) {
+    DebuggerSession(Debugger debugger, SuspendedCallback callback, Set<SuspensionFilter> steppingFilters) {
         this.sessionId = SESSIONS.incrementAndGet();
         this.debugger = debugger;
         this.callback = callback;
+        steppingFilter.setOthers(steppingFilters);
         if (Debugger.TRACE) {
             trace("open with callback %s", callback);
         }
@@ -215,7 +222,19 @@ public final class DebuggerSession implements Closeable {
      * @since 0.26
      */
     public void setSteppingFilter(SuspensionFilter steppingFilter) {
+        this.steppingFilter.setMain(steppingFilter);
+        steppingFilterUpdated();
+    }
+
+    void notifyDebugSteppingFilters(Set<SuspensionFilter> steppingFilters) {
+        steppingFilter.setOthers(steppingFilters);
+        steppingFilterUpdated();
+    }
+
+    private void steppingFilterUpdated() {
         this.ignoreLanguageContextInitialization.set(steppingFilter.isIgnoreLanguageContextInitialization());
+        this.ignoreInternal.set(steppingFilter.isIgnoreInternal());
+        this.sourceFilter = steppingFilter.getSourceFilter();
     }
 
     /**
@@ -519,8 +538,15 @@ public final class DebuggerSession implements Closeable {
     @TruffleBoundary
     void notifyCallback(DebuggerNode source, MaterializedFrame frame, Object returnValue, BreakpointConditionFailure conditionFailure) {
         // SuspensionFilter:
-        if (source.isStepNode() && ignoreLanguageContextInitialization.get() && !source.getContext().isLanguageContextInitialized()) {
-            return;
+        if (source.isStepNode()) {
+            if (ignoreLanguageContextInitialization.get() && !source.getContext().isLanguageContextInitialized() ||
+                ignoreInternal.get() && source.getContext().getInstrumentedNode().getRootNode().isInternal()) {
+                return;
+            }
+            Predicate<SourceSection> filter = sourceFilter;
+            if (filter != null && !filter.test(source.getContext().getInstrumentedSourceSection())) {
+                return;
+            }
         }
         Thread currentThread = Thread.currentThread();
         SuspendedEvent event = currentSuspendedEventMap.get(currentThread);
@@ -909,6 +935,36 @@ public final class DebuggerSession implements Closeable {
                 this.value = value;
                 Assumption old = this.unchanged;
                 unchanged = Truffle.getRuntime().createAssumption("Unchanged boolean");
+                old.invalidate();
+            }
+        }
+
+    }
+
+    private static final class StableReference<T> {
+
+        @CompilationFinal private volatile Assumption unchanged;
+        @CompilationFinal private volatile T value;
+
+        StableReference() {
+            this.value = null;
+            this.unchanged = Truffle.getRuntime().createAssumption("Unchanged reference");
+        }
+
+        T get() {
+            if (unchanged.isValid()) {
+                return value;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return value;
+            }
+        }
+
+        void set(T value) {
+            if (this.value != value) {
+                this.value = value;
+                Assumption old = this.unchanged;
+                unchanged = Truffle.getRuntime().createAssumption("Unchanged reference");
                 old.invalidate();
             }
         }

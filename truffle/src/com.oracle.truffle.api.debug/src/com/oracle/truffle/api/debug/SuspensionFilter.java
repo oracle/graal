@@ -24,6 +24,10 @@
  */
 package com.oracle.truffle.api.debug;
 
+import java.util.function.Predicate;
+
+import com.oracle.truffle.api.source.SourceSection;
+
 /**
  * A filter to skip certain suspension locations. An instance of this filter can be provided to
  * {@link DebuggerSession#setSteppingFilter(com.oracle.truffle.api.debug.SuspensionFilter) debugger
@@ -32,15 +36,22 @@ package com.oracle.truffle.api.debug;
  * @see DebuggerSession#setSteppingFilter(com.oracle.truffle.api.debug.SuspensionFilter)
  * @since 0.26
  */
-public final class SuspensionFilter {
+public class SuspensionFilter {
 
-    private boolean ignoreLanguageContextInitialization;
+    private final boolean ignoreLanguageContextInitialization;
+    private final boolean ignoreInternal;
+    private final Predicate<SourceSection> sourceFilter;
 
-    private SuspensionFilter() {
+    SuspensionFilter() {
+        this.ignoreLanguageContextInitialization = false;
+        this.ignoreInternal = false;
+        this.sourceFilter = null;
     }
 
-    private SuspensionFilter(boolean ignoreLanguageContextInitialization) {
+    private SuspensionFilter(boolean ignoreLanguageContextInitialization, boolean ignoreInternal, Predicate<SourceSection> sourceFilter) {
         this.ignoreLanguageContextInitialization = ignoreLanguageContextInitialization;
+        this.ignoreInternal = ignoreInternal;
+        this.sourceFilter = sourceFilter;
     }
 
     /**
@@ -61,6 +72,14 @@ public final class SuspensionFilter {
         return ignoreLanguageContextInitialization;
     }
 
+    public boolean isIgnoreInternal() {
+        return ignoreInternal;
+    }
+
+    public Predicate<SourceSection> getSourceFilter() {
+        return sourceFilter;
+    }
+
     /**
      * A builder for creating a suspension filter.
      *
@@ -69,6 +88,8 @@ public final class SuspensionFilter {
     public final class Builder {
 
         private boolean ignoreLanguageContextInitialization;
+        private boolean ignoreInternal;
+        private Predicate<SourceSection> sourceFilter;
 
         private Builder() {
         }
@@ -85,13 +106,23 @@ public final class SuspensionFilter {
             return this;
         }
 
+        public Builder ignoreInternal(boolean ignore) {
+            this.ignoreInternal = ignore;
+            return this;
+        }
+
+        public Builder sourceFilter(Predicate<SourceSection> filter) {
+            this.sourceFilter = filter;
+            return this;
+        }
+
         /**
          * Create a new suspension filter configured by the builder methods.
          *
          * @since 0.26
          */
         public SuspensionFilter build() {
-            return new SuspensionFilter(ignoreLanguageContextInitialization);
+            return new SuspensionFilter(ignoreLanguageContextInitialization, ignoreInternal, sourceFilter);
         }
     }
 }
