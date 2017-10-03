@@ -175,6 +175,11 @@ append the `--mx-python-modules` argument to this. Since the configuration files
 consist of Python code, you will probably want to install the
 [Python Language Support Plugin](https://plugins.jetbrains.com/plugin/631-python).
 
+You can also develop Sulong in Netbeans. The following command will generate the
+project files and print instructions on how to import them into the IDE:
+
+    mx netbeansinit
+
 If you want to inspect the command line that `mx` generates for a `mx`
 command you can use the `-v` flag.
 
