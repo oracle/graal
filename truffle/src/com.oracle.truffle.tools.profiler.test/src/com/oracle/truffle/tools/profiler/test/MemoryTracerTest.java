@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.tools.profiler.test;
 
-import com.oracle.truffle.api.vm.PolyglotRuntime;
 import com.oracle.truffle.tools.profiler.CallTreeNode;
 import com.oracle.truffle.tools.profiler.MemoryTracer;
 import org.junit.Assert;
@@ -39,12 +38,7 @@ public class MemoryTracerTest extends AbstractProfilerTest {
 
     @Before
     public void setupTracer() {
-        for (PolyglotRuntime.Instrument instrument : engine.getRuntime().getInstruments().values()) {
-            tracer = instrument.lookup(MemoryTracer.class);
-            if (tracer != null) {
-                break;
-            }
-        }
+        tracer = engine.getRuntime().getInstruments().get(MemoryTracer.Instrument.ID).lookup(MemoryTracer.class);
         Assert.assertNotNull(tracer);
     }
 
@@ -86,12 +80,8 @@ public class MemoryTracerTest extends AbstractProfilerTest {
 
     @Test
     public void testOneAllocationInRoot() {
-        final String oneAllocationSource = "ROOT(" +
-                        "DEFINE(foo,ROOT(STATEMENT))," +
-                        "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(foo)))))," +
-                        "DEFINE(baz,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(bar)))))," +
-                        "ALLOCATION,CALL(baz),CALL(bar)" +
-                        ")";
+        final String oneAllocationSource = "ROOT(" + "DEFINE(foo,ROOT(STATEMENT))," + "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(foo)))))," +
+                        "DEFINE(baz,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(bar)))))," + "ALLOCATION,CALL(baz),CALL(bar)" + ")";
 
         Assert.assertFalse(tracer.isCollecting());
 
@@ -121,10 +111,7 @@ public class MemoryTracerTest extends AbstractProfilerTest {
 
     @Test
     public void testOneAllocationInRootRecursive() {
-        final String oneAllocationSource = "ROOT(" +
-                        "DEFINE(foo,ROOT(BLOCK(STATEMENT,RECURSIVE_CALL(foo))))," +
-                        "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(foo)))))," +
-                        "ALLOCATION,CALL(bar)" +
+        final String oneAllocationSource = "ROOT(" + "DEFINE(foo,ROOT(BLOCK(STATEMENT,RECURSIVE_CALL(foo))))," + "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(foo)))))," + "ALLOCATION,CALL(bar)" +
                         ")";
 
         Assert.assertFalse(tracer.isCollecting());
@@ -155,12 +142,8 @@ public class MemoryTracerTest extends AbstractProfilerTest {
 
     @Test
     public void testMultipleAllocation() {
-        final String oneAllocationSource = "ROOT(" +
-                        "DEFINE(foo,ROOT(ALLOCATION,STATEMENT))," +
-                        "DEFINE(bar,ROOT(BLOCK(ALLOCATION,STATEMENT,LOOP(10, CALL(foo)))))," +
-                        "DEFINE(baz,ROOT(BLOCK(ALLOCATION,STATEMENT,LOOP(10, CALL(bar)))))," +
-                        "ALLOCATION,CALL(baz),CALL(bar)" +
-                        ")";
+        final String oneAllocationSource = "ROOT(" + "DEFINE(foo,ROOT(ALLOCATION,STATEMENT))," + "DEFINE(bar,ROOT(BLOCK(ALLOCATION,STATEMENT,LOOP(10, CALL(foo)))))," +
+                        "DEFINE(baz,ROOT(BLOCK(ALLOCATION,STATEMENT,LOOP(10, CALL(bar)))))," + "ALLOCATION,CALL(baz),CALL(bar)" + ")";
 
         Assert.assertFalse(tracer.isCollecting());
 
@@ -198,17 +181,15 @@ public class MemoryTracerTest extends AbstractProfilerTest {
         Assert.assertEquals("Incorrect number of allocations found", 100, node.getPayload().getTotalAllocations());
         Assert.assertEquals("Incorrect number of events found", 100, node.getPayload().getEvents().size());
 
-        Assert.assertTrue("Children too deep found!", node.getChildren() == null || node.getChildren().isEmpty());
+        Assert.assertTrue("Children too deep found!",
+                        node.getChildren() == null || node.getChildren().isEmpty());
 
     }
 
     @Test
     public void testMultipleAllocationRecursive() {
-        final String oneAllocationSource = "ROOT(" +
-                        "DEFINE(foo,ROOT(BLOCK(ALLOCATION,STATEMENT,RECURSIVE_CALL(foo))))," +
-                        "DEFINE(bar,ROOT(BLOCK(ALLOCATION,STATEMENT,LOOP(10, CALL(foo)))))," +
-                        "ALLOCATION,CALL(bar)" +
-                        ")";
+        final String oneAllocationSource = "ROOT(" + "DEFINE(foo,ROOT(BLOCK(ALLOCATION,STATEMENT,RECURSIVE_CALL(foo))))," + "DEFINE(bar,ROOT(BLOCK(ALLOCATION,STATEMENT,LOOP(10, CALL(foo)))))," +
+                        "ALLOCATION,CALL(bar)" + ")";
 
         Assert.assertFalse(tracer.isCollecting());
 
@@ -227,20 +208,24 @@ public class MemoryTracerTest extends AbstractProfilerTest {
         // ROOT
         Collection<CallTreeNode<MemoryTracer.AllocationPayload>> rootNodes = tracer.getRootNodes();
         CallTreeNode<MemoryTracer.AllocationPayload> node = rootNodes.iterator().next();
-        Assert.assertEquals("Incorrect number of allocations found", totalAllocationsExpected, node.getPayload().getTotalAllocations());
+        Assert.assertEquals("Incorrect number of allocations found",
+                        totalAllocationsExpected, node.getPayload().getTotalAllocations());
         Assert.assertEquals("Incorrect number of events found", 1, node.getPayload().getEvents().size());
 
         // BAR
         node = node.getChildren().iterator().next();
-        Assert.assertEquals("Incorrect number of allocations found", totalAllocationsExpected - 1, node.getPayload().getTotalAllocations());
+        Assert.assertEquals("Incorrect number of allocations found",
+                        totalAllocationsExpected - 1, node.getPayload().getTotalAllocations());
         Assert.assertEquals("Incorrect number of events found", 1, node.getPayload().getEvents().size());
 
         // FOO - 11 times because RECURSIVE_CALL goes to recursion depth of 10
         for (int i = 0; i < 11; i++) {
             node = node.getChildren().iterator().next();
-            Assert.assertEquals("Incorrect number of allocations found", totalAllocationsExpected - 2 - (10 * i), node.getPayload().getTotalAllocations());
+            Assert.assertEquals("Incorrect number of allocations found",
+                            totalAllocationsExpected - 2 - (10 * i), node.getPayload().getTotalAllocations());
             Assert.assertEquals("Incorrect number of events found", 10, node.getPayload().getEvents().size());
         }
-        Assert.assertTrue("Children too deep found!", node.getChildren() == null || node.getChildren().isEmpty());
+        Assert.assertTrue("Children too deep found!",
+                        node.getChildren() == null || node.getChildren().isEmpty());
     }
 }

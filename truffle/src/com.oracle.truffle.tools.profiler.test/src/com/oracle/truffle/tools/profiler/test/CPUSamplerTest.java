@@ -26,7 +26,6 @@ package com.oracle.truffle.tools.profiler.test;
 
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotRuntime;
 import com.oracle.truffle.tools.profiler.CPUSampler;
 import com.oracle.truffle.tools.profiler.CallTreeNode;
 import org.junit.Assert;
@@ -44,12 +43,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
     @Before
     public void setupSampler() {
-        for (PolyglotRuntime.Instrument instrument : engine.getRuntime().getInstruments().values()) {
-            sampler = instrument.lookup(CPUSampler.class);
-            if (sampler != null) {
-                break;
-            }
-        }
+        sampler = engine.getRuntime().getInstruments().get(CPUSampler.Instrument.ID).lookup(CPUSampler.class);
         Assert.assertNotNull(sampler);
     }
 
