@@ -170,7 +170,7 @@ public final class CPUSampler implements Closeable {
      *
      * @since 0.29
      */
-    public final class HitCounts {
+    public static final class HitCounts {
 
         HitCounts() {
         }
