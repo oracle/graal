@@ -117,6 +117,7 @@ public final class TruffleOptions {
     static {
         final boolean[] values = new boolean[4];
         final Object[] objs = new Object[3];
+        Truffle.getRuntime();
         AccessController.doPrivileged(new PrivilegedAction<Void>() {
             public Void run() {
                 values[0] = Boolean.getBoolean("truffle.TraceRewrites");
