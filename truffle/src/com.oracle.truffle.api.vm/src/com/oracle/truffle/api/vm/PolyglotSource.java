@@ -263,7 +263,7 @@ class PolyglotSource extends AbstractSourceImpl {
             builder.interactive();
         }
 
-        builder.mimeType("x-unknown");
+        builder.language(language);
 
         try {
             return engineImpl.getAPIAccess().newSource(language, ((com.oracle.truffle.api.source.Source.Builder<IOException, ?, ?>) builder).build());

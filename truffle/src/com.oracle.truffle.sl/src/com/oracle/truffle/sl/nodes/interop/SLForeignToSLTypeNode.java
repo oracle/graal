@@ -117,4 +117,8 @@ public abstract class SLForeignToSLTypeNode extends Node {
             return SLNull.SINGLETON;
         }
     }
+
+    public static SLForeignToSLTypeNode create() {
+        return SLForeignToSLTypeNodeGen.create();
+    }
 }

@@ -55,13 +55,12 @@ public abstract class TVMCI {
         /**
          * Create a call target for the purpose of running a unit test.
          *
-         * @param testName the name of the unit test
          * @param testNode the root node containing the test code
          * @return a call target
          *
          * @since 0.25
          */
-        protected abstract T createTestCallTarget(String testName, RootNode testNode);
+        protected abstract T createTestCallTarget(RootNode testNode);
 
         /**
          * Notify the VM that the warmup is finished, and it should now compile the test code.
@@ -70,7 +69,7 @@ public abstract class TVMCI {
          *
          * @since 0.25
          */
-        protected abstract void finishWarmup(T callTarget);
+        protected abstract void finishWarmup(T callTarget, String testName);
     }
 
     /**
@@ -225,12 +224,12 @@ public abstract class TVMCI {
             this.testTvmci = testTvmci;
         }
 
-        protected final T createTestCallTarget(String testName, RootNode testNode) {
-            return testTvmci.createTestCallTarget(testName, testNode);
+        protected final T createTestCallTarget(RootNode testNode) {
+            return testTvmci.createTestCallTarget(testNode);
         }
 
-        protected final void finishWarmup(T callTarget) {
-            testTvmci.finishWarmup(callTarget);
+        protected final void finishWarmup(T callTarget, String testName) {
+            testTvmci.finishWarmup(callTarget, testName);
         }
     }
 

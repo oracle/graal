@@ -375,7 +375,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
 
         // Falsify the reference check.
-        setCondition(graph().addOrUnique(LogicConstantNode.contradiction()));
+        setCondition(graph().addOrUniqueWithInputs(LogicConstantNode.contradiction()));
 
         return true;
     }
@@ -726,10 +726,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     protected void removeThroughFalseBranch(SimplifierTool tool, AbstractMergeNode merge) {
         AbstractBeginNode trueBegin = trueSuccessor();
+        LogicNode conditionNode = condition();
         graph().removeSplitPropagate(this, trueBegin);
         tool.addToWorkList(trueBegin);
-        if (condition() != null) {
-            GraphUtil.tryKillUnused(condition());
+        if (conditionNode != null) {
+            GraphUtil.tryKillUnused(conditionNode);
         }
         if (merge.isAlive() && merge.forwardEndCount() > 1) {
             for (FixedNode end : merge.forwardEnds()) {

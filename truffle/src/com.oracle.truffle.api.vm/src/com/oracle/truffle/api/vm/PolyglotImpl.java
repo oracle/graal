@@ -60,6 +60,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 
 /*
  * This class is exported to the Graal SDK. Keep that in mind when changing its class or package name.
@@ -259,18 +260,23 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public Env getEnvForLanguage(Object vmObject, String mimeType) {
+        public Env getEnvForLanguage(Object vmObject, String languageId, String mimeType) {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) vmObject;
-            PolyglotLanguageContext context = languageContext.context.findLanguageContext(mimeType, true);
+            PolyglotLanguageContext context = languageContext.context.findLanguageContext(languageId, mimeType, true);
             context.ensureInitialized();
             return context.env;
         }
 
         @Override
-        public Env getEnvForInstrument(Object vmObject, String mimeType) {
-            PolyglotLanguageContext context = PolyglotContextImpl.requireContext().findLanguageContext(mimeType, true);
+        public Env getEnvForInstrument(Object vmObject, String languageId, String mimeType) {
+            PolyglotLanguageContext context = PolyglotContextImpl.requireContext().findLanguageContext(languageId, mimeType, true);
             context.ensureInitialized();
             return context.env;
+        }
+
+        @Override
+        public org.graalvm.polyglot.SourceSection createSourceSection(Object vmObject, org.graalvm.polyglot.Source source, SourceSection sectionImpl) {
+            return ((VMObject) vmObject).getAPIAccess().newSourceSection(source, sectionImpl);
         }
 
         @Override

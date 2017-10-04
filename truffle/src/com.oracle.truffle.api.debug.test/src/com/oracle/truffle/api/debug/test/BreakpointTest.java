@@ -41,15 +41,16 @@ import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.polyglot.Source;
 
 public class BreakpointTest extends AbstractDebugTest {
 
     @Test
     public void testBreakpointDefaults() {
         Source testSource = testSource("STATEMENT");
-        Breakpoint breakpoint = Breakpoint.newBuilder(testSource).lineIs(1).build();
+        Breakpoint breakpoint = Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(1).build();
         assertEquals(0, breakpoint.getHitCount());
         assertEquals(0, breakpoint.getIgnoreCount());
         assertFalse(breakpoint.isDisposed());
@@ -79,9 +80,9 @@ public class BreakpointTest extends AbstractDebugTest {
                         "STATEMENT,\n" +
                         "STATEMENT)");
 
-        Breakpoint breakpoint2 = Breakpoint.newBuilder(testSource).lineIs(2).build();
+        Breakpoint breakpoint2 = Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(2).build();
         assertFalse(breakpoint2.isResolved());
-        Breakpoint breakpoint3 = Breakpoint.newBuilder(testSource).lineIs(3).build();
+        Breakpoint breakpoint3 = Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(3).build();
         assertFalse(breakpoint3.isResolved());
         try (DebuggerSession session = startSession()) {
             session.install(breakpoint2);
@@ -113,7 +114,7 @@ public class BreakpointTest extends AbstractDebugTest {
                         "STATEMENT)");
 
         try (DebuggerSession session = startSession()) {
-            Breakpoint breakpoint = session.install(Breakpoint.newBuilder(testSource).lineIs(2).build());
+            Breakpoint breakpoint = session.install(Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(2).build());
             breakpoint.setCondition("CONSTANT(true)");
 
             startEval(testSource);
@@ -180,7 +181,7 @@ public class BreakpointTest extends AbstractDebugTest {
         try (DebuggerSession session = startSession()) {
             Breakpoint breakpoint = session.install(Breakpoint.newBuilder(testFile.toURI()).lineIs(4).build());
             session.suspendNextExecution();
-            startEval(Source.newBuilder(testFile).build());
+            startEval(Source.newBuilder(InstrumentationTestLanguage.ID, testFile).build());
             for (int i = 0; i < 3; i++) {
                 expectSuspended((SuspendedEvent event) -> {
                     checkState(event, 4, true, "STATEMENT").prepareContinue();
@@ -202,9 +203,9 @@ public class BreakpointTest extends AbstractDebugTest {
                         ")\n");
 
         try (DebuggerSession session = startSession()) {
-            Breakpoint breakpoint1 = session.install(Breakpoint.newBuilder(source).lineIs(4).build());
-            Breakpoint breakpoint2 = session.install(Breakpoint.newBuilder(source).lineIs(4).build());
-            Breakpoint breakpoint3 = session.install(Breakpoint.newBuilder(source).lineIs(4).build());
+            Breakpoint breakpoint1 = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(4).build());
+            Breakpoint breakpoint2 = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(4).build());
+            Breakpoint breakpoint3 = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(4).build());
             startEval(source);
             for (int i = 0; i < 3; i++) {
                 expectSuspended((SuspendedEvent event) -> {
@@ -236,7 +237,7 @@ public class BreakpointTest extends AbstractDebugTest {
                         ")\n");
         Breakpoint sessionBreakpoint = null;
         try (DebuggerSession session = startSession()) {
-            Breakpoint breakpoint = session.install(Breakpoint.newBuilder(source).lineIs(4).build());
+            Breakpoint breakpoint = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(4).build());
             sessionBreakpoint = breakpoint;
             startEval(source);
             expectSuspended((SuspendedEvent event) -> {
@@ -267,7 +268,7 @@ public class BreakpointTest extends AbstractDebugTest {
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 5, true, "STATEMENT");
                 Assert.assertEquals(0, event.getBreakpoints().size());
-                session.install(Breakpoint.newBuilder(source).lineIs(3).build());
+                session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(3).build());
                 event.prepareContinue();
             });
 
@@ -288,7 +289,7 @@ public class BreakpointTest extends AbstractDebugTest {
                         "  STATEMENT\n" +
                         ")\n");
         try (DebuggerSession session = startSession()) {
-            Breakpoint breakpoint = session.install(Breakpoint.newBuilder(source).lineIs(3).oneShot().build());
+            Breakpoint breakpoint = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(3).oneShot().build());
 
             startEval(source);
 
@@ -320,7 +321,7 @@ public class BreakpointTest extends AbstractDebugTest {
     public void testBreakSourceSection() throws Throwable {
         final Source source = testSource("ROOT(STATEMENT, STATEMENT, STATEMENT)\n");
         try (DebuggerSession session = startSession()) {
-            SourceSection sourceSection = source.createSection(16, 9);
+            SourceSection sourceSection = getSourceImpl(source).createSection(16, 9);
             Breakpoint breakpoint = session.install(Breakpoint.newBuilder(sourceSection).build());
 
             startEval(source);
@@ -355,18 +356,18 @@ public class BreakpointTest extends AbstractDebugTest {
 
         try (DebuggerSession session = startSession()) {
             // test normal breakpoint should hit
-            Breakpoint breakpoint4 = session.install(Breakpoint.newBuilder(source).lineIs(4).build());
+            Breakpoint breakpoint4 = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(4).build());
 
             // test disposed breakpoint should not hit
-            Breakpoint breakpoint6 = session.install(Breakpoint.newBuilder(source).lineIs(6).build());
+            Breakpoint breakpoint6 = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(6).build());
             breakpoint6.dispose();
 
             // test disabled breakpoint should not hit
-            Breakpoint breakpoint8 = session.install(Breakpoint.newBuilder(source).lineIs(8).build());
+            Breakpoint breakpoint8 = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(8).build());
             breakpoint8.setEnabled(false);
 
             // test re-enabled breakpoint should hit
-            Breakpoint breakpoint10 = session.install(Breakpoint.newBuilder(source).lineIs(10).build());
+            Breakpoint breakpoint10 = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(10).build());
             breakpoint10.setEnabled(false);
             breakpoint10.setEnabled(true);
 
@@ -417,14 +418,14 @@ public class BreakpointTest extends AbstractDebugTest {
         try (DebuggerSession session = startSession()) {
             Assert.assertTrue(session.isBreakpointsActive());
             // normal breakpoint
-            Breakpoint breakpoint3 = session.install(Breakpoint.newBuilder(source).lineIs(3).build());
+            Breakpoint breakpoint3 = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(3).build());
 
             // disabled breakpoint
-            Breakpoint breakpoint4 = session.install(Breakpoint.newBuilder(source).lineIs(4).build());
+            Breakpoint breakpoint4 = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(4).build());
             breakpoint4.setEnabled(false);
 
             // re-enabled breakpoint
-            Breakpoint breakpoint5 = session.install(Breakpoint.newBuilder(source).lineIs(5).build());
+            Breakpoint breakpoint5 = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(5).build());
             breakpoint5.setEnabled(false);
             breakpoint5.setEnabled(true);
 
@@ -449,14 +450,14 @@ public class BreakpointTest extends AbstractDebugTest {
         try (DebuggerSession session = startSession()) {
             Assert.assertTrue(session.isBreakpointsActive());
             // normal breakpoint
-            Breakpoint breakpoint2 = session.install(Breakpoint.newBuilder(source).lineIs(2).build());
+            Breakpoint breakpoint2 = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(2).build());
 
             // disabled breakpoint
-            Breakpoint breakpoint4 = session.install(Breakpoint.newBuilder(source).lineIs(4).build());
+            Breakpoint breakpoint4 = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(4).build());
             breakpoint4.setEnabled(false);
 
             // re-enabled breakpoint
-            Breakpoint breakpoint5 = session.install(Breakpoint.newBuilder(source).lineIs(5).build());
+            Breakpoint breakpoint5 = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(5).build());
             breakpoint5.setEnabled(false);
             breakpoint5.setEnabled(true);
 
@@ -483,14 +484,14 @@ public class BreakpointTest extends AbstractDebugTest {
             session.setBreakpointsActive(false);
             Assert.assertFalse(session.isBreakpointsActive());
             // normal breakpoint
-            Breakpoint breakpoint2 = session.install(Breakpoint.newBuilder(source).lineIs(2).build());
+            Breakpoint breakpoint2 = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(2).build());
 
             // disabled breakpoint
-            Breakpoint breakpoint4 = session.install(Breakpoint.newBuilder(source).lineIs(4).build());
+            Breakpoint breakpoint4 = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(4).build());
             breakpoint4.setEnabled(false);
 
             // re-enabled breakpoint
-            Breakpoint breakpoint5 = session.install(Breakpoint.newBuilder(source).lineIs(5).build());
+            Breakpoint breakpoint5 = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(5).build());
             breakpoint5.setEnabled(false);
             breakpoint5.setEnabled(true);
 
@@ -536,7 +537,7 @@ public class BreakpointTest extends AbstractDebugTest {
 
         Debugger debugger = getDebugger();
         assertTrue(debugger.getBreakpoints().isEmpty());
-        Breakpoint globalBreakpoint = Breakpoint.newBuilder(source).lineIs(2).build();
+        Breakpoint globalBreakpoint = Breakpoint.newBuilder(getSourceImpl(source)).lineIs(2).build();
         boolean[] notified = new boolean[]{false};
         BreakpointListener newBPListener = BreakpointListener.register(notified, debugger, globalBreakpoint);
         debugger.install(globalBreakpoint);
@@ -645,13 +646,13 @@ public class BreakpointTest extends AbstractDebugTest {
                         "  STATEMENT\n" +
                         ")\n");
         Debugger debugger = getDebugger();
-        Breakpoint globalBreakpoint1 = Breakpoint.newBuilder(source).lineIs(2).build();
+        Breakpoint globalBreakpoint1 = Breakpoint.newBuilder(getSourceImpl(source)).lineIs(2).build();
         debugger.install(globalBreakpoint1);
-        Breakpoint globalBreakpoint2 = Breakpoint.newBuilder(source).lineIs(4).build();
+        Breakpoint globalBreakpoint2 = Breakpoint.newBuilder(getSourceImpl(source)).lineIs(4).build();
         debugger.install(globalBreakpoint2);
-        Breakpoint globalBreakpoint3 = Breakpoint.newBuilder(source).lineIs(6).build();
+        Breakpoint globalBreakpoint3 = Breakpoint.newBuilder(getSourceImpl(source)).lineIs(6).build();
         debugger.install(globalBreakpoint3);
-        Breakpoint globalBreakpoint4 = Breakpoint.newBuilder(source).lineIs(8).build();
+        Breakpoint globalBreakpoint4 = Breakpoint.newBuilder(getSourceImpl(source)).lineIs(8).build();
         debugger.install(globalBreakpoint4);
         // Breakpoints are in the install order:
         List<Breakpoint> breakpoints = debugger.getBreakpoints();

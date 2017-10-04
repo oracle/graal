@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,18 +27,26 @@ package com.oracle.truffle.tck;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.function.Function;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.junit.Assert;
+
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
-import java.util.function.Function;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
 
 /**
  * Test utility class that makes it easier to test and debug debugger functionality for guest
@@ -62,7 +70,7 @@ public final class DebuggerTester implements AutoCloseable {
     private final Semaphore executing;
     private final Semaphore initialized;
     private final Thread evalThread;
-    private final PolyglotEngine engine;
+    private final Engine engine;
 
     private final ByteArrayOutputStream out = new ByteArrayOutputStream();
     private final ByteArrayOutputStream err = new ByteArrayOutputStream();
@@ -81,32 +89,19 @@ public final class DebuggerTester implements AutoCloseable {
     private SuspendedCallback handler;
 
     /**
-     * Constructs a new debugger tester instance. Boots up a new {@link PolyglotEngine engine} on
-     * Thread in the background. The tester instance needs to be {@link #close() closed} after use.
-     * Throws an AssertionError if the engine initialization fails.
+     * Constructs a new debugger tester instance. Boots up a new {@link Context context} on Thread
+     * in the background. The tester instance needs to be {@link #close() closed} after use. Throws
+     * an AssertionError if the engine initialization fails.
      *
      * @since 0.16
      */
     public DebuggerTester() {
-        this(null);
-    }
-
-    /**
-     * Constructs a new debugger tester instance. Boots up a new {@link PolyglotEngine engine} on
-     * Thread in the background. The tester instance needs to be {@link #close() closed} after use.
-     * Throws an AssertionError if the engine initialization fails.
-     *
-     * @param engineBuilderDecorator a decorator function that allows to customize the engine
-     *            builder
-     * @since 0.26
-     */
-    public DebuggerTester(Function<PolyglotEngine.Builder, PolyglotEngine.Builder> engineBuilderDecorator) {
         this.newEvent = new ArrayBlockingQueue<>(1);
         this.executing = new Semaphore(0);
         this.initialized = new Semaphore(0);
-        final AtomicReference<PolyglotEngine> engineRef = new AtomicReference<>();
+        final AtomicReference<Engine> engineRef = new AtomicReference<>();
         final AtomicReference<Throwable> error = new AtomicReference<>();
-        this.executingLoop = new ExecutingLoop(engineRef, engineBuilderDecorator, error);
+        this.executingLoop = new ExecutingLoop(engineRef, error);
         this.evalThread = new Thread(executingLoop);
         this.evalThread.start();
         try {
@@ -121,7 +116,22 @@ public final class DebuggerTester implements AutoCloseable {
     }
 
     /**
-     * Returns the error output of the underlying {@link PolyglotEngine engine}.
+     * Constructs a new debugger tester instance. Boots up a new {@link PolyglotEngine engine} on
+     * Thread in the background. The tester instance needs to be {@link #close() closed} after use.
+     * Throws an AssertionError if the engine initialization fails.
+     *
+     * @param engineBuilderDecorator a decorator function that allows to customize the engine
+     *            builder
+     * @since 0.26
+     * @deprecated Do not use {@link PolyglotEngine}, call {@link DebuggerTester()} instead.
+     */
+    @Deprecated
+    public DebuggerTester(Function<PolyglotEngine.Builder, PolyglotEngine.Builder> engineBuilderDecorator) {
+        this();
+    }
+
+    /**
+     * Returns the error output of the underlying {@link Context context}.
      *
      * @since 0.16
      */
@@ -135,7 +145,7 @@ public final class DebuggerTester implements AutoCloseable {
     }
 
     /**
-     * Returns the standard output of the underlying {@link PolyglotEngine engine}.
+     * Returns the standard output of the underlying {@link Context context}.
      *
      * @since 0.16
      */
@@ -154,12 +164,12 @@ public final class DebuggerTester implements AutoCloseable {
      * @since 0.27
      */
     public Debugger getDebugger() {
-        return Debugger.find(engine);
+        return engine.getInstruments().get("debugger").lookup(Debugger.class);
     }
 
     /**
      * Starts a new {@link Debugger#startSession(SuspendedCallback) debugger session} in the
-     * {@link PolyglotEngine engine}. The debugger session allows to suspend the execution and to
+     * context's {@link Engine engine}. The debugger session allows to suspend the execution and to
      * install breakpoints. If multiple sessions are created for one {@link #startEval(Source)
      * evaluation} then all suspended events are delegated to this debugger tester instance.
      *
@@ -167,7 +177,7 @@ public final class DebuggerTester implements AutoCloseable {
      * @since 0.16
      */
     public DebuggerSession startSession() {
-        return Debugger.find(engine).startSession(new SuspendedCallback() {
+        return getDebugger().startSession(new SuspendedCallback() {
             public void onSuspend(SuspendedEvent event) {
                 DebuggerTester.this.onSuspend(event);
             }
@@ -181,6 +191,23 @@ public final class DebuggerTester implements AutoCloseable {
      * another evaluation is still executing or the tester is already closed.
      *
      * @since 0.16
+     * @deprecated Use {@link #startEval(org.graalvm.polyglot.Source)} instead.
+     */
+    @Deprecated
+    public void startEval(com.oracle.truffle.api.source.Source s) {
+        if (this.source != null) {
+            throw new IllegalStateException("Already executing other source " + s);
+        }
+        throw new UnsupportedOperationException("Call startEval(org.graalvm.polyglot.Source) instead.");
+    }
+
+    /**
+     * Starts a new {@link Context#eval(Source) evaluation} on the background thread. Only one
+     * evaluation can be active at a time. Please ensure that {@link #expectDone()} completed
+     * successfully before starting a new evaluation. Throws an {@link IllegalStateException} if
+     * another evaluation is still executing or the tester is already closed.
+     *
+     * @since 0.27
      */
     public void startEval(Source s) {
         if (this.source != null) {
@@ -308,7 +335,8 @@ public final class DebuggerTester implements AutoCloseable {
      */
     public void expectKilled() {
         Throwable error = expectThrowable();
-        if (error.getClass().getSimpleName().equals("KillException")) {
+        if (error instanceof PolyglotException) {
+            Assert.assertTrue(error.getMessage(), error.getMessage().contains("KillException"));
             return;
         }
         throw new AssertionError("Expected killed bug got error: " + error, error);
@@ -338,6 +366,74 @@ public final class DebuggerTester implements AutoCloseable {
         trace("kill session " + this);
         // trying to interrupt if execution is in IO.
         notifyNextAction();
+        try {
+            evalThread.join();
+        } catch (InterruptedException iex) {
+            throw new AssertionError("Interrupted while joining eval thread.", iex);
+        }
+        engine.close();
+    }
+
+    /**
+     * Get {@link com.oracle.truffle.api.source.Source Truffle Source} that corresponds to the
+     * {@link Source Polyglot Source}. This is a bridge between the two Source implementations.
+     *
+     * @since 0.28
+     */
+    public static com.oracle.truffle.api.source.Source getSourceImpl(Source source) {
+        return (com.oracle.truffle.api.source.Source) getField(source, "impl");
+    }
+
+    // Copied from ReflectionUtils.
+    private static Object getField(Object value, String name) {
+        try {
+            Field f = value.getClass().getDeclaredField(name);
+            setAccessible(f, true);
+            return f.get(value);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static void setAccessible(Field field, boolean flag) {
+        if (!Java8OrEarlier) {
+            openForReflectionTo(field.getDeclaringClass(), DebuggerTester.class);
+        }
+        field.setAccessible(flag);
+    }
+
+    private static final boolean Java8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+
+    /**
+     * Opens {@code declaringClass}'s package to allow a method declared in {@code accessor} to call
+     * {@link AccessibleObject#setAccessible(boolean)} on an {@link AccessibleObject} representing a
+     * field or method declared by {@code declaringClass}.
+     */
+    private static void openForReflectionTo(Class<?> declaringClass, Class<?> accessor) {
+        try {
+            Method getModule = Class.class.getMethod("getModule");
+            Class<?> moduleClass = getModule.getReturnType();
+            Class<?> modulesClass = Class.forName("jdk.internal.module.Modules");
+            Method addOpens = maybeGetAddOpensMethod(moduleClass, modulesClass);
+            if (addOpens != null) {
+                Object moduleToOpen = getModule.invoke(declaringClass);
+                Object accessorModule = getModule.invoke(accessor);
+                if (moduleToOpen != accessorModule) {
+                    addOpens.invoke(null, moduleToOpen, declaringClass.getPackage().getName(), accessorModule);
+                }
+            }
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static Method maybeGetAddOpensMethod(Class<?> moduleClass, Class<?> modulesClass) {
+        try {
+            return modulesClass.getDeclaredMethod("addOpens", moduleClass, String.class, moduleClass);
+        } catch (NoSuchMethodException e) {
+            // This method was introduced by JDK-8169069
+            return null;
+        }
     }
 
     private void putEvent(Object event) {
@@ -405,45 +501,45 @@ public final class DebuggerTester implements AutoCloseable {
 
     class ExecutingLoop implements Runnable {
 
-        private final AtomicReference<PolyglotEngine> engineRef;
-        private final Function<PolyglotEngine.Builder, PolyglotEngine.Builder> engineBuilderDecorator;
+        private final AtomicReference<Engine> engineRef;
         private final AtomicReference<Throwable> error;
 
-        ExecutingLoop(AtomicReference<PolyglotEngine> engineRef, Function<PolyglotEngine.Builder, PolyglotEngine.Builder> engineBuilderDecorator, AtomicReference<Throwable> error) {
+        ExecutingLoop(AtomicReference<Engine> engineRef, AtomicReference<Throwable> error) {
             this.engineRef = engineRef;
-            this.engineBuilderDecorator = engineBuilderDecorator;
             this.error = error;
         }
 
         @Override
         public void run() {
-            PolyglotEngine localEngine;
+            Context context = null;
             try {
-                PolyglotEngine.Builder builder = PolyglotEngine.newBuilder().setOut(out).setErr(err);
-                if (engineBuilderDecorator != null) {
-                    builder = engineBuilderDecorator.apply(builder);
-                }
-                localEngine = builder.build();
-                engineRef.set(localEngine);
-            } catch (Throwable t) {
-                error.set(t);
-                return;
-            } finally {
-                initialized.release();
-            }
-            while (true) {
-                waitForExecuting();
-                if (closed) {
-                    return;
-                }
                 try {
-                    trace("Start executing " + this);
-                    source.returnValue = localEngine.eval(source.source).as(String.class);
-                    trace("Done executing " + this);
-                } catch (Throwable e) {
-                    source.error = e;
+                    context = Context.newBuilder().out(out).err(err).build();
+                    engineRef.set(context.getEngine());
+                } catch (Throwable t) {
+                    error.set(t);
+                    return;
                 } finally {
-                    putEvent(source);
+                    initialized.release();
+                }
+                while (true) {
+                    waitForExecuting();
+                    if (closed) {
+                        return;
+                    }
+                    try {
+                        trace("Start executing " + this);
+                        source.returnValue = context.eval(source.source).toString();
+                        trace("Done executing " + this);
+                    } catch (Throwable e) {
+                        source.error = e;
+                    } finally {
+                        putEvent(source);
+                    }
+                }
+            } finally {
+                if (context != null) {
+                    context.close();
                 }
             }
         }

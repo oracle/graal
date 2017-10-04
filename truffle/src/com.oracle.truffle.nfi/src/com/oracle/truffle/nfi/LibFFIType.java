@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.nfi;
 
-import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -102,7 +102,12 @@ abstract class LibFFIType {
         }
 
         private static Number asNumber(Object object) {
-            if (object instanceof Number) {
+            if (object instanceof Byte ||
+                            object instanceof Short ||
+                            object instanceof Integer ||
+                            object instanceof Long ||
+                            object instanceof Float ||
+                            object instanceof Double) {
                 return (Number) object;
             } else if (object instanceof Boolean) {
                 return (Boolean) object ? 1 : 0;
@@ -143,6 +148,7 @@ abstract class LibFFIType {
                     buffer.putPointer(number.longValue(), size);
                     break;
                 default:
+                    CompilerDirectives.transferToInterpreter();
                     throw new AssertionError(simpleType.name());
             }
         }
@@ -169,6 +175,7 @@ abstract class LibFFIType {
                 case DOUBLE:
                     return buffer.getDouble();
                 default:
+                    CompilerDirectives.transferToInterpreter();
                     throw new AssertionError(simpleType.name());
             }
         }
@@ -208,6 +215,7 @@ abstract class LibFFIType {
                 case POINTER:
                     return new NativePointer(primitive);
                 default:
+                    CompilerDirectives.transferToInterpreter();
                     throw new AssertionError(simpleType.name());
             }
         }
@@ -467,6 +475,7 @@ abstract class LibFFIType {
                     }
                     break;
                 default:
+                    CompilerDirectives.transferToInterpreter();
                     throw new AssertionError(elementType.name());
             }
 
@@ -484,6 +493,7 @@ abstract class LibFFIType {
 
         @Override
         protected Object doDeserialize(NativeArgumentBuffer buffer) {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Arrays can only be passed from Java to native");
         }
 
@@ -558,6 +568,11 @@ abstract class LibFFIType {
             this.asRetType = asRetType;
         }
 
+        @TruffleBoundary
+        private static RuntimeException shouldNotReachHere() {
+            throw new IllegalArgumentException("should not reach here from compiled code");
+        }
+
         @Override
         protected void doSerialize(NativeArgumentBuffer buffer, Object value) {
             if (value instanceof NativePointer) {
@@ -572,7 +587,9 @@ abstract class LibFFIType {
                      * If we enter this branch, that means the LibFFIClosure was not cached. This
                      * should only happen on the slow-path.
                      */
-                    CompilerAsserts.neverPartOfCompilation();
+                    if (CompilerDirectives.inCompiledCode()) {
+                        throw shouldNotReachHere();
+                    }
                     closure = LibFFIClosure.createSlowPath(signature, (TruffleObject) value);
                 } else {
                     throw UnsupportedTypeException.raise(new Object[]{value});
@@ -639,6 +656,7 @@ abstract class LibFFIType {
 
         @Override
         protected Object doDeserialize(NativeArgumentBuffer buffer) {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError("environment pointer can not be used as return type");
         }
 

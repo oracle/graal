@@ -1,4 +1,4 @@
-x32.c2 : {
+x32.c2 : ${labsjdk8} {
   capabilities: [linux, x32, no_frequency_scaling, tmpfs25g]
   environment : {
     XMX         : "8g"

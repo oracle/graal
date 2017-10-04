@@ -35,8 +35,8 @@ import org.junit.Test;
 import com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest;
 import com.oracle.truffle.api.instrumentation.test.examples.StatementProfilerExample.Counter;
 import com.oracle.truffle.api.instrumentation.test.examples.StatementProfilerExample.ProfilerFrontEnd;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.polyglot.Source;
 
 public final class StatementProfilerExampleTest extends AbstractInstrumentationTest {
 
@@ -55,7 +55,7 @@ public final class StatementProfilerExampleTest extends AbstractInstrumentationT
 
     @Before
     public void setupProfiler() throws IOException {
-        engine.getRuntime().getInstruments().get(StatementProfilerExample.ID).setEnabled(true);
+        assureEnabled(engine.getInstruments().get(StatementProfilerExample.ID));
         // force profiler frontend attachement
         run(lines(""));
     }

@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -182,6 +183,7 @@ abstract class NativeArgumentBuffer {
             case 8:
                 return getInt64();
             default:
+                CompilerDirectives.transferToInterpreter();
                 throw new AssertionError("unexpected pointer size " + size);
         }
     }
@@ -195,6 +197,7 @@ abstract class NativeArgumentBuffer {
                 putInt64(ptr);
                 break;
             default:
+                CompilerDirectives.transferToInterpreter();
                 throw new AssertionError("unexpected pointer size " + size);
         }
     }
@@ -202,6 +205,7 @@ abstract class NativeArgumentBuffer {
     public Object getObject(int size) {
         int pos = getPrimBuffer().position();
         getPrimBuffer().position(pos + size);
+        CompilerDirectives.transferToInterpreter();
         throw new AssertionError("passing TruffleObject from native back to Truffle not yet supported");
     }
 

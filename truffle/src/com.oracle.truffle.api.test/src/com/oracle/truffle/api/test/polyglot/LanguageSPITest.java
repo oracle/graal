@@ -43,12 +43,16 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
+import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
 
 public class LanguageSPITest {
@@ -400,6 +404,27 @@ public class LanguageSPITest {
         context.close();
         // inner context automatically closed
         assertEquals(1, returnedInnerContext.disposeCalled);
+    }
+
+    @Test
+    public void testParseOtherLanguage() {
+        Context context = Context.newBuilder().build();
+        eval(context, new Function<Env, Object>() {
+            public Object apply(Env t) {
+                assertCorrectTarget(t.parse(Source.newBuilder("").language(ContextAPITestLanguage.ID).name("").build()));
+                assertCorrectTarget(t.parse(Source.newBuilder("").mimeType(ContextAPITestLanguage.MIME).name("").build()));
+                // this is here for compatibility because mime types and language ids were allowed
+                // in between.
+                assertCorrectTarget(t.parse(Source.newBuilder("").mimeType(ContextAPITestLanguage.ID).name("").build()));
+                return null;
+            }
+
+            private void assertCorrectTarget(CallTarget target) {
+                Assert.assertEquals(ContextAPITestLanguage.ID, ((RootCallTarget) target).getRootNode().getLanguageInfo().getId());
+            }
+
+        });
+        context.close();
     }
 
 }

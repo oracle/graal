@@ -50,6 +50,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
+import com.oracle.truffle.sl.nodes.expression.SLUnboxNodeGen;
 
 /**
  * The loop body of a {@link SLWhileNode while loop}. A Truffle framework {@link LoopNode} between
@@ -83,7 +84,7 @@ public final class SLWhileRepeatingNode extends Node implements RepeatingNode {
     private SourceSection sourceSection;
 
     public SLWhileRepeatingNode(SLExpressionNode conditionNode, SLStatementNode bodyNode) {
-        this.conditionNode = conditionNode;
+        this.conditionNode = SLUnboxNodeGen.create(conditionNode);
         this.bodyNode = bodyNode;
     }
 

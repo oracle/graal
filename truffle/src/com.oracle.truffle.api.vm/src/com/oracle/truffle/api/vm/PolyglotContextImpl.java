@@ -42,6 +42,7 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -423,11 +424,35 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         return findLegacyExportedSymbol(symbolName, false);
     }
 
+    private Value findLegacyExportedSymbolValue(String symbolName) {
+        Value legacySymbol = findLegacyExportedSymbolValue(symbolName, true);
+        if (legacySymbol != null) {
+            return legacySymbol;
+        }
+        return findLegacyExportedSymbolValue(symbolName, false);
+    }
+
     private Object findLegacyExportedSymbol(String name, boolean onlyExplicit) {
         for (PolyglotLanguageContext languageContext : contexts) {
             Env env = languageContext.env;
             if (env != null) {
-                return LANGUAGE.findExportedSymbol(env, name, onlyExplicit);
+                Object s = LANGUAGE.findExportedSymbol(env, name, onlyExplicit);
+                if (s != null) {
+                    return s;
+                }
+            }
+        }
+        return null;
+    }
+
+    private Value findLegacyExportedSymbolValue(String name, boolean onlyExplicit) {
+        for (PolyglotLanguageContext languageContext : contexts) {
+            Env env = languageContext.env;
+            if (env != null) {
+                Object s = LANGUAGE.findExportedSymbol(env, name, onlyExplicit);
+                if (s != null) {
+                    return languageContext.toHostValue(s);
+                }
             }
         }
         return null;
@@ -467,12 +492,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         try {
             Value value = polyglotScope.get(symbolName);
             if (value == null) {
-                Object legacySymbol = findLegacyExportedSymbol(symbolName);
-                if (legacySymbol == null) {
-                    value = null;
-                } else {
-                    value = getHostContext().toHostValue(legacySymbol);
-                }
+                value = findLegacyExportedSymbolValue(symbolName);
             }
             return value;
         } catch (Throwable e) {
@@ -486,19 +506,41 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         return contexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX];
     }
 
-    PolyglotLanguageContext findLanguageContext(String mimeTypeOrId, boolean failIfNotFound) {
-        for (PolyglotLanguageContext language : contexts) {
-            LanguageCache cache = language.language.cache;
-            if (cache.getId().equals(mimeTypeOrId) || language.language.cache.getMimeTypes().contains(mimeTypeOrId)) {
-                return language;
+    PolyglotLanguageContext findLanguageContext(String languageId, String mimeType, boolean failIfNotFound) {
+        assert languageId != null || mimeType != null : Objects.toString(languageId) + ", " + Objects.toString(mimeType);
+        if (languageId != null) {
+            PolyglotLanguage language = engine.idToLanguage.get(languageId);
+            if (language != null) {
+                return contexts[language.index];
+            }
+
+        }
+        if (mimeType != null) {
+            // we need to interpret mime types for compatibility.
+            PolyglotLanguage language = engine.idToLanguage.get(mimeType);
+            if (language != null) {
+                return contexts[language.index];
+            }
+            for (PolyglotLanguageContext context : contexts) {
+                if (context.language.cache.getMimeTypes().contains(mimeType)) {
+                    return context;
+                }
             }
         }
         if (failIfNotFound) {
-            Set<String> mimeTypes = new LinkedHashSet<>();
-            for (PolyglotLanguageContext language : contexts) {
-                mimeTypes.add(language.language.cache.getId());
+            if (languageId != null) {
+                Set<String> ids = new LinkedHashSet<>();
+                for (PolyglotLanguage language : engine.idToLanguage.values()) {
+                    ids.add(language.cache.getId());
+                }
+                throw new IllegalStateException("No language for id " + languageId + " found. Supported languages are: " + ids);
+            } else {
+                Set<String> mimeTypes = new LinkedHashSet<>();
+                for (PolyglotLanguageContext language : contexts) {
+                    mimeTypes.addAll(language.language.cache.getMimeTypes());
+                }
+                throw new IllegalStateException("No language for MIME type " + mimeType + " found. Supported languages are: " + mimeTypes);
             }
-            throw new IllegalStateException("No language for id " + mimeTypeOrId + " found. Supported languages are: " + mimeTypes);
         } else {
             return null;
         }

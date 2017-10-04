@@ -34,6 +34,7 @@ import java.nio.charset.StandardCharsets;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -51,12 +52,12 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 
 abstract class PolyglotRootNode extends RootNode {
 
-    private static final CallTarget VOID_TARGET = new CallTarget() {
-        @Override
-        public Object call(Object... arguments) {
-            return arguments[0];
-        }
-    };
+    private static RootCallTarget voidCallTarget = Truffle.getRuntime().createCallTarget(new VoidRootNode());
+
+    @SuppressWarnings("unused")
+    private static void resetNativeImageState() {
+        voidCallTarget = null;
+    }
 
     final PolyglotEngine engine;
 
@@ -82,7 +83,7 @@ abstract class PolyglotRootNode extends RootNode {
         RootNode symbolNode;
         if (isPrimitiveType(type)) {
             // no conversion necessary just return value
-            return VOID_TARGET;
+            return voidCallTarget;
         } else {
             symbolNode = new ForeignExecuteRootNode(engine, (Class<? extends TruffleObject>) type);
         }
@@ -94,7 +95,7 @@ abstract class PolyglotRootNode extends RootNode {
         RootNode symbolNode;
         if (isPrimitiveType(type)) {
             // no conversion necessary just return value
-            return VOID_TARGET;
+            return voidCallTarget;
         } else {
             symbolNode = new AsJavaRootNode(engine, (Class<? extends TruffleObject>) type);
         }
@@ -312,6 +313,18 @@ abstract class PolyglotRootNode extends RootNode {
                 }
             }
             return obj;
+        }
+    }
+
+    private static final class VoidRootNode extends RootNode {
+
+        VoidRootNode() {
+            super(null);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return frame.getArguments()[0];
         }
     }
 }
