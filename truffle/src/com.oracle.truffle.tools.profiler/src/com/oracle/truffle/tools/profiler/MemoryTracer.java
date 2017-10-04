@@ -78,7 +78,7 @@ public final class MemoryTracer implements Closeable {
      *
      * @since 0.29
      */
-    @Registration(id = Instrument.ID, name = "Memory Tracer", version = "1.0", services = {MemoryTracer.class})
+    @Registration(id = Instrument.ID, name = "Memory Tracer", version = "0.1", services = {MemoryTracer.class})
     public static final class Instrument extends TruffleInstrument {
 
         /**

@@ -71,7 +71,7 @@ public final class CPUSampler implements Closeable {
      *
      * @since 0.29
      */
-    @TruffleInstrument.Registration(id = Instrument.ID, name = "CPU Sampler", version = "1.0", services = {CPUSampler.class})
+    @TruffleInstrument.Registration(id = Instrument.ID, name = "CPU Sampler", version = "0.1", services = {CPUSampler.class})
     public static final class Instrument extends TruffleInstrument {
 
         /**

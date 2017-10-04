@@ -69,7 +69,7 @@ public final class CPUTracer implements Closeable {
      *
      * @since 0.29
      */
-    @TruffleInstrument.Registration(id = Instrument.ID, name = "CPU Tracer", version = "1.0", services = {CPUTracer.class})
+    @TruffleInstrument.Registration(id = Instrument.ID, name = "CPU Tracer", version = "0.1", services = {CPUTracer.class})
     public static class Instrument extends TruffleInstrument {
 
         /**
