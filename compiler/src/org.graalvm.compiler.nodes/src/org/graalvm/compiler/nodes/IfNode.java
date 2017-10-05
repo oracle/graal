@@ -1384,7 +1384,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     @Override
     public AbstractBeginNode getPrimarySuccessor() {
-        return this.trueSuccessor();
+        return null;
     }
 
     public AbstractBeginNode getSuccessor(boolean result) {
