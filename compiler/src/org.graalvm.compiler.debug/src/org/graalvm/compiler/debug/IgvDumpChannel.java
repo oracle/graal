@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.debug;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.InetSocketAddress;
@@ -111,7 +112,7 @@ final class IgvDumpChannel implements WritableByteChannel {
     private static WritableByteChannel createFileChannel(Supplier<Path> pathProvider) throws IOException {
         Path path = pathProvider.get();
         try {
-            return FileChannel.open(path, StandardOpenOption.WRITE);
+            return FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
         } catch (IOException e) {
             throw new IOException(String.format("Failed to open %s to dump IGV graphs", path), e);
         }
