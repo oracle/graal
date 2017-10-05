@@ -170,7 +170,7 @@ public final class SchedulePhase extends Phase {
                 // For non-earliest schedules, we need to do a second pass.
                 BlockMap<List<Node>> latestBlockToNodesMap = new BlockMap<>(cfg);
                 for (Block b : cfg.getBlocks()) {
-                    latestBlockToNodesMap.put(b, new ArrayList<Node>());
+                    latestBlockToNodesMap.put(b, new ArrayList<>());
                 }
 
                 BlockMap<ArrayList<FloatingReadNode>> watchListMap = calcLatestBlocks(selectedStrategy, currentNodeMap, earliestBlockToNodesMap, visited, latestBlockToNodesMap, immutableGraph);
@@ -524,7 +524,6 @@ public final class SchedulePhase extends Phase {
                 assert latestBlock != null : currentNode;
 
                 if (strategy == SchedulingStrategy.FINAL_SCHEDULE || strategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS) {
-                    assert latestBlock != null;
                     Block currentBlock = latestBlock;
                     while (currentBlock.getLoopDepth() > earliestBlock.getLoopDepth() && currentBlock != earliestBlock.getDominator()) {
                         Block previousCurrentBlock = currentBlock;
