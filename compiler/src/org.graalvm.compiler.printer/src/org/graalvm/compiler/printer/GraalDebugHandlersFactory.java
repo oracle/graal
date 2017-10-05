@@ -24,36 +24,20 @@ package org.graalvm.compiler.printer;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.channels.Channels;
-import java.nio.channels.WritableByteChannel;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
-import java.util.function.Supplier;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
 import org.graalvm.compiler.debug.DebugHandler;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugOptions;
-import static org.graalvm.compiler.debug.DebugOptions.PrintBinaryGraphs;
-import static org.graalvm.compiler.debug.DebugOptions.ShowDumpFiles;
-import org.graalvm.compiler.debug.PathUtilities;
 import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodeinfo.Verbosity;
-import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
@@ -72,11 +56,11 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
     }
 
     @Override
-    public List<DebugHandler> createHandlers(Supplier<WritableByteChannel> sharedOutput, OptionValues options) {
+    public List<DebugHandler> createHandlers(OptionValues options) {
         List<DebugHandler> handlers = new ArrayList<>();
-        handlers.add(new GraphPrinterDumpHandler((graph) -> createPrinter(sharedOutput, options)));
+        handlers.add(new GraphPrinterDumpHandler((debug, graph) -> createPrinter(debug, options)));
         if (DebugOptions.PrintCanonicalGraphStrings.getValue(options)) {
-            handlers.add(new GraphPrinterDumpHandler((graph) -> createStringPrinter(snippetReflection)));
+            handlers.add(new GraphPrinterDumpHandler((debug, graph) -> createStringPrinter(snippetReflection)));
         }
         handlers.add(new NodeDumper());
         if (DebugOptions.PrintCFG.getValue(options) || DebugOptions.PrintBackendCFG.getValue(options)) {
@@ -89,13 +73,11 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
         return handlers;
     }
 
-    private GraphPrinter createPrinter(Supplier<WritableByteChannel> outputSupplier, OptionValues options) throws IOException {
-        WritableByteChannel channel = outputSupplier.get();
+    private GraphPrinter createPrinter(DebugContext ctx, OptionValues options) throws IOException {
         if (DebugOptions.PrintBinaryGraphs.getValue(options)) {
-            return new BinaryGraphPrinter(channel, snippetReflection);
+            return new BinaryGraphPrinter(ctx, snippetReflection);
         } else {
-            OutputStream out = Channels.newOutputStream(channel);
-            return new IdealGraphPrinter(out, true, snippetReflection);
+            return new IdealGraphPrinter(null, true, snippetReflection);
         }
     }
 
@@ -143,11 +125,6 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
 
     private static CanonicalStringGraphPrinter createStringPrinter(SnippetReflectionProvider snippetReflection) {
         return new CanonicalStringGraphPrinter(snippetReflection);
-    }
-
-    @SuppressWarnings({"unused", "unchecked"})
-    private static <E extends Exception> E rethrowSilently(Class<E> type, Throwable ex) throws E {
-        throw (E) ex;
     }
 
 }

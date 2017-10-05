@@ -69,7 +69,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
 
     @FunctionalInterface
     public interface GraphPrinterSupplier {
-        GraphPrinter get(Graph graph) throws IOException;
+        GraphPrinter get(DebugContext ctx, Graph graph) throws IOException;
     }
 
     /**
@@ -93,7 +93,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
         }
     }
 
-    private void ensureInitialized(Graph graph) {
+    private void ensureInitialized(DebugContext ctx, Graph graph) {
         if (printer == null) {
             if (failuresCount >= FAILURE_LIMIT) {
                 return;
@@ -102,7 +102,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
             inlineContextMap = new WeakHashMap<>();
             DebugContext debug = graph.getDebug();
             try {
-                printer = printerSupplier.get(graph);
+                printer = printerSupplier.get(ctx, graph);
             } catch (IOException e) {
                 handleException(debug, e);
             }
@@ -123,7 +123,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
         OptionValues options = debug.getOptions();
         if (object instanceof Graph && DebugOptions.PrintGraph.getValue(options)) {
             final Graph graph = (Graph) object;
-            ensureInitialized(graph);
+            ensureInitialized(debug, graph);
             if (printer == null) {
                 return;
             }

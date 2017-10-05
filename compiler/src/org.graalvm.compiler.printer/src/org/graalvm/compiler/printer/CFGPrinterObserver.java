@@ -154,7 +154,6 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
         if (cfgPrinter == null) {
             try {
-                Graph graph = debug.contextLookupTopdown(Graph.class);
                 cfgFile = PathUtilities.getPath(options, DebugOptions.DumpPath, "cfg").toFile();
                 OutputStream out = new BufferedOutputStream(new FileOutputStream(cfgFile));
                 cfgPrinter = new CFGPrinter(out);

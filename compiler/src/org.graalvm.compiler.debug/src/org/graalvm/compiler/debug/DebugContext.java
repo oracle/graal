@@ -40,7 +40,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -55,7 +54,6 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import java.util.function.Supplier;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.util.EconomicMap;
@@ -65,6 +63,7 @@ import org.graalvm.util.Pair;
 import jdk.vm.ci.meta.JavaMethod;
 import static org.graalvm.compiler.debug.DebugOptions.DumpPath;
 import static org.graalvm.compiler.debug.DebugOptions.PrintBinaryGraphs;
+import org.graalvm.graphio.GraphOutput;
 
 /**
  * A facility for logging and dumping as well as a container for values associated with
@@ -103,6 +102,7 @@ public final class DebugContext implements AutoCloseable {
     Scope lastClosedScope;
     Throwable lastExceptionThrown;
     private IgvDumpChannel sharedChannel;
+    private GraphOutput<?, ?> parentOutput;
 
     /**
      * Stores the {@link MetricKey} values.
@@ -114,6 +114,19 @@ public final class DebugContext implements AutoCloseable {
      */
     public boolean areScopesEnabled() {
         return immutable.scopesEnabled;
+    }
+
+    public <G, N, M> GraphOutput<G, M> buildOutput(GraphOutput.Builder<G, N, M> builder) throws IOException {
+        if (parentOutput != null) {
+            return builder.build(parentOutput);
+        } else {
+            if (sharedChannel == null) {
+                sharedChannel = new IgvDumpChannel(this::getFilePrinterPath, immutable.options);
+            }
+            final GraphOutput<G, M> output = builder.build(sharedChannel);
+            parentOutput = output;
+            return output;
+        }
     }
 
     /**
@@ -381,7 +394,7 @@ public final class DebugContext implements AutoCloseable {
             List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
             List<DebugVerifyHandler> verifyHandlers = new ArrayList<>();
             for (DebugHandlersFactory factory : factories) {
-                for (DebugHandler handler : factory.createHandlers(this::sharedChannel, options)) {
+                for (DebugHandler handler : factory.createHandlers(options)) {
                     if (handler instanceof DebugDumpHandler) {
                         dumpHandlers.add((DebugDumpHandler) handler);
                     } else {
@@ -397,18 +410,6 @@ public final class DebugContext implements AutoCloseable {
         } else {
             metricsEnabled = immutable.hasUnscopedMetrics() || immutable.listMetrics;
         }
-    }
-
-    /**
-     * Shared channel to send binary graph dumps to.
-     *
-     * @return channel representing a TCP stream or file on disk
-     */
-    public WritableByteChannel sharedChannel() {
-        if (sharedChannel == null) {
-            sharedChannel = new IgvDumpChannel(this::getFilePrinterPath, immutable.options);
-        }
-        return sharedChannel;
     }
 
     private Path getFilePrinterPath() {
@@ -1118,7 +1119,7 @@ public final class DebugContext implements AutoCloseable {
             OptionValues options = getOptions();
             dumpHandlers = new ArrayList<>();
             for (DebugHandlersFactory factory : DebugHandlersFactory.LOADER) {
-                for (DebugHandler handler : factory.createHandlers(this::sharedChannel, options)) {
+                for (DebugHandler handler : factory.createHandlers(options)) {
                     if (handler instanceof DebugDumpHandler) {
                         dumpHandlers.add((DebugDumpHandler) handler);
                     }

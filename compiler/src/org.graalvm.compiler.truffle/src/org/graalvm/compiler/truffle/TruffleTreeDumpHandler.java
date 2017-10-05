@@ -33,14 +33,11 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.source.SourceSection;
 import java.io.IOException;
-import java.nio.channels.WritableByteChannel;
-import java.util.function.Supplier;
 import org.graalvm.compiler.truffle.GraphPrintVisitor.GraphPrintAdapter;
 import org.graalvm.compiler.truffle.GraphPrintVisitor.GraphPrintHandler;
 
 public class TruffleTreeDumpHandler implements DebugDumpHandler {
 
-    private final Supplier<WritableByteChannel> out;
     private final OptionValues options;
 
     /**
@@ -56,9 +53,8 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         }
     }
 
-    public TruffleTreeDumpHandler(Supplier<WritableByteChannel> createOutput, OptionValues options) {
+    public TruffleTreeDumpHandler(OptionValues options) {
         this.options = options;
-        this.out = createOutput;
     }
 
     @Override
@@ -66,21 +62,16 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         if (object instanceof TruffleTreeDump && DebugOptions.PrintGraph.getValue(options) && TruffleCompilerOptions.getValue(DebugOptions.PrintTruffleTrees)) {
             String message = String.format(format, arguments);
             try {
-                dumpRootCallTarget(message, ((TruffleTreeDump) object).callTarget);
+                dumpRootCallTarget(debug, message, ((TruffleTreeDump) object).callTarget);
             } catch (IOException ex) {
                 throw rethrowSilently(RuntimeException.class, ex);
             }
         }
     }
 
-    private void dumpRootCallTarget(final String message, RootCallTarget callTarget) throws IOException {
+    private static void dumpRootCallTarget(DebugContext debug, final String message, RootCallTarget callTarget) throws IOException {
         if (callTarget.getRootNode() != null) {
-            final GraphPrintVisitor printer;
-            try {
-                printer = new GraphPrintVisitor(out.get());
-            } catch (RuntimeException | IOException ex) {
-                throw ex;
-            }
+            final GraphPrintVisitor printer = new GraphPrintVisitor(debug);
 
             printer.beginGroup(callTarget, callTarget.toString(), callTarget.getRootNode().getName());
             printer.beginGraph(message).visit(callTarget.getRootNode());

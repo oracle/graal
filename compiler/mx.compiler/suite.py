@@ -180,6 +180,7 @@ suite = {
       "dependencies" : [
         "JVMCI_API",
         "org.graalvm.compiler.serviceprovider",
+        "org.graalvm.graphio",
         "org.graalvm.compiler.options"
       ],
       "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
