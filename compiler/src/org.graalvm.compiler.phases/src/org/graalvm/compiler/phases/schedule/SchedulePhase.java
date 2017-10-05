@@ -48,7 +48,6 @@ import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.KillingBeginNode;
@@ -728,29 +727,14 @@ public final class SchedulePhase extends Phase {
             MicroBlock startBlock = null;
             int nextId = 1;
             for (Block b : cfg.reversePostOrder()) {
-                FixedNode current = b.getBeginNode();
-                while (true) {
+                for (FixedNode current : b.getBeginNode().getBlockNodes()) {
                     MicroBlock microBlock = new MicroBlock(nextId++);
-                    entries.put(current, microBlock);
-                    visited.checkAndMarkInc(current);
-
+                    entries.set(current, microBlock);
+                    boolean isNew = visited.checkAndMarkInc(current);
+                    assert isNew;
                     if (startBlock == null) {
                         startBlock = microBlock;
                     }
-
-                    // Process inputs of this fixed node.
-                    for (Node input : current.inputs()) {
-                        if (entries.get(input) == null) {
-                            processStack(input, startBlock, entries, visited, stack);
-                        }
-                    }
-
-                    if (current == b.getEndNode()) {
-                        // Break loop when reaching end node.
-                        break;
-                    }
-
-                    current = ((FixedWithNextNode) current).next();
                 }
             }
 
@@ -763,27 +747,16 @@ public final class SchedulePhase extends Phase {
 
             // Now process inputs of fixed nodes.
             for (Block b : cfg.reversePostOrder()) {
-                FixedNode current = b.getBeginNode();
-                while (true) {
-
-                    // Process inputs of this fixed node.
+                for (FixedNode current : b.getBeginNode().getBlockNodes()) {
                     for (Node input : current.inputs()) {
                         if (entries.get(input) == null) {
                             processStack(input, startBlock, entries, visited, stack);
                         }
                     }
-
-                    if (current == b.getEndNode()) {
-                        // Break loop when reaching end node.
-                        break;
-                    }
-
-                    current = ((FixedWithNextNode) current).next();
                 }
             }
 
             if (visited.getCounter() < graph.getNodeCount()) {
-
                 // Visit back input edges of loop phis.
                 boolean changed;
                 boolean unmarkedPhi;
@@ -837,31 +810,20 @@ public final class SchedulePhase extends Phase {
                 }
             }
 
-            // Initialize with begin nodes
+            // Create lists for each block
             for (Block b : cfg.reversePostOrder()) {
-
-                FixedNode current = b.getBeginNode();
+                // Count nodes in block
                 int totalCount = 0;
-                while (true) {
-
+                for (FixedNode current : b.getBeginNode().getBlockNodes()) {
                     MicroBlock microBlock = entries.get(current);
                     totalCount += microBlock.getNodeCount() + 1;
-
-                    if (current == b.getEndNode()) {
-                        // Break loop when reaching end node.
-                        break;
-                    }
-
-                    current = ((FixedWithNextNode) current).next();
                 }
 
                 // Initialize with begin node, it is always the first node.
                 ArrayList<Node> nodes = new ArrayList<>(totalCount);
                 blockToNodes.put(b, nodes);
 
-                current = b.getBeginNode();
-                while (true) {
-
+                for (FixedNode current : b.getBeginNode().getBlockNodes()) {
                     MicroBlock microBlock = entries.get(current);
                     nodeToBlock.set(current, b);
                     nodes.add(current);
@@ -872,13 +834,6 @@ public final class SchedulePhase extends Phase {
                         nodes.add(nextNode);
                         next = next.getNext();
                     }
-
-                    if (current == b.getEndNode()) {
-                        // Break loop when reaching end node.
-                        break;
-                    }
-
-                    current = ((FixedWithNextNode) current).next();
                 }
             }
 
