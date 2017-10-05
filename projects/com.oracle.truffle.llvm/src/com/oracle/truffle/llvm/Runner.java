@@ -57,6 +57,7 @@ import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 public final class Runner {
@@ -177,13 +178,13 @@ public final class Runner {
         }
         if (!context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
             assert context.getThreadingStack().checkThread();
-            long stackPointer = context.getThreadingStack().getStack().getStackPointer();
-            result.getGlobalVarInit().call(stackPointer);
-            context.getThreadingStack().getStack().setStackPointer(stackPointer);
+            try (StackPointer stackPointer = context.getThreadingStack().getStack().takeStackPointer()) {
+                result.getGlobalVarInit().call(stackPointer.get());
+            }
             if (result.getConstructorFunction() != null) {
-                stackPointer = context.getThreadingStack().getStack().getStackPointer();
-                result.getConstructorFunction().call(stackPointer);
-                context.getThreadingStack().getStack().setStackPointer(stackPointer);
+                try (StackPointer stackPointer = context.getThreadingStack().getStack().takeStackPointer()) {
+                    result.getConstructorFunction().call(stackPointer.get());
+                }
             }
         }
     }
@@ -191,14 +192,14 @@ public final class Runner {
     public static void disposeContext(LLVMContext context) {
         assert context.getThreadingStack().checkThread();
         for (RootCallTarget destructorFunction : context.getDestructorFunctions()) {
-            long stackPointer = context.getThreadingStack().getStack().getStackPointer();
-            destructorFunction.call(stackPointer);
-            context.getThreadingStack().getStack().setStackPointer(stackPointer);
+            try (StackPointer stackPointer = context.getThreadingStack().getStack().takeStackPointer()) {
+                destructorFunction.call(stackPointer.get());
+            }
         }
         for (RootCallTarget destructor : context.getGlobalVarDeallocs()) {
-            long stackPointer = context.getThreadingStack().getStack().getStackPointer();
-            destructor.call(stackPointer);
-            context.getThreadingStack().getStack().setStackPointer(stackPointer);
+            try (StackPointer stackPointer = context.getThreadingStack().getStack().takeStackPointer()) {
+                destructor.call(stackPointer.get());
+            }
         }
         context.getThreadingStack().freeStacks();
     }

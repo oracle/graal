@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.SlowPathForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
@@ -143,9 +144,9 @@ abstract class LLVMForeignCallNode extends LLVMNode {
         if (needsStackPointer) {
             assert getThreadingStack(context).checkThread();
             LLVMStack stack = getStack.executeWithTarget(getThreadingStack(context), Thread.currentThread());
-            long stackPointer = stack.getStackPointer();
-            result = callNode.call(packNode.pack(arguments, stackPointer));
-            stack.setStackPointer(stackPointer);
+            try (StackPointer stackPointer = stack.takeStackPointer()) {
+                result = callNode.call(packNode.pack(arguments, stackPointer.get()));
+            }
         } else {
             result = callNode.call(packNode.pack(arguments, 0));
         }
@@ -172,9 +173,10 @@ abstract class LLVMForeignCallNode extends LLVMNode {
         assert !(function.getType().getReturnType() instanceof StructureType);
         assert function.getContext().getThreadingStack().checkThread();
         LLVMStack stack = getStack.executeWithTarget(function.getContext().getThreadingStack(), Thread.currentThread());
-        long stackPointer = stack.getStackPointer();
-        Object result = callNode.call(getCallTarget(function), slowPack.pack(function, arguments, stackPointer));
-        stack.setStackPointer(stackPointer);
+        Object result;
+        try (StackPointer stackPointer = stack.takeStackPointer()) {
+            result = callNode.call(getCallTarget(function), slowPack.pack(function, arguments, stackPointer.get()));
+        }
         return prepareValueForEscape.executeWithTarget(result, function.getContext());
     }
 
