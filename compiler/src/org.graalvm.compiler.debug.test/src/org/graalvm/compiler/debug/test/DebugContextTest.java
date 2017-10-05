@@ -64,7 +64,7 @@ public class DebugContextTest {
         final ByteArrayOutputStream logOutput = new ByteArrayOutputStream();
         DebugHandlersFactory handlers = new DebugHandlersFactory() {
             @Override
-            public List<DebugHandler> createHandlers(Function<Supplier<Path>, WritableByteChannel> createOutput, OptionValues options) {
+            public List<DebugHandler> createHandlers(Supplier<WritableByteChannel> createOutput, OptionValues options) {
                 return Arrays.asList(new DebugDumpHandler() {
                     @Override
                     public void dump(DebugContext ignore, Object object, String format, Object... arguments) {

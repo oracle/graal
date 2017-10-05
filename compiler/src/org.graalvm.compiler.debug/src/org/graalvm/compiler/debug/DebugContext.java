@@ -63,6 +63,8 @@ import org.graalvm.util.EconomicSet;
 import org.graalvm.util.Pair;
 
 import jdk.vm.ci.meta.JavaMethod;
+import static org.graalvm.compiler.debug.DebugOptions.DumpPath;
+import static org.graalvm.compiler.debug.DebugOptions.PrintBinaryGraphs;
 
 /**
  * A facility for logging and dumping as well as a container for values associated with
@@ -397,11 +399,27 @@ public final class DebugContext implements AutoCloseable {
         }
     }
 
-    private WritableByteChannel sharedChannel(Supplier<Path> pathProvider) {
+    /**
+     * Shared channel to send binary graph dumps to.
+     *
+     * @return channel representing a TCP stream or file on disk
+     */
+    public WritableByteChannel sharedChannel() {
         if (sharedChannel == null) {
-            sharedChannel = new IgvDumpChannel(pathProvider, immutable.options);
+            sharedChannel = new IgvDumpChannel(this::getFilePrinterPath, immutable.options);
         }
         return sharedChannel;
+    }
+
+    private Path getFilePrinterPath() {
+        // Construct the path to the file.
+        // PrintGraphFileName -
+        String extension = PrintBinaryGraphs.getValue(immutable.options) ? "bgv" : "gv.xml";
+        try {
+            return PathUtilities.getPath(immutable.options, DumpPath, extension);
+        } catch (IOException ex) {
+            throw rethrowSilently(RuntimeException.class, ex);
+        }
     }
 
     /**
@@ -2052,5 +2070,10 @@ public final class DebugContext implements AutoCloseable {
             out.printf("%-" + String.valueOf(maxKeyWidth) + "s = %20s%n", e.getKey(), e.getValue());
         }
         out.println();
+    }
+
+    @SuppressWarnings({"unused", "unchecked"})
+    private static <E extends Exception> E rethrowSilently(Class<E> type, Throwable ex) throws E {
+        throw (E) ex;
     }
 }

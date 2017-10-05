@@ -23,7 +23,6 @@
 package org.graalvm.compiler.printer;
 
 import static org.graalvm.compiler.debug.DebugOptions.PrintCFG;
-import static org.graalvm.compiler.printer.GraalDebugHandlersFactory.createDumpPath;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -63,6 +62,8 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.compiler.debug.DebugOptions;
+import org.graalvm.compiler.debug.PathUtilities;
 
 /**
  * Observes compilation events and uses {@link CFGPrinter} to produce a control flow graph for the
@@ -154,7 +155,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         if (cfgPrinter == null) {
             try {
                 Graph graph = debug.contextLookupTopdown(Graph.class);
-                cfgFile = createDumpPath(options, graph, "cfg", false).toFile();
+                cfgFile = PathUtilities.getPath(options, DebugOptions.DumpPath, "cfg").toFile();
                 OutputStream out = new BufferedOutputStream(new FileOutputStream(cfgFile));
                 cfgPrinter = new CFGPrinter(out);
             } catch (IOException e) {

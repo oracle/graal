@@ -23,11 +23,9 @@
 package org.graalvm.compiler.debug;
 
 import java.nio.channels.WritableByteChannel;
-import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.List;
 
-import java.util.function.Function;
 import java.util.function.Supplier;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
@@ -45,7 +43,7 @@ public interface DebugHandlersFactory {
      * @param options options to control type and name of the channel
      * @return list of debug handers that have been created
      */
-    List<DebugHandler> createHandlers(Function<Supplier<Path>, WritableByteChannel> createOutput, OptionValues options);
+    List<DebugHandler> createHandlers(Supplier<WritableByteChannel> createOutput, OptionValues options);
 
     /**
      * Loads {@link DebugHandlersFactory}s on demand via {@link GraalServices#load(Class)}.

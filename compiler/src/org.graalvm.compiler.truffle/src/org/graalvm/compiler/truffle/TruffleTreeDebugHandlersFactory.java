@@ -23,11 +23,9 @@
 package org.graalvm.compiler.truffle;
 
 import java.nio.channels.WritableByteChannel;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 
-import java.util.function.Function;
 import java.util.function.Supplier;
 import org.graalvm.compiler.debug.DebugHandler;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -38,7 +36,7 @@ import org.graalvm.compiler.serviceprovider.ServiceProvider;
 public class TruffleTreeDebugHandlersFactory implements DebugHandlersFactory {
 
     @Override
-    public List<DebugHandler> createHandlers(Function<Supplier<Path>, WritableByteChannel> createOutput, OptionValues options) {
+    public List<DebugHandler> createHandlers(Supplier<WritableByteChannel> createOutput, OptionValues options) {
         return Collections.singletonList(new TruffleTreeDumpHandler(createOutput, options));
     }
 }

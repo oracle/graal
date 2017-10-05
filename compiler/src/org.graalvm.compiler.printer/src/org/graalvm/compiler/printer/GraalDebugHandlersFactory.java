@@ -72,9 +72,9 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
     }
 
     @Override
-    public List<DebugHandler> createHandlers(Function<Supplier<Path>, WritableByteChannel> sharedOutput, OptionValues options) {
+    public List<DebugHandler> createHandlers(Supplier<WritableByteChannel> sharedOutput, OptionValues options) {
         List<DebugHandler> handlers = new ArrayList<>();
-        handlers.add(new GraphPrinterDumpHandler((graph) -> createPrinter(graph, sharedOutput, options)));
+        handlers.add(new GraphPrinterDumpHandler((graph) -> createPrinter(sharedOutput, options)));
         if (DebugOptions.PrintCanonicalGraphStrings.getValue(options)) {
             handlers.add(new GraphPrinterDumpHandler((graph) -> createStringPrinter(snippetReflection)));
         }
@@ -89,109 +89,13 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
         return handlers;
     }
 
-    private GraphPrinter createPrinter(Graph graph, Function<Supplier<Path>, WritableByteChannel> outputSupplier, OptionValues options) throws IOException {
-        WritableByteChannel channel = outputSupplier.apply(() -> createDumpPath(options, graph, PrintBinaryGraphs.getValue(options) ? "bgv" : "gv.xml", false));
+    private GraphPrinter createPrinter(Supplier<WritableByteChannel> outputSupplier, OptionValues options) throws IOException {
+        WritableByteChannel channel = outputSupplier.get();
         if (DebugOptions.PrintBinaryGraphs.getValue(options)) {
             return new BinaryGraphPrinter(channel, snippetReflection);
         } else {
             OutputStream out = Channels.newOutputStream(channel);
             return new IdealGraphPrinter(out, true, snippetReflection);
-        }
-    }
-
-    /**
-     * Creates a new file or directory for dumping based on a given graph and a file extension.
-     *
-     * @param graph a base path name is derived from {@code graph}
-     * @param extension a suffix which if non-null and non-empty added to the end of the returned
-     *            path separated by a {@code "."}
-     * @param createDirectory specifies if this is a request to create a directory instead of a file
-     * @return the created directory or file
-     */
-    static Path createDumpPath(OptionValues options, Graph graph, String extension, boolean createDirectory) {
-        CompilationIdentifier compilationId = CompilationIdentifier.INVALID_COMPILATION_ID;
-        String id = null;
-        String label = null;
-        if (graph instanceof StructuredGraph) {
-            StructuredGraph sgraph = (StructuredGraph) graph;
-            label = getGraphName(sgraph);
-            compilationId = sgraph.compilationId();
-            if (compilationId == CompilationIdentifier.INVALID_COMPILATION_ID) {
-                id = graph.getClass().getSimpleName() + "-" + sgraph.graphId();
-            } else {
-                id = compilationId.toString(CompilationIdentifier.Verbosity.ID);
-            }
-        } else {
-            label = graph == null ? null : graph.name != null ? graph.name : graph.toString();
-            id = "UnknownCompilation-" + unknownCompilationId.incrementAndGet();
-        }
-        String ext = PathUtilities.formatExtension(extension);
-        Path result;
-        try {
-            result = createUnique(DebugOptions.getDumpDirectory(options), id, label, ext, createDirectory);
-        } catch (IOException ex) {
-            throw rethrowSilently(RuntimeException.class, ex);
-        }
-        if (ShowDumpFiles.getValue(options) || Assertions.assertionsEnabled()) {
-            TTY.println("Dumping debug output to %s", result.toAbsolutePath().toString());
-        }
-        return result;
-    }
-
-    private static final AtomicInteger unknownCompilationId = new AtomicInteger();
-
-    /**
-     * A maximum file name length supported by most file systems. There is no platform independent
-     * way to get this in Java.
-     */
-    private static final int MAX_FILE_NAME_LENGTH = 255;
-
-    private static final String ELLIPSIS = "...";
-
-    private static Path createUnique(Path dumpDir, String id, String label, String ext, boolean createDirectory) {
-        String timestamp = "";
-        for (;;) {
-            int fileNameLengthWithoutLabel = timestamp.length() + ext.length() + id.length() + "[]".length();
-            int labelLengthLimit = MAX_FILE_NAME_LENGTH - fileNameLengthWithoutLabel;
-            String fileName;
-            if (labelLengthLimit < ELLIPSIS.length()) {
-                // This means `id` is very long
-                String suffix = timestamp + ext;
-                int idLengthLimit = Math.min(MAX_FILE_NAME_LENGTH - suffix.length(), id.length());
-                fileName = sanitizedFileName(id.substring(0, idLengthLimit) + suffix);
-            } else {
-                if (label == null) {
-                    fileName = sanitizedFileName(id + timestamp + ext);
-                } else {
-                    String adjustedLabel = label;
-                    if (label.length() > labelLengthLimit) {
-                        adjustedLabel = label.substring(0, labelLengthLimit - ELLIPSIS.length()) + ELLIPSIS;
-                    }
-                    fileName = sanitizedFileName(id + '[' + adjustedLabel + ']' + timestamp + ext);
-                }
-            }
-            Path result = dumpDir.resolve(fileName);
-            try {
-                if (createDirectory) {
-                    return Files.createDirectory(result);
-                } else {
-                    return Files.createFile(result);
-                }
-            } catch (FileAlreadyExistsException e) {
-                timestamp = "_" + Long.toString(System.currentTimeMillis());
-            } catch (IOException ex) {
-                throw rethrowSilently(RuntimeException.class, ex);
-            }
-        }
-    }
-
-    private static String getGraphName(StructuredGraph graph) {
-        if (graph.name != null) {
-            return graph.name;
-        } else if (graph.method() != null) {
-            return graph.method().format("%h.%n(%p)").replace(" ", "");
-        } else {
-            return graph.toString();
         }
     }
 
