@@ -40,13 +40,13 @@ import static org.graalvm.compiler.debug.DebugOptions.PrintXmlGraphPort;
 import org.graalvm.compiler.options.OptionValues;
 
 final class IgvDumpChannel implements WritableByteChannel {
-    private final Supplier<Path> findFile;
+    private final Supplier<Path> pathProvider;
     private final OptionValues options;
     private WritableByteChannel sharedChannel;
     private boolean closed;
 
-    IgvDumpChannel(Supplier<Path> findFile, OptionValues options) {
-        this.findFile = findFile;
+    IgvDumpChannel(Supplier<Path> pathProvider, OptionValues options) {
+        this.pathProvider = pathProvider;
         this.options = options;
     }
 
@@ -78,9 +78,9 @@ final class IgvDumpChannel implements WritableByteChannel {
         }
         if (sharedChannel == null) {
             if (DebugOptions.PrintGraphFile.getValue(options)) {
-                sharedChannel = createFileChannel(findFile);
+                sharedChannel = createFileChannel(pathProvider);
             } else {
-                sharedChannel = createNetworkChannel(findFile, options);
+                sharedChannel = createNetworkChannel(pathProvider, options);
             }
         }
         return sharedChannel;
