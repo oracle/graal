@@ -182,5 +182,26 @@ public final class GraphOutput<G, M> implements Closeable {
             ProtocolImpl<G, N, ?, ?, ?, M, ?, ?, ?> p = new ProtocolImpl<>(major, minor, structure, types, blocks, elements, channel);
             return new GraphOutput<>(p);
         }
+
+        /**
+         * Support for nesting heterogenous graphs. The newly created output uses all the interfaces
+         * currently associated with this builder, but shares with {@code parent} the output
+         * {@code channel}, internal constant pool and {@link #protocolVersion(int, int) protocol
+         * version}.
+         * <p>
+         * Both GraphOutput (the {@code parent} and the returned one) has to be used in
+         * synchronization - e.g. only one
+         * {@link #beginGroup(java.lang.Object, java.lang.String, java.lang.String, java.lang.Object, int, java.util.Map)
+         * begin}, {@link #endGroup() end} of group or
+         * {@link #print(java.lang.Object, java.util.Map, int, java.lang.String, java.lang.Object...)
+         * printing} can be on at a given moment.
+         *
+         * @param parent the output to inherit {@code channel} and protocol version from
+         * @return new output sharing {@code channel} and other internals with {@code parent}
+         */
+        public GraphOutput<G, M> build(GraphOutput<?, ?> parent) {
+            ProtocolImpl<G, N, ?, ?, ?, M, ?, ?, ?> p = new ProtocolImpl<>(parent.printer, structure, types, blocks, elements);
+            return new GraphOutput<>(p);
+        }
     }
 }
