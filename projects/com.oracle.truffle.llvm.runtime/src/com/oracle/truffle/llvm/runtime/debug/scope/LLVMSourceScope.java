@@ -74,7 +74,7 @@ public final class LLVMSourceScope extends ScopeProvider.AbstractScope {
         final LLVMSourceContext sourceContext = context.getSourceContext();
         LLVMSourceScope baseScope = new LLVMSourceScope(new LinkedList<>(), new LinkedList<>(), rootNode);
         LLVMSourceScope currentScope = baseScope;
-        LLVMSourceScope cuScope = null;
+        LLVMSourceScope staticScope = null;
 
         for (boolean isLocalScope = true; isLocalScope && scope != null; scope = scope.getParent()) {
             final LLVMSourceScope next = toScope(scope, sourceContext, rootNode, sourceSection);
@@ -82,7 +82,7 @@ public final class LLVMSourceScope extends ScopeProvider.AbstractScope {
             if (scope.getKind() == LLVMSourceLocation.Kind.FUNCTION) {
                 currentScope.setName(next.getName());
                 if (scope.getCompileUnit() != null) {
-                    cuScope = toScope(scope.getCompileUnit(), sourceContext, null, sourceSection);
+                    staticScope = toScope(scope.getCompileUnit(), sourceContext, null, sourceSection);
                 }
                 isLocalScope = false;
             }
@@ -106,16 +106,16 @@ public final class LLVMSourceScope extends ScopeProvider.AbstractScope {
                     break;
 
                 case COMPILEUNIT:
-                    if (cuScope == null) {
-                        cuScope = next;
+                    if (staticScope == null) {
+                        staticScope = next;
                     } else {
-                        copySymbols(next, cuScope);
+                        copySymbols(next, staticScope);
                     }
             }
         }
 
-        if (cuScope != null && !cuScope.isEmpty()) {
-            currentScope.setParent(cuScope);
+        if (staticScope != null && !staticScope.isEmpty()) {
+            currentScope.setParent(staticScope);
         }
 
         return baseScope;
@@ -151,7 +151,7 @@ public final class LLVMSourceScope extends ScopeProvider.AbstractScope {
                     globals.add(value);
                 }
 
-            } else if (isDeclaredAt(symbol, sourceSection)) {
+            } else if (isDeclaredBefore(symbol, sourceSection)) {
                 locals.add(symbol);
             }
         }
@@ -159,9 +159,9 @@ public final class LLVMSourceScope extends ScopeProvider.AbstractScope {
         return sourceScope;
     }
 
-    private static boolean isDeclaredAt(LLVMSourceSymbol symbol, SourceSection useLoc) {
-        // we want to hide any locals that we definitely know are not in scope, if we can't tell we
-        // should display them
+    private static boolean isDeclaredBefore(LLVMSourceSymbol symbol, SourceSection useLoc) {
+        // we want to hide any locals that we definitely know are not in scope, we should display
+        // any for which we can't tell
         if (useLoc == null) {
             return true;
         }
@@ -180,7 +180,7 @@ public final class LLVMSourceScope extends ScopeProvider.AbstractScope {
             return declLoc.getCharIndex() <= useLoc.getCharIndex();
         }
 
-        return false;
+        return true;
     }
 
     private static final String DEFAULT_NAME = "<scope>";
@@ -213,7 +213,7 @@ public final class LLVMSourceScope extends ScopeProvider.AbstractScope {
     }
 
     private boolean isEmpty() {
-        return locals.isEmpty() || globals.isEmpty();
+        return locals.isEmpty() && globals.isEmpty();
     }
 
     @Override

@@ -89,7 +89,7 @@ public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLV
 
     @Specialization
     public LLVMDebugValueProvider fromGlobal(LLVMGlobalVariable value) {
-        return new LLVMConstantGlobalValueProvider(value);
+        return new LLVMConstantGlobalValueProvider(value, LLVMToDebugValueNodeGen.create());
     }
 
     @Specialization

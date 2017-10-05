@@ -77,7 +77,7 @@ public final class SourceModel {
     public static SourceModel generate(ModelModule irModel, Source bitcodeSource) {
         final MetadataList moduleMetadata = irModel.getMetadata();
         final Parser parser = new Parser(moduleMetadata, bitcodeSource);
-        UpgradeMDToFunctionMappingVisitor.upgrade(moduleMetadata);
+        MDSymbolLinkUpgrade.perform(moduleMetadata);
         irModel.accept(parser);
         return parser.sourceModel;
     }

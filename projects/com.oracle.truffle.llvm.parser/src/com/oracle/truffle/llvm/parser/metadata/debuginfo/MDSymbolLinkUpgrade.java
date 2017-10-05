@@ -48,10 +48,10 @@ import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 import java.util.ArrayList;
 import java.util.List;
 
-final class UpgradeMDToFunctionMappingVisitor implements MDFollowRefVisitor {
+final class MDSymbolLinkUpgrade implements MDFollowRefVisitor {
 
-    static void upgrade(MetadataList metadata) {
-        metadata.accept(new UpgradeMDToFunctionMappingVisitor(metadata));
+    static void perform(MetadataList metadata) {
+        metadata.accept(new MDSymbolLinkUpgrade(metadata));
     }
 
     private final MetadataList metadata;
@@ -59,7 +59,7 @@ final class UpgradeMDToFunctionMappingVisitor implements MDFollowRefVisitor {
 
     private MDCompileUnit currentCU;
 
-    private UpgradeMDToFunctionMappingVisitor(MetadataList metadata) {
+    private MDSymbolLinkUpgrade(MetadataList metadata) {
         this.metadata = metadata;
         this.visited = new ArrayList<>(metadata.size());
         this.currentCU = null;

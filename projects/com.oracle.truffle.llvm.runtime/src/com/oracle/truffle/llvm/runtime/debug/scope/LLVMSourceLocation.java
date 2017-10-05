@@ -43,6 +43,7 @@ public final class LLVMSourceLocation {
     public enum Kind {
         TYPE,
         LOCATION,
+        MODULE,
         BLOCK,
         FUNCTION,
         NAMESPACE,
@@ -110,6 +111,7 @@ public final class LLVMSourceLocation {
         return parent;
     }
 
+    @TruffleBoundary
     public String getName() {
         switch (kind) {
             case NAMESPACE: {
@@ -126,6 +128,8 @@ public final class LLVMSourceLocation {
                     final Source source = sourceFile.toSource();
                     if (source != null) {
                         return source.getName();
+                    } else {
+                        return LLVMSourceFile.getSourceName(sourceFile);
                     }
                 }
                 return "<file>";
@@ -133,6 +137,13 @@ public final class LLVMSourceLocation {
 
             case COMPILEUNIT:
                 return "Static";
+
+            case MODULE:
+                if (name != null) {
+                    return "module " + name;
+                } else {
+                    return "<module>";
+                }
 
             case FUNCTION: {
                 if (name != null) {
@@ -146,7 +157,7 @@ public final class LLVMSourceLocation {
                 return "<block>";
 
             case LOCATION:
-                return "<line>";
+                return "<line " + line + ">";
 
             case TYPE: {
                 if (name != null) {
@@ -174,7 +185,10 @@ public final class LLVMSourceLocation {
     }
 
     public void copyFile(LLVMSourceLocation source) {
-        setFile(getScopeFile(source));
+        final LLVMSourceFile newFile = getScopeFile(source);
+        if (newFile != null) {
+            setFile(newFile);
+        }
     }
 
     public LLVMSourceLocation getCompileUnit() {
@@ -196,16 +210,14 @@ public final class LLVMSourceLocation {
             return resolvedSection;
         }
 
-        final LLVMSourceFile scopeFile = getScopeFile(this);
-        if (scopeFile != null) {
-            buildSection(scopeFile, needsLength);
-        }
+        buildSection(getScopeFile(this), needsLength);
 
         return resolvedSection;
     }
 
     @TruffleBoundary
     public LLVMSourceLocation findScope(SourceSection location) {
+        // this can only be the looked for scope if its source was resolved at least once
         if (resolvedSection != null && resolvedSection.equals(location)) {
             return this;
         }
@@ -244,7 +256,7 @@ public final class LLVMSourceLocation {
         }
         builder.append('\n');
 
-        final String fileName = LLVMSourceFile.toName(scopeFile);
+        final String fileName = LLVMSourceFile.getSourceName(scopeFile);
         final String mimeType = LLVMSourceFile.getMimeType(fileName);
         return Source.newBuilder(builder.toString()).mimeType(mimeType).name(fileName).build();
     }

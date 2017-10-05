@@ -41,11 +41,11 @@ public final class LLVMSourceFile {
     private static final String MIMETYPE_PLAINTEXT = "text/plain";
     private static final String UNAVAILABLE_NAME = "<unavailable source>";
 
-    private final String file;
+    private final String name;
     private final String directory;
 
-    public LLVMSourceFile(String file, String directory) {
-        this.file = file;
+    public LLVMSourceFile(String name, String directory) {
+        this.name = name;
         this.directory = directory;
     }
 
@@ -60,11 +60,11 @@ public final class LLVMSourceFile {
 
     @TruffleBoundary
     private void resolveSource() {
-        if (file == null) {
+        if (name == null) {
             return;
         }
 
-        final Path path = getFullPath(file, directory);
+        final Path path = getFullPath(name, directory);
         if (path == null) {
             return;
 
@@ -75,11 +75,11 @@ public final class LLVMSourceFile {
             return;
         }
 
-        final String name = sourceFile.getName();
+        final String sourceName = sourceFile.getName();
         final String mimeType = getMimeType(sourceFile.getPath());
 
         try {
-            resolvedSource = Source.newBuilder(sourceFile).mimeType(mimeType).name(name).build();
+            resolvedSource = Source.newBuilder(sourceFile).mimeType(mimeType).name(sourceName).build();
         } catch (Throwable ignored) {
             // resolvedSource will stay null which indicates an error in any case
         }
@@ -123,7 +123,7 @@ public final class LLVMSourceFile {
     }
 
     @TruffleBoundary
-    static String toName(LLVMSourceFile file) {
+    static String getSourceName(LLVMSourceFile file) {
         if (file == null) {
             return UNAVAILABLE_NAME;
         }
@@ -133,7 +133,7 @@ public final class LLVMSourceFile {
             return source.getName();
         }
 
-        final Path fullPath = getFullPath(file.file, file.directory);
+        final Path fullPath = getFullPath(file.name, file.directory);
         return fullPath != null ? fullPath.toString() : UNAVAILABLE_NAME;
     }
 
@@ -150,7 +150,7 @@ public final class LLVMSourceFile {
 
         LLVMSourceFile that = (LLVMSourceFile) o;
 
-        if (file != null ? !file.equals(that.file) : that.file != null) {
+        if (name != null ? !name.equals(that.name) : that.name != null) {
             return false;
         }
 
@@ -160,20 +160,20 @@ public final class LLVMSourceFile {
     @Override
     @TruffleBoundary
     public int hashCode() {
-        int result = file != null ? file.hashCode() : 0;
+        int result = name != null ? name.hashCode() : 0;
         result = 31 * result + (directory != null ? directory.hashCode() : 0);
         return result;
     }
 
     @TruffleBoundary
-    private static Path getFullPath(String file, String directory) {
-        if (file == null) {
+    private static Path getFullPath(String name, String directory) {
+        if (name == null) {
             return null;
         }
 
-        Path path = Paths.get(file);
+        Path path = Paths.get(name);
         if (!path.isAbsolute() && directory != null) {
-            path = Paths.get(directory, file);
+            path = Paths.get(directory, name);
         }
         return path.normalize();
     }

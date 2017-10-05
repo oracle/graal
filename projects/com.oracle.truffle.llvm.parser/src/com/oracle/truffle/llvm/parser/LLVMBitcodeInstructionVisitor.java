@@ -88,6 +88,7 @@ import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMException;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -324,14 +325,14 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                 }
 
                 if (valueRead != null) {
-                    final FrameSlot frameSlot = frame.findOrAddFrameSlot(var.getVariable(), MetaType.DEBUG, FrameSlotKind.Object);
+                    final FrameSlot frameSlot = getDebugValueSlot(var.getVariable());
                     final LLVMExpressionNode debugValue = nodeFactory.createDebugDeclaration(var.getVariable(), valueRead, frameSlot);
                     addInstructionUnchecked(debugValue);
                 }
             } else if (valueOffset != null && valueOffset == 0) {
                 // the dbg.value intrinsic may specify only parts of a variable by giving a value to
                 // be stored at an offset into the variable, but this never happens in practice
-                final FrameSlot frameSlot = frame.findOrAddFrameSlot(var.getVariable(), MetaType.DEBUG, FrameSlotKind.Object);
+                final FrameSlot frameSlot = getDebugValueSlot(var.getVariable());
                 final LLVMExpressionNode valueNode = symbols.resolve(valueSymbol);
                 final LLVMExpressionNode debugValue = nodeFactory.createDebugValue(var.getVariable(), valueNode, frameSlot);
                 addInstructionUnchecked(debugValue);
@@ -339,6 +340,10 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         }
 
         handleNullerInfo();
+    }
+
+    private FrameSlot getDebugValueSlot(LLVMSourceSymbol symbol) {
+        return frame.findOrAddFrameSlot(symbol, MetaType.DEBUG, FrameSlotKind.Object);
     }
 
     private static final int LLVM_DBG_VALUE_OFFSET_INDEX = 1;

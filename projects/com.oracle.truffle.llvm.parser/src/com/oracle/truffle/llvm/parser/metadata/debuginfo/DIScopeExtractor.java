@@ -58,6 +58,9 @@ import static com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation.Kin
 
 final class DIScopeExtractor {
 
+    private static final long DEFAULT_LINE = -1L;
+    private static final long DEFAULT_COLUMN = -1L;
+
     private final Map<MDBaseNode, LLVMSourceLocation> scopes = new HashMap<>();
 
     private final ScopeVisitor extractor = new ScopeVisitor();
@@ -70,14 +73,10 @@ final class DIScopeExtractor {
     LLVMSourceLocation resolve(MDBaseNode node) {
         if (node == null || node == MDReference.VOID) {
             return null;
-
-        } else if (scopes.containsKey(node)) {
-            return scopes.get(node);
-
-        } else {
+        } else if (!scopes.containsKey(node)) {
             node.accept(extractor);
-            return scopes.get(node);
         }
+        return scopes.get(node);
     }
 
     private final class ScopeVisitor implements MetadataVisitor {
@@ -91,19 +90,17 @@ final class DIScopeExtractor {
         }
 
         private void copyFile(LLVMSourceLocation scope, MDBaseNode fileRef) {
-            if (fileRef != MDReference.VOID) {
-                final LLVMSourceLocation fileScope = resolve(fileRef);
-                if (fileScope != null) {
-                    scope.copyFile(fileScope);
-                }
+            final LLVMSourceLocation fileScope = resolve(fileRef);
+            if (fileScope != null) {
+                scope.copyFile(fileScope);
             }
         }
 
         private void setName(MDBaseNode scopeRef) {
             final LLVMSourceLocation scope = scopes.get(scopeRef);
             if (scope != null) {
-                final String functionName = MDNameExtractor.getName(scopeRef);
-                scope.setName(functionName);
+                final String name = MDNameExtractor.getName(scopeRef);
+                scope.setName(name);
             }
         }
 
@@ -120,11 +117,11 @@ final class DIScopeExtractor {
         }
 
         private void visit(Kind kind, MDBaseNode scopeRef, MDBaseNode parentRef, MDBaseNode fileRef, long line) {
-            visit(kind, scopeRef, parentRef, fileRef, line, -1L);
+            visit(kind, scopeRef, parentRef, fileRef, line, DEFAULT_COLUMN);
         }
 
         private void visit(Kind kind, MDBaseNode scopeRef, MDBaseNode parentRef, MDBaseNode fileRef) {
-            visit(kind, scopeRef, parentRef, fileRef, -1L);
+            visit(kind, scopeRef, parentRef, fileRef, DEFAULT_LINE);
         }
 
         @Override
@@ -149,13 +146,13 @@ final class DIScopeExtractor {
                 return;
             }
 
-            final LLVMSourceLocation scope = new LLVMSourceLocation(Kind.FILE, -1L, -1L);
+            final LLVMSourceLocation scope = new LLVMSourceLocation(Kind.FILE, DEFAULT_LINE, DEFAULT_COLUMN);
             scopes.put(md, scope);
 
-            String file = null;
-            final MDReference fileRef = md.getFile();
-            if (fileRef != MDReference.VOID && fileRef.get() instanceof MDString) {
-                file = ((MDString) fileRef.get()).getString();
+            String name = null;
+            final MDReference nameRef = md.getFile();
+            if (nameRef != MDReference.VOID && nameRef.get() instanceof MDString) {
+                name = ((MDString) nameRef.get()).getString();
             }
 
             String directory = null;
@@ -164,7 +161,7 @@ final class DIScopeExtractor {
                 directory = ((MDString) dirRef.get()).getString();
             }
 
-            scope.setFile(new LLVMSourceFile(file, directory));
+            scope.setFile(new LLVMSourceFile(name, directory));
         }
 
         @Override
@@ -179,7 +176,7 @@ final class DIScopeExtractor {
 
         @Override
         public void visit(MDSubprogram md) {
-            visit(Kind.FUNCTION, md, md.getScope(), MDReference.VOID, md.getLine());
+            visit(Kind.FUNCTION, md, md.getScope(), md.getFile(), md.getLine());
             setName(md);
 
             final LLVMSourceLocation compileUnit = resolve(md.getCompileUnit());
@@ -218,7 +215,7 @@ final class DIScopeExtractor {
                 return;
             }
 
-            final LLVMSourceLocation scope = new LLVMSourceLocation(Kind.COMPILEUNIT, -1L, -1L);
+            final LLVMSourceLocation scope = new LLVMSourceLocation(Kind.COMPILEUNIT, DEFAULT_LINE, DEFAULT_COLUMN);
             scopes.put(md, scope);
 
             final MDReference fileRef = md.getFile();
@@ -262,7 +259,8 @@ final class DIScopeExtractor {
 
         @Override
         public void visit(MDModule md) {
-            visit(Kind.BLOCK, md, md.getScope(), MDReference.VOID);
+            visit(Kind.MODULE, md, md.getScope(), MDReference.VOID);
+            setName(md.getName());
         }
 
         @Override
