@@ -62,7 +62,6 @@ import org.graalvm.util.Pair;
 
 import jdk.vm.ci.meta.JavaMethod;
 import static org.graalvm.compiler.debug.DebugOptions.DumpPath;
-import static org.graalvm.compiler.debug.DebugOptions.PrintBinaryGraphs;
 import org.graalvm.graphio.GraphOutput;
 
 /**
@@ -415,7 +414,7 @@ public final class DebugContext implements AutoCloseable {
     private Path getFilePrinterPath() {
         // Construct the path to the file.
         // PrintGraphFileName -
-        String extension = PrintBinaryGraphs.getValue(immutable.options) ? "bgv" : "gv.xml";
+        String extension = "bgv";
         try {
             return PathUtilities.getPath(immutable.options, DumpPath, extension);
         } catch (IOException ex) {

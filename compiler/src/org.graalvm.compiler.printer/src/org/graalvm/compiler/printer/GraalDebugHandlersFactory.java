@@ -58,27 +58,19 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
     @Override
     public List<DebugHandler> createHandlers(OptionValues options) {
         List<DebugHandler> handlers = new ArrayList<>();
-        handlers.add(new GraphPrinterDumpHandler((debug, graph) -> createPrinter(debug, options)));
+        handlers.add(new GraphPrinterDumpHandler((debug, graph) -> new BinaryGraphPrinter(debug, snippetReflection)));
         if (DebugOptions.PrintCanonicalGraphStrings.getValue(options)) {
             handlers.add(new GraphPrinterDumpHandler((debug, graph) -> createStringPrinter(snippetReflection)));
         }
         handlers.add(new NodeDumper());
         if (DebugOptions.PrintCFG.getValue(options) || DebugOptions.PrintBackendCFG.getValue(options)) {
-            if (DebugOptions.PrintBinaryGraphs.getValue(options) && DebugOptions.PrintCFG.getValue(options)) {
+            if (DebugOptions.PrintCFG.getValue(options)) {
                 TTY.out.println("Complete C1Visualizer dumping slows down PrintBinaryGraphs: use -Dgraal.PrintCFG=false to disable it");
             }
             handlers.add(new CFGPrinterObserver());
         }
         handlers.add(new NoDeadCodeVerifyHandler());
         return handlers;
-    }
-
-    private GraphPrinter createPrinter(DebugContext ctx, OptionValues options) throws IOException {
-        if (DebugOptions.PrintBinaryGraphs.getValue(options)) {
-            return new BinaryGraphPrinter(ctx, snippetReflection);
-        } else {
-            return new IdealGraphPrinter(null, true, snippetReflection);
-        }
     }
 
     public static String sanitizedFileName(String n) {

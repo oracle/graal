@@ -34,7 +34,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.function.Supplier;
 import static org.graalvm.compiler.debug.DebugOptions.PrintBinaryGraphPort;
-import static org.graalvm.compiler.debug.DebugOptions.PrintBinaryGraphs;
 import static org.graalvm.compiler.debug.DebugOptions.PrintGraphHost;
 import static org.graalvm.compiler.debug.DebugOptions.PrintXmlGraphPort;
 import org.graalvm.compiler.options.OptionValues;
@@ -88,7 +87,7 @@ final class IgvDumpChannel implements WritableByteChannel {
 
     private static WritableByteChannel createNetworkChannel(Supplier<Path> pathProvider, OptionValues options) throws IOException {
         String host = PrintGraphHost.getValue(options);
-        int port = PrintBinaryGraphs.getValue(options) ? PrintBinaryGraphPort.getValue(options) : PrintXmlGraphPort.getValue(options);
+        int port = PrintBinaryGraphPort.getValue(options);
         try {
             WritableByteChannel channel = SocketChannel.open(new InetSocketAddress(host, port));
             TTY.println("Connected to the IGV on %s:%d", host, port);
