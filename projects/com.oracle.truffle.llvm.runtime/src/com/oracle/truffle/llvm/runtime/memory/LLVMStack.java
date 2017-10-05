@@ -101,10 +101,32 @@ public final class LLVMStack {
         return isFreed;
     }
 
-    public long getStackPointer() {
+    public final class StackPointer implements AutoCloseable {
+
+        private final long pointer;
+
+        private StackPointer() {
+            this.pointer = getStackPointer();
+        }
+
+        public long get() {
+            return pointer;
+        }
+
+        @Override
+        public void close() {
+            setStackPointer(pointer);
+        }
+    }
+
+    private long getStackPointer() {
         long sp = this.stackPointer;
         assert assertStackPointer();
         return sp;
+    }
+
+    public StackPointer takeStackPointer() {
+        return new StackPointer();
     }
 
     private boolean assertStackPointer() {
