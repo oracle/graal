@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 0.29
+
+* Added a new TCK SPI based on the org.graalvm.polyglot API to test a language inter-operability. To test the language inter-operability implement the [LanguageProvider](http://graalvm.github.io/graal/truffle/javadoc/org/graalvm/polyglot/tck/LanguageProvider.html).
+
 ## Version 0.28
 
 * Truffle languages may support [access](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#isThreadAccessAllowed-java.lang.Thread-boolean-) to contexts from multiple threads at the same time. By default the language supports only single-threaded access. 
