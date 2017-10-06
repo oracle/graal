@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.profiler;
+package com.oracle.truffle.tools.profiler.impl;
 
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
@@ -38,14 +38,14 @@ import java.util.Set;
  * 
  * @since 0.29
  */
-final class SourceLocation {
+public final class SourceLocation {
 
     private final SourceSection sourceSection;
     private final String rootName;
     private final Set<Class<?>> tags;
     private final Node instrumentedNode;
 
-    SourceLocation(Instrumenter instrumenter, EventContext context) {
+    public SourceLocation(Instrumenter instrumenter, EventContext context) {
         this.tags = instrumenter.queryTags(context.getInstrumentedNode());
         this.sourceSection = context.getInstrumentedSourceSection();
         this.instrumentedNode = context.getInstrumentedNode();
@@ -61,15 +61,15 @@ final class SourceLocation {
         }
     }
 
-    SourceSection getSourceSection() {
+    public SourceSection getSourceSection() {
         return sourceSection;
     }
 
-    String getRootName() {
+    public String getRootName() {
         return rootName;
     }
 
-    Set<Class<?>> getTags() {
+    public Set<Class<?>> getTags() {
         return tags;
     }
 
