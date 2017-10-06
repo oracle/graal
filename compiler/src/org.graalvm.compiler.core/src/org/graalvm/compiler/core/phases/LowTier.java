@@ -72,7 +72,7 @@ public class LowTier extends PhaseSuite<LowTierContext> {
 
         appendPhase(new ExpandLogicPhase());
 
-        appendPhase(new FixReadsPhase(true, new SchedulePhase(GraalOptions.StressTestEarlyReads.getValue(options) ? SchedulingStrategy.EARLIEST : SchedulingStrategy.LATEST_OUT_OF_LOOPS)));
+        appendPhase(new FixReadsPhase(true, new SchedulePhase(GraalOptions.StressTestEarlyReads.getValue(options) ? SchedulingStrategy.EARLIEST: SchedulingStrategy.LATEST_OUT_OF_LOOPS)));
 
         appendPhase(canonicalizerWithoutGVN);
 

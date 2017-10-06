@@ -73,7 +73,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
 
         long implicitNullCheckLimit = context.getTarget().implicitNullCheckLimit;
         for (DeoptimizeNode deopt : graph.getNodes(DeoptimizeNode.TYPE)) {
-            tryUseTrappingNullCheck(deopt, deopt.predecessor(), deopt.reason(), deopt.getSpeculation(), implicitNullCheckLimit);
+            tryUseTrappingNullCheck(deopt, deopt.predecessor(), deopt.getReason(), deopt.getSpeculation(), implicitNullCheckLimit);
         }
         for (DynamicDeoptimizeNode deopt : graph.getNodes(DynamicDeoptimizeNode.TYPE)) {
             tryUseTrappingNullCheck(context.getMetaAccess(), deopt, implicitNullCheckLimit);
