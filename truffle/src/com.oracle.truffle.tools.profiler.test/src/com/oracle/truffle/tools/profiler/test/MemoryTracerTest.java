@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.profiler.test;
 
 import com.oracle.truffle.tools.profiler.CallTreeNode;
 import com.oracle.truffle.tools.profiler.MemoryTracer;
+import com.oracle.truffle.tools.profiler.impl.MemoryTracerInstrument;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -38,7 +39,7 @@ public class MemoryTracerTest extends AbstractProfilerTest {
 
     @Before
     public void setupTracer() {
-        tracer = engine.getRuntime().getInstruments().get(MemoryTracer.Instrument.ID).lookup(MemoryTracer.class);
+        tracer = engine.getRuntime().getInstruments().get(MemoryTracerInstrument.ID).lookup(MemoryTracer.class);
         Assert.assertNotNull(tracer);
     }
 
