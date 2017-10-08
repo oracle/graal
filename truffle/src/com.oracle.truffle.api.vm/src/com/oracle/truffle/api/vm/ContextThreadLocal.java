@@ -24,8 +24,6 @@
  */
 package com.oracle.truffle.api.vm;
 
-import java.lang.ref.WeakReference;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -33,9 +31,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 
 final class ContextThreadLocal extends ThreadLocal<Object> {
-
-    private final Assumption constant = Truffle.getRuntime().createAssumption("constant context");
-    @CompilationFinal private volatile WeakReference<Object> constantContext = new WeakReference<>(null);
 
     private final Assumption singleThread = Truffle.getRuntime().createAssumption("constant context store");
     private Object firstContext;
@@ -53,6 +48,15 @@ final class ContextThreadLocal extends ThreadLocal<Object> {
         return null;
     }
 
+    public boolean isSet() {
+        if (singleThread.isValid()) {
+            boolean set = firstContext != null;
+            return Thread.currentThread() == firstThread && set;
+        } else {
+            return getTL() != null;
+        }
+    }
+
     @Override
     public Object get() {
         Object context;
@@ -65,33 +69,6 @@ final class ContextThreadLocal extends ThreadLocal<Object> {
             }
         } else {
             context = getTL();
-        }
-        if (constant.isValid()) {
-            Object constantC = this.constantContext.get();
-            if (context == constantC) {
-                // did we read an invalid value?
-                if (!constant.isValid()) {
-                    CompilerDirectives.transferToInterpreter();
-                    return getConstantSlowPath(context);
-                }
-                return constantC;
-            } else {
-                CompilerDirectives.transferToInterpreter();
-                return getConstantSlowPath(context);
-            }
-        }
-        return context;
-    }
-
-    private synchronized Object getConstantSlowPath(Object context) {
-        Object localContext = constantContext.get();
-        if (localContext != context) {
-            if (localContext == null) {
-                constantContext = new WeakReference<>(context);
-            } else {
-                constant.invalidate();
-                constantContext.clear();
-            }
         }
         return context;
     }
@@ -112,8 +89,9 @@ final class ContextThreadLocal extends ThreadLocal<Object> {
                 prev = setReturnParentSlowPath(value);
             }
             return prev;
+        } else {
+            return setTLReturnParent(value);
         }
-        return setTLReturnParent(value);
     }
 
     private synchronized Object getImplSlowPath() {
@@ -166,9 +144,9 @@ final class ContextThreadLocal extends ThreadLocal<Object> {
             prev = this.firstContext;
             this.firstContext = context;
         } else {
+            prev = this.firstContext;
             if (storeThread == null) {
                 this.firstThread = currentThread;
-                prev = this.firstContext;
                 this.firstContext = context;
             } else {
                 singleThread.invalidate();

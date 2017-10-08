@@ -571,6 +571,7 @@ public class MultiThreadedLanguageTest {
         }).asHostObject();
         try {
             engine.close();
+            Assert.fail();
         } catch (PolyglotException e) {
             assertTrue(e.isInternalError());
             assertTrue(e.getMessage().contains("The language did not complete all polyglot threads but should have"));

@@ -612,6 +612,14 @@ public abstract class Accessor {
         return SUPPORT.isGuestCallStackFrame(element);
     }
 
+    protected void initializeProfile(CallTarget target, Class<?>[] argmentTypes) {
+        SUPPORT.initializeProfile(target, argmentTypes);
+    }
+
+    protected Object callProfiled(CallTarget target, Object... args) {
+        return SUPPORT.callProfiled(target, args);
+    }
+
     @SuppressWarnings("deprecation")
     protected void onLoopCount(Node source, int iterations) {
         if (SUPPORT != null) {
