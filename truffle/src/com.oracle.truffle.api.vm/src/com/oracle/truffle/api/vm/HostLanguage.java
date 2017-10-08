@@ -145,6 +145,11 @@ class HostLanguage extends TruffleLanguage<HostContext> {
     }
 
     @Override
+    protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+        return true;
+    }
+
+    @Override
     protected boolean isObjectOfLanguage(Object object) {
         if (object instanceof TruffleObject) {
             return PolyglotProxy.isProxyGuestObject((TruffleObject) object) || JavaInterop.isJavaObject((TruffleObject) object);
