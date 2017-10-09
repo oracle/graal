@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.debug;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.InetSocketAddress;
@@ -36,7 +35,6 @@ import java.nio.file.StandardOpenOption;
 import java.util.function.Supplier;
 import static org.graalvm.compiler.debug.DebugOptions.PrintBinaryGraphPort;
 import static org.graalvm.compiler.debug.DebugOptions.PrintGraphHost;
-import static org.graalvm.compiler.debug.DebugOptions.PrintXmlGraphPort;
 import org.graalvm.compiler.options.OptionValues;
 
 final class IgvDumpChannel implements WritableByteChannel {

@@ -389,7 +389,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * {@link DebugDumpHandler}s closed in {@link #afterTest()}.
      */
     protected DebugContext getDebugContext() {
-        return getDebugContext(getInitialOptions());
+        return getDebugContext(getInitialOptions(), null);
     }
 
     @Override
@@ -1216,15 +1216,15 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected final Builder builder(ResolvedJavaMethod method, AllowAssumptions allowAssumptions) {
         OptionValues options = getInitialOptions();
-        return new Builder(options, getDebugContext(options), allowAssumptions).method(method).compilationId(getCompilationId(method));
+        return new Builder(options, getDebugContext(options, method), allowAssumptions).method(method).compilationId(getCompilationId(method));
     }
 
     protected final Builder builder(ResolvedJavaMethod method, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId, OptionValues options) {
-        return new Builder(options, getDebugContext(options), allowAssumptions).method(method).compilationId(compilationId);
+        return new Builder(options, getDebugContext(options, method), allowAssumptions).method(method).compilationId(compilationId);
     }
 
     protected final Builder builder(ResolvedJavaMethod method, AllowAssumptions allowAssumptions, OptionValues options) {
-        return new Builder(options, getDebugContext(options), allowAssumptions).method(method).compilationId(getCompilationId(method));
+        return new Builder(options, getDebugContext(options, method), allowAssumptions).method(method).compilationId(getCompilationId(method));
     }
 
     protected PhaseSuite<HighTierContext> getDebugGraphBuilderSuite() {
