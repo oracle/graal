@@ -1032,8 +1032,8 @@ public final class IntegerStamp extends PrimitiveStamp {
                             IntegerStamp b = (IntegerStamp) stamp2;
                             assert a.getBits() == b.getBits();
                             if (b.isStrictlyPositive()) {
-                                long newLowerBound = a.lowerBound() / b.upperBound();
-                                long newUpperBound = a.upperBound() / b.lowerBound();
+                                long newLowerBound = a.lowerBound() < 0 ? a.lowerBound() / b.lowerBound() : a.lowerBound() / b.upperBound();
+                                long newUpperBound = a.upperBound() < 0 ? a.upperBound() / b.upperBound() : a.upperBound() / b.lowerBound();
                                 return StampFactory.forInteger(a.getBits(), newLowerBound, newUpperBound);
                             } else {
                                 return a.unrestricted();

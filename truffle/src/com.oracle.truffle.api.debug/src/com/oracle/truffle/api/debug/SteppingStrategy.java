@@ -24,11 +24,7 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.debug.DebuggerSession.SteppingLocation;
-import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.instrumentation.EventContext;
 
 /**
@@ -49,6 +45,20 @@ abstract class SteppingStrategy {
 
     boolean isConsumed() {
         return consumed;
+    }
+
+    void notifyCallEntry() {
+    }
+
+    void notifyCallExit() {
+    }
+
+    boolean isStopAfterCall() {
+        return true;
+    }
+
+    boolean isActive() {
+        return true;
     }
 
     abstract boolean step(DebuggerSession steppingSession, EventContext context, SteppingLocation location);
@@ -98,29 +108,6 @@ abstract class SteppingStrategy {
 
     static SteppingStrategy createComposed(SteppingStrategy strategy1, SteppingStrategy strategy2) {
         return new ComposedStrategy(strategy1, strategy2);
-    }
-
-    // TODO (mlvdv) wish there were fast-path access to stack depth
-    // TODO (chumer) wish so too
-    @TruffleBoundary
-    private static int computeStackDepth() {
-        FrameInstanceCounter counter = new FrameInstanceCounter();
-        Truffle.getRuntime().iterateFrames(counter);
-        return counter.getCount() + 1;
-    }
-
-    private static class FrameInstanceCounter implements FrameInstanceVisitor<Void> {
-
-        private int count;
-
-        public Void visitFrame(FrameInstance frameInstance) {
-            count++;
-            return null;
-        }
-
-        public int getCount() {
-            return count;
-        }
     }
 
     private static final class Kill extends SteppingStrategy {
@@ -222,7 +209,7 @@ abstract class SteppingStrategy {
      */
     private static final class StepInto extends SteppingStrategy {
 
-        private int startStackDepth;
+        private int stackCounter;
         private int unfinishedStepCount;
 
         StepInto(int stepCount) {
@@ -231,20 +218,31 @@ abstract class SteppingStrategy {
 
         @Override
         void initialize() {
-            this.startStackDepth = computeStackDepth();
+            this.stackCounter = 0;
+        }
+
+        @Override
+        void notifyCallEntry() {
+            stackCounter++;
+        }
+
+        @Override
+        void notifyCallExit() {
+            stackCounter--;
+        }
+
+        @Override
+        boolean isStopAfterCall() {
+            return stackCounter < 0;
         }
 
         @Override
         boolean step(DebuggerSession steppingSession, EventContext context, SteppingLocation location) {
-            if (location == SteppingLocation.BEFORE_STATEMENT) {
+            if (location == SteppingLocation.BEFORE_STATEMENT ||
+                            location == SteppingLocation.AFTER_CALL && stackCounter < 0) {
+                stackCounter = 0;
                 if (--unfinishedStepCount <= 0) {
                     return true;
-                }
-            } else if (location == SteppingLocation.AFTER_CALL) {
-                if (computeStackDepth() < startStackDepth) {
-                    if (--unfinishedStepCount <= 0) {
-                        return true;
-                    }
                 }
             }
             return false;
@@ -252,7 +250,7 @@ abstract class SteppingStrategy {
 
         @Override
         public String toString() {
-            return String.format("STEP_INTO(startStackDepth=%s, stepCount=%s)", startStackDepth, unfinishedStepCount);
+            return String.format("STEP_INTO(stackCounter=%s, stepCount=%s)", stackCounter, unfinishedStepCount);
         }
 
     }
@@ -274,8 +272,9 @@ abstract class SteppingStrategy {
      */
     private static final class StepOut extends SteppingStrategy {
 
+        private int stackCounter;
         private int unfinishedStepCount;
-        private int startStackDepth;
+        private boolean active = false;
 
         StepOut(int stepCount) {
             this.unfinishedStepCount = stepCount;
@@ -283,24 +282,49 @@ abstract class SteppingStrategy {
 
         @Override
         void initialize() {
-            this.startStackDepth = computeStackDepth();
+            this.stackCounter = 0;
+        }
+
+        @Override
+        void notifyCallEntry() {
+            stackCounter++;
+            active = false;
+        }
+
+        @Override
+        void notifyCallExit() {
+            boolean isOn = (--stackCounter) < 0;
+            if (isOn) {
+                active = true;
+            }
+        }
+
+        @Override
+        boolean isStopAfterCall() {
+            return active;
+        }
+
+        @Override
+        boolean isActive() {
+            return active;
         }
 
         @Override
         boolean step(DebuggerSession steppingSession, EventContext context, SteppingLocation location) {
-            if (location == SteppingLocation.AFTER_CALL) {
-                if (computeStackDepth() < startStackDepth) {
-                    if (--unfinishedStepCount <= 0) {
-                        return true;
-                    }
+            stackCounter = 0;
+            if (location == SteppingLocation.BEFORE_STATEMENT || // when there is no call node
+                            location == SteppingLocation.AFTER_CALL) {
+                if (--unfinishedStepCount <= 0) {
+                    return true;
                 }
             }
+            active = false; // waiting for next call exit
             return false;
         }
 
         @Override
         public String toString() {
-            return String.format("STEP_OUT(startStackDepth=%s, stepCount=%s)", startStackDepth, unfinishedStepCount);
+            return String.format("STEP_OUT(stackCounter=%s, stepCount=%s)", stackCounter, unfinishedStepCount);
         }
 
     }
@@ -320,8 +344,9 @@ abstract class SteppingStrategy {
      */
     private static final class StepOver extends SteppingStrategy {
 
-        private int startStackDepth;
+        private int stackCounter;
         private int unfinishedStepCount;
+        private boolean active = true;
 
         StepOver(int stepCount) {
             this.unfinishedStepCount = stepCount;
@@ -329,30 +354,47 @@ abstract class SteppingStrategy {
 
         @Override
         void initialize() {
-            this.startStackDepth = computeStackDepth();
+            this.stackCounter = 0;
+        }
+
+        @Override
+        void notifyCallEntry() {
+            stackCounter++;
+            active = stackCounter <= 0;
+        }
+
+        @Override
+        void notifyCallExit() {
+            boolean isOn = (--stackCounter) <= 0;
+            if (isOn) {
+                active = true;
+            }
+        }
+
+        @Override
+        boolean isStopAfterCall() {
+            return stackCounter < 0;
+        }
+
+        @Override
+        boolean isActive() {
+            return active;
         }
 
         @Override
         boolean step(DebuggerSession steppingSession, EventContext context, SteppingLocation location) {
-            if (location == SteppingLocation.BEFORE_STATEMENT) {
-                if (computeStackDepth() <= startStackDepth) {
-                    if (--unfinishedStepCount <= 0) {
-                        return true;
-                    }
-                }
-            } else if (location == SteppingLocation.AFTER_CALL) {
-                if (computeStackDepth() < startStackDepth) {
-                    if (--unfinishedStepCount <= 0) {
-                        return true;
-                    }
-                }
+            if (location == SteppingLocation.BEFORE_STATEMENT ||
+                            location == SteppingLocation.AFTER_CALL && stackCounter < 0) {
+                stackCounter = 0;
+                return --unfinishedStepCount <= 0;
+            } else {
+                return false;
             }
-            return false;
         }
 
         @Override
         public String toString() {
-            return String.format("STEP_OVER(startStackDepth=%s, stepCount=%s)", startStackDepth, unfinishedStepCount);
+            return String.format("STEP_OVER(stackCounter=%s, stepCount=%s)", stackCounter, unfinishedStepCount);
         }
 
     }
@@ -374,6 +416,26 @@ abstract class SteppingStrategy {
         void initialize() {
             assert current == first;
             current.initialize();
+        }
+
+        @Override
+        void notifyCallEntry() {
+            current.notifyCallEntry();
+        }
+
+        @Override
+        void notifyCallExit() {
+            current.notifyCallExit();
+        }
+
+        @Override
+        boolean isStopAfterCall() {
+            return current.isStopAfterCall();
+        }
+
+        @Override
+        boolean isActive() {
+            return current.isActive();
         }
 
         @Override

@@ -34,6 +34,7 @@ import java.nio.charset.StandardCharsets;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -50,6 +51,13 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 
 abstract class PolyglotRootNode extends RootNode {
+
+    private static RootCallTarget voidCallTarget = Truffle.getRuntime().createCallTarget(new VoidRootNode());
+
+    @SuppressWarnings("unused")
+    private static void resetNativeImageState() {
+        voidCallTarget = null;
+    }
 
     final PolyglotEngine engine;
 
@@ -75,7 +83,7 @@ abstract class PolyglotRootNode extends RootNode {
         RootNode symbolNode;
         if (isPrimitiveType(type)) {
             // no conversion necessary just return value
-            return Truffle.getRuntime().createCallTarget(new VoidRootNode());
+            return voidCallTarget;
         } else {
             symbolNode = new ForeignExecuteRootNode(engine, (Class<? extends TruffleObject>) type);
         }
@@ -87,7 +95,7 @@ abstract class PolyglotRootNode extends RootNode {
         RootNode symbolNode;
         if (isPrimitiveType(type)) {
             // no conversion necessary just return value
-            return Truffle.getRuntime().createCallTarget(new VoidRootNode());
+            return voidCallTarget;
         } else {
             symbolNode = new AsJavaRootNode(engine, (Class<? extends TruffleObject>) type);
         }

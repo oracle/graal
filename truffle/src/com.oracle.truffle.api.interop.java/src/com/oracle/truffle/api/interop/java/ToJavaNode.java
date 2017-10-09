@@ -80,7 +80,11 @@ abstract class ToJavaNode extends Node {
         } else if (JavaObject.isJavaInstance(targetType.clazz, value)) {
             convertedValue = JavaObject.valueOf(value);
         } else if (!TruffleOptions.AOT && value instanceof TruffleObject && JavaInterop.isJavaFunctionInterface(targetType.clazz) && isExecutable((TruffleObject) value)) {
-            convertedValue = JavaInteropReflect.asJavaFunction(targetType.clazz, (TruffleObject) value, languageContext);
+            if (targetType.clazz.isInstance(value)) {
+                convertedValue = value;
+            } else {
+                convertedValue = JavaInteropReflect.asJavaFunction(targetType.clazz, (TruffleObject) value, languageContext);
+            }
         } else if (value == JavaObject.NULL) {
             return null;
         } else if (value instanceof TruffleObject) {

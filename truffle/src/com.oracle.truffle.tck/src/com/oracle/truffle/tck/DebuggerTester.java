@@ -363,10 +363,15 @@ public final class DebuggerTester implements AutoCloseable {
             throw new IllegalStateException("Already closed.");
         }
         closed = true;
-        engine.close();
         trace("kill session " + this);
         // trying to interrupt if execution is in IO.
         notifyNextAction();
+        try {
+            evalThread.join();
+        } catch (InterruptedException iex) {
+            throw new AssertionError("Interrupted while joining eval thread.", iex);
+        }
+        engine.close();
     }
 
     /**
