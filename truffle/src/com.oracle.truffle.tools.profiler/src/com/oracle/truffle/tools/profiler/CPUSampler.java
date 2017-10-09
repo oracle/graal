@@ -224,8 +224,8 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
-     * Sets the delay period i.e. the time that is allowed to pass before the sampler starts taking
-     * samples.
+     * Sets the delay period i.e. the time that is allowed to pass between when the first sample
+     * would have been taken and when the sampler actually starts taking samples.
      *
      * @param delay the delay period.
      * @since 0.29
@@ -236,8 +236,8 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
-     * Sets the size of the shadow stack. Whether or not the shadow stack grew more than the
-     * provided size during execution can be checked with {@linkplain #hasStackOverflowed}
+     * Sets the maximum amount of stack frames that are sampled. Whether or not the stack grew more
+     * than the provided size during execution can be checked with {@linkplain #hasStackOverflowed}
      *
      * @param stackLimit the new size of the shadow stack
      * @since 0.29
@@ -259,8 +259,8 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
-     * Sets the {@link SourceSectionFilter filter} for the sampler. This allows the sampler to
-     * observe only parts of the executed source code.
+     * Sets the {@link SourceSectionFilter filter} for the sampler. The sampler will only observe
+     * parts of the executed source code that is specified by the filter.
      *
      * @param filter The new filter describing which part of the source code to sample
      * @since 0.29
