@@ -93,15 +93,15 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             execute(defaultSourceForSampling);
         }
 
-        Collection<ProfilerNode<CPUSampler.HitCounts>> children = sampler.getRootNodes();
+        Collection<ProfilerNode<CPUSampler.Payload>> children = sampler.getRootNodes();
         Assert.assertEquals(1, children.size());
-        ProfilerNode<CPUSampler.HitCounts> program = children.iterator().next();
+        ProfilerNode<CPUSampler.Payload> program = children.iterator().next();
         Assert.assertEquals("", program.getRootName());
 
         children = program.getChildren();
         Assert.assertEquals(2, children.size());
-        Iterator<ProfilerNode<CPUSampler.HitCounts>> iterator = children.iterator();
-        ProfilerNode<CPUSampler.HitCounts> baz = iterator.next();
+        Iterator<ProfilerNode<CPUSampler.Payload>> iterator = children.iterator();
+        ProfilerNode<CPUSampler.Payload> baz = iterator.next();
         if (!"baz".equals(baz.getRootName())) {
             baz = iterator.next();
         }
@@ -109,12 +109,12 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
         children = baz.getChildren();
         Assert.assertEquals(1, children.size());
-        ProfilerNode<CPUSampler.HitCounts> bar = children.iterator().next();
+        ProfilerNode<CPUSampler.Payload> bar = children.iterator().next();
         Assert.assertEquals("bar", bar.getRootName());
 
         children = bar.getChildren();
         Assert.assertEquals(1, children.size());
-        ProfilerNode<CPUSampler.HitCounts> foo = children.iterator().next();
+        ProfilerNode<CPUSampler.Payload> foo = children.iterator().next();
         Assert.assertEquals("foo", foo.getRootName());
 
         children = foo.getChildren();
@@ -136,19 +136,19 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             execute(defaultRecursiveSourceForSampling);
         }
 
-        Collection<ProfilerNode<CPUSampler.HitCounts>> children = sampler.getRootNodes();
+        Collection<ProfilerNode<CPUSampler.Payload>> children = sampler.getRootNodes();
         Assert.assertEquals(1, children.size());
-        ProfilerNode<CPUSampler.HitCounts> program = children.iterator().next();
+        ProfilerNode<CPUSampler.Payload> program = children.iterator().next();
         Assert.assertEquals("", program.getRootName());
 
         children = program.getChildren();
         Assert.assertEquals(1, children.size());
-        ProfilerNode<CPUSampler.HitCounts> bar = children.iterator().next();
+        ProfilerNode<CPUSampler.Payload> bar = children.iterator().next();
         Assert.assertEquals("bar", bar.getRootName());
 
         children = bar.getChildren();
         Assert.assertEquals(1, children.size());
-        ProfilerNode<CPUSampler.HitCounts> foo = children.iterator().next();
+        ProfilerNode<CPUSampler.Payload> foo = children.iterator().next();
         Assert.assertEquals("foo", foo.getRootName());
 
         // RECURSIVE_CALL does recutions to depth 10
@@ -170,11 +170,11 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         for (int i = 0; i < executionCount; i++) {
             execute(defaultSourceForSampling);
         }
-        Collection<ProfilerNode<CPUSampler.HitCounts>> children = sampler.getRootNodes();
+        Collection<ProfilerNode<CPUSampler.Payload>> children = sampler.getRootNodes();
         Assert.assertEquals(2, children.size());
 
-        Iterator<ProfilerNode<CPUSampler.HitCounts>> iterator = children.iterator();
-        ProfilerNode<CPUSampler.HitCounts> call = iterator.next();
+        Iterator<ProfilerNode<CPUSampler.Payload>> iterator = children.iterator();
+        ProfilerNode<CPUSampler.Payload> call = iterator.next();
         if (!"CALL(baz)".equals(call.getSourceSection().getCharacters().toString())) {
             call = iterator.next();
         }
@@ -201,12 +201,12 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         for (int i = 0; i < executionCount; i++) {
             execute(defaultRecursiveSourceForSampling);
         }
-        Collection<ProfilerNode<CPUSampler.HitCounts>> children = sampler.getRootNodes();
+        Collection<ProfilerNode<CPUSampler.Payload>> children = sampler.getRootNodes();
 
         // 10 recursive calls, base foo and bar = 12
         for (int i = 0; i < 12; i++) {
             Assert.assertEquals(1, children.size());
-            ProfilerNode<CPUSampler.HitCounts> call = children.iterator().next();
+            ProfilerNode<CPUSampler.Payload> call = children.iterator().next();
             Assert.assertTrue(call.getTags().contains(StandardTags.CallTag.class));
             children = call.getChildren();
         }

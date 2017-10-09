@@ -129,19 +129,19 @@ class CPUSamplerCLI extends ProfilerCLI {
 
     private static void printSamplingHistogram(PrintStream out, CPUSampler sampler) {
 
-        final Map<SourceLocation, List<ProfilerNode<CPUSampler.HitCounts>>> histogram = sampler.computeHistogram();
+        final Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> histogram = sampler.computeHistogram();
 
-        List<List<ProfilerNode<CPUSampler.HitCounts>>> lines = new ArrayList<>(histogram.values());
-        Collections.sort(lines, new Comparator<List<ProfilerNode<CPUSampler.HitCounts>>>() {
+        List<List<ProfilerNode<CPUSampler.Payload>>> lines = new ArrayList<>(histogram.values());
+        Collections.sort(lines, new Comparator<List<ProfilerNode<CPUSampler.Payload>>>() {
             @Override
-            public int compare(List<ProfilerNode<CPUSampler.HitCounts>> o1, List<ProfilerNode<CPUSampler.HitCounts>> o2) {
+            public int compare(List<ProfilerNode<CPUSampler.Payload>> o1, List<ProfilerNode<CPUSampler.Payload>> o2) {
                 long sum1 = 0;
-                for (ProfilerNode<CPUSampler.HitCounts> tree : o1) {
+                for (ProfilerNode<CPUSampler.Payload> tree : o1) {
                     sum1 += tree.getPayload().getSelfHitCount();
                 }
 
                 long sum2 = 0;
-                for (ProfilerNode<CPUSampler.HitCounts> tree : o2) {
+                for (ProfilerNode<CPUSampler.Payload> tree : o2) {
                     sum2 += tree.getPayload().getSelfHitCount();
                 }
                 return Long.compare(sum2, sum1);
@@ -149,7 +149,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         });
 
         int maxLength = 10;
-        for (List<ProfilerNode<CPUSampler.HitCounts>> line : lines) {
+        for (List<ProfilerNode<CPUSampler.Payload>> line : lines) {
             maxLength = Math.max(computeRootNameMaxLength(line.get(0)), maxLength);
         }
 
@@ -164,7 +164,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         out.println(sep);
         out.println(title);
         out.println(sep);
-        for (List<ProfilerNode<CPUSampler.HitCounts>> line : lines) {
+        for (List<ProfilerNode<CPUSampler.Payload>> line : lines) {
             printAttributes(out, sampler, "", line, maxLength);
         }
         out.println(sep);
@@ -186,16 +186,16 @@ class CPUSamplerCLI extends ProfilerCLI {
         out.println(sep);
     }
 
-    private static void printSamplingCallTreeRec(CPUSampler sampler, int maxRootLength, String prefix, Collection<ProfilerNode<CPUSampler.HitCounts>> children, PrintStream out) {
-        List<ProfilerNode<CPUSampler.HitCounts>> sortedChildren = new ArrayList<>(children);
-        Collections.sort(sortedChildren, new Comparator<ProfilerNode<CPUSampler.HitCounts>>() {
+    private static void printSamplingCallTreeRec(CPUSampler sampler, int maxRootLength, String prefix, Collection<ProfilerNode<CPUSampler.Payload>> children, PrintStream out) {
+        List<ProfilerNode<CPUSampler.Payload>> sortedChildren = new ArrayList<>(children);
+        Collections.sort(sortedChildren, new Comparator<ProfilerNode<CPUSampler.Payload>>() {
             @Override
-            public int compare(ProfilerNode<CPUSampler.HitCounts> o1, ProfilerNode<CPUSampler.HitCounts> o2) {
+            public int compare(ProfilerNode<CPUSampler.Payload> o1, ProfilerNode<CPUSampler.Payload> o2) {
                 return Long.compare(o2.getPayload().getHitCount(), o1.getPayload().getHitCount());
             }
         });
 
-        for (ProfilerNode<CPUSampler.HitCounts> treeNode : sortedChildren) {
+        for (ProfilerNode<CPUSampler.Payload> treeNode : sortedChildren) {
             if (treeNode == null) {
                 continue;
             }
@@ -204,9 +204,9 @@ class CPUSamplerCLI extends ProfilerCLI {
         }
     }
 
-    private static int computeTitleMaxLength(Collection<ProfilerNode<CPUSampler.HitCounts>> children, int baseLength) {
+    private static int computeTitleMaxLength(Collection<ProfilerNode<CPUSampler.Payload>> children, int baseLength) {
         int maxLength = baseLength;
-        for (ProfilerNode<CPUSampler.HitCounts> treeNode : children) {
+        for (ProfilerNode<CPUSampler.Payload> treeNode : children) {
             int rootNameLength = computeRootNameMaxLength(treeNode);
             maxLength = Math.max(baseLength + rootNameLength, maxLength);
             maxLength = Math.max(maxLength, computeTitleMaxLength(treeNode.getChildren(), baseLength + 1));
@@ -222,7 +222,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         return x2 >= y1 && y2 >= x1;
     }
 
-    private static void printAttributes(PrintStream out, CPUSampler sampler, String prefix, List<ProfilerNode<CPUSampler.HitCounts>> nodes, int maxRootLength) {
+    private static void printAttributes(PrintStream out, CPUSampler sampler, String prefix, List<ProfilerNode<CPUSampler.Payload>> nodes, int maxRootLength) {
         long samplePeriod = sampler.getPeriod();
         long samples = sampler.getTotalSamples();
 
@@ -230,8 +230,8 @@ class CPUSamplerCLI extends ProfilerCLI {
         long selfCompiled = 0;
         long totalInterpreted = 0;
         long totalCompiled = 0;
-        for (ProfilerNode<CPUSampler.HitCounts> tree : nodes) {
-            CPUSampler.HitCounts payload = tree.getPayload();
+        for (ProfilerNode<CPUSampler.Payload> tree : nodes) {
+            CPUSampler.Payload payload = tree.getPayload();
             selfInterpreted += payload.getSelfInterpretedHitCount();
             selfCompiled += payload.getSelfCompiledHitCount();
             if (!tree.isRecursive()) {
@@ -246,7 +246,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             return;
         }
         assert totalSamples < samples;
-        ProfilerNode<CPUSampler.HitCounts> firstNode = nodes.get(0);
+        ProfilerNode<CPUSampler.Payload> firstNode = nodes.get(0);
         SourceSection sourceSection = firstNode.getSourceSection();
         String rootName = firstNode.getRootName();
 
@@ -274,10 +274,10 @@ class CPUSamplerCLI extends ProfilerCLI {
                 prefix + rootName, totalTimes, selfTimes, location));
     }
 
-    private static boolean needsColumnSpecifier(ProfilerNode<CPUSampler.HitCounts> firstNode) {
+    private static boolean needsColumnSpecifier(ProfilerNode<CPUSampler.Payload> firstNode) {
         boolean needsColumnsSpecifier = false;
         SourceSection sourceSection = firstNode.getSourceSection();
-        for (ProfilerNode<CPUSampler.HitCounts> node : firstNode.getParent().getChildren()) {
+        for (ProfilerNode<CPUSampler.Payload> node : firstNode.getParent().getChildren()) {
             if (node.getSourceSection() == sourceSection) {
                 continue;
             }
@@ -289,7 +289,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         return needsColumnsSpecifier;
     }
 
-    private static int computeRootNameMaxLength(ProfilerNode<CPUSampler.HitCounts> treeNode) {
+    private static int computeRootNameMaxLength(ProfilerNode<CPUSampler.Payload> treeNode) {
         int length = treeNode.getRootName().length();
         if (!treeNode.getTags().contains(StandardTags.RootTag.class)) {
             // reserve some space for the line and column info

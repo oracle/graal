@@ -64,9 +64,9 @@ public final class CPUSampler implements Closeable {
      *
      * @since 0.29
      */
-    public static final class HitCounts {
+    public static final class Payload {
 
-        HitCounts() {
+        Payload() {
         }
 
         int compiledHitCount;
@@ -176,7 +176,7 @@ public final class CPUSampler implements Closeable {
 
     private EventBinding<?> stacksBinding;
 
-    private final ProfilerNode<HitCounts> rootNode = new ProfilerNode<>(this, new HitCounts());
+    private final ProfilerNode<Payload> rootNode = new ProfilerNode<>(this, new Payload());
 
     private final Env env;
 
@@ -314,7 +314,7 @@ public final class CPUSampler implements Closeable {
      * @return The roots of the trees representing the profile of the execution.
      * @since 0.29
      */
-    public Collection<ProfilerNode<HitCounts>> getRootNodes() {
+    public Collection<ProfilerNode<Payload>> getRootNodes() {
         return rootNode.getChildren();
     }
 
@@ -325,7 +325,7 @@ public final class CPUSampler implements Closeable {
      */
     public synchronized void clearData() {
         samplesTaken.set(0);
-        Map<SourceLocation, ProfilerNode<HitCounts>> rootChildren = rootNode.children;
+        Map<SourceLocation, ProfilerNode<Payload>> rootChildren = rootNode.children;
         if (rootChildren != null) {
             rootChildren.clear();
         }
@@ -336,7 +336,7 @@ public final class CPUSampler implements Closeable {
      * @since 0.29
      */
     public synchronized boolean hasData() {
-        Map<SourceLocation, ProfilerNode<HitCounts>> rootChildren = rootNode.children;
+        Map<SourceLocation, ProfilerNode<Payload>> rootChildren = rootNode.children;
         return rootChildren != null && !rootChildren.isEmpty();
     }
 
@@ -360,17 +360,17 @@ public final class CPUSampler implements Closeable {
      * @return the source location histogram based on the sampling data
      * @since 0.29
      */
-    public Map<SourceLocation, List<ProfilerNode<HitCounts>>> computeHistogram() {
-        Map<SourceLocation, List<ProfilerNode<HitCounts>>> histogram = new HashMap<>();
+    public Map<SourceLocation, List<ProfilerNode<Payload>>> computeHistogram() {
+        Map<SourceLocation, List<ProfilerNode<Payload>>> histogram = new HashMap<>();
         computeHistogramImpl(rootNode.getChildren(), histogram);
         return histogram;
     }
 
-    private void computeHistogramImpl(Collection<ProfilerNode<HitCounts>> children, Map<SourceLocation, List<ProfilerNode<HitCounts>>> histogram) {
-        for (ProfilerNode<HitCounts> treeNode : children) {
-            List<ProfilerNode<HitCounts>> nodes = histogram.computeIfAbsent(treeNode.getSourceLocation(), new Function<SourceLocation, List<ProfilerNode<HitCounts>>>() {
+    private void computeHistogramImpl(Collection<ProfilerNode<Payload>> children, Map<SourceLocation, List<ProfilerNode<Payload>>> histogram) {
+        for (ProfilerNode<Payload> treeNode : children) {
+            List<ProfilerNode<Payload>> nodes = histogram.computeIfAbsent(treeNode.getSourceLocation(), new Function<SourceLocation, List<ProfilerNode<Payload>>>() {
                 @Override
-                public List<ProfilerNode<HitCounts>> apply(SourceLocation sourceLocation) {
+                public List<ProfilerNode<Payload>> apply(SourceLocation sourceLocation) {
                     return new ArrayList<>();
                 }
             });
@@ -469,13 +469,13 @@ public final class CPUSampler implements Closeable {
                 return false;
             }
             // now traverse the stack and insert the path into the tree
-            ProfilerNode<HitCounts> treeNode = rootNode;
+            ProfilerNode<Payload> treeNode = rootNode;
             for (int i = 0; i < correctedStackInfo.getLength(); i++) {
                 SourceLocation location = correctedStackInfo.getStack()[i];
                 boolean isCompiled = correctedStackInfo.getCompiledStack()[i];
 
                 treeNode = addOrUpdateChild(timestamp, treeNode, location);
-                HitCounts payload = treeNode.getPayload();
+                Payload payload = treeNode.getPayload();
                 payload.lastHitTime = timestamp;
                 if (i == correctedStackInfo.getLength() - 1) {
                     // last element is counted as self time
@@ -494,10 +494,10 @@ public final class CPUSampler implements Closeable {
             return true;
         }
 
-        private ProfilerNode<HitCounts> addOrUpdateChild(long timestamp, ProfilerNode<HitCounts> treeNode, SourceLocation location) {
-            ProfilerNode<HitCounts> child = treeNode.findChild(location);
+        private ProfilerNode<Payload> addOrUpdateChild(long timestamp, ProfilerNode<Payload> treeNode, SourceLocation location) {
+            ProfilerNode<Payload> child = treeNode.findChild(location);
             if (child == null) {
-                HitCounts payload = new HitCounts();
+                Payload payload = new Payload();
                 payload.firstHitTime = timestamp;
                 child = new ProfilerNode<>(treeNode, location, payload);
                 treeNode.addChild(location, child);
