@@ -44,20 +44,20 @@ public class CPUTracerCLI extends ProfilerCLI {
     static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>("");
 
     static void printTracerHistogram(PrintStream out, CPUTracer tracer) {
-        List<CPUTracer.Counter> counters = new ArrayList<>(tracer.getCounters());
-        counters.sort(new Comparator<CPUTracer.Counter>() {
+        List<CPUTracer.Payload> payloads = new ArrayList<>(tracer.getPayloads());
+        payloads.sort(new Comparator<CPUTracer.Payload>() {
             @Override
-            public int compare(CPUTracer.Counter o1, CPUTracer.Counter o2) {
+            public int compare(CPUTracer.Payload o1, CPUTracer.Payload o2) {
                 return Long.compare(o2.getCount(), o1.getCount());
             }
         });
-        int length = computeNameLength(counters, 50);
+        int length = computeNameLength(payloads, 50);
         String format = " %-" + length + "s | %20s | %20s | %20s | %s";
         String title = String.format(format, "Name", "Total Count", "Interpreted Count", "Compiled Count", "Location");
         String sep = repeat("-", title.length());
         long totalCount = 0;
-        for (CPUTracer.Counter counter : counters) {
-            totalCount += counter.getCount();
+        for (CPUTracer.Payload payload : payloads) {
+            totalCount += payload.getCount();
         }
 
         out.println(sep);
@@ -69,19 +69,19 @@ public class CPUTracerCLI extends ProfilerCLI {
 
         out.println(title);
         out.println(sep);
-        for (CPUTracer.Counter counter : counters) {
-            String total = String.format("%d %5.1f%%", counter.getCount(), (double) counter.getCount() * 100 / totalCount);
-            String interpreted = String.format("%d %5.1f%%", counter.getCountInterpreted(), (double) counter.getCountInterpreted() * 100 / counter.getCount());
-            String compiled = String.format("%d %5.1f%%", counter.getCountCompiled(), (double) counter.getCountCompiled() * 100 / counter.getCount());
-            out.println(String.format(format, counter.getRootName(), total, interpreted, compiled, getShortDescription(counter.getSourceSection())));
+        for (CPUTracer.Payload payload : payloads) {
+            String total = String.format("%d %5.1f%%", payload.getCount(), (double) payload.getCount() * 100 / totalCount);
+            String interpreted = String.format("%d %5.1f%%", payload.getCountInterpreted(), (double) payload.getCountInterpreted() * 100 / payload.getCount());
+            String compiled = String.format("%d %5.1f%%", payload.getCountCompiled(), (double) payload.getCountCompiled() * 100 / payload.getCount());
+            out.println(String.format(format, payload.getRootName(), total, interpreted, compiled, getShortDescription(payload.getSourceSection())));
         }
         out.println(sep);
     }
 
-    private static int computeNameLength(Collection<CPUTracer.Counter> counters, int limit) {
+    private static int computeNameLength(Collection<CPUTracer.Payload> payloads, int limit) {
         int maxLength = 6;
-        for (CPUTracer.Counter counter : counters) {
-            int rootNameLength = counter.getRootName().length();
+        for (CPUTracer.Payload payload : payloads) {
+            int rootNameLength = payload.getRootName().length();
             maxLength = Math.max(rootNameLength + 2, maxLength);
             maxLength = Math.min(maxLength, limit);
         }
