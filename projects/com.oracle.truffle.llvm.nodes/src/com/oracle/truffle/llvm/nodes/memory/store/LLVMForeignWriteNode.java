@@ -30,42 +30,33 @@
 package com.oracle.truffle.llvm.nodes.memory.store;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.memory.LLVMObjectAccessFactory;
 import com.oracle.truffle.llvm.nodes.memory.LLVMOffsetToNameNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMOffsetToNameNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
-import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
-import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class LLVMForeignWriteNode extends LLVMNode {
 
     @Child LLVMOffsetToNameNode offsetToName;
-
-    @Child protected Node foreignWrite;
-    @Child protected LLVMDataEscapeNode dataEscape;
+    @Child LLVMObjectWriteNode write;
 
     protected LLVMForeignWriteNode(Type valueType, int elementAccessSize) {
         this.offsetToName = LLVMOffsetToNameNodeGen.create(elementAccessSize);
-        this.foreignWrite = Message.WRITE.createNode();
-        this.dataEscape = LLVMDataEscapeNodeGen.create(valueType);
+        this.write = LLVMObjectAccessFactory.createWrite(valueType);
     }
 
     public abstract void execute(LLVMTruffleObject addr, Object value);
 
     @Specialization
-    void doForeignAccess(LLVMTruffleObject addr, Object value, @Cached("getContext()") LLVMContext context) {
+    void doForeignAccess(LLVMTruffleObject addr, Object value) {
         Object key = offsetToName.execute(addr.getBaseType(), addr.getOffset());
-        Object escapedValue = dataEscape.executeWithTarget(value, context);
         try {
-            ForeignAccess.sendWrite(foreignWrite, addr.getObject(), key, escapedValue);
+            write.executeWrite(addr.getObject(), key, addr.getOffset(), value);
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);

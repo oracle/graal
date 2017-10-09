@@ -30,36 +30,30 @@
 package com.oracle.truffle.llvm.nodes.memory.load;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.memory.LLVMObjectAccessFactory;
 import com.oracle.truffle.llvm.nodes.memory.LLVMOffsetToNameNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMOffsetToNameNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectReadNode;
 
 public class LLVMForeignReadNode extends Node {
 
     @Child LLVMOffsetToNameNode offsetToName;
-
-    @Child Node foreignRead;
-    @Child ForeignToLLVM toLLVM;
+    @Child LLVMObjectReadNode read;
 
     protected LLVMForeignReadNode(ForeignToLLVMType type, int elementAccessSize) {
         this.offsetToName = LLVMOffsetToNameNodeGen.create(elementAccessSize);
-        this.foreignRead = Message.READ.createNode();
-        this.toLLVM = ForeignToLLVM.create(type);
+        this.read = LLVMObjectAccessFactory.createRead(type);
     }
 
     public Object execute(LLVMTruffleObject addr) {
         Object key = offsetToName.execute(addr.getBaseType(), addr.getOffset());
         try {
-            Object value = ForeignAccess.sendRead(foreignRead, addr.getObject(), key);
-            return toLLVM.executeWithTarget(value);
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            return read.executeRead(addr.getObject(), key, addr.getOffset());
+        } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);
         }
