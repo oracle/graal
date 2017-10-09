@@ -84,7 +84,7 @@ public final class MemoryTracer implements Closeable {
 
     private EventBinding<?> stacksBinding;
 
-    private final ProfilerNode<AllocationPayload> rootNode = new ProfilerNode<>(this, null);
+    private final ProfilerNode<Payload> rootNode = new ProfilerNode<>(this, null);
 
     private boolean stackOverflowed = false;
 
@@ -142,7 +142,7 @@ public final class MemoryTracer implements Closeable {
      * @return The roots of the trees representing the profile of the execution.
      * @since 0.29
      */
-    public Collection<ProfilerNode<AllocationPayload>> getRootNodes() {
+    public Collection<ProfilerNode<Payload>> getRootNodes() {
         return rootNode.getChildren();
     }
 
@@ -152,7 +152,7 @@ public final class MemoryTracer implements Closeable {
      * @since 0.29
      */
     public synchronized void clearData() {
-        Map<SourceLocation, ProfilerNode<AllocationPayload>> rootChildren = rootNode.children;
+        Map<SourceLocation, ProfilerNode<Payload>> rootChildren = rootNode.children;
         if (rootChildren != null) {
             rootChildren.clear();
         }
@@ -163,7 +163,7 @@ public final class MemoryTracer implements Closeable {
      * @since 0.29
      */
     public synchronized boolean hasData() {
-        Map<SourceLocation, ProfilerNode<AllocationPayload>> rootChildren = rootNode.children;
+        Map<SourceLocation, ProfilerNode<Payload>> rootChildren = rootNode.children;
         return rootChildren != null && !rootChildren.isEmpty();
     }
 
@@ -253,8 +253,8 @@ public final class MemoryTracer implements Closeable {
         return histogram;
     }
 
-    private void computeMetaObjectHistogramImpl(Collection<ProfilerNode<AllocationPayload>> children, Map<String, List<AllocationEventInfo>> histogram) {
-        for (ProfilerNode<AllocationPayload> treeNode : children) {
+    private void computeMetaObjectHistogramImpl(Collection<ProfilerNode<Payload>> children, Map<String, List<AllocationEventInfo>> histogram) {
+        for (ProfilerNode<Payload> treeNode : children) {
             for (AllocationEventInfo info : treeNode.getPayload().getEvents()) {
                 List<AllocationEventInfo> nodes = histogram.computeIfAbsent(info.getMetaObjectString(), new Function<String, List<AllocationEventInfo>>() {
                     @Override
@@ -276,17 +276,17 @@ public final class MemoryTracer implements Closeable {
      * @return the source location histogram
      * @since 0.29
      */
-    public Map<SourceLocation, List<ProfilerNode<AllocationPayload>>> computeSourceLocationHistogram() {
-        Map<SourceLocation, List<ProfilerNode<AllocationPayload>>> histogram = new HashMap<>();
+    public Map<SourceLocation, List<ProfilerNode<Payload>>> computeSourceLocationHistogram() {
+        Map<SourceLocation, List<ProfilerNode<Payload>>> histogram = new HashMap<>();
         computeSourceLocationHistogramImpl(rootNode.getChildren(), histogram);
         return histogram;
     }
 
-    private void computeSourceLocationHistogramImpl(Collection<ProfilerNode<AllocationPayload>> children, Map<SourceLocation, List<ProfilerNode<AllocationPayload>>> histogram) {
-        for (ProfilerNode<AllocationPayload> treeNode : children) {
-            List<ProfilerNode<AllocationPayload>> nodes = histogram.computeIfAbsent(treeNode.getSourceLocation(), new Function<SourceLocation, List<ProfilerNode<AllocationPayload>>>() {
+    private void computeSourceLocationHistogramImpl(Collection<ProfilerNode<Payload>> children, Map<SourceLocation, List<ProfilerNode<Payload>>> histogram) {
+        for (ProfilerNode<Payload> treeNode : children) {
+            List<ProfilerNode<Payload>> nodes = histogram.computeIfAbsent(treeNode.getSourceLocation(), new Function<SourceLocation, List<ProfilerNode<Payload>>>() {
                 @Override
-                public List<ProfilerNode<AllocationPayload>> apply(SourceLocation sourceLocation) {
+                public List<ProfilerNode<Payload>> apply(SourceLocation sourceLocation) {
                     return new ArrayList<>();
                 }
             });
@@ -327,12 +327,12 @@ public final class MemoryTracer implements Closeable {
                 return false;
             }
             // now traverse the stack and reconstruct the call tree
-            ProfilerNode<AllocationPayload> treeNode = rootNode;
+            ProfilerNode<Payload> treeNode = rootNode;
             for (int i = 0; i < correctedStackInfo.getLength(); i++) {
                 SourceLocation location = correctedStackInfo.getStack()[i];
-                ProfilerNode<AllocationPayload> child = treeNode.findChild(location);
+                ProfilerNode<Payload> child = treeNode.findChild(location);
                 if (child == null) {
-                    child = new ProfilerNode<>(treeNode, location, new AllocationPayload());
+                    child = new ProfilerNode<>(treeNode, location, new Payload());
                     treeNode.addChild(location, child);
                 }
                 treeNode = child;
@@ -350,9 +350,9 @@ public final class MemoryTracer implements Closeable {
      *
      * @since 0.29
      */
-    public static final class AllocationPayload {
+    public static final class Payload {
 
-        AllocationPayload() {
+        Payload() {
         }
 
         private final List<AllocationEventInfo> events = new ArrayList<>();

@@ -57,7 +57,7 @@ public class MemoryTracerTest extends AbstractProfilerTest {
         Assert.assertTrue(tracer.isCollecting());
         Assert.assertFalse(tracer.hasData());
 
-        Collection<ProfilerNode<MemoryTracer.AllocationPayload>> rootNodes = tracer.getRootNodes();
+        Collection<ProfilerNode<MemoryTracer.Payload>> rootNodes = tracer.getRootNodes();
         Assert.assertEquals("More allocations found", 0, rootNodes.size());
     }
 
@@ -75,7 +75,7 @@ public class MemoryTracerTest extends AbstractProfilerTest {
         Assert.assertTrue(tracer.isCollecting());
         Assert.assertFalse(tracer.hasData());
 
-        Collection<ProfilerNode<MemoryTracer.AllocationPayload>> rootNodes = tracer.getRootNodes();
+        Collection<ProfilerNode<MemoryTracer.Payload>> rootNodes = tracer.getRootNodes();
         Assert.assertEquals("More allocations found", 0, rootNodes.size());
     }
 
@@ -96,9 +96,9 @@ public class MemoryTracerTest extends AbstractProfilerTest {
         Assert.assertTrue(tracer.isCollecting());
         Assert.assertTrue(tracer.hasData());
 
-        Collection<ProfilerNode<MemoryTracer.AllocationPayload>> rootNodes = tracer.getRootNodes();
+        Collection<ProfilerNode<MemoryTracer.Payload>> rootNodes = tracer.getRootNodes();
         Assert.assertEquals("More allocations found", 1, rootNodes.size());
-        ProfilerNode<MemoryTracer.AllocationPayload> node = rootNodes.iterator().next();
+        ProfilerNode<MemoryTracer.Payload> node = rootNodes.iterator().next();
         if (node.getChildren() != null) {
             Assert.assertEquals("Nested allocations found!", 0, node.getChildren().size());
         }
@@ -127,9 +127,9 @@ public class MemoryTracerTest extends AbstractProfilerTest {
         Assert.assertTrue(tracer.isCollecting());
         Assert.assertTrue(tracer.hasData());
 
-        Collection<ProfilerNode<MemoryTracer.AllocationPayload>> rootNodes = tracer.getRootNodes();
+        Collection<ProfilerNode<MemoryTracer.Payload>> rootNodes = tracer.getRootNodes();
         Assert.assertEquals("More allocations found", 1, rootNodes.size());
-        ProfilerNode<MemoryTracer.AllocationPayload> node = rootNodes.iterator().next();
+        ProfilerNode<MemoryTracer.Payload> node = rootNodes.iterator().next();
         if (node.getChildren() != null) {
             Assert.assertEquals("Nested allocations found!", 0, node.getChildren().size());
         }
@@ -159,8 +159,8 @@ public class MemoryTracerTest extends AbstractProfilerTest {
         Assert.assertTrue(tracer.hasData());
 
         // ROOT
-        Collection<ProfilerNode<MemoryTracer.AllocationPayload>> rootNodes = tracer.getRootNodes();
-        ProfilerNode<MemoryTracer.AllocationPayload> node = rootNodes.iterator().next();
+        Collection<ProfilerNode<MemoryTracer.Payload>> rootNodes = tracer.getRootNodes();
+        ProfilerNode<MemoryTracer.Payload> node = rootNodes.iterator().next();
         Assert.assertEquals("Incorrect number of allocations found", 123, node.getPayload().getTotalAllocations());
         Assert.assertEquals("Incorrect number of events found", 1, node.getPayload().getEvents().size());
 
@@ -207,8 +207,8 @@ public class MemoryTracerTest extends AbstractProfilerTest {
         final int totalAllocationsExpected = 112;
 
         // ROOT
-        Collection<ProfilerNode<MemoryTracer.AllocationPayload>> rootNodes = tracer.getRootNodes();
-        ProfilerNode<MemoryTracer.AllocationPayload> node = rootNodes.iterator().next();
+        Collection<ProfilerNode<MemoryTracer.Payload>> rootNodes = tracer.getRootNodes();
+        ProfilerNode<MemoryTracer.Payload> node = rootNodes.iterator().next();
         Assert.assertEquals("Incorrect number of allocations found",
                         totalAllocationsExpected, node.getPayload().getTotalAllocations());
         Assert.assertEquals("Incorrect number of events found", 1, node.getPayload().getEvents().size());
