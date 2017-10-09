@@ -201,26 +201,26 @@ def _unittest_config_participant_tck(config):
                     return True
         return has_resource
 
-    def import_visitor(suite, suite_import, filter, collector, **extra_args):
-        suite_collector(mx.suite(suite_import.name), filter, collector)
+    def import_visitor(suite, suite_import, predicate, collector, **extra_args):
+        suite_collector(mx.suite(suite_import.name), predicate, collector)
 
-    def suite_collector(suite, filter, collector):
+    def suite_collector(suite, predicate, collector):
+        suite.visit_imports(import_visitor, predicate=predicate, collector=collector)
         def dependency_visitor(dep, edge):
             if dep.isJARDistribution():
                 collector[dep.path] = None
         for dist in suite.dists:
-            if dist.isJARDistribution() and filter(dist.path):
+            if dist.isJARDistribution() and predicate(dist.path):
                 dist.walk_deps(visit=dependency_visitor, ignoredEdges=[mx.DEP_ANNOTATION_PROCESSOR, mx.DEP_BUILD])
                 collector[dist.path] = None
-        suite.visit_imports(import_visitor, filter=filter, collector=collector)
 
     providers = OrderedDict()
     suite_collector(mx.primary_suite(), create_filter("META-INF/services/org.graalvm.polyglot.tck.LanguageProvider"), providers)
     languages = OrderedDict()
     suite_collector(mx.primary_suite(), create_filter("META-INF/truffle/language"), languages)
     vmArgs, mainClass, mainClassArgs = config
-    cpIndex, cpValue = mx.find_classpath_arg(vmArgs);
-    cpBuilder = OrderedDict();
+    cpIndex, cpValue = mx.find_classpath_arg(vmArgs)
+    cpBuilder = OrderedDict()
     if cpValue:
         for cpElement in cpValue.split(os.pathsep):
             cpBuilder[cpElement] = None
