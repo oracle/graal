@@ -872,7 +872,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                          */
                         return false;
                     }
-
+                    if (!getCurrentThreadInfo().explicitContextStack.isEmpty()) {
+                        throw new IllegalStateException("The context is explicitely entered on the current thread. Call leave() before closing the context to resolve this.");
+                    }
                     childrenToClose = childContexts.toArray(new PolyglotContextImpl[childContexts.size()]);
                 }
             }
