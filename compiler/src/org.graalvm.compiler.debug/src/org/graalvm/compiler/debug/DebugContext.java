@@ -340,6 +340,14 @@ public final class DebugContext implements AutoCloseable {
             String compilableName = compilable instanceof JavaMethod ? ((JavaMethod) compilable).format("%H.%n(%p)%R") : String.valueOf(compilable);
             return identifier + ":" + compilableName;
         }
+
+        final String getLabel() {
+            if (compilable instanceof JavaMethod) {
+                JavaMethod method = (JavaMethod) compilable;
+                return method.format("%h.%n(%p)%r");
+            }
+            return String.valueOf(compilable);
+        }
     }
 
     private final Description description;
@@ -414,7 +422,7 @@ public final class DebugContext implements AutoCloseable {
     private Path getFilePrinterPath() {
         try {
             String id = description == null ? null : description.identifier;
-            String label = description == null ? null : description.toString();
+            String label = description == null ? null : description.getLabel();
             return PathUtilities.createUnique(immutable.options, DumpPath, id, label, ".bgv", false);
         } catch (IOException ex) {
             throw rethrowSilently(RuntimeException.class, ex);

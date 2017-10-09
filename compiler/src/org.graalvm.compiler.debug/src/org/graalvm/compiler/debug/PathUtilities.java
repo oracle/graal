@@ -204,7 +204,11 @@ public class PathUtilities {
                     return Files.createFile(result);
                 }
             } catch (FileAlreadyExistsException e) {
-                timestamp = "_" + getGlobalTimeStamp();
+                if (timestamp.length() == 0) {
+                    timestamp = "_" + getGlobalTimeStamp();
+                } else {
+                    timestamp = "_" + System.currentTimeMillis();
+                }
             }
         }
     }

@@ -393,7 +393,7 @@ public class GraalTest {
      * {@link DebugDumpHandler}s closed in {@link #afterTest()}.
      */
     protected DebugContext getDebugContext(OptionValues options) {
-        return getDebugContext(options, null);
+        return getDebugContext(options, null, null);
     }
 
     /**
@@ -402,9 +402,11 @@ public class GraalTest {
      * {@link DebugDumpHandler}s closed in {@link #afterTest()}.
      * 
      * @param options currently active options
+     * @param id identification of the compilation or {@code null}
      * @param method method to use for a proper description of the context or {@code null}
+     * @return configured context for compilation
      */
-    protected DebugContext getDebugContext(OptionValues options, ResolvedJavaMethod method) {
+    protected DebugContext getDebugContext(OptionValues options, String id, ResolvedJavaMethod method) {
         List<DebugContext> cached = cachedDebugs.get();
         if (cached == null) {
             cached = new ArrayList<>();
@@ -419,7 +421,7 @@ public class GraalTest {
         if (method == null) {
             descr = NO_DESCRIPTION;
         } else {
-            descr = new DebugContext.Description(method, method.getName());
+            descr = new DebugContext.Description(method, id == null ? method.getName() : id);
         }
         DebugContext debug = DebugContext.create(options, descr, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, getDebugHandlersFactories());
         cached.add(debug);
