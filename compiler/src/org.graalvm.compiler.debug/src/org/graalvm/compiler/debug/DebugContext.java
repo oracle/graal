@@ -412,11 +412,10 @@ public final class DebugContext implements AutoCloseable {
     }
 
     private Path getFilePrinterPath() {
-        // Construct the path to the file.
-        // PrintGraphFileName -
-        String extension = "bgv";
         try {
-            return PathUtilities.getPath(immutable.options, DumpPath, extension);
+            String id = description == null ? null : description.identifier;
+            String label = description == null ? null : description.toString();
+            return PathUtilities.createUnique(immutable.options, DumpPath, id, label, ".bgv", false);
         } catch (IOException ex) {
             throw rethrowSilently(RuntimeException.class, ex);
         }

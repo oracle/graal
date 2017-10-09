@@ -23,6 +23,8 @@
 package org.graalvm.compiler.debug;
 
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -162,4 +164,49 @@ public class PathUtilities {
         }
         return buf.toString();
     }
+
+    /**
+     * A maximum file name length supported by most file systems. There is no platform independent
+     * way to get this in Java.
+     */
+    private static final int MAX_FILE_NAME_LENGTH = 255;
+
+    private static final String ELLIPSIS = "...";
+
+    static Path createUnique(OptionValues options, OptionKey<String> baseNameOption, String id, String label, String ext, boolean createDirectory) throws IOException {
+        String timestamp = "";
+        for (;;) {
+            int fileNameLengthWithoutLabel = timestamp.length() + ext.length() + id.length() + "[]".length();
+            int labelLengthLimit = MAX_FILE_NAME_LENGTH - fileNameLengthWithoutLabel;
+            String fileName;
+            if (labelLengthLimit < ELLIPSIS.length()) {
+                // This means `id` is very long
+                String suffix = timestamp + ext;
+                int idLengthLimit = Math.min(MAX_FILE_NAME_LENGTH - suffix.length(), id.length());
+                fileName = sanitizeFileName(id.substring(0, idLengthLimit) + suffix);
+            } else {
+                if (label == null) {
+                    fileName = sanitizeFileName(id + timestamp + ext);
+                } else {
+                    String adjustedLabel = label;
+                    if (label.length() > labelLengthLimit) {
+                        adjustedLabel = label.substring(0, labelLengthLimit - ELLIPSIS.length()) + ELLIPSIS;
+                    }
+                    fileName = sanitizeFileName(id + '[' + adjustedLabel + ']' + timestamp + ext);
+                }
+            }
+            Path dumpDir = DebugOptions.getDumpDirectory(options);
+            Path result = dumpDir.resolve(fileName);
+            try {
+                if (createDirectory) {
+                    return Files.createDirectory(result);
+                } else {
+                    return Files.createFile(result);
+                }
+            } catch (FileAlreadyExistsException e) {
+                timestamp = "_" + getGlobalTimeStamp();
+            }
+        }
+    }
+
 }
