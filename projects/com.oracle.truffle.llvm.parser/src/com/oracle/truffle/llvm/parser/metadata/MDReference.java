@@ -31,90 +31,32 @@ package com.oracle.truffle.llvm.parser.metadata;
 
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 
-import java.util.Objects;
-
 public abstract class MDReference extends MDTypedValue implements MDBaseNode {
 
-    private static final class NodeRef extends MDReference {
+    static final class MDRef extends MDReference {
 
-        private final MDBaseNode target;
+        private final long index;
 
-        private NodeRef(MDBaseNode target) {
-            this.target = target;
-        }
-
-        @Override
-        public MDBaseNode get() {
-            return target;
-        }
-    }
-
-    private static final class MDRef extends MDReference {
-
-        private final int index;
-
-        private final MetadataList md;
-
-        private MDRef(int index, MetadataList md) {
+        private MDRef(long index) {
             this.index = index;
-            this.md = md;
         }
 
         @Override
-        public MDBaseNode get() {
-            return md.getFromRef(index);
+        public long getIndex() {
+            return index;
         }
 
         @Override
         public String toString() {
             return String.format("!%d", index);
         }
-
-        @Override
-        public int hashCode() {
-            return (md.hashCode() << 8) | index;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            } else if (obj instanceof MDRef) {
-                MDRef other = (MDRef) obj;
-                return other.index == this.index && Objects.equals(other.md, this.md);
-            }
-            return false;
-        }
-    }
-
-    private static final class SymRef extends MDReference {
-
-        private final MDBaseNode base;
-
-        private SymRef(MDBaseNode base) {
-            this.base = base;
-        }
-
-        @Override
-        public MDBaseNode get() {
-            return base;
-        }
-
-        @Override
-        public String toString() {
-            try {
-                return String.format("%s %s", getType(), get());
-            } catch (Exception e) {
-                return String.format("%s forwardref", getType());
-            }
-        }
     }
 
     public static final MDReference VOID = new MDReference() {
 
         @Override
-        public MDBaseNode get() {
-            throw new IndexOutOfBoundsException("VOID cannot be dereferenced!");
+        public long getIndex() {
+            return -1L;
         }
 
         @Override
@@ -123,26 +65,22 @@ public abstract class MDReference extends MDTypedValue implements MDBaseNode {
         }
     };
 
-    public static MDReference fromIndex(int index, MetadataList md) {
-        return new MDRef(index, md);
-    }
-
-    public static MDReference fromSymbolRef(MDSymbolReference ref) {
-        return new SymRef(MDValue.createFromSymbolReference(ref));
-    }
-
-    public static MDReference fromNode(MDBaseNode node) {
-        return new NodeRef(node);
+    public static MDReference fromIndex(long index) {
+        return new MDRef(index);
     }
 
     private MDReference() {
         super(MetaType.METADATA);
     }
 
-    public abstract MDBaseNode get();
+    public abstract long getIndex();
 
     @Override
     public void accept(MetadataVisitor visitor) {
         visitor.visit(this);
+    }
+
+    @Override
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
     }
 }

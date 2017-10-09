@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.metadata.subtypes.MDType;
 import com.oracle.truffle.llvm.parser.records.DwTagRecord;
 
 import java.util.Arrays;
@@ -41,8 +40,8 @@ public final class MDBasicType extends MDType implements MDBaseNode {
 
     private final long tag;
 
-    private MDBasicType(long tag, MDReference name, MDReference file, long line, long size, long align, long offset, long flags, long encoding) {
-        super(name, size, align, offset, file, line, flags);
+    private MDBasicType(long tag, long line, long size, long align, long offset, long flags, long encoding) {
+        super(size, align, offset, line, flags);
         this.tag = tag;
         this.encoding = DwarfEncoding.decode(encoding);
     }
@@ -58,14 +57,6 @@ public final class MDBasicType extends MDType implements MDBaseNode {
 
     public long getTag() {
         return tag;
-    }
-
-    @Override
-    public String toString() {
-        return String.format("BasicType (tag=%d, name=%s, file=%s, line=%d, size=%d, align=%d, offset=%d, flags=%d, encoding=%s)", getTag(), getName(), getFile(), getLine(), getSize(), getAlign(),
-                        getOffset(),
-                        getFlags(),
-                        encoding);
     }
 
     public enum DwarfEncoding {
@@ -96,14 +87,16 @@ public final class MDBasicType extends MDType implements MDBaseNode {
     private static final int ARGINDEX_ALIGN = 4;
     private static final int ARGINDEX_ENCODING = 5;
 
-    public static MDBasicType create38(long[] args, MetadataList md) {
+    public static MDBasicType create38(long[] args, MetadataValueList md) {
         // [distinct, tag, name, size, align, enc]
         final long tag = args[ARGINDEX_TAG];
-        final MDReference name = md.getMDRefOrNullRef(args[ARGINDEX_NAME]);
         final long size = args[ARGINDEX_SIZE];
         final long align = args[ARGINDEX_ALIGN];
         final long encoding = args[ARGINDEX_ENCODING];
-        return new MDBasicType(tag, name, MDReference.VOID, -1L, size, align, -1L, -1L, encoding);
+
+        final MDBasicType basicType = new MDBasicType(tag, -1L, size, align, -1L, -1L, encoding);
+        basicType.setName(md.getNullable(args[ARGINDEX_NAME], basicType));
+        return basicType;
     }
 
     private static final int ARGINDEX_32_NAME = 2;
@@ -115,17 +108,19 @@ public final class MDBasicType extends MDType implements MDBaseNode {
     private static final int ARGINDEX_32_FLAGS = 8;
     private static final int ARGINDEX_32_ENCODING = 9;
 
-    public static MDBasicType create32(MDTypedValue[] args) {
+    public static MDBasicType create32(MDTypedValue[] args, MetadataValueList md) {
         // final MDReference scope = metadata.getReference(args[1]);
-        final MDReference name = ParseUtil.getReference(args[ARGINDEX_32_NAME]);
-        final MDReference file = ParseUtil.getReference(args[ARGINDEX_32_FILE]);
         final long line = ParseUtil.asInt32(args[ARGINDEX_32_LINE]);
         final long size = ParseUtil.asInt64(args[ARGINDEX_32_SIZE]);
         final long align = ParseUtil.asInt64(args[ARGINDEX_32_ALIGN]);
         final long offset = ParseUtil.asInt64(args[ARGINDEX_32_OFFSET]);
         final long flags = ParseUtil.asInt32(args[ARGINDEX_32_FLAGS]);
         final long encoding = ParseUtil.asInt32(args[ARGINDEX_32_ENCODING]);
-        return new MDBasicType(DwTagRecord.DW_TAG_BASE_TYPE.code(), name, file, line, size, align, offset, flags, encoding);
+
+        final MDBasicType basicType = new MDBasicType(DwTagRecord.DW_TAG_BASE_TYPE.code(), line, size, align, offset, flags, encoding);
+        basicType.setName(ParseUtil.resolveReference(args[ARGINDEX_32_NAME], basicType, md));
+        basicType.setFile(ParseUtil.resolveReference(args[ARGINDEX_32_FILE], basicType, md));
+        return basicType;
     }
 
 }

@@ -29,16 +29,13 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.metadata.subtypes.MDVariable;
-
 public final class MDLocalVariable extends MDVariable implements MDBaseNode {
 
     private final long arg;
-
     private final long flags;
 
-    private MDLocalVariable(MDReference scope, MDReference name, MDReference file, long line, MDReference type, long arg, long flags) {
-        super(scope, name, type, file, line);
+    private MDLocalVariable(long line, long arg, long flags) {
+        super(line);
         this.arg = arg;
         this.flags = flags;
     }
@@ -56,11 +53,6 @@ public final class MDLocalVariable extends MDVariable implements MDBaseNode {
         return flags;
     }
 
-    @Override
-    public String toString() {
-        return String.format("LocalVariable (scope=%s, name=%s, file=%s, line=%d, arg=%d, type=%s, flags=%d)", getScope(), getName(), getFile(), getLine(), arg, getType(), flags);
-    }
-
     private static final int ARGINDEX_38_TAG_ALIGNMENT = 0;
     private static final int ARGINDEX_38_SCOPE = 1;
     private static final int ARGINDEX_38_NAME = 2;
@@ -72,18 +64,22 @@ public final class MDLocalVariable extends MDVariable implements MDBaseNode {
     private static final int OFFSET_INDICATOR = 8;
     private static final int ALIGNMENT_INDICATOR = 2;
 
-    public static MDLocalVariable create38(long[] args, MetadataList md) {
+    public static MDLocalVariable create38(long[] args, MetadataValueList md) {
         // this apparently exists for historical reasons...
         final int argOffset = (args.length > OFFSET_INDICATOR && ((args[ARGINDEX_38_TAG_ALIGNMENT] & ALIGNMENT_INDICATOR) == 0)) ? 1 : 0;
 
-        final MDReference scope = md.getMDRefOrNullRef(args[ARGINDEX_38_SCOPE + argOffset]);
-        final MDReference name = md.getMDRefOrNullRef(args[ARGINDEX_38_NAME + argOffset]);
-        final MDReference file = md.getMDRefOrNullRef(args[ARGINDEX_38_FILE + argOffset]);
         final long line = args[ARGINDEX_38_LINE + argOffset];
-        final MDReference type = md.getMDRefOrNullRef(args[ARGINDEX_38_TYPE + argOffset]);
         final long arg = args[ARGINDEX_38_ARG + argOffset];
         final long flags = args[ARGINDEX_38_FLAGS + argOffset];
-        return new MDLocalVariable(scope, name, file, line, type, arg, flags);
+
+        final MDLocalVariable localVariable = new MDLocalVariable(line, arg, flags);
+
+        localVariable.setScope(md.getNullable(args[ARGINDEX_38_SCOPE + argOffset], localVariable));
+        localVariable.setName(md.getNullable(args[ARGINDEX_38_NAME + argOffset], localVariable));
+        localVariable.setFile(md.getNullable(args[ARGINDEX_38_FILE + argOffset], localVariable));
+        localVariable.setType(md.getNullable(args[ARGINDEX_38_TYPE + argOffset], localVariable));
+
+        return localVariable;
     }
 
     private static final long DW_TAG_LOCAL_VARIABLE_LINE_MASK = 0x00FFFFFF;
@@ -97,15 +93,19 @@ public final class MDLocalVariable extends MDVariable implements MDBaseNode {
     private static final int ARGINDEX_32_TYPE = 5;
     private static final int ARGINDEX_32_FLAGS = 6;
 
-    public static MDLocalVariable create32(MDTypedValue[] args) {
-        final MDReference context = ParseUtil.getReference(args[ARGINDEX_32_SCOPE]);
-        final MDReference name = ParseUtil.getReference(args[ARGINDEX_32_NAME]);
-        final MDReference file = ParseUtil.getReference(args[ARGINDEX_32_FILE]);
+    public static MDLocalVariable create32(MDTypedValue[] args, MetadataValueList md) {
         final long lineAndArg = ParseUtil.asInt32(args[ARGINDEX_32_LINEARG]);
         final long line = lineAndArg & DW_TAG_LOCAL_VARIABLE_LINE_MASK;
         final long arg = (lineAndArg & DW_TAG_LOCAL_VARIABLE_ARG_MASK) >> DW_TAG_LOCAL_VARIABLE_ARG_SHIFT;
-        final MDReference type = ParseUtil.getReference(args[ARGINDEX_32_TYPE]);
         final long flags = ParseUtil.asInt32(args[ARGINDEX_32_FLAGS]);
-        return new MDLocalVariable(context, name, file, line, type, arg, flags);
+
+        final MDLocalVariable localVariable = new MDLocalVariable(line, arg, flags);
+
+        localVariable.setName(ParseUtil.resolveReference(args[ARGINDEX_32_NAME], localVariable, md));
+        localVariable.setScope(ParseUtil.resolveReference(args[ARGINDEX_32_SCOPE], localVariable, md));
+        localVariable.setFile(ParseUtil.resolveReference(args[ARGINDEX_32_FILE], localVariable, md));
+        localVariable.setType(ParseUtil.resolveReference(args[ARGINDEX_32_TYPE], localVariable, md));
+
+        return localVariable;
     }
 }

@@ -27,38 +27,28 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata.subtypes;
+package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.metadata.MDReference;
+public abstract class MDName implements MDBaseNode {
 
-public abstract class MDVariable extends MDName {
+    private MDBaseNode name;
 
-    private final MDReference scope;
-    private final MDReference type;
-    private final MDReference file;
-    private final long line;
-
-    protected MDVariable(MDReference scope, MDReference name, MDReference type, MDReference file, long line) {
-        super(name);
-        this.scope = scope;
-        this.type = type;
-        this.file = file;
-        this.line = line;
+    MDName() {
+        this.name = MDReference.VOID;
     }
 
-    public MDReference getScope() {
-        return scope;
+    public MDBaseNode getName() {
+        return name;
     }
 
-    public MDReference getType() {
-        return type;
+    void setName(MDBaseNode name) {
+        this.name = name;
     }
 
-    public MDReference getFile() {
-        return file;
-    }
-
-    public long getLine() {
-        return line;
+    @Override
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        if (name == oldValue) {
+            name = newValue;
+        }
     }
 }

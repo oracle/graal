@@ -29,24 +29,24 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.metadata.subtypes.MDName;
-
 public final class MDTemplateType extends MDName implements MDBaseNode {
 
-    private final MDReference type;
+    private MDBaseNode type;
 
-    private MDTemplateType(MDReference name, MDReference type) {
-        super(name);
-        this.type = type;
+    private MDTemplateType() {
+        this.type = MDReference.VOID;
     }
 
-    public MDReference getType() {
+    public MDBaseNode getType() {
         return type;
     }
 
     @Override
-    public String toString() {
-        return String.format("TemplateType (name=%s, type=%s)", getName(), getType());
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        super.replace(oldValue, newValue);
+        if (type == oldValue) {
+            type = newValue;
+        }
     }
 
     @Override
@@ -57,9 +57,12 @@ public final class MDTemplateType extends MDName implements MDBaseNode {
     private static final int ARGINDEX_NAME = 1;
     private static final int ARGINDEX_TYPE = 2;
 
-    public static MDTemplateType create38(long[] args, MetadataList md) {
-        final MDReference name = md.getMDRefOrNullRef(args[ARGINDEX_NAME]);
-        final MDReference type = md.getMDRefOrNullRef(args[ARGINDEX_TYPE]);
-        return new MDTemplateType(name, type);
+    public static MDTemplateType create38(long[] args, MetadataValueList md) {
+        final MDTemplateType templateType = new MDTemplateType();
+
+        templateType.type = md.getNullable(args[ARGINDEX_TYPE], templateType);
+        templateType.setName(md.getNullable(args[ARGINDEX_NAME], templateType));
+
+        return new MDTemplateType();
     }
 }

@@ -49,6 +49,10 @@ public final class MDValue implements MDBaseNode {
     }
 
     @Override
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+    }
+
+    @Override
     public String toString() {
         return String.format("Value (%s)", value);
     }
@@ -61,7 +65,11 @@ public final class MDValue implements MDBaseNode {
         return new MDValue(t);
     }
 
-    static MDValue createFromSymbolReference(MDSymbolReference sym) {
-        return new MDValue(sym);
+    public static MDValue createFromSymbolReference(MDTypedValue sym) {
+        if (sym instanceof MDSymbolReference) {
+            return new MDValue((MDSymbolReference) sym);
+        } else {
+            return new MDValue(MDSymbolReference.VOID);
+        }
     }
 }

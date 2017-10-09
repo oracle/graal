@@ -150,15 +150,15 @@ final class DIScopeExtractor {
             scopes.put(md, scope);
 
             String name = null;
-            final MDReference nameRef = md.getFile();
-            if (nameRef != MDReference.VOID && nameRef.get() instanceof MDString) {
-                name = ((MDString) nameRef.get()).getString();
+            final MDBaseNode nameRef = md.getFile();
+            if (nameRef instanceof MDString) {
+                name = ((MDString) nameRef).getString();
             }
 
             String directory = null;
-            final MDReference dirRef = md.getDirectory();
-            if (dirRef != MDReference.VOID && dirRef.get() instanceof MDString) {
-                directory = ((MDString) dirRef.get()).getString();
+            final MDBaseNode dirRef = md.getDirectory();
+            if (dirRef instanceof MDString) {
+                directory = ((MDString) dirRef).getString();
             }
 
             scope.setFile(new LLVMSourceFile(name, directory));
@@ -218,36 +218,26 @@ final class DIScopeExtractor {
             final LLVMSourceLocation scope = new LLVMSourceLocation(Kind.COMPILEUNIT, DEFAULT_LINE, DEFAULT_COLUMN);
             scopes.put(md, scope);
 
-            final MDReference fileRef = md.getFile();
-            if (fileRef != MDReference.VOID) {
-                final MDBaseNode fileNode = fileRef.get();
-                if (fileNode instanceof MDFile) {
-                    copyFile(scope, fileRef);
-                    return;
+            final MDBaseNode fileNode = md.getFile();
+            if (fileNode instanceof MDFile) {
+                copyFile(scope, fileNode);
+                return;
 
-                } else if (fileNode instanceof MDString) {
-                    // old-format metadata
-                    String file = ((MDString) fileNode).getString();
-                    String directory = null;
-                    final MDReference dirRef = md.getDirectory();
-                    if (dirRef != MDReference.VOID) {
-                        final MDBaseNode dirNode = dirRef.get();
-                        if (dirNode instanceof MDString) {
-                            directory = ((MDString) dirNode).getString();
-                        }
-                    }
-                    scope.setFile(new LLVMSourceFile(file, directory));
-                    return;
-
+            } else if (fileNode instanceof MDString) {
+                // old-format metadata
+                String file = ((MDString) fileNode).getString();
+                String directory = null;
+                final MDBaseNode dirNode = md.getDirectory();
+                if (dirNode instanceof MDString) {
+                    directory = ((MDString) dirNode).getString();
                 }
+                scope.setFile(new LLVMSourceFile(file, directory));
+                return;
             }
 
-            final MDReference splitDbgFilenameRef = md.getSplitdebugFilename();
-            if (splitDbgFilenameRef != MDReference.VOID) {
-                final MDBaseNode splitDbgFileNameNode = splitDbgFilenameRef.get();
-                if (splitDbgFileNameNode instanceof MDString) {
-                    scope.setFile(new LLVMSourceFile(((MDString) splitDbgFileNameNode).getString(), null));
-                }
+            final MDBaseNode splitDbgFileName = md.getSplitdebugFilename();
+            if (splitDbgFileName instanceof MDString) {
+                scope.setFile(new LLVMSourceFile(((MDString) splitDbgFileName).getString(), null));
             }
         }
 
@@ -301,20 +291,6 @@ final class DIScopeExtractor {
             final LLVMSourceLocation scope = resolve(ref);
             scopes.put(ref, scope);
             scopes.put(md, scope);
-        }
-
-        @Override
-        public void visit(MDReference mdRef) {
-            if (scopes.containsKey(mdRef)) {
-                return;
-            }
-
-            if (mdRef != MDReference.VOID) {
-                final LLVMSourceLocation target = resolve(mdRef.get());
-                if (target != null) {
-                    scopes.put(mdRef, target);
-                }
-            }
         }
 
         @Override

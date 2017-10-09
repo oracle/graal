@@ -71,6 +71,10 @@ public class MDSymbolReference extends MDTypedValue implements MDBaseNode {
     }
 
     @Override
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+    }
+
+    @Override
     public void accept(MetadataVisitor visitor) {
         visitor.visit(this);
     }

@@ -29,33 +29,27 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.metadata.subtypes.MDName;
-
 public final class MDObjCProperty extends MDName implements MDBaseNode {
 
-    private final MDReference file;
-
     private final long line;
-
-    private final MDReference getterName;
-
-    private final MDReference setterName;
-
     private final long attribute;
 
-    private final MDReference type;
+    private MDBaseNode file;
+    private MDBaseNode getterName;
+    private MDBaseNode setterName;
+    private MDBaseNode type;
 
-    private MDObjCProperty(MDReference name, MDReference file, long line, MDReference getterName, MDReference setterName, long attribute, MDReference type) {
-        super(name);
-        this.file = file;
+    private MDObjCProperty(long line, long attribute) {
         this.line = line;
-        this.getterName = getterName;
-        this.setterName = setterName;
         this.attribute = attribute;
-        this.type = type;
+
+        this.file = MDReference.VOID;
+        this.getterName = MDReference.VOID;
+        this.setterName = MDReference.VOID;
+        this.type = MDReference.VOID;
     }
 
-    public MDReference getFile() {
+    public MDBaseNode getFile() {
         return file;
     }
 
@@ -63,11 +57,11 @@ public final class MDObjCProperty extends MDName implements MDBaseNode {
         return line;
     }
 
-    public MDReference getGetterName() {
+    public MDBaseNode getGetterName() {
         return getterName;
     }
 
-    public MDReference getSetterName() {
+    public MDBaseNode getSetterName() {
         return setterName;
     }
 
@@ -75,13 +69,25 @@ public final class MDObjCProperty extends MDName implements MDBaseNode {
         return attribute;
     }
 
-    public MDReference getType() {
+    public MDBaseNode getType() {
         return type;
     }
 
     @Override
-    public String toString() {
-        return String.format("ObjCProperty (name=%s, file=%s, line=%d, getterName=%s, setterName=%s, attribute=%d, type=%s)", getName(), file, line, getterName, setterName, attribute, type);
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        super.replace(oldValue, newValue);
+        if (file == oldValue) {
+            file = newValue;
+        }
+        if (getterName == oldValue) {
+            getterName = newValue;
+        }
+        if (setterName == oldValue) {
+            setterName = newValue;
+        }
+        if (type == oldValue) {
+            type = newValue;
+        }
     }
 
     @Override
@@ -97,14 +103,18 @@ public final class MDObjCProperty extends MDName implements MDBaseNode {
     private static final int ARGINDEX_ATTRIBUTE = 6;
     private static final int ARGINDEX_TYPE = 7;
 
-    public static MDObjCProperty create38(long[] args, MetadataList md) {
-        final MDReference name = md.getMDRefOrNullRef(args[ARGINDEX_NAME]);
-        final MDReference file = md.getMDRefOrNullRef(args[ARGINDEX_FILE]);
+    public static MDObjCProperty create38(long[] args, MetadataValueList md) {
         final long line = args[ARGINDEX_LINE];
-        final MDReference getterName = md.getMDRefOrNullRef(args[ARGINDEX_GETTERNAME]);
-        final MDReference setterName = md.getMDRefOrNullRef(args[ARGINDEX_SETTERNAME]);
         final long attribute = args[ARGINDEX_ATTRIBUTE];
-        final MDReference type = md.getMDRefOrNullRef(args[ARGINDEX_TYPE]);
-        return new MDObjCProperty(name, file, line, getterName, setterName, attribute, type);
+
+        final MDObjCProperty objCProperty = new MDObjCProperty(line, attribute);
+
+        objCProperty.file = md.getNullable(args[ARGINDEX_FILE], objCProperty);
+        objCProperty.getterName = md.getNullable(args[ARGINDEX_GETTERNAME], objCProperty);
+        objCProperty.setterName = md.getNullable(args[ARGINDEX_SETTERNAME], objCProperty);
+        objCProperty.type = md.getNullable(args[ARGINDEX_TYPE], objCProperty);
+        objCProperty.setName(md.getNullable(args[ARGINDEX_NAME], objCProperty));
+
+        return objCProperty;
     }
 }

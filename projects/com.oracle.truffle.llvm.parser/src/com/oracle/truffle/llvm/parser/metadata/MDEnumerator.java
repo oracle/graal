@@ -29,14 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.metadata.subtypes.MDName;
-
 public final class MDEnumerator extends MDName implements MDBaseNode {
 
     private final long value;
 
-    private MDEnumerator(MDReference name, long value) {
-        super(name);
+    private MDEnumerator(long value) {
         this.value = value;
     }
 
@@ -50,25 +47,28 @@ public final class MDEnumerator extends MDName implements MDBaseNode {
     }
 
     @Override
-    public String toString() {
-        return String.format("Enumerator (name=%s, value=%d)", getName(), value);
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        super.replace(oldValue, newValue);
     }
 
     private static final int ARGINDEX_38_VALUE = 1;
     private static final int ARGINDEX_38_NAME = 2;
 
-    public static MDEnumerator create38(long[] args, MetadataList md) {
+    public static MDEnumerator create38(long[] args, MetadataValueList md) {
         final long value = ParseUtil.unrotateSign(args[ARGINDEX_38_VALUE]);
-        final MDReference name = md.getMDRefOrNullRef(args[ARGINDEX_38_NAME]);
-        return new MDEnumerator(name, value);
+
+        final MDEnumerator enumerator = new MDEnumerator(value);
+        enumerator.setName(md.getNullable(args[ARGINDEX_38_NAME], enumerator));
+        return enumerator;
     }
 
     private static final int ARGINDEX_32_NAME = 1;
     private static final int ARGINDEX_32_VALUE = 2;
 
-    public static MDEnumerator create32(MDTypedValue[] args) {
-        final MDReference name = ParseUtil.getReference(args[ARGINDEX_32_NAME]);
+    public static MDEnumerator create32(MDTypedValue[] args, MetadataValueList md) {
         final long value = ParseUtil.asInt64(args[ARGINDEX_32_VALUE]);
-        return new MDEnumerator(name, value);
+        final MDEnumerator enumerator = new MDEnumerator(value);
+        enumerator.setName(ParseUtil.resolveReference(args[ARGINDEX_32_NAME], enumerator, md));
+        return enumerator;
     }
 }

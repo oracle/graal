@@ -32,18 +32,17 @@ package com.oracle.truffle.llvm.parser.metadata;
 public final class MDMacroFile implements MDBaseNode {
 
     private final long type;
-
     private final long line;
 
-    private final MDReference file;
+    private MDBaseNode file;
+    private MDBaseNode elements;
 
-    private final MDReference elements;
-
-    private MDMacroFile(long type, long line, MDReference file, MDReference elements) {
+    private MDMacroFile(long type, long line) {
         this.type = type;
         this.line = line;
-        this.file = file;
-        this.elements = elements;
+
+        this.file = MDReference.VOID;
+        this.elements = MDReference.VOID;
     }
 
     public long getType() {
@@ -54,17 +53,22 @@ public final class MDMacroFile implements MDBaseNode {
         return line;
     }
 
-    public MDReference getFile() {
+    public MDBaseNode getFile() {
         return file;
     }
 
-    public MDReference getElements() {
+    public MDBaseNode getElements() {
         return elements;
     }
 
     @Override
-    public String toString() {
-        return String.format("MacroFile (type=%s, line=%d, file=%s, elements=%s)", type, line, file, elements);
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        if (file == oldValue) {
+            file = newValue;
+        }
+        if (elements == oldValue) {
+            elements = newValue;
+        }
     }
 
     @Override
@@ -77,11 +81,15 @@ public final class MDMacroFile implements MDBaseNode {
     private static final int ARGINDEX_FILE = 3;
     private static final int ARGINDEX_ELEMENTS = 4;
 
-    public static MDMacroFile create38(long[] args, MetadataList md) {
+    public static MDMacroFile create38(long[] args, MetadataValueList md) {
         final long type = args[ARGINDEX_TYPE];
         final long line = args[ARGINDEX_LINE];
-        final MDReference file = md.getMDRefOrNullRef(args[ARGINDEX_FILE]);
-        final MDReference elements = md.getMDRefOrNullRef(args[ARGINDEX_ELEMENTS]);
-        return new MDMacroFile(type, line, file, elements);
+
+        final MDMacroFile macroFile = new MDMacroFile(type, line);
+
+        macroFile.file = md.getNullable(args[ARGINDEX_FILE], macroFile);
+        macroFile.elements = md.getNullable(args[ARGINDEX_ELEMENTS], macroFile);
+
+        return macroFile;
     }
 }

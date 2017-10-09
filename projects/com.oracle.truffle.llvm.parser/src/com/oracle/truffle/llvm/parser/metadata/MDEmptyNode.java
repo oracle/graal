@@ -49,8 +49,7 @@ public final class MDEmptyNode implements MDBaseNode {
     }
 
     @Override
-    public String toString() {
-        return String.format("EmptyNode (tag=%s)", tag);
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
     }
 
     public static MDEmptyNode create(DwTagRecord tag) {

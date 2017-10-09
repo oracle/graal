@@ -29,26 +29,25 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.metadata.subtypes.MDName;
-
 public final class MDNamespace extends MDName implements MDBaseNode {
 
-    private final MDReference scope;
-    private final MDReference file;
     private final long line;
 
-    private MDNamespace(MDReference name, MDReference scope, MDReference file, long line) {
-        super(name);
-        this.scope = scope;
-        this.file = file;
+    private MDBaseNode scope;
+    private MDBaseNode file;
+
+    private MDNamespace(long line) {
         this.line = line;
+
+        this.scope = MDReference.VOID;
+        this.file = MDReference.VOID;
     }
 
-    public MDReference getScope() {
+    public MDBaseNode getScope() {
         return scope;
     }
 
-    public MDReference getFile() {
+    public MDBaseNode getFile() {
         return file;
     }
 
@@ -57,8 +56,14 @@ public final class MDNamespace extends MDName implements MDBaseNode {
     }
 
     @Override
-    public String toString() {
-        return String.format("Namespace (name=%s, scope=%s, file=%s, line=%d)", getName(), scope, file, line);
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        super.replace(oldValue, newValue);
+        if (scope == oldValue) {
+            scope = newValue;
+        }
+        if (file == oldValue) {
+            file = newValue;
+        }
     }
 
     @Override
@@ -66,7 +71,8 @@ public final class MDNamespace extends MDName implements MDBaseNode {
         visitor.visit(this);
     }
 
-    private static final int ARGINDEX_38_SCOPE = 1;
+    private static final int ARGINDEX_SCOPE = 1;
+
     private static final int ARGINDEX_38_FILE = 2;
     private static final int ARGINDEX_38_NAME = 3;
     private static final int ARGINDEX_38_LINE = 4;
@@ -74,33 +80,36 @@ public final class MDNamespace extends MDName implements MDBaseNode {
     private static final int RECORDSIZE_50 = 3;
     private static final int ARGINDEX_50_NAME = 2;
 
-    public static MDNamespace create38(long[] args, MetadataList md) {
-        final MDReference scope = md.getMDRefOrNullRef(args[ARGINDEX_38_SCOPE]);
-        final MDReference name;
-        final MDReference file;
-        final long line;
+    public static MDNamespace create38(long[] args, MetadataValueList md) {
         if (RECORDSIZE_50 != args.length) {
-            file = md.getMDRefOrNullRef(args[ARGINDEX_38_FILE]);
-            name = md.getMDRefOrNullRef(args[ARGINDEX_38_NAME]);
-            line = args[ARGINDEX_38_LINE];
+            final long line = args[ARGINDEX_38_LINE];
+            final MDNamespace namespace = new MDNamespace(line);
+            namespace.file = md.getNullable(args[ARGINDEX_38_FILE], namespace);
+            namespace.scope = md.getNullable(args[ARGINDEX_SCOPE], namespace);
+            namespace.setName(md.getNullable(args[ARGINDEX_38_NAME], namespace));
+            return namespace;
+
         } else {
-            name = md.getMDRefOrNullRef(args[ARGINDEX_50_NAME]);
-            file = MDReference.VOID;
-            line = -1L;
+            final long line = -1L;
+            final MDNamespace namespace = new MDNamespace(line);
+            namespace.scope = md.getNullable(args[ARGINDEX_SCOPE], namespace);
+            namespace.setName(md.getNullable(args[ARGINDEX_50_NAME], namespace));
+            return namespace;
         }
-        return new MDNamespace(name, scope, file, line);
     }
 
-    private static final int ARGINDEX_32_SCOPE = 1;
     private static final int ARGINDEX_32_NAME = 2;
     private static final int ARGINDEX_32_FILE = 3;
     private static final int ARGINDEX_32_LINE = 4;
 
-    public static MDNamespace create32(MDTypedValue[] args) {
-        final MDReference context = ParseUtil.getReference(args[ARGINDEX_32_SCOPE]);
-        final MDReference name = ParseUtil.getReference(args[ARGINDEX_32_NAME]);
-        final MDReference file = ParseUtil.getReference(args[ARGINDEX_32_FILE]);
+    public static MDNamespace create32(MDTypedValue[] args, MetadataValueList md) {
         final long line = ParseUtil.asInt64(args[ARGINDEX_32_LINE]);
-        return new MDNamespace(name, context, file, line);
+        final MDNamespace namespace = new MDNamespace(line);
+
+        namespace.scope = ParseUtil.resolveReference(args[ARGINDEX_SCOPE], namespace, md);
+        namespace.file = ParseUtil.resolveReference(args[ARGINDEX_32_FILE], namespace, md);
+        namespace.setName(ParseUtil.resolveReference(args[ARGINDEX_32_NAME], namespace, md));
+
+        return namespace;
     }
 }

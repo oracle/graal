@@ -32,18 +32,16 @@ package com.oracle.truffle.llvm.parser.metadata;
 public final class MDLocation implements MDBaseNode {
 
     private final long line;
-
     private final long column;
 
-    private final MDReference inlinedAt;
+    private MDBaseNode inlinedAt;
+    private MDBaseNode scope;
 
-    private final MDReference scope;
-
-    private MDLocation(long line, long column, MDReference inlinedAt, MDReference scope) {
+    private MDLocation(long line, long column) {
         this.line = line;
         this.column = column;
-        this.inlinedAt = inlinedAt;
-        this.scope = scope;
+        this.inlinedAt = MDReference.VOID;
+        this.scope = MDReference.VOID;
     }
 
     public long getLine() {
@@ -54,17 +52,22 @@ public final class MDLocation implements MDBaseNode {
         return column;
     }
 
-    public MDReference getInlinedAt() {
+    public MDBaseNode getInlinedAt() {
         return inlinedAt;
     }
 
-    public MDReference getScope() {
+    public MDBaseNode getScope() {
         return scope;
     }
 
     @Override
-    public String toString() {
-        return String.format("Location (line=%d, column=%d, inlinedAt=%s, scope=%s)", line, column, inlinedAt, scope);
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        if (inlinedAt == oldValue) {
+            inlinedAt = newValue;
+        }
+        if (scope == oldValue) {
+            scope = newValue;
+        }
     }
 
     @Override
@@ -77,13 +80,16 @@ public final class MDLocation implements MDBaseNode {
     private static final int MDNODE_SCOPE = 3;
     private static final int MDNODE_INLINEDAT = 4;
 
-    public static MDLocation create38(long[] args, MetadataList md) {
+    public static MDLocation create38(long[] args, MetadataValueList md) {
         // [distinct, line, col, scope, inlined-at?]
         final long line = args[MDNODE_LINE];
         final long column = args[MDNODE_COLUMN];
-        final MDReference scope = md.getMDRef(args[MDNODE_SCOPE]);
-        final MDReference inlinedAt = md.getMDRefOrNullRef(args[MDNODE_INLINEDAT]);
-        return new MDLocation(line, column, inlinedAt, scope);
+
+        final MDLocation location = new MDLocation(line, column);
+        location.scope = md.getNullable(args[MDNODE_SCOPE], location);
+        location.inlinedAt = md.getNullable(args[MDNODE_INLINEDAT], location);
+
+        return location;
     }
 
     private static final int ARG_LINE = 0;
@@ -91,11 +97,14 @@ public final class MDLocation implements MDBaseNode {
     private static final int ARG_SCOPE = 2;
     private static final int ARG_INLINEDAT = 3;
 
-    public static MDLocation createFromFunctionArgs(long[] args, MetadataList md) {
+    public static MDLocation createFromFunctionArgs(long[] args, MetadataValueList md) {
         final long line = args[ARG_LINE];
         final long col = args[ARG_COL];
-        final MDReference scope = md.getMDRefOrNullRef(args[ARG_SCOPE]);
-        final MDReference inlinedAt = md.getMDRefOrNullRef(args[ARG_INLINEDAT]);
-        return new MDLocation(line, col, inlinedAt, scope);
+
+        final MDLocation location = new MDLocation(line, col);
+        location.scope = md.getNullable(args[ARG_SCOPE], location);
+        location.inlinedAt = md.getNullable(args[ARG_INLINEDAT], location);
+
+        return location;
     }
 }

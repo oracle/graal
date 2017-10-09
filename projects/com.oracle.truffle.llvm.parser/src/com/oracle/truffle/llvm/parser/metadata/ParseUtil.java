@@ -33,7 +33,6 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigIntegerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public final class ParseUtil {
@@ -69,32 +68,19 @@ public final class ParseUtil {
         return index < values.length ? asInt64(values[index]) : 0;
     }
 
-    static MDReference getReferenceIfPresent(MDTypedValue[] values, int index) {
-        return index < values.length ? getReference(values[index]) : MDReference.VOID;
+    static MDBaseNode resolveReferenceIfPresent(MDTypedValue[] values, int index, MDBaseNode dependent, MetadataValueList valueList) {
+        return index < values.length ? resolveReference(values[index], dependent, valueList) : MDReference.VOID;
     }
 
-    public static MDReference getReference(MDTypedValue t) {
-        if (t instanceof MDReference) {
-            return (MDReference) t;
-
-        } else if (t.getType() == VoidType.INSTANCE) {
-            return MDReference.VOID;
+    static MDBaseNode resolveReference(MDTypedValue t, MDBaseNode dependent, MetadataValueList valueList) {
+        if (t instanceof MDReference.MDRef) {
+            return valueList.getNonNullable(((MDReference.MDRef) t).getIndex(), dependent);
 
         } else if (t instanceof MDSymbolReference) {
-            final Symbol s = ((MDSymbolReference) t).get();
-            if (s != null && s instanceof NullConstant) {
-                return MDReference.VOID;
-            }
-        }
+            return MDValue.createFromSymbolReference(t);
 
-        throw new IllegalArgumentException("Not a Metadata Reference: " + t);
-    }
-
-    static MDSymbolReference getSymbolReference(MDTypedValue arg) {
-        if (arg instanceof MDSymbolReference) {
-            return (MDSymbolReference) arg;
         } else {
-            return MDSymbolReference.VOID;
+            return MDReference.VOID;
         }
     }
 
@@ -110,7 +96,7 @@ public final class ParseUtil {
 
     private static final long BYTE_MASK = 0xFF;
 
-    static String longArrayToString(int startIndex, long[] chars) {
+    public static String longArrayToString(int startIndex, long[] chars) {
         // We use a byte array, so "new String(...)" is able to handle Unicode Characters correctly
         final byte[] bytes = new byte[chars.length - startIndex];
         for (int from = startIndex, to = 0; to < bytes.length; from++, to++) {

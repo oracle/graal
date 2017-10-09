@@ -73,10 +73,6 @@ public interface MetadataVisitor {
         ifVisitNotOverwritten(alias);
     }
 
-    default void visit(MDFnNode alias) {
-        ifVisitNotOverwritten(alias);
-    }
-
     default void visit(MDGenericDebug alias) {
         ifVisitNotOverwritten(alias);
     }
@@ -130,10 +126,6 @@ public interface MetadataVisitor {
     }
 
     default void visit(MDObjCProperty alias) {
-        ifVisitNotOverwritten(alias);
-    }
-
-    default void visit(MDOldNode alias) {
         ifVisitNotOverwritten(alias);
     }
 

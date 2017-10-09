@@ -31,13 +31,12 @@ package com.oracle.truffle.llvm.parser.metadata;
 
 public final class MDFile implements MDBaseNode {
 
-    private final MDReference directory;
+    private MDBaseNode directory;
+    private MDBaseNode file;
 
-    private final MDReference file;
-
-    private MDFile(MDReference file, MDReference directory) {
-        this.file = file;
-        this.directory = directory;
+    private MDFile() {
+        this.file = MDReference.VOID;
+        this.directory = MDReference.VOID;
     }
 
     @Override
@@ -45,33 +44,40 @@ public final class MDFile implements MDBaseNode {
         visitor.visit(this);
     }
 
-    public MDReference getFile() {
+    public MDBaseNode getFile() {
         return file;
     }
 
-    public MDReference getDirectory() {
+    public MDBaseNode getDirectory() {
         return directory;
     }
 
     @Override
-    public String toString() {
-        return String.format("File (file=%s, directory=%s)", file, directory);
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        if (file == oldValue) {
+            file = newValue;
+        }
+        if (directory == oldValue) {
+            directory = newValue;
+        }
     }
 
     private static final int ARGINDEX_FILENAME = 1;
     private static final int ARGINDEX_DIRECTORY = 2;
 
-    public static MDFile create38(long[] args, MetadataList md) {
+    public static MDFile create38(long[] args, MetadataValueList md) {
         // [distinct, filename, directory]
-        final MDReference file = md.getMDRefOrNullRef(args[ARGINDEX_FILENAME]);
-        final MDReference directory = md.getMDRefOrNullRef(args[ARGINDEX_DIRECTORY]);
-        return new MDFile(file, directory);
+        final MDFile file = new MDFile();
+        file.file = md.getNullable(args[ARGINDEX_FILENAME], file);
+        file.directory = md.getNullable(args[ARGINDEX_DIRECTORY], file);
+        return file;
     }
 
-    public static MDFile create32(MDTypedValue[] args) {
-        final MDReference file = ParseUtil.getReference(args[ARGINDEX_FILENAME]);
-        final MDReference directory = ParseUtil.getReference(args[ARGINDEX_DIRECTORY]);
-        return new MDFile(file, directory);
+    public static MDFile create32(MDTypedValue[] args, MetadataValueList md) {
+        final MDFile file = new MDFile();
+        file.file = ParseUtil.resolveReference(args[ARGINDEX_FILENAME], file, md);
+        file.directory = ParseUtil.resolveReference(args[ARGINDEX_DIRECTORY], file, md);
+        return file;
     }
 
 }

@@ -29,38 +29,41 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.metadata.subtypes.MDName;
-
 public final class MDTemplateValue extends MDName implements MDBaseNode {
 
     private final long tag;
 
-    private final MDReference type;
+    private MDBaseNode type;
+    private MDBaseNode value;
 
-    private final MDReference value;
-
-    private MDTemplateValue(MDReference name, long tag, MDReference type, MDReference value) {
-        super(name);
+    private MDTemplateValue(long tag) {
         this.tag = tag;
-        this.type = type;
-        this.value = value;
+
+        this.type = MDReference.VOID;
+        this.value = MDReference.VOID;
     }
 
     public long getTag() {
         return tag;
     }
 
-    public MDReference getType() {
+    public MDBaseNode getType() {
         return type;
     }
 
-    public MDReference getValue() {
+    public MDBaseNode getValue() {
         return value;
     }
 
     @Override
-    public String toString() {
-        return String.format("TemplateValue (name=%s, tag=%d, type=%s, value=%s)", getName(), tag, type, value);
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        super.replace(oldValue, newValue);
+        if (type == oldValue) {
+            type = newValue;
+        }
+        if (value == oldValue) {
+            value = newValue;
+        }
     }
 
     @Override
@@ -73,22 +76,30 @@ public final class MDTemplateValue extends MDName implements MDBaseNode {
     private static final int ARGINDEX_TYPE = 3;
     private static final int ARGINDEX_VALUE = 4;
 
-    public static MDTemplateValue create38(long[] args, MetadataList md) {
+    public static MDTemplateValue create38(long[] args, MetadataValueList md) {
         final long tag = args[ARGINDEX_TAG];
-        final MDReference name = md.getMDRefOrNullRef(args[ARGINDEX_NAME]);
-        final MDReference type = md.getMDRefOrNullRef(args[ARGINDEX_TYPE]);
-        final MDReference value = md.getMDRefOrNullRef(args[ARGINDEX_VALUE]);
-        return new MDTemplateValue(name, tag, type, value);
+
+        final MDTemplateValue templateValue = new MDTemplateValue(tag);
+
+        templateValue.type = md.getNullable(args[ARGINDEX_TYPE], templateValue);
+        templateValue.value = md.getNullable(args[ARGINDEX_VALUE], templateValue);
+        templateValue.setName(md.getNullable(args[ARGINDEX_NAME], templateValue));
+
+        return templateValue;
     }
 
-    public static MDTemplateValue create32(MDTypedValue[] args) {
+    public static MDTemplateValue create32(MDTypedValue[] args, MetadataValueList md) {
         // final MDReference context = getReference(args[1]);
-        final MDReference name = ParseUtil.getReference(args[ARGINDEX_NAME]);
-        final MDReference type = ParseUtil.getReference(args[ARGINDEX_TYPE]);
-        final MDReference value = MDReference.fromSymbolRef(ParseUtil.getSymbolReference(args[ARGINDEX_VALUE]));
         // final MDReference file = getReference(args[5]);
         // final long line = ParseUtil.asInt64(args[6]);
         // final long column = ParseUtil.asInt64(args[7]);
-        return new MDTemplateValue(name, -1L, type, value);
+
+        final MDTemplateValue templateValue = new MDTemplateValue(-1L);
+
+        templateValue.type = ParseUtil.resolveReference(args[ARGINDEX_TYPE], templateValue, md);
+        templateValue.value = MDValue.createFromSymbolReference(args[ARGINDEX_VALUE]);
+        templateValue.setName(ParseUtil.resolveReference(args[ARGINDEX_NAME], templateValue, md));
+
+        return templateValue;
     }
 }

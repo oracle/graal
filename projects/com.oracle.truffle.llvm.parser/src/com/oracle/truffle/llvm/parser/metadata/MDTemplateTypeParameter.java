@@ -29,27 +29,22 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.metadata.subtypes.MDName;
-
 public final class MDTemplateTypeParameter extends MDName implements MDBaseNode {
 
-    private final MDReference baseType;
-
-    private final MDReference context;
-
-    private final MDReference file;
-
     private final long line;
-
     private final long column;
 
-    private MDTemplateTypeParameter(MDReference name, MDReference baseType, MDReference context, MDReference file, long line, long column) {
-        super(name);
-        this.baseType = baseType;
-        this.context = context;
-        this.file = file;
+    private MDBaseNode baseType;
+    private MDBaseNode scope;
+    private MDBaseNode file;
+
+    private MDTemplateTypeParameter(long line, long column) {
         this.line = line;
         this.column = column;
+
+        this.baseType = MDReference.VOID;
+        this.scope = MDReference.VOID;
+        this.file = MDReference.VOID;
     }
 
     @Override
@@ -57,15 +52,15 @@ public final class MDTemplateTypeParameter extends MDName implements MDBaseNode 
         visitor.visit(this);
     }
 
-    public MDReference getBaseType() {
+    public MDBaseNode getBaseType() {
         return baseType;
     }
 
-    public MDReference getContext() {
-        return context;
+    public MDBaseNode getScope() {
+        return scope;
     }
 
-    public MDReference getFile() {
+    public MDBaseNode getFile() {
         return file;
     }
 
@@ -78,25 +73,37 @@ public final class MDTemplateTypeParameter extends MDName implements MDBaseNode 
     }
 
     @Override
-    public String toString() {
-        return String.format("TemplateTypeParameter (baseType=%s, name=%s, context=%s, file=%s, line=%d, column=%d)", baseType, getName(), context, file, line, column);
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        super.replace(oldValue, newValue);
+        if (baseType == oldValue) {
+            baseType = newValue;
+        }
+        if (scope == oldValue) {
+            scope = newValue;
+        }
+        if (file == oldValue) {
+            file = newValue;
+        }
     }
 
-    private static final int ARGINDEX_CONTEXT = 1;
+    private static final int ARGINDEX_SCOPE = 1;
     private static final int ARGINDEX_NAME = 2;
     private static final int ARGINDEX_TYPE = 3;
     private static final int ARGINDEX_FILE = 4;
     private static final int ARGINDEX_LINE = 5;
     private static final int ARGINDEX_COLUMN = 6;
 
-    public static MDTemplateTypeParameter create32(MDTypedValue[] args) {
-        final MDReference context = ParseUtil.getReference(args[ARGINDEX_CONTEXT]);
-        final MDReference name = ParseUtil.getReference(args[ARGINDEX_NAME]);
-        final MDReference type = ParseUtil.getReference(args[ARGINDEX_TYPE]);
-        final MDReference file = ParseUtil.getReference(args[ARGINDEX_FILE]);
+    public static MDTemplateTypeParameter create32(MDTypedValue[] args, MetadataValueList md) {
         final long line = ParseUtil.asInt64(args[ARGINDEX_LINE]);
         final long column = ParseUtil.asInt64(args[ARGINDEX_COLUMN]);
 
-        return new MDTemplateTypeParameter(name, type, context, file, line, column);
+        final MDTemplateTypeParameter parameter = new MDTemplateTypeParameter(line, column);
+
+        parameter.scope = ParseUtil.resolveReference(args[ARGINDEX_SCOPE], parameter, md);
+        parameter.baseType = ParseUtil.resolveReference(args[ARGINDEX_TYPE], parameter, md);
+        parameter.file = ParseUtil.resolveReference(args[ARGINDEX_FILE], parameter, md);
+        parameter.setName(ParseUtil.resolveReference(args[ARGINDEX_NAME], parameter, md));
+
+        return parameter;
     }
 }

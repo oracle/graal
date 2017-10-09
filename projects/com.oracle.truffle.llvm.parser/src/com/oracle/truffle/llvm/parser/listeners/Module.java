@@ -105,7 +105,7 @@ public final class Module implements ParserListener {
                 readNameFromStrTab(args, function);
             }
         } else {
-            final FunctionDefinition function = new FunctionDefinition(functionType, linkage, paramAttr);
+            final FunctionDefinition function = new FunctionDefinition(module, functionType, linkage, paramAttr);
             module.addFunctionDefinition(function);
             if (useStrTab()) {
                 readNameFromStrTab(args, function);

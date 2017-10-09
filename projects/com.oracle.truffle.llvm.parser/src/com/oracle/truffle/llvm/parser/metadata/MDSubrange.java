@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.parser.metadata;
 public final class MDSubrange implements MDBaseNode {
 
     private final long lowerBound;
-
     private final long size;
 
     private MDSubrange(long lowerBound, long size) {
@@ -54,8 +53,7 @@ public final class MDSubrange implements MDBaseNode {
     }
 
     @Override
-    public String toString() {
-        return String.format("Subrange (lowerBound=%d, size=%d)", lowerBound, size);
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
     }
 
     private static final int ARGINDEX_COUNT = 1;

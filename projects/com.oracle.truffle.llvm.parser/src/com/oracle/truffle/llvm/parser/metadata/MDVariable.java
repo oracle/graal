@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2016, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,17 +27,66 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata.debuginfo;
+package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.metadata.MDReference;
-import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
+public abstract class MDVariable extends MDName {
 
-interface MDFollowRefVisitor extends MetadataVisitor {
+    private final long line;
+
+    private MDBaseNode scope;
+    private MDBaseNode type;
+    private MDBaseNode file;
+
+    MDVariable(long line) {
+        this.line = line;
+
+        this.scope = MDReference.VOID;
+        this.type = MDReference.VOID;
+        this.file = MDReference.VOID;
+    }
+
+    public MDBaseNode getScope() {
+        return scope;
+    }
+
+    public MDBaseNode getType() {
+        return type;
+    }
+
+    public MDBaseNode getFile() {
+        return file;
+    }
+
+    public long getLine() {
+        return line;
+    }
+
+    void setScope(MDBaseNode scope) {
+        this.scope = scope;
+    }
+
+    void setType(MDBaseNode type) {
+        this.type = type;
+    }
+
+    void setFile(MDBaseNode file) {
+        this.file = file;
+    }
 
     @Override
-    default void visit(MDReference ref) {
-        if (ref != MDReference.VOID) {
-            ref.get().accept(this);
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        super.replace(oldValue, newValue);
+
+        if (scope == oldValue) {
+            scope = newValue;
+        }
+
+        if (type == oldValue) {
+            type = newValue;
+        }
+
+        if (file == oldValue) {
+            file = newValue;
         }
     }
 }

@@ -31,16 +31,16 @@ package com.oracle.truffle.llvm.parser.metadata;
 
 public final class MDLexicalBlockFile implements MDBaseNode {
 
-    private final MDReference scope;
-
-    private final MDReference file;
-
     private final long discriminator;
 
-    private MDLexicalBlockFile(MDReference scope, MDReference file, long discriminator) {
-        this.scope = scope;
-        this.file = file;
+    private MDBaseNode scope;
+    private MDBaseNode file;
+
+    private MDLexicalBlockFile(long discriminator) {
         this.discriminator = discriminator;
+
+        this.scope = MDReference.VOID;
+        this.file = MDReference.VOID;
     }
 
     @Override
@@ -48,30 +48,41 @@ public final class MDLexicalBlockFile implements MDBaseNode {
         visitor.visit(this);
     }
 
-    public MDReference getFile() {
+    public MDBaseNode getFile() {
         return file;
     }
 
+    public long getDiscriminator() {
+        return discriminator;
+    }
+
     @Override
-    public String toString() {
-        return String.format("LexicalBlockFile (file=%s, scope=%s, discriminator=%d)", file, scope, discriminator);
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        if (scope == oldValue) {
+            scope = newValue;
+        }
+        if (file == oldValue) {
+            file = newValue;
+        }
     }
 
     private static final int ARGINDEX_SCOPE = 1;
     private static final int ARGINDEX_FILE = 2;
     private static final int ARGINDEX_38_DISCRIMINATOR = 3;
 
-    public static MDLexicalBlockFile create38(long[] args, MetadataList md) {
+    public static MDLexicalBlockFile create38(long[] args, MetadataValueList md) {
         // [distinct, scope, file, discriminator]
-        final MDReference scope = md.getMDRefOrNullRef(args[ARGINDEX_SCOPE]);
-        final MDReference file = md.getMDRefOrNullRef(args[ARGINDEX_FILE]);
         final long discriminator = args[ARGINDEX_38_DISCRIMINATOR];
-        return new MDLexicalBlockFile(scope, file, discriminator);
+        final MDLexicalBlockFile file = new MDLexicalBlockFile(discriminator);
+        file.scope = md.getNullable(args[ARGINDEX_SCOPE], file);
+        file.file = md.getNullable(args[ARGINDEX_FILE], file);
+        return file;
     }
 
-    public static MDLexicalBlockFile create32(MDTypedValue[] args) {
-        final MDReference scope = ParseUtil.getReference(args[ARGINDEX_SCOPE]);
-        final MDReference file = ParseUtil.getReference(args[ARGINDEX_FILE]);
-        return new MDLexicalBlockFile(scope, file, -1L);
+    public static MDLexicalBlockFile create32(MDTypedValue[] args, MetadataValueList md) {
+        final MDLexicalBlockFile file = new MDLexicalBlockFile(-1L);
+        file.scope = ParseUtil.resolveReference(args[ARGINDEX_SCOPE], file, md);
+        file.file = ParseUtil.resolveReference(args[ARGINDEX_FILE], file, md);
+        return file;
     }
 }

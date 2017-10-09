@@ -31,9 +31,8 @@ package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDCompositeType;
-import com.oracle.truffle.llvm.parser.metadata.MDReference;
 import com.oracle.truffle.llvm.parser.metadata.MDString;
-import com.oracle.truffle.llvm.parser.metadata.MetadataList;
+import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 
 import java.util.HashMap;
@@ -43,7 +42,7 @@ final class DITypeIdentifier {
 
     private final Map<String, MDCompositeType> identifiedTypes = new HashMap<>();
 
-    private final MetadataVisitor collector = new MDFollowRefVisitor() {
+    private final MetadataVisitor collector = new MetadataVisitor() {
 
         @Override
         public void visit(MDCompositeType mdCompositeType) {
@@ -55,9 +54,9 @@ final class DITypeIdentifier {
 
     };
 
-    private MetadataList metadata = null;
+    private MetadataValueList metadata = null;
 
-    public void setMetadata(MetadataList metadata) {
+    public void setMetadata(MetadataValueList metadata) {
         this.metadata = metadata;
     }
 
@@ -73,13 +72,7 @@ final class DITypeIdentifier {
     }
 
     private static String getIdentifier(MDCompositeType type) {
-        MDBaseNode id = type.getIdentifier();
-        if (id != MDReference.VOID) {
-            id = ((MDReference) id).get();
-            if (id instanceof MDString) {
-                return ((MDString) id).getString();
-            }
-        }
-        return null;
+        final MDBaseNode id = type.getIdentifier();
+        return id instanceof MDString ? ((MDString) id).getString() : null;
     }
 }

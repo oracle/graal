@@ -41,12 +41,13 @@ import com.oracle.truffle.llvm.parser.metadata.MDNamedNode;
 import com.oracle.truffle.llvm.parser.metadata.MDNamespace;
 import com.oracle.truffle.llvm.parser.metadata.MDObjCProperty;
 import com.oracle.truffle.llvm.parser.metadata.MDString;
+import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
 import com.oracle.truffle.llvm.parser.metadata.MDTemplateType;
 import com.oracle.truffle.llvm.parser.metadata.MDTemplateTypeParameter;
 import com.oracle.truffle.llvm.parser.metadata.MDTemplateValue;
 
-final class MDNameExtractor implements MDFollowRefVisitor {
+final class MDNameExtractor implements MetadataVisitor {
 
     private static final String DEFAULT_STRING = "<unknown name>";
 

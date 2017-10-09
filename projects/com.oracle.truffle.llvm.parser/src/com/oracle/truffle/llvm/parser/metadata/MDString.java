@@ -49,8 +49,12 @@ public final class MDString implements MDBaseNode {
     }
 
     @Override
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+    }
+
+    @Override
     public String toString() {
-        return String.format("\"%s\"", s);
+        return String.format("!\"%s\"", s);
     }
 
     public static MDString create(long[] chars) {
