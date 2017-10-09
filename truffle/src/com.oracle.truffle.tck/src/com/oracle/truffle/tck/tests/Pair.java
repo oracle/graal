@@ -55,7 +55,7 @@ final class Pair<F, S> implements Map.Entry<F, S> {
         if (other == this) {
             return true;
         }
-        if (other.getClass() != Pair.class) {
+        if (other == null || other.getClass() != Pair.class) {
             return false;
         }
         final Pair<?, ?> otherPair = (Pair<?, ?>) other;

@@ -27,11 +27,13 @@ package com.oracle.truffle.tck.tests;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Objects;
+import java.util.function.Function;
 import org.graalvm.polyglot.Value;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.tck.Snippet;
 import org.junit.AfterClass;
 import org.junit.Assume;
 import org.junit.Before;
@@ -50,8 +52,18 @@ public class StatementTest {
         final Collection<? extends TestRun> testRuns = TestUtil.createTestRuns(
                         TestUtil.getRequiredLanguages(context),
                         TestUtil.getRequiredValueLanguages(context),
-                        (lang) -> context.getStatements(null, null, lang),
-                        (lang) -> context.getValueConstructors(null, lang));
+                        new Function<String, Collection<? extends Snippet>>() {
+                            @Override
+                            public Collection<? extends Snippet> apply(String lang) {
+                                return context.getStatements(null, null, lang);
+                            }
+                        },
+                        new Function<String, Collection<? extends Snippet>>() {
+                            @Override
+                            public Collection<? extends Snippet> apply(String lang) {
+                                return context.getValueConstructors(null, lang);
+                            }
+                        });
         return testRuns;
     }
 

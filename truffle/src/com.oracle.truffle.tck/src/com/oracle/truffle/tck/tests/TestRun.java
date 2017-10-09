@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.tck.Snippet;
@@ -71,7 +72,12 @@ public final class TestRun {
 
     @Override
     public String toString() {
-        return arguments.stream().map((p) -> p.getKey() + "::" + p.getValue().getId()).collect(Collectors.joining(
+        return arguments.stream().map(new Function<Entry<String, ? extends Snippet>, String>() {
+            @Override
+            public String apply(Entry<String, ? extends Snippet> e) {
+                return e.getKey() + "::" + e.getValue().getId();
+            }
+        }).collect(Collectors.joining(
                         ", ",
                         snippet.getKey() + "::" + snippet.getValue().getId() + "(",
                         ")"));

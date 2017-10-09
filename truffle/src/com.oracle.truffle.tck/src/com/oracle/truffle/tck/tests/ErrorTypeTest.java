@@ -35,7 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.function.Function;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -89,8 +89,10 @@ public class ErrorTypeTest {
         final Set<? extends String> requiredValueLanguages = TestUtil.getRequiredValueLanguages(context);
         for (Snippet snippet : snippets) {
             for (String parLanguage : requiredValueLanguages) {
-                final Collection<Pair<String, ? extends Snippet>> valueConstructors = context.getValueConstructors(null, parLanguage).stream().map((vc) -> Pair.of(parLanguage, vc)).collect(
-                                Collectors.toSet());
+                final Collection<Pair<String, ? extends Snippet>> valueConstructors = new HashSet<>();
+                for (Snippet valueConstructor : context.getValueConstructors(null, parLanguage)) {
+                    valueConstructors.add(Pair.of(parLanguage, valueConstructor));
+                }
                 final List<List<Pair<String, ? extends Snippet>>> applicableParams = TestUtil.findApplicableParameters(snippet, valueConstructors);
                 if (!applicableParams.isEmpty()) {
                     final Collection<? extends Snippet> operatorOverloads = new ArrayList<>(overloads.get(snippet.getId()));
@@ -110,7 +112,12 @@ public class ErrorTypeTest {
     private static Map<String, Collection<? extends Snippet>> computeOverloads(final Collection<? extends Snippet> snippets) {
         final Map<String, Collection<Snippet>> res = new HashMap<>();
         for (Snippet snippet : snippets) {
-            res.computeIfAbsent(snippet.getId(), (k) -> new ArrayList<>()).add(snippet);
+            res.computeIfAbsent(snippet.getId(), new Function<String, Collection<Snippet>>() {
+                @Override
+                public Collection<Snippet> apply(String id) {
+                    return new ArrayList<>();
+                }
+            }).add(snippet);
         }
         return (Map<String, Collection<? extends Snippet>>) (Map<String, ?>) res;
     }

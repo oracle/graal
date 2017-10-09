@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.tck.tests;
 
-import java.util.Arrays;
 import org.graalvm.polyglot.tck.TypeDescriptor;
 import org.junit.Assert;
 import org.junit.Test;
@@ -77,11 +76,11 @@ public class TypeDescriptorTest {
             Assert.assertFalse(numArrayArray.isAssignable(td));
         }
 
-        Arrays.stream(PREDEFINED).filter((td) -> td != TypeDescriptor.ARRAY).forEach((td) -> {
-            Assert.assertFalse(td.isAssignable(numArray));
-            Assert.assertFalse(td.isAssignable(strArray));
-            Assert.assertFalse(td.isAssignable(numArrayArray));
-        });
+        for (TypeDescriptor td : PREDEFINED) {
+            Assert.assertFalse(td != TypeDescriptor.ARRAY && td.isAssignable(numArray));
+            Assert.assertFalse(td != TypeDescriptor.ARRAY && td.isAssignable(strArray));
+            Assert.assertFalse(td != TypeDescriptor.ARRAY && td.isAssignable(numArrayArray));
+        }
         Assert.assertTrue(TypeDescriptor.ARRAY.isAssignable(numArray));
         Assert.assertTrue(TypeDescriptor.ARRAY.isAssignable(strArray));
         Assert.assertTrue(TypeDescriptor.ARRAY.isAssignable(numArrayArray));
@@ -106,10 +105,10 @@ public class TypeDescriptorTest {
     public void testUnion() {
         final TypeDescriptor numOrBool = TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.BOOLEAN);
         final TypeDescriptor numOrBoolOrStr = TypeDescriptor.union(numOrBool, TypeDescriptor.STRING);
-        Arrays.stream(PREDEFINED).filter((td) -> td != TypeDescriptor.NUMBER && td != TypeDescriptor.BOOLEAN).forEach((td) -> {
-            Assert.assertFalse(td.isAssignable(numOrBool));
-            Assert.assertFalse(numOrBool.isAssignable(td));
-        });
+        for (TypeDescriptor td : PREDEFINED) {
+            Assert.assertFalse(td != TypeDescriptor.NUMBER && td != TypeDescriptor.BOOLEAN && td.isAssignable(numOrBool));
+            Assert.assertFalse(td != TypeDescriptor.NUMBER && td != TypeDescriptor.BOOLEAN && numOrBool.isAssignable(td));
+        }
 
         Assert.assertTrue(numOrBool.isAssignable(TypeDescriptor.BOOLEAN));
         Assert.assertTrue(numOrBoolOrStr.isAssignable(TypeDescriptor.BOOLEAN));

@@ -38,6 +38,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.tck.Snippet;
 import org.graalvm.polyglot.tck.TypeDescriptor;
@@ -103,9 +104,14 @@ final class TestContext implements Closeable {
         checkState(State.NEW, State.INITIALIZED);
         return filter(
                         valueConstructors,
-                        newIdPredicate(ids),
-                        newTypePredicate(type, null),
-                        (tli) -> tli.createValueConstructors(context));
+                        LanguageIdPredicate.create(ids),
+                        TypePredicate.create(type, null),
+                        new Function<LanguageProvider, Collection<? extends Snippet>>() {
+                            @Override
+                            public Collection<? extends Snippet> apply(LanguageProvider tli) {
+                                return tli.createValueConstructors(context);
+                            }
+                        });
     }
 
     Collection<? extends Snippet> getExpressions(TypeDescriptor type, List<? extends TypeDescriptor> parameterTypes, String... ids) {
@@ -113,9 +119,14 @@ final class TestContext implements Closeable {
         checkState(State.NEW, State.INITIALIZED);
         return filter(
                         expressions,
-                        newIdPredicate(ids),
-                        newTypePredicate(type, parameterTypes),
-                        (tli) -> tli.createExpressions(context));
+                        LanguageIdPredicate.create(ids),
+                        TypePredicate.create(type, parameterTypes),
+                        new Function<LanguageProvider, Collection<? extends Snippet>>() {
+                            @Override
+                            public Collection<? extends Snippet> apply(LanguageProvider tli) {
+                                return tli.createExpressions(context);
+                            }
+                        });
     }
 
     Collection<? extends Snippet> getScripts(TypeDescriptor type, String... ids) {
@@ -123,9 +134,14 @@ final class TestContext implements Closeable {
         checkState(State.NEW, State.INITIALIZED);
         return filter(
                         scripts,
-                        newIdPredicate(ids),
-                        newTypePredicate(type, Collections.emptyList()),
-                        (tli) -> tli.createScripts(context));
+                        LanguageIdPredicate.create(ids),
+                        TypePredicate.create(type, Collections.emptyList()),
+                        new Function<LanguageProvider, Collection<? extends Snippet>>() {
+                            @Override
+                            public Collection<? extends Snippet> apply(LanguageProvider tli) {
+                                return tli.createScripts(context);
+                            }
+                        });
     }
 
     Collection<? extends Snippet> getStatements(TypeDescriptor type, List<? extends TypeDescriptor> parameterTypes, String... ids) {
@@ -133,9 +149,14 @@ final class TestContext implements Closeable {
         checkState(State.NEW, State.INITIALIZED);
         return filter(
                         statements,
-                        newIdPredicate(ids),
-                        newTypePredicate(type, parameterTypes),
-                        (tli) -> tli.createStatements(context));
+                        LanguageIdPredicate.create(ids),
+                        TypePredicate.create(type, parameterTypes),
+                        new Function<LanguageProvider, Collection<? extends Snippet>>() {
+                            @Override
+                            public Collection<? extends Snippet> apply(LanguageProvider tli) {
+                                return tli.createStatements(context);
+                            }
+                        });
     }
 
     private Collection<? extends Snippet> filter(
@@ -143,43 +164,17 @@ final class TestContext implements Closeable {
                     final Predicate<Map.Entry<String, ? extends LanguageProvider>> idPredicate,
                     final Predicate<Snippet> typePredicate,
                     final Function<LanguageProvider, Collection<? extends Snippet>> provider) {
-        return getInstalledProviders().entrySet().stream().filter(idPredicate).flatMap((e) -> cache.computeIfAbsent(e.getKey(), (k) -> provider.apply(e.getValue())).stream()).filter(
-                        typePredicate).collect(Collectors.toList());
-    }
-
-    private static Predicate<Map.Entry<String, ? extends LanguageProvider>> newIdPredicate(final String[] ids) {
-        return ids.length == 0 ? (e) -> true : new Predicate<Map.Entry<String, ? extends LanguageProvider>>() {
-            private final Set<String> requiredIds;
-            {
-                requiredIds = new HashSet<>();
-                Collections.addAll(requiredIds, ids);
-            }
-
+        return getInstalledProviders().entrySet().stream().filter(idPredicate).flatMap(new Function<Map.Entry<String, ? extends LanguageProvider>, Stream<? extends Snippet>>() {
             @Override
-            public boolean test(Map.Entry<String, ? extends LanguageProvider> e) {
-                return requiredIds.contains(e.getKey());
-            }
-        };
-    }
-
-    private static Predicate<Snippet> newTypePredicate(TypeDescriptor type, List<? extends TypeDescriptor> parameterTypes) {
-        return (Snippet op) -> {
-            if (type != null && !op.getReturnType().isAssignable(type)) {
-                return false;
-            }
-            if (parameterTypes != null) {
-                List<? extends TypeDescriptor> opParameterTypes = op.getParameterTypes();
-                if (parameterTypes.size() != opParameterTypes.size()) {
-                    return false;
-                }
-                for (int i = 0; i < parameterTypes.size(); i++) {
-                    if (!opParameterTypes.get(i).isAssignable(parameterTypes.get(i))) {
-                        return false;
+            public Stream<? extends Snippet> apply(Map.Entry<String, ? extends LanguageProvider> e) {
+                return cache.computeIfAbsent(e.getKey(), new Function<String, Collection<? extends Snippet>>() {
+                    @Override
+                    public Collection<? extends Snippet> apply(String k) {
+                        return provider.apply(e.getValue());
                     }
-                }
+                }).stream();
             }
-            return true;
-        };
+        }).filter(typePredicate).collect(Collectors.toList());
     }
 
     private void checkState(final State... allowedInStates) {
@@ -204,5 +199,62 @@ final class TestContext implements Closeable {
         INITIALIZING,
         INITIALIZED,
         CLOSED
+    }
+
+    private static final class LanguageIdPredicate implements Predicate<Map.Entry<String, ? extends LanguageProvider>> {
+        private static final Predicate<Map.Entry<String, ? extends LanguageProvider>> TRUE = new Predicate<Map.Entry<String, ? extends LanguageProvider>>() {
+            @Override
+            public boolean test(Map.Entry<String, ? extends LanguageProvider> e) {
+                return true;
+            }
+        };
+        private final Set<String> requiredIds;
+
+        private LanguageIdPredicate(final String... ids) {
+            requiredIds = new HashSet<>();
+            Collections.addAll(requiredIds, ids);
+        }
+
+        @Override
+        public boolean test(Map.Entry<String, ? extends LanguageProvider> e) {
+            return requiredIds.contains(e.getKey());
+        }
+
+        static Predicate<Map.Entry<String, ? extends LanguageProvider>> create(String... ids) {
+            return ids.length == 0 ? TRUE : new LanguageIdPredicate(ids);
+        }
+    }
+
+    private static final class TypePredicate implements Predicate<Snippet> {
+        private final TypeDescriptor type;
+        private final List<? extends TypeDescriptor> parameterTypes;
+
+        private TypePredicate(TypeDescriptor type, List<? extends TypeDescriptor> parameterTypes) {
+            this.type = type;
+            this.parameterTypes = parameterTypes;
+        }
+
+        @Override
+        public boolean test(final Snippet op) {
+            if (type != null && !op.getReturnType().isAssignable(type)) {
+                return false;
+            }
+            if (parameterTypes != null) {
+                List<? extends TypeDescriptor> opParameterTypes = op.getParameterTypes();
+                if (parameterTypes.size() != opParameterTypes.size()) {
+                    return false;
+                }
+                for (int i = 0; i < parameterTypes.size(); i++) {
+                    if (!opParameterTypes.get(i).isAssignable(parameterTypes.get(i))) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        static Predicate<Snippet> create(TypeDescriptor type, List<? extends TypeDescriptor> parameterTypes) {
+            return new TypePredicate(type, parameterTypes);
+        }
     }
 }
