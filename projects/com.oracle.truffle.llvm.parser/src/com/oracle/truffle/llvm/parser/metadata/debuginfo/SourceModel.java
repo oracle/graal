@@ -34,6 +34,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
 import com.oracle.truffle.llvm.parser.metadata.MDLocation;
+import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.metadata.MetadataList;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
@@ -112,6 +113,10 @@ public final class SourceModel {
             return section;
         }
 
+        private void setLexicalScope(LLVMSourceLocation lexicalScope) {
+            this.lexicalScope = lexicalScope;
+        }
+
         public SourceSection getSourceSection(Instruction instruction) {
             final LLVMSourceLocation scope = instructions.get(instruction);
             return scope != null ? scope.getSourceSection() : null;
@@ -172,6 +177,15 @@ public final class SourceModel {
 
     private static final class Parser implements ModelVisitor, FunctionVisitor, InstructionVisitorAdapter {
 
+        private static MDBaseNode getDebugInfo(MetadataAttachmentHolder holder) {
+            if (holder.hasAttachedMetadata()) {
+                return holder.getMetadataAttachment(MDKind.DBG_NAME);
+
+            } else {
+                return null;
+            }
+        }
+
         private final Map<MDBaseNode, LLVMSourceSymbol> parsedVariables;
 
         private final DITypeIdentifier typeIdentifier;
@@ -225,9 +239,10 @@ public final class SourceModel {
             currentFunction = new Function(bitcodeSource, function);
             typeIdentifier.setMetadata(function.getMetadata());
 
-            if (function.hasAttachedMetadata()) {
-                final MDBaseNode scopeRef = function.getMetadataAttachment(MDKind.DBG_NAME);
-                currentFunction.lexicalScope = scopeExtractor.resolve(scopeRef);
+            final MDBaseNode debugInfo = getDebugInfo(function);
+            if (debugInfo != null) {
+                final LLVMSourceLocation scope = scopeExtractor.resolve(debugInfo);
+                currentFunction.setLexicalScope(scope);
             }
 
             function.accept(this);
@@ -238,11 +253,7 @@ public final class SourceModel {
         }
 
         private void visitGlobal(GlobalValueSymbol global) {
-            if (!global.hasAttachedMetadata()) {
-                return;
-            }
-
-            final MDBaseNode mdGlobal = global.getMetadataAttachment(MDKind.DBG_NAME);
+            final MDBaseNode mdGlobal = getDebugInfo(global);
             if (mdGlobal != null) {
                 final LLVMSourceSymbol symbol = getSourceVariable(mdGlobal, true);
                 if (symbol != null) {
@@ -309,10 +320,8 @@ public final class SourceModel {
             defaultAction(call);
         }
 
-        private static final int LLVM_DBG_INTRINSICS_VALUEINDEX = 0;
-
         private void handleDebugIntrinsic(VoidCallInstruction call, int mdlocalArgumentIndex) {
-            Symbol value = call.getArgument(LLVM_DBG_INTRINSICS_VALUEINDEX);
+            Symbol value = call.getArgument(LLVM_DBG_INTRINSICS_VALUE_ARGINDEX);
             if (value instanceof MetadataConstant) {
                 // the first argument should reference the allocation site of the variable
                 final long mdIndex = ((MetadataConstant) value).getValue();
@@ -343,7 +352,7 @@ public final class SourceModel {
 
                 // ensure that lifetime analysis does not kill the variable before it is used in
                 // the call
-                call.replace(call.getArgument(LLVM_DBG_INTRINSICS_VALUEINDEX), value);
+                call.replace(call.getArgument(LLVM_DBG_INTRINSICS_VALUE_ARGINDEX), value);
                 call.replace(mdLocalMDRef, var);
             }
         }

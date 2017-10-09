@@ -354,18 +354,18 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         if (target instanceof FunctionDeclaration) {
             final String name = ((FunctionDeclaration) target).getName();
-            final int descriptorArgIndex = SourceModel.LLVM_DBG_INTRINSICS_VALUE_ARGINDEX;
+            final int valueArgIndex = SourceModel.LLVM_DBG_INTRINSICS_VALUE_ARGINDEX;
             switch (name) {
                 case SourceModel.LLVM_DBG_DECLARE_NAME: {
-                    final int valueArgIndex = SourceModel.LLVM_DBG_DECLARE_LOCALREF_ARGINDEX;
-                    visitDebugIntrinsic(call.getArgument(descriptorArgIndex), call.getArgument(valueArgIndex), true, null);
+                    final int descriptorArgIndex = SourceModel.LLVM_DBG_DECLARE_LOCALREF_ARGINDEX;
+                    visitDebugIntrinsic(call.getArgument(valueArgIndex), call.getArgument(descriptorArgIndex), true, null);
                     return;
                 }
 
                 case SourceModel.LLVM_DBG_VALUE_NAME: {
-                    final int valueArgIndex = SourceModel.LLVM_DBG_VALUE_LOCALREF_ARGINDEX;
+                    final int descriptorArgIndex = SourceModel.LLVM_DBG_VALUE_LOCALREF_ARGINDEX;
                     final Integer valueOffset = LLVMSymbolReadResolver.evaluateIntegerConstant(call.getArgument(LLVM_DBG_VALUE_OFFSET_INDEX));
-                    visitDebugIntrinsic(call.getArgument(descriptorArgIndex), call.getArgument(valueArgIndex), false, valueOffset);
+                    visitDebugIntrinsic(call.getArgument(valueArgIndex), call.getArgument(descriptorArgIndex), false, valueOffset);
                     return;
                 }
             }

@@ -111,6 +111,7 @@ public final class LLVMSourceScope extends ScopeProvider.AbstractScope {
                     } else {
                         copySymbols(next, staticScope);
                     }
+                    break;
             }
         }
 
