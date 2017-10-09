@@ -211,8 +211,7 @@ public final class CPUTracer implements Closeable {
         }
 
         /**
-         * @return The name of the root not in which the source section associated with this payload
-         *         appears
+         * @return The name of the root this counter is associated with.
          * @since 0.29
          */
         public String getRootName() {
@@ -220,8 +219,8 @@ public final class CPUTracer implements Closeable {
         }
 
         /**
-         * @return A set of {@link com.oracle.truffle.api.instrumentation.StandardTags tags} for the
-         *         {@link SourceLocation} associated with this {@link ProfilerNode}
+         * @return A set of tags for the {@link SourceLocation} associated with this
+         *         {@link ProfilerNode}
          * @since 0.29
          */
         public Set<Class<?>> getTags() {

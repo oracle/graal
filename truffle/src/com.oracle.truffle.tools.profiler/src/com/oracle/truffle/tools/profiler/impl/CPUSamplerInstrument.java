@@ -113,20 +113,22 @@ public class CPUSamplerInstrument extends TruffleInstrument {
         List<OptionDescriptor> descriptorList = new ArrayList<>();
         descriptorList.add(OptionDescriptor.newBuilder(CPUSamplerCLI.ENABLED, ID).category(OptionCategory.USER).help("Enable the CPU sampler.").build());
         descriptorList.add(OptionDescriptor.newBuilder(CPUSamplerCLI.SAMPLE_PERIOD, ID + ".Period").category(OptionCategory.USER).help("Period in milliseconds to sample the stack.").build());
-        descriptorList.add(OptionDescriptor.newBuilder(CPUSamplerCLI.DELAY_PERIOD, ID + ".Delay").category(OptionCategory.USER).help("Delay the sampling for this many milliseconds (default: 0).").build());
+        descriptorList.add(OptionDescriptor.newBuilder(CPUSamplerCLI.DELAY_PERIOD, ID + ".Delay").category(OptionCategory.USER).help(
+                        "Delay the sampling for this many milliseconds (default: 0).").build());
         descriptorList.add(OptionDescriptor.newBuilder(CPUSamplerCLI.STACK_LIMIT, ID + ".StackLimit").category(OptionCategory.USER).help("Maximum number of maximum stack elements.").build());
-        descriptorList.add(OptionDescriptor.newBuilder(CPUSamplerCLI.OUTPUT, ID + ".Output").category(OptionCategory.USER).help("Print a 'histogram' or 'calltree' as output (default:HISTOGRAM).").build());
+        descriptorList.add(OptionDescriptor.newBuilder(CPUSamplerCLI.OUTPUT, ID + ".Output").category(OptionCategory.USER).help(
+                        "Print a 'histogram' or 'calltree' as output (default:HISTOGRAM).").build());
         descriptorList.add(OptionDescriptor.newBuilder(CPUSamplerCLI.MODE, ID + ".Mode").category(OptionCategory.USER).help(
-                "Describes level of sampling detail. NOTE: Increased detail can lead to reduced accuracy. Modes:" + System.lineSeparator() +
-                        "'compiled' - samples roots excluding inlined functions (default)" + System.lineSeparator() + "'roots' - samples roots including inlined functions" +
-                        System.lineSeparator() + "'statements' - samples all statements.").build());
+                        "Describes level of sampling detail. NOTE: Increased detail can lead to reduced accuracy. Modes:" + System.lineSeparator() +
+                                        "'compiled' - samples roots excluding inlined functions (default)" + System.lineSeparator() + "'roots' - samples roots including inlined functions" +
+                                        System.lineSeparator() + "'statements' - samples all statements.").build());
         descriptorList.add(OptionDescriptor.newBuilder(CPUSamplerCLI.SAMPLE_INTERNAL, ID + ".SampleInternal").category(OptionCategory.USER).help("Capture internal elements (default:false).").build());
         descriptorList.add(OptionDescriptor.newBuilder(CPUSamplerCLI.FILTER_ROOT, ID + ".FilterRootName").category(OptionCategory.USER).help(
-                "Wildcard filter for program roots. (eg. Math.*, default:*).").build());
+                        "Wildcard filter for program roots. (eg. Math.*, default:*).").build());
         descriptorList.add(OptionDescriptor.newBuilder(CPUSamplerCLI.FILTER_FILE, ID + ".FilterFile").category(OptionCategory.USER).help(
-                "Wildcard filter for source file paths. (eg. *program*.sl, default:*).").build());
+                        "Wildcard filter for source file paths. (eg. *program*.sl, default:*).").build());
         descriptorList.add(OptionDescriptor.newBuilder(CPUSamplerCLI.FILTER_LANGUAGE, ID + ".FilterLanguage").category(OptionCategory.USER).help(
-                "Only profile languages with mime-type. (eg. +, default:no filter).").build());
+                        "Only profile languages with mime-type. (eg. +, default:no filter).").build());
         descriptors = OptionDescriptors.create(descriptorList);
         return descriptors;
     }

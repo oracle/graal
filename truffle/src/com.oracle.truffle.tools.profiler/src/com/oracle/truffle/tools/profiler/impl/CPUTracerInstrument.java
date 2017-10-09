@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
-
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.profiler.CPUTracer;
@@ -73,6 +72,7 @@ public class CPUTracerInstrument extends TruffleInstrument {
             // Can not happen
         }
     }
+
     /**
      * Called to create the Instrument.
      *
@@ -109,15 +109,16 @@ public class CPUTracerInstrument extends TruffleInstrument {
         List<OptionDescriptor> descriptors = new ArrayList<>();
         descriptors.add(OptionDescriptor.newBuilder(CPUTracerCLI.ENABLED, ID).category(OptionCategory.USER).help("Enable the CPU tracer (default: false).").build());
         descriptors.add(OptionDescriptor.newBuilder(CPUTracerCLI.TRACE_ROOTS, ID + ".TraceRoots").category(OptionCategory.USER).help("Capture roots when tracing (default:true).").build());
-        descriptors.add(OptionDescriptor.newBuilder(CPUTracerCLI.TRACE_STATEMENTS, ID + ".TraceStatements").category(OptionCategory.USER).help("Capture statements when tracing (default:false).").build());
+        descriptors.add(OptionDescriptor.newBuilder(CPUTracerCLI.TRACE_STATEMENTS, ID + ".TraceStatements").category(OptionCategory.USER).help(
+                        "Capture statements when tracing (default:false).").build());
         descriptors.add(OptionDescriptor.newBuilder(CPUTracerCLI.TRACE_CALLS, ID + ".TraceCalls").category(OptionCategory.USER).help("Capture calls when tracing (default:false).").build());
         descriptors.add(OptionDescriptor.newBuilder(CPUTracerCLI.TRACE_INTERNAL, ID + ".TraceInternal").category(OptionCategory.USER).help("Trace internal elements (default:false).").build());
         descriptors.add(OptionDescriptor.newBuilder(CPUTracerCLI.FILTER_ROOT, ID + ".FilterRootName").category(OptionCategory.USER).help(
-                "Wildcard filter for program roots. (eg. Math.*, default:*).").build());
+                        "Wildcard filter for program roots. (eg. Math.*, default:*).").build());
         descriptors.add(OptionDescriptor.newBuilder(CPUTracerCLI.FILTER_FILE, ID + ".FilterFile").category(OptionCategory.USER).help(
-                "Wildcard filter for source file paths. (eg. *program*.sl, default:*).").build());
+                        "Wildcard filter for source file paths. (eg. *program*.sl, default:*).").build());
         descriptors.add(OptionDescriptor.newBuilder(CPUTracerCLI.FILTER_LANGUAGE, ID + ".FilterLanguage").category(OptionCategory.USER).help(
-                "Only profile languages with mime-type. (eg. +, default:no filter).").build());
+                        "Only profile languages with mime-type. (eg. +, default:no filter).").build());
         return OptionDescriptors.create(descriptors);
     }
 

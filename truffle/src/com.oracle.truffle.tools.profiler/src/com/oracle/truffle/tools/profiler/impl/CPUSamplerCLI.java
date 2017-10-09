@@ -59,30 +59,30 @@ class CPUSamplerCLI extends ProfilerCLI {
     }
 
     static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output",
-            Output.HISTOGRAM,
-            new Function<String, Output>() {
-                @Override
-                public Output apply(String s) {
-                    try {
-                        return Output.valueOf(s.toUpperCase());
-                    } catch (IllegalArgumentException e) {
-                        throw new IllegalArgumentException("Output can be: histogram or calltree");
-                    }
-                }
-            });
+                    Output.HISTOGRAM,
+                    new Function<String, Output>() {
+                        @Override
+                        public Output apply(String s) {
+                            try {
+                                return Output.valueOf(s.toUpperCase());
+                            } catch (IllegalArgumentException e) {
+                                throw new IllegalArgumentException("Output can be: histogram or calltree");
+                            }
+                        }
+                    });
 
     static final OptionType<Mode> CLI_MODE_TYPE = new OptionType<>("Mode",
-            Mode.COMPILED,
-            new Function<String, Mode>() {
-                @Override
-                public Mode apply(String s) {
-                    try {
-                        return Mode.valueOf(s.toUpperCase());
-                    } catch (IllegalArgumentException e) {
-                        throw new IllegalArgumentException("Mode can be: compiled, roots or statements.");
-                    }
-                }
-            });
+                    Mode.COMPILED,
+                    new Function<String, Mode>() {
+                        @Override
+                        public Mode apply(String s) {
+                            try {
+                                return Mode.valueOf(s.toUpperCase());
+                            } catch (IllegalArgumentException e) {
+                                throw new IllegalArgumentException("Mode can be: compiled, roots or statements.");
+                            }
+                        }
+                    });
 
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
     static final OptionKey<Mode> MODE = new OptionKey<>(Mode.COMPILED, CLI_MODE_TYPE);
@@ -271,7 +271,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         String location = getShortDescription(sourceSection);
 
         out.println(String.format(" %-" + Math.max(maxRootLength, 10) + "s | %s || %s | %s ", //
-                prefix + rootName, totalTimes, selfTimes, location));
+                        prefix + rootName, totalTimes, selfTimes, location));
     }
 
     private static boolean needsColumnSpecifier(ProfilerNode<CPUSampler.Payload> firstNode) {

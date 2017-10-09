@@ -51,30 +51,30 @@ public class MemoryTracerCLI extends ProfilerCLI {
     }
 
     static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Format",
-            Output.LOCATION_HISTOGRAM,
-            new Function<String, Output>() {
-                @Override
-                public Output apply(String s) {
-                    switch (s) {
-                        case "typehistogram":
-                            return Output.TYPE_HISTOGRAM;
-                        case "histogram":
-                            return Output.LOCATION_HISTOGRAM;
-                        case "calltree":
-                            return Output.CALLTREE;
-                        default:
-                            return null;
-                    }
-                }
-            },
-            new Consumer<Output>() {
-                @Override
-                public void accept(Output output) {
-                    if (output == null) {
-                        throw new IllegalArgumentException();
-                    }
-                }
-            });
+                    Output.LOCATION_HISTOGRAM,
+                    new Function<String, Output>() {
+                        @Override
+                        public Output apply(String s) {
+                            switch (s) {
+                                case "typehistogram":
+                                    return Output.TYPE_HISTOGRAM;
+                                case "histogram":
+                                    return Output.LOCATION_HISTOGRAM;
+                                case "calltree":
+                                    return Output.CALLTREE;
+                                default:
+                                    return null;
+                            }
+                        }
+                    },
+                    new Consumer<Output>() {
+                        @Override
+                        public void accept(Output output) {
+                            if (output == null) {
+                                throw new IllegalArgumentException();
+                            }
+                        }
+                    });
 
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
     static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.LOCATION_HISTOGRAM, CLI_OUTPUT_TYPE);
