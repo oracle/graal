@@ -117,6 +117,14 @@ public final class TruffleOptions {
     static {
         final boolean[] values = new boolean[4];
         final Object[] objs = new Object[3];
+
+        /*
+         * Ensure TruffleRuntime gets initialized before TruffleOptions are set. This allows a
+         * specific TruffleRuntime to effect the system properties that are used to determine the
+         * values for the TruffleOptions below.
+         */
+        Truffle.getRuntime();
+
         AccessController.doPrivileged(new PrivilegedAction<Void>() {
             public Void run() {
                 values[0] = Boolean.getBoolean("truffle.TraceRewrites");
