@@ -41,16 +41,16 @@ import java.util.Set;
  * @param <T> The type of data that should be associated with this node.
  * @since 0.29
  */
-public final class CallTreeNode<T> {
+public final class ProfilerNode<T> {
 
-    CallTreeNode(CallTreeNode<T> parent, SourceLocation sourceLocation, T payload) {
+    ProfilerNode(ProfilerNode<T> parent, SourceLocation sourceLocation, T payload) {
         this.parent = parent;
         this.sourceLocation = sourceLocation;
         this.sync = parent.sync;
         this.payload = payload;
     }
 
-    CallTreeNode(Object sync, T payload) {
+    ProfilerNode(Object sync, T payload) {
         if (sync == null) {
             throw new IllegalStateException("Sync must be provided for root");
         }
@@ -61,16 +61,16 @@ public final class CallTreeNode<T> {
     }
 
     private final T payload;
-    private final CallTreeNode<T> parent;
+    private final ProfilerNode<T> parent;
     private final SourceLocation sourceLocation;
-    Map<SourceLocation, CallTreeNode<T>> children;
+    Map<SourceLocation, ProfilerNode<T>> children;
     private final Object sync;
 
     /**
-     * @return the children of this {@link CallTreeNode}
+     * @return the children of this {@link ProfilerNode}
      * @since 0.29
      */
-    public Collection<CallTreeNode<T>> getChildren() {
+    public Collection<ProfilerNode<T>> getChildren() {
         if (children == null) {
             return Collections.emptyList();
         }
@@ -78,15 +78,15 @@ public final class CallTreeNode<T> {
     }
 
     /**
-     * @return the parent of this {@link CallTreeNode}
+     * @return the parent of this {@link ProfilerNode}
      * @since 0.29
      */
-    public CallTreeNode<T> getParent() {
+    public ProfilerNode<T> getParent() {
         return parent;
     }
 
     /**
-     * @return true if the parent chain contains a {@link CallTreeNode} with the same
+     * @return true if the parent chain contains a {@link ProfilerNode} with the same
      *         {@link SourceLocation}, otherwise false
      * @since 0.29
      */
@@ -94,7 +94,7 @@ public final class CallTreeNode<T> {
         return isRecursiveImpl(this);
     }
 
-    private boolean isRecursiveImpl(CallTreeNode<T> source) {
+    private boolean isRecursiveImpl(ProfilerNode<T> source) {
         if (parent.sourceLocation == null) {
             return false;
         }
@@ -105,7 +105,7 @@ public final class CallTreeNode<T> {
     }
 
     /**
-     * @return the {@link SourceSection} associated with this {@link CallTreeNode}
+     * @return the {@link SourceSection} associated with this {@link ProfilerNode}
      * @since 0.29
      */
     public SourceSection getSourceSection() {
@@ -114,7 +114,7 @@ public final class CallTreeNode<T> {
 
     /**
      * @return The name of the {@linkplain com.oracle.truffle.api.nodes.RootNode root node} in which
-     *         the {@link SourceLocation} associated with this {@link CallTreeNode} appears
+     *         the {@link SourceLocation} associated with this {@link ProfilerNode} appears
      * @since 0.29
      */
     public String getRootName() {
@@ -123,7 +123,7 @@ public final class CallTreeNode<T> {
 
     /**
      * @return A set of {@link com.oracle.truffle.api.instrumentation.StandardTags tags} for the
-     *         {@link SourceLocation} associated with this {@link CallTreeNode}
+     *         {@link SourceLocation} associated with this {@link ProfilerNode}
      * @since 0.29
      */
     public Set<Class<?>> getTags() {
@@ -138,14 +138,14 @@ public final class CallTreeNode<T> {
         return payload;
     }
 
-    CallTreeNode<T> findChild(SourceLocation childLocation) {
+    ProfilerNode<T> findChild(SourceLocation childLocation) {
         if (children != null) {
             return children.get(childLocation);
         }
         return null;
     }
 
-    void addChild(SourceLocation childLocation, CallTreeNode<T> child) {
+    void addChild(SourceLocation childLocation, ProfilerNode<T> child) {
         synchronized (sync) {
             if (children == null) {
                 children = new HashMap<>();

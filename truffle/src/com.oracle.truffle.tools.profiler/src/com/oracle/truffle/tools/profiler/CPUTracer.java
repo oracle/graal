@@ -221,7 +221,7 @@ public final class CPUTracer implements Closeable {
 
         /**
          * @return A set of {@link com.oracle.truffle.api.instrumentation.StandardTags tags} for the
-         *         {@link SourceLocation} associated with this {@link CallTreeNode}
+         *         {@link SourceLocation} associated with this {@link ProfilerNode}
          * @since 0.29
          */
         public Set<Class<?>> getTags() {

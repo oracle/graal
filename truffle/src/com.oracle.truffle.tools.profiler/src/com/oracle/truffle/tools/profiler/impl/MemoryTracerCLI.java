@@ -25,7 +25,7 @@
 package com.oracle.truffle.tools.profiler.impl;
 
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.tools.profiler.CallTreeNode;
+import com.oracle.truffle.tools.profiler.ProfilerNode;
 import com.oracle.truffle.tools.profiler.MemoryTracer;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -153,13 +153,13 @@ public class MemoryTracerCLI extends ProfilerCLI {
     }
 
     private static void printLocationHistogram(PrintStream out, MemoryTracer tracer) {
-        final Map<SourceLocation, List<CallTreeNode<MemoryTracer.AllocationPayload>>> histogram = tracer.computeSourceLocationHistogram();
+        final Map<SourceLocation, List<ProfilerNode<MemoryTracer.AllocationPayload>>> histogram = tracer.computeSourceLocationHistogram();
         final List<SourceLocation> keys = getSortedSourceLocations(histogram);
         int nameMax = 1;
-        Iterator<List<CallTreeNode<MemoryTracer.AllocationPayload>>> iterator = histogram.values().iterator();
+        Iterator<List<ProfilerNode<MemoryTracer.AllocationPayload>>> iterator = histogram.values().iterator();
         while (iterator.hasNext()) {
-            List<CallTreeNode<MemoryTracer.AllocationPayload>> callTreeNodes = iterator.next();
-            nameMax = Math.max(nameMax, callTreeNodes.get(0).getRootName().length());
+            List<ProfilerNode<MemoryTracer.AllocationPayload>> profilerNodes = iterator.next();
+            nameMax = Math.max(nameMax, profilerNodes.get(0).getRootName().length());
         }
         final long totalAllocations = getTotalAllocationCount(tracer);
 
@@ -175,17 +175,17 @@ public class MemoryTracerCLI extends ProfilerCLI {
         out.println(sep);
 
         for (SourceLocation location : keys) {
-            List<CallTreeNode<MemoryTracer.AllocationPayload>> callTreeNodes = histogram.get(location);
+            List<ProfilerNode<MemoryTracer.AllocationPayload>> profilerNodes = histogram.get(location);
             long self = 0;
             long total = 0;
-            for (CallTreeNode<MemoryTracer.AllocationPayload> node : callTreeNodes) {
+            for (ProfilerNode<MemoryTracer.AllocationPayload> node : profilerNodes) {
                 MemoryTracer.AllocationPayload payload = node.getPayload();
                 self += payload.getEvents().size();
                 total += node.isRecursive() ? 0 : payload.getTotalAllocations();
             }
             String selfCount = String.format("%d %5.1f%%", self, (double) self * 100 / totalAllocations);
             String totalCount = String.format("%d %5.1f%%", total, (double) total * 100 / totalAllocations);
-            String output = String.format(format, callTreeNodes.get(0).getRootName(), selfCount, totalCount, getShortDescription(location.getSourceSection()));
+            String output = String.format(format, profilerNodes.get(0).getRootName(), selfCount, totalCount, getShortDescription(location.getSourceSection()));
             out.println(output);
         }
         out.println(sep);
@@ -205,39 +205,39 @@ public class MemoryTracerCLI extends ProfilerCLI {
         out.println(sep);
         out.println(title);
         out.println(sep);
-        for (CallTreeNode<MemoryTracer.AllocationPayload> node : tracer.getRootNodes()) {
+        for (ProfilerNode<MemoryTracer.AllocationPayload> node : tracer.getRootNodes()) {
             printCallTree(node, format, 0, totalAllocations, out);
         }
         out.println(sep);
     }
 
-    private static void printCallTree(CallTreeNode<MemoryTracer.AllocationPayload> node, String format, int depth, long totalAllocations, PrintStream out) {
+    private static void printCallTree(ProfilerNode<MemoryTracer.AllocationPayload> node, String format, int depth, long totalAllocations, PrintStream out) {
         String padding = repeat("  ", depth);
         MemoryTracer.AllocationPayload payload = node.getPayload();
         String selfCount = String.format("%d %5.1f%%", payload.getEvents().size(), (double) payload.getEvents().size() * 100 / totalAllocations);
         String count = String.format("%d %5.1f%%", payload.getTotalAllocations(), (double) payload.getTotalAllocations() * 100 / totalAllocations);
         String output = String.format(format, padding + node.getRootName(), count, selfCount, getShortDescription(node.getSourceSection()));
         out.println(output);
-        for (CallTreeNode<MemoryTracer.AllocationPayload> child : node.getChildren()) {
+        for (ProfilerNode<MemoryTracer.AllocationPayload> child : node.getChildren()) {
             printCallTree(child, format, depth + 1, totalAllocations, out);
         }
     }
 
-    private static List<SourceLocation> getSortedSourceLocations(Map<SourceLocation, List<CallTreeNode<MemoryTracer.AllocationPayload>>> histogram) {
+    private static List<SourceLocation> getSortedSourceLocations(Map<SourceLocation, List<ProfilerNode<MemoryTracer.AllocationPayload>>> histogram) {
         List<SourceLocation> keys = new ArrayList<>(histogram.keySet());
         Collections.sort(keys, new Comparator<SourceLocation>() {
             @Override
             public int compare(SourceLocation sl1, SourceLocation sl2) {
                 int sl1Self = 0;
                 int sl1Total = 0;
-                for (CallTreeNode<MemoryTracer.AllocationPayload> node : histogram.get(sl1)) {
+                for (ProfilerNode<MemoryTracer.AllocationPayload> node : histogram.get(sl1)) {
                     sl1Self += node.getPayload().getEvents().size();
                     sl1Total += node.isRecursive() ? 0 : node.getPayload().getTotalAllocations();
                 }
 
                 int sl2Self = 0;
                 int sl2Total = 0;
-                for (CallTreeNode<MemoryTracer.AllocationPayload> node : histogram.get(sl2)) {
+                for (ProfilerNode<MemoryTracer.AllocationPayload> node : histogram.get(sl2)) {
                     sl2Self += node.getPayload().getEvents().size();
                     sl2Total += node.isRecursive() ? 0 : node.getPayload().getTotalAllocations();
                 }
@@ -254,15 +254,15 @@ public class MemoryTracerCLI extends ProfilerCLI {
 
     private static int getFirstFieldOfTitleMax(MemoryTracer tracer) {
         int titleMax = 10;
-        for (CallTreeNode<MemoryTracer.AllocationPayload> node : tracer.getRootNodes()) {
+        for (ProfilerNode<MemoryTracer.AllocationPayload> node : tracer.getRootNodes()) {
             titleMax = Math.max(titleMax, getFirstFieldOfTitleMaxRec(node, 0, titleMax));
         }
         return titleMax;
     }
 
-    private static int getFirstFieldOfTitleMaxRec(CallTreeNode<MemoryTracer.AllocationPayload> node, int depth, int max) {
+    private static int getFirstFieldOfTitleMaxRec(ProfilerNode<MemoryTracer.AllocationPayload> node, int depth, int max) {
         int newMax = Math.max(max, node.getRootName().length() + 2 * depth);
-        for (CallTreeNode<MemoryTracer.AllocationPayload> child : node.getChildren()) {
+        for (ProfilerNode<MemoryTracer.AllocationPayload> child : node.getChildren()) {
             newMax = Math.max(newMax, getFirstFieldOfTitleMaxRec(child, depth + 1, newMax));
         }
         return newMax;
@@ -270,7 +270,7 @@ public class MemoryTracerCLI extends ProfilerCLI {
 
     private static long getTotalAllocationCount(MemoryTracer tracer) {
         long sum = 0;
-        for (CallTreeNode<MemoryTracer.AllocationPayload> node : tracer.getRootNodes()) {
+        for (ProfilerNode<MemoryTracer.AllocationPayload> node : tracer.getRootNodes()) {
             sum += node.getPayload().getTotalAllocations();
         }
         return sum;

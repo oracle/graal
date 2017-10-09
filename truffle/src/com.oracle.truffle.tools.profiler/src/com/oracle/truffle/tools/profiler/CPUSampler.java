@@ -50,7 +50,7 @@ import java.util.function.Function;
  * {@linkplain TruffleInstrument Truffle instrumentation framework}.
  * <p>
  * The sampler keeps a shadow stack during execution. This shadow stack is sampled at regular
- * intervals, i.e. the state of the stack is copied and saved into trees of {@linkplain CallTreeNode
+ * intervals, i.e. the state of the stack is copied and saved into trees of {@linkplain ProfilerNode
  * nodes}, which represent the profile of the execution.
  *
  * @since 0.29
@@ -59,7 +59,7 @@ public final class CPUSampler implements Closeable {
 
     /**
      * Wrapper for information on how many times an element was seen on the shadow stack. Used as a
-     * template parameter of {@link CallTreeNode}. Differentiates between an execution in compiled
+     * template parameter of {@link ProfilerNode}. Differentiates between an execution in compiled
      * code and in the interpreter.
      *
      * @since 0.29
@@ -176,7 +176,7 @@ public final class CPUSampler implements Closeable {
 
     private EventBinding<?> stacksBinding;
 
-    private final CallTreeNode<HitCounts> rootNode = new CallTreeNode<>(this, new HitCounts());
+    private final ProfilerNode<HitCounts> rootNode = new ProfilerNode<>(this, new HitCounts());
 
     private final Env env;
 
@@ -314,7 +314,7 @@ public final class CPUSampler implements Closeable {
      * @return The roots of the trees representing the profile of the execution.
      * @since 0.29
      */
-    public Collection<CallTreeNode<HitCounts>> getRootNodes() {
+    public Collection<ProfilerNode<HitCounts>> getRootNodes() {
         return rootNode.getChildren();
     }
 
@@ -325,7 +325,7 @@ public final class CPUSampler implements Closeable {
      */
     public synchronized void clearData() {
         samplesTaken.set(0);
-        Map<SourceLocation, CallTreeNode<HitCounts>> rootChildren = rootNode.children;
+        Map<SourceLocation, ProfilerNode<HitCounts>> rootChildren = rootNode.children;
         if (rootChildren != null) {
             rootChildren.clear();
         }
@@ -336,7 +336,7 @@ public final class CPUSampler implements Closeable {
      * @since 0.29
      */
     public synchronized boolean hasData() {
-        Map<SourceLocation, CallTreeNode<HitCounts>> rootChildren = rootNode.children;
+        Map<SourceLocation, ProfilerNode<HitCounts>> rootChildren = rootNode.children;
         return rootChildren != null && !rootChildren.isEmpty();
     }
 
@@ -354,23 +354,23 @@ public final class CPUSampler implements Closeable {
 
     /**
      * Creates a histogram - a mapping from a {@link SourceLocation source location} to a
-     * {@link List} of {@link CallTreeNode} corresponding to that source location. This gives an
+     * {@link List} of {@link ProfilerNode} corresponding to that source location. This gives an
      * overview of the execution profile of each {@link SourceLocation source location}.
      *
      * @return the source location histogram based on the sampling data
      * @since 0.29
      */
-    public Map<SourceLocation, List<CallTreeNode<HitCounts>>> computeHistogram() {
-        Map<SourceLocation, List<CallTreeNode<HitCounts>>> histogram = new HashMap<>();
+    public Map<SourceLocation, List<ProfilerNode<HitCounts>>> computeHistogram() {
+        Map<SourceLocation, List<ProfilerNode<HitCounts>>> histogram = new HashMap<>();
         computeHistogramImpl(rootNode.getChildren(), histogram);
         return histogram;
     }
 
-    private void computeHistogramImpl(Collection<CallTreeNode<HitCounts>> children, Map<SourceLocation, List<CallTreeNode<HitCounts>>> histogram) {
-        for (CallTreeNode<HitCounts> treeNode : children) {
-            List<CallTreeNode<HitCounts>> nodes = histogram.computeIfAbsent(treeNode.getSourceLocation(), new Function<SourceLocation, List<CallTreeNode<HitCounts>>>() {
+    private void computeHistogramImpl(Collection<ProfilerNode<HitCounts>> children, Map<SourceLocation, List<ProfilerNode<HitCounts>>> histogram) {
+        for (ProfilerNode<HitCounts> treeNode : children) {
+            List<ProfilerNode<HitCounts>> nodes = histogram.computeIfAbsent(treeNode.getSourceLocation(), new Function<SourceLocation, List<ProfilerNode<HitCounts>>>() {
                 @Override
-                public List<CallTreeNode<HitCounts>> apply(SourceLocation sourceLocation) {
+                public List<ProfilerNode<HitCounts>> apply(SourceLocation sourceLocation) {
                     return new ArrayList<>();
                 }
             });
@@ -469,7 +469,7 @@ public final class CPUSampler implements Closeable {
                 return false;
             }
             // now traverse the stack and insert the path into the tree
-            CallTreeNode<HitCounts> treeNode = rootNode;
+            ProfilerNode<HitCounts> treeNode = rootNode;
             for (int i = 0; i < correctedStackInfo.getLength(); i++) {
                 SourceLocation location = correctedStackInfo.getStack()[i];
                 boolean isCompiled = correctedStackInfo.getCompiledStack()[i];
@@ -494,12 +494,12 @@ public final class CPUSampler implements Closeable {
             return true;
         }
 
-        private CallTreeNode<HitCounts> addOrUpdateChild(long timestamp, CallTreeNode<HitCounts> treeNode, SourceLocation location) {
-            CallTreeNode<HitCounts> child = treeNode.findChild(location);
+        private ProfilerNode<HitCounts> addOrUpdateChild(long timestamp, ProfilerNode<HitCounts> treeNode, SourceLocation location) {
+            ProfilerNode<HitCounts> child = treeNode.findChild(location);
             if (child == null) {
                 HitCounts payload = new HitCounts();
                 payload.firstHitTime = timestamp;
-                child = new CallTreeNode<>(treeNode, location, payload);
+                child = new ProfilerNode<>(treeNode, location, payload);
                 treeNode.addChild(location, child);
             }
             return child;

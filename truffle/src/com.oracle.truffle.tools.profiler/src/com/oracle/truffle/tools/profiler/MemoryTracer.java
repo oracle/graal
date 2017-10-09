@@ -84,7 +84,7 @@ public final class MemoryTracer implements Closeable {
 
     private EventBinding<?> stacksBinding;
 
-    private final CallTreeNode<AllocationPayload> rootNode = new CallTreeNode<>(this, null);
+    private final ProfilerNode<AllocationPayload> rootNode = new ProfilerNode<>(this, null);
 
     private boolean stackOverflowed = false;
 
@@ -142,7 +142,7 @@ public final class MemoryTracer implements Closeable {
      * @return The roots of the trees representing the profile of the execution.
      * @since 0.29
      */
-    public Collection<CallTreeNode<AllocationPayload>> getRootNodes() {
+    public Collection<ProfilerNode<AllocationPayload>> getRootNodes() {
         return rootNode.getChildren();
     }
 
@@ -152,7 +152,7 @@ public final class MemoryTracer implements Closeable {
      * @since 0.29
      */
     public synchronized void clearData() {
-        Map<SourceLocation, CallTreeNode<AllocationPayload>> rootChildren = rootNode.children;
+        Map<SourceLocation, ProfilerNode<AllocationPayload>> rootChildren = rootNode.children;
         if (rootChildren != null) {
             rootChildren.clear();
         }
@@ -163,7 +163,7 @@ public final class MemoryTracer implements Closeable {
      * @since 0.29
      */
     public synchronized boolean hasData() {
-        Map<SourceLocation, CallTreeNode<AllocationPayload>> rootChildren = rootNode.children;
+        Map<SourceLocation, ProfilerNode<AllocationPayload>> rootChildren = rootNode.children;
         return rootChildren != null && !rootChildren.isEmpty();
     }
 
@@ -253,8 +253,8 @@ public final class MemoryTracer implements Closeable {
         return histogram;
     }
 
-    private void computeMetaObjectHistogramImpl(Collection<CallTreeNode<AllocationPayload>> children, Map<String, List<AllocationEventInfo>> histogram) {
-        for (CallTreeNode<AllocationPayload> treeNode : children) {
+    private void computeMetaObjectHistogramImpl(Collection<ProfilerNode<AllocationPayload>> children, Map<String, List<AllocationEventInfo>> histogram) {
+        for (ProfilerNode<AllocationPayload> treeNode : children) {
             for (AllocationEventInfo info : treeNode.getPayload().getEvents()) {
                 List<AllocationEventInfo> nodes = histogram.computeIfAbsent(info.getMetaObjectString(), new Function<String, List<AllocationEventInfo>>() {
                     @Override
@@ -270,23 +270,23 @@ public final class MemoryTracer implements Closeable {
 
     /**
      * Creates a source location histogram - a mapping from a {@link SourceLocation source location}
-     * to a {@link List} of {@link CallTreeNode} corresponding to that source location. This gives
+     * to a {@link List} of {@link ProfilerNode} corresponding to that source location. This gives
      * an overview of the allocation profile of each {@link SourceLocation source location}.
      *
      * @return the source location histogram
      * @since 0.29
      */
-    public Map<SourceLocation, List<CallTreeNode<AllocationPayload>>> computeSourceLocationHistogram() {
-        Map<SourceLocation, List<CallTreeNode<AllocationPayload>>> histogram = new HashMap<>();
+    public Map<SourceLocation, List<ProfilerNode<AllocationPayload>>> computeSourceLocationHistogram() {
+        Map<SourceLocation, List<ProfilerNode<AllocationPayload>>> histogram = new HashMap<>();
         computeSourceLocationHistogramImpl(rootNode.getChildren(), histogram);
         return histogram;
     }
 
-    private void computeSourceLocationHistogramImpl(Collection<CallTreeNode<AllocationPayload>> children, Map<SourceLocation, List<CallTreeNode<AllocationPayload>>> histogram) {
-        for (CallTreeNode<AllocationPayload> treeNode : children) {
-            List<CallTreeNode<AllocationPayload>> nodes = histogram.computeIfAbsent(treeNode.getSourceLocation(), new Function<SourceLocation, List<CallTreeNode<AllocationPayload>>>() {
+    private void computeSourceLocationHistogramImpl(Collection<ProfilerNode<AllocationPayload>> children, Map<SourceLocation, List<ProfilerNode<AllocationPayload>>> histogram) {
+        for (ProfilerNode<AllocationPayload> treeNode : children) {
+            List<ProfilerNode<AllocationPayload>> nodes = histogram.computeIfAbsent(treeNode.getSourceLocation(), new Function<SourceLocation, List<ProfilerNode<AllocationPayload>>>() {
                 @Override
-                public List<CallTreeNode<AllocationPayload>> apply(SourceLocation sourceLocation) {
+                public List<ProfilerNode<AllocationPayload>> apply(SourceLocation sourceLocation) {
                     return new ArrayList<>();
                 }
             });
@@ -327,12 +327,12 @@ public final class MemoryTracer implements Closeable {
                 return false;
             }
             // now traverse the stack and reconstruct the call tree
-            CallTreeNode<AllocationPayload> treeNode = rootNode;
+            ProfilerNode<AllocationPayload> treeNode = rootNode;
             for (int i = 0; i < correctedStackInfo.getLength(); i++) {
                 SourceLocation location = correctedStackInfo.getStack()[i];
-                CallTreeNode<AllocationPayload> child = treeNode.findChild(location);
+                ProfilerNode<AllocationPayload> child = treeNode.findChild(location);
                 if (child == null) {
-                    child = new CallTreeNode<>(treeNode, location, new AllocationPayload());
+                    child = new ProfilerNode<>(treeNode, location, new AllocationPayload());
                     treeNode.addChild(location, child);
                 }
                 treeNode = child;
@@ -345,7 +345,7 @@ public final class MemoryTracer implements Closeable {
     }
 
     /**
-     * Used as a template parameter for {@link CallTreeNode}. Holds information about
+     * Used as a template parameter for {@link ProfilerNode}. Holds information about
      * {@link AllocationEventInfo allocation events}.
      *
      * @since 0.29
