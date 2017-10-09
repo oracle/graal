@@ -53,7 +53,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
         sampler.setCollecting(true);
 
-        Assert.assertEquals(0, sampler.getTotalSamples());
+        Assert.assertEquals(0, sampler.getSampleCount());
         Assert.assertTrue(sampler.isCollecting());
         Assert.assertFalse(sampler.hasData());
 
@@ -61,7 +61,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             execute(defaultSource);
         }
 
-        Assert.assertNotEquals(0, sampler.getTotalSamples());
+        Assert.assertNotEquals(0, sampler.getSampleCount());
         Assert.assertTrue(sampler.isCollecting());
         Assert.assertTrue(sampler.hasData());
 
@@ -72,7 +72,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
         sampler.clearData();
         Assert.assertFalse(sampler.isCollecting());
-        Assert.assertEquals(0, sampler.getTotalSamples());
+        Assert.assertEquals(0, sampler.getSampleCount());
 
         Assert.assertFalse(sampler.hasData());
     }

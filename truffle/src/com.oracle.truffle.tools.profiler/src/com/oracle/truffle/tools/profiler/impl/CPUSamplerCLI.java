@@ -154,7 +154,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         }
 
         String title = String.format(" %-" + maxLength + "s |      Total Time     |  Opt %% ||       Self Time     |  Opt %% | Location             ", "Name");
-        long samples = sampler.getTotalSamples();
+        long samples = sampler.getSampleCount();
         String sep = repeat("-", title.length());
         out.println(sep);
         out.println(String.format("Sampling Histogram. Recorded %s samples with period %dms", samples, sampler.getPeriod()));
@@ -175,7 +175,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         String title = String.format(" %-" + maxLength + "s |      Total Time     |  Opt %% ||       Self Time     |  Opt %% | Location             ", "Name");
         String sep = repeat("-", title.length());
         out.println(sep);
-        out.println(String.format("Sampling CallTree. Recorded %s samples with period %dms.", sampler.getTotalSamples(), sampler.getPeriod()));
+        out.println(String.format("Sampling CallTree. Recorded %s samples with period %dms.", sampler.getSampleCount(), sampler.getPeriod()));
         out.println("  Self Time: Time spent on the top of the stack.");
         out.println("  Total Time: Time spent somewhere on the stack. ");
         out.println("  Opt %: Percent of time spent in compiled and therfore non-interpreted code.");
@@ -224,7 +224,7 @@ class CPUSamplerCLI extends ProfilerCLI {
 
     private static void printAttributes(PrintStream out, CPUSampler sampler, String prefix, List<ProfilerNode<CPUSampler.Payload>> nodes, int maxRootLength) {
         long samplePeriod = sampler.getPeriod();
-        long samples = sampler.getTotalSamples();
+        long samples = sampler.getSampleCount();
 
         long selfInterpreted = 0;
         long selfCompiled = 0;
