@@ -70,7 +70,7 @@ final class GraalTVMCI extends TVMCI {
     }
 
     /**
-     * Call without verifying the the argument profile. Needs to be initialized by
+     * Call without verifying the argument profile. Needs to be initialized by
      * {@link #initializeProfile(CallTarget, Class[])}. Potentially crashes the VM if the argument
      * profile is incompatible with the actual arguments. Use with caution.
      */
