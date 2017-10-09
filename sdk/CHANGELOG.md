@@ -5,6 +5,7 @@ This changelog summarizes major changes between Graal SDK versions. The main foc
 ## Version 0.29
 
 * Introduced Context.enter() and Context.leave() that allows explicitly entering and leaving the context to improve performance of performing many simple operations.
+* Introduced Value.executeVoid to allow execution of functions more efficiently if not return value is expected.
 
 
 ## Version 0.26
