@@ -151,7 +151,7 @@ public interface ResultVerifier extends Consumer<ResultVerifier.SnippetRun> {
      * @return the default {@link ResultVerifier}
      * @since 0.29
      */
-    static ResultVerifier createDefaultResultVerifier() {
+    static ResultVerifier getDefaultResultVerfier() {
         return DefaultResultVerifier.INSTANCE;
     }
 }

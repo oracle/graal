@@ -57,62 +57,39 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
     public Collection<? extends Snippet> createValueConstructors(final Context context) {
         final List<Snippet> result = new ArrayList<>();
         // Java primitives
-        Snippet.Builder opb = Snippet.newBuilder("boolean", export(context, new ValueSupplier<>(false)), TypeDescriptor.BOOLEAN);
-        result.add(opb.build());
-        opb = Snippet.newBuilder("byte", export(context, new ValueSupplier<>(Byte.MIN_VALUE)), TypeDescriptor.NUMBER);
-        result.add(opb.build());
-        opb = Snippet.newBuilder("short", export(context, new ValueSupplier<>(Short.MIN_VALUE)), TypeDescriptor.NUMBER);
-        result.add(opb.build());
-        opb = Snippet.newBuilder("char", export(context, new ValueSupplier<>(' ')), TypeDescriptor.STRING);
-        result.add(opb.build());
+        result.add(Snippet.newBuilder("boolean", export(context, new ValueSupplier<>(false)), TypeDescriptor.BOOLEAN).build());
+        result.add(Snippet.newBuilder("byte", export(context, new ValueSupplier<>(Byte.MIN_VALUE)), TypeDescriptor.NUMBER).build());
+        result.add(Snippet.newBuilder("short", export(context, new ValueSupplier<>(Short.MIN_VALUE)), TypeDescriptor.NUMBER).build());
+        result.add(Snippet.newBuilder("char", export(context, new ValueSupplier<>(' ')), TypeDescriptor.STRING).build());
         // Integer.MIN_VALUE is NA for fast-r
-        opb = Snippet.newBuilder("int", export(context, new ValueSupplier<>(Integer.MAX_VALUE)), TypeDescriptor.NUMBER);
-        result.add(opb.build());
-        opb = Snippet.newBuilder("long", export(context, new ValueSupplier<>(Long.MIN_VALUE)), TypeDescriptor.NUMBER);
-        result.add(opb.build());
-        opb = Snippet.newBuilder("float", export(context, new ValueSupplier<>(Float.MAX_VALUE)), TypeDescriptor.NUMBER);
-        result.add(opb.build());
-        opb = Snippet.newBuilder("double", export(context, new ValueSupplier<>(Double.MAX_VALUE)), TypeDescriptor.NUMBER);
-        result.add(opb.build());
+        result.add(Snippet.newBuilder("int", export(context, new ValueSupplier<>(Integer.MAX_VALUE)), TypeDescriptor.NUMBER).build());
+        result.add(Snippet.newBuilder("long", export(context, new ValueSupplier<>(Long.MIN_VALUE)), TypeDescriptor.NUMBER).build());
+        result.add(Snippet.newBuilder("float", export(context, new ValueSupplier<>(Float.MAX_VALUE)), TypeDescriptor.NUMBER).build());
+        result.add(Snippet.newBuilder("double", export(context, new ValueSupplier<>(Double.MAX_VALUE)), TypeDescriptor.NUMBER).build());
         // String
-        opb = Snippet.newBuilder("java.lang.String", export(context, new ValueSupplier<>("TEST")), TypeDescriptor.STRING);
-        result.add(opb.build());
+        result.add(Snippet.newBuilder("java.lang.String", export(context, new ValueSupplier<>("TEST")), TypeDescriptor.STRING).build());
         // Arrays
-        opb = Snippet.newBuilder("Array<int>", export(context, new ValueSupplier<>(new int[]{1, 2})),
-                        TypeDescriptor.union(TypeDescriptor.OBJECT, TypeDescriptor.array(TypeDescriptor.NUMBER)));
-        result.add(opb.build());
-        opb = Snippet.newBuilder("Array<java.lang.Object>", export(context, new ValueSupplier<>(new Object[]{1, "TEST"})),
-                        TypeDescriptor.union(TypeDescriptor.OBJECT, TypeDescriptor.ARRAY));
-        result.add(opb.build());
+        result.add(Snippet.newBuilder("Array<int>", export(context, new ValueSupplier<>(new int[]{1, 2})),
+                        TypeDescriptor.union(TypeDescriptor.OBJECT, TypeDescriptor.array(TypeDescriptor.NUMBER))).build());
+        result.add(Snippet.newBuilder("Array<java.lang.Object>", export(context, new ValueSupplier<>(new Object[]{1, "TEST"})),
+                        TypeDescriptor.union(TypeDescriptor.OBJECT, TypeDescriptor.ARRAY)).build());
         // Proxies
-        opb = Snippet.newBuilder("Proxy<boolean>", export(context, new ValueSupplier<>(new ProxyPrimitiveImpl(false))), TypeDescriptor.BOOLEAN);
-        result.add(opb.build());
-        opb = Snippet.newBuilder("Proxy<byte>", export(context, new ValueSupplier<>(new ProxyPrimitiveImpl(Byte.MIN_VALUE))), TypeDescriptor.NUMBER);
-        result.add(opb.build());
-        opb = Snippet.newBuilder("Proxy<short>", export(context, new ValueSupplier<>(new ProxyPrimitiveImpl(Short.MIN_VALUE))), TypeDescriptor.NUMBER);
-        result.add(opb.build());
-        opb = Snippet.newBuilder("Proxy<char>", export(context, new ValueSupplier<>(new ProxyPrimitiveImpl(' '))), TypeDescriptor.STRING);
-        result.add(opb.build());
-        opb = Snippet.newBuilder("Proxy<int>", export(context, new ValueSupplier<>(new ProxyPrimitiveImpl(Integer.MAX_VALUE))), TypeDescriptor.NUMBER);
-        result.add(opb.build());
-        opb = Snippet.newBuilder("Proxy<long>", export(context, new ValueSupplier<>(new ProxyPrimitiveImpl(Long.MIN_VALUE))), TypeDescriptor.NUMBER);
-        result.add(opb.build());
-        opb = Snippet.newBuilder("Proxy<float>", export(context, new ValueSupplier<>(new ProxyPrimitiveImpl(Float.MAX_VALUE))), TypeDescriptor.NUMBER);
-        result.add(opb.build());
-        opb = Snippet.newBuilder("Proxy<double>", export(context, new ValueSupplier<>(new ProxyPrimitiveImpl(Double.MAX_VALUE))), TypeDescriptor.NUMBER);
-        result.add(opb.build());
-        opb = Snippet.newBuilder("Proxy<java.lang.String>", export(context, new ValueSupplier<>(new ProxyPrimitiveImpl("TEST"))), TypeDescriptor.STRING);
-        result.add(opb.build());
-        opb = Snippet.newBuilder("Proxy<Array<int>>", export(context, new ValueSupplier<>(ProxyArray.fromArray(1, 2))),
-                        TypeDescriptor.union(TypeDescriptor.OBJECT, TypeDescriptor.array(TypeDescriptor.NUMBER)));
-        result.add(opb.build());
-        opb = Snippet.newBuilder("Proxy<Array<java.lang.Object>>", export(context, new ValueSupplier<>(ProxyArray.fromArray(1, "TEST"))),
-                        TypeDescriptor.union(TypeDescriptor.OBJECT, TypeDescriptor.ARRAY));
-        result.add(opb.build());
+        result.add(Snippet.newBuilder("Proxy<boolean>", export(context, new ValueSupplier<>(new ProxyPrimitiveImpl(false))), TypeDescriptor.BOOLEAN).build());
+        result.add(Snippet.newBuilder("Proxy<byte>", export(context, new ValueSupplier<>(new ProxyPrimitiveImpl(Byte.MIN_VALUE))), TypeDescriptor.NUMBER).build());
+        result.add(Snippet.newBuilder("Proxy<short>", export(context, new ValueSupplier<>(new ProxyPrimitiveImpl(Short.MIN_VALUE))), TypeDescriptor.NUMBER).build());
+        result.add(Snippet.newBuilder("Proxy<char>", export(context, new ValueSupplier<>(new ProxyPrimitiveImpl(' '))), TypeDescriptor.STRING).build());
+        result.add(Snippet.newBuilder("Proxy<int>", export(context, new ValueSupplier<>(new ProxyPrimitiveImpl(Integer.MAX_VALUE))), TypeDescriptor.NUMBER).build());
+        result.add(Snippet.newBuilder("Proxy<long>", export(context, new ValueSupplier<>(new ProxyPrimitiveImpl(Long.MIN_VALUE))), TypeDescriptor.NUMBER).build());
+        result.add(Snippet.newBuilder("Proxy<float>", export(context, new ValueSupplier<>(new ProxyPrimitiveImpl(Float.MAX_VALUE))), TypeDescriptor.NUMBER).build());
+        result.add(Snippet.newBuilder("Proxy<double>", export(context, new ValueSupplier<>(new ProxyPrimitiveImpl(Double.MAX_VALUE))), TypeDescriptor.NUMBER).build());
+        result.add(Snippet.newBuilder("Proxy<java.lang.String>", export(context, new ValueSupplier<>(new ProxyPrimitiveImpl("TEST"))), TypeDescriptor.STRING).build());
+        result.add(Snippet.newBuilder("Proxy<Array<int>>", export(context, new ValueSupplier<>(ProxyArray.fromArray(1, 2))),
+                        TypeDescriptor.union(TypeDescriptor.OBJECT, TypeDescriptor.array(TypeDescriptor.NUMBER))).build());
+        result.add(Snippet.newBuilder("Proxy<Array<java.lang.Object>>", export(context, new ValueSupplier<>(ProxyArray.fromArray(1, "TEST"))),
+                        TypeDescriptor.union(TypeDescriptor.OBJECT, TypeDescriptor.ARRAY)).build());
         final Map<String, Object> props = new HashMap<>();
         props.put("name", "test");
-        opb = Snippet.newBuilder("Proxy<java.lang.Object>", export(context, new ValueSupplier<>(ProxyObject.fromMap(props))), TypeDescriptor.OBJECT);
-        result.add(opb.build());
+        result.add(Snippet.newBuilder("Proxy<java.lang.Object>", export(context, new ValueSupplier<>(ProxyObject.fromMap(props))), TypeDescriptor.OBJECT).build());
         return Collections.unmodifiableCollection(result);
     }
 

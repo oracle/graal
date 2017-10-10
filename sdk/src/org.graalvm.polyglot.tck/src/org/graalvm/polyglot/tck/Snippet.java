@@ -35,7 +35,7 @@ import org.graalvm.polyglot.Value;
 /**
  * The unit of execution with assigned parameters and result types. The {@link Snippet} represents
  * an execution of value constructor, statement, expression and script. The {@link Snippet} provides
- * parameter(s) and return types used to chain the {@link Snippet}s.
+ * parameter(s) and return types used to compose the {@link Snippet}s.
  *
  * @since 0.29
  */
@@ -206,7 +206,7 @@ public final class Snippet {
                             executableValue,
                             executableReturnType,
                             Collections.unmodifiableList(parameterTypes),
-                            verifier != null ? verifier : ResultVerifier.createDefaultResultVerifier());
+                            verifier != null ? verifier : ResultVerifier.getDefaultResultVerfier());
         }
     }
 }

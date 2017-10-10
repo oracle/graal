@@ -4,7 +4,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 0.29
 
-* Added a new TCK SPI based on the org.graalvm.polyglot API to test a language inter-operability. To test the language inter-operability implement the [LanguageProvider](http://graalvm.github.io/graal/truffle/javadoc/org/graalvm/polyglot/tck/LanguageProvider.html).
+* Added a new [TCK SPI](https://github.com/graalvm/graal/blob/master/truffle/docs/TCK.md) based on the org.graalvm.polyglot API to test a language inter-operability. To test the language inter-operability implement the [LanguageProvider](http://graalvm.github.io/graal/truffle/javadoc/org/graalvm/polyglot/tck/LanguageProvider.html).
 
 ## Version 0.28
 
