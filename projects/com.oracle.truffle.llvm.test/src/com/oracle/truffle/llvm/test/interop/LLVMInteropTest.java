@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -360,7 +360,6 @@ public final class LLVMInteropTest {
     // implicit interop
     // structs not yet implemented
     @Test
-    @Ignore
     public void test030() throws Exception {
         Runner runner = new Runner("interop030");
         runner.run();
@@ -660,11 +659,13 @@ public final class LLVMInteropTest {
     @Test
     public void test057() {
         Runner runner = new Runner("interop057");
-        Object[] a = new Object[]{0, 1, 2, 3, 4, 5, 6, 7, 8};
+        Map<String, Object> a = new HashMap<>();
+        a.put("a", 0);
+        a.put("b", 1);
         runner.export(a, "foreign");
         Assert.assertEquals(0, runner.run());
-        Assert.assertEquals(101, a[0]);
-        Assert.assertEquals(102, a[1]);
+        Assert.assertEquals(101, a.get("a"));
+        Assert.assertEquals(102, a.get("b"));
     }
 
     @Test
@@ -690,11 +691,13 @@ public final class LLVMInteropTest {
     @Test
     public void test060() {
         Runner runner = new Runner("interop060");
-        Object[] a = new Object[]{0, 1, 2, 3, 4, 5, 6, 7, 8};
+        Map<String, Object> a = new HashMap<>();
+        a.put("a", 0);
+        a.put("b", 1);
         runner.export(a, "foreign");
         Assert.assertEquals(0, runner.run());
-        long a0 = ((Value) a[0]).asNativePointer();
-        long a1 = ((Value) a[1]).asNativePointer();
+        long a0 = ((Value) a.get("a")).asNativePointer();
+        long a1 = ((Value) a.get("b")).asNativePointer();
         Assert.assertEquals(101, a0);
         Assert.assertEquals(102, a1);
     }

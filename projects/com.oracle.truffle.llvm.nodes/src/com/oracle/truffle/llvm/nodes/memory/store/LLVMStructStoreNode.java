@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,57 +27,56 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.memory.load;
+package com.oracle.truffle.llvm.nodes.memory.store;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMProfiledMemMove;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
-// Truffle has no branch profiles for boolean
-@NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMI1LoadNode extends LLVMExpressionNode {
+@NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
+@NodeField(type = int.class, name = "structSize")
+public abstract class LLVMStructStoreNode extends LLVMStoreNode {
 
-    @Specialization
-    public boolean executeBoolean(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        return globalAccess.getI1(addr);
+    private final LLVMProfiledMemMove profiledMemMove;
+
+    public abstract int getStructSize();
+
+    protected LLVMStructStoreNode(Type type, SourceSection source) {
+        super(type, 0, source);
+        profiledMemMove = new LLVMProfiledMemMove();
     }
 
     @Specialization
-    public boolean executeI1(LLVMVirtualAllocationAddress address) {
-        return address.getI1();
+    public Object execute(LLVMGlobalVariable address, LLVMGlobalVariable value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess1,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess2) {
+        profiledMemMove.memmove(globalAccess1.getNativeLocation(address), globalAccess2.getNativeLocation(value), getStructSize());
+        return null;
     }
 
     @Specialization
-    public boolean executeI1(LLVMAddress addr) {
-        return LLVMMemory.getI1(addr);
-    }
-
-    static LLVMForeignReadNode createForeignRead() {
-        return new LLVMForeignReadNode(ForeignToLLVMType.I1, 1);
+    public Object execute(LLVMAddress address, LLVMGlobalVariable value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        profiledMemMove.memmove(address, globalAccess.getNativeLocation(value), getStructSize());
+        return null;
     }
 
     @Specialization
-    public boolean executeI1(LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
-        return (boolean) foreignRead.execute(addr);
+    public Object execute(LLVMGlobalVariable address, LLVMAddress value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        profiledMemMove.memmove(globalAccess.getNativeLocation(address), value, getStructSize());
+        return null;
     }
 
     @Specialization
-    public boolean executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
-        if (addr.getValue() instanceof Long) {
-            return LLVMMemory.getI1((long) addr.getValue());
-        } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalAccessError("Cannot access address: " + addr.getValue());
-        }
+    public Object execute(LLVMAddress address, LLVMAddress value) {
+        profiledMemMove.memmove(address, value, getStructSize());
+        return null;
     }
+
 }

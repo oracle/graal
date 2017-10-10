@@ -1,8 +1,8 @@
 #include <truffle.h>
 
 typedef struct rb_io_t {
-  int mode;
-  int fd;
+  void* mode;
+  void* fd;
 } rb_io_t;
 
 int main() {

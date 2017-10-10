@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,57 +27,62 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.memory.load;
+package com.oracle.truffle.llvm.nodes.memory.store;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
-// Truffle has no branch profiles for boolean
-@NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMI1LoadNode extends LLVMExpressionNode {
+@NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
+public abstract class LLVMFloatStoreNode extends LLVMStoreNode {
 
-    @Specialization
-    public boolean executeBoolean(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        return globalAccess.getI1(addr);
+    public LLVMFloatStoreNode(SourceSection source) {
+        super(PrimitiveType.FLOAT, FLOAT_SIZE_IN_BYTES, source);
     }
 
     @Specialization
-    public boolean executeI1(LLVMVirtualAllocationAddress address) {
-        return address.getI1();
+    public Object execute(LLVMGlobalVariable address, float value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        globalAccess.putFloat(address, value);
+        return null;
     }
 
     @Specialization
-    public boolean executeI1(LLVMAddress addr) {
-        return LLVMMemory.getI1(addr);
-    }
-
-    static LLVMForeignReadNode createForeignRead() {
-        return new LLVMForeignReadNode(ForeignToLLVMType.I1, 1);
+    public Object execute(LLVMAddress address, float value) {
+        LLVMMemory.putFloat(address, value);
+        return null;
     }
 
     @Specialization
-    public boolean executeI1(LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
-        return (boolean) foreignRead.execute(addr);
+    public Object execute(LLVMVirtualAllocationAddress address, float value) {
+        address.writeFloat(value);
+        return null;
     }
 
     @Specialization
-    public boolean executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
-        if (addr.getValue() instanceof Long) {
-            return LLVMMemory.getI1((long) addr.getValue());
+    public Object execute(LLVMTruffleObject address, float value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+        foreignWrite.execute(address, value);
+        return null;
+    }
+
+    @Specialization
+    public Object execute(LLVMBoxedPrimitive address, float value) {
+        if (address.getValue() instanceof Long) {
+            LLVMMemory.putFloat((long) address.getValue(), value);
+            return null;
         } else {
             CompilerDirectives.transferToInterpreter();
-            throw new IllegalAccessError("Cannot access address: " + addr.getValue());
+            throw new IllegalAccessError("Cannot access address: " + address.getValue());
         }
     }
 }

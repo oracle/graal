@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,18 +33,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -52,19 +46,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 // Truffle has no branch profiles for short
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMI16LoadNode extends LLVMExpressionNode {
-    @Child protected Node foreignRead = Message.READ.createNode();
-    @Child protected ForeignToLLVM toLLVM = ForeignToLLVM.create(ForeignToLLVMType.I16);
-
-    protected short doForeignAccess(LLVMTruffleObject addr) {
-        try {
-            int index = (int) (addr.getOffset() / LLVMExpressionNode.I16_SIZE_IN_BYTES);
-            Object value = ForeignAccess.sendRead(foreignRead, addr.getObject(), index);
-            return (short) toLLVM.executeWithTarget(value);
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
-        }
-    }
 
     @Specialization
     public short executeShort(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
@@ -76,14 +57,18 @@ public abstract class LLVMI16LoadNode extends LLVMExpressionNode {
         return LLVMMemory.getI16(addr);
     }
 
+    static LLVMForeignReadNode createForeignRead() {
+        return new LLVMForeignReadNode(ForeignToLLVMType.I16, I16_SIZE_IN_BYTES);
+    }
+
     @Specialization
     public short executeI16(LLVMVirtualAllocationAddress address) {
         return address.getI16();
     }
 
     @Specialization
-    public short executeShort(LLVMTruffleObject addr) {
-        return doForeignAccess(addr);
+    public short executeShort(LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+        return (short) foreignRead.execute(addr);
     }
 
     @Specialization
