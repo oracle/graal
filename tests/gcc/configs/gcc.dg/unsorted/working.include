@@ -300,7 +300,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/trad/mi1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/trad/literals-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/trad/mi3.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/debug/pr41893-1.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/debug/tls-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/debug/20020220-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/debug/pr37616.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/debug/pr29609-1.c
