@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.profiler;
 
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
@@ -132,6 +133,36 @@ public final class CPUSampler implements Closeable {
 
     }
 
+    /**
+     * Describes the different modes in which the CPU sampler can operate.
+     *
+     * @since 0.29
+     */
+    public enum Mode {
+        /**
+         * Sample {@link RootTag Roots} <b>excluding</b> the ones that get inlined during compilation.
+         * This mode is the default and has the least amount of impact on peek performance.
+         *
+         * @since 0.29
+         */
+        COMPILED,
+        /**
+         * Sample {@link RootTag Roots} <b>including</b> the ones that get inlined during compilation.
+         *
+         * @since 0.29
+         */
+        ROOTS,
+        /**
+         * Sample all {@link com.oracle.truffle.api.instrumentation.StandardTags.StatementTag Statements}.
+         * This mode has serious impact on peek performance.
+         *
+         * @since 0.29
+         */
+        STATEMENTS
+    }
+
+    private Mode mode = Mode.COMPILED;
+
     static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().tagIs(RootTag.class).build();
 
     private volatile boolean closed;
@@ -147,8 +178,6 @@ public final class CPUSampler implements Closeable {
     private SourceSectionFilter filter;
 
     private boolean stackOverflowed = false;
-
-    private boolean excludeInlinedRoots;
 
     private AtomicLong samplesTaken = new AtomicLong(0);
 
@@ -190,15 +219,13 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
-     * Controls whether the sampler shoulde exclude inlined roots. This means that functions that
-     * are inlined during compilation do not appear on the shadow stack. This reduces overhead.
-     *
-     * @param excludeInlinedRoots the new state of the sampler
+     * Sets the {@link Mode mode} for the sampler.
+     * @param mode the new mode for the sampler.
      * @since 0.29
      */
-    public synchronized void setExcludeInlinedRoots(boolean excludeInlinedRoots) {
+    public synchronized void setMode(Mode mode) {
         verifyConfigAllowed();
-        this.excludeInlinedRoots = excludeInlinedRoots;
+        this.mode = mode;
     }
 
     /**
@@ -381,11 +408,22 @@ public final class CPUSampler implements Closeable {
         }
         this.stackOverflowed = false;
         this.shadowStack = new ShadowStack(stackLimit);
-        this.stacksBinding = this.shadowStack.install(env.getInstrumenter(), f, excludeInlinedRoots);
+        this.stacksBinding = this.shadowStack.install(env.getInstrumenter(), combine(f, mode), mode == Mode.COMPILED);
 
         this.samplerTask = new SamplingTimerTask();
         this.samplerThread.schedule(samplerTask, 0, period);
 
+    }
+
+    private static SourceSectionFilter combine(SourceSectionFilter filter, Mode mode) {
+        List<Class<?>> tags = new ArrayList<>();
+        if (mode == Mode.COMPILED && mode == Mode.ROOTS) {
+            tags.add(StandardTags.RootTag.class);
+        }
+        if (mode == Mode.STATEMENTS) {
+            tags.add(StandardTags.StatementTag.class);
+        }
+        return SourceSectionFilter.newBuilder().tagIs(tags.toArray(new Class<?>[0])).and(filter).build();
     }
 
     private void cleanup() {
