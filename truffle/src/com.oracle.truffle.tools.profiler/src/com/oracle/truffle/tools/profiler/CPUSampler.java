@@ -140,21 +140,23 @@ public final class CPUSampler implements Closeable {
      */
     public enum Mode {
         /**
-         * Sample {@link RootTag Roots} <b>excluding</b> the ones that get inlined during compilation.
-         * This mode is the default and has the least amount of impact on peek performance.
+         * Sample {@link RootTag Roots} <b>excluding</b> the ones that get inlined during
+         * compilation. This mode is the default and has the least amount of impact on peek
+         * performance.
          *
          * @since 0.29
          */
         COMPILED,
         /**
-         * Sample {@link RootTag Roots} <b>including</b> the ones that get inlined during compilation.
+         * Sample {@link RootTag Roots} <b>including</b> the ones that get inlined during
+         * compilation.
          *
          * @since 0.29
          */
         ROOTS,
         /**
-         * Sample all {@link com.oracle.truffle.api.instrumentation.StandardTags.StatementTag Statements}.
-         * This mode has serious impact on peek performance.
+         * Sample all {@link com.oracle.truffle.api.instrumentation.StandardTags.StatementTag
+         * Statements}. This mode has serious impact on peek performance.
          *
          * @since 0.29
          */
@@ -220,6 +222,7 @@ public final class CPUSampler implements Closeable {
 
     /**
      * Sets the {@link Mode mode} for the sampler.
+     * 
      * @param mode the new mode for the sampler.
      * @since 0.29
      */
