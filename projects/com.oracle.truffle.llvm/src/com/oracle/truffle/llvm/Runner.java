@@ -194,9 +194,9 @@ public final class Runner {
         LLVMFunctionDescriptor atexitDescriptor = context.getGlobalScope().getFunctionDescriptor(context, "@__sulong_funcs_on_exit");
         if (atexitDescriptor != null) {
             RootCallTarget atexit = atexitDescriptor.getLLVMIRFunction();
-            long stackPointer = context.getThreadingStack().getStack().getStackPointer();
-            atexit.call(stackPointer);
-            context.getThreadingStack().getStack().setStackPointer(stackPointer);
+            try (StackPointer stackPointer = context.getThreadingStack().getStack().takeStackPointer()) {
+                atexit.call(stackPointer.get());
+            }
         }
         assert context.getThreadingStack().checkThread();
         for (RootCallTarget destructorFunction : context.getDestructorFunctions()) {

@@ -31,7 +31,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <elf.h>
-#include <sys/auxv.h>
 
 int main(int argc, char **argv, char **envp);
 
