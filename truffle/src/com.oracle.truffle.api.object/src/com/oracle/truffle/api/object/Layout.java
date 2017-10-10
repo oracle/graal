@@ -128,38 +128,33 @@ public abstract class Layout {
     }
 
     private static LayoutFactory loadLayoutFactory() {
-        LayoutFactory bestLayoutFactory = null;
-
-        String layoutFactoryImplClassName = System.getProperty(OPTION_PREFIX + "LayoutFactory");
-        if (layoutFactoryImplClassName != null) {
-            Class<?> clazz;
-            try {
-                clazz = Class.forName(layoutFactoryImplClassName);
-            } catch (ClassNotFoundException e) {
-                throw new RuntimeException(e);
-            }
-            try {
-                bestLayoutFactory = (LayoutFactory) clazz.newInstance();
-            } catch (InstantiationException | IllegalAccessException e) {
-                throw new AssertionError(e);
-            }
-        } else {
-            bestLayoutFactory = Truffle.getRuntime().getCapability(LayoutFactory.class);
-            if (bestLayoutFactory == null) {
-                ServiceLoader<LayoutFactory> serviceLoader = ServiceLoader.load(LayoutFactory.class, Layout.class.getClassLoader());
-                for (LayoutFactory currentLayoutFactory : serviceLoader) {
-                    if (bestLayoutFactory == null) {
-                        bestLayoutFactory = currentLayoutFactory;
-                    } else if (currentLayoutFactory.getPriority() >= bestLayoutFactory.getPriority()) {
-                        assert currentLayoutFactory.getPriority() != bestLayoutFactory.getPriority();
-                        bestLayoutFactory = currentLayoutFactory;
-                    }
-                }
+        LayoutFactory layoutFactory = Truffle.getRuntime().getCapability(LayoutFactory.class);
+        if (layoutFactory == null) {
+            ServiceLoader<LayoutFactory> serviceLoader = ServiceLoader.load(LayoutFactory.class, Layout.class.getClassLoader());
+            layoutFactory = selectLayoutFactory(serviceLoader);
+            if (layoutFactory == null) {
+                throw new AssertionError("LayoutFactory not found");
             }
         }
+        return layoutFactory;
+    }
 
-        if (bestLayoutFactory == null) {
-            throw new AssertionError("LayoutFactory not found");
+    private static LayoutFactory selectLayoutFactory(Iterable<LayoutFactory> availableLayoutFactories) {
+        String layoutFactoryImplName = System.getProperty(OPTION_PREFIX + "LayoutFactory");
+        LayoutFactory bestLayoutFactory = null;
+        for (LayoutFactory currentLayoutFactory : availableLayoutFactories) {
+            if (layoutFactoryImplName != null) {
+                if (currentLayoutFactory.getClass().getName().equals(layoutFactoryImplName)) {
+                    return currentLayoutFactory;
+                }
+            } else {
+                if (bestLayoutFactory == null) {
+                    bestLayoutFactory = currentLayoutFactory;
+                } else if (currentLayoutFactory.getPriority() >= bestLayoutFactory.getPriority()) {
+                    assert currentLayoutFactory.getPriority() != bestLayoutFactory.getPriority();
+                    bestLayoutFactory = currentLayoutFactory;
+                }
+            }
         }
         return bestLayoutFactory;
     }

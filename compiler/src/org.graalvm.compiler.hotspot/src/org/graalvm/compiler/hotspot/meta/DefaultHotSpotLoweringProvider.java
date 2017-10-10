@@ -28,8 +28,8 @@ import static org.graalvm.compiler.core.common.GraalOptions.InlineVTableStubs;
 import static org.graalvm.compiler.core.common.GraalOptions.OmitHotExceptionStacktrace;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.OSR_MIGRATION_END;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_KLASS_LOCATION;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_MIRROR_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_MIRROR_HANDLE_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_MIRROR_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.COMPRESSED_HUB_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.DISPLACED_MARK_WORD_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HUB_LOCATION;
@@ -90,10 +90,8 @@ import org.graalvm.compiler.hotspot.replacements.UnsafeLoadSnippets;
 import org.graalvm.compiler.hotspot.replacements.WriteBarrierSnippets;
 import org.graalvm.compiler.hotspot.replacements.aot.ResolveConstantSnippets;
 import org.graalvm.compiler.hotspot.replacements.arraycopy.ArrayCopyNode;
-import org.graalvm.compiler.hotspot.replacements.arraycopy.ArrayCopySlowPathNode;
+import org.graalvm.compiler.hotspot.replacements.arraycopy.ArrayCopyWithSlowPathNode;
 import org.graalvm.compiler.hotspot.replacements.arraycopy.ArrayCopySnippets;
-import org.graalvm.compiler.hotspot.replacements.arraycopy.ArrayCopyUnrollNode;
-import org.graalvm.compiler.hotspot.replacements.arraycopy.UnsafeArrayCopySnippets;
 import org.graalvm.compiler.hotspot.replacements.profiling.ProfileSnippets;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -216,7 +214,6 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         hashCodeSnippets = new HashCodeSnippets.Templates(options, factories, providers, target);
         resolveConstantSnippets = new ResolveConstantSnippets.Templates(options, factories, providers, target);
         profileSnippets = new ProfileSnippets.Templates(options, factories, providers, target);
-        providers.getReplacements().registerSnippetTemplateCache(new UnsafeArrayCopySnippets.Templates(options, factories, providers, target));
     }
 
     public MonitorSnippets.Templates getMonitorSnippets() {
@@ -315,10 +312,8 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             }
         } else if (n instanceof ArrayCopyNode) {
             arraycopySnippets.lower((ArrayCopyNode) n, tool);
-        } else if (n instanceof ArrayCopySlowPathNode) {
-            arraycopySnippets.lower((ArrayCopySlowPathNode) n, tool);
-        } else if (n instanceof ArrayCopyUnrollNode) {
-            arraycopySnippets.lower((ArrayCopyUnrollNode) n, tool);
+        } else if (n instanceof ArrayCopyWithSlowPathNode) {
+            arraycopySnippets.lower((ArrayCopyWithSlowPathNode) n, tool);
         } else if (n instanceof G1PreWriteBarrier) {
             writeBarrierSnippets.lower((G1PreWriteBarrier) n, registers, tool);
         } else if (n instanceof G1PostWriteBarrier) {

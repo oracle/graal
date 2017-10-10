@@ -23,65 +23,47 @@
 //JaCoCo Exclude
 package org.graalvm.compiler.hotspot.replacements.arraycopy;
 
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import org.graalvm.compiler.hotspot.nodes.GetObjectAddressNode;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
-import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.memory.AbstractMemoryCheckpoint;
 import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
-import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 
-import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory, InputType.Value}, cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
-public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
+public final class GenericArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
-    public static final NodeClass<CheckcastArrayCopyCallNode> TYPE = NodeClass.create(CheckcastArrayCopyCallNode.class);
+    public static final NodeClass<GenericArrayCopyCallNode> TYPE = NodeClass.create(GenericArrayCopyCallNode.class);
     @Input ValueNode src;
     @Input ValueNode srcPos;
     @Input ValueNode dest;
     @Input ValueNode destPos;
     @Input ValueNode length;
-    @Input ValueNode destElemKlass;
-    @Input ValueNode superCheckOffset;
-
-    protected final boolean uninit;
 
     protected final HotSpotGraalRuntimeProvider runtime;
 
-    protected CheckcastArrayCopyCallNode(@InjectedNodeParameter HotSpotGraalRuntimeProvider runtime, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length,
-                    ValueNode superCheckOffset, ValueNode destElemKlass, boolean uninit) {
+    protected GenericArrayCopyCallNode(@InjectedNodeParameter HotSpotGraalRuntimeProvider runtime, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length) {
         super(TYPE, StampFactory.forKind(JavaKind.Int));
         this.src = src;
         this.srcPos = srcPos;
         this.dest = dest;
         this.destPos = destPos;
         this.length = length;
-        this.superCheckOffset = superCheckOffset;
-        this.destElemKlass = destElemKlass;
-        this.uninit = uninit;
         this.runtime = runtime;
     }
 
@@ -105,46 +87,36 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
         return length;
     }
 
-    public boolean isUninit() {
-        return uninit;
-    }
-
-    private ValueNode computeBase(ValueNode base, ValueNode pos) {
-        FixedWithNextNode basePtr = graph().add(new GetObjectAddressNode(base));
-        graph().addBeforeFixed(this, basePtr);
-
-        int shift = CodeUtil.log2(getArrayIndexScale(JavaKind.Object));
-        ValueNode scaledIndex = graph().unique(new LeftShiftNode(pos, ConstantNode.forInt(shift, graph())));
-        ValueNode offset = graph().unique(new AddNode(scaledIndex, ConstantNode.forInt(getArrayBaseOffset(JavaKind.Object), graph())));
-        return graph().unique(new OffsetAddressNode(basePtr, offset));
-    }
-
     @Override
     public void lower(LoweringTool tool) {
         if (graph().getGuardsStage().areFrameStatesAtDeopts()) {
-            ForeignCallDescriptor desc = HotSpotHostForeignCallsProvider.lookupCheckcastArraycopyDescriptor(isUninit());
             StructuredGraph graph = graph();
-            ValueNode srcAddr = computeBase(getSource(), getSourcePosition());
-            ValueNode destAddr = computeBase(getDestination(), getDestinationPosition());
-            ValueNode len = getLength();
-            if (len.stamp().getStackKind() != runtime.getTarget().wordJavaKind) {
-                len = IntegerConvertNode.convert(len, StampFactory.forKind(runtime.getTarget().wordJavaKind), graph());
-            }
-            ForeignCallNode call = graph.add(new ForeignCallNode(runtime.getHostBackend().getForeignCalls(), desc, srcAddr, destAddr, len, superCheckOffset, destElemKlass));
+            ValueNode srcAddr = objectAddress(getSource());
+            ValueNode destAddr = objectAddress(getDestination());
+            ForeignCallNode call = graph.add(new ForeignCallNode(runtime.getHostBackend().getForeignCalls(), HotSpotBackend.GENERIC_ARRAYCOPY, srcAddr, srcPos, destAddr, destPos, length));
             call.setStateAfter(stateAfter());
             graph.replaceFixedWithFixed(this, call);
         }
     }
 
+    private ValueNode objectAddress(ValueNode obj) {
+        GetObjectAddressNode result = graph().add(new GetObjectAddressNode(obj));
+        graph().addBeforeFixed(this, result);
+        return result;
+    }
+
+    private ValueNode wordValue(ValueNode value) {
+        if (value.stamp().getStackKind() != runtime.getTarget().wordJavaKind) {
+            return IntegerConvertNode.convert(value, StampFactory.forKind(runtime.getTarget().wordJavaKind), graph());
+        }
+        return value;
+    }
+
     @Override
     public LocationIdentity getLocationIdentity() {
-        /*
-         * Because of restrictions that the memory graph of snippets matches the original node,
-         * pretend that we kill any.
-         */
         return LocationIdentity.any();
     }
 
     @NodeIntrinsic
-    public static native int checkcastArraycopy(Object src, int srcPos, Object dest, int destPos, int length, Word superCheckOffset, Object destElemKlass, @ConstantNodeParameter boolean uninit);
+    public static native int genericArraycopy(Object src, int srcPos, Object dest, int destPos, int length);
 }
