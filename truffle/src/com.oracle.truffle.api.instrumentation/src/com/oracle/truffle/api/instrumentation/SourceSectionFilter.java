@@ -432,6 +432,20 @@ public final class SourceSectionFilter {
         }
 
         /**
+         * Adds all the filters defined in the given {@link SourceSectionFilter filter}.
+         *
+         * @param filter an existing filter to be included
+         * @return the builder to chain calls
+         * @since 0.28
+         */
+        public Builder and(SourceSectionFilter filter) {
+            for (EventFilterExpression e : filter.expressions) {
+                expressions.add(e);
+            }
+            return this;
+        }
+
+        /**
          * Finalizes and constructs the {@link SourceSectionFilter} instance.
          *
          * @return the built filter expression
