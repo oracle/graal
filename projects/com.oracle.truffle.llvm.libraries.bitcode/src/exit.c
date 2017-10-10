@@ -31,6 +31,10 @@
 #include <stdlib.h>
 #include "syscall.h"
 
+#ifndef __linux__
+#define SYS_exit_group 231
+#endif
+
 struct entry {
   struct entry *next;
   void (*func)(void *);

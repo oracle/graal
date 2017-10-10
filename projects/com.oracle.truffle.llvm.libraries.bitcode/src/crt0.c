@@ -30,7 +30,17 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#ifdef __linux__
 #include <elf.h>
+#else
+#define AT_NULL 0
+typedef struct {
+  long a_type;
+  union {
+    long a_val;
+  } a_un;
+} Elf64_auxv_t;
+#endif
 
 int main(int argc, char **argv, char **envp);
 
@@ -65,6 +75,7 @@ __attribute__((weak)) int _start(long *p, int type) {
   abort();
 }
 
+#ifdef __linux__
 __attribute__((weak)) unsigned long getauxval(unsigned long type) {
   Elf64_auxv_t *auxv;
   for (auxv = __auxv; auxv->a_type != AT_NULL; auxv++) {
@@ -74,3 +85,4 @@ __attribute__((weak)) unsigned long getauxval(unsigned long type) {
   }
   return 0;
 }
+#endif
