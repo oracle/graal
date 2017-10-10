@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.tools.profiler.test;
 
-import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.profiler.CPUSampler;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
@@ -161,55 +160,6 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
         children = foo.getChildren();
         Assert.assertTrue(children.size() == 0);
-    }
-
-    @Test
-    public void testCorrectCallStructure() {
-        sampler.setFilter(NO_INTERNAL_CALL_TAG_FILTER);
-        sampler.setCollecting(true);
-        for (int i = 0; i < executionCount; i++) {
-            execute(defaultSourceForSampling);
-        }
-        Collection<ProfilerNode<CPUSampler.Payload>> children = sampler.getRootNodes();
-        Assert.assertEquals(2, children.size());
-
-        Iterator<ProfilerNode<CPUSampler.Payload>> iterator = children.iterator();
-        ProfilerNode<CPUSampler.Payload> call = iterator.next();
-        if (!"CALL(baz)".equals(call.getSourceSection().getCharacters().toString())) {
-            call = iterator.next();
-        }
-        Assert.assertTrue(call.getTags().contains(StandardTags.CallTag.class));
-        children = call.getChildren();
-        Assert.assertEquals(1, children.size());
-
-        call = children.iterator().next();
-        Assert.assertTrue(call.getTags().contains(StandardTags.CallTag.class));
-        children = call.getChildren();
-        Assert.assertEquals(1, children.size());
-
-        call = children.iterator().next();
-        Assert.assertTrue(call.getTags().contains(StandardTags.CallTag.class));
-        children = call.getChildren();
-        Assert.assertEquals(0, children.size());
-    }
-
-    @Test
-    public void testCorrectCallStructureRecursive() {
-        sampler.setFilter(NO_INTERNAL_CALL_TAG_FILTER);
-        sampler.setCollecting(true);
-
-        for (int i = 0; i < executionCount; i++) {
-            execute(defaultRecursiveSourceForSampling);
-        }
-        Collection<ProfilerNode<CPUSampler.Payload>> children = sampler.getRootNodes();
-
-        // 10 recursive calls, base foo and bar = 12
-        for (int i = 0; i < 12; i++) {
-            Assert.assertEquals(1, children.size());
-            ProfilerNode<CPUSampler.Payload> call = children.iterator().next();
-            Assert.assertTrue(call.getTags().contains(StandardTags.CallTag.class));
-            children = call.getChildren();
-        }
     }
 
     @Test
