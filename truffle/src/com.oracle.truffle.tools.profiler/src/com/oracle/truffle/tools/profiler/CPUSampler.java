@@ -420,7 +420,7 @@ public final class CPUSampler implements Closeable {
 
     private static SourceSectionFilter combine(SourceSectionFilter filter, Mode mode) {
         List<Class<?>> tags = new ArrayList<>();
-        if (mode == Mode.COMPILED && mode == Mode.ROOTS) {
+        if (mode == Mode.COMPILED || mode == Mode.ROOTS) {
             tags.add(StandardTags.RootTag.class);
         }
         if (mode == Mode.STATEMENTS) {
