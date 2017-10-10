@@ -30,6 +30,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.junit.Test;
 
 import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
@@ -96,4 +97,24 @@ public class ContextAPITest {
         context.close();
     }
 
+    @Test
+    public void testSetOptions() {
+        // Instrument options can be set to context builders with implicit engine:
+        Context.Builder contextBuilder = Context.newBuilder();
+        contextBuilder.option("optiontestinstr1.StringOption1", "Hello");
+        contextBuilder.build();
+
+        // Instrument options are refused by context builders with an existing engine:
+        contextBuilder = Context.newBuilder();
+        contextBuilder.engine(Engine.create());
+        contextBuilder.option("optiontestinstr1.StringOption1", "Hello");
+        try {
+            contextBuilder.build();
+            fail();
+        } catch (IllegalArgumentException ex) {
+            // O.K.
+            assertEquals("Option optiontestinstr1.StringOption1 is supported, but cannot be configured for contexts with a shared engine set." +
+                            " To resolve this, configure the option when creating the Engine.", ex.getMessage());
+        }
+    }
 }

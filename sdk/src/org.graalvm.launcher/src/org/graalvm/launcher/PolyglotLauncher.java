@@ -235,14 +235,13 @@ public final class PolyglotLauncher extends Launcher {
     }
 
     private void runScripts(List<Script> scripts, Context.Builder contextBuilder, String[] programArgs) {
-        Engine engine = Engine.create();
-        contextBuilder.engine(engine);
-        checkLanguage(mainLanguage, engine);
-        for (Script script : scripts) {
-            checkLanguage(script.languageId, engine);
-        }
         Script mainScript = scripts.get(scripts.size() - 1);
         try (Context context = contextBuilder.arguments(mainScript.getLanguage(), programArgs).build()) {
+            Engine engine = context.getEngine();
+            checkLanguage(mainLanguage, engine);
+            for (Script script : scripts) {
+                checkLanguage(script.languageId, engine);
+            }
             for (Script script : scripts) {
                 try {
                     Value result = context.eval(script.getSource());
