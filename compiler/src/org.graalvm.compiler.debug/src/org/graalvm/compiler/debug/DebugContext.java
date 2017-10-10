@@ -61,7 +61,6 @@ import org.graalvm.util.EconomicSet;
 import org.graalvm.util.Pair;
 
 import jdk.vm.ci.meta.JavaMethod;
-import static org.graalvm.compiler.debug.DebugOptions.DumpPath;
 import org.graalvm.graphio.GraphOutput;
 
 /**
@@ -423,7 +422,7 @@ public final class DebugContext implements AutoCloseable {
         try {
             String id = description == null ? null : description.identifier;
             String label = description == null ? null : description.getLabel();
-            return PathUtilities.createUnique(immutable.options, DumpPath, id, label, ".bgv", false);
+            return PathUtilities.createUnique(immutable.options, id, label, ".bgv", false);
         } catch (IOException ex) {
             throw rethrowSilently(RuntimeException.class, ex);
         }

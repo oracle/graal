@@ -23,7 +23,6 @@
 package org.graalvm.compiler.printer;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Paths;
 import java.util.ArrayList;

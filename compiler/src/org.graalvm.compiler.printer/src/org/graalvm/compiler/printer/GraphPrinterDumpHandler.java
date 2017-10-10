@@ -52,8 +52,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 //JaCoCo Exclude
 
 /**
- * Observes compilation events and uses {@link IdealGraphPrinter} to generate a graph representation
- * that can be inspected with the Graph Visualizer.
+ * Observes compilation events and uses {@link BinaryGraphPrinter} to generate a graph
+ * representation that can be inspected with the Graph Visualizer.
  */
 public class GraphPrinterDumpHandler implements DebugDumpHandler {
 

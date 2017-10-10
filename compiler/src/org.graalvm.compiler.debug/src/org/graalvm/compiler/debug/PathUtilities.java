@@ -173,7 +173,7 @@ public class PathUtilities {
 
     private static final String ELLIPSIS = "...";
 
-    static Path createUnique(OptionValues options, OptionKey<String> baseNameOption, String id, String label, String ext, boolean createDirectory) throws IOException {
+    static Path createUnique(OptionValues options, String id, String label, String ext, boolean createDirectory) throws IOException {
         String timestamp = "";
         for (;;) {
             int fileNameLengthWithoutLabel = timestamp.length() + ext.length() + id.length() + "[]".length();
