@@ -173,26 +173,32 @@ public class PathUtilities {
 
     private static final String ELLIPSIS = "...";
 
-    static Path createUnique(OptionValues options, String id, String label, String ext, boolean createDirectory) throws IOException {
+    static Path createUnique(OptionValues options, OptionKey<String> baseNameOption, String id, String label, String ext, boolean createDirectory) throws IOException {
         String timestamp = "";
+        String prefix;
+        if (id == null) {
+            prefix = baseNameOption.getValue(options);
+        } else {
+            prefix = id;
+        }
         for (;;) {
-            int fileNameLengthWithoutLabel = timestamp.length() + ext.length() + id.length() + "[]".length();
+            int fileNameLengthWithoutLabel = timestamp.length() + ext.length() + prefix.length() + "[]".length();
             int labelLengthLimit = MAX_FILE_NAME_LENGTH - fileNameLengthWithoutLabel;
             String fileName;
             if (labelLengthLimit < ELLIPSIS.length()) {
                 // This means `id` is very long
                 String suffix = timestamp + ext;
-                int idLengthLimit = Math.min(MAX_FILE_NAME_LENGTH - suffix.length(), id.length());
-                fileName = sanitizeFileName(id.substring(0, idLengthLimit) + suffix);
+                int idLengthLimit = Math.min(MAX_FILE_NAME_LENGTH - suffix.length(), prefix.length());
+                fileName = sanitizeFileName(prefix.substring(0, idLengthLimit) + suffix);
             } else {
                 if (label == null) {
-                    fileName = sanitizeFileName(id + timestamp + ext);
+                    fileName = sanitizeFileName(prefix + timestamp + ext);
                 } else {
                     String adjustedLabel = label;
                     if (label.length() > labelLengthLimit) {
                         adjustedLabel = label.substring(0, labelLengthLimit - ELLIPSIS.length()) + ELLIPSIS;
                     }
-                    fileName = sanitizeFileName(id + '[' + adjustedLabel + ']' + timestamp + ext);
+                    fileName = sanitizeFileName(prefix + '[' + adjustedLabel + ']' + timestamp + ext);
                 }
             }
             Path dumpDir = DebugOptions.getDumpDirectory(options);
