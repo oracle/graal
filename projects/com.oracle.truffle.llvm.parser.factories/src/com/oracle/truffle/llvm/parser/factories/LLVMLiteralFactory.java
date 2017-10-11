@@ -124,7 +124,7 @@ final class LLVMLiteralFactory {
                     if (constant == null) {
                         return new LLVM80BitFloatLiteralNode(LLVM80BitFloat.fromLong(0));
                     } else {
-                        return new LLVM80BitFloatLiteralNode(LLVM80BitFloat.fromBytes((byte[]) constant));
+                        return new LLVM80BitFloatLiteralNode(LLVM80BitFloat.fromBytesBigEndian((byte[]) constant));
                     }
                 case I64:
                     return new LLVMI64LiteralNode((long) constant);
