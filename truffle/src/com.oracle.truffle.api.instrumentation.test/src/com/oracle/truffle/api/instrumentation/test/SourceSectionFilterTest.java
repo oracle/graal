@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -32,13 +33,19 @@ import java.util.Set;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.ReflectionUtils;
+
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Language;
 
 public class SourceSectionFilterTest {
 
@@ -99,6 +106,45 @@ public class SourceSectionFilterTest {
                     }
                 }
                 return super.isTaggedWith(tag);
+            }
+
+        };
+    }
+
+    private static RootNode createRootNode(final SourceSection section, final Boolean internal) throws Exception {
+        Language language = Engine.create().getLanguages().get(InstrumentationTestLanguage.ID);
+        Field impl = Language.class.getDeclaredField("impl");
+        ReflectionUtils.setAccessible(impl, true);
+        Object polyglotLanguage = impl.get(language);
+        Method ensureInitialized = polyglotLanguage.getClass().getDeclaredMethod("ensureInitialized");
+        ReflectionUtils.setAccessible(ensureInitialized, true);
+        ensureInitialized.invoke(polyglotLanguage);
+        Field info = polyglotLanguage.getClass().getDeclaredField("info");
+        ReflectionUtils.setAccessible(info, true);
+        LanguageInfo languageInfo = (LanguageInfo) info.get(polyglotLanguage);
+        Field spi = LanguageInfo.class.getDeclaredField("spi");
+        ReflectionUtils.setAccessible(spi, true);
+        TruffleLanguage<?> truffleLanguage = (TruffleLanguage<?>) spi.get(languageInfo);
+
+        return new RootNode(truffleLanguage) {
+
+            @Override
+            public SourceSection getSourceSection() {
+                return section;
+            }
+
+            @Override
+            public boolean isInternal() {
+                if (internal == null) {
+                    return super.isInternal();
+                } else {
+                    return internal;
+                }
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return null;
             }
 
         };
@@ -656,6 +702,34 @@ public class SourceSectionFilterTest {
                                         null, source(InstrumentationTestLanguage.EXPRESSION, InstrumentationTestLanguage.STATEMENT)));
 
         Assert.assertNotNull(SourceSectionFilter.newBuilder().tagIsNot(InstrumentationTestLanguage.STATEMENT, InstrumentationTestLanguage.EXPRESSION).build().toString());
+    }
+
+    @Test
+    public void testIgnoreInternal() throws Exception {
+        SourceSectionFilter internalFilter = SourceSectionFilter.newBuilder().includeInternal(false).build();
+        SourceSectionFilter defaultFilter = SourceSectionFilter.newBuilder().build();
+        Assert.assertTrue(
+                        isInstrumented(internalFilter, null, source()));
+        Source nonInternalSource = Source.newBuilder("line1\nline2\nline3\nline4").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
+        // Default non-internal RootNode
+        RootNode root = createRootNode(nonInternalSource.createSection(0, 23), null);
+        Assert.assertTrue(
+                        isInstrumented(internalFilter, root, createNode(nonInternalSource.createSection(1))));
+        // Internal RootNode
+        root = createRootNode(nonInternalSource.createSection(0, 23), true);
+        Assert.assertFalse(
+                        isInstrumented(internalFilter, root, createNode(nonInternalSource.createSection(1))));
+        Assert.assertTrue(
+                        isInstrumented(defaultFilter, root, createNode(nonInternalSource.createSection(1))));
+        Source internalSource = Source.newBuilder("line1\nline2\nline3\nline4").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).internal().build();
+        // Default internal RootNode
+        root = createRootNode(internalSource.createSection(0, 23), null);
+        Assert.assertFalse(
+                        isInstrumented(internalFilter, root, createNode(internalSource.createSection(1))));
+        // Non-internal RootNode
+        root = createRootNode(nonInternalSource.createSection(0, 23), false);
+        Assert.assertTrue(
+                        isInstrumented(internalFilter, root, createNode(internalSource.createSection(1))));
     }
 
     @Test
