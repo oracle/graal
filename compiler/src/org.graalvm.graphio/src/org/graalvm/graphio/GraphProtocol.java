@@ -87,6 +87,14 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         writeVersion();
     }
 
+    GraphProtocol(GraphProtocol<?, ?, ?, ?, ?, ?, ?, ?, ?> parent) {
+        this.versionMajor = parent.versionMajor;
+        this.versionMinor = parent.versionMinor;
+        this.constantPool = parent.constantPool;
+        this.buffer = parent.buffer;
+        this.channel = parent.channel;
+    }
+
     @SuppressWarnings("all")
     public final void print(Graph graph, Map<? extends Object, ? extends Object> properties, int id, String format, Object... args) throws IOException {
         writeByte(BEGIN_GRAPH);

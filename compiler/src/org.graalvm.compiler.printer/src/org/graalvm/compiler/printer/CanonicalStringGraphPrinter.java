@@ -64,6 +64,8 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.compiler.debug.DebugOptions;
+import org.graalvm.compiler.debug.PathUtilities;
 
 public class CanonicalStringGraphPrinter implements GraphPrinter {
     private static final Pattern IDENTITY_PATTERN = Pattern.compile("([A-Za-z0-9$_]+)@[0-9a-f]+");
@@ -260,11 +262,11 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
     private StructuredGraph currentGraph;
     private Path currentDirectory;
 
-    private Path getDirectory(StructuredGraph graph) throws IOException {
+    private Path getDirectory(OptionValues options, StructuredGraph graph) throws IOException {
         if (graph == currentGraph) {
             return currentDirectory;
         }
-        currentDirectory = GraalDebugHandlersFactory.createDumpPath(graph.getOptions(), graph, "graph-strings", true);
+        currentDirectory = PathUtilities.getPath(options, DebugOptions.DumpPath, "graph-strings");
         currentGraph = graph;
         return currentDirectory;
     }
@@ -274,7 +276,7 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
         if (graph instanceof StructuredGraph) {
             OptionValues options = graph.getOptions();
             StructuredGraph structuredGraph = (StructuredGraph) graph;
-            Path outDirectory = getDirectory(structuredGraph);
+            Path outDirectory = getDirectory(options, structuredGraph);
             String title = String.format("%03d-%s.txt", id, String.format(format, simplifyClassArgs(args)));
             Path filePath = outDirectory.resolve(sanitizedFileName(title));
             try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(filePath.toFile())))) {

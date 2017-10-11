@@ -61,6 +61,8 @@ import org.graalvm.util.EconomicSet;
 import org.graalvm.util.Pair;
 
 import jdk.vm.ci.meta.JavaMethod;
+import static org.graalvm.compiler.debug.DebugOptions.DumpPath;
+import org.graalvm.graphio.GraphOutput;
 
 /**
  * A facility for logging and dumping as well as a container for values associated with
@@ -98,6 +100,8 @@ public final class DebugContext implements AutoCloseable {
     CloseableCounter currentMemUseTracker;
     Scope lastClosedScope;
     Throwable lastExceptionThrown;
+    private IgvDumpChannel sharedChannel;
+    private GraphOutput<?, ?> parentOutput;
 
     /**
      * Stores the {@link MetricKey} values.
@@ -109,6 +113,19 @@ public final class DebugContext implements AutoCloseable {
      */
     public boolean areScopesEnabled() {
         return immutable.scopesEnabled;
+    }
+
+    public <G, N, M> GraphOutput<G, M> buildOutput(GraphOutput.Builder<G, N, M> builder) throws IOException {
+        if (parentOutput != null) {
+            return builder.build(parentOutput);
+        } else {
+            if (sharedChannel == null) {
+                sharedChannel = new IgvDumpChannel(this::getFilePrinterPath, immutable.options);
+            }
+            final GraphOutput<G, M> output = builder.build(sharedChannel);
+            parentOutput = output;
+            return output;
+        }
     }
 
     /**
@@ -323,6 +340,14 @@ public final class DebugContext implements AutoCloseable {
             String compilableName = compilable instanceof JavaMethod ? ((JavaMethod) compilable).format("%H.%n(%p)%R") : String.valueOf(compilable);
             return identifier + ":" + compilableName;
         }
+
+        final String getLabel() {
+            if (compilable instanceof JavaMethod) {
+                JavaMethod method = (JavaMethod) compilable;
+                return method.format("%h.%n(%p)%r");
+            }
+            return String.valueOf(compilable);
+        }
     }
 
     private final Description description;
@@ -391,6 +416,16 @@ public final class DebugContext implements AutoCloseable {
             metricsEnabled = true;
         } else {
             metricsEnabled = immutable.hasUnscopedMetrics() || immutable.listMetrics;
+        }
+    }
+
+    private Path getFilePrinterPath() {
+        try {
+            String id = description == null ? null : description.identifier;
+            String label = description == null ? null : description.getLabel();
+            return PathUtilities.createUnique(immutable.options, DumpPath, id, label, ".bgv", false);
+        } catch (IOException ex) {
+            throw rethrowSilently(RuntimeException.class, ex);
         }
     }
 
@@ -2042,5 +2077,10 @@ public final class DebugContext implements AutoCloseable {
             out.printf("%-" + String.valueOf(maxKeyWidth) + "s = %20s%n", e.getKey(), e.getValue());
         }
         out.println();
+    }
+
+    @SuppressWarnings({"unused", "unchecked"})
+    private static <E extends Exception> E rethrowSilently(Class<E> type, Throwable ex) throws E {
+        throw (E) ex;
     }
 }

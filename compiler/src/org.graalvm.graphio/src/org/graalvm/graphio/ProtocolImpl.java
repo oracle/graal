@@ -43,6 +43,15 @@ final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod
         this.elements = elements;
     }
 
+    ProtocolImpl(GraphProtocol<?, ?, ?, ?, ?, ?, ?, ?, ?> parent, GraphStructure<Graph, Node, NodeClass, Port> structure, GraphTypes enums, GraphBlocks<Graph, Block, Node> blocks,
+                    GraphElements<ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> elements) {
+        super(parent);
+        this.structure = structure;
+        this.types = enums;
+        this.blocks = blocks;
+        this.elements = elements;
+    }
+
     @Override
     protected Graph findGraph(Graph current, Object obj) {
         return structure.graph(current, obj);
