@@ -439,6 +439,17 @@ public final class LLVM80BitFloat {
         return Arrays.hashCode(getBytes());
     }
 
+    public byte[] getBytesBigEndian() {
+        ByteBuffer bb = ByteBuffer.allocate(BYTE_WIDTH);
+        bb.order(ByteOrder.BIG_ENDIAN);
+        short signWithExponent = getExponent();
+        short signBit = sign ? (short) bit(Short.SIZE - 1) : 0;
+        signWithExponent |= signBit;
+        bb.putShort(signWithExponent);
+        bb.putLong(getFraction());
+        return bb.array();
+    }
+
     public byte[] getBytes() {
         ByteBuffer bb = ByteBuffer.allocate(BYTE_WIDTH);
         bb.order(ByteOrder.LITTLE_ENDIAN);

@@ -71,7 +71,7 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMIVarBit execute80BitFloat(LLVM80BitFloat from) {
-            return LLVMIVarBit.create(getBits(), from.getBytes(), LLVM80BitFloat.BIT_WIDTH, true);
+            return LLVMIVarBit.create(getBits(), from.getBytesBigEndian(), LLVM80BitFloat.BIT_WIDTH, true);
         }
     }
 
@@ -112,7 +112,7 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMIVarBit execute80BitFloat(LLVM80BitFloat from) {
-            return LLVMIVarBit.create(LLVM80BitFloat.BIT_WIDTH, from.getBytes(), LLVM80BitFloat.BIT_WIDTH, false);
+            return LLVMIVarBit.create(LLVM80BitFloat.BIT_WIDTH, from.getBytesBigEndian(), LLVM80BitFloat.BIT_WIDTH, false);
         }
     }
 
