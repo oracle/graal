@@ -163,7 +163,7 @@ public abstract class BaseTestHarness {
         try {
             return Files.walk(configDir).filter(isIncludeFile).flatMap(f -> {
                 try {
-                    return Files.lines(f);
+                    return Files.lines(f).filter(file -> file.length() > 0);
                 } catch (IOException e) {
                     throw new AssertionError("Error creating whitelist.", e);
                 }
