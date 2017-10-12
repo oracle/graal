@@ -55,4 +55,9 @@ public final class BasicConfiguration implements Configuration {
         return new BasicNodeFactory();
     }
 
+    @Override
+    public Object createContextExtension() {
+        return null;
+    }
+
 }

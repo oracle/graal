@@ -31,13 +31,11 @@ package com.oracle.truffle.llvm;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.ServiceLoader;
 
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.metadata.ScopeProvider;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceScope;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
@@ -45,13 +43,17 @@ import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.metadata.ScopeProvider;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceScope;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
@@ -72,7 +74,7 @@ public final class Sulong extends LLVMLanguage implements ScopeProvider<LLVMCont
 
     @Override
     protected LLVMContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
-        return new LLVMContext(env);
+        return new LLVMContext(env, getContextExtensions());
     }
 
     @Override
@@ -142,6 +144,17 @@ public final class Sulong extends LLVMLanguage implements ScopeProvider<LLVMCont
         } finally {
             context.close();
         }
+    }
+
+    private static Map<Class<?>, Object> getContextExtensions() {
+        Map<Class<?>, Object> extensions = new HashMap<>();
+        for (Configuration c : configurations) {
+            Object extension = c.createContextExtension();
+            if (extension != null) {
+                extensions.put(extension.getClass(), extension);
+            }
+        }
+        return extensions;
     }
 
     @Override
