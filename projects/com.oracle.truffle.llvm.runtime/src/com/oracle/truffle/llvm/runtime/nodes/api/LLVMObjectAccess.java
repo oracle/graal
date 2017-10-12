@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
@@ -59,12 +60,13 @@ public interface LLVMObjectAccess {
         /**
          * Do a native memory read on an object.
          *
+         * @param frame the Truffle frame
          * @param obj the object that is the base of the read pointer
          * @param identifier the struct element name or array index
          * @param offset the byte offset into the object
          * @return the read value
          */
-        public abstract Object executeRead(Object obj, Object identifier, long offset) throws InteropException;
+        public abstract Object executeRead(VirtualFrame frame, Object obj, Object identifier, long offset) throws InteropException;
     }
 
     abstract class LLVMObjectWriteNode extends LLVMObjectAccessNode {
@@ -72,11 +74,12 @@ public interface LLVMObjectAccess {
         /**
          * Do a native memory write on an object.
          *
+         * @param frame the Truffle frame
          * @param obj the object that is the base of the written pointer
          * @param identifier the struct element name or array index
          * @param offset the byte offset into the object
          * @param value the written value
          */
-        public abstract void executeWrite(Object obj, Object identifier, long offset, Object value) throws InteropException;
+        public abstract void executeWrite(VirtualFrame frame, Object obj, Object identifier, long offset, Object value) throws InteropException;
     }
 }

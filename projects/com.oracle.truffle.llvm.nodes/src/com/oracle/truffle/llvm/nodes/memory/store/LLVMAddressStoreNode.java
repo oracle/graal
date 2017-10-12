@@ -130,8 +130,8 @@ public abstract class LLVMAddressStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    public Object execute(LLVMTruffleObject address, Object value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
-        foreignWrite.execute(address, value);
+    public Object execute(VirtualFrame frame, LLVMTruffleObject address, Object value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+        foreignWrite.execute(frame, address, value);
         return null;
     }
 }

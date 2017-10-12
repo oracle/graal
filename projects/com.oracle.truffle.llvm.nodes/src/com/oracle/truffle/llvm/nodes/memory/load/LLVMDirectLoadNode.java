@@ -128,8 +128,8 @@ public abstract class LLVMDirectLoadNode {
         }
 
         @Specialization
-        public Object executeIndirectedForeign(LLVMTruffleObject addr, @Cached("createForeignReadNode()") LLVMForeignReadNode foreignRead) {
-            return foreignRead.execute(addr);
+        public Object executeIndirectedForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignReadNode()") LLVMForeignReadNode foreignRead) {
+            return foreignRead.execute(frame, addr);
         }
 
         protected LLVMForeignReadNode createForeignReadNode() {
