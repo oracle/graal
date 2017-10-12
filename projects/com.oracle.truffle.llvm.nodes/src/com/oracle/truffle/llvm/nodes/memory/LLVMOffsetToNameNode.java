@@ -85,7 +85,11 @@ public abstract class LLVMOffsetToNameNode extends Node {
             return FindMemberNodeGen.create(true);
         }
 
-        @Specialization(guards = "type == null")
+        static boolean noTypeInfo(LLVMSourceType type) {
+            return type == null || type == LLVMSourceType.UNKNOWN_TYPE;
+        }
+
+        @Specialization(guards = "noTypeInfo(type)")
         int doNull(@SuppressWarnings("unused") LLVMSourceType type, long offset, int elementSize) {
             // if we have no type info, the best we can do is assume it's an indexed access
             return doArray(null, offset, elementSize);
@@ -108,7 +112,7 @@ public abstract class LLVMOffsetToNameNode extends Node {
             return (int) (offset / elementSize);
         }
 
-        @Specialization(guards = "dereferencedPointer")
+        @Specialization(guards = "dereferencedPointer || offset == 0")
         int doBasic(@SuppressWarnings("unused") LLVMSourceBasicType type, long offset, int elementSize) {
             // pointer to basic type: this is the same as an array access
             return doArray(null, offset, elementSize);
