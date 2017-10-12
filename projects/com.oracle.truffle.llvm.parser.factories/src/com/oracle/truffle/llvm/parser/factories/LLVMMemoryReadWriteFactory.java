@@ -167,7 +167,7 @@ final class LLVMMemoryReadWriteFactory {
     }
 
     static LLVMExpressionNode createStore(LLVMParserRuntime runtime, LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type, SourceSection source) {
-        return createStore(pointerNode, valueNode, type, runtime.getByteSize(type), source);
+        return createStore(pointerNode, valueNode, type, runtime.getContext().getByteSize(type), source);
     }
 
     private static LLVMExpressionNode createStore(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type, int size, SourceSection source) {

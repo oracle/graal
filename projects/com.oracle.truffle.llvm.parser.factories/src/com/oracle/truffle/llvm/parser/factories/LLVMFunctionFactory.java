@@ -91,7 +91,7 @@ final class LLVMFunctionFactory {
         } else if (type instanceof PointerType) {
             return LLVMAddressRetNodeGen.create(source, retValue);
         } else if (type instanceof StructureType) {
-            int size = runtime.getByteSize(type);
+            int size = runtime.getContext().getByteSize(type);
             return LLVMStructRetNodeGen.create(source, retValue, size);
         } else if (type instanceof PrimitiveType) {
             switch (((PrimitiveType) type).getPrimitiveKind()) {

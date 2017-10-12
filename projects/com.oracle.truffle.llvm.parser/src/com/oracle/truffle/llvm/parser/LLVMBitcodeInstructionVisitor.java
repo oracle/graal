@@ -155,7 +155,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final Type type = allocate.getPointeeType();
         int alignment;
         if (allocate.getAlign() == 0) {
-            alignment = runtime.getByteAlignment(type);
+            alignment = runtime.getContext().getByteAlignment(type);
         } else {
             alignment = 1 << (allocate.getAlign() - 1);
         }
@@ -163,7 +163,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             alignment = LLVMStack.NO_ALIGNMENT_REQUIREMENTS;
         }
 
-        final int size = runtime.getByteSize(type);
+        final int size = runtime.getContext().getByteSize(type);
         final Symbol count = allocate.getCount();
         final LLVMExpressionNode result;
         if (count instanceof NullConstant) {
@@ -226,8 +226,8 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         argIndex++;
 
         if (targetType instanceof StructureType) {
-            final int size = runtime.getByteSize(targetType);
-            final int align = runtime.getByteAlignment(targetType);
+            final int size = runtime.getContext().getByteSize(targetType);
+            final int align = runtime.getContext().getByteAlignment(targetType);
             argTypes[argIndex] = new PointerType(targetType);
             argNodes[argIndex] = nodeFactory.createAlloc(runtime, targetType, size, align, null, null);
             argIndex++;
@@ -263,8 +263,8 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     @Override
     public void visit(LandingpadInstruction landingpadInstruction) {
         Type type = landingpadInstruction.getType();
-        final int size = runtime.getByteSize(type);
-        final int align = runtime.getByteAlignment(type);
+        final int size = runtime.getContext().getByteSize(type);
+        final int align = runtime.getContext().getByteAlignment(type);
         LLVMExpressionNode allocateLandingPadValue = nodeFactory.createAlloc(runtime, type, size, align, null, null);
         LLVMExpressionNode[] entries = new LLVMExpressionNode[landingpadInstruction.getClauseSymbols().length];
         for (int i = 0; i < entries.length; i++) {
@@ -410,8 +410,8 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         argTypes[argIndex] = new PointerType(null);
         argIndex++;
         if (targetType instanceof StructureType) {
-            final int size = runtime.getByteSize(targetType);
-            final int align = runtime.getByteAlignment(targetType);
+            final int size = runtime.getContext().getByteSize(targetType);
+            final int align = runtime.getContext().getByteAlignment(targetType);
             argTypes[argIndex] = new PointerType(targetType);
             argNodes[argIndex] = nodeFactory.createAlloc(runtime, targetType, size, align, null, null);
             argIndex++;
@@ -601,11 +601,11 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         final AggregateType aggregateType = (AggregateType) baseType;
 
-        int offset = runtime.getIndexOffset(targetIndex, aggregateType);
+        int offset = runtime.getContext().getIndexOffset(targetIndex, aggregateType);
 
         final Type targetType = aggregateType.getElementType(targetIndex);
         if (targetType != null && !((targetType instanceof StructureType) && (((StructureType) targetType).isPacked()))) {
-            offset += runtime.getBytePadding(offset, targetType);
+            offset += runtime.getContext().getBytePadding(offset, targetType);
         }
 
         if (offset != 0) {
@@ -662,14 +662,14 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final LLVMExpressionNode valueToInsert = symbols.resolve(insert.getValue());
         final Type valueType = insert.getValue().getType();
         final int targetIndex = insert.getIndex();
-        final int size = runtime.getByteSize(sourceType);
-        final int alignment = runtime.getByteAlignment(sourceType);
+        final int size = runtime.getContext().getByteSize(sourceType);
+        final int alignment = runtime.getContext().getByteAlignment(sourceType);
 
         final LLVMExpressionNode resultAggregate = nodeFactory.createAlloc(runtime, sourceType, size, alignment, null, null);
 
-        final int offset = runtime.getIndexOffset(targetIndex, sourceType);
+        final int offset = runtime.getContext().getIndexOffset(targetIndex, sourceType);
         final LLVMExpressionNode result = nodeFactory.createInsertValue(runtime, resultAggregate, sourceAggregate,
-                        runtime.getByteSize(sourceType), offset, valueToInsert, valueType);
+                        runtime.getContext().getByteSize(sourceType), offset, valueToInsert, valueType);
 
         createFrameWrite(result, insert);
     }
@@ -911,8 +911,8 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     private LLVMExpressionNode capsuleAddressByValue(LLVMExpressionNode child, Type type, AttributesGroup paramAttr) {
         final Type pointee = ((PointerType) type).getPointeeType();
 
-        final int size = runtime.getByteSize(pointee);
-        int alignment = runtime.getByteAlignment(pointee);
+        final int size = runtime.getContext().getByteSize(pointee);
+        int alignment = runtime.getContext().getByteAlignment(pointee);
         for (Attribute attr : paramAttr.getAttributes()) {
             if (attr instanceof Attribute.KnownIntegerValueAttribute && ((Attribute.KnownIntegerValueAttribute) attr).getAttr() == Attribute.Kind.ALIGN) {
                 alignment = ((Attribute.KnownIntegerValueAttribute) attr).getValue();

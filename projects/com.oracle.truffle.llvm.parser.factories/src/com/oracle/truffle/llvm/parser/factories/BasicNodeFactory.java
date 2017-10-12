@@ -405,12 +405,12 @@ public class BasicNodeFactory implements NodeFactory {
                     final Type elemType = struct.getElementType(i);
 
                     if (!struct.isPacked()) {
-                        currentOffset += runtime.getBytePadding(currentOffset, elemType);
+                        currentOffset += runtime.getContext().getBytePadding(currentOffset, elemType);
                     }
 
                     offsets[i] = currentOffset;
                     types[i] = elemType;
-                    currentOffset += runtime.getByteSize(elemType);
+                    currentOffset += runtime.getContext().getByteSize(elemType);
                 }
                 LLVMAllocaConstInstruction alloc = LLVMAllocaConstInstructionNodeGen.create(byteSize, alignment, type);
                 alloc.setTypes(types);
@@ -512,7 +512,7 @@ public class BasicNodeFactory implements NodeFactory {
                 }
             });
             descriptor.declareInSulong(new NativeAllocator() {
-                private final int byteSize = runtime.getByteSize(resolvedType);
+                private final int byteSize = runtime.getContext().getByteSize(resolvedType);
 
                 @Override
                 public LLVMAddress allocate() {
@@ -579,16 +579,16 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createCompareExchangeInstruction(LLVMParserRuntime runtime, Type returnType, Type elementType, LLVMExpressionNode ptrNode, LLVMExpressionNode cmpNode,
                     LLVMExpressionNode newNode) {
-        return LLVMCompareExchangeNodeGen.create(runtime.getByteSize(returnType),
-                        runtime.getIndexOffset(1, (AggregateType) returnType), ptrNode, cmpNode, newNode);
+        return LLVMCompareExchangeNodeGen.create(runtime.getContext().getByteSize(returnType),
+                        runtime.getContext().getIndexOffset(1, (AggregateType) returnType), ptrNode, cmpNode, newNode);
     }
 
     @Override
     public LLVMExpressionNode createLLVMBuiltin(LLVMParserRuntime runtime, Symbol target, LLVMExpressionNode[] args, int callerArgumentCount, SourceSection sourceSection) {
         /*
-         * This LLVM Builtins are *not* function intrinsics. Builtins replace statements that look
-         * like function calls but are actually LLVM intrinsics. An example is llvm.stackpointer.
-         * Also, it is not possible to retrieve the functionpointer of such pseudo-call-targets.
+         * This LLVM Builtins are *not* function intrinsics. Builtins replace statements that look like
+         * function calls but are actually LLVM intrinsics. An example is llvm.stackpointer. Also, it is not
+         * possible to retrieve the functionpointer of such pseudo-call-targets.
          *
          * This builtins shall not be used for regular function intrinsification!
          */
@@ -818,7 +818,7 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     private static int getOverflowFieldOffset(LLVMParserRuntime runtime, FunctionDeclaration declaration) {
-        return runtime.getIndexOffset(1, (AggregateType) declaration.getType().getReturnType());
+        return runtime.getContext().getIndexOffset(1, (AggregateType) declaration.getType().getReturnType());
     }
 
     protected LLVMExpressionNode getGccBuiltin(FunctionDeclaration declaration, LLVMExpressionNode[] args, SourceSection sourceSection) {

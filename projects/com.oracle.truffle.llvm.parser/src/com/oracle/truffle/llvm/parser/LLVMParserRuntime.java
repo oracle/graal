@@ -44,8 +44,6 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.parser.datalayout.DataLayoutConverter;
-import com.oracle.truffle.llvm.parser.datalayout.DataLayoutConverter.DataSpecConverterImpl;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
@@ -62,11 +60,11 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
-import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -99,8 +97,9 @@ public final class LLVMParserRuntime {
         model.accept(module);
 
         DataLayoutConverter.DataSpecConverterImpl targetDataLayout = DataLayoutConverter.getConverter(layout.getDataLayout());
+        context.setDataLayoutConverter(targetDataLayout);
         context.setNativeIntrinsicsFactory(nodeFactory.getNativeIntrinsicsFactory(language, context, targetDataLayout));
-        LLVMParserRuntime runtime = new LLVMParserRuntime(source, language, context, stack, targetDataLayout, nodeFactory, module.getAliases());
+        LLVMParserRuntime runtime = new LLVMParserRuntime(source, language, context, stack, nodeFactory, module.getAliases());
 
         runtime.initializeFunctions(phiManager, labels, module.getFunctions());
 
@@ -133,18 +132,16 @@ public final class LLVMParserRuntime {
     private final LLVMLanguage language;
     private final LLVMContext context;
     private final StackAllocation stack;
-    private final DataLayoutConverter.DataSpecConverterImpl targetDataLayout;
     private final NodeFactory nodeFactory;
     private final Map<GlobalAlias, Symbol> aliases;
     private final List<LLVMExpressionNode> deallocations;
     private final LLVMScope scope;
 
-    private LLVMParserRuntime(Source source, LLVMLanguage language, LLVMContext context, StackAllocation stack, DataSpecConverterImpl targetDataLayout, NodeFactory nodeFactory,
+    private LLVMParserRuntime(Source source, LLVMLanguage language, LLVMContext context, StackAllocation stack, NodeFactory nodeFactory,
                     Map<GlobalAlias, Symbol> aliases) {
         this.source = source;
         this.context = context;
         this.stack = stack;
-        this.targetDataLayout = targetDataLayout;
         this.nodeFactory = nodeFactory;
         this.language = language;
         this.aliases = aliases;
@@ -185,7 +182,7 @@ public final class LLVMParserRuntime {
         LLVMExpressionNode constant = symbolResolver.resolve(global.getValue());
         if (constant != null) {
             final Type type = ((PointerType) global.getType()).getPointeeType();
-            final int size = getByteSize(type);
+            final int size = getContext().getByteSize(type);
 
             final LLVMExpressionNode globalVarAddress = getGlobalVariable(symbolResolver, global);
 
@@ -254,10 +251,10 @@ public final class LLVMParserRuntime {
         final int elemCount = arrayConstant.getElementCount();
 
         final StructureType elementType = (StructureType) arrayConstant.getType().getElementType();
-        final int structSize = getByteSize(elementType);
+        final int structSize = getContext().getByteSize(elementType);
 
         final FunctionType functionType = (FunctionType) ((PointerType) elementType.getElementType(1)).getPointeeType();
-        final int indexedTypeLength = getByteAlignment(functionType);
+        final int indexedTypeLength = getContext().getByteAlignment(functionType);
 
         final ArrayList<Pair<Integer, LLVMExpressionNode>> structors = new ArrayList<>(elemCount);
         for (int i = 0; i < elemCount; i++) {
@@ -295,22 +292,6 @@ public final class LLVMParserRuntime {
 
     public LLVMExpressionNode getGlobalAddress(LLVMSymbolReadResolver symbolResolver, GlobalValueSymbol var) {
         return getGlobalVariable(symbolResolver, var);
-    }
-
-    public int getByteAlignment(Type type) {
-        return type.getAlignment(targetDataLayout);
-    }
-
-    public int getByteSize(Type type) {
-        return type.getSize(targetDataLayout);
-    }
-
-    public int getBytePadding(int offset, Type type) {
-        return Type.getPadding(offset, type, targetDataLayout);
-    }
-
-    public int getIndexOffset(int index, AggregateType type) {
-        return type.getOffsetOf(index, targetDataLayout);
     }
 
     public FrameDescriptor getGlobalFrameDescriptor() {

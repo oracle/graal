@@ -53,10 +53,12 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.NativeLookup.UnsupportedNativeTypeException;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayoutConverter.DataSpecConverterImpl;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -64,6 +66,7 @@ public final class LLVMContext {
 
     private final List<Path> libraryPaths = new ArrayList<>();
     private final List<Path> bitcodeLibraries = new ArrayList<>();
+    private DataSpecConverterImpl targetDataLayout;
 
     private final List<RootCallTarget> globalVarInits = new ArrayList<>();
     private final List<RootCallTarget> globalVarDeallocs = new ArrayList<>();
@@ -177,6 +180,23 @@ public final class LLVMContext {
     public <T> T getContextExtension(Class<T> type) {
         return type.cast(contextExtension.get(type));
     }
+
+    public int getByteAlignment(Type type) {
+        return type.getAlignment(targetDataLayout);
+    }
+
+    public int getByteSize(Type type) {
+        return type.getSize(targetDataLayout);
+    }
+
+    public int getBytePadding(int offset, Type type) {
+        return Type.getPadding(offset, type, targetDataLayout);
+    }
+
+    public int getIndexOffset(int index, AggregateType type) {
+        return type.getOffsetOf(index, targetDataLayout);
+    }
+
     public void addBitcodeLibrary(String l) {
         CompilerAsserts.neverPartOfCompilation();
         Path p = findLibrary(l);
@@ -498,6 +518,10 @@ public final class LLVMContext {
 
     public static String getNativeSignature(FunctionType type, int skipArguments) throws UnsupportedNativeTypeException {
         return NativeLookup.prepareSignature(type, skipArguments);
+    }
+
+    public void setDataLayoutConverter(DataSpecConverterImpl layout) {
+        this.targetDataLayout = layout;
     }
 
 }

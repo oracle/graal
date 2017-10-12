@@ -304,10 +304,10 @@ final class LLVMLiteralFactory {
     static LLVMExpressionNode createArrayLiteral(LLVMParserRuntime runtime, List<LLVMExpressionNode> arrayValues, ArrayType arrayType) {
         int nrElements = arrayValues.size();
         Type elementType = arrayType.getElementType();
-        int baseTypeSize = runtime.getByteSize(elementType);
+        int baseTypeSize = runtime.getContext().getByteSize(elementType);
         int size = nrElements * baseTypeSize;
-        LLVMExpressionNode arrayAlloc = runtime.allocateFunctionLifetime(arrayType, size, runtime.getByteAlignment(arrayType));
-        int byteLength = runtime.getByteSize(elementType);
+        LLVMExpressionNode arrayAlloc = runtime.allocateFunctionLifetime(arrayType, size, runtime.getContext().getByteAlignment(arrayType));
+        int byteLength = runtime.getContext().getByteSize(elementType);
         if (size == 0) {
             throw new AssertionError(elementType + " has size of 0!");
         }
