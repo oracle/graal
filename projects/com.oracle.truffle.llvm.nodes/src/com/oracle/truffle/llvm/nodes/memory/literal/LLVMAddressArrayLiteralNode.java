@@ -34,11 +34,16 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNode;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 @NodeChild(value = "address", type = LLVMExpressionNode.class)
 public abstract class LLVMAddressArrayLiteralNode extends LLVMExpressionNode {
@@ -59,17 +64,33 @@ public abstract class LLVMAddressArrayLiteralNode extends LLVMExpressionNode {
 
     @Specialization
     protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        return writeDouble(frame, globalAccess.getNativeLocation(global));
+        return writeAddress(frame, globalAccess.getNativeLocation(global));
     }
 
     @Specialization
     @ExplodeLoop
-    protected LLVMAddress writeDouble(VirtualFrame frame, LLVMAddress addr) {
+    protected LLVMAddress writeAddress(VirtualFrame frame, LLVMAddress addr) {
         long currentPtr = addr.getVal();
         for (int i = 0; i < values.length; i++) {
             LLVMAddress currentValue = toLLVM[i].executeWithTarget(values[i].executeGeneric(frame));
             LLVMMemory.putAddress(currentPtr, currentValue);
             currentPtr += stride;
+        }
+        return addr;
+    }
+
+    protected LLVMForeignWriteNode createForeignWrite() {
+        return LLVMForeignWriteNodeGen.create(new PointerType(VoidType.INSTANCE), 8);
+    }
+
+    @Specialization
+    @ExplodeLoop
+    protected LLVMTruffleObject foreignWriteRef(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+        LLVMTruffleObject currentPtr = addr;
+        for (int i = 0; i < values.length; i++) {
+            Object currentValue = values[i].executeGeneric(frame);
+            foreignWrite.execute(frame, currentPtr, currentValue);
+            currentPtr = currentPtr.increment(stride, currentPtr.getType());
         }
         return addr;
     }
