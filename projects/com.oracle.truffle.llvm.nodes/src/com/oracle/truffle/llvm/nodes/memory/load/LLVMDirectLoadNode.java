@@ -37,10 +37,10 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
@@ -94,6 +94,15 @@ public abstract class LLVMDirectLoadNode {
         @Specialization
         public LLVMFunctionHandle executeAddress(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             return LLVMFunctionHandle.createHandle(LLVMHeap.getFunctionPointer(globalAccess.getNativeLocation(addr)));
+        }
+
+        static LLVMForeignReadNode createForeignRead() {
+            return new LLVMForeignReadNode(ForeignToLLVMType.POINTER, ADDRESS_SIZE_IN_BYTES);
+        }
+
+        @Specialization
+        public Object executeForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+            return foreignRead.execute(frame, addr);
         }
     }
 
