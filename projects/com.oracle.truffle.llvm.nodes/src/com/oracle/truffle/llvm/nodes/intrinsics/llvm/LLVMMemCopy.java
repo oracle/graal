@@ -193,7 +193,7 @@ public abstract class LLVMMemCopy {
 
     }
 
-    private static void copy(LLVMVirtualAllocationAddress target, long source, long length) {
+    public static void copy(LLVMVirtualAllocationAddress target, long source, long length) {
         long sourcePointer = source;
         LLVMVirtualAllocationAddress targetAddress = target;
         for (long i = 0; i < length; i++) {
@@ -204,7 +204,7 @@ public abstract class LLVMMemCopy {
         }
     }
 
-    private static void copy(long target, LLVMVirtualAllocationAddress source, long length) {
+    public static void copy(long target, LLVMVirtualAllocationAddress source, long length) {
         LLVMVirtualAllocationAddress sourcePointer = source;
         long targetAddress = target;
         for (long i = 0; i < length; i++) {
@@ -215,7 +215,7 @@ public abstract class LLVMMemCopy {
         }
     }
 
-    private static void copy(LLVMVirtualAllocationAddress target, LLVMVirtualAllocationAddress source, long length) {
+    public static void copy(LLVMVirtualAllocationAddress target, LLVMVirtualAllocationAddress source, long length) {
         LLVMVirtualAllocationAddress sourcePointer = source;
         LLVMVirtualAllocationAddress targetAddress = target;
         for (long i = 0; i < length; i++) {
