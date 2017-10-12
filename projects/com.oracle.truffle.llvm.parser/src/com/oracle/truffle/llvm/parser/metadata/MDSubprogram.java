@@ -67,7 +67,7 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
 
     private final MDReference variables;
 
-    private final MDReference function;
+    private MDReference function;
 
     private MDReference compileUnit;
 
@@ -167,6 +167,10 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
 
     public MDReference getScope() {
         return scope;
+    }
+
+    public void setFunction(MDReference function) {
+        this.function = function;
     }
 
     public MDReference getFunction() {

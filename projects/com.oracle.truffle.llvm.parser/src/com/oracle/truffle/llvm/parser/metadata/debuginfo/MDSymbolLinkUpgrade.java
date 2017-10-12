@@ -45,9 +45,6 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
-import java.util.ArrayList;
-import java.util.List;
-
 final class MDSymbolLinkUpgrade implements MDFollowRefVisitor {
 
     static void perform(MetadataList metadata) {
@@ -55,13 +52,11 @@ final class MDSymbolLinkUpgrade implements MDFollowRefVisitor {
     }
 
     private final MetadataList metadata;
-    private final List<MDBaseNode> visited;
 
     private MDCompileUnit currentCU;
 
     private MDSymbolLinkUpgrade(MetadataList metadata) {
         this.metadata = metadata;
-        this.visited = new ArrayList<>(metadata.size());
         this.currentCU = null;
     }
 
@@ -74,12 +69,6 @@ final class MDSymbolLinkUpgrade implements MDFollowRefVisitor {
 
     @Override
     public void visit(MDNode md) {
-        if (visited.contains(md)) {
-            return;
-        } else {
-            visited.add(md);
-        }
-
         for (MDReference elt : md) {
             elt.accept(this);
         }
@@ -87,12 +76,6 @@ final class MDSymbolLinkUpgrade implements MDFollowRefVisitor {
 
     @Override
     public void visit(MDOldNode md) {
-        if (visited.contains(md)) {
-            return;
-        } else {
-            visited.add(md);
-        }
-
         for (MDTypedValue elt : md) {
             if (elt instanceof MDReference) {
                 ((MDReference) elt).accept(this);
@@ -102,30 +85,18 @@ final class MDSymbolLinkUpgrade implements MDFollowRefVisitor {
 
     @Override
     public void visit(MDSubprogram md) {
-        if (visited.contains(md)) {
-            return;
-        } else {
-            visited.add(md);
-        }
-
         final Symbol valueSymbol = MDSymbolExtractor.getSymbol(md.getFunction());
         if (valueSymbol instanceof FunctionDefinition) {
             final FunctionDefinition function = (FunctionDefinition) valueSymbol;
             attachSymbol(function, md);
         }
-        if (currentCU != null && md.getCompileUnit() != MDReference.VOID) {
-            md.setCompileUnit(MDReference.fromNode(md));
+        if (currentCU != null && md.getCompileUnit() == MDReference.VOID) {
+            md.setCompileUnit(MDReference.fromNode(currentCU));
         }
     }
 
     @Override
     public void visit(MDGlobalVariable mdGlobal) {
-        if (visited.contains(mdGlobal)) {
-            return;
-        } else {
-            visited.add(mdGlobal);
-        }
-
         final Symbol symbol = MDSymbolExtractor.getSymbol(mdGlobal.getVariable());
         if (symbol instanceof GlobalValueSymbol) {
             final GlobalValueSymbol global = (GlobalValueSymbol) symbol;
