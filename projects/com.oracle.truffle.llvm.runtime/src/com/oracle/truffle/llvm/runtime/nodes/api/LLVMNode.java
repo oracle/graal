@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import java.io.PrintStream;
 
@@ -39,6 +40,11 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 public abstract class LLVMNode extends Node {
+
+    public final ContextReference<LLVMContext> getContextReference() {
+        return getRootNode().getLanguage(LLVMLanguage.class).getContextReference();
+    }
+
     public final LLVMContext getContext() {
         return getRootNode().getLanguage(LLVMLanguage.class).getContextReference().get();
     }
