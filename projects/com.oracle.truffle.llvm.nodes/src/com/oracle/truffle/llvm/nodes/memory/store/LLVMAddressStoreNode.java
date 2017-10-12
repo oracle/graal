@@ -33,9 +33,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
@@ -54,6 +56,12 @@ public abstract class LLVMAddressStoreNode extends LLVMStoreNode {
     @Specialization
     public Object doAddress(LLVMAddress address, LLVMAddress value) {
         LLVMMemory.putAddress(address, value);
+        return null;
+    }
+
+    @Specialization
+    public Object doAddress(LLVMAddress address, LLVMFunction value) {
+        LLVMMemory.putAddress(address, value.getFunctionPointer());
         return null;
     }
 
