@@ -201,6 +201,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return new Variable(valueKind, ((VariableProvider) res.getLIR()).nextVariable());
     }
 
+    @Override
     public RegisterConfig getRegisterConfig() {
         return res.getRegisterConfig();
     }
