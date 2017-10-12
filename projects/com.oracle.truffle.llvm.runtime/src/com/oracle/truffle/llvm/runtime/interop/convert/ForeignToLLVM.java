@@ -99,7 +99,7 @@ public abstract class ForeignToLLVM extends LLVMNode {
         VOID
     }
 
-    private static ForeignToLLVMType convert(Type type) {
+    public static ForeignToLLVMType convert(Type type) {
         if (type instanceof PrimitiveType) {
             switch (((PrimitiveType) type).getPrimitiveKind()) {
                 case I1:
