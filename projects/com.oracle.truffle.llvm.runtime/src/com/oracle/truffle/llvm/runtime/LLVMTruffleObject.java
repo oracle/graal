@@ -62,7 +62,7 @@ public final class LLVMTruffleObject {
         this(object, 0, type, type.getSourceType());
     }
 
-    private LLVMTruffleObject(TruffleObject object, long offset, Type type, LLVMSourceType baseType) {
+    public LLVMTruffleObject(TruffleObject object, long offset, Type type, LLVMSourceType baseType) {
         this.object = object;
         this.offset = offset;
         this.type = type;
