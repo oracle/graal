@@ -31,6 +31,8 @@ package com.oracle.truffle.llvm.nodes.func;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
@@ -65,11 +67,15 @@ public final class LLVMThrowExceptionNode extends LLVMExpressionNode {
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        LLVMAddress thrownObject = exceptionInfoToLLVM.executeWithTarget(exceptionInfo.executeGeneric(frame));
-        LLVMAddress thrownType = thrownTypeIDToLLVM.executeWithTarget(thrownTypeID.executeGeneric(frame));
-        LLVMAddress dest = destructorToLLVM.executeWithTarget(destructor.executeGeneric(frame));
+        LLVMAddress thrownObject = exceptionInfoToLLVM.executeWithTarget(frame, exceptionInfo.executeGeneric(frame));
+        LLVMAddress thrownType = thrownTypeIDToLLVM.executeWithTarget(frame, thrownTypeID.executeGeneric(frame));
+        LLVMAddress dest = destructorToLLVM.executeWithTarget(frame, destructor.executeGeneric(frame));
         getExceptionInitializaton().throvv(thrownObject, thrownType, dest, LLVMAddress.nullPointer(), LLVMAddress.nullPointer());
         throw new LLVMException(thrownObject);
+    }
+
+    private static LLVMForceLLVMAddressNode getForceLLVMAddressNode() {
+        return LLVMForceLLVMAddressNodeGen.create();
     }
 
 }

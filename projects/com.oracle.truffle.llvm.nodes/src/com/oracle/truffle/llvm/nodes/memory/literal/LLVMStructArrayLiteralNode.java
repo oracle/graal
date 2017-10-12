@@ -29,89 +29,70 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.literal;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNode;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNodeGen;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.PointerType;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeChild(value = "address", type = LLVMExpressionNode.class)
-public abstract class LLVMAddressArrayLiteralNode extends LLVMExpressionNode {
+public abstract class LLVMAddressArrayCopyNode extends LLVMExpressionNode {
 
     @Children private final LLVMExpressionNode[] values;
-    @Children private final LLVMForceLLVMAddressNode[] toLLVM;
     private final int stride;
+    @Child private LLVMMemMoveNode memMove;
+    private final Type elementType;
 
-    public LLVMAddressArrayLiteralNode(LLVMExpressionNode[] values, int stride) {
+    public LLVMAddressArrayCopyNode(LLVMExpressionNode[] values, LLVMMemMoveNode memMove, int stride, Type elementType) {
         this.values = values;
         this.stride = stride;
-        this.toLLVM = getForceLLVMAddressNodes(values.length);
-    }
-
-    private static LLVMForceLLVMAddressNode[] getForceLLVMAddressNodes(int size) {
-        LLVMForceLLVMAddressNode[] forceToLLVM = new LLVMForceLLVMAddressNode[size];
-        for (int i = 0; i < size; i++) {
-            forceToLLVM[i] = getForceLLVMAddressNode();
-        }
-        return forceToLLVM;
-    }
-
-    private static LLVMForceLLVMAddressNode getForceLLVMAddressNode() {
-        return LLVMForceLLVMAddressNodeGen.create();
-    }
-
-    public LLVMExpressionNode[] getValues() {
-        return values;
+        this.memMove = memMove;
+        this.elementType = elementType;
     }
 
     @Specialization
     protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        return writeAddress(frame, globalAccess.getNativeLocation(global));
+        return writeDouble(frame, globalAccess.getNativeLocation(global));
     }
 
     @Specialization
     @ExplodeLoop
-    protected LLVMAddress writeAddress(VirtualFrame frame, LLVMAddress addr) {
+    protected LLVMAddress writeDouble(VirtualFrame frame, LLVMAddress addr) {
         long currentPtr = addr.getVal();
         for (int i = 0; i < values.length; i++) {
-            LLVMAddress currentValue = toLLVM[i].executeWithTarget(frame, values[i].executeGeneric(frame));
-            LLVMMemory.putAddress(currentPtr, currentValue);
-            currentPtr += stride;
+            try {
+                LLVMAddress currentValue = values[i].executeLLVMAddress(frame);
+                memMove.executeWithTarget(frame, LLVMAddress.fromLong(currentPtr), currentValue, stride);
+                currentPtr += stride;
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
         }
         return addr;
     }
 
-    protected LLVMForeignWriteNode[] createForeignWrites() {
-        LLVMForeignWriteNode[] writes = new LLVMForeignWriteNode[values.length];
-        for (int i = 0; i < writes.length; i++) {
-            writes[i] = LLVMForeignWriteNodeGen.create(new PointerType(VoidType.INSTANCE), 8);
-        }
-        return writes;
+    protected boolean noOffset(LLVMTruffleObject o) {
+        return o.getOffset() == 0;
     }
 
-    // TODO: work around a DSL bug (GR-6493): remove cached int a and int b
-    @SuppressWarnings("unused")
-    @Specialization
+    @Specialization(guards = {"noOffset(addr)"})
     @ExplodeLoop
-    protected LLVMTruffleObject foreignWriteRef(VirtualFrame frame, LLVMTruffleObject addr, @Cached("0") int a,
-                    @Cached("0") int b, @Cached("createForeignWrites()") LLVMForeignWriteNode[] foreignWrites) {
+    public Object executeVoid(VirtualFrame frame, LLVMTruffleObject addr) {
         LLVMTruffleObject currentPtr = addr;
         for (int i = 0; i < values.length; i++) {
-            Object currentValue = values[i].executeGeneric(frame);
-            foreignWrites[i].execute(frame, currentPtr, currentValue);
-            currentPtr = currentPtr.increment(stride, currentPtr.getType());
+            LLVMTruffleObject currentValue = (LLVMTruffleObject) values[i].executeGeneric(frame);
+            memMove.executeWithTarget(frame, currentPtr, currentValue, stride);
+            currentPtr = currentPtr.increment(stride, elementType);
         }
         return addr;
     }

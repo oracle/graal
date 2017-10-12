@@ -31,10 +31,8 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
@@ -42,14 +40,12 @@ import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
-@NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
 public abstract class LLVMDoubleStoreNode extends LLVMStoreNode {
 
-    public LLVMDoubleStoreNode(SourceSection source) {
-        super(PrimitiveType.DOUBLE, DOUBLE_SIZE_IN_BYTES, source);
+    public LLVMDoubleStoreNode() {
+        super(PrimitiveType.DOUBLE, DOUBLE_SIZE_IN_BYTES);
     }
 
     @Specialization

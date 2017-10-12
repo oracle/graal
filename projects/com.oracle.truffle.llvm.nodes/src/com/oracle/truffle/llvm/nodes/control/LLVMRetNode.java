@@ -49,7 +49,7 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
-import com.oracle.truffle.llvm.runtime.memory.LLVMProfiledMemMove;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
@@ -300,13 +300,13 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
     public abstract static class LLVMStructRetNode extends LLVMRetNode {
 
         @Child private LLVMArgNode argIdx1 = LLVMArgNodeGen.create(1);
-        private final LLVMProfiledMemMove profiledMemMove;
+        @Child private LLVMMemMoveNode memMove;
 
         public abstract int getStructSize();
 
-        public LLVMStructRetNode(SourceSection sourceSection) {
+        public LLVMStructRetNode(SourceSection sourceSection, LLVMMemMoveNode memMove) {
             super(sourceSection);
-            this.profiledMemMove = new LLVMProfiledMemMove();
+            this.memMove = memMove;
         }
 
         @Specialization
@@ -317,7 +317,7 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
         private Object returnStruct(VirtualFrame frame, LLVMAddress retResult) {
             try {
                 LLVMAddress retStructAddress = argIdx1.executeLLVMAddress(frame);
-                profiledMemMove.memmove(retStructAddress, retResult, getStructSize());
+                memMove.executeWithTarget(frame, retStructAddress, retResult, getStructSize());
                 return retStructAddress;
             } catch (UnexpectedResultException e) {
                 CompilerDirectives.transferToInterpreter();

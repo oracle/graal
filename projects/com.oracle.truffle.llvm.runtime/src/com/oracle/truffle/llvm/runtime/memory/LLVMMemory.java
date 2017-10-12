@@ -55,7 +55,6 @@ public abstract class LLVMMemory {
 
     private static final Unsafe UNSAFE = getUnsafe();
 
-    @SuppressWarnings("restriction")
     private static Unsafe getUnsafe() {
         CompilerAsserts.neverPartOfCompilation();
         try {
@@ -67,7 +66,7 @@ public abstract class LLVMMemory {
         }
     }
 
-    /** Use {@link com.oracle.truffle.llvm.runtime.memory.LLVMProfiledMemSet} instead. */
+    /** Use {@link com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode} instead. */
     @Deprecated
     public static void memset(LLVMAddress address, long size, byte value) {
         try {
@@ -79,7 +78,7 @@ public abstract class LLVMMemory {
         }
     }
 
-    /** Use {@link com.oracle.truffle.llvm.runtime.memory.LLVMProfiledMemSet} instead. */
+    /** Use {@link com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode} instead. */
     @Deprecated
     public static void memset(long address, long size, byte value) {
         try {
@@ -91,7 +90,7 @@ public abstract class LLVMMemory {
         }
     }
 
-    /** Use {@link com.oracle.truffle.llvm.runtime.memory.LLVMProfiledMemMove} instead. */
+    /** Use {@link com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode} instead. */
     @Deprecated
     public static void copyMemory(long sourceAddress, long targetAddress, long length) {
         UNSAFE.copyMemory(sourceAddress, targetAddress, length);

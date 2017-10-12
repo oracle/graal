@@ -30,52 +30,62 @@
 package com.oracle.truffle.llvm.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
-import com.oracle.truffle.llvm.runtime.memory.LLVMProfiledMemMove;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-@NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
 @NodeField(type = int.class, name = "structSize")
 public abstract class LLVMStructStoreNode extends LLVMStoreNode {
 
-    private final LLVMProfiledMemMove profiledMemMove;
-
     public abstract int getStructSize();
 
-    protected LLVMStructStoreNode(Type type, SourceSection source) {
-        super(type, 0, source);
-        profiledMemMove = new LLVMProfiledMemMove();
+    @Child private LLVMMemMoveNode memMove;
+
+    protected LLVMStructStoreNode(LLVMMemMoveNode memMove, Type type) {
+        super(type, 0);
+        this.memMove = memMove;
     }
 
     @Specialization
-    public Object execute(LLVMGlobalVariable address, LLVMGlobalVariable value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess1,
+    public Object execute(VirtualFrame frame, LLVMGlobalVariable address, LLVMGlobalVariable value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess1,
                     @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess2) {
-        profiledMemMove.memmove(globalAccess1.getNativeLocation(address), globalAccess2.getNativeLocation(value), getStructSize());
+        memMove.executeWithTarget(frame, globalAccess1.getNativeLocation(address), globalAccess2.getNativeLocation(value), getStructSize());
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMAddress address, LLVMGlobalVariable value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        profiledMemMove.memmove(address, globalAccess.getNativeLocation(value), getStructSize());
+    public Object execute(VirtualFrame frame, LLVMAddress address, LLVMGlobalVariable value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        memMove.executeWithTarget(frame, address, globalAccess.getNativeLocation(value), getStructSize());
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMGlobalVariable address, LLVMAddress value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        profiledMemMove.memmove(globalAccess.getNativeLocation(address), value, getStructSize());
+    public Object execute(VirtualFrame frame, LLVMGlobalVariable address, LLVMAddress value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        memMove.executeWithTarget(frame, globalAccess.getNativeLocation(address), value, getStructSize());
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMAddress address, LLVMAddress value) {
-        profiledMemMove.memmove(address, value, getStructSize());
+    public Object execute(VirtualFrame frame, LLVMAddress address, LLVMAddress value) {
+        memMove.executeWithTarget(frame, address, value, getStructSize());
+        return null;
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = "getStructSize() == 0")
+    public Object noCopy(LLVMAddress address, Object value) {
+        return null;
+    }
+
+    @Specialization
+    public Object doTruffleObject(VirtualFrame frame, LLVMTruffleObject address, LLVMTruffleObject value) {
+        memMove.executeWithTarget(frame, address, value, getStructSize());
         return null;
     }
 

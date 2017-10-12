@@ -29,32 +29,23 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.store;
 
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-@NodeChildren(value = {@NodeChild(type = LLVMExpressionNode.class, value = "pointerNode")})
-public abstract class LLVMStoreNode extends LLVMExpressionNode {
+public abstract class LLVMStoreNode extends LLVMNode {
 
     protected final Type valueType;
     private final int elementAccessSize;
 
-    private final SourceSection sourceSection;
-
-    public LLVMStoreNode(Type valueType, int elementAccessSize, SourceSection sourceSection) {
+    public LLVMStoreNode(Type valueType, int elementAccessSize) {
         this.valueType = valueType;
         this.elementAccessSize = elementAccessSize;
-        this.sourceSection = sourceSection;
     }
 
     protected LLVMForeignWriteNode createForeignWrite() {
         return LLVMForeignWriteNodeGen.create(valueType, elementAccessSize);
     }
 
-    @Override
-    public SourceSection getSourceSection() {
-        return sourceSection;
-    }
+    public abstract Object executeWithTarget(VirtualFrame frame, Object address, Object value);
 }

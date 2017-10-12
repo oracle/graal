@@ -27,18 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.memory;
+package com.oracle.truffle.llvm.nodes.memory;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
-public class LLVMProfiledMemSet {
+public abstract class NativeMemSetNode extends LLVMMemSetNode {
+
     protected static final long MAX_JAVA_LEN = 256;
 
     @CompilationFinal private boolean inJava = true;
 
-    public void memset(LLVMAddress address, byte value, long length) {
+    @Specialization
+    public Object memset(LLVMAddress address, byte value, long length) {
         if (inJava) {
             if (length <= MAX_JAVA_LEN) {
                 long current = address.getVal();
@@ -59,7 +64,6 @@ public class LLVMProfiledMemSet {
                     LLVMMemory.putI8(current, value);
                     current++;
                 }
-                return;
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 inJava = false;
@@ -67,6 +71,7 @@ public class LLVMProfiledMemSet {
         }
 
         nativeMemSet(address, value, length);
+        return null;
     }
 
     @SuppressWarnings("deprecation")

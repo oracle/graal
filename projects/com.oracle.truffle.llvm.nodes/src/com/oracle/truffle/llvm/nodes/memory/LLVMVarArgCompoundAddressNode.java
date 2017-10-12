@@ -27,54 +27,35 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.memory.literal;
+package com.oracle.truffle.llvm.nodes.memory;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.dsl.NodeFields;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
-import com.oracle.truffle.llvm.runtime.memory.LLVMProfiledMemMove;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChild(value = "address", type = LLVMExpressionNode.class)
-public abstract class LLVMAddressArrayCopyNode extends LLVMExpressionNode {
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "source")})
+@NodeFields({@NodeField(name = "length", type = int.class), @NodeField(name = "alignment", type = int.class)})
+public abstract class LLVMVarArgCompoundAddressNode extends LLVMExpressionNode {
+    public abstract int getLength();
 
-    @Children private final LLVMExpressionNode[] values;
-    private final int stride;
-    private final LLVMProfiledMemMove profiledMemMove;
+    public abstract int getAlignment();
 
-    public LLVMAddressArrayCopyNode(LLVMExpressionNode[] values, int stride) {
-        this.values = values;
-        this.stride = stride;
-        this.profiledMemMove = new LLVMProfiledMemMove();
+    @Specialization
+    public LLVMVarArgCompoundValue byValue(LLVMGlobalVariable source, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
+        return byValue(access.getNativeLocation(source));
     }
 
     @Specialization
-    protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        return writeDouble(frame, globalAccess.getNativeLocation(global));
-    }
-
-    @Specialization
-    @ExplodeLoop
-    protected LLVMAddress writeDouble(VirtualFrame frame, LLVMAddress addr) {
-        long currentPtr = addr.getVal();
-        for (int i = 0; i < values.length; i++) {
-            try {
-                LLVMAddress currentValue = values[i].executeLLVMAddress(frame);
-                profiledMemMove.memmove(LLVMAddress.fromLong(currentPtr), currentValue, stride);
-                currentPtr += stride;
-            } catch (UnexpectedResultException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
-            }
-        }
-        return addr;
+    public LLVMVarArgCompoundValue byValue(LLVMAddress source) {
+        return LLVMVarArgCompoundValue.create(source.getVal(), getLength(), getAlignment());
     }
 
 }

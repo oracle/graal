@@ -27,18 +27,22 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.memory;
+package com.oracle.truffle.llvm.nodes.memory;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
-public class LLVMProfiledMemMove {
+public abstract class NativeProfiledMemMove extends LLVMMemMoveNode {
     protected static final long MAX_JAVA_LEN = 256;
 
     @CompilationFinal private boolean inJava = true;
 
-    public void memmove(LLVMAddress target, LLVMAddress source, long length) {
+    @Specialization
+    public Object memmove(LLVMAddress target, LLVMAddress source, long length) {
         if (inJava) {
             if (length <= MAX_JAVA_LEN) {
                 long targetPointer = target.getVal();
@@ -51,7 +55,7 @@ public class LLVMProfiledMemMove {
                 } else {
                     copyBackward(targetPointer, sourcePointer, length);
                 }
-                return;
+                return null;
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 inJava = false;
@@ -59,6 +63,7 @@ public class LLVMProfiledMemMove {
         }
 
         nativeMemCopy(target, source, length);
+        return null;
     }
 
     private static void copyForward(long target, long source, long length) {

@@ -52,10 +52,10 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectReadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class LLVMObjectAccessFactory {
 
@@ -283,5 +283,7 @@ public abstract class LLVMObjectAccessFactory {
             Object escaped = dataEscape.executeWithTarget(value, ctxRef.get());
             ForeignAccess.sendWrite(write, (TruffleObject) obj, identifier, escaped);
         }
+
     }
+
 }

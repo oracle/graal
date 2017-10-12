@@ -169,6 +169,11 @@ public abstract class LLVMDirectLoadNode {
         public LLVMAddress executeAddress(LLVMAddress addr) {
             return addr; // we do not actually load the struct into a virtual register
         }
+
+        @Specialization
+        public LLVMTruffleObject executeTruffleObject(LLVMTruffleObject addr) {
+            return addr; // we do not actually load the struct into a virtual register
+        }
     }
 
 }
