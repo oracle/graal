@@ -32,9 +32,11 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
@@ -45,7 +47,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 public abstract class LLVMFunctionStoreNode extends LLVMStoreNode {
 
     public LLVMFunctionStoreNode(Type type, SourceSection source) {
-        super(type, 0, source);
+        super(type, ADDRESS_SIZE_IN_BYTES, source);
     }
 
     @Specialization
@@ -60,4 +62,9 @@ public abstract class LLVMFunctionStoreNode extends LLVMStoreNode {
         return null;
     }
 
+    @Specialization
+    public Object execute(VirtualFrame frame, LLVMTruffleObject address, LLVMFunction value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+        foreignWrite.execute(frame, address, value);
+        return null;
+    }
 }
