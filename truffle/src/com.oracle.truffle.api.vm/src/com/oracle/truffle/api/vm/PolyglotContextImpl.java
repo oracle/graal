@@ -148,7 +148,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
 
     // Test that "engine options" are not present among the options designated for this context
     private void testNoEngineOptions(Map<String, String> options) {
-        String engineOption = engine.findEngineOption(options);
+        String engineOption = engine.findPublicEngineOption(options);
         if (engineOption != null) {
             throw new IllegalArgumentException("Option " + engineOption + " is supported, but cannot be configured for contexts with a shared engine set." +
                             " To resolve this, configure the option when creating the Engine.");
