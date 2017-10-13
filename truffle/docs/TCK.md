@@ -10,7 +10,7 @@ The `LanguageProvider`s are loaded using the `java.util.ServiceLoader` therefore
 implementation in the `META-INF/services/org.graalvm.polyglot.tck.LanguageProvider` file.
 The `LanguageProvider` should provide the language data types, language expressions (operators) and language control flow statements
 represented as functions returning the data type or executing the operator (statement).
-To allow chaining of the returned functions the parameter and return types has to be assigned to them using
+To allow composition of the returned functions the parameter and return types have to be assigned to them using
 the [Snippet.Builder](http://graalvm.github.io/graal/truffle/javadoc/org/graalvm/polyglot/tck/Snippet.Builder.html).
 The `LanguageProvider` should also provide simple but representative scripts which the TCK can use to test
 instrumentation.

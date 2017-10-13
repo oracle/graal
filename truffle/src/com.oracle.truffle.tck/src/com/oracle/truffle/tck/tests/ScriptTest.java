@@ -25,6 +25,7 @@
 package com.oracle.truffle.tck.tests;
 
 import java.io.IOException;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -52,7 +53,7 @@ public class ScriptTest {
         final Collection<TestRun> res = new ArrayList<>();
         for (String lang : TestUtil.getRequiredLanguages(context)) {
             for (Snippet script : context.getScripts(null, lang)) {
-                res.add(new TestRun(Pair.of(lang, script), Collections.emptyList()));
+                res.add(new TestRun(new AbstractMap.SimpleImmutableEntry<>(lang, script), Collections.emptyList()));
             }
         }
         return res;
@@ -86,7 +87,7 @@ public class ScriptTest {
                 TestUtil.validateResult(testRun, null, pe);
             }
         } finally {
-            TEST_RESULT_MATCHER.accept(Pair.of(testRun, result != null));
+            TEST_RESULT_MATCHER.accept(new AbstractMap.SimpleImmutableEntry<>(testRun, result != null));
         }
     }
 }

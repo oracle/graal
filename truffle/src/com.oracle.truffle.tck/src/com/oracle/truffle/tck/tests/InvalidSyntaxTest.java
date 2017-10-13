@@ -25,6 +25,7 @@
 package com.oracle.truffle.tck.tests;
 
 import java.io.IOException;
+import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.function.Function;
@@ -97,7 +98,7 @@ public class InvalidSyntaxTest {
                 throw new AssertionError("Syntax error should have a SourceSection.");
             }
         } finally {
-            TEST_RESULT_MATCHER.accept(Pair.of(source, exception));
+            TEST_RESULT_MATCHER.accept(new AbstractMap.SimpleImmutableEntry<>(source, exception));
         }
     }
 }

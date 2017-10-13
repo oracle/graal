@@ -25,6 +25,7 @@
 package com.oracle.truffle.tck.tests;
 
 import java.io.IOException;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -89,16 +90,16 @@ public class ErrorTypeTest {
         final Set<? extends String> requiredValueLanguages = TestUtil.getRequiredValueLanguages(context);
         for (Snippet snippet : snippets) {
             for (String parLanguage : requiredValueLanguages) {
-                final Collection<Pair<String, ? extends Snippet>> valueConstructors = new HashSet<>();
+                final Collection<Map.Entry<String, ? extends Snippet>> valueConstructors = new HashSet<>();
                 for (Snippet valueConstructor : context.getValueConstructors(null, parLanguage)) {
-                    valueConstructors.add(Pair.of(parLanguage, valueConstructor));
+                    valueConstructors.add(new AbstractMap.SimpleImmutableEntry<>(parLanguage, valueConstructor));
                 }
-                final List<List<Pair<String, ? extends Snippet>>> applicableParams = TestUtil.findApplicableParameters(snippet, valueConstructors);
+                final List<List<Map.Entry<String, ? extends Snippet>>> applicableParams = TestUtil.findApplicableParameters(snippet, valueConstructors);
                 if (!applicableParams.isEmpty()) {
                     final Collection<? extends Snippet> operatorOverloads = new ArrayList<>(overloads.get(snippet.getId()));
                     operatorOverloads.remove(snippet);
                     computeAllInvalidPermutations(
-                                    Pair.of(snippetLanguage, snippet),
+                                    new AbstractMap.SimpleImmutableEntry<>(snippetLanguage, snippet),
                                     applicableParams,
                                     valueConstructors,
                                     operatorOverloads,
@@ -123,22 +124,22 @@ public class ErrorTypeTest {
     }
 
     private static void computeAllInvalidPermutations(
-                    final Pair<String, ? extends Snippet> operator,
-                    final List<List<Pair<String, ? extends Snippet>>> applicableArgs,
-                    final Collection<Pair<String, ? extends Snippet>> allValueConstructors,
+                    final Map.Entry<String, ? extends Snippet> operator,
+                    final List<List<Map.Entry<String, ? extends Snippet>>> applicableArgs,
+                    final Collection<Map.Entry<String, ? extends Snippet>> allValueConstructors,
                     final Collection<? extends Snippet> overloads,
                     final Collection<? super TestRun> collector) {
         for (int i = 0; i < applicableArgs.size(); i++) {
-            final Set<Pair<String, ? extends Snippet>> nonApplicableArgs = new HashSet<>(allValueConstructors);
+            final Set<Map.Entry<String, ? extends Snippet>> nonApplicableArgs = new HashSet<>(allValueConstructors);
             nonApplicableArgs.removeAll(applicableArgs.get(i));
             if (!nonApplicableArgs.isEmpty()) {
-                final List<List<Pair<String, ? extends Snippet>>> args = new ArrayList<>(applicableArgs.size());
+                final List<List<Map.Entry<String, ? extends Snippet>>> args = new ArrayList<>(applicableArgs.size());
                 boolean canBeInvoked = true;
                 for (int j = 0; j < applicableArgs.size(); j++) {
                     if (i == j) {
                         args.add(new ArrayList<>(nonApplicableArgs));
                     } else {
-                        final List<Pair<String, ? extends Snippet>> slotArgs = applicableArgs.get(j);
+                        final List<Map.Entry<String, ? extends Snippet>> slotArgs = applicableArgs.get(j);
                         if (slotArgs.isEmpty()) {
                             canBeInvoked = false;
                             break;
@@ -210,7 +211,7 @@ public class ErrorTypeTest {
                 throw new AssertionError("Expected exception.");
             }
         } finally {
-            TEST_RESULT_MATCHER.accept(Pair.of(testRun, passed));
+            TEST_RESULT_MATCHER.accept(new AbstractMap.SimpleImmutableEntry<>(testRun, passed));
         }
     }
 }

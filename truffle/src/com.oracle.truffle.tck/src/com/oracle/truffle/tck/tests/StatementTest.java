@@ -25,6 +25,7 @@
 package com.oracle.truffle.tck.tests;
 
 import java.io.IOException;
+import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.function.Function;
@@ -95,7 +96,7 @@ public class StatementTest {
                 TestUtil.validateResult(testRun, null, pe);
             }
         } finally {
-            TEST_RESULT_MATCHER.accept(Pair.of(testRun, result != null));
+            TEST_RESULT_MATCHER.accept(new AbstractMap.SimpleImmutableEntry<>(testRun, result != null));
         }
     }
 }
