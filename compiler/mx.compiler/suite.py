@@ -180,6 +180,7 @@ suite = {
       "dependencies" : [
         "JVMCI_API",
         "org.graalvm.compiler.serviceprovider",
+        "org.graalvm.graphio",
         "org.graalvm.compiler.options"
       ],
       "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
@@ -1059,7 +1060,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.graphio",
         "org.graalvm.compiler.core",
         "org.graalvm.compiler.java",
       ],
@@ -1130,7 +1130,6 @@ suite = {
         "truffle:TRUFFLE_API",
         "org.graalvm.compiler.api.runtime",
         "org.graalvm.compiler.runtime",
-        "org.graalvm.graphio",
         "org.graalvm.compiler.replacements",
       ],
       "uses" : [
@@ -1322,6 +1321,7 @@ suite = {
       "distDependencies" : [
         "sdk:GRAAL_SDK",
         "JVMCI_API",
+        "GRAAL_GRAPHIO",
         "GRAAL_NODEINFO",
         "GRAAL_OPTIONS",
         "GRAAL_SERVICEPROVIDER",

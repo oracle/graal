@@ -363,7 +363,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         Stub stub = getStub();
         if (destroysRegisters) {
             if (stub != null && stub.preservesRegisters()) {
-                Register[] savedRegisters = getResult().getFrameMapBuilder().getRegisterConfig().getAllocatableRegisters().toArray();
+                Register[] savedRegisters = getRegisterConfig().getAllocatableRegisters().toArray();
                 save = emitSaveAllRegisters(savedRegisters, true);
             }
         }
@@ -635,9 +635,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
                 uncompressed = emitUncompress(address, encoding, false);
             }
             append(new AMD64Move.NullCheckOp(asAddressValue(uncompressed), state));
-        } else {
-            super.emitNullCheck(address, state);
+            return;
         }
+        super.emitNullCheck(address, state);
     }
 
     @Override

@@ -144,6 +144,8 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         if (supportsAVX2(crb.target)) {
             emitAVXCompare(crb, masm, result, array1, array2, length, trueLabel, falseLabel);
         } else if (supportsSSE41(crb.target)) {
+            // this code is used for AVX as well because our backend correctly ensures that
+            // VEX-prefixed instructions are emitted if AVX is supported
             emitSSE41Compare(crb, masm, result, array1, array2, length, trueLabel, falseLabel);
         }
 

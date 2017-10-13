@@ -34,11 +34,11 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeClass;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.nio.channels.WritableByteChannel;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Objects;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.truffle.GraphPrintVisitor.EdgeType;
 import org.graalvm.compiler.truffle.GraphPrintVisitor.NodeElement;
 import org.graalvm.graphio.GraphOutput;
@@ -217,8 +217,8 @@ final class GraphPrintVisitor implements GraphStructure<RootCallTarget, NodeElem
 
     private final GraphOutput<RootCallTarget, ?> output;
 
-    GraphPrintVisitor(WritableByteChannel ch) throws IOException {
-        output = GraphOutput.newBuilder(this).build(ch);
+    GraphPrintVisitor(DebugContext ctx) throws IOException {
+        output = ctx.buildOutput(GraphOutput.newBuilder(this));
     }
 
     /** @since 0.8 or earlier */
