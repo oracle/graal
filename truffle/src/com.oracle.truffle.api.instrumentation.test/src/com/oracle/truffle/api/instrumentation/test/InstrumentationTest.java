@@ -844,13 +844,14 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         static PipedOutputStream err = new PipedOutputStream();
         static Reader fromErr;
 
-        public TestOutputConsumerPiped() throws IOException {
-            fromOut = new InputStreamReader(new PipedInputStream(out));
-            fromErr = new InputStreamReader(new PipedInputStream(err));
-        }
-
         @Override
         protected void onCreate(Env env) {
+            try {
+                fromOut = new InputStreamReader(new PipedInputStream(out));
+                fromErr = new InputStreamReader(new PipedInputStream(err));
+            } catch (IOException ex) {
+                throw new AssertionError(ex.getLocalizedMessage(), ex);
+            }
             env.getInstrumenter().attachOutConsumer(out);
             env.getInstrumenter().attachErrConsumer(err);
             // Not to get error: declares service, but doesn't register it

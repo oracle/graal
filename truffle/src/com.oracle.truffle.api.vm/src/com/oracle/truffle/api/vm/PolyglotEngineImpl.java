@@ -230,14 +230,9 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             }
         }
 
+        // When changing this logic, make sure it is in synch with #findEngineOption()
         for (String key : options.keySet()) {
-            int groupIndex = key.indexOf('.');
-            String group;
-            if (groupIndex != -1) {
-                group = key.substring(0, groupIndex);
-            } else {
-                group = key;
-            }
+            String group = parseOptionGroup(key);
             String value = options.get(key);
             PolyglotLanguage language = idToLanguage.get(group);
             if (language != null && !language.cache.isInternal()) {
@@ -271,6 +266,34 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             }
             throw OptionValuesImpl.failNotFound(getAllOptions(), key);
         }
+    }
+
+    /**
+     * Find if there is an "engine option" (covers engine, compiler and instruments options) present
+     * among the given options.
+     */
+    // The implementation must be in synch with #parseOptions()
+    String findPublicEngineOption(Map<String, String> options) {
+        for (String key : options.keySet()) {
+            String group = parseOptionGroup(key);
+            if (idToPublicInstrument.containsKey(group) ||
+                            group.equals(PolyglotImpl.OPTION_GROUP_ENGINE) ||
+                            group.equals(PolyglotImpl.OPTION_GROUP_COMPILER)) {
+                return key;
+            }
+        }
+        return null;
+    }
+
+    private static String parseOptionGroup(String key) {
+        int groupIndex = key.indexOf('.');
+        String group;
+        if (groupIndex != -1) {
+            group = key.substring(0, groupIndex);
+        } else {
+            group = key;
+        }
+        return group;
     }
 
     @Override

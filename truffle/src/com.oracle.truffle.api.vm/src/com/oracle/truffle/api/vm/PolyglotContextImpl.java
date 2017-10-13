@@ -136,12 +136,22 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         this.contexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = new PolyglotLanguageContext(this, engine.hostLanguage, null, applicationArguments.get(PolyglotEngineImpl.HOST_LANGUAGE_ID),
                         new HashMap<>());
 
+        testNoEngineOptions(options);
         for (PolyglotLanguage language : languages) {
             OptionValuesImpl values = language.getOptionValues().copy();
             values.putAll(options);
 
             PolyglotLanguageContext languageContext = new PolyglotLanguageContext(this, language, values, applicationArguments.get(language.getId()), new HashMap<>());
             this.contexts[language.index] = languageContext;
+        }
+    }
+
+    // Test that "engine options" are not present among the options designated for this context
+    private void testNoEngineOptions(Map<String, String> options) {
+        String engineOption = engine.findPublicEngineOption(options);
+        if (engineOption != null) {
+            throw new IllegalArgumentException("Option " + engineOption + " is supported, but cannot be configured for contexts with a shared engine set." +
+                            " To resolve this, configure the option when creating the Engine.");
         }
     }
 
