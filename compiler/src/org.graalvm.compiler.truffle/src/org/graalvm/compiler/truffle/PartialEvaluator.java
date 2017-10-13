@@ -25,6 +25,7 @@ package org.graalvm.compiler.truffle;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import java.io.IOException;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -207,13 +208,16 @@ public abstract class PartialEvaluator {
                         build();
         // @formatter:on
 
+        GraphOutput<Void, ?> output = null;
         try (DebugContext.Scope s = debug.scope("CreateGraph", graph);
-                        Indent indent = debug.logAndIndent("createGraph %s", graph);
-                        GraphOutput<Void, ?> output = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE))) {
+                        Indent indent = debug.logAndIndent("createGraph %s", graph);) {
 
-            output.beginGroup(null, callTarget.toString(), callTarget.toString(), null, 0, null);
             try (Scope c = debug.scope("TruffleTree")) {
-                debug.dump(DebugContext.BASIC_LEVEL, new TruffleTreeDumpHandler.TruffleTreeDump(callTarget), "TruffleTree");
+                if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
+                    output = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE));
+                    output.beginGroup(null, callTarget.toString(), callTarget.toString(), null, 0, null);
+                    debug.dump(DebugContext.BASIC_LEVEL, new TruffleTreeDumpHandler.TruffleTreeDump(callTarget), "TruffleTree");
+                }
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -230,9 +234,17 @@ public abstract class PartialEvaluator {
             new VerifyFrameDoesNotEscapePhase().apply(graph, false);
             postPartialEvaluation(graph);
 
-            output.endGroup();
         } catch (Throwable e) {
             throw debug.handle(e);
+        } finally {
+            if (output != null) {
+                try {
+                    output.endGroup();
+                    output.close();
+                } catch (IOException ex) {
+                    throw debug.handle(ex);
+                }
+            }
         }
 
         return graph;
