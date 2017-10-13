@@ -208,12 +208,16 @@ public abstract class PartialEvaluator {
         // @formatter:on
 
         try (DebugContext.Scope s = debug.scope("CreateGraph", graph);
-                        Indent indent = debug.logAndIndent("createGraph %s", graph);
-                        GraphOutput<Void, ?> output = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE))) {
+                        Indent indent = debug.logAndIndent("createGraph %s", graph);) {
 
-            output.beginGroup(null, callTarget.toString(), callTarget.toString(), null, 0, null);
+            GraphOutput<Void, ?> output = null;
+
             try (Scope c = debug.scope("TruffleTree")) {
-                debug.dump(DebugContext.BASIC_LEVEL, new TruffleTreeDumpHandler.TruffleTreeDump(callTarget), "TruffleTree");
+                if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
+                    output = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE));
+                    output.beginGroup(null, callTarget.toString(), callTarget.toString(), null, 0, null);
+                    debug.dump(DebugContext.BASIC_LEVEL, new TruffleTreeDumpHandler.TruffleTreeDump(callTarget), "TruffleTree");
+                }
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -230,7 +234,10 @@ public abstract class PartialEvaluator {
             new VerifyFrameDoesNotEscapePhase().apply(graph, false);
             postPartialEvaluation(graph);
 
-            output.endGroup();
+            if (output != null) {
+                output.endGroup();
+                output.close();
+            }
         } catch (Throwable e) {
             throw debug.handle(e);
         }
