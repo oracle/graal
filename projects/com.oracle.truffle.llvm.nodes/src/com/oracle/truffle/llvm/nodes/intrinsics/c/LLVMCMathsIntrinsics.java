@@ -204,6 +204,20 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMFmodl extends LLVMIntrinsic {
+
+        @Specialization
+        public LLVM80BitFloat executeIntrinsic(LLVM80BitFloat numer, LLVM80BitFloat denom) {
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, denom.isZero())) {
+                return LLVM80BitFloat.fromInt(0);
+            } else {
+                return numer.rem(denom);
+            }
+        }
+
+    }
+
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMPow extends LLVMBuiltin {
 
         @Specialization
