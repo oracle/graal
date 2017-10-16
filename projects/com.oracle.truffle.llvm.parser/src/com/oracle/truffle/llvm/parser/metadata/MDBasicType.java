@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import com.oracle.truffle.llvm.parser.listeners.Metadata;
 import com.oracle.truffle.llvm.parser.records.DwTagRecord;
 
 import java.util.Arrays;
@@ -108,18 +109,18 @@ public final class MDBasicType extends MDType implements MDBaseNode {
     private static final int ARGINDEX_32_FLAGS = 8;
     private static final int ARGINDEX_32_ENCODING = 9;
 
-    public static MDBasicType create32(MDTypedValue[] args, MetadataValueList md) {
+    public static MDBasicType create32(long[] args, Metadata md) {
         // final MDReference scope = metadata.getReference(args[1]);
-        final long line = ParseUtil.asInt32(args[ARGINDEX_32_LINE]);
-        final long size = ParseUtil.asInt64(args[ARGINDEX_32_SIZE]);
-        final long align = ParseUtil.asInt64(args[ARGINDEX_32_ALIGN]);
-        final long offset = ParseUtil.asInt64(args[ARGINDEX_32_OFFSET]);
-        final long flags = ParseUtil.asInt32(args[ARGINDEX_32_FLAGS]);
-        final long encoding = ParseUtil.asInt32(args[ARGINDEX_32_ENCODING]);
+        final long line = ParseUtil.asInt(args, ARGINDEX_32_LINE, md);
+        final long size = ParseUtil.asLong(args, ARGINDEX_32_SIZE, md);
+        final long align = ParseUtil.asLong(args, ARGINDEX_32_ALIGN, md);
+        final long offset = ParseUtil.asLong(args, ARGINDEX_32_OFFSET, md);
+        final long flags = ParseUtil.asInt(args, ARGINDEX_32_FLAGS, md);
+        final long encoding = ParseUtil.asInt(args, ARGINDEX_32_ENCODING, md);
 
         final MDBasicType basicType = new MDBasicType(DwTagRecord.DW_TAG_BASE_TYPE.code(), line, size, align, offset, flags, encoding);
-        basicType.setName(ParseUtil.resolveReference(args[ARGINDEX_32_NAME], basicType, md));
-        basicType.setFile(ParseUtil.resolveReference(args[ARGINDEX_32_FILE], basicType, md));
+        basicType.setName(ParseUtil.resolveReference(args, ARGINDEX_32_NAME, basicType, md));
+        basicType.setFile(ParseUtil.resolveReference(args, ARGINDEX_32_FILE, basicType, md));
         return basicType;
     }
 

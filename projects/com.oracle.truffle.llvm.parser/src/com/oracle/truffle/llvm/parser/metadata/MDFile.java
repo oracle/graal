@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import com.oracle.truffle.llvm.parser.listeners.Metadata;
+
 public final class MDFile implements MDBaseNode {
 
     private MDBaseNode directory;
@@ -73,10 +75,10 @@ public final class MDFile implements MDBaseNode {
         return file;
     }
 
-    public static MDFile create32(MDTypedValue[] args, MetadataValueList md) {
+    public static MDFile create32(long[] args, Metadata md) {
         final MDFile file = new MDFile();
-        file.file = ParseUtil.resolveReference(args[ARGINDEX_FILENAME], file, md);
-        file.directory = ParseUtil.resolveReference(args[ARGINDEX_DIRECTORY], file, md);
+        file.file = ParseUtil.resolveReference(args, ARGINDEX_FILENAME, file, md);
+        file.directory = ParseUtil.resolveReference(args, ARGINDEX_DIRECTORY, file, md);
         return file;
     }
 

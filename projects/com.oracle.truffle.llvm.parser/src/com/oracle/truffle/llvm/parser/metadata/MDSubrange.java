@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import com.oracle.truffle.llvm.parser.listeners.Metadata;
+
 public final class MDSubrange implements MDBaseNode {
 
     private final long lowerBound;
@@ -68,9 +70,9 @@ public final class MDSubrange implements MDBaseNode {
     private static final int ARGINDEX_32_LOWERBOUND = 1;
     private static final int ARGINDEX_32_UPPERBOUND = 2;
 
-    public static MDSubrange create32(MDTypedValue[] args) {
-        final long lowerBound = ParseUtil.asInt64(args[ARGINDEX_32_LOWERBOUND]);
-        final long upperBound = ParseUtil.asInt64(args[ARGINDEX_32_UPPERBOUND]);
+    public static MDSubrange create32(long[] args, Metadata md) {
+        final long lowerBound = ParseUtil.asLong(args, ARGINDEX_32_LOWERBOUND, md);
+        final long upperBound = ParseUtil.asLong(args, ARGINDEX_32_UPPERBOUND, md);
         final long size = upperBound - lowerBound + 1;
         return new MDSubrange(lowerBound, size);
     }

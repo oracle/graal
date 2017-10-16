@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import com.oracle.truffle.llvm.parser.listeners.Metadata;
+
 public final class MDLocalVariable extends MDVariable implements MDBaseNode {
 
     private final long arg;
@@ -93,18 +95,18 @@ public final class MDLocalVariable extends MDVariable implements MDBaseNode {
     private static final int ARGINDEX_32_TYPE = 5;
     private static final int ARGINDEX_32_FLAGS = 6;
 
-    public static MDLocalVariable create32(MDTypedValue[] args, MetadataValueList md) {
-        final long lineAndArg = ParseUtil.asInt32(args[ARGINDEX_32_LINEARG]);
+    public static MDLocalVariable create32(long[] args, Metadata md) {
+        final long lineAndArg = ParseUtil.asInt(args, ARGINDEX_32_LINEARG, md);
         final long line = lineAndArg & DW_TAG_LOCAL_VARIABLE_LINE_MASK;
         final long arg = (lineAndArg & DW_TAG_LOCAL_VARIABLE_ARG_MASK) >> DW_TAG_LOCAL_VARIABLE_ARG_SHIFT;
-        final long flags = ParseUtil.asInt32(args[ARGINDEX_32_FLAGS]);
+        final long flags = ParseUtil.asInt(args, ARGINDEX_32_FLAGS, md);
 
         final MDLocalVariable localVariable = new MDLocalVariable(line, arg, flags);
 
-        localVariable.setName(ParseUtil.resolveReference(args[ARGINDEX_32_NAME], localVariable, md));
-        localVariable.setScope(ParseUtil.resolveReference(args[ARGINDEX_32_SCOPE], localVariable, md));
-        localVariable.setFile(ParseUtil.resolveReference(args[ARGINDEX_32_FILE], localVariable, md));
-        localVariable.setType(ParseUtil.resolveReference(args[ARGINDEX_32_TYPE], localVariable, md));
+        localVariable.setName(ParseUtil.resolveReference(args, ARGINDEX_32_NAME, localVariable, md));
+        localVariable.setScope(ParseUtil.resolveReference(args, ARGINDEX_32_SCOPE, localVariable, md));
+        localVariable.setFile(ParseUtil.resolveReference(args, ARGINDEX_32_FILE, localVariable, md));
+        localVariable.setType(ParseUtil.resolveReference(args, ARGINDEX_32_TYPE, localVariable, md));
 
         return localVariable;
     }

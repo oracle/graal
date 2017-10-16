@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import com.oracle.truffle.llvm.parser.listeners.Metadata;
+
 public final class MDLexicalBlockFile implements MDBaseNode {
 
     private final long discriminator;
@@ -79,10 +81,10 @@ public final class MDLexicalBlockFile implements MDBaseNode {
         return file;
     }
 
-    public static MDLexicalBlockFile create32(MDTypedValue[] args, MetadataValueList md) {
+    public static MDLexicalBlockFile create32(long[] args, Metadata md) {
         final MDLexicalBlockFile file = new MDLexicalBlockFile(-1L);
-        file.scope = ParseUtil.resolveReference(args[ARGINDEX_SCOPE], file, md);
-        file.file = ParseUtil.resolveReference(args[ARGINDEX_FILE], file, md);
+        file.scope = ParseUtil.resolveReference(args, ARGINDEX_SCOPE, file, md);
+        file.file = ParseUtil.resolveReference(args, ARGINDEX_FILE, file, md);
         return file;
     }
 }

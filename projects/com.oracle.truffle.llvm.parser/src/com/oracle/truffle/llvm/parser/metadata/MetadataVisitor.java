@@ -57,10 +57,6 @@ public interface MetadataVisitor {
         ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDEmptyNode md) {
-        ifVisitNotOverwritten(md);
-    }
-
     default void visit(MDEnumerator md) {
         ifVisitNotOverwritten(md);
     }
@@ -145,10 +141,6 @@ public interface MetadataVisitor {
         ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDSymbolReference md) {
-        ifVisitNotOverwritten(md);
-    }
-
     default void visit(MDTemplateType md) {
         ifVisitNotOverwritten(md);
     }
@@ -162,10 +154,6 @@ public interface MetadataVisitor {
     }
 
     default void visit(MDValue md) {
-        ifVisitNotOverwritten(md);
-    }
-
-    default void visit(MDReference md) {
         ifVisitNotOverwritten(md);
     }
 

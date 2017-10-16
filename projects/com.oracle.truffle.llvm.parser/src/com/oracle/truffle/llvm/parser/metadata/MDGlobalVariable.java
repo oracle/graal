@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import com.oracle.truffle.llvm.parser.listeners.Metadata;
+
 public final class MDGlobalVariable extends MDVariable implements MDBaseNode {
 
     private final boolean isLocalToCompileUnit;
@@ -150,21 +152,21 @@ public final class MDGlobalVariable extends MDVariable implements MDBaseNode {
     private static final int ARGINDEX_32_DEFINEDINCOMPILEUNIT = 10;
     private static final int ARGINDEX_32_VARIABLE = 11;
 
-    public static MDGlobalVariable create32(MDTypedValue[] args, MetadataValueList md) {
-        final long line = ParseUtil.asInt32(args[ARGINDEX_32_LINE]);
-        final boolean localToCompileUnit = ParseUtil.asInt1(args[ARGINDEX_32_LOCALTOCOMPILEUNIT]);
-        final boolean inCompileUnit = ParseUtil.asInt1(args[ARGINDEX_32_DEFINEDINCOMPILEUNIT]);
+    public static MDGlobalVariable create32(long[] args, Metadata md) {
+        final long line = ParseUtil.asInt(args, ARGINDEX_32_LINE, md);
+        final boolean localToCompileUnit = ParseUtil.asBoolean(args, ARGINDEX_32_LOCALTOCOMPILEUNIT, md);
+        final boolean inCompileUnit = ParseUtil.asBoolean(args, ARGINDEX_32_DEFINEDINCOMPILEUNIT, md);
 
         final MDGlobalVariable globalVariable = new MDGlobalVariable(line, localToCompileUnit, inCompileUnit);
 
-        globalVariable.setScope(ParseUtil.resolveReference(args[ARGINDEX_32_SCOPE], globalVariable, md));
-        globalVariable.setFile(ParseUtil.resolveReference(args[ARGINDEX_32_FILE], globalVariable, md));
-        globalVariable.setType(ParseUtil.resolveReference(args[ARGINDEX_32_TYPE], globalVariable, md));
-        globalVariable.setName(ParseUtil.resolveReference(args[ARGINDEX_32_NAME], globalVariable, md));
+        globalVariable.setScope(ParseUtil.resolveReference(args, ARGINDEX_32_SCOPE, globalVariable, md));
+        globalVariable.setFile(ParseUtil.resolveReference(args, ARGINDEX_32_FILE, globalVariable, md));
+        globalVariable.setType(ParseUtil.resolveReference(args, ARGINDEX_32_TYPE, globalVariable, md));
+        globalVariable.setName(ParseUtil.resolveReference(args, ARGINDEX_32_NAME, globalVariable, md));
 
-        globalVariable.displayName = ParseUtil.resolveReference(args[ARGINDEX_32_DISPLAYNAME], globalVariable, md);
-        globalVariable.linkageName = ParseUtil.resolveReference(args[ARGINDEX_32_LINKAGENAME], globalVariable, md);
-        globalVariable.variable = MDValue.createFromSymbolReference(args[ARGINDEX_32_VARIABLE]);
+        globalVariable.displayName = ParseUtil.resolveReference(args, ARGINDEX_32_DISPLAYNAME, globalVariable, md);
+        globalVariable.linkageName = ParseUtil.resolveReference(args, ARGINDEX_32_LINKAGENAME, globalVariable, md);
+        globalVariable.variable = ParseUtil.resolveSymbol(args, ARGINDEX_32_VARIABLE, md);
 
         return globalVariable;
     }

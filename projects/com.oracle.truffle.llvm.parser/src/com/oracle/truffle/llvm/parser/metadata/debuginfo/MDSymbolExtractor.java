@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
-import com.oracle.truffle.llvm.parser.metadata.MDSymbolReference;
 import com.oracle.truffle.llvm.parser.metadata.MDValue;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
@@ -58,14 +57,7 @@ final class MDSymbolExtractor implements MetadataVisitor {
 
     @Override
     public void visit(MDValue mdVal) {
-        mdVal.getValue().accept(this);
-    }
-
-    @Override
-    public void visit(MDSymbolReference symRef) {
-        if (symRef.isPresent()) {
-            sym = symRef.get();
-        }
+        sym = mdVal.getValue();
     }
 
     @Override

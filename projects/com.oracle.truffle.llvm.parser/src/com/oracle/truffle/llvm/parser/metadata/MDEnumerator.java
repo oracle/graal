@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import com.oracle.truffle.llvm.parser.listeners.Metadata;
+
 public final class MDEnumerator extends MDName implements MDBaseNode {
 
     private final long value;
@@ -65,10 +67,10 @@ public final class MDEnumerator extends MDName implements MDBaseNode {
     private static final int ARGINDEX_32_NAME = 1;
     private static final int ARGINDEX_32_VALUE = 2;
 
-    public static MDEnumerator create32(MDTypedValue[] args, MetadataValueList md) {
-        final long value = ParseUtil.asInt64(args[ARGINDEX_32_VALUE]);
+    public static MDEnumerator create32(long[] args, Metadata md) {
+        final long value = ParseUtil.asLong(args, ARGINDEX_32_VALUE, md);
         final MDEnumerator enumerator = new MDEnumerator(value);
-        enumerator.setName(ParseUtil.resolveReference(args[ARGINDEX_32_NAME], enumerator, md));
+        enumerator.setName(ParseUtil.resolveReference(args, ARGINDEX_32_NAME, enumerator, md));
         return enumerator;
     }
 }

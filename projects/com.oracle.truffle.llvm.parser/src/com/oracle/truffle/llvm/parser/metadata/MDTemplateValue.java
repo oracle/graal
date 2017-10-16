@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import com.oracle.truffle.llvm.parser.listeners.Metadata;
+
 public final class MDTemplateValue extends MDName implements MDBaseNode {
 
     private final long tag;
@@ -88,7 +90,7 @@ public final class MDTemplateValue extends MDName implements MDBaseNode {
         return templateValue;
     }
 
-    public static MDTemplateValue create32(MDTypedValue[] args, MetadataValueList md) {
+    public static MDTemplateValue create32(long[] args, Metadata md) {
         // final MDReference context = getReference(args[1]);
         // final MDReference file = getReference(args[5]);
         // final long line = ParseUtil.asInt64(args[6]);
@@ -96,9 +98,9 @@ public final class MDTemplateValue extends MDName implements MDBaseNode {
 
         final MDTemplateValue templateValue = new MDTemplateValue(-1L);
 
-        templateValue.type = ParseUtil.resolveReference(args[ARGINDEX_TYPE], templateValue, md);
-        templateValue.value = MDValue.createFromSymbolReference(args[ARGINDEX_VALUE]);
-        templateValue.setName(ParseUtil.resolveReference(args[ARGINDEX_NAME], templateValue, md));
+        templateValue.type = ParseUtil.resolveReference(args, ARGINDEX_TYPE, templateValue, md);
+        templateValue.value = ParseUtil.resolveSymbol(args, ARGINDEX_VALUE, md);
+        templateValue.setName(ParseUtil.resolveReference(args, ARGINDEX_NAME, templateValue, md));
 
         return templateValue;
     }

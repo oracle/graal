@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import com.oracle.truffle.llvm.parser.listeners.Metadata;
+
 public final class MDTemplateTypeParameter extends MDName implements MDBaseNode {
 
     private final long line;
@@ -93,16 +95,16 @@ public final class MDTemplateTypeParameter extends MDName implements MDBaseNode 
     private static final int ARGINDEX_LINE = 5;
     private static final int ARGINDEX_COLUMN = 6;
 
-    public static MDTemplateTypeParameter create32(MDTypedValue[] args, MetadataValueList md) {
-        final long line = ParseUtil.asInt64(args[ARGINDEX_LINE]);
-        final long column = ParseUtil.asInt64(args[ARGINDEX_COLUMN]);
+    public static MDTemplateTypeParameter create32(long[] args, Metadata md) {
+        final long line = ParseUtil.asLong(args, ARGINDEX_LINE, md);
+        final long column = ParseUtil.asLong(args, ARGINDEX_COLUMN, md);
 
         final MDTemplateTypeParameter parameter = new MDTemplateTypeParameter(line, column);
 
-        parameter.scope = ParseUtil.resolveReference(args[ARGINDEX_SCOPE], parameter, md);
-        parameter.baseType = ParseUtil.resolveReference(args[ARGINDEX_TYPE], parameter, md);
-        parameter.file = ParseUtil.resolveReference(args[ARGINDEX_FILE], parameter, md);
-        parameter.setName(ParseUtil.resolveReference(args[ARGINDEX_NAME], parameter, md));
+        parameter.scope = ParseUtil.resolveReference(args, ARGINDEX_SCOPE, parameter, md);
+        parameter.baseType = ParseUtil.resolveReference(args, ARGINDEX_TYPE, parameter, md);
+        parameter.file = ParseUtil.resolveReference(args, ARGINDEX_FILE, parameter, md);
+        parameter.setName(ParseUtil.resolveReference(args, ARGINDEX_NAME, parameter, md));
 
         return parameter;
     }

@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import com.oracle.truffle.llvm.parser.listeners.Metadata;
+
 import java.util.ArrayList;
 
 public final class MDNode extends ArrayList<MDBaseNode> implements MDBaseNode {
@@ -60,10 +62,10 @@ public final class MDNode extends ArrayList<MDBaseNode> implements MDBaseNode {
         return node;
     }
 
-    public static MDNode create32(MDTypedValue[] args, MetadataValueList md) {
+    public static MDNode create32(long[] args, Metadata md) {
         final MDNode node = new MDNode();
-        for (MDTypedValue value : args) {
-            node.add(ParseUtil.resolveReference(value, node, md));
+        for (int i = 0; i < args.length / 2; i++) {
+            node.add(ParseUtil.resolveReference(args, i, node, md));
         }
         return node;
     }

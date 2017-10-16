@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import com.oracle.truffle.llvm.parser.listeners.Metadata;
+
 public final class MDLexicalBlock implements MDBaseNode {
 
     private final long line;
@@ -97,14 +99,14 @@ public final class MDLexicalBlock implements MDBaseNode {
     private static final int ARGINDEX_32_COLUMN = 3;
     private static final int ARGINDEX_32_FILE = 4;
 
-    public static MDLexicalBlock create32(MDTypedValue[] args, MetadataValueList md) {
-        final long line = ParseUtil.asInt32(args[ARGINDEX_32_LINE]);
-        final long column = ParseUtil.asInt32(args[ARGINDEX_32_COLUMN]);
+    public static MDLexicalBlock create32(long[] args, Metadata md) {
+        final long line = ParseUtil.asInt(args, ARGINDEX_32_LINE, md);
+        final long column = ParseUtil.asInt(args, ARGINDEX_32_COLUMN, md);
         // asInt32(args[5); // Unique ID to identify blocks from a template function
 
         final MDLexicalBlock block = new MDLexicalBlock(line, column);
-        block.scope = ParseUtil.resolveReference(args[ARGINDEX_32_SCOPE], block, md);
-        block.file = ParseUtil.resolveReference(args[ARGINDEX_32_FILE], block, md);
+        block.scope = ParseUtil.resolveReference(args, ARGINDEX_32_SCOPE, block, md);
+        block.file = ParseUtil.resolveReference(args, ARGINDEX_32_FILE, block, md);
         return block;
     }
 }

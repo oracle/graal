@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import com.oracle.truffle.llvm.parser.listeners.Metadata;
+
 public final class MDNamespace extends MDName implements MDBaseNode {
 
     private final long line;
@@ -102,13 +104,13 @@ public final class MDNamespace extends MDName implements MDBaseNode {
     private static final int ARGINDEX_32_FILE = 3;
     private static final int ARGINDEX_32_LINE = 4;
 
-    public static MDNamespace create32(MDTypedValue[] args, MetadataValueList md) {
-        final long line = ParseUtil.asInt64(args[ARGINDEX_32_LINE]);
+    public static MDNamespace create32(long[] args, Metadata md) {
+        final long line = ParseUtil.asLong(args, ARGINDEX_32_LINE, md);
         final MDNamespace namespace = new MDNamespace(line);
 
-        namespace.scope = ParseUtil.resolveReference(args[ARGINDEX_SCOPE], namespace, md);
-        namespace.file = ParseUtil.resolveReference(args[ARGINDEX_32_FILE], namespace, md);
-        namespace.setName(ParseUtil.resolveReference(args[ARGINDEX_32_NAME], namespace, md));
+        namespace.scope = ParseUtil.resolveReference(args, ARGINDEX_SCOPE, namespace, md);
+        namespace.file = ParseUtil.resolveReference(args, ARGINDEX_32_FILE, namespace, md);
+        namespace.setName(ParseUtil.resolveReference(args, ARGINDEX_32_NAME, namespace, md));
 
         return namespace;
     }

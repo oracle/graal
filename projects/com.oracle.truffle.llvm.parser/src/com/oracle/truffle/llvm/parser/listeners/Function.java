@@ -38,7 +38,6 @@ import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
 import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
-import com.oracle.truffle.llvm.parser.metadata.MDSymbolReference;
 import com.oracle.truffle.llvm.parser.metadata.MDValue;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
@@ -140,8 +139,7 @@ public final class Function implements ParserListener {
         if (function.hasAttachedMetadata()) {
             MDBaseNode md = function.getMetadataAttachment(MDKind.DBG_NAME);
             if (md instanceof MDSubprogram) {
-                final MDSymbolReference symRef = new MDSymbolReference(function.getType(), () -> function);
-                ((MDSubprogram) md).setFunction(MDValue.createFromSymbolReference(symRef));
+                ((MDSubprogram) md).setFunction(MDValue.create(function));
             }
         }
     }

@@ -29,69 +29,104 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import com.oracle.truffle.llvm.parser.listeners.Metadata;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.UndefinedConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigIntegerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public final class ParseUtil {
 
-    static boolean asInt1(MDTypedValue t) {
-        return asInt64(t) != 0;
-    }
-
-    public static int asInt32(MDTypedValue t) {
-        return (int) asInt64(t);
-    }
-
-    public static long asInt64(MDTypedValue t) {
-        if (t instanceof MDSymbolReference) {
-            final Symbol s = ((MDSymbolReference) t).get();
-            if (s instanceof IntegerConstant) {
-                return ((IntegerConstant) s).getValue();
-
-            } else if (s instanceof BigIntegerConstant) {
-                return ((BigIntegerConstant) s).getValue().longValue();
-
-            } else if (s instanceof NullConstant) {
-                return 0L;
-
-            }
-
+    public static boolean isInteger(long[] args, int index, Metadata md) {
+        final int typeIndex = index << 1;
+        final Type type = md.getTypeById(args[typeIndex]);
+        if (type == MetaType.METADATA || VoidType.INSTANCE.equals(type)) {
+            return false;
         }
 
-        throw new AssertionError("Cannot retrieve int value from this: " + t);
+        final int valueIndex = typeIndex + 1;
+        final Symbol value = md.getContainer().getSymbols().getOrNull((int) args[valueIndex]);
+
+        return value instanceof IntegerConstant || value instanceof BigIntegerConstant || value instanceof NullConstant || value instanceof UndefinedConstant;
     }
 
-    static long asInt64IfPresent(MDTypedValue[] values, int index) {
-        return index < values.length ? asInt64(values[index]) : 0;
+    // LLVM uses the same behaviour
+    private static final long DEFAULT_NUMBER = 0L;
+
+    public static long asLong(long[] args, int index, Metadata md) {
+        final int typeIndex = index << 1;
+        if (typeIndex >= args.length) {
+            return DEFAULT_NUMBER;
+        }
+
+        final Type type = md.getTypeById(args[typeIndex]);
+        if (type == MetaType.METADATA || VoidType.INSTANCE.equals(type)) {
+            return DEFAULT_NUMBER;
+        }
+
+        final int valueIndex = typeIndex + 1;
+        final Symbol value = md.getContainer().getSymbols().getOrNull((int) args[valueIndex]);
+
+        if (value instanceof IntegerConstant) {
+            return ((IntegerConstant) value).getValue();
+
+        } else if (value instanceof BigIntegerConstant) {
+            return ((BigIntegerConstant) value).getValue().longValue();
+
+        } else if (value instanceof NullConstant || value instanceof UndefinedConstant) {
+            return 0L;
+
+        } else {
+            return DEFAULT_NUMBER;
+        }
     }
 
-    static MDBaseNode resolveReferenceIfPresent(MDTypedValue[] values, int index, MDBaseNode dependent, MetadataValueList valueList) {
-        return index < values.length ? resolveReference(values[index], dependent, valueList) : MDVoidNode.VOID;
+    public static int asInt(long[] args, int index, Metadata md) {
+        return (int) asLong(args, index, md);
     }
 
-    static MDBaseNode resolveReference(MDTypedValue t, MDBaseNode dependent, MetadataValueList valueList) {
-        if (t instanceof MDReference) {
-            return valueList.getNonNullable(((MDReference) t).getIndex(), dependent);
+    static boolean asBoolean(long[] args, int index, Metadata md) {
+        return asLong(args, index, md) != 0L;
+    }
 
-        } else if (t instanceof MDSymbolReference) {
-            return MDValue.createFromSymbolReference(t);
+    static MDBaseNode resolveReference(long[] args, int index, MDBaseNode dependent, Metadata md) {
+        final int typeIndex = index << 1;
+        if (typeIndex >= args.length) {
+            return MDVoidNode.VOID;
+        }
+
+        final int valueIndex = typeIndex + 1;
+        final Type type = md.getTypeById(args[typeIndex]);
+        final long value = args[valueIndex];
+        if (type == MetaType.METADATA) {
+            return md.getContainer().getMetadata().getNonNullable(value, dependent);
+
+        } else if (type != VoidType.INSTANCE) {
+            return MDValue.create(type, value, md.getContainer());
 
         } else {
             return MDVoidNode.VOID;
         }
     }
 
-    public static boolean isInt(MDTypedValue val) {
-        final Type t = val.getType();
-        if (!Type.isIntegerType(t) || !(val instanceof MDSymbolReference)) {
-            return false;
+    static MDBaseNode resolveSymbol(long[] args, int index, Metadata md) {
+        final int typeIndex = index << 1;
+        if (typeIndex >= args.length) {
+            return MDVoidNode.VOID;
         }
 
-        final Symbol s = ((MDSymbolReference) val).get();
-        return s instanceof IntegerConstant || s instanceof BigIntegerConstant;
+        final int valueIndex = typeIndex + 1;
+        final Type type = md.getTypeById(args[typeIndex]);
+        final long value = (int) args[valueIndex];
+        if (type != MetaType.METADATA && !VoidType.INSTANCE.equals(type)) {
+            return MDValue.create(type, value, md.getContainer());
+        } else {
+            return MDVoidNode.VOID;
+        }
     }
 
     private static final long BYTE_MASK = 0xFF;
