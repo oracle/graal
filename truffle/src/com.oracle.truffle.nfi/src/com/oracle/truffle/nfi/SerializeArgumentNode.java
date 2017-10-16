@@ -363,27 +363,25 @@ abstract class SerializeArgumentNode extends Node {
             this.ctxRef = NFILanguage.getCurrentContextReference();
         }
 
-        protected boolean isSpecialized(TruffleObject arg) {
-            return arg instanceof NativePointer;
-        }
-
         @Specialization
         protected boolean serializeNativePointer(NativeArgumentBuffer buffer, NativePointer object) {
             argType.serialize(buffer, object);
             return true;
         }
 
-        @Specialization(limit = "5", guards = {"!isSpecialized(object)", "object == cachedObject"})
+        @Specialization(limit = "5", guards = {"checkExecutable(isExecutable, cachedObject)", "object == cachedObject"})
         @SuppressWarnings("unused")
         protected boolean serializeCached(NativeArgumentBuffer buffer, TruffleObject object,
                         @Cached("object") TruffleObject cachedObject,
+                        @Cached("createIsExecutable()") Node isExecutable,
                         @Cached("createClosure(object)") LibFFIClosure closure) {
             argType.serialize(buffer, closure);
             return true;
         }
 
-        @Specialization(guards = "!isSpecialized(object)")
-        protected boolean serializeFallback(NativeArgumentBuffer buffer, TruffleObject object) {
+        @Specialization(guards = "checkExecutable(isExecutable, object)")
+        protected boolean serializeFallback(NativeArgumentBuffer buffer, TruffleObject object,
+                        @SuppressWarnings("unused") @Cached("createIsExecutable()") Node isExecutable) {
             argType.serialize(buffer, createClosure(object));
             return true;
         }
@@ -391,6 +389,14 @@ abstract class SerializeArgumentNode extends Node {
         @TruffleBoundary
         protected LibFFIClosure createClosure(TruffleObject object) {
             return LibFFIClosure.create(ctxRef.get(), signature, object);
+        }
+
+        static Node createIsExecutable() {
+            return Message.IS_EXECUTABLE.createNode();
+        }
+
+        static boolean checkExecutable(Node isExecutable, TruffleObject obj) {
+            return ForeignAccess.sendIsExecutable(isExecutable, obj);
         }
     }
 
