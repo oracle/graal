@@ -99,6 +99,15 @@ public class RegisterPackageNFITest extends NFITest {
             }
         }
 
+        @Resolve(message = "IS_EXECUTABLE")
+        abstract static class IsExecutable extends Node {
+
+            @SuppressWarnings("unused")
+            boolean access(FunctionRegistry receiver) {
+                return true;
+            }
+        }
+
         @CanResolve
         abstract static class CanResolveFunctionRegistry extends Node {
 
