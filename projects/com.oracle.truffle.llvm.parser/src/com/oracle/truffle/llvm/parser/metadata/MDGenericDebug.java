@@ -44,7 +44,7 @@ public final class MDGenericDebug implements MDBaseNode {
         this.tag = tag;
         this.version = version;
         this.dwarfOps = dwarfOps;
-        this.header = MDVoidNode.VOID;
+        this.header = MDVoidNode.INSTANCE;
     }
 
     public long getTag() {

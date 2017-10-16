@@ -43,8 +43,8 @@ public final class MDLexicalBlock implements MDBaseNode {
         this.line = line;
         this.column = column;
 
-        this.scope = MDVoidNode.VOID;
-        this.file = MDVoidNode.VOID;
+        this.scope = MDVoidNode.INSTANCE;
+        this.file = MDVoidNode.INSTANCE;
     }
 
     @Override

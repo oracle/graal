@@ -47,13 +47,12 @@ import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 final class MDSymbolLinkUpgrade implements MetadataVisitor {
 
-
     static void perform(MetadataValueList metadata) {
-        final MDNamedNode cuNode = metadata.find(MDNamedNode.COMPILEUNIT_NAME);
+        final MDNamedNode cuNode = metadata.getNamedNode(MDNamedNode.COMPILEUNIT_NAME);
         if (cuNode == null) {
             return;
         }
-        final MDKind dbgKind = metadata.getKind(MDKind.DBG_NAME);
+        final MDKind dbgKind = metadata.findKind(MDKind.DBG_NAME);
         cuNode.accept(new MDSymbolLinkUpgrade(dbgKind));
     }
 

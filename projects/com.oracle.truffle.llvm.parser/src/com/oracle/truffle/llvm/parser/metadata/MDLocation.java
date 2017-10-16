@@ -40,8 +40,8 @@ public final class MDLocation implements MDBaseNode {
     private MDLocation(long line, long column) {
         this.line = line;
         this.column = column;
-        this.inlinedAt = MDVoidNode.VOID;
-        this.scope = MDVoidNode.VOID;
+        this.inlinedAt = MDVoidNode.INSTANCE;
+        this.scope = MDVoidNode.INSTANCE;
     }
 
     public long getLine() {

@@ -50,11 +50,11 @@ public final class MDCompositeType extends MDType implements MDBaseNode {
         this.tag = Tag.decode(tag);
         this.runtimeLanguage = runtimeLanguage;
 
-        this.scope = MDVoidNode.VOID;
-        this.baseType = MDVoidNode.VOID;
-        this.members = MDVoidNode.VOID;
-        this.templateParams = MDVoidNode.VOID;
-        this.identifier = MDVoidNode.VOID;
+        this.scope = MDVoidNode.INSTANCE;
+        this.baseType = MDVoidNode.INSTANCE;
+        this.members = MDVoidNode.INSTANCE;
+        this.templateParams = MDVoidNode.INSTANCE;
+        this.identifier = MDVoidNode.INSTANCE;
     }
 
     @Override

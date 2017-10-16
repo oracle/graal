@@ -41,8 +41,8 @@ public final class MDImportedEntity extends MDName implements MDBaseNode {
         this.tag = tag;
         this.line = line;
 
-        this.scope = MDVoidNode.VOID;
-        this.entity = MDVoidNode.VOID;
+        this.scope = MDVoidNode.INSTANCE;
+        this.entity = MDVoidNode.INSTANCE;
     }
 
     public long getTag() {

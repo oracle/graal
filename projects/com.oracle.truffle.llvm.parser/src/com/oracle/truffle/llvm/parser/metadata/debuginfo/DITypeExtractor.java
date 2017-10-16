@@ -72,7 +72,7 @@ final class DITypeExtractor implements MetadataVisitor {
     private static final String COUNT_NAME = "<count>";
 
     LLVMSourceType parseType(MDBaseNode mdType) {
-        if (mdType == null || mdType == MDVoidNode.VOID) {
+        if (mdType == null || mdType == MDVoidNode.INSTANCE) {
             return null;
         }
         return resolve(mdType);

@@ -71,7 +71,7 @@ final class DIScopeExtractor {
     }
 
     LLVMSourceLocation resolve(MDBaseNode node) {
-        if (node == null || node == MDVoidNode.VOID) {
+        if (node == null || node == MDVoidNode.INSTANCE) {
             return null;
         } else if (!scopes.containsKey(node)) {
             node.accept(extractor);
@@ -129,7 +129,7 @@ final class DIScopeExtractor {
             if (scopes.containsKey(md)) {
                 return;
 
-            } else if (md.getInlinedAt() != MDVoidNode.VOID) {
+            } else if (md.getInlinedAt() != MDVoidNode.INSTANCE) {
                 final LLVMSourceLocation actualLoc = resolve(md.getInlinedAt());
                 scopes.put(md, actualLoc);
                 return;
@@ -206,7 +206,7 @@ final class DIScopeExtractor {
         public void visit(MDBasicType md) {
             // A basic type can, according to the llvm implementation, also act as scope. It does
             // however not have a parent scope there. At most a file is given.
-            visit(Kind.TYPE, md, MDVoidNode.VOID, md.getFile(), md.getLine());
+            visit(Kind.TYPE, md, MDVoidNode.INSTANCE, md.getFile(), md.getLine());
         }
 
         @Override
@@ -249,7 +249,7 @@ final class DIScopeExtractor {
 
         @Override
         public void visit(MDModule md) {
-            visit(Kind.MODULE, md, md.getScope(), MDVoidNode.VOID);
+            visit(Kind.MODULE, md, md.getScope(), MDVoidNode.INSTANCE);
             setName(md.getName());
         }
 

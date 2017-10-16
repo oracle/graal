@@ -96,7 +96,7 @@ public final class ParseUtil {
     static MDBaseNode resolveReference(long[] args, int index, MDBaseNode dependent, Metadata md) {
         final int typeIndex = index << 1;
         if (typeIndex >= args.length) {
-            return MDVoidNode.VOID;
+            return MDVoidNode.INSTANCE;
         }
 
         final int valueIndex = typeIndex + 1;
@@ -109,14 +109,14 @@ public final class ParseUtil {
             return MDValue.create(type, value, md.getContainer());
 
         } else {
-            return MDVoidNode.VOID;
+            return MDVoidNode.INSTANCE;
         }
     }
 
     static MDBaseNode resolveSymbol(long[] args, int index, Metadata md) {
         final int typeIndex = index << 1;
         if (typeIndex >= args.length) {
-            return MDVoidNode.VOID;
+            return MDVoidNode.INSTANCE;
         }
 
         final int valueIndex = typeIndex + 1;
@@ -125,7 +125,7 @@ public final class ParseUtil {
         if (type != MetaType.METADATA && !VoidType.INSTANCE.equals(type)) {
             return MDValue.create(type, value, md.getContainer());
         } else {
-            return MDVoidNode.VOID;
+            return MDVoidNode.INSTANCE;
         }
     }
 

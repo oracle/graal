@@ -81,7 +81,7 @@ public final class MDValue implements MDBaseNode, Symbol {
     public static MDBaseNode create(long[] args, Metadata md) {
         final Type type = md.getTypeById(args[VALUE_ARGINDEX_TYPE]);
         if (type == MetaType.METADATA || VoidType.INSTANCE.equals(type)) {
-            return MDVoidNode.VOID;
+            return MDVoidNode.INSTANCE;
         }
         final MDValue value = new MDValue(type);
         value.value = md.getContainer().getSymbols().getSymbol((int) args[VALUE_ARGINDEX_VALUE], value);

@@ -44,9 +44,9 @@ public final class MDTemplateTypeParameter extends MDName implements MDBaseNode 
         this.line = line;
         this.column = column;
 
-        this.baseType = MDVoidNode.VOID;
-        this.scope = MDVoidNode.VOID;
-        this.file = MDVoidNode.VOID;
+        this.baseType = MDVoidNode.INSTANCE;
+        this.scope = MDVoidNode.INSTANCE;
+        this.file = MDVoidNode.INSTANCE;
     }
 
     @Override

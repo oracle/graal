@@ -47,10 +47,10 @@ public final class MDGlobalVariable extends MDVariable implements MDBaseNode {
         this.isLocalToCompileUnit = isLocalToCompileUnit;
         this.isDefinedInCompileUnit = isDefinedInCompileUnit;
 
-        this.displayName = MDVoidNode.VOID;
-        this.linkageName = MDVoidNode.VOID;
-        this.staticMembers = MDVoidNode.VOID;
-        this.variable = MDVoidNode.VOID;
+        this.displayName = MDVoidNode.INSTANCE;
+        this.linkageName = MDVoidNode.INSTANCE;
+        this.staticMembers = MDVoidNode.INSTANCE;
+        this.variable = MDVoidNode.INSTANCE;
         this.compileUnit = MDVoidNode.INSTANCE;
     }
 

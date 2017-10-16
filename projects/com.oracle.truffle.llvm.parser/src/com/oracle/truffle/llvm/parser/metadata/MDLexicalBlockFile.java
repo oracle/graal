@@ -41,8 +41,8 @@ public final class MDLexicalBlockFile implements MDBaseNode {
     private MDLexicalBlockFile(long discriminator) {
         this.discriminator = discriminator;
 
-        this.scope = MDVoidNode.VOID;
-        this.file = MDVoidNode.VOID;
+        this.scope = MDVoidNode.INSTANCE;
+        this.file = MDVoidNode.INSTANCE;
     }
 
     @Override

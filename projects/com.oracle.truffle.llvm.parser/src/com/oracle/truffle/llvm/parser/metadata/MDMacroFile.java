@@ -41,8 +41,8 @@ public final class MDMacroFile implements MDBaseNode {
         this.type = type;
         this.line = line;
 
-        this.file = MDVoidNode.VOID;
-        this.elements = MDVoidNode.VOID;
+        this.file = MDVoidNode.INSTANCE;
+        this.elements = MDVoidNode.INSTANCE;
     }
 
     public long getType() {

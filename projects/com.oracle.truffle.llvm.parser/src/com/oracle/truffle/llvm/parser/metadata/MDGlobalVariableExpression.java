@@ -38,8 +38,8 @@ public final class MDGlobalVariableExpression implements MDBaseNode {
     private MDBaseNode expression;
 
     private MDGlobalVariableExpression() {
-        this.globalVariable = MDVoidNode.VOID;
-        this.expression = MDVoidNode.VOID;
+        this.globalVariable = MDVoidNode.INSTANCE;
+        this.expression = MDVoidNode.INSTANCE;
     }
 
     public static MDGlobalVariableExpression create(long[] args, MetadataValueList md) {

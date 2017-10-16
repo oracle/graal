@@ -47,8 +47,8 @@ public final class MDDerivedType extends MDType implements MDBaseNode {
         super(size, align, offset, line, flags);
         this.tag = Tag.decode(tag);
 
-        this.scope = MDVoidNode.VOID;
-        this.baseType = MDVoidNode.VOID;
+        this.scope = MDVoidNode.INSTANCE;
+        this.baseType = MDVoidNode.INSTANCE;
     }
 
     @Override
