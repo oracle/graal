@@ -618,7 +618,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
     private static class WasteTime extends InstrumentedNode {
 
         public static int state = 0;
-        private int wasteCount = 100_000;
+        private int wasteCount = 300_000;
 
         WasteTime(BaseNode[] children) {
             super(children);
