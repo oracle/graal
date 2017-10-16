@@ -26,7 +26,9 @@ package com.oracle.truffle.api.debug;
 
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.metadata.Scope;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 import java.util.Iterator;
 
 /**
@@ -88,6 +90,23 @@ public final class DebugScope {
      */
     public boolean isFunctionScope() {
         return root.equals(scope.getNode());
+    }
+
+    /**
+     * Get a source section representing this scope. Please note that while this scope does not
+     * provide variables that are valid only after the suspension point, the source section can
+     * actually span after the suspension point.
+     *
+     * @return the source section, or <code>null</code> when not available.
+     * @since 0.29
+     */
+    public SourceSection getSourceSection() {
+        Node node = scope.getNode();
+        if (node != null) {
+            return node.getEncapsulatingSourceSection();
+        } else {
+            return null;
+        }
     }
 
     /**
