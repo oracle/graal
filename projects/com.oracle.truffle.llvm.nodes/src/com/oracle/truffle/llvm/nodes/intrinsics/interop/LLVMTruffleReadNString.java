@@ -79,7 +79,7 @@ public abstract class LLVMTruffleReadNString extends LLVMIntrinsic {
         for (int i = 0; i < n; i++) {
             Object rawValue;
             try {
-                rawValue = ForeignAccess.sendRead(foreignRead, object, offset + n);
+                rawValue = ForeignAccess.sendRead(foreignRead, object, offset + i);
             } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(e);
