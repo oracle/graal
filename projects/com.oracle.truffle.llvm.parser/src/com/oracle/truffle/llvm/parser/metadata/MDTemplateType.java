@@ -34,7 +34,7 @@ public final class MDTemplateType extends MDName implements MDBaseNode {
     private MDBaseNode type;
 
     private MDTemplateType() {
-        this.type = MDReference.VOID;
+        this.type = MDVoidNode.VOID;
     }
 
     public MDBaseNode getType() {

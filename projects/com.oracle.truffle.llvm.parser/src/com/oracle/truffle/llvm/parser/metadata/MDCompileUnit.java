@@ -58,17 +58,17 @@ public final class MDCompileUnit implements MDBaseNode {
         this.emissionKind = emissionKind;
         this.dwoId = dwoId;
 
-        this.file = MDReference.VOID;
-        this.directory = MDReference.VOID;
-        this.producer = MDReference.VOID;
-        this.flags = MDReference.VOID;
-        this.splitdebugFilename = MDReference.VOID;
-        this.enums = MDReference.VOID;
-        this.retainedTypes = MDReference.VOID;
-        this.subprograms = MDReference.VOID;
-        this.globalVariables = MDReference.VOID;
-        this.importedEntities = MDReference.VOID;
-        this.macros = MDReference.VOID;
+        this.file = MDVoidNode.VOID;
+        this.directory = MDVoidNode.VOID;
+        this.producer = MDVoidNode.VOID;
+        this.flags = MDVoidNode.VOID;
+        this.splitdebugFilename = MDVoidNode.VOID;
+        this.enums = MDVoidNode.VOID;
+        this.retainedTypes = MDVoidNode.VOID;
+        this.subprograms = MDVoidNode.VOID;
+        this.globalVariables = MDVoidNode.VOID;
+        this.importedEntities = MDVoidNode.VOID;
+        this.macros = MDVoidNode.VOID;
     }
 
     @Override

@@ -41,10 +41,10 @@ import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDNode;
-import com.oracle.truffle.llvm.parser.metadata.MDReference;
 import com.oracle.truffle.llvm.parser.metadata.MDString;
 import com.oracle.truffle.llvm.parser.metadata.MDSubrange;
 import com.oracle.truffle.llvm.parser.metadata.MDSubroutine;
+import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceBasicType;
@@ -72,7 +72,7 @@ final class DITypeExtractor implements MetadataVisitor {
     private static final String COUNT_NAME = "<count>";
 
     LLVMSourceType parseType(MDBaseNode mdType) {
-        if (mdType == null || mdType == MDReference.VOID) {
+        if (mdType == null || mdType == MDVoidNode.VOID) {
             return null;
         }
         return resolve(mdType);

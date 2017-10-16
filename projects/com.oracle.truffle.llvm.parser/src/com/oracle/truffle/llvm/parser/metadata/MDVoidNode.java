@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,18 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-public final class MDLexicalBlockFile implements MDBaseNode {
+public final class MDVoidNode implements MDBaseNode {
 
-    private final long discriminator;
+    public static MDVoidNode VOID = new MDVoidNode();
 
-    private MDBaseNode scope;
-    private MDBaseNode file;
-
-    private MDLexicalBlockFile(long discriminator) {
-        this.discriminator = discriminator;
-
-        this.scope = MDVoidNode.VOID;
-        this.file = MDVoidNode.VOID;
+    private MDVoidNode() {
     }
 
     @Override
@@ -48,41 +41,12 @@ public final class MDLexicalBlockFile implements MDBaseNode {
         visitor.visit(this);
     }
 
-    public MDBaseNode getFile() {
-        return file;
-    }
-
-    public long getDiscriminator() {
-        return discriminator;
+    @Override
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
     }
 
     @Override
-    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
-        if (scope == oldValue) {
-            scope = newValue;
-        }
-        if (file == oldValue) {
-            file = newValue;
-        }
-    }
-
-    private static final int ARGINDEX_SCOPE = 1;
-    private static final int ARGINDEX_FILE = 2;
-    private static final int ARGINDEX_38_DISCRIMINATOR = 3;
-
-    public static MDLexicalBlockFile create38(long[] args, MetadataValueList md) {
-        // [distinct, scope, file, discriminator]
-        final long discriminator = args[ARGINDEX_38_DISCRIMINATOR];
-        final MDLexicalBlockFile file = new MDLexicalBlockFile(discriminator);
-        file.scope = md.getNullable(args[ARGINDEX_SCOPE], file);
-        file.file = md.getNullable(args[ARGINDEX_FILE], file);
-        return file;
-    }
-
-    public static MDLexicalBlockFile create32(MDTypedValue[] args, MetadataValueList md) {
-        final MDLexicalBlockFile file = new MDLexicalBlockFile(-1L);
-        file.scope = ParseUtil.resolveReference(args[ARGINDEX_SCOPE], file, md);
-        file.file = ParseUtil.resolveReference(args[ARGINDEX_FILE], file, md);
-        return file;
+    public String toString() {
+        return "VOID";
     }
 }

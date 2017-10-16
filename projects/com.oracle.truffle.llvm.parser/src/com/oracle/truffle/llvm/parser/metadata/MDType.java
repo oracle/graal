@@ -45,7 +45,7 @@ public abstract class MDType extends MDName {
         this.offset = offset;
         this.line = line;
         this.flags = flags;
-        this.file = MDReference.VOID;
+        this.file = MDVoidNode.VOID;
     }
 
     public long getSize() {

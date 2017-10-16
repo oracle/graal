@@ -46,10 +46,10 @@ import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.parser.metadata.MDModule;
 import com.oracle.truffle.llvm.parser.metadata.MDNamespace;
-import com.oracle.truffle.llvm.parser.metadata.MDReference;
 import com.oracle.truffle.llvm.parser.metadata.MDString;
 import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
 import com.oracle.truffle.llvm.parser.metadata.MDSubroutine;
+import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFile;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -71,7 +71,7 @@ final class DIScopeExtractor {
     }
 
     LLVMSourceLocation resolve(MDBaseNode node) {
-        if (node == null || node == MDReference.VOID) {
+        if (node == null || node == MDVoidNode.VOID) {
             return null;
         } else if (!scopes.containsKey(node)) {
             node.accept(extractor);
@@ -129,7 +129,7 @@ final class DIScopeExtractor {
             if (scopes.containsKey(md)) {
                 return;
 
-            } else if (md.getInlinedAt() != MDReference.VOID) {
+            } else if (md.getInlinedAt() != MDVoidNode.VOID) {
                 final LLVMSourceLocation actualLoc = resolve(md.getInlinedAt());
                 scopes.put(md, actualLoc);
                 return;
@@ -206,7 +206,7 @@ final class DIScopeExtractor {
         public void visit(MDBasicType md) {
             // A basic type can, according to the llvm implementation, also act as scope. It does
             // however not have a parent scope there. At most a file is given.
-            visit(Kind.TYPE, md, MDReference.VOID, md.getFile(), md.getLine());
+            visit(Kind.TYPE, md, MDVoidNode.VOID, md.getFile(), md.getLine());
         }
 
         @Override
@@ -249,7 +249,7 @@ final class DIScopeExtractor {
 
         @Override
         public void visit(MDModule md) {
-            visit(Kind.MODULE, md, md.getScope(), MDReference.VOID);
+            visit(Kind.MODULE, md, md.getScope(), MDVoidNode.VOID);
             setName(md.getName());
         }
 

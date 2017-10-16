@@ -37,7 +37,7 @@ public final class MDSubroutine implements MDBaseNode {
 
     private MDSubroutine(long flags) {
         this.flags = flags;
-        this.types = MDReference.VOID;
+        this.types = MDVoidNode.VOID;
     }
 
     public long getFlags() {

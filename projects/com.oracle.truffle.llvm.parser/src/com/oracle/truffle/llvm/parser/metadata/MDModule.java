@@ -37,10 +37,10 @@ public final class MDModule extends MDName implements MDBaseNode {
     private MDBaseNode sysRoot;
 
     private MDModule() {
-        this.scope = MDReference.VOID;
-        this.configurationMacros = MDReference.VOID;
-        this.includePath = MDReference.VOID;
-        this.sysRoot = MDReference.VOID;
+        this.scope = MDVoidNode.VOID;
+        this.configurationMacros = MDVoidNode.VOID;
+        this.includePath = MDVoidNode.VOID;
+        this.sysRoot = MDVoidNode.VOID;
     }
 
     public MDBaseNode getScope() {

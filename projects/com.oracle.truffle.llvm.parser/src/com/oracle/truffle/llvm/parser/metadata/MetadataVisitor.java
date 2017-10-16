@@ -34,146 +34,150 @@ public interface MetadataVisitor {
      * We normally don't need to implement all visitors, but want to have a default implementation
      * for those visitors which are not handled explicitly. This little method allows us to do so.
      */
-    default void ifVisitNotOverwritten(@SuppressWarnings("unused") MDBaseNode alias) {
+    default void ifVisitNotOverwritten(@SuppressWarnings("unused") MDBaseNode md) {
     }
 
-    default void visit(MDAttachment alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDAttachment md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDBasicType alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDBasicType md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDCompileUnit alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDCompileUnit md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDCompositeType alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDCompositeType md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDDerivedType alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDDerivedType md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDEmptyNode alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDEmptyNode md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDEnumerator alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDEnumerator md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDExpression alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDExpression md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDFile alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDFile md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDGenericDebug alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDGenericDebug md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDGlobalVariable alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDGlobalVariable md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDImportedEntity alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDImportedEntity md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDKind alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDKind md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDLexicalBlock alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDLexicalBlock md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDLexicalBlockFile alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDLexicalBlockFile md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDLocalVariable alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDLocalVariable md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDMacro alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDMacro md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDMacroFile alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDMacroFile md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDModule alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDModule md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDNamedNode alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDNamedNode md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDNamespace alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDNamespace md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDNode alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDNode md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDObjCProperty alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDObjCProperty md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDString alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDString md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDSubprogram alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDSubprogram md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDSubrange alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDSubrange md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDSubroutine alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDSubroutine md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDSymbolReference alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDSymbolReference md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDTemplateType alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDTemplateType md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDTemplateTypeParameter alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDTemplateTypeParameter md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDTemplateValue alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDTemplateValue md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDValue alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDValue md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDReference alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDReference md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDLocation alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDLocation md) {
+        ifVisitNotOverwritten(md);
     }
 
-    default void visit(MDGlobalVariableExpression alias) {
-        ifVisitNotOverwritten(alias);
+    default void visit(MDGlobalVariableExpression md) {
+        ifVisitNotOverwritten(md);
+    }
+
+    default void visit(MDVoidNode md) {
+        ifVisitNotOverwritten(md);
     }
 }

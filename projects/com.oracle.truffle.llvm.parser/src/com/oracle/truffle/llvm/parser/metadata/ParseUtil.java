@@ -69,18 +69,18 @@ public final class ParseUtil {
     }
 
     static MDBaseNode resolveReferenceIfPresent(MDTypedValue[] values, int index, MDBaseNode dependent, MetadataValueList valueList) {
-        return index < values.length ? resolveReference(values[index], dependent, valueList) : MDReference.VOID;
+        return index < values.length ? resolveReference(values[index], dependent, valueList) : MDVoidNode.VOID;
     }
 
     static MDBaseNode resolveReference(MDTypedValue t, MDBaseNode dependent, MetadataValueList valueList) {
-        if (t instanceof MDReference.MDRef) {
-            return valueList.getNonNullable(((MDReference.MDRef) t).getIndex(), dependent);
+        if (t instanceof MDReference) {
+            return valueList.getNonNullable(((MDReference) t).getIndex(), dependent);
 
         } else if (t instanceof MDSymbolReference) {
             return MDValue.createFromSymbolReference(t);
 
         } else {
-            return MDReference.VOID;
+            return MDVoidNode.VOID;
         }
     }
 

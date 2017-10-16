@@ -39,8 +39,8 @@ public final class MDTemplateValue extends MDName implements MDBaseNode {
     private MDTemplateValue(long tag) {
         this.tag = tag;
 
-        this.type = MDReference.VOID;
-        this.value = MDReference.VOID;
+        this.type = MDVoidNode.VOID;
+        this.value = MDVoidNode.VOID;
     }
 
     public long getTag() {

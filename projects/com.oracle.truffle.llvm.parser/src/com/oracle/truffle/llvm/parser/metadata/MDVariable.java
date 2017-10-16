@@ -40,9 +40,9 @@ public abstract class MDVariable extends MDName {
     MDVariable(long line) {
         this.line = line;
 
-        this.scope = MDReference.VOID;
-        this.type = MDReference.VOID;
-        this.file = MDReference.VOID;
+        this.scope = MDVoidNode.VOID;
+        this.type = MDVoidNode.VOID;
+        this.file = MDVoidNode.VOID;
     }
 
     public MDBaseNode getScope() {

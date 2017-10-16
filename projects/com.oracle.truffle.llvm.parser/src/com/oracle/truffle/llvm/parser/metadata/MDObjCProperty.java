@@ -43,10 +43,10 @@ public final class MDObjCProperty extends MDName implements MDBaseNode {
         this.line = line;
         this.attribute = attribute;
 
-        this.file = MDReference.VOID;
-        this.getterName = MDReference.VOID;
-        this.setterName = MDReference.VOID;
-        this.type = MDReference.VOID;
+        this.file = MDVoidNode.VOID;
+        this.getterName = MDVoidNode.VOID;
+        this.setterName = MDVoidNode.VOID;
+        this.type = MDVoidNode.VOID;
     }
 
     public MDBaseNode getFile() {

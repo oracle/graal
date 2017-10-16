@@ -41,8 +41,8 @@ public final class MDLexicalBlock implements MDBaseNode {
         this.line = line;
         this.column = column;
 
-        this.scope = MDReference.VOID;
-        this.file = MDReference.VOID;
+        this.scope = MDVoidNode.VOID;
+        this.file = MDVoidNode.VOID;
     }
 
     @Override

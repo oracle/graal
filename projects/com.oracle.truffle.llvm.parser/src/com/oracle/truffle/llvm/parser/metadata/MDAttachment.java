@@ -37,7 +37,7 @@ public final class MDAttachment implements MDBaseNode {
 
     public MDAttachment(MDKind kind) {
         this.kind = kind;
-        this.value = MDReference.VOID;
+        this.value = MDVoidNode.VOID;
     }
 
     public MDKind getKind() {

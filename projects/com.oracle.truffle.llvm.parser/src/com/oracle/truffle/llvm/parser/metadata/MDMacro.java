@@ -40,7 +40,7 @@ public final class MDMacro extends MDName implements MDBaseNode {
         this.type = type;
         this.line = line;
 
-        this.value = MDReference.VOID;
+        this.value = MDVoidNode.VOID;
     }
 
     @Override

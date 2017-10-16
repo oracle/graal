@@ -92,7 +92,7 @@ public final class MetadataValueList extends ValueList<MDBaseNode> {
     public MDBaseNode getNullable(long valueNumber, MDBaseNode dependent) {
         // offsets into the metadatalist are incremented by 1 so 0 can indicate a nullpointer
         if (valueNumber == 0L) {
-            return MDReference.VOID;
+            return MDVoidNode.VOID;
         }
 
         final int index = (int) (valueNumber - 1);
@@ -105,9 +105,8 @@ public final class MetadataValueList extends ValueList<MDBaseNode> {
 
     @Override
     public MDBaseNode getOrNull(int index) {
-        // TODO implement MDBaseNode.VOID
         final MDBaseNode node = super.getOrNull(index);
-        return node != null ? node : MDReference.VOID;
+        return node != null ? node : MDVoidNode.VOID;
     }
 
     public MDKind getKind(long id) {

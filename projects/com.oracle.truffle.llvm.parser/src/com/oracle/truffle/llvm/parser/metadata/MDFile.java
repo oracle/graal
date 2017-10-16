@@ -35,8 +35,8 @@ public final class MDFile implements MDBaseNode {
     private MDBaseNode file;
 
     private MDFile() {
-        this.file = MDReference.VOID;
-        this.directory = MDReference.VOID;
+        this.file = MDVoidNode.VOID;
+        this.directory = MDVoidNode.VOID;
     }
 
     @Override

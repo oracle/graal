@@ -39,8 +39,8 @@ public final class MDNamespace extends MDName implements MDBaseNode {
     private MDNamespace(long line) {
         this.line = line;
 
-        this.scope = MDReference.VOID;
-        this.file = MDReference.VOID;
+        this.scope = MDVoidNode.VOID;
+        this.file = MDVoidNode.VOID;
     }
 
     public MDBaseNode getScope() {

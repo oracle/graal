@@ -62,17 +62,17 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
         this.flags = flags;
         this.isOptimized = isOptimized;
 
-        this.scope = MDReference.VOID;
-        this.displayName = MDReference.VOID;
-        this.linkageName = MDReference.VOID;
-        this.file = MDReference.VOID;
-        this.type = MDReference.VOID;
-        this.containingType = MDReference.VOID;
-        this.templateParams = MDReference.VOID;
-        this.declaration = MDReference.VOID;
-        this.variables = MDReference.VOID;
-        this.function = MDReference.VOID;
-        this.compileUnit = MDReference.VOID;
+        this.scope = MDVoidNode.VOID;
+        this.displayName = MDVoidNode.VOID;
+        this.linkageName = MDVoidNode.VOID;
+        this.file = MDVoidNode.VOID;
+        this.type = MDVoidNode.VOID;
+        this.containingType = MDVoidNode.VOID;
+        this.templateParams = MDVoidNode.VOID;
+        this.declaration = MDVoidNode.VOID;
+        this.variables = MDVoidNode.VOID;
+        this.function = MDVoidNode.VOID;
+        this.compileUnit = MDVoidNode.VOID;
     }
 
     @Override

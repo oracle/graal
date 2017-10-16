@@ -34,7 +34,7 @@ public abstract class MDName implements MDBaseNode {
     private MDBaseNode name;
 
     MDName() {
-        this.name = MDReference.VOID;
+        this.name = MDVoidNode.VOID;
     }
 
     public MDBaseNode getName() {
