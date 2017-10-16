@@ -90,6 +90,7 @@ public class SLTCKLanguageProvider implements LanguageProvider {
                                         "function createObject() {\n" +
                                                         "obj1 = new();\n" +
                                                         "obj1.attr = 42;\n" +
+                                                        "return obj1;\n" +
                                                         "}",
                                         "createObject"),
                         TypeDescriptor.OBJECT);

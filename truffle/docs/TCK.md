@@ -26,11 +26,11 @@ To run just the TCK tests use:
 `mx unittest com.oracle.truffle.tck.tests`
 
 To restrict the TCK tests to test certain language use the `tck.language` property. The following
-example tests the JavaScript with data types from all available languages:
+example tests JavaScript with data types from all available languages:
 
 `mx unittest -Dtck.language=js com.oracle.truffle.tck.tests`
 
 To restrict the data types to certain language use the `tck.values` property. The following
-example tests the JavaScript with Java types:
+example tests JavaScript with Java types:
 
 `mx unittest -Dtck.values=java-host -Dtck.language=js com.oracle.truffle.tck.tests`
