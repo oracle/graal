@@ -146,8 +146,8 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
      */
     public SourceSection getSourceSection() {
         verifyValidState(true);
-        EventContext context = getContext();
         if (currentFrame == null) {
+            EventContext context = getContext();
             return context.getInstrumentedSourceSection();
         } else {
             Node callNode = currentFrame.getCallNode();
