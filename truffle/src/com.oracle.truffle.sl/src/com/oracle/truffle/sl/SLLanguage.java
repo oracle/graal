@@ -40,17 +40,20 @@
  */
 package com.oracle.truffle.sl;
 
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.metadata.ScopeProvider;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -61,11 +64,12 @@ import com.oracle.truffle.sl.parser.Parser;
 import com.oracle.truffle.sl.runtime.SLBigNumber;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
+import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
 import com.oracle.truffle.sl.runtime.SLNull;
 
 @TruffleLanguage.Registration(id = "sl", name = "SL", version = "0.12", mimeType = SLLanguage.MIME_TYPE)
 @ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, StandardTags.RootTag.class, DebuggerTags.AlwaysHalt.class})
-public final class SLLanguage extends TruffleLanguage<SLContext> implements ScopeProvider<SLContext> {
+public final class SLLanguage extends TruffleLanguage<SLContext> {
     public static volatile int counter;
 
     public static final String MIME_TYPE = "application/x-sl";
@@ -76,7 +80,9 @@ public final class SLLanguage extends TruffleLanguage<SLContext> implements Scop
 
     @Override
     protected SLContext createContext(Env env) {
-        return new SLContext(this, env);
+        SLFunctionRegistry functionRegistry = new SLFunctionRegistry(this);
+        Scope topScope = Scope.newBuilder("global", functionRegistry.getFunctionsObject()).build();
+        return new SLContext(this, env, functionRegistry, Collections.singleton(topScope));
     }
 
     @Override
@@ -128,11 +134,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> implements Scop
     @Override
     protected Object findExportedSymbol(SLContext context, String globalName, boolean onlyExplicit) {
         return context.getFunctionRegistry().lookup(globalName, false);
-    }
-
-    @Override
-    protected Object lookupSymbol(SLContext context, String symbolName) {
-        return context.getFunctionRegistry().lookup(symbolName, false);
     }
 
     @Override
@@ -201,8 +202,44 @@ public final class SLLanguage extends TruffleLanguage<SLContext> implements Scop
     }
 
     @Override
-    public AbstractScope findScope(SLContext context, Node node, Frame frame) {
-        return SLLexicalScope.createScope(node);
+    public Iterable<Scope> findScopes(SLContext context, Node node, Frame frame) {
+        final SLLexicalScope scope = SLLexicalScope.createScope(node);
+        if (scope == null) {
+            return Collections.emptyList();
+        }
+        return new Iterable<Scope>() {
+            @Override
+            public Iterator<Scope> iterator() {
+                return new Iterator<Scope>() {
+                    private SLLexicalScope previousScope;
+                    private SLLexicalScope nextScope = scope;
+
+                    @Override
+                    public boolean hasNext() {
+                        if (nextScope == null) {
+                            nextScope = previousScope.findParent();
+                        }
+                        return nextScope != null;
+                    }
+
+                    @Override
+                    public Scope next() {
+                        if (!hasNext()) {
+                            throw new NoSuchElementException();
+                        }
+                        Scope vscope = Scope.newBuilder(nextScope.getName(), nextScope.getVariables(frame)).node(nextScope.getNode()).arguments(nextScope.getArguments(frame)).build();
+                        previousScope = nextScope;
+                        nextScope = null;
+                        return vscope;
+                    }
+                };
+            }
+        };
+    }
+
+    @Override
+    protected Iterable<Scope> findTopScopes(SLContext context) {
+        return context.getTopScopes();
     }
 
     public static SLContext getCurrentContext() {

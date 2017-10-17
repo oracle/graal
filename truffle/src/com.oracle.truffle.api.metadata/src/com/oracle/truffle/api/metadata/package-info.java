@@ -37,5 +37,6 @@
  * {@link com.oracle.truffle.api.TruffleLanguage} with the appropriate service interface.
  *
  * @since 0.26
+ * @deprecated
  */
 package com.oracle.truffle.api.metadata;

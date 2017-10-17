@@ -33,6 +33,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Method;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -60,6 +61,8 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -67,6 +70,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -1625,6 +1629,11 @@ public class PolyglotEngine {
         }
 
         @Override
+        public Env getExistingEnvForInstrument(LanguageInfo language) {
+            return ((LanguageShared) NODES.getEngineObject(language)).currentLanguage().getEnv(false);
+        }
+
+        @Override
         public LanguageInfo getObjectLanguage(Object obj, Object vmObject) {
             for (LanguageShared ls : ((Instrument) vmObject).getRuntime().getLanguages()) {
                 if (!ls.initialized) {
@@ -1699,6 +1708,33 @@ public class PolyglotEngine {
             }
         }
 
+        @Override
+        public Map<String, ?> getExportedSymbols(Object vmObject) {
+            Instrument instrument = (Instrument) vmObject;
+            HashMap<String, Object> globals = instrument.getRuntime().currentVM().globals;
+            return new AbstractMap<String, Object>() {
+                @Override
+                public Set<Map.Entry<String, Object>> entrySet() {
+                    LinkedHashSet<Map.Entry<String, Object>> valueEntries = new LinkedHashSet<>(globals.size());
+                    for (Map.Entry<String, Object> entry : globals.entrySet()) {
+                        String name = entry.getKey();
+                        Object value = entry.getValue();
+                        if (value instanceof DirectValue) {
+                            value = ((DirectValue) value).value;
+                        }
+                        Map.Entry<String, Object> valueEntry = new AbstractMap.SimpleEntry<>(name, value);
+                        valueEntries.add(valueEntry);
+                    }
+                    return valueEntries;
+                }
+
+                @Override
+                public org.graalvm.polyglot.Value remove(Object key) {
+                    throw new UnsupportedOperationException();
+                }
+            };
+        }
+
         @SuppressWarnings("deprecation")
         @Override
         public <C> com.oracle.truffle.api.impl.FindContextNode<C> createFindContextNode(TruffleLanguage<C> lang) {
@@ -1768,6 +1804,16 @@ public class PolyglotEngine {
         @Override
         public org.graalvm.polyglot.Value toHostValue(Object obj, Object languageContext) {
             throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Iterable<Scope> createDefaultLexicalScope(Node node, Frame frame) {
+            return DefaultScope.lexicalScope(node, frame);
+        }
+
+        @Override
+        public Iterable<Scope> createDefaultTopScope(TruffleLanguage<?> language, Object context, Object global) {
+            return DefaultScope.topScope(language, context, global);
         }
 
         @Override

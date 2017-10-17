@@ -24,11 +24,13 @@
  */
 package com.oracle.truffle.api.metadata;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.metadata.ScopeProvider.AbstractScope;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -37,15 +39,18 @@ import com.oracle.truffle.api.nodes.RootNode;
  * Representation of a scope in a guest language program. The scope is a section of a program that
  * contains a set of declared and valid variables. The scopes can be both lexical and dynamic.
  *
- * @see #findScopes(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env,
- *      com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.Frame)
  * @since 0.26
+ * @deprecated Use
+ *             {@link Env#findScopes(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.Frame)}
+ *             or {@link Env#findTopScopes(java.lang.String)} instead.
  */
+@Deprecated
+@SuppressWarnings("deprecation")
 public final class Scope {
 
-    private static final ScopeAccessor SPI = new ScopeAccessor();
+    static final ScopeAccessor SPI = new ScopeAccessor();
 
-    private final AbstractScope ascope;
+    private final com.oracle.truffle.api.metadata.ScopeProvider.AbstractScope ascope;
 
     /**
      * Find a list of scopes enclosing the given {@link Node node}. There is at least one scope
@@ -68,9 +73,13 @@ public final class Scope {
      * @see ScopeProvider#findScope(java.lang.Object, com.oracle.truffle.api.nodes.Node,
      *      com.oracle.truffle.api.frame.Frame)
      * @since 0.26
+     * @deprecated Use
+     *             {@link TruffleInstrument.Env#findScopes(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.Frame)}
+     *             instead.
      */
+    @Deprecated
     @SuppressWarnings({"rawtypes", "unchecked"})
-    public static Iterable<Scope> findScopes(TruffleInstrument.Env instrumentEnv, Node node, Frame frame) {
+    public static Iterable<Scope> findScopes(Env instrumentEnv, Node node, Frame frame) {
         RootNode rootNode = node.getRootNode();
         if (rootNode == null) {
             throw new IllegalArgumentException("The node " + node + " does not have a RootNode.");
@@ -80,7 +89,7 @@ public final class Scope {
             throw new IllegalArgumentException("The root node " + rootNode + " does not have a language associated.");
         }
         ScopeProvider scopeProvider = instrumentEnv.lookup(languageInfo, ScopeProvider.class);
-        AbstractScope ascope;
+        com.oracle.truffle.api.metadata.ScopeProvider.AbstractScope ascope;
         if (scopeProvider != null) {
             TruffleLanguage.Env env = ScopeAccessor.engine().getEnvForInstrument(languageInfo);
             Object context = ScopeAccessor.langs().getContext(env);
@@ -91,7 +100,7 @@ public final class Scope {
         return ascope.toIterable();
     }
 
-    Scope(AbstractScope ascope) {
+    Scope(com.oracle.truffle.api.metadata.ScopeProvider.AbstractScope ascope) {
         this.ascope = ascope;
     }
 
@@ -102,7 +111,9 @@ public final class Scope {
      * @since 0.26
      */
     public String getName() {
-        return ascope.getName();
+        String name = ascope.getName();
+        assert name != null;
+        return name;
     }
 
     /**
@@ -118,9 +129,8 @@ public final class Scope {
 
     /**
      * Get variables declared in this scope and valid at the {@link Node} passed to
-     * {@link #findScopes(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env, com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.Frame)}
-     * . In general, there can be different variables returned when different {@link Frame}
-     * instances are provided.
+     * <code>findScopes(Env, Node, Frame)</code>. In general, there can be different variables
+     * returned when different {@link Frame} instances are provided.
      *
      * @param frame The current frame, or <code>null</code> for lexical access when the program is
      *            not running, or is not suspended at the scope's location. The variables might not
@@ -130,7 +140,9 @@ public final class Scope {
      * @since 0.26
      */
     public Object getVariables(Frame frame) {
-        return ascope.getVariables(frame);
+        Object vars = ascope.getVariables(frame);
+        assert vars instanceof TruffleObject : Objects.toString(vars);
+        return vars;
     }
 
     /**
@@ -148,7 +160,9 @@ public final class Scope {
      * @since 0.26
      */
     public Object getArguments(Frame frame) {
-        return ascope.getArguments(frame);
+        Object args = ascope.getArguments(frame);
+        assert args == null || args instanceof TruffleObject : Objects.toString(args);
+        return args;
     }
 
     static class ScopeAccessor extends Accessor {

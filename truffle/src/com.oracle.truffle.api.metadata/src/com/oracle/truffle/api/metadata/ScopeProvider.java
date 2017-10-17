@@ -27,6 +27,7 @@ package com.oracle.truffle.api.metadata;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -40,7 +41,11 @@ import com.oracle.truffle.api.nodes.RootNode;
  * {@link com.oracle.truffle.api.TruffleLanguage} with this interface.
  *
  * @since 0.26
+ * @deprecated Use
+ *             {@link TruffleLanguage#findScopes(java.lang.Object, com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.Frame)}
+ *             instead.
  */
+@Deprecated
 public interface ScopeProvider<C> {
 
     /**
@@ -54,12 +59,10 @@ public interface ScopeProvider<C> {
      * returned for different {@link Frame} instances, as scopes may depend on runtime information.
      * Known lexical scopes are returned when <code>frame</code> argument is <code>null</code>.
      * <p>
-     * The
-     * {@link Scope#findScopes(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env, com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.Frame)}
-     * provides result of this method called on the implementation of the enclosing {@link RootNode}
-     * . When the guest language does not implement this service, the enclosing {@link RootNode}'s
-     * scope with variables read from its {@link FrameDescriptor}'s {@link FrameSlot}s is provided
-     * by default.
+     * The <code>Scope.findScopes(Env, Node, Frame)</code> provides result of this method called on
+     * the implementation of the enclosing {@link RootNode} . When the guest language does not
+     * implement this service, the enclosing {@link RootNode}'s scope with variables read from its
+     * {@link FrameDescriptor}'s {@link FrameSlot}s is provided by default.
      *
      * @param langContext the language execution context
      * @param node a node to find the enclosing scopes for. The node is inside a {@link RootNode}
@@ -76,8 +79,14 @@ public interface ScopeProvider<C> {
      * contains a set of declared and valid variables. The scopes can be both lexical and dynamic.
      *
      * @since 0.26
+     * @deprecated Use
+     *             {@link com.oracle.truffle.api.Scope#newBuilder(java.lang.String, java.lang.Object)}
+     *             instead.
      */
+    @Deprecated
     abstract class AbstractScope {
+        // We extend TruffleLanguage.Scope only to assure that TruffleLanguage.findScope() has a
+        // return type compatible with ScopeProvider.findScope().
 
         /**
          * @since 0.26
@@ -107,7 +116,7 @@ public interface ScopeProvider<C> {
          * {@link ScopeProvider#findScope(java.lang.Object, com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.Frame)}
          * . In general, there can be different variables returned when different {@link Frame}
          * instances are provided.
-         * 
+         *
          * @param frame The current frame, or <code>null</code> for lexical access when the program
          *            is not running, or is not suspended at the scope's location. The variables
          *            might not be readable/writable with the <code>null</code> frame.
@@ -145,6 +154,7 @@ public interface ScopeProvider<C> {
         /**
          * Convert an implementation of scope hierarchy to an iterable.
          */
+        @SuppressWarnings("deprecation")
         final Iterable<Scope> toIterable() {
             return new Iterable<Scope>() {
                 @Override

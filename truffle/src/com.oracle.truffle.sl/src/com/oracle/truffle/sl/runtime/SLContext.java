@@ -50,6 +50,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
@@ -101,14 +102,16 @@ public final class SLContext {
     private final Shape emptyShape;
     private final SLLanguage language;
     private final AllocationReporter allocationReporter;
+    private final Iterable<Scope> topScopes; // Cache the top scopes
 
-    public SLContext(SLLanguage language, TruffleLanguage.Env env) {
+    public SLContext(SLLanguage language, TruffleLanguage.Env env, SLFunctionRegistry functionRegistry, Iterable<Scope> topScopes) {
         this.env = env;
         this.input = new BufferedReader(new InputStreamReader(env.in()));
         this.output = new PrintWriter(env.out(), true);
         this.language = language;
         this.allocationReporter = env.lookup(AllocationReporter.class);
-        this.functionRegistry = new SLFunctionRegistry(language);
+        this.functionRegistry = functionRegistry;
+        this.topScopes = topScopes;
         installBuiltins();
 
         this.emptyShape = LAYOUT.createShape(SLObjectType.SINGLETON);
@@ -135,6 +138,10 @@ public final class SLContext {
      */
     public SLFunctionRegistry getFunctionRegistry() {
         return functionRegistry;
+    }
+
+    public Iterable<Scope> getTopScopes() {
+        return topScopes;
     }
 
     /**

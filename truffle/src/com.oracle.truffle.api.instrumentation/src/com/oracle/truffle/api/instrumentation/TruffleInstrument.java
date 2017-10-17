@@ -31,9 +31,12 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -44,6 +47,8 @@ import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AccessorInstrumentHandler;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -515,6 +520,95 @@ public abstract class TruffleInstrument {
                 throw new IllegalArgumentException("No language available for given node.");
             }
             return AccessorInstrumentHandler.engineAccess().getEnvForInstrument(languageInfo);
+        }
+
+        /**
+         * Returns the polyglot scope - symbols explicitly exported by languages.
+         *
+         * @since 0.30
+         */
+        public Map<String, ? extends Object> getExportedSymbols() {
+            return new AbstractMap<String, Object>() {
+                private final Map<String, ?> symbols = AccessorInstrumentHandler.engineAccess().getExportedSymbols(vmObject);
+
+                @Override
+                public Set<Map.Entry<String, Object>> entrySet() {
+                    Set<Map.Entry<String, Object>> entries = new LinkedHashSet<>();
+                    for (Map.Entry<String, ?> symbol : symbols.entrySet()) {
+                        Object value = AccessorInstrumentHandler.engineAccess().toGuestValue(symbol.getValue(), vmObject);
+                        entries.add(new SimpleImmutableEntry<>(symbol.getKey(), value));
+                    }
+                    return entries;
+                }
+
+                @Override
+                public Object remove(Object key) {
+                    throw new UnsupportedOperationException();
+                }
+
+            };
+        }
+
+        /**
+         * Find a list of scopes enclosing the given {@link Node node}. There is at least one scope
+         * provided, that corresponds to the enclosing function. The iteration order corresponds
+         * with the scope nesting, from the inner-most to the outer-most. The scopes contain
+         * variables valid at the provided node.
+         * <p>
+         * In general, there can be a different list of scopes with different variables and
+         * arguments returned for different {@link Frame} instances, as scopes may depend on runtime
+         * information. Known lexical scopes are returned when <code>frame</code> argument is
+         * <code>null</code>.
+         *
+         * @param node a node to get the enclosing scopes for. The node needs to be inside a
+         *            {@link RootNode} associated with a language.
+         * @param frame The current frame the node is in, or <code>null</code> for lexical access
+         *            when the program is not running, or is not suspended at the node's location.
+         * @return an {@link Iterable} providing list of scopes from the inner-most to the
+         *         outer-most.
+         * @see TruffleLanguage#findScopes(java.lang.Object, com.oracle.truffle.api.nodes.Node,
+         *      com.oracle.truffle.api.frame.Frame)
+         * @since 0.30
+         */
+        public Iterable<Scope> findScopes(Node node, Frame frame) {
+            RootNode rootNode = node.getRootNode();
+            if (rootNode == null) {
+                throw new IllegalArgumentException("The node " + node + " does not have a RootNode.");
+            }
+            LanguageInfo languageInfo = rootNode.getLanguageInfo();
+            if (languageInfo == null) {
+                throw new IllegalArgumentException("The root node " + rootNode + " does not have a language associated.");
+            }
+            final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(languageInfo);
+            Iterable<Scope> langScopes = AccessorInstrumentHandler.langAccess().findScopes(env, node, frame);
+            assert langScopes != null : languageInfo.getId();
+            return langScopes;
+        }
+
+        /**
+         * Find a list of top scopes of a language. The iteration order corresponds with the scope
+         * nesting, from the inner-most to the outer-most.
+         *
+         * @param languageId a language id.
+         * @return a list of top scopes, can be empty when no top scopes are provided by the
+         *         language
+         * @see TruffleLanguage#findScopes(java.lang.Object, com.oracle.truffle.api.nodes.Node,
+         *      com.oracle.truffle.api.frame.Frame)
+         * @since 0.30
+         */
+        public Iterable<Scope> findTopScopes(String languageId) {
+            LanguageInfo languageInfo = getLanguages().get(languageId);
+            if (languageInfo == null) {
+                throw new IllegalArgumentException("Unknown language: " + languageId + ". Known languages are: " + getLanguages().keySet());
+            }
+            final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(languageInfo);
+            return findTopScopes(env);
+        }
+
+        static Iterable<Scope> findTopScopes(TruffleLanguage.Env env) {
+            Iterable<Scope> langScopes = AccessorInstrumentHandler.langAccess().findTopScopes(env);
+            assert langScopes != null : AccessorInstrumentHandler.langAccess().getLanguageInfo(env).getId();
+            return langScopes;
         }
 
     }
