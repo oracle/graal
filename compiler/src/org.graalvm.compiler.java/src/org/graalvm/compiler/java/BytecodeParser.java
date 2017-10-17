@@ -342,7 +342,7 @@ import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
-import org.graalvm.compiler.nodes.calc.DivNode;
+import org.graalvm.compiler.nodes.calc.FloatDivNode;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
@@ -1115,7 +1115,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genFloatDiv(ValueNode x, ValueNode y) {
-        return DivNode.create(x, y);
+        return FloatDivNode.create(x, y);
     }
 
     protected ValueNode genFloatRem(ValueNode x, ValueNode y) {
