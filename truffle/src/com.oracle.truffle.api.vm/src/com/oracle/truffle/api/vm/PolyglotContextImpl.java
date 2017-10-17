@@ -296,7 +296,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
     }
 
     void leave(Object prev) {
-        assert current() == this : "Cannot leave context that is currently not entered. Forgot to leave a context?";
+        assert current() == this : "Cannot leave context that is currently not entered. Forgot to enter or leave a context?";
         PolyglotThreadInfo info = getCachedThreadInfo();
         if (info.thread == Thread.currentThread()) {
             info.leave();
