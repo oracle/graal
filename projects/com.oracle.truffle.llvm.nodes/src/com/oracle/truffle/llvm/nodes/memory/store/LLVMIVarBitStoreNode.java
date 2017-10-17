@@ -30,22 +30,18 @@
 package com.oracle.truffle.llvm.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 
-@NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
 public abstract class LLVMIVarBitStoreNode extends LLVMStoreNode {
 
-    public LLVMIVarBitStoreNode(VariableBitWidthType type, SourceSection source) {
-        super(type, 0, source);
+    public LLVMIVarBitStoreNode(VariableBitWidthType type) {
+        super(type, 0);
     }
 
     @Specialization

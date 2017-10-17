@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,15 +27,12 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.datalayout;
+package com.oracle.truffle.llvm.runtime.memory;
 
-enum DataLayoutType {
-    INTEGER,
-    FLOAT,
-    VECTOR,
-    POINTER,
-    AGGREGATE,
-    STACK,
-    STACK_OBJECT,
-    INTEGER_WIDTHS
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
+
+public abstract class LLVMMemMoveNode extends Node {
+
+    public abstract Object executeWithTarget(VirtualFrame frame, Object target, Object source, long length);
 }

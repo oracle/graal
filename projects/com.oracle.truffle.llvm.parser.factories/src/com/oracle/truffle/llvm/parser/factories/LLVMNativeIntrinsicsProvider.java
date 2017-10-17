@@ -129,6 +129,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMProcessExitNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunConstructorFunctionsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunDestructorFunctionsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunGlobalVariableInitalizationNodeGen;
+import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -291,14 +292,14 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
         }
     }
 
-    public LLVMNativeIntrinsicsProvider collectIntrinsics() {
+    public LLVMNativeIntrinsicsProvider collectIntrinsics(NodeFactory nodeFactory) {
         registerTruffleIntrinsics();
         registerSulongIntrinsics();
         registerAbortIntrinsics();
         registerTruffleOnlyIntrinsics();
         registerRustIntrinsics();
         registerMathFunctionIntrinsics();
-        registerMemoryFunctionIntrinsics();
+        registerMemoryFunctionIntrinsics(nodeFactory);
         registerExceptionIntrinsics();
         registerComplexNumberIntrinsics();
         registerCTypeIntrinsics();
@@ -1345,7 +1346,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
         });
     }
 
-    protected void registerMemoryFunctionIntrinsics() {
+    protected void registerMemoryFunctionIntrinsics(NodeFactory factory) {
         factories.put("@malloc", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
@@ -1357,7 +1358,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap("@calloc", LLVMCallocNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@calloc", LLVMCallocNodeGen.create(factory.createMemSet(), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
         factories.put("@realloc", new LLVMNativeIntrinsicFactory(true, false) {

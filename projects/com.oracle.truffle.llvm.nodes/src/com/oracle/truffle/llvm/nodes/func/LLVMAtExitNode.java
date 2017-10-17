@@ -35,10 +35,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext.DestructorStackElement;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public final class LLVMAtExitNode extends LLVMExpressionNode {
 
@@ -52,7 +54,7 @@ public final class LLVMAtExitNode extends LLVMExpressionNode {
         this.destructor = destructor;
         this.thiz = thiz;
         this.dsoHandle = dsoHandle;
-        this.forceToAddress = getForceLLVMAddressNode();
+        this.forceToAddress = LLVMForceLLVMAddressNodeGen.create();
     }
 
     public LinkedList<DestructorStackElement> getDestructorStack() {
@@ -67,8 +69,8 @@ public final class LLVMAtExitNode extends LLVMExpressionNode {
     public Object executeGeneric(VirtualFrame frame) {
         try {
             LLVMFunctionDescriptor d = destructor.executeLLVMFunctionDescriptor(frame);
-            LLVMAddress t = forceToAddress.executeWithTarget(thiz.executeGeneric(frame));
-            LLVMAddress h = forceToAddress.executeWithTarget(thiz.executeGeneric(frame));
+            LLVMAddress t = forceToAddress.executeWithTarget(frame, thiz.executeGeneric(frame));
+            LLVMAddress h = forceToAddress.executeWithTarget(frame, thiz.executeGeneric(frame));
             addDestructorStackElement(d, t, h);
         } catch (Throwable t) {
             CompilerDirectives.transferToInterpreter();

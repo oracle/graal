@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nodes.literals;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -217,6 +218,21 @@ public class LLVMSimpleLiteralNode {
         public Object executeGeneric(VirtualFrame frame) {
             return executeLLVM80BitFloat(frame);
         }
+    }
+
+    public static class LLVMTruffleObjectLiteralNode extends LLVMExpressionNode {
+
+        private final LLVMTruffleObject address;
+
+        public LLVMTruffleObjectLiteralNode(LLVMTruffleObject address) {
+            this.address = address;
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return address;
+        }
+
     }
 
     public static class LLVMAddressLiteralNode extends LLVMExpressionNode {

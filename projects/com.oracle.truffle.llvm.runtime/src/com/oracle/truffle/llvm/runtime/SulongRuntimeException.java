@@ -46,6 +46,6 @@ public final class SulongRuntimeException extends RuntimeException {
 
     @Override
     public String getMessage() {
-        return cStackTrace.toString();
+        return getCause().getClass().getSimpleName() + " " + cStackTrace.toString();
     }
 }

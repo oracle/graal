@@ -40,6 +40,8 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
+import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
@@ -47,8 +49,8 @@ import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMProfiledMemMove;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -60,7 +62,7 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
     private static final int LONG_DOUBLE_SIZE = 16;
     private final int numberOfExplicitArguments;
     private final SourceSection sourceSection;
-    private final LLVMProfiledMemMove profiledMemMove = new LLVMProfiledMemMove();
+
     @Child private LLVMExpressionNode target;
     @Child private LLVMForceLLVMAddressNode targetToAddress;
     @Child private Node isPointer = Message.IS_POINTER.createNode();
@@ -68,8 +70,9 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
     @Child private Node toNative = Message.TO_NATIVE.createNode();
     @Child private Node isBoxed = Message.IS_BOXED.createNode();
     @Child private Node unbox = Message.UNBOX.createNode();
+    @Child private LLVMMemMoveNode memMove;
 
-    public LLVMX86_64BitVAStart(int numberOfExplicitArguments, LLVMExpressionNode target, SourceSection sourceSection) {
+    public LLVMX86_64BitVAStart(int numberOfExplicitArguments, LLVMExpressionNode target, LLVMMemMoveNode memMove, SourceSection sourceSection) {
         if (numberOfExplicitArguments < 0) {
             throw new AssertionError();
         }
@@ -77,6 +80,11 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         this.target = target;
         this.targetToAddress = getForceLLVMAddressNode();
         this.sourceSection = sourceSection;
+        this.memMove = memMove;
+    }
+
+    private static LLVMForceLLVMAddressNode getForceLLVMAddressNode() {
+        return LLVMForceLLVMAddressNodeGen.create();
     }
 
     private enum VarArgArea {
@@ -134,7 +142,7 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         final int nrVarArgs = realArguments.length - numberOfExplicitArguments;
 
         // Allocate register_save_area
-        LLVMAddress structAddress = targetToAddress.executeWithTarget(target.executeGeneric(frame));
+        LLVMAddress structAddress = targetToAddress.executeWithTarget(frame, target.executeGeneric(frame));
         final long regSaveArea = LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), X86_64BitVarArgs.FP_LIMIT, 8);
         LLVMMemory.putAddress(structAddress.getVal() + X86_64BitVarArgs.REG_SAVE_AREA, regSaveArea);
 
@@ -160,27 +168,27 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
                 switch (area) {
                     case GP_AREA:
                         if (gpOffset < X86_64BitVarArgs.GP_LIMIT) {
-                            storeArgument(regSaveArea + gpOffset, object);
+                            storeArgument(frame, regSaveArea + gpOffset, object);
                             gpOffset += X86_64BitVarArgs.GP_STEP;
                         } else {
                             assert overflowAreaSize >= overflowOffset;
-                            overflowOffset += storeArgument(overflowArgArea + overflowOffset, object);
+                            overflowOffset += storeArgument(frame, overflowArgArea + overflowOffset, object);
                         }
                         break;
 
                     case FP_AREA:
                         if (fpOffset < X86_64BitVarArgs.FP_LIMIT) {
-                            storeArgument(regSaveArea + fpOffset, object);
+                            storeArgument(frame, regSaveArea + fpOffset, object);
                             fpOffset += X86_64BitVarArgs.FP_STEP;
                         } else {
                             assert overflowAreaSize >= overflowOffset;
-                            overflowOffset += storeArgument(overflowArgArea + overflowOffset, object);
+                            overflowOffset += storeArgument(frame, overflowArgArea + overflowOffset, object);
                         }
                         break;
 
                     case OVERFLOW_AREA:
                         assert overflowAreaSize >= overflowOffset;
-                        overflowOffset += storeArgument(overflowArgArea + overflowOffset, object);
+                        overflowOffset += storeArgument(frame, overflowArgArea + overflowOffset, object);
                         break;
 
                     default:
@@ -289,12 +297,12 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
 
     @Child private LLVMGlobalVariableAccess globalAccess = createGlobalAccess();
 
-    private int storeArgument(long currentPtr, Object object) {
+    private int storeArgument(VirtualFrame frame, long currentPtr, Object object) {
         if (object instanceof Number || object instanceof LLVM80BitFloat) {
             return doPrimitiveWrite(currentPtr, object);
         } else if (object instanceof LLVMVarArgCompoundValue) {
             LLVMVarArgCompoundValue obj = (LLVMVarArgCompoundValue) object;
-            profiledMemMove.memmove(LLVMAddress.fromLong(currentPtr), LLVMAddress.fromLong(obj.getAddr()), obj.getSize());
+            memMove.executeWithTarget(frame, LLVMAddress.fromLong(currentPtr), LLVMAddress.fromLong(obj.getAddr()), obj.getSize());
             return obj.getSize();
         } else if (object instanceof LLVMAddress) {
             LLVMMemory.putAddress(currentPtr, (LLVMAddress) object);

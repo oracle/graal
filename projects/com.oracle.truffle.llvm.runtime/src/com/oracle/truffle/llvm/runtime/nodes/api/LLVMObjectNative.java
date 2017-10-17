@@ -35,51 +35,58 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 
 /**
  * Interface for objects that want to simulate the behavior of native memory. If an object or the
  * {@link ObjectType} of a {@link DynamicObject} implements this interface, raw memory access to
  * this object will be implemented using custom nodes. If an object implements both
- * {@link LLVMObjectAccess} and {@link TruffleObject}, the nodes from {@link LLVMObjectAccess} have
+ * {@link LLVMObjectNative} and {@link TruffleObject}, the nodes from {@link LLVMObjectNative} have
  * precedence over regular interop.
  */
-public interface LLVMObjectAccess {
+public interface LLVMObjectNative {
 
-    LLVMObjectReadNode createReadNode(ForeignToLLVMType type);
+    LLVMObjectToNativeNode createToNativeNode();
 
-    LLVMObjectWriteNode createWriteNode();
+    LLVMObjectIsPointerNode createIsPointerNode();
 
-    abstract class LLVMObjectAccessNode extends Node {
+    LLVMObjectAsPointerNode createAsPointerNode();
 
-        public abstract boolean canAccess(Object obj);
+    abstract class LLVMObjectNativeNode extends Node {
+
+        public abstract boolean isNative(Object obj);
     }
 
-    abstract class LLVMObjectReadNode extends LLVMObjectAccessNode {
+    abstract class LLVMObjectToNativeNode extends LLVMObjectNativeNode {
 
         /**
-         * Do a native memory read on an object.
+         * Transform an object to a pointer.
          *
          * @param frame the Truffle frame
          * @param obj the object that is the base of the read pointer
-         * @param identifier the struct element name or array index
-         * @param offset the byte offset into the object
-         * @return the read value
          */
-        public abstract Object executeRead(VirtualFrame frame, Object obj, Object identifier, long offset) throws InteropException;
+        public abstract Object executeToNative(VirtualFrame frame, Object obj) throws InteropException;
     }
 
-    abstract class LLVMObjectWriteNode extends LLVMObjectAccessNode {
+    abstract class LLVMObjectIsPointerNode extends LLVMObjectNativeNode {
 
         /**
-         * Do a native memory write on an object.
+         * Check if object is a pointer.
          *
          * @param frame the Truffle frame
-         * @param obj the object that is the base of the written pointer
-         * @param identifier the struct element name or array index
-         * @param offset the byte offset into the object
-         * @param value the written value
+         * @param obj the object that is queried for IS_POINTER
          */
-        public abstract void executeWrite(VirtualFrame frame, Object obj, Object identifier, long offset, Object value) throws InteropException;
+        public abstract boolean executeIsPointer(VirtualFrame frame, Object obj);
     }
+
+    abstract class LLVMObjectAsPointerNode extends LLVMObjectNativeNode {
+
+        /**
+         * Get raw pointer representation of this object.
+         *
+         * @param frame the Truffle frame
+         * @param obj the object that is converted to a pointer
+         */
+        public abstract long executeAsPointer(VirtualFrame frame, Object obj) throws InteropException;
+    }
+
 }

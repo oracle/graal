@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,35 +27,34 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.memory;
+package com.oracle.truffle.llvm.nodes.memory.store;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.dsl.NodeField;
-import com.oracle.truffle.api.dsl.NodeFields;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "source")})
-@NodeFields({@NodeField(name = "length", type = int.class), @NodeField(name = "alignment", type = int.class)})
-public abstract class LLVMVarArgCompoundAddressNode extends LLVMExpressionNode {
-    public abstract int getLength();
+@NodeChild(type = LLVMExpressionNode.class)
+@NodeChild(type = LLVMExpressionNode.class)
+public abstract class LLVMStoreExpressionNode extends LLVMExpressionNode {
 
-    public abstract int getAlignment();
+    private final SourceSection sourceSection;
+    @Child private LLVMStoreNode store;
 
-    @Specialization
-    public LLVMVarArgCompoundValue byValue(LLVMGlobalVariable source, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
-        return byValue(access.getNativeLocation(source));
+    public LLVMStoreExpressionNode(SourceSection sourceSection, LLVMStoreNode store) {
+        this.sourceSection = sourceSection;
+        this.store = store;
+    }
+
+    @Override
+    public SourceSection getSourceSection() {
+        return sourceSection;
     }
 
     @Specialization
-    public LLVMVarArgCompoundValue byValue(LLVMAddress source) {
-        return LLVMVarArgCompoundValue.create(source.getVal(), getLength(), getAlignment());
+    public Object store(VirtualFrame frame, Object address, Object value) {
+        return store.executeWithTarget(frame, address, value);
     }
 
 }

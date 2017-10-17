@@ -43,4 +43,6 @@ public interface Configuration {
     List<OptionDescriptor> getOptionDescriptors();
 
     NodeFactory getNodeFactory(LLVMContext context);
+
+    Object createContextExtension();
 }

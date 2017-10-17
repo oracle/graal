@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,8 +33,11 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
@@ -46,10 +49,14 @@ import com.oracle.truffle.llvm.runtime.types.VoidType;
 public abstract class LLVMTruffleHandleToManaged extends LLVMIntrinsic {
 
     @Specialization
-    public LLVMTruffleObject executeIntrinsic(Object rawHandle, @Cached("getContext()") LLVMContext context, @Cached("getForceLLVMAddressNode()") LLVMForceLLVMAddressNode forceAddressNode) {
-        LLVMAddress handle = forceAddressNode.executeWithTarget(rawHandle);
+    public LLVMTruffleObject executeIntrinsic(VirtualFrame frame, Object rawHandle, @Cached("getContext()") LLVMContext context,
+                    @Cached("getForceLLVMAddressNode()") LLVMForceLLVMAddressNode forceAddressNode) {
+        LLVMAddress handle = forceAddressNode.executeWithTarget(frame, rawHandle);
         TruffleObject object = context.getManagedObjectForHandle(handle);
         return new LLVMTruffleObject(object, new PointerType(VoidType.INSTANCE));
     }
 
+    protected static LLVMForceLLVMAddressNode getForceLLVMAddressNode() {
+        return LLVMForceLLVMAddressNodeGen.create();
+    }
 }

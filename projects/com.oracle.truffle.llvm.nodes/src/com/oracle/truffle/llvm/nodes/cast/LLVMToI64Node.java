@@ -33,11 +33,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
@@ -83,24 +83,13 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
     @Child private Node unbox = Message.UNBOX.createNode();
     @Child private ForeignToLLVM convert = ForeignToLLVM.create(ForeignToLLVMType.I64);
 
+    protected LLVMForceLLVMAddressNode createToAddress() {
+        return LLVMForceLLVMAddressNodeGen.create();
+    }
+
     @Specialization
-    public long executeTruffleObject(LLVMTruffleObject from) {
-        TruffleObject base = from.getObject();
-        try {
-            long ptr;
-            if (ForeignAccess.sendIsNull(isNull, base)) {
-                ptr = 0;
-            } else if (ForeignAccess.sendIsBoxed(isBoxed, base)) {
-                ptr = (long) convert.executeWithTarget(ForeignAccess.sendUnbox(unbox, base));
-            } else {
-                TruffleObject n = (TruffleObject) ForeignAccess.sendToNative(toNative, base);
-                ptr = ForeignAccess.sendAsPointer(asPointer, n);
-            }
-            return ptr + from.getOffset();
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
-        }
+    public long executeTruffleObject(VirtualFrame frame, LLVMTruffleObject from, @Cached("createToAddress()") LLVMForceLLVMAddressNode toAddress) {
+        return toAddress.executeWithTarget(frame, from).getVal();
     }
 
     @Specialization

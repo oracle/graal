@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,38 +27,26 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.func;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+#include <stdlib.h>
 
-public final class LLVMTypeIdForExceptionNode extends LLVMExpressionNode {
+char *strncpy(char *dest, const char *source, size_t n) {
+  int i;
+  for (i = 0; source[i] != '\0' && i < n; i++) {
+    dest[i] = source[i];
+  }
 
-    @Child private LLVMExpressionNode thrownTypeID;
-    @Child private LLVMForceLLVMAddressNode thrownTypeIDToAddress;
+  while (i < n) {
+    dest[i] = '\0';
+    i++;
+  }
+  return dest;
+}
 
-    private final SourceSection sourceSection;
-
-    public LLVMTypeIdForExceptionNode(LLVMExpressionNode thrownTypeID, SourceSection sourceSection) {
-        this.thrownTypeID = thrownTypeID;
-        this.sourceSection = sourceSection;
-        this.thrownTypeIDToAddress = getForceLLVMAddressNode();
-    }
-
-    @Override
-    public SourceSection getSourceSection() {
-        return sourceSection;
-    }
-
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        return (int) thrownTypeIDToAddress.executeWithTarget(frame, thrownTypeID.executeGeneric(frame)).getVal();
-    }
-
-    private static LLVMForceLLVMAddressNode getForceLLVMAddressNode() {
-        return LLVMForceLLVMAddressNodeGen.create();
-    }
+char *strcpy(char *dest, const char *source) {
+  int i = 0;
+  do {
+    dest[i] = source[i];
+  } while (source[i++] != '\0');
+  return dest;
 }

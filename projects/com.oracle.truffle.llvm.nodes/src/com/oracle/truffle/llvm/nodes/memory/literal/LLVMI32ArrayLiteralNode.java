@@ -34,11 +34,15 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNode;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 @NodeChild(value = "address", type = LLVMExpressionNode.class)
 public abstract class LLVMI32ArrayLiteralNode extends LLVMExpressionNode {
@@ -68,4 +72,19 @@ public abstract class LLVMI32ArrayLiteralNode extends LLVMExpressionNode {
         return addr;
     }
 
+    protected LLVMForeignWriteNode createForeignWrite() {
+        return LLVMForeignWriteNodeGen.create(PrimitiveType.I32, 4);
+    }
+
+    @Specialization
+    @ExplodeLoop
+    protected LLVMTruffleObject foreignWriteI32(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+        LLVMTruffleObject currentPtr = addr;
+        for (int i = 0; i < values.length; i++) {
+            int currentValue = values[i].executeI32(frame);
+            foreignWrite.execute(frame, currentPtr, currentValue);
+            currentPtr = currentPtr.increment(stride, currentPtr.getType());
+        }
+        return addr;
+    }
 }

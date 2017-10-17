@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.memory;
+package com.oracle.truffle.llvm.nodes.memory;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -43,6 +43,8 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -50,13 +52,18 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 @NodeFields({@NodeField(name = "length", type = int.class), @NodeField(name = "alignment", type = int.class)})
 @NeedsStack
 public abstract class LLVMStructByValueNode extends LLVMExpressionNode {
-    private final LLVMProfiledMemMove profiledMemMove = new LLVMProfiledMemMove();
 
     public abstract int getLength();
 
     public abstract int getAlignment();
 
     @CompilationFinal private FrameSlot stackPointer;
+
+    @Child private LLVMMemMoveNode memMove;
+
+    public LLVMStructByValueNode(LLVMMemMoveNode memMove) {
+        this.memMove = memMove;
+    }
 
     protected FrameSlot getStackPointerSlot() {
         if (stackPointer == null) {
@@ -74,7 +81,7 @@ public abstract class LLVMStructByValueNode extends LLVMExpressionNode {
     @Specialization
     public LLVMAddress byValue(VirtualFrame frame, LLVMAddress source) {
         LLVMAddress dest = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), getLength(), getAlignment()));
-        profiledMemMove.memmove(dest, source, getLength());
+        memMove.executeWithTarget(frame, dest, source, getLength());
         return dest;
     }
 
