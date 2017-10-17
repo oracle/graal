@@ -30,6 +30,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public final class DefaultTruffleSplittingStrategy implements TruffleSplittingStrategy {
 
@@ -80,8 +81,12 @@ public final class DefaultTruffleSplittingStrategy implements TruffleSplittingSt
             return false;
         }
 
+        RootNode rootNode = call.getRootNode();
+        if (rootNode == null) {
+            return false;
+        }
         // disable recursive splitting for now
-        OptimizedCallTarget root = (OptimizedCallTarget) call.getRootNode().getCallTarget();
+        OptimizedCallTarget root = (OptimizedCallTarget) rootNode.getCallTarget();
         if (root == callTarget || root.getSourceCallTarget() == callTarget) {
             // recursive call found
             return false;
