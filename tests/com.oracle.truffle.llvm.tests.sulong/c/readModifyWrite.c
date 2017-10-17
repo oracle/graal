@@ -15,7 +15,7 @@ int main() {
   }
 
   old = __sync_fetch_and_sub(&val, 1); // atomicrmw sub
-  if (old != 3 || val != 3) {
+  if (old != 4 || val != 3) {
     abort();
   }
 

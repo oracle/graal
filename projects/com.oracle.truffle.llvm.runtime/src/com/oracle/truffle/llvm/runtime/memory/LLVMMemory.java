@@ -606,8 +606,8 @@ public abstract class LLVMMemory {
         do {
             old = getI64(address);
             nevv = f.applyAsLong(old, value);
-        } while (UNSAFE.compareAndSwapLong(null, addr, old, nevv));
-        return nevv;
+        } while (!UNSAFE.compareAndSwapLong(null, addr, old, nevv));
+        return old;
     }
 
     public static int getAndSetI32(LLVMAddress address, int value) {
@@ -629,8 +629,8 @@ public abstract class LLVMMemory {
         do {
             old = getI32(address);
             nevv = f.applyAsInt(old, value);
-        } while (UNSAFE.compareAndSwapInt(null, addr, old, nevv));
-        return nevv;
+        } while (!UNSAFE.compareAndSwapInt(null, addr, old, nevv));
+        return old;
     }
 
     public static short getAndOpI16(LLVMAddress address, short value, BinaryOperator<Short> f) {
@@ -639,8 +639,8 @@ public abstract class LLVMMemory {
         do {
             old = getI16(address);
             nevv = f.apply(old, value);
-        } while (compareAndSwapI16(address, old, nevv).swap);
-        return nevv;
+        } while (!compareAndSwapI16(address, old, nevv).swap);
+        return old;
     }
 
     public static byte getAndOpI8(LLVMAddress address, byte value, BinaryOperator<Byte> f) {
@@ -649,8 +649,8 @@ public abstract class LLVMMemory {
         do {
             old = getI8(address);
             nevv = f.apply(old, value);
-        } while (compareAndSwapI8(address, old, nevv).swap);
-        return nevv;
+        } while (!compareAndSwapI8(address, old, nevv).swap);
+        return old;
     }
 
     public static boolean getAndOpI1(LLVMAddress address, boolean value, BinaryOperator<Boolean> f) {
@@ -659,8 +659,8 @@ public abstract class LLVMMemory {
         do {
             old = getI8(address);
             nevv = f.apply(old != 0, value);
-        } while (compareAndSwapI8(address, old, (byte) (nevv ? 1 : 0)).swap);
-        return nevv;
+        } while (!compareAndSwapI8(address, old, (byte) (nevv ? 1 : 0)).swap);
+        return old != 0;
     }
 
     public static void fullFence() {
