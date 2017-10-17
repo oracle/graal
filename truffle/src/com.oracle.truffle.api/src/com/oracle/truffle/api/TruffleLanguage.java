@@ -284,8 +284,9 @@ public abstract class TruffleLanguage<C> {
          * Specifies a list of languages that this language depends on. Languages are referenced
          * using their {@link #id()}. This has the following effects:
          * <ul>
-         * <li>This language has always access to dependent languages if this language is
-         * accessible.
+         * <li>This language always has access to dependent languages if this language is
+         * accessible. Languages may not be accessible if language access is
+         * {@link org.graalvm.polyglot.Context#create(String...) restricted}.
          * <li>This language is finalized before dependent language contexts are
          * {@link TruffleLanguage#finalizeContext(Object) finalized}.
          * <li>This language is disposed before dependent language contexts are
@@ -690,8 +691,8 @@ public abstract class TruffleLanguage<C> {
      * thread} may differ from the disposed thread.
      * <p>
      *
-     * <b>Example multi-threaded language implementation:
-     * <b> {@link TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread}
+     * <b>Example multi-threaded language implementation: <b>
+     * {@link TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread}
      *
      * @since 0.28
      */

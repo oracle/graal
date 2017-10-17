@@ -62,7 +62,7 @@ final class PolyglotLanguageContext implements VMObject {
     final Value nullValue;
     final String[] applicationArguments;
     final Set<PolyglotThread> activePolyglotThreads = new HashSet<>();
-    volatile boolean creating; // true when context is currently beeing created.
+    volatile boolean creating; // true when context is currently being created.
     volatile boolean finalized;
     volatile Env env;
 
