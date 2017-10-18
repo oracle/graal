@@ -335,7 +335,6 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         Collections.sort(sortedLanguages);
 
         LinkedHashSet<LanguageCache> serializedLanguages = new LinkedHashSet<>();
-        Set<String> visitedIds = new HashSet<>();
         Set<String> languageReferences = new HashSet<>();
         Map<String, RuntimeException> initErrors = new HashMap<>();
 
@@ -347,15 +346,13 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         // dependency of every public language to every internal language
         for (LanguageCache language : sortedLanguages) {
             if (language.isInternal() && !languageReferences.contains(language.getId())) {
-                visitedIds.clear();
-                visitLanguage(visitedIds, initErrors, cachedLanguages, serializedLanguages, language);
+                visitLanguage(initErrors, cachedLanguages, serializedLanguages, language);
             }
         }
 
         for (LanguageCache language : sortedLanguages) {
             if (!language.isInternal() && !languageReferences.contains(language.getId())) {
-                visitedIds.clear();
-                visitLanguage(visitedIds, initErrors, cachedLanguages, serializedLanguages, language);
+                visitLanguage(initErrors, cachedLanguages, serializedLanguages, language);
             }
         }
 
@@ -380,7 +377,14 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         return polyglotLanguages;
     }
 
-    private void visitLanguage(Set<String> visitedIds, Map<String, RuntimeException> initErrors, Map<String, LanguageCache> cachedLanguages, LinkedHashSet<LanguageCache> serializedLanguages,
+    private void visitLanguage(Map<String, RuntimeException> initErrors, Map<String, LanguageCache> cachedLanguages, LinkedHashSet<LanguageCache> serializedLanguages,
+                    LanguageCache language) {
+        if (!language.getDependentLanguages().isEmpty()) {
+            visitLanguageImpl(new HashSet<>(), initErrors, cachedLanguages, serializedLanguages, language);
+        }
+    }
+
+    private void visitLanguageImpl(Set<String> visitedIds, Map<String, RuntimeException> initErrors, Map<String, LanguageCache> cachedLanguages, LinkedHashSet<LanguageCache> serializedLanguages,
                     LanguageCache language) {
         Set<String> dependencies = language.getDependentLanguages();
         for (String dependency : dependencies) {
@@ -394,7 +398,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                 continue;
             }
             visitedIds.add(dependency);
-            visitLanguage(visitedIds, initErrors, cachedLanguages, serializedLanguages, dependentLanguage);
+            visitLanguageImpl(visitedIds, initErrors, cachedLanguages, serializedLanguages, dependentLanguage);
             visitedIds.remove(dependency);
         }
         serializedLanguages.add(language);
