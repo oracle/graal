@@ -617,19 +617,17 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
     private static class WasteTime extends InstrumentedNode {
 
-        public static int state = 0;
-        private int wasteCount = 300_000;
-
         WasteTime(BaseNode[] children) {
             super(children);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            for (int i = 0; i < wasteCount; i++) {
-                state++;
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException e) {
             }
-            return state;
+            return null;
         }
     }
 

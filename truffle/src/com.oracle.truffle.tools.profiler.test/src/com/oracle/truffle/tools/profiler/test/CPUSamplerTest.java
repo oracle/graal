@@ -39,7 +39,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
     private CPUSampler sampler;
 
-    final int executionCount = 1000;
+    final int executionCount = 10;
 
     @Before
     public void setupSampler() {
