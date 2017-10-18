@@ -122,8 +122,29 @@ class MemoryTracerCLI extends ProfilerCLI {
         }
     }
 
+    private static Map<String, List<MemoryTracer.AllocationEventInfo>> computeMetaObjectHistogram(MemoryTracer tracer) {
+        Map<String, List<MemoryTracer.AllocationEventInfo>> histogram = new HashMap<>();
+        computeMetaObjectHistogramImpl(tracer.getRootNodes(), histogram);
+        return histogram;
+    }
+
+    private static void computeMetaObjectHistogramImpl(Collection<ProfilerNode<MemoryTracer.Payload>> children, Map<String, List<MemoryTracer.AllocationEventInfo>> histogram) {
+        for (ProfilerNode<MemoryTracer.Payload> treeNode : children) {
+            for (MemoryTracer.AllocationEventInfo info : treeNode.getPayload().getEvents()) {
+                List<MemoryTracer.AllocationEventInfo> nodes = histogram.computeIfAbsent(info.getMetaObjectString(), new Function<String, List<MemoryTracer.AllocationEventInfo>>() {
+                    @Override
+                    public List<MemoryTracer.AllocationEventInfo> apply(String s) {
+                        return new ArrayList<>();
+                    }
+                });
+                nodes.add(info);
+            }
+            computeMetaObjectHistogramImpl(treeNode.getChildren(), histogram);
+        }
+    }
+
     private static void printMetaObjectHistogram(PrintStream out, MemoryTracer tracer) {
-        final Map<String, List<MemoryTracer.AllocationEventInfo>> histogram = tracer.computeMetaObjectHistogram();
+        final Map<String, List<MemoryTracer.AllocationEventInfo>> histogram = computeMetaObjectHistogram(tracer);
         final List<String> keys = new ArrayList<>(histogram.keySet());
         keys.sort(new Comparator<String>() {
             @Override

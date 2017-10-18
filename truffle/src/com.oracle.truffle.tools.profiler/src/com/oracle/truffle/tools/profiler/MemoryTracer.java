@@ -235,38 +235,6 @@ public final class MemoryTracer implements Closeable {
         }
     }
 
-    /**
-     * Creates a
-     * {@linkplain com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#findMetaObject(LanguageInfo, Object)
-     * meta object} histogram - a mapping from a {@link String textual} meta object representation
-     * to a {@link List} of {@link AllocationEventInfo} corresponding to that meta object. The
-     * {@linkplain com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#findMetaObject(LanguageInfo, Object)
-     * meta object} are language specific descriptions of allocated objects.
-     *
-     * @return the met object histogram
-     * @since 0.29
-     */
-    public Map<String, List<AllocationEventInfo>> computeMetaObjectHistogram() {
-        Map<String, List<AllocationEventInfo>> histogram = new HashMap<>();
-        computeMetaObjectHistogramImpl(rootNode.getChildren(), histogram);
-        return histogram;
-    }
-
-    private void computeMetaObjectHistogramImpl(Collection<ProfilerNode<Payload>> children, Map<String, List<AllocationEventInfo>> histogram) {
-        for (ProfilerNode<Payload> treeNode : children) {
-            for (AllocationEventInfo info : treeNode.getPayload().getEvents()) {
-                List<AllocationEventInfo> nodes = histogram.computeIfAbsent(info.getMetaObjectString(), new Function<String, List<AllocationEventInfo>>() {
-                    @Override
-                    public List<AllocationEventInfo> apply(String s) {
-                        return new ArrayList<>();
-                    }
-                });
-                nodes.add(info);
-            }
-            computeMetaObjectHistogramImpl(treeNode.getChildren(), histogram);
-        }
-    }
-
     private final class Listener implements AllocationListener {
 
         @Override
