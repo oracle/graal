@@ -135,7 +135,7 @@ public abstract class Launcher {
         }
 
         AbortException(Throwable cause, int exitCode) {
-            super(cause);
+            super(null, cause);
             this.exitCode = exitCode;
         }
 
