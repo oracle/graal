@@ -24,11 +24,13 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
+import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.profiler.CPUSampler;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
+import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -45,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+@Option.Group(CPUSamplerInstrument.ID)
 class CPUSamplerCLI extends ProfilerCLI {
 
     enum Output {
@@ -78,17 +81,37 @@ class CPUSamplerCLI extends ProfilerCLI {
                         }
                     });
 
+    @Option(name = "", help = "Enable the CPU sampler.", category = OptionCategory.USER)
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
+
+    static final String modeHelp = "Describes level of sampling detail. NOTE: Increased detail can lead to reduced accuracy. Modes:" + System.lineSeparator() +
+            "'compiled' - samples roots excluding inlined functions (default)" + System.lineSeparator() + "'roots' - samples roots including inlined functions" +
+            System.lineSeparator() + "'statements' - samples all statements.";
+
+    @Option(name = "Mode", help = "TODO", category = OptionCategory.USER)
     static final OptionKey<CPUSampler.Mode> MODE = new OptionKey<>(CPUSampler.Mode.COMPILED, CLI_MODE_TYPE);
+
+    @Option(name = "Period", help = "Period in milliseconds to sample the stack.", category = OptionCategory.USER)
     static final OptionKey<Long> SAMPLE_PERIOD = new OptionKey<>(1L);
+
+    @Option(name = "Delay", help = "Delay the sampling for this many milliseconds (default: 0).", category = OptionCategory.USER)
     static final OptionKey<Long> DELAY_PERIOD = new OptionKey<>(0L);
+    @Option(name = "StackLimit", help = "Maximum number of maximum stack elements.", category = OptionCategory.USER)
     static final OptionKey<Integer> STACK_LIMIT = new OptionKey<>(10000);
+
+    @Option(name = "Output", help = "Print a 'histogram' or 'calltree' as output (default:HISTOGRAM).", category = OptionCategory.USER)
     static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
 
+    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).",  category = OptionCategory.USER)
     static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
+
+    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl, default:*).",  category = OptionCategory.USER)
     static final OptionKey<Object[]> FILTER_FILE = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
+
+    @Option(name = "FilterLanguage", help = "Only profile languages with mime-type. (eg. +, default:no filter).",  category = OptionCategory.USER)
     static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>("");
 
+    @Option(name = "SampleInternal", help = "Capture internal elements (default:false).",  category = OptionCategory.USER)
     static final OptionKey<Boolean> SAMPLE_INTERNAL = new OptionKey<>(false);
 
     static void handleOutput(TruffleInstrument.Env env, CPUSampler sampler, OptionDescriptors descriptors) {
