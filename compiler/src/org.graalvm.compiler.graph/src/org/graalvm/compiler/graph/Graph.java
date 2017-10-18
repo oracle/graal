@@ -514,7 +514,12 @@ public class Graph {
         /**
          * A node was added to a graph.
          */
-        NODE_ADDED;
+        NODE_ADDED,
+
+        /**
+         * A node was removed from the graph.
+         */
+        NODE_REMOVED;
     }
 
     /**
@@ -556,6 +561,15 @@ public class Graph {
          */
         default void nodeAdded(Node node) {
             event(NodeEvent.NODE_ADDED, node);
+        }
+
+        /**
+         * Notifies this listener of a removed node.
+         *
+         * @param node
+         */
+        default void nodeRemoved(Node node) {
+            event(NodeEvent.NODE_REMOVED, node);
         }
     }
 
@@ -1084,6 +1098,10 @@ public class Graph {
         }
         nodes[node.id] = null;
         nodesDeletedSinceLastCompression++;
+
+        if (nodeEventListener != null) {
+            nodeEventListener.nodeRemoved(node);
+        }
 
         // nodes aren't removed from the type cache here - they will be removed during iteration
     }
