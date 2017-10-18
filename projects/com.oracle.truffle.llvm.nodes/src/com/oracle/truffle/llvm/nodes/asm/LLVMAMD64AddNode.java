@@ -52,8 +52,8 @@ public abstract class LLVMAMD64AddNode extends LLVMExpressionNode {
         @Specialization
         protected byte executeI8(VirtualFrame frame, byte left, byte right) {
             byte result = (byte) (left + right);
-            boolean overflow = (result < 0 && left > 0 && right > 0) || (result > 0 && left < 0 && right < 0);
-            boolean carry = ((left < 0 || right < 0) && result > 0) || (left < 0 && right < 0);
+            boolean overflow = (result < 0 && left > 0 && right > 0) || (result >= 0 && left < 0 && right < 0);
+            boolean carry = ((left < 0 || right < 0) && result >= 0) || (left < 0 && right < 0);
             flags.execute(frame, overflow, carry, result);
             return result;
         }
@@ -67,8 +67,8 @@ public abstract class LLVMAMD64AddNode extends LLVMExpressionNode {
         @Specialization
         protected short executeI16(VirtualFrame frame, short left, short right) {
             short result = (short) (left + right);
-            boolean overflow = (result < 0 && left > 0 && right > 0) || (result > 0 && left < 0 && right < 0);
-            boolean carry = ((left < 0 || right < 0) && result > 0) || (left < 0 && right < 0);
+            boolean overflow = (result < 0 && left > 0 && right > 0) || (result >= 0 && left < 0 && right < 0);
+            boolean carry = ((left < 0 || right < 0) && result >= 0) || (left < 0 && right < 0);
             flags.execute(frame, overflow, carry, result);
             return result;
         }
@@ -82,8 +82,8 @@ public abstract class LLVMAMD64AddNode extends LLVMExpressionNode {
         @Specialization
         protected int executeI32(VirtualFrame frame, int left, int right) {
             int result = left + right;
-            boolean overflow = (result < 0 && left > 0 && right > 0) || (result > 0 && left < 0 && right < 0);
-            boolean carry = ((left < 0 || right < 0) && result > 0) || (left < 0 && right < 0);
+            boolean overflow = (result < 0 && left > 0 && right > 0) || (result >= 0 && left < 0 && right < 0);
+            boolean carry = ((left < 0 || right < 0) && result >= 0) || (left < 0 && right < 0);
             flags.execute(frame, overflow, carry, result);
             return result;
         }
@@ -97,8 +97,8 @@ public abstract class LLVMAMD64AddNode extends LLVMExpressionNode {
         @Specialization
         protected long executeI64(VirtualFrame frame, long left, long right) {
             long result = left + right;
-            boolean overflow = (result < 0 && left > 0 && right > 0) || (result > 0 && left < 0 && right < 0);
-            boolean carry = ((left < 0 || right < 0) && result > 0) || (left < 0 && right < 0);
+            boolean overflow = (result < 0 && left > 0 && right > 0) || (result >= 0 && left < 0 && right < 0);
+            boolean carry = ((left < 0 || right < 0) && result >= 0) || (left < 0 && right < 0);
             flags.execute(frame, overflow, carry, result);
             return result;
         }
