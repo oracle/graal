@@ -1309,8 +1309,10 @@ public class BasicNodeFactory implements NodeFactory {
             case "@llvm.lifetime.end":
                 return LLVMLifetimeEndNodeGen.create(args[1], args[2], sourceSection);
             case "@llvm.invariant.start":
+            case "@llvm.invariant.start.p0i8":
                 return LLVMInvariantStartNodeGen.create(args[1], args[2], sourceSection);
             case "@llvm.invariant.end":
+            case "@llvm.invariant.end.p0i8":
                 return LLVMInvariantEndNodeGen.create(args[1], args[2], sourceSection);
             case "@llvm.stacksave":
                 return LLVMStackSaveNodeGen.create(sourceSection);
