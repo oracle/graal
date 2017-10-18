@@ -101,7 +101,6 @@ public class LLVMGlobalRootNode extends RootNode {
                 return e.getReturnCode();
             } catch (SulongRuntimeException e) {
                 CompilerDirectives.transferToInterpreter();
-                e.getCStackTrace().printCStackTrace();
                 throw e;
             } catch (GuestLanguageRuntimeException e) {
                 CompilerDirectives.transferToInterpreter();
