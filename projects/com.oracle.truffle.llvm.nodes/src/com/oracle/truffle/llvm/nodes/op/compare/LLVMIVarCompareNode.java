@@ -66,4 +66,31 @@ public abstract class LLVMIVarCompareNode extends LLVMExpressionNode {
         }
     }
 
+    public abstract static class LLVMIVarUnsignedLessThanNode extends LLVMIVarCompareNode {
+        @Specialization
+        public boolean executeI1(LLVMIVarBit val1, LLVMIVarBit val2) {
+            return val1.unsignedCompare(val2) < 0;
+        }
+    }
+
+    public abstract static class LLVMIVarUnsignedLessOrEqualNode extends LLVMIVarCompareNode {
+        @Specialization
+        public boolean executeI1(LLVMIVarBit val1, LLVMIVarBit val2) {
+            return val1.unsignedCompare(val2) <= 0;
+        }
+    }
+
+    public abstract static class LLVMIVarUnsignedGreaterThanNode extends LLVMIVarCompareNode {
+        @Specialization
+        public boolean executeI1(LLVMIVarBit val1, LLVMIVarBit val2) {
+            return val1.unsignedCompare(val2) > 0;
+        }
+    }
+
+    public abstract static class LLVMIVarUnsignedGreaterOrEqualNode extends LLVMIVarCompareNode {
+        @Specialization
+        public boolean executeI1(LLVMIVarBit val1, LLVMIVarBit val2) {
+            return val1.unsignedCompare(val2) >= 0;
+        }
+    }
 }
