@@ -29,6 +29,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -265,8 +266,10 @@ public abstract class InstrumentPhase extends BasePhase<PhaseContext> {
              */
             List<Map.Entry<String, Point>> sortedEntries = new ArrayList<>();
             for (Map.Entry<String, Point> entry : pointMap.entrySet()) {
-                Map.Entry<String, Point> immutableEntry = new AbstractMap.SimpleImmutableEntry<>(entry.getKey(), entry.getValue());
-                sortedEntries.add(immutableEntry);
+                if (entry.getValue().shouldInclude()) {
+                    Map.Entry<String, Point> immutableEntry = new AbstractMap.SimpleImmutableEntry<>(entry.getKey(), entry.getValue());
+                    sortedEntries.add(immutableEntry);
+                }
             }
 
             Collections.sort(sortedEntries, entriesComparator);
@@ -285,8 +288,7 @@ public abstract class InstrumentPhase extends BasePhase<PhaseContext> {
             }
 
             List<Point> sortedPoints = new ArrayList<>();
-            sortedPoints.addAll(pointMap.values());
-
+            sortedPoints.addAll(pointMap.values().stream().filter(p -> p.shouldInclude()).collect(Collectors.toList()));
             Collections.sort(sortedPoints, pointsComparator);
 
             ArrayList<String> histogram = new ArrayList<>();
@@ -371,5 +373,9 @@ public abstract class InstrumentPhase extends BasePhase<PhaseContext> {
         public abstract long getHotness();
 
         public abstract boolean isPrettified(OptionValues options);
+
+        public boolean shouldInclude() {
+            return true;
+        }
     }
 }
