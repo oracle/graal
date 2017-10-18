@@ -42,7 +42,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-public class MemoryTracerCLI extends ProfilerCLI {
+class MemoryTracerCLI extends ProfilerCLI {
 
     enum Output {
         TYPE_HISTOGRAM,

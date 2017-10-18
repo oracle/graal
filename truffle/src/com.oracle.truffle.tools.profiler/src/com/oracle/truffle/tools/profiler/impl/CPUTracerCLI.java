@@ -33,7 +33,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 
-public class CPUTracerCLI extends ProfilerCLI {
+class CPUTracerCLI extends ProfilerCLI {
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
     static final OptionKey<Boolean> TRACE_ROOTS = new OptionKey<>(true);
     static final OptionKey<Boolean> TRACE_STATEMENTS = new OptionKey<>(false);
