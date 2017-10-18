@@ -38,7 +38,6 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.profiler.impl.CPUTracerInstrument;
 import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
-import com.oracle.truffle.tools.profiler.impl.SourceLocation;
 
 import java.io.Closeable;
 import java.util.Collection;

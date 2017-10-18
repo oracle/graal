@@ -226,4 +226,44 @@ abstract class ProfilerCLI {
         s.append('$');
         return s.toString();
     }
+
+    static class SourceLocation {
+
+        private final SourceSection sourceSection;
+        private final String rootName;
+
+        SourceLocation(SourceSection sourceSection, String rootName) {
+            this.sourceSection = sourceSection;
+            this.rootName = rootName;
+        }
+
+        SourceSection getSourceSection() {
+            return sourceSection;
+        }
+
+        public String getRootName() {
+            return rootName;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o)
+                return true;
+            if (o == null || getClass() != o.getClass())
+                return false;
+
+            SourceLocation that = (SourceLocation) o;
+
+            if (sourceSection != null ? !sourceSection.equals(that.sourceSection) : that.sourceSection != null)
+                return false;
+            return rootName != null ? rootName.equals(that.rootName) : that.rootName == null;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = sourceSection != null ? sourceSection.hashCode() : 0;
+            result = 31 * result + (rootName != null ? rootName.hashCode() : 0);
+            return result;
+        }
+    }
 }

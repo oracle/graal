@@ -32,7 +32,6 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.tools.profiler.impl.CPUSamplerInstrument;
 import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
-import com.oracle.truffle.tools.profiler.impl.SourceLocation;
 
 import java.io.Closeable;
 import java.util.ArrayList;
@@ -364,33 +363,6 @@ public final class CPUSampler implements Closeable {
         closed = true;
         resetSampling();
         clearData();
-    }
-
-    /**
-     * Creates a histogram - a mapping from a {@link SourceLocation source location} to a
-     * {@link List} of {@link ProfilerNode} corresponding to that source location. This gives an
-     * overview of the execution profile of each {@link SourceLocation source location}.
-     *
-     * @return the source location histogram based on the sampling data
-     * @since 0.29
-     */
-    public Map<SourceLocation, List<ProfilerNode<Payload>>> computeHistogram() {
-        Map<SourceLocation, List<ProfilerNode<Payload>>> histogram = new HashMap<>();
-        computeHistogramImpl(rootNode.getChildren(), histogram);
-        return histogram;
-    }
-
-    private void computeHistogramImpl(Collection<ProfilerNode<Payload>> children, Map<SourceLocation, List<ProfilerNode<Payload>>> histogram) {
-        for (ProfilerNode<Payload> treeNode : children) {
-            List<ProfilerNode<Payload>> nodes = histogram.computeIfAbsent(treeNode.getSourceLocation(), new Function<SourceLocation, List<ProfilerNode<Payload>>>() {
-                @Override
-                public List<ProfilerNode<Payload>> apply(SourceLocation sourceLocation) {
-                    return new ArrayList<>();
-                }
-            });
-            nodes.add(treeNode);
-            computeHistogramImpl(treeNode.getChildren(), histogram);
-        }
     }
 
     private void resetSampling() {

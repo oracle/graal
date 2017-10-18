@@ -36,7 +36,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.profiler.impl.MemoryTracerInstrument;
 import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
-import com.oracle.truffle.tools.profiler.impl.SourceLocation;
 
 import java.io.Closeable;
 import java.util.ArrayList;
@@ -265,33 +264,6 @@ public final class MemoryTracer implements Closeable {
                 nodes.add(info);
             }
             computeMetaObjectHistogramImpl(treeNode.getChildren(), histogram);
-        }
-    }
-
-    /**
-     * Creates a source location histogram - a mapping from a {@link SourceLocation source location}
-     * to a {@link List} of {@link ProfilerNode} corresponding to that source location. This gives
-     * an overview of the allocation profile of each {@link SourceLocation source location}.
-     *
-     * @return the source location histogram
-     * @since 0.29
-     */
-    public Map<SourceLocation, List<ProfilerNode<Payload>>> computeSourceLocationHistogram() {
-        Map<SourceLocation, List<ProfilerNode<Payload>>> histogram = new HashMap<>();
-        computeSourceLocationHistogramImpl(rootNode.getChildren(), histogram);
-        return histogram;
-    }
-
-    private void computeSourceLocationHistogramImpl(Collection<ProfilerNode<Payload>> children, Map<SourceLocation, List<ProfilerNode<Payload>>> histogram) {
-        for (ProfilerNode<Payload> treeNode : children) {
-            List<ProfilerNode<Payload>> nodes = histogram.computeIfAbsent(treeNode.getSourceLocation(), new Function<SourceLocation, List<ProfilerNode<Payload>>>() {
-                @Override
-                public List<ProfilerNode<Payload>> apply(SourceLocation sourceLocation) {
-                    return new ArrayList<>();
-                }
-            });
-            nodes.add(treeNode);
-            computeSourceLocationHistogramImpl(treeNode.getChildren(), histogram);
         }
     }
 

@@ -42,6 +42,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -81,38 +82,32 @@ class CPUSamplerCLI extends ProfilerCLI {
                         }
                     });
 
-    @Option(name = "", help = "Enable the CPU sampler.", category = OptionCategory.USER)
-    static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
+    @Option(name = "", help = "Enable the CPU sampler.", category = OptionCategory.USER) static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
 
     static final String modeHelp = "Describes level of sampling detail. NOTE: Increased detail can lead to reduced accuracy. Modes:" + System.lineSeparator() +
-            "'compiled' - samples roots excluding inlined functions (default)" + System.lineSeparator() + "'roots' - samples roots including inlined functions" +
-            System.lineSeparator() + "'statements' - samples all statements.";
+                    "'compiled' - samples roots excluding inlined functions (default)" + System.lineSeparator() + "'roots' - samples roots including inlined functions" +
+                    System.lineSeparator() + "'statements' - samples all statements.";
 
-    @Option(name = "Mode", help = "TODO", category = OptionCategory.USER)
-    static final OptionKey<CPUSampler.Mode> MODE = new OptionKey<>(CPUSampler.Mode.COMPILED, CLI_MODE_TYPE);
+    @Option(name = "Mode", help = "TODO", category = OptionCategory.USER) static final OptionKey<CPUSampler.Mode> MODE = new OptionKey<>(CPUSampler.Mode.COMPILED, CLI_MODE_TYPE);
 
-    @Option(name = "Period", help = "Period in milliseconds to sample the stack.", category = OptionCategory.USER)
-    static final OptionKey<Long> SAMPLE_PERIOD = new OptionKey<>(1L);
+    @Option(name = "Period", help = "Period in milliseconds to sample the stack.", category = OptionCategory.USER) static final OptionKey<Long> SAMPLE_PERIOD = new OptionKey<>(1L);
 
-    @Option(name = "Delay", help = "Delay the sampling for this many milliseconds (default: 0).", category = OptionCategory.USER)
-    static final OptionKey<Long> DELAY_PERIOD = new OptionKey<>(0L);
-    @Option(name = "StackLimit", help = "Maximum number of maximum stack elements.", category = OptionCategory.USER)
-    static final OptionKey<Integer> STACK_LIMIT = new OptionKey<>(10000);
+    @Option(name = "Delay", help = "Delay the sampling for this many milliseconds (default: 0).", category = OptionCategory.USER) static final OptionKey<Long> DELAY_PERIOD = new OptionKey<>(0L);
+    @Option(name = "StackLimit", help = "Maximum number of maximum stack elements.", category = OptionCategory.USER) static final OptionKey<Integer> STACK_LIMIT = new OptionKey<>(10000);
 
-    @Option(name = "Output", help = "Print a 'histogram' or 'calltree' as output (default:HISTOGRAM).", category = OptionCategory.USER)
-    static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
+    @Option(name = "Output", help = "Print a 'histogram' or 'calltree' as output (default:HISTOGRAM).", category = OptionCategory.USER) static final OptionKey<Output> OUTPUT = new OptionKey<>(
+                    Output.HISTOGRAM, CLI_OUTPUT_TYPE);
 
-    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).",  category = OptionCategory.USER)
-    static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
+    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER) static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(
+                    new Object[0], WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl, default:*).",  category = OptionCategory.USER)
-    static final OptionKey<Object[]> FILTER_FILE = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
+    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl, default:*).", category = OptionCategory.USER) static final OptionKey<Object[]> FILTER_FILE = new OptionKey<>(
+                    new Object[0], WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterLanguage", help = "Only profile languages with mime-type. (eg. +, default:no filter).",  category = OptionCategory.USER)
-    static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>("");
+    @Option(name = "FilterLanguage", help = "Only profile languages with mime-type. (eg. +, default:no filter).", category = OptionCategory.USER) static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>(
+                    "");
 
-    @Option(name = "SampleInternal", help = "Capture internal elements (default:false).",  category = OptionCategory.USER)
-    static final OptionKey<Boolean> SAMPLE_INTERNAL = new OptionKey<>(false);
+    @Option(name = "SampleInternal", help = "Capture internal elements (default:false).", category = OptionCategory.USER) static final OptionKey<Boolean> SAMPLE_INTERNAL = new OptionKey<>(false);
 
     static void handleOutput(TruffleInstrument.Env env, CPUSampler sampler, OptionDescriptors descriptors) {
         PrintStream out = new PrintStream(env.out());
@@ -144,9 +139,29 @@ class CPUSamplerCLI extends ProfilerCLI {
         }
     }
 
+    private static Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> computeHistogram(CPUSampler sampler) {
+        Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> histogram = new HashMap<>();
+        computeHistogramImpl(sampler.getRootNodes(), histogram);
+        return histogram;
+    }
+
+    private static void computeHistogramImpl(Collection<ProfilerNode<CPUSampler.Payload>> children, Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> histogram) {
+        for (ProfilerNode<CPUSampler.Payload> treeNode : children) {
+            List<ProfilerNode<CPUSampler.Payload>> nodes = histogram.computeIfAbsent(new SourceLocation(treeNode.getSourceSection(), treeNode.getRootName()),
+                            new Function<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>>() {
+                                @Override
+                                public List<ProfilerNode<CPUSampler.Payload>> apply(SourceLocation s) {
+                                    return new ArrayList<>();
+                                }
+                            });
+            nodes.add(treeNode);
+            computeHistogramImpl(treeNode.getChildren(), histogram);
+        }
+    }
+
     private static void printSamplingHistogram(PrintStream out, CPUSampler sampler) {
 
-        final Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> histogram = sampler.computeHistogram();
+        final Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> histogram = computeHistogram(sampler);
 
         List<List<ProfilerNode<CPUSampler.Payload>>> lines = new ArrayList<>(histogram.values());
         Collections.sort(lines, new Comparator<List<ProfilerNode<CPUSampler.Payload>>>() {

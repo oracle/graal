@@ -25,7 +25,6 @@
 package com.oracle.truffle.tools.profiler;
 
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.tools.profiler.impl.SourceLocation;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -153,9 +152,4 @@ public final class ProfilerNode<T> {
             children.put(childLocation, child);
         }
     }
-
-    SourceLocation getSourceLocation() {
-        return sourceLocation;
-    }
-
 }
