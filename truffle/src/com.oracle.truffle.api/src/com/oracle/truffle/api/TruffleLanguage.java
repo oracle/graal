@@ -691,7 +691,7 @@ public abstract class TruffleLanguage<C> {
      * thread} may differ from the disposed thread.
      * <p>
      *
-     * <b>Example multi-threaded language implementation: <b>
+     * <b>Example multi-threaded language implementation: </b>
      * {@link TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread}
      *
      * @since 0.28
