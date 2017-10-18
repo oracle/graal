@@ -40,7 +40,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 @NodeChildren({@NodeChild("src"), @NodeChild("dst")})
 public abstract class LLVMAMD64BsrNode extends LLVMExpressionNode {
     @Child protected LLVMAMD64WriteBooleanNode writeZFNode;
-    protected ConditionProfile profile;
+    protected final ConditionProfile profile;
 
     public LLVMAMD64BsrNode(LLVMAMD64WriteBooleanNode writeZFNode) {
         this.writeZFNode = writeZFNode;

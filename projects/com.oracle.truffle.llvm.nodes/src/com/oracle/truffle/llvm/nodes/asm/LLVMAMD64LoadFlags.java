@@ -37,11 +37,11 @@ import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64Flags;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMAMD64LoadFlags extends LLVMExpressionNode {
-    protected ConditionProfile profileCF = ConditionProfile.createCountingProfile();
-    protected ConditionProfile profilePF = ConditionProfile.createCountingProfile();
-    protected ConditionProfile profileAF = ConditionProfile.createCountingProfile();
-    protected ConditionProfile profileZF = ConditionProfile.createCountingProfile();
-    protected ConditionProfile profileSF = ConditionProfile.createCountingProfile();
+    protected final ConditionProfile profileCF = ConditionProfile.createCountingProfile();
+    protected final ConditionProfile profilePF = ConditionProfile.createCountingProfile();
+    protected final ConditionProfile profileAF = ConditionProfile.createCountingProfile();
+    protected final ConditionProfile profileZF = ConditionProfile.createCountingProfile();
+    protected final ConditionProfile profileSF = ConditionProfile.createCountingProfile();
 
     @NodeChildren({@NodeChild(value = "cf", type = LLVMExpressionNode.class), @NodeChild(value = "pf", type = LLVMExpressionNode.class), @NodeChild(value = "af", type = LLVMExpressionNode.class),
                     @NodeChild(value = "zf", type = LLVMExpressionNode.class), @NodeChild(value = "sf", type = LLVMExpressionNode.class)})
@@ -71,7 +71,7 @@ public abstract class LLVMAMD64LoadFlags extends LLVMExpressionNode {
     @NodeChildren({@NodeChild(value = "cf", type = LLVMExpressionNode.class), @NodeChild(value = "pf", type = LLVMExpressionNode.class), @NodeChild(value = "af", type = LLVMExpressionNode.class),
                     @NodeChild(value = "zf", type = LLVMExpressionNode.class), @NodeChild(value = "sf", type = LLVMExpressionNode.class), @NodeChild(value = "of", type = LLVMExpressionNode.class)})
     public abstract static class LLVMAMD64ReadFlagswNode extends LLVMAMD64LoadFlags {
-        private ConditionProfile profileOF = ConditionProfile.createCountingProfile();
+        private final ConditionProfile profileOF = ConditionProfile.createCountingProfile();
 
         @Specialization
         protected short executeI16(boolean cf, boolean pf, boolean af, boolean zf, boolean sf, boolean of) {

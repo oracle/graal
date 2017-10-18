@@ -42,16 +42,13 @@ public abstract class LLVMAMD64StoreFlags extends LLVMExpressionNode {
     @Child protected LLVMAMD64WriteBooleanNode af;
     @Child protected LLVMAMD64WriteBooleanNode zf;
     @Child protected LLVMAMD64WriteBooleanNode sf;
-    @Child protected LLVMAMD64WriteBooleanNode of;
 
-    public LLVMAMD64StoreFlags(LLVMAMD64WriteBooleanNode cf, LLVMAMD64WriteBooleanNode pf, LLVMAMD64WriteBooleanNode af, LLVMAMD64WriteBooleanNode zf, LLVMAMD64WriteBooleanNode sf,
-                    LLVMAMD64WriteBooleanNode of) {
+    public LLVMAMD64StoreFlags(LLVMAMD64WriteBooleanNode cf, LLVMAMD64WriteBooleanNode pf, LLVMAMD64WriteBooleanNode af, LLVMAMD64WriteBooleanNode zf, LLVMAMD64WriteBooleanNode sf) {
         this.cf = cf;
         this.pf = pf;
         this.af = af;
         this.zf = zf;
         this.sf = sf;
-        this.of = of;
     }
 
     protected static boolean set(long value, long flag) {
@@ -60,9 +57,8 @@ public abstract class LLVMAMD64StoreFlags extends LLVMExpressionNode {
 
     @NodeChild(value = "flags", type = LLVMExpressionNode.class)
     public abstract static class LLVMAMD64SahfNode extends LLVMAMD64StoreFlags {
-        public LLVMAMD64SahfNode(LLVMAMD64WriteBooleanNode cf, LLVMAMD64WriteBooleanNode pf, LLVMAMD64WriteBooleanNode af, LLVMAMD64WriteBooleanNode zf, LLVMAMD64WriteBooleanNode sf,
-                        LLVMAMD64WriteBooleanNode of) {
-            super(cf, pf, af, zf, sf, of);
+        public LLVMAMD64SahfNode(LLVMAMD64WriteBooleanNode cf, LLVMAMD64WriteBooleanNode pf, LLVMAMD64WriteBooleanNode af, LLVMAMD64WriteBooleanNode zf, LLVMAMD64WriteBooleanNode sf) {
+            super(cf, pf, af, zf, sf);
         }
 
         @Specialization
@@ -78,9 +74,12 @@ public abstract class LLVMAMD64StoreFlags extends LLVMExpressionNode {
 
     @NodeChild(value = "flags", type = LLVMExpressionNode.class)
     public abstract static class LLVMAMD64WriteFlagswNode extends LLVMAMD64StoreFlags {
+        @Child protected LLVMAMD64WriteBooleanNode of;
+
         public LLVMAMD64WriteFlagswNode(LLVMAMD64WriteBooleanNode cf, LLVMAMD64WriteBooleanNode pf, LLVMAMD64WriteBooleanNode af, LLVMAMD64WriteBooleanNode zf, LLVMAMD64WriteBooleanNode sf,
                         LLVMAMD64WriteBooleanNode of) {
-            super(cf, pf, af, zf, sf, of);
+            super(cf, pf, af, zf, sf);
+            this.of = of;
         }
 
         @Specialization

@@ -178,6 +178,7 @@ ZeroOp<> =						(. String op; .)
   | "mfence"
   | "lfence"
   | "sfence"
+  | "hlt"
   )							(. op = t.val; .)
   							(. factory.createOperation(op); .)
   .
@@ -651,6 +652,8 @@ BinOp<> =						(. String op; AsmOperand a, b; .)
   | "shl"
   | "shr"
   | "lea"
+  | "bsf"
+  | "bsr"
   )							(. op = t.val; .)
   Operand<out a> "," Operand<out b>
   							(. factory.createBinaryOperationImplicitSize(op, a, b); .)
