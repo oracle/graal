@@ -29,14 +29,17 @@
  */
 package com.oracle.truffle.llvm.nodes.func;
 
-import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNodeFactory.ArgumentNodeGen;
+import com.oracle.truffle.llvm.nodes.func.LLVMCallNodeFactory.ToFunctionNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -50,6 +53,7 @@ public final class LLVMCallNode extends LLVMExpressionNode {
     @Children private final LLVMExpressionNode[] argumentNodes;
     @Children private final ArgumentNode[] prepareArgumentNodes;
     @Child private LLVMLookupDispatchNode dispatchNode;
+    @Child private ToFunction toFunction;
 
     private final SourceSection sourceSection;
 
@@ -59,15 +63,16 @@ public final class LLVMCallNode extends LLVMExpressionNode {
         this.dispatchNode = LLVMLookupDispatchNodeGen.create(functionType);
         this.prepareArgumentNodes = new ArgumentNode[argumentNodes.length];
         for (int i = 0; i < argumentNodes.length; i++) {
-            this.prepareArgumentNodes[i] = ArgumentNodeGen.create(null);
+            this.prepareArgumentNodes[i] = ArgumentNodeGen.create();
         }
         this.sourceSection = sourceSection;
+        this.toFunction = ToFunctionNodeGen.create();
     }
 
     @ExplodeLoop
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        Object function = functionNode.executeGeneric(frame);
+        Object function = toFunction.executeWithTarget(functionNode.executeGeneric(frame));
         Object[] argValues = new Object[argumentNodes.length];
         for (int i = 0; i < argumentNodes.length; i++) {
             argValues[i] = prepareArgumentNodes[i].executeWithTarget(argumentNodes[i].executeGeneric(frame));
@@ -75,8 +80,22 @@ public final class LLVMCallNode extends LLVMExpressionNode {
         return dispatchNode.executeDispatch(frame, function, argValues);
     }
 
-    @NodeChild
-    protected abstract static class ArgumentNode extends LLVMExpressionNode {
+    protected abstract static class ToFunction extends Node {
+
+        protected abstract Object executeWithTarget(Object value);
+
+        @Specialization
+        LLVMFunction doAddress(LLVMAddress address) {
+            return LLVMFunctionHandle.createHandle(address.getVal());
+        }
+
+        @Specialization
+        LLVMFunction doFunction(LLVMFunction value) {
+            return value;
+        }
+    }
+
+    protected abstract static class ArgumentNode extends Node {
 
         protected abstract Object executeWithTarget(Object value);
 
