@@ -27,12 +27,7 @@ package com.oracle.truffle.tools.profiler.impl;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.profiler.MemoryTracer;
-import org.graalvm.options.OptionCategory;
-import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
-
-import java.util.LinkedList;
-import java.util.List;
 
 /**
  * The {@linkplain TruffleInstrument instrument} for the memory tracer.

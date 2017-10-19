@@ -36,13 +36,11 @@ import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Function;
 
 /**
  * Implementation of a sampling based profiler for
