@@ -25,15 +25,23 @@
 package org.graalvm.polyglot.proxy;
 
 /**
+ * Interface to be implemented to mimic lazy primitive values. The primitive value is
+ * {@link #asPrimitive() computed} lazily when accessed by the guest language. Valid primitive
+ * values are {@link String}, {@link Byte}, {@link Character}, {@link Short}, {@link Integer},
+ * {@link Long}, {@link Float} and {@link Double}.
  *
- *
+ * @see #asPrimitive()
+ * @see Proxy
  * @since 1.0
  */
+@FunctionalInterface
 public interface ProxyPrimitive extends Proxy {
 
     /**
-     * Unboxes the proxy to a primitive value. A primitive value can either be String, byte, char,
-     * short, int, long, float, or double.
+     * Unboxes the proxy to a primitive value. The primitive value is {@link #asPrimitive()
+     * computed} lazily when accessed by the guest language. Valid primitive values are
+     * {@link String}, {@link Byte}, {@link Character}, {@link Short}, {@link Integer},
+     * {@link Long}, {@link Float} and {@link Double}.
      *
      * @since 1.0
      */

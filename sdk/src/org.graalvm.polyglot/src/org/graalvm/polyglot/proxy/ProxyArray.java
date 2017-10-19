@@ -29,35 +29,45 @@ import java.util.List;
 import org.graalvm.polyglot.Value;
 
 /**
+ * Interface to be implemented to mimic guest language arrays. Arrays are always interpreted as
+ * zero-based arrays, independent of whether the Graal language uses one-based arrays. For example
+ * an access to array index one in a language with one-based arrays will access the proxy array at
+ * index zero.
  *
- *
+ * @see Proxy
  * @since 1.0
  */
 public interface ProxyArray extends Proxy {
 
     /**
+     * Returns the element at the given index.
      *
-     *
+     * @throws ArrayIndexOutOfBoundsException if the index is out of bounds
+     * @throws UnsupportedOperationException if the operation is not supported
      * @since 1.0
      */
     Object get(long index);
 
     /**
+     * Sets the element at the given index.
      *
-     *
+     * @throws ArrayIndexOutOfBoundsException if the index is out of bounds
+     * @throws UnsupportedOperationException if the operation is not supported
      * @since 1.0
      */
     void set(long index, Value value);
 
     /**
-     *
+     * Returns the reported size of the array. The returned size of an array does not limit a guest
+     * language to get and set values using arbitrary indices. The array size is typically used by
+     * Graal languages to traverse the array.
      *
      * @since 1.0
      */
     long getSize();
 
     /**
-     *
+     * Creates a proxy array backed by a Java array.
      *
      * @since 1.0
      */
@@ -86,7 +96,7 @@ public interface ProxyArray extends Proxy {
     }
 
     /**
-     *
+     * Creates a proxy array backed by a Java List.
      *
      * @since 1.0
      */
