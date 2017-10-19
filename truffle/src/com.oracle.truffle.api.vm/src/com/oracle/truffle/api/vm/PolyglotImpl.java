@@ -56,6 +56,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.impl.TruffleLocator;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -168,6 +169,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             return ((EngineException) e).e;
         } else if (e instanceof HostException) {
             return (HostException) e;
+        } else if (e instanceof InteropException) {
+            throw ((InteropException) e).raise();
         }
         return new HostException(e);
     }
