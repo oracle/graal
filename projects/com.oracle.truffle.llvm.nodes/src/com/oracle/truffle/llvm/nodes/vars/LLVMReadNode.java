@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nodes.vars;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.AttachInteropTypeNodeGen;
@@ -75,8 +76,12 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI64ReadNode extends LLVMReadNode {
         @Specialization
-        protected long readI64(VirtualFrame frame) {
-            return FrameUtil.getLongSafe(frame, getSlot());
+        protected Object readI64(VirtualFrame frame) {
+            if (getSlot().getKind() == FrameSlotKind.Long) {
+                return FrameUtil.getLongSafe(frame, getSlot());
+            } else {
+                return FrameUtil.getObjectSafe(frame, getSlot());
+            }
         }
     }
 
