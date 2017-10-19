@@ -81,9 +81,12 @@ class CPUSamplerCLI extends ProfilerCLI {
 
     @Option(name = "", help = "Enable the CPU sampler.", category = OptionCategory.USER) static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
 
-    @Option(name = "Mode", help = "Describes level of sampling detail. NOTE: Increased detail can lead to reduced accuracy. Modes: 'compiled' - samples roots excluding inlined functions (default), 'roots' - samples roots including inlined functions, 'statements' - samples all statements.", category = OptionCategory.USER) static final OptionKey<CPUSampler.Mode> MODE = new OptionKey<>(
-                    CPUSampler.Mode.COMPILED, CLI_MODE_TYPE);
-
+    // @formatter:off
+    @Option(name = "Mode",
+            help = "Describes level of sampling detail. NOTE: Increased detail can lead to reduced accuracy. Modes: 'compiled' - samples roots excluding inlined functions (default), " +
+                    "'roots' - samples roots including inlined functions, 'statements' - samples all statements.", category = OptionCategory.USER)
+    static final OptionKey<CPUSampler.Mode> MODE = new OptionKey<>(CPUSampler.Mode.COMPILED, CLI_MODE_TYPE);
+    // @formatter:om
     @Option(name = "Period", help = "Period in milliseconds to sample the stack.", category = OptionCategory.USER) static final OptionKey<Long> SAMPLE_PERIOD = new OptionKey<>(1L);
 
     @Option(name = "Delay", help = "Delay the sampling for this many milliseconds (default: 0).", category = OptionCategory.USER) static final OptionKey<Long> DELAY_PERIOD = new OptionKey<>(0L);
