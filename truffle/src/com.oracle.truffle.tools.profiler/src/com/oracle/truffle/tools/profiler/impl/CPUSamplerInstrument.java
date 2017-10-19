@@ -60,6 +60,12 @@ public class CPUSamplerInstrument extends TruffleInstrument {
     OptionDescriptors descriptors = null;
     private static ProfilerToolFactory<CPUSampler> factory;
 
+    /**
+     * Sets the factory which instantiates the CPUSampler.
+     *
+     * @param factory the factory which instantiates the CPUSampler.
+     * @since 0.29
+     */
     public static void setFactory(ProfilerToolFactory<CPUSampler> factory) {
         CPUSamplerInstrument.factory = factory;
     }
