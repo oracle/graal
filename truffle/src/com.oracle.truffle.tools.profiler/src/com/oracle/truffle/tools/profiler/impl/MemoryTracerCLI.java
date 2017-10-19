@@ -29,8 +29,6 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.profiler.MemoryTracer;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
 import org.graalvm.options.OptionCategory;
-import org.graalvm.options.OptionDescriptor;
-import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionType;
 
@@ -106,23 +104,13 @@ class MemoryTracerCLI extends ProfilerCLI {
     @Option(name = "FilterLanguage", help = "Only profile languages with mime-type. (eg. +, default:no filter).", category = OptionCategory.USER) static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>(
                     "");
 
-    static void handleOutput(TruffleInstrument.Env env, MemoryTracer tracer, OptionDescriptors descriptors) {
+    static void handleOutput(TruffleInstrument.Env env, MemoryTracer tracer) {
         PrintStream out = new PrintStream(env.out());
         if (tracer.hasStackOverflowed()) {
             out.println("-------------------------------------------------------------------------------- ");
             out.println("ERROR: Shadow stack has overflowed its capacity of " + env.getOptions().get(STACK_LIMIT) + " during execution!");
             out.println("The gathered data is incomplete and incorrect!");
-            String name = "";
-            Iterator<OptionDescriptor> iterator = descriptors.iterator();
-            while (iterator.hasNext()) {
-                OptionDescriptor descriptor = iterator.next();
-                if (descriptor.getKey().equals(STACK_LIMIT)) {
-                    name = descriptor.getName();
-                    break;
-                }
-            }
-            assert !name.equals("");
-            out.println("Use --" + name + "=<" + STACK_LIMIT.getType().getName() + "> to set stack capacity.");
+            out.println("Use --" + MemoryTracerInstrument.ID + ".StackLimit=<" + STACK_LIMIT.getType().getName() + "> to set stack capacity.");
             out.println("-------------------------------------------------------------------------------- ");
             return;
         }

@@ -53,7 +53,6 @@ public class MemoryTracerInstrument extends TruffleInstrument {
     public static final String ID = "memtracer";
     private static MemoryTracer tracer;
     private static ProfilerToolFactory<MemoryTracer> factory;
-    OptionDescriptors descriptors = null;
 
     /**
      * Sets the factory which instantiates the {@link MemoryTracer}.
@@ -120,7 +119,7 @@ public class MemoryTracerInstrument extends TruffleInstrument {
     @Override
     protected void onDispose(Env env) {
         if (env.getOptions().get(MemoryTracerCLI.ENABLED)) {
-            MemoryTracerCLI.handleOutput(env, tracer, descriptors);
+            MemoryTracerCLI.handleOutput(env, tracer);
         }
         tracer.close();
     }

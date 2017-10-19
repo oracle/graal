@@ -52,7 +52,6 @@ public class CPUSamplerInstrument extends TruffleInstrument {
      */
     public static final String ID = "cpusampler";
     private static CPUSampler sampler;
-    OptionDescriptors descriptors = null;
     private static ProfilerToolFactory<CPUSampler> factory;
 
     /**
@@ -122,7 +121,7 @@ public class CPUSamplerInstrument extends TruffleInstrument {
     @Override
     protected void onDispose(Env env) {
         if (env.getOptions().get(CPUSamplerCLI.ENABLED)) {
-            CPUSamplerCLI.handleOutput(env, sampler, descriptors);
+            CPUSamplerCLI.handleOutput(env, sampler);
         }
         sampler.close();
     }
