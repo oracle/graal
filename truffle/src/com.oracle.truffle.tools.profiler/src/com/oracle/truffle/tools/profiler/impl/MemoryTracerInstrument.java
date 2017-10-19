@@ -107,25 +107,7 @@ public class MemoryTracerInstrument extends TruffleInstrument {
      */
     @Override
     protected OptionDescriptors getOptionDescriptors() {
-        List<OptionDescriptor> descriptorList = new LinkedList<>();
-        descriptorList.add(OptionDescriptor.newBuilder(MemoryTracerCLI.ENABLED, ID).category(OptionCategory.USER).help("Enable the Memory Tracer (default:false).").build());
-        descriptorList.add(OptionDescriptor.newBuilder(MemoryTracerCLI.OUTPUT, ID + ".Output").category(OptionCategory.USER).help(
-                        "Print a 'typehistogram', 'histogram' or 'calltree' as output (default:histogram).").build());
-        descriptorList.add(OptionDescriptor.newBuilder(MemoryTracerCLI.STACK_LIMIT, ID + ".StackLimit").category(OptionCategory.USER).help("Maximum number of maximum stack elements.").build());
-        descriptorList.add(OptionDescriptor.newBuilder(MemoryTracerCLI.TRACE_ROOTS, ID + ".TraceRoots").category(OptionCategory.USER).help("Capture roots when tracing (default:true).").build());
-        descriptorList.add(
-                        OptionDescriptor.newBuilder(MemoryTracerCLI.TRACE_STATEMENTS, ID + ".TraceStatements").category(OptionCategory.USER).help(
-                                        "Capture statements when tracing (default:false).").build());
-        descriptorList.add(OptionDescriptor.newBuilder(MemoryTracerCLI.TRACE_CALLS, ID + ".TraceCalls").category(OptionCategory.USER).help("Capture calls when tracing (default:false).").build());
-        descriptorList.add(OptionDescriptor.newBuilder(MemoryTracerCLI.TRACE_INTERNAL, ID + ".TraceInternal").category(OptionCategory.USER).help("Capture internal elements (default:false).").build());
-        descriptorList.add(OptionDescriptor.newBuilder(MemoryTracerCLI.FILTER_ROOT, ID + ".FilterRootName").category(OptionCategory.USER).help(
-                        "Wildcard filter for program roots. (eg. Math.*, default:*).").build());
-        descriptorList.add(OptionDescriptor.newBuilder(MemoryTracerCLI.FILTER_FILE, ID + ".FilterFile").category(OptionCategory.USER).help(
-                        "Wildcard filter for source file paths. (eg. *program*.sl, default:*).").build());
-        descriptorList.add(OptionDescriptor.newBuilder(MemoryTracerCLI.FILTER_LANGUAGE, ID + ".FilterLanguage").category(OptionCategory.USER).help(
-                        "Only profile languages with mime-type. (eg. +, default:no filter).").build());
-        descriptors = OptionDescriptors.create(descriptorList);
-        return descriptors;
+        return new MemoryTracerCLIOptionDescriptors();
     }
 
     /**

@@ -24,7 +24,9 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
+import com.oracle.truffle.api.Option;
 import com.oracle.truffle.tools.profiler.CPUTracer;
+import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
 
 import java.io.PrintStream;
@@ -33,15 +35,28 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 
+@Option.Group(CPUTracerInstrument.ID)
 class CPUTracerCLI extends ProfilerCLI {
-    static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
-    static final OptionKey<Boolean> TRACE_ROOTS = new OptionKey<>(true);
-    static final OptionKey<Boolean> TRACE_STATEMENTS = new OptionKey<>(false);
-    static final OptionKey<Boolean> TRACE_CALLS = new OptionKey<>(false);
-    static final OptionKey<Boolean> TRACE_INTERNAL = new OptionKey<>(false);
-    static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
-    static final OptionKey<Object[]> FILTER_FILE = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
-    static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>("");
+
+    @Option(name = "", help = "Enable the CPU tracer (default: false).", category = OptionCategory.USER) static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
+
+    @Option(name = "TraceRoots", help = "Capture roots when tracing (default:true).", category = OptionCategory.USER) static final OptionKey<Boolean> TRACE_ROOTS = new OptionKey<>(true);
+
+    @Option(name = "TraceStatements", help = "Capture statements when tracing (default:false).", category = OptionCategory.USER) static final OptionKey<Boolean> TRACE_STATEMENTS = new OptionKey<>(
+                    false);
+
+    @Option(name = "TraceCalls", help = "Capture calls when tracing (default:false).", category = OptionCategory.USER) static final OptionKey<Boolean> TRACE_CALLS = new OptionKey<>(false);
+
+    @Option(name = "TraceInternal", help = "Trace internal elements (default:false).", category = OptionCategory.USER) static final OptionKey<Boolean> TRACE_INTERNAL = new OptionKey<>(false);
+
+    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER) static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(
+                    new Object[0], WILDCARD_FILTER_TYPE);
+
+    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl, default:*).", category = OptionCategory.USER) static final OptionKey<Object[]> FILTER_FILE = new OptionKey<>(
+                    new Object[0], WILDCARD_FILTER_TYPE);
+
+    @Option(name = "FilterLanguage", help = "Only profile languages with mime-type. (eg. +, default:no filter).", category = OptionCategory.USER) static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>(
+                    "");
 
     static void printTracerHistogram(PrintStream out, CPUTracer tracer) {
         List<CPUTracer.Payload> payloads = new ArrayList<>(tracer.getPayloads());
