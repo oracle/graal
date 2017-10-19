@@ -173,6 +173,7 @@ import com.oracle.truffle.llvm.nodes.memory.literal.LLVMI32ArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.literal.LLVMI64ArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.literal.LLVMI8ArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.literal.LLVMStructArrayLiteralNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVM80BitFloatLoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMDirectLoadNode.LLVMGlobalVariableDirectLoadNode;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVM80BitFloatDirectLoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMAddressDirectLoadNodeGen;
@@ -228,15 +229,6 @@ import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI6
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI8ProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMSetInteropTypeNode;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtract80BitFloatValueNodeGen;
-import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractAddressValueNodeGen;
-import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractDoubleValueNodeGen;
-import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractFloatValueNodeGen;
-import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractI16ValueNodeGen;
-import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractI1ValueNodeGen;
-import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractI32ValueNodeGen;
-import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractI64ValueNodeGen;
-import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractI8ValueNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
@@ -716,26 +708,26 @@ public class BasicNodeFactory implements NodeFactory {
         if (type instanceof PrimitiveType) {
             switch (((PrimitiveType) type).getPrimitiveKind()) {
                 case I1:
-                    return LLVMExtractI1ValueNodeGen.create(targetAddress);
+                    return LLVMI1LoadNodeGen.create(targetAddress);
                 case I8:
-                    return LLVMExtractI8ValueNodeGen.create(targetAddress);
+                    return LLVMI8LoadNodeGen.create(targetAddress);
                 case I16:
-                    return LLVMExtractI16ValueNodeGen.create(targetAddress);
+                    return LLVMI16LoadNodeGen.create(targetAddress);
                 case I32:
-                    return LLVMExtractI32ValueNodeGen.create(targetAddress);
+                    return LLVMI32LoadNodeGen.create(targetAddress);
                 case I64:
-                    return LLVMExtractI64ValueNodeGen.create(targetAddress);
+                    return LLVMI64LoadNodeGen.create(targetAddress);
                 case FLOAT:
-                    return LLVMExtractFloatValueNodeGen.create(targetAddress);
+                    return LLVMFloatLoadNodeGen.create(targetAddress);
                 case DOUBLE:
-                    return LLVMExtractDoubleValueNodeGen.create(targetAddress);
+                    return LLVMDoubleLoadNodeGen.create(targetAddress);
                 case X86_FP80:
-                    return LLVMExtract80BitFloatValueNodeGen.create(targetAddress);
+                    return LLVM80BitFloatLoadNodeGen.create(targetAddress);
                 default:
                     throw new AssertionError(type);
             }
         } else if (type instanceof PointerType || type instanceof StructureType || type instanceof ArrayType) {
-            return LLVMExtractAddressValueNodeGen.create(targetAddress);
+            return LLVMAddressDirectLoadNodeGen.create(targetAddress);
         } else {
             throw new AssertionError(type);
         }

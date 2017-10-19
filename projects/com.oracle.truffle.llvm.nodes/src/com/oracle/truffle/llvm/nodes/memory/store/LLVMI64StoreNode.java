@@ -33,6 +33,8 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
@@ -57,6 +59,16 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
     @Specialization
     public Object execute(LLVMAddress address, long value) {
         LLVMMemory.putI64(address, value);
+        return null;
+    }
+
+    protected static LLVMForceLLVMAddressNode getForceLLVMAddressNode() {
+        return LLVMForceLLVMAddressNodeGen.create();
+    }
+
+    @Specialization
+    public Object execute(VirtualFrame frame, LLVMAddress address, LLVMTruffleObject value, @Cached("getForceLLVMAddressNode()") LLVMForceLLVMAddressNode toAddress) {
+        LLVMMemory.putI64(address, toAddress.executeWithTarget(frame, value).getVal());
         return null;
     }
 
