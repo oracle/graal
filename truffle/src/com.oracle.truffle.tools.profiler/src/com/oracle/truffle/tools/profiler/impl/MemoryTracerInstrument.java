@@ -55,6 +55,12 @@ public class MemoryTracerInstrument extends TruffleInstrument {
     private static ProfilerToolFactory<MemoryTracer> factory;
     OptionDescriptors descriptors = null;
 
+    /**
+     * Sets the factory which instantiates the {@link MemoryTracer}.
+     *
+     * @param factory the factory which instantiates the {@link MemoryTracer}.
+     * @since 0.29
+     */
     public static void setFactory(ProfilerToolFactory<MemoryTracer> factory) {
         MemoryTracerInstrument.factory = factory;
     }

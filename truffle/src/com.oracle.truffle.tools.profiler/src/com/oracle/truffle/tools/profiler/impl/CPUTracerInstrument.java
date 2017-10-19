@@ -57,9 +57,9 @@ public class CPUTracerInstrument extends TruffleInstrument {
     private static ProfilerToolFactory<CPUTracer> factory;
 
     /**
-     * Sets the factory which instantiates the CPUTracer.
+     * Sets the factory which instantiates the {@link CPUTracer}.
      *
-     * @param factory the factory which instantiates the CPUTracer.
+     * @param factory the factory which instantiates the {@link CPUTracer}.
      * @since 0.29
      */
     public static void setFactory(ProfilerToolFactory<CPUTracer> factory) {
