@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,26 +27,21 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package com.oracle.truffle.llvm.nodes.memory.load;
 
-#include <stdlib.h>
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-__attribute__((weak)) char *strncpy(char *dest, const char *source, size_t n) {
-  int i;
-  for (i = 0; source[i] != '\0' && i < n; i++) {
-    dest[i] = source[i];
-  }
+@NodeChild(type = LLVMExpressionNode.class)
+public abstract class LLVM80BitFloatLoadNode extends LLVMExpressionNode {
 
-  while (i < n) {
-    dest[i] = '\0';
-    i++;
-  }
-  return dest;
-}
+    @Specialization
+    public LLVM80BitFloat execute80BitFloat(LLVMAddress address) {
+        return LLVMMemory.get80BitFloat(address);
+    }
 
-__attribute__((weak)) char *strcpy(char *dest, const char *source) {
-  int i = 0;
-  do {
-    dest[i] = source[i];
-  } while (source[i++] != '\0');
-  return dest;
 }

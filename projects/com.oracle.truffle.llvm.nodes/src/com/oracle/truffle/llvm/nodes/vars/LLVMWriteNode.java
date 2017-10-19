@@ -110,6 +110,12 @@ public abstract class LLVMWriteNode extends LLVMExpressionNode {
             frame.setLong(getSlot(), value);
             return null;
         }
+
+        @Specialization
+        protected Object writePointer(VirtualFrame frame, LLVMTruffleObject value) {
+            frame.setObject(getSlot(), value);
+            return null;
+        }
     }
 
     public abstract static class LLVMWriteIVarBitNode extends LLVMWriteNode {

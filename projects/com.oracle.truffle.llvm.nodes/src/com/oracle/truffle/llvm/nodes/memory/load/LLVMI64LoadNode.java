@@ -71,8 +71,8 @@ public abstract class LLVMI64LoadNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    public long executeI64(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
-        return (long) foreignRead.execute(frame, addr);
+    public Object executeI64(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+        return foreignRead.execute(frame, addr);
     }
 
     @Specialization

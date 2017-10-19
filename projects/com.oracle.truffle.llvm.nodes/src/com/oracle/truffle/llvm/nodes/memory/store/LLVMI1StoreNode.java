@@ -45,7 +45,7 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 public abstract class LLVMI1StoreNode extends LLVMStoreNode {
 
     public LLVMI1StoreNode() {
-        super(PrimitiveType.I1, 1);
+        super(PrimitiveType.I8, 1);
     }
 
     @Specialization
@@ -68,7 +68,7 @@ public abstract class LLVMI1StoreNode extends LLVMStoreNode {
 
     @Specialization
     public Object execute(VirtualFrame frame, LLVMTruffleObject address, boolean value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
-        foreignWrite.execute(frame, address, value);
+        foreignWrite.execute(frame, address, value ? (byte) 1 : (byte) 0);
         return null;
     }
 

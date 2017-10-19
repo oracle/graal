@@ -105,43 +105,11 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMReturnAddressNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMStackRestoreNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMStackSaveNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMTrapNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMArithmetic;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.GCCArithmeticNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMArithmeticWithOverflowAndCarryNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMArithmeticWithOverflowNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexDivSC;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMSAddWithOverflowFactory.GCCAddWithOverflowNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMSAddWithOverflowFactory.LLVMSAddWithOverflowI16NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMSAddWithOverflowFactory.LLVMSAddWithOverflowI32NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMSAddWithOverflowFactory.LLVMSAddWithOverflowI64NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMSAddWithOverflowFactory.LLVMSAddWithOverflowI8NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMSMulWithOverflowFactory.GCCSMulWithOverflowNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMSMulWithOverflowFactory.LLVMSMulWithOverflowI16NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMSMulWithOverflowFactory.LLVMSMulWithOverflowI32NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMSMulWithOverflowFactory.LLVMSMulWithOverflowI64NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMSMulWithOverflowFactory.LLVMSMulWithOverflowI8NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMSSubWithOverflowFactory.GCCSubWithOverflowNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMSSubWithOverflowFactory.LLVMSSubWithOverflowI16NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMSSubWithOverflowFactory.LLVMSSubWithOverflowI32NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMSSubWithOverflowFactory.LLVMSSubWithOverflowI64NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMSSubWithOverflowFactory.LLVMSSubWithOverflowI8NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUAddWithOverflowFactory.LLVMUAddWithOverflowAndCarryI16NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUAddWithOverflowFactory.LLVMUAddWithOverflowAndCarryI32NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUAddWithOverflowFactory.LLVMUAddWithOverflowAndCarryI64NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUAddWithOverflowFactory.LLVMUAddWithOverflowAndCarryI8NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUAddWithOverflowFactory.LLVMUAddWithOverflowI16NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUAddWithOverflowFactory.LLVMUAddWithOverflowI32NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUAddWithOverflowFactory.LLVMUAddWithOverflowI64NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUAddWithOverflowFactory.LLVMUAddWithOverflowI8NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUMulWithOverflowFactory.GCCUMulWithOverflowNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUMulWithOverflowFactory.LLVMUMulWithOverflowI16NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUMulWithOverflowFactory.LLVMUMulWithOverflowI32NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUMulWithOverflowFactory.LLVMUMulWithOverflowI64NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUMulWithOverflowFactory.LLVMUMulWithOverflowI8NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUSubWithOverflowFactory.LLVMUSubWithOverflowAndCarryI16NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUSubWithOverflowFactory.LLVMUSubWithOverflowAndCarryI32NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUSubWithOverflowFactory.LLVMUSubWithOverflowAndCarryI64NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUSubWithOverflowFactory.LLVMUSubWithOverflowAndCarryI8NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUSubWithOverflowFactory.LLVMUSubWithOverflowI16NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUSubWithOverflowFactory.LLVMUSubWithOverflowI32NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUSubWithOverflowFactory.LLVMUSubWithOverflowI64NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUSubWithOverflowFactory.LLVMUSubWithOverflowI8NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI16NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI32NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI64NodeGen;
@@ -205,6 +173,7 @@ import com.oracle.truffle.llvm.nodes.memory.literal.LLVMI32ArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.literal.LLVMI64ArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.literal.LLVMI8ArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.literal.LLVMStructArrayLiteralNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVM80BitFloatLoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMDirectLoadNode.LLVMGlobalVariableDirectLoadNode;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVM80BitFloatDirectLoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMAddressDirectLoadNodeGen;
@@ -260,15 +229,6 @@ import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI6
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI8ProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMSetInteropTypeNode;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtract80BitFloatValueNodeGen;
-import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractAddressValueNodeGen;
-import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractDoubleValueNodeGen;
-import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractFloatValueNodeGen;
-import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractI16ValueNodeGen;
-import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractI1ValueNodeGen;
-import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractI32ValueNodeGen;
-import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractI64ValueNodeGen;
-import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractI8ValueNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
@@ -748,26 +708,26 @@ public class BasicNodeFactory implements NodeFactory {
         if (type instanceof PrimitiveType) {
             switch (((PrimitiveType) type).getPrimitiveKind()) {
                 case I1:
-                    return LLVMExtractI1ValueNodeGen.create(targetAddress);
+                    return LLVMI1LoadNodeGen.create(targetAddress);
                 case I8:
-                    return LLVMExtractI8ValueNodeGen.create(targetAddress);
+                    return LLVMI8LoadNodeGen.create(targetAddress);
                 case I16:
-                    return LLVMExtractI16ValueNodeGen.create(targetAddress);
+                    return LLVMI16LoadNodeGen.create(targetAddress);
                 case I32:
-                    return LLVMExtractI32ValueNodeGen.create(targetAddress);
+                    return LLVMI32LoadNodeGen.create(targetAddress);
                 case I64:
-                    return LLVMExtractI64ValueNodeGen.create(targetAddress);
+                    return LLVMI64LoadNodeGen.create(targetAddress);
                 case FLOAT:
-                    return LLVMExtractFloatValueNodeGen.create(targetAddress);
+                    return LLVMFloatLoadNodeGen.create(targetAddress);
                 case DOUBLE:
-                    return LLVMExtractDoubleValueNodeGen.create(targetAddress);
+                    return LLVMDoubleLoadNodeGen.create(targetAddress);
                 case X86_FP80:
-                    return LLVMExtract80BitFloatValueNodeGen.create(targetAddress);
+                    return LLVM80BitFloatLoadNodeGen.create(targetAddress);
                 default:
                     throw new AssertionError(type);
             }
         } else if (type instanceof PointerType || type instanceof StructureType || type instanceof ArrayType) {
-            return LLVMExtractAddressValueNodeGen.create(targetAddress);
+            return LLVMAddressDirectLoadNodeGen.create(targetAddress);
         } else {
             throw new AssertionError(type);
         }
@@ -1358,53 +1318,35 @@ public class BasicNodeFactory implements NodeFactory {
                 return LLVMCMathsIntrinsicsFactory.LLVMCopySignNodeGen.create(args[1], args[2], sourceSection);
 
             case "@llvm.uadd.with.overflow.i8":
-                return LLVMUAddWithOverflowI8NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.uadd.with.overflow.i16":
-                return LLVMUAddWithOverflowI16NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.uadd.with.overflow.i32":
-                return LLVMUAddWithOverflowI32NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.uadd.with.overflow.i64":
-                return LLVMUAddWithOverflowI64NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
+                return LLVMArithmeticWithOverflowNodeGen.create(LLVMArithmetic.UNSIGNED_ADD, getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.usub.with.overflow.i8":
-                return LLVMUSubWithOverflowI8NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.usub.with.overflow.i16":
-                return LLVMUSubWithOverflowI16NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.usub.with.overflow.i32":
-                return LLVMUSubWithOverflowI32NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.usub.with.overflow.i64":
-                return LLVMUSubWithOverflowI64NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
+                return LLVMArithmeticWithOverflowNodeGen.create(LLVMArithmetic.UNSIGNED_SUB, getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.umul.with.overflow.i8":
-                return LLVMUMulWithOverflowI8NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.umul.with.overflow.i16":
-                return LLVMUMulWithOverflowI16NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.umul.with.overflow.i32":
-                return LLVMUMulWithOverflowI32NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.umul.with.overflow.i64":
-                return LLVMUMulWithOverflowI64NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
+                return LLVMArithmeticWithOverflowNodeGen.create(LLVMArithmetic.UNSIGNED_MUL, getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.sadd.with.overflow.i8":
-                return LLVMSAddWithOverflowI8NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.sadd.with.overflow.i16":
-                return LLVMSAddWithOverflowI16NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.sadd.with.overflow.i32":
-                return LLVMSAddWithOverflowI32NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.sadd.with.overflow.i64":
-                return LLVMSAddWithOverflowI64NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
+                return LLVMArithmeticWithOverflowNodeGen.create(LLVMArithmetic.SIGNED_ADD, getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.ssub.with.overflow.i8":
-                return LLVMSSubWithOverflowI8NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.ssub.with.overflow.i16":
-                return LLVMSSubWithOverflowI16NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.ssub.with.overflow.i32":
-                return LLVMSSubWithOverflowI32NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.ssub.with.overflow.i64":
-                return LLVMSSubWithOverflowI64NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
+                return LLVMArithmeticWithOverflowNodeGen.create(LLVMArithmetic.SIGNED_SUB, getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.smul.with.overflow.i8":
-                return LLVMSMulWithOverflowI8NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.smul.with.overflow.i16":
-                return LLVMSMulWithOverflowI16NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.smul.with.overflow.i32":
-                return LLVMSMulWithOverflowI32NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.smul.with.overflow.i64":
-                return LLVMSMulWithOverflowI64NodeGen.create(getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
+                return LLVMArithmeticWithOverflowNodeGen.create(LLVMArithmetic.SIGNED_MUL, getOverflowFieldOffset(runtime, declaration), args[2], args[3], args[1], sourceSection);
             case "@llvm.exp2.f32":
             case "@llvm.exp2.f64":
                 return LLVMCMathsIntrinsicsFactory.LLVMExp2NodeGen.create(args[1], sourceSection);
@@ -1455,39 +1397,32 @@ public class BasicNodeFactory implements NodeFactory {
     protected LLVMExpressionNode getGccBuiltin(FunctionDeclaration declaration, LLVMExpressionNode[] args, SourceSection sourceSection) {
         switch (declaration.getName()) {
             case "@__builtin_addcb":
-                return LLVMUAddWithOverflowAndCarryI8NodeGen.create(args[1], args[2], args[3], args[4], sourceSection);
             case "@__builtin_addcs":
-                return LLVMUAddWithOverflowAndCarryI16NodeGen.create(args[1], args[2], args[3], args[4], sourceSection);
             case "@__builtin_addc":
-                return LLVMUAddWithOverflowAndCarryI32NodeGen.create(args[1], args[2], args[3], args[4], sourceSection);
             case "@__builtin_addcl":
-                return LLVMUAddWithOverflowAndCarryI64NodeGen.create(args[1], args[2], args[3], args[4], sourceSection);
+                return LLVMArithmeticWithOverflowAndCarryNodeGen.create(LLVMArithmetic.CARRY_ADD, args[1], args[2], args[3], args[4], sourceSection);
             case "@__builtin_subcb":
-                return LLVMUSubWithOverflowAndCarryI8NodeGen.create(args[1], args[2], args[3], args[4], sourceSection);
             case "@__builtin_subcs":
-                return LLVMUSubWithOverflowAndCarryI16NodeGen.create(args[1], args[2], args[3], args[4], sourceSection);
             case "@__builtin_subc":
-                return LLVMUSubWithOverflowAndCarryI32NodeGen.create(args[1], args[2], args[3], args[4], sourceSection);
             case "@__builtin_subcl":
-                return LLVMUSubWithOverflowAndCarryI64NodeGen.create(args[1], args[2], args[3], args[4], sourceSection);
-
+                return LLVMArithmeticWithOverflowAndCarryNodeGen.create(LLVMArithmetic.CARRY_SUB, args[1], args[2], args[3], args[4], sourceSection);
             case "@__builtin_add_overflow":
                 if (isZeroExtendArithmeticBuiltin(declaration)) {
                     throw new IllegalStateException("Missing GCC builtin: " + declaration.getName());
                 } else {
-                    return GCCAddWithOverflowNodeGen.create(args[1], args[2], args[3], sourceSection);
+                    return GCCArithmeticNodeGen.create(LLVMArithmetic.SIGNED_ADD, args[1], args[2], args[3], sourceSection);
                 }
             case "@__builtin_sub_overflow":
                 if (isZeroExtendArithmeticBuiltin(declaration)) {
                     throw new IllegalStateException("Missing GCC builtin: " + declaration.getName());
                 } else {
-                    return GCCSubWithOverflowNodeGen.create(args[1], args[2], args[3], sourceSection);
+                    return GCCArithmeticNodeGen.create(LLVMArithmetic.SIGNED_SUB, args[1], args[2], args[3], sourceSection);
                 }
             case "@__builtin_mul_overflow":
                 if (isZeroExtendArithmeticBuiltin(declaration)) {
-                    return GCCUMulWithOverflowNodeGen.create(args[1], args[2], args[3], sourceSection);
+                    return GCCArithmeticNodeGen.create(LLVMArithmetic.UNSIGNED_MUL, args[1], args[2], args[3], sourceSection);
                 } else {
-                    return GCCSMulWithOverflowNodeGen.create(args[1], args[2], args[3], sourceSection);
+                    return GCCArithmeticNodeGen.create(LLVMArithmetic.SIGNED_MUL, args[1], args[2], args[3], sourceSection);
                 }
 
             default:
