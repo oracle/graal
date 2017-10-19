@@ -247,15 +247,18 @@ abstract class ProfilerCLI {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o)
+            if (this == o) {
                 return true;
-            if (o == null || getClass() != o.getClass())
+            }
+            if (o == null || getClass() != o.getClass()) {
                 return false;
+            }
 
             SourceLocation that = (SourceLocation) o;
 
-            if (sourceSection != null ? !sourceSection.equals(that.sourceSection) : that.sourceSection != null)
+            if (sourceSection != null ? !sourceSection.equals(that.sourceSection) : that.sourceSection != null) {
                 return false;
+            }
             return rootName != null ? rootName.equals(that.rootName) : that.rootName == null;
         }
 
