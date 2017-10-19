@@ -22,41 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.nfi.test.interop;
 
-import com.oracle.truffle.api.interop.CanResolve;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.nodes.Node;
-
-@MessageResolution(receiverType = TestCallback.class)
-class TestCallbackMessageResolution {
-
-    @Resolve(message = "EXECUTE")
-    abstract static class ExecuteNode extends Node {
-
-        Object access(TestCallback callback, Object[] arguments) {
-            Object res = callback.call(arguments);
-            return res == null ? JavaInterop.asTruffleObject(null) : res;
-        }
+double foldVector(double *vector, int size) {
+    double ret = 0.0;
+    int i;
+    for (i = 0; i < size; i++) {
+        ret += vector[i];
     }
+    return ret;
+}
 
-    @Resolve(message = "IS_EXECUTABLE")
-    abstract static class IsExecutable extends Node {
-
-        @SuppressWarnings("unused")
-        boolean access(TestCallback receiver) {
-            return true;
-        }
+void incVector(double *vector, int size, double inc) {
+    int i;
+    for (i = 0; i < size; i++) {
+        vector[i] += inc;
     }
+}
 
-    @CanResolve
-    abstract static class CanResolveTestCallback extends Node {
-
-        boolean test(TruffleObject object) {
-            return object instanceof TestCallback;
-        }
-    }
+double getFirstElement(double *vector) {
+    return *vector;
 }
