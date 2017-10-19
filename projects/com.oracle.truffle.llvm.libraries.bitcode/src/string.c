@@ -30,7 +30,7 @@
 
 #include <stdlib.h>
 
-char *strncpy(char *dest, const char *source, size_t n) {
+__attribute__((weak)) char *strncpy(char *dest, const char *source, size_t n) {
   int i;
   for (i = 0; source[i] != '\0' && i < n; i++) {
     dest[i] = source[i];
@@ -43,7 +43,7 @@ char *strncpy(char *dest, const char *source, size_t n) {
   return dest;
 }
 
-char *strcpy(char *dest, const char *source) {
+__attribute__((weak)) char *strcpy(char *dest, const char *source) {
   int i = 0;
   do {
     dest[i] = source[i];
