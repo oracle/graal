@@ -215,7 +215,7 @@ public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virt
                         return;
                     }
                     for (int i = 0; i < len; i++) {
-                        tool.setVirtualEntry(destVirtual, destPosInt + i, tool.getEntry(srcVirtual, srcPosInt + i), false);
+                        tool.setVirtualEntry(destVirtual, destPosInt + i, tool.getEntry(srcVirtual, srcPosInt + i));
                     }
                     tool.delete();
                     DebugContext debug = getDebug();
@@ -235,7 +235,7 @@ public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virt
                     for (int i = 0; i < len; i++) {
                         LoadIndexedNode load = new LoadIndexedNode(graph().getAssumptions(), srcAlias, ConstantNode.forInt(i + srcPosInt, graph()), destComponentType.getJavaKind());
                         tool.addNode(load);
-                        tool.setVirtualEntry(destVirtual, destPosInt + i, load, false);
+                        tool.setVirtualEntry(destVirtual, destPosInt + i, load);
                     }
                     tool.delete();
                 }
