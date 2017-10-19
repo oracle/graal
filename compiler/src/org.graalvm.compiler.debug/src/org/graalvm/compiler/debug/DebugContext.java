@@ -29,9 +29,11 @@ import static org.graalvm.compiler.debug.DebugOptions.Counters;
 import static org.graalvm.compiler.debug.DebugOptions.Dump;
 import static org.graalvm.compiler.debug.DebugOptions.DumpOnError;
 import static org.graalvm.compiler.debug.DebugOptions.DumpOnPhaseChange;
+import static org.graalvm.compiler.debug.DebugOptions.DumpPath;
 import static org.graalvm.compiler.debug.DebugOptions.ListMetrics;
 import static org.graalvm.compiler.debug.DebugOptions.Log;
 import static org.graalvm.compiler.debug.DebugOptions.MemUseTrackers;
+import static org.graalvm.compiler.debug.DebugOptions.ShowDumpFiles;
 import static org.graalvm.compiler.debug.DebugOptions.Time;
 import static org.graalvm.compiler.debug.DebugOptions.Timers;
 import static org.graalvm.compiler.debug.DebugOptions.TrackMemUse;
@@ -56,14 +58,12 @@ import java.util.TreeMap;
 
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.graphio.GraphOutput;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
 import org.graalvm.util.Pair;
 
 import jdk.vm.ci.meta.JavaMethod;
-import static org.graalvm.compiler.debug.DebugOptions.DumpPath;
-import static org.graalvm.compiler.debug.DebugOptions.ShowDumpFiles;
-import org.graalvm.graphio.GraphOutput;
 
 /**
  * A facility for logging and dumping as well as a container for values associated with
@@ -121,7 +121,7 @@ public final class DebugContext implements AutoCloseable {
             return builder.build(parentOutput);
         } else {
             if (sharedChannel == null) {
-                sharedChannel = new IgvDumpChannel(this::getFilePrinterPath, immutable.options);
+                sharedChannel = new IgvDumpChannel(() -> getDumpPath(".bgv", false), immutable.options);
             }
             final GraphOutput<G, M> output = builder.build(sharedChannel);
             parentOutput = output;
@@ -420,11 +420,11 @@ public final class DebugContext implements AutoCloseable {
         }
     }
 
-    private Path getFilePrinterPath() {
+    public Path getDumpPath(String extension, boolean directory) {
         try {
             String id = description == null ? null : description.identifier;
             String label = description == null ? null : description.getLabel();
-            Path result = PathUtilities.createUnique(immutable.options, DumpPath, id, label, ".bgv", false);
+            Path result = PathUtilities.createUnique(immutable.options, DumpPath, id, label, extension, directory);
             if (ShowDumpFiles.getValue(immutable.options)) {
                 TTY.println("Dumping debug output to %s", result.toAbsolutePath().toString());
             }
