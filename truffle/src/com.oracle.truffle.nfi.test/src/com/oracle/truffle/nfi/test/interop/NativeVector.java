@@ -34,9 +34,9 @@ import sun.misc.Unsafe;
 public class NativeVector implements TruffleObject, AutoCloseable {
 
     private final double[] vector;
-
-    private Unsafe unsafe;
     private long nativeStorage;
+
+    private static final Unsafe unsafe = getUnsafe();
 
     public NativeVector(double[] vector) {
         this.vector = vector.clone();
@@ -62,7 +62,6 @@ public class NativeVector implements TruffleObject, AutoCloseable {
     public void transitionToNative() {
         assert !isPointer() : "is already transitioned";
 
-        unsafe = getUnsafe();
         nativeStorage = unsafe.allocateMemory(vector.length * Double.BYTES);
 
         for (int i = 0; i < vector.length; i++) {
@@ -74,12 +73,11 @@ public class NativeVector implements TruffleObject, AutoCloseable {
     public void close() {
         if (isPointer()) {
             unsafe.freeMemory(nativeStorage);
-            unsafe = null;
         }
     }
 
     public boolean isPointer() {
-        return unsafe != null;
+        return nativeStorage != 0;
     }
 
     public long asPointer() {
