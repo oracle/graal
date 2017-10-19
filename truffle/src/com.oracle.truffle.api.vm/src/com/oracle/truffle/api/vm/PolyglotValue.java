@@ -69,6 +69,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         super(context.getEngine().impl);
         this.impl = context.getEngine().impl;
         this.languageContext = context;
+        assert context.isInitialized();
     }
 
     @Override
