@@ -379,9 +379,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     private void visitLanguage(Map<String, RuntimeException> initErrors, Map<String, LanguageCache> cachedLanguages, LinkedHashSet<LanguageCache> serializedLanguages,
                     LanguageCache language) {
-        if (!language.getDependentLanguages().isEmpty()) {
-            visitLanguageImpl(new HashSet<>(), initErrors, cachedLanguages, serializedLanguages, language);
-        }
+        visitLanguageImpl(new HashSet<>(), initErrors, cachedLanguages, serializedLanguages, language);
     }
 
     private void visitLanguageImpl(Set<String> visitedIds, Map<String, RuntimeException> initErrors, Map<String, LanguageCache> cachedLanguages, LinkedHashSet<LanguageCache> serializedLanguages,
