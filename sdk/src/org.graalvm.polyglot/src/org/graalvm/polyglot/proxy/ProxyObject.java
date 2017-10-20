@@ -53,7 +53,7 @@ public interface ProxyObject extends Proxy {
     ProxyArray getMemberKeys();
 
     /**
-     * Returns <code>true</code> if the proxy objects contains a member with the given key, or else
+     * Returns <code>true</code> if the proxy object contains a member with the given key, or else
      * <code>false</code>.
      *
      * @since 1.0
@@ -61,7 +61,7 @@ public interface ProxyObject extends Proxy {
     boolean hasMember(String key);
 
     /**
-     * Sets the value associated of a member key. If the member does not {@link #hasMember(String)
+     * Sets the value associated with a member. If the member does not {@link #hasMember(String)
      * exist} then a new member is defined. If the definition of new members is not supported then
      * an {@link UnsupportedOperationException} is thrown.
      *

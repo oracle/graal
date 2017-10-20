@@ -67,7 +67,8 @@ public interface ProxyArray extends Proxy {
     long getSize();
 
     /**
-     * Creates a proxy array backed by a Java array.
+     * Creates a proxy array backed by a Java array. If the set values of the array are host values
+     * then the they will be {@link Value#asHostObject() unboxed}.
      *
      * @since 1.0
      */
@@ -96,7 +97,8 @@ public interface ProxyArray extends Proxy {
     }
 
     /**
-     * Creates a proxy array backed by a Java List.
+     * Creates a proxy array backed by a Java List. If the set values of the list are host values
+     * then the they will be {@link Value#asHostObject() unboxed}.
      *
      * @since 1.0
      */
