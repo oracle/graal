@@ -303,7 +303,7 @@ public abstract class TruffleLanguage<C> {
          * dependencies will cause an {@link IllegalStateException} when one of the cyclic languages
          * is {@link org.graalvm.polyglot.Context#initialize(String) initialized}.
          *
-         * @since 0.29
+         * @since 0.30
          */
         String[] dependentLanguages() default {};
     }
@@ -368,7 +368,7 @@ public abstract class TruffleLanguage<C> {
      * @see Registration#dependentLanguages() for specifying language dependencies.
      * @param context the context created by
      *            {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)}
-     * @since 0.29
+     * @since 0.30
      */
     protected void finalizeContext(C context) {
     }
