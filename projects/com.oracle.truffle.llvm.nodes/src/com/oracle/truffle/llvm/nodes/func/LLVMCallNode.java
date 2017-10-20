@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.nodes.func.LLVMCallNodeFactory.ToFunctionNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -91,6 +92,11 @@ public final class LLVMCallNode extends LLVMExpressionNode {
 
         @Specialization
         LLVMFunction doFunction(LLVMFunction value) {
+            return value;
+        }
+
+        @Specialization
+        LLVMTruffleObject doForeign(LLVMTruffleObject value) {
             return value;
         }
     }
