@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.123.0",
+  "mxversion" : "5.128.5",
   "name" : "truffle",
   "sourceinprojectwhitelist" : [],
   "url" : "http://openjdk.java.net/projects/graal",
@@ -691,7 +691,7 @@ suite = {
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
-      "output" : "mxbuild/truffle-nfi-native",
+      "output" : "<mxbuild>/truffle-nfi-native",
       "dependencies" : [
         "com.oracle.truffle.nfi.native",
       ],
@@ -840,7 +840,7 @@ suite = {
      "TRUFFLE_TEST_NATIVE" : {
        "native" : True,
        "platformDependent" : True,
-       "output" : "mxbuild/truffle-test-native",
+       "output" : "<mxbuild>/truffle-test-native",
        "dependencies" : [
          "com.oracle.truffle.nfi.test.native",
        ],
