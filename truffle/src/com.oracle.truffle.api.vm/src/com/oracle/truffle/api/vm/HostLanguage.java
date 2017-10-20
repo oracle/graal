@@ -169,6 +169,11 @@ class HostLanguage extends TruffleLanguage<HostContext> {
     }
 
     @Override
+    protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+        return true;
+    }
+
+    @Override
     protected String toString(HostContext context, Object value) {
         if (value instanceof TruffleObject) {
             TruffleObject to = (TruffleObject) value;
