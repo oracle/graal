@@ -84,6 +84,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCTypeIntrinsicsFactory.LLV
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCTypeIntrinsicsFactory.LLVMTolowerNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMExitNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMSignalNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMSyscall;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMTruffleOnlyIntrinsicsFactory.LLVMStrCmpNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMTruffleOnlyIntrinsicsFactory.LLVMStrlenNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMTruffleReadBytesNodeGen;
@@ -970,6 +971,13 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
             @Override
             protected RootCallTarget generate(FunctionType type) {
                 return wrap("@signal", LLVMSignalNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+            }
+        });
+        factories.put("@syscall", new LLVMNativeIntrinsicFactory(true, false) {
+
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@syscall", new LLVMSyscall());
             }
         });
     }
