@@ -844,10 +844,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                     } else {
                         engine.removeContext(this);
                     }
-                    lastThread = PolyglotThreadInfo.NULL;
-                    closed = true;
-                    cancelling = false;
                 }
+                closed = success;
+                lastThread = PolyglotThreadInfo.NULL;
+                cancelling = false;
             }
             return true;
         }

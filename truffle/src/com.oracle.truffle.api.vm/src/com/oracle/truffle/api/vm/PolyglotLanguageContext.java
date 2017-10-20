@@ -216,33 +216,32 @@ final class PolyglotLanguageContext implements VMObject {
                         throw PolyglotContextImpl.throwDeniedThreadAccess(firstFailingThread, singleThreaded, Arrays.asList(language));
                     }
 
-
                     creating = true;
                     try {
-	                    try {
-	                        env = LANGUAGE.createEnv(this, language.info,
-	                                        context.out,
-	                                        context.err,
-	                                        context.in, config, getOptionValues(), applicationArguments);
-	                        LANGUAGE.createEnvContext(env);
-	                    } finally {
-	                        creating = false;
-	                    }
-						initializeCaches();
-						LANGUAGE.initializeThread(env, Thread.currentThread());
-						
-	                    LANGUAGE.postInitEnv(env);
-	
-	                    if (!singleThreaded) {
-	                        LANGUAGE.initializeMultiThreading(env);
-	                    }
-	
-	                    for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
-	                        if (threadInfo.thread == Thread.currentThread()) {
-	                            continue;
-	                        }
-	                        LANGUAGE.initializeThread(env, threadInfo.thread);
-	                    }
+                        try {
+                            env = LANGUAGE.createEnv(this, language.info,
+                                            context.out,
+                                            context.err,
+                                            context.in, config, getOptionValues(), applicationArguments);
+                            LANGUAGE.createEnvContext(env);
+                        } finally {
+                            creating = false;
+                        }
+                        initializeCaches();
+                        LANGUAGE.initializeThread(env, Thread.currentThread());
+
+                        LANGUAGE.postInitEnv(env);
+
+                        if (!singleThreaded) {
+                            LANGUAGE.initializeMultiThreading(env);
+                        }
+
+                        for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
+                            if (threadInfo.thread == Thread.currentThread()) {
+                                continue;
+                            }
+                            LANGUAGE.initializeThread(env, threadInfo.thread);
+                        }
                     } catch (Throwable e) {
                         // language not successfully initialized reset to avoid inconsistent
                         // language contexts
