@@ -39,6 +39,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
 
@@ -526,10 +527,10 @@ public final class Engine implements AutoCloseable {
         static {
             Boolean aot = AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
                 public Boolean run() {
-                    return Boolean.getBoolean("com.oracle.truffle.aot");
+                    return Boolean.getBoolean("com.oracle.graalvm.isaot");
                 }
             });
-            PolyglotInvalid.AOT = aot != null ? aot.booleanValue() : false;
+            PolyglotInvalid.AOT = aot.booleanValue();
         }
 
         @Override
