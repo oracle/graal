@@ -37,7 +37,10 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.nfi.SerializeArgumentNodeFactory.AsPointerNodeGen;
+import com.oracle.truffle.nfi.TypeConversion.AsPointerNode;
+import com.oracle.truffle.nfi.TypeConversion.AsStringNode;
+import com.oracle.truffle.nfi.TypeConversionFactory.AsPointerNodeGen;
+import com.oracle.truffle.nfi.TypeConversionFactory.AsStringNodeGen;
 
 abstract class SerializeArgumentNode extends Node {
 
@@ -138,75 +141,6 @@ abstract class SerializeArgumentNode extends Node {
         }
     }
 
-    abstract static class AsPointerNode extends Node {
-
-        abstract NativePointer execute(TruffleObject arg);
-
-        @Specialization(guards = {"checkNull(isNull, arg)"})
-        @SuppressWarnings("unused")
-        NativePointer nullAsPointer(TruffleObject arg, @Cached("createIsNull()") Node isNull) {
-            return new NativePointer(0);
-        }
-
-        @Specialization(guards = {"checkIsPointer(isPointer, arg)"})
-        @SuppressWarnings("unused")
-        protected NativePointer serializePointer(TruffleObject arg,
-                        @Cached("createIsPointer()") Node isPointer,
-                        @Cached("createAsPointer()") Node asPointer) {
-            try {
-                long pointer = ForeignAccess.sendAsPointer(asPointer, arg);
-                return new NativePointer(pointer);
-            } catch (UnsupportedMessageException ex) {
-                CompilerDirectives.transferToInterpreter();
-                throw ex.raise();
-            }
-        }
-
-        @Specialization(guards = {"!checkNull(isNull, arg)", "!checkIsPointer(isPointer, arg)"})
-        @SuppressWarnings("unused")
-        protected NativePointer transitionToNative(TruffleObject arg,
-                        @Cached("createIsNull()") Node isNull,
-                        @Cached("createIsPointer()") Node isPointer,
-                        @Cached("createToNative()") Node toNative,
-                        @Cached("createRecursive()") AsPointerNode recursive) {
-            try {
-                Object nativeObj = ForeignAccess.sendToNative(toNative, arg);
-                return recursive.execute((TruffleObject) nativeObj);
-            } catch (UnsupportedMessageException ex) {
-                CompilerDirectives.transferToInterpreter();
-                throw UnsupportedTypeException.raise(ex, new Object[]{arg});
-            }
-        }
-
-        static boolean checkNull(Node isNull, TruffleObject obj) {
-            return ForeignAccess.sendIsNull(isNull, obj);
-        }
-
-        static Node createIsNull() {
-            return Message.IS_NULL.createNode();
-        }
-
-        protected static boolean checkIsPointer(Node isPointer, TruffleObject object) {
-            return ForeignAccess.sendIsPointer(isPointer, object);
-        }
-
-        static Node createIsPointer() {
-            return Message.IS_POINTER.createNode();
-        }
-
-        static Node createAsPointer() {
-            return Message.AS_POINTER.createNode();
-        }
-
-        static Node createToNative() {
-            return Message.TO_NATIVE.createNode();
-        }
-
-        static AsPointerNode createRecursive() {
-            return AsPointerNodeGen.create();
-        }
-    }
-
     abstract static class SerializePointerArgumentNode extends SerializeArgumentNode {
 
         final LibFFIType argType;
@@ -253,47 +187,25 @@ abstract class SerializeArgumentNode extends Node {
             this.argType = type;
         }
 
-        @Specialization(guards = "checkNull(isNull, obj)")
-        @SuppressWarnings("unused")
-        protected boolean serializeNull(NativeArgumentBuffer buffer, TruffleObject obj,
-                        @Cached("createIsNull()") Node isNull) {
-            argType.serialize(buffer, null);
-            return true;
-        }
-
-        @Specialization
-        protected boolean serializeString(NativeArgumentBuffer buffer, String string) {
-            argType.serialize(buffer, string);
-            return true;
-        }
-
         @Specialization
         protected boolean serializeNativeString(NativeArgumentBuffer buffer, NativeString string) {
             argType.serialize(buffer, string);
             return true;
         }
 
-        @Specialization(guards = {"checkIsBoxed(isBoxed, arg)"})
-        @SuppressWarnings("unused")
-        protected boolean serializeUnbox(NativeArgumentBuffer buffer, TruffleObject arg,
-                        @Cached("createIsBoxed()") Node isBoxed,
-                        @Cached("createUnbox()") Node unbox,
-                        @Cached("argType.createSerializeArgumentNode()") SerializeArgumentNode serialize) {
-            try {
-                Object unboxed = ForeignAccess.sendUnbox(unbox, arg);
-                return serialize.execute(buffer, unboxed);
-            } catch (UnsupportedMessageException ex) {
-                CompilerDirectives.transferToInterpreter();
-                throw UnsupportedTypeException.raise(ex, new Object[]{arg});
-            }
+        @Specialization(guards = "notNativeString(string)")
+        protected boolean serializeOther(NativeArgumentBuffer buffer, Object string,
+                        @Cached("createAsString()") AsStringNode asString) {
+            argType.serialize(buffer, asString.execute(string));
+            return true;
         }
 
-        static boolean checkIsBoxed(Node isBoxed, TruffleObject arg) {
-            if (arg instanceof NativeString) {
-                return false;
-            } else {
-                return ForeignAccess.sendIsBoxed(isBoxed, arg);
-            }
+        static boolean notNativeString(Object arg) {
+            return !(arg instanceof NativeString);
+        }
+
+        static AsStringNode createAsString() {
+            return AsStringNodeGen.create(false);
         }
     }
 

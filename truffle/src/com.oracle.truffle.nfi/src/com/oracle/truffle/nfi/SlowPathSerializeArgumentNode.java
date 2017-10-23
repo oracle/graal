@@ -34,8 +34,8 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.LibFFIType.PrepareArgument;
-import com.oracle.truffle.nfi.SerializeArgumentNode.AsPointerNode;
-import com.oracle.truffle.nfi.SerializeArgumentNodeFactory.AsPointerNodeGen;
+import com.oracle.truffle.nfi.TypeConversion.AsPointerNode;
+import com.oracle.truffle.nfi.TypeConversionFactory.AsPointerNodeGen;
 
 abstract class SlowPathSerializeArgumentNode extends Node {
 
