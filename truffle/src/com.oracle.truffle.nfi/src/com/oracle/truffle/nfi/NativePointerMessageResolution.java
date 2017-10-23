@@ -38,6 +38,8 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.NativePointerMessageResolutionFactory.SignatureCacheNodeGen;
+import com.oracle.truffle.nfi.TypeConversion.AsStringNode;
+import com.oracle.truffle.nfi.TypeConversionFactory.AsStringNodeGen;
 import com.oracle.truffle.nfi.types.NativeSignature;
 import com.oracle.truffle.nfi.types.Parser;
 
@@ -48,7 +50,7 @@ class NativePointerMessageResolution {
 
         private final ContextReference<NFIContext> ctxRef = NFILanguage.getCurrentContextReference();
 
-        protected abstract LibFFISignature execute(Object signature);
+        protected abstract LibFFISignature execute(String signature);
 
         @Specialization(guards = "checkSignature(signature, cachedSignature)")
         @SuppressWarnings("unused")
@@ -74,6 +76,7 @@ class NativePointerMessageResolution {
     abstract static class BindNode extends Node {
 
         @Child protected SignatureCacheNode signatureCache = SignatureCacheNodeGen.create();
+        @Child protected AsStringNode asString = AsStringNodeGen.create(false);
 
         public TruffleObject access(NativePointer receiver, String method, Object[] args) {
             if (!"bind".equals(method)) {
@@ -83,7 +86,8 @@ class NativePointerMessageResolution {
                 throw ArityException.raise(1, args.length);
             }
 
-            LibFFISignature signature = signatureCache.execute(args[0]);
+            String sigString = asString.execute(args[0]);
+            LibFFISignature signature = signatureCache.execute(sigString);
             if (receiver.nativePointer == 0) {
                 // cannot bind null function
                 return receiver;
@@ -149,8 +153,11 @@ class NativePointerMessageResolution {
         private static final int INVOCABLE = KeyInfo.newBuilder().setInvocable(true).build();
         private static final int NOT_EXISTING = 0;
 
+        @Child private AsStringNode asString = AsStringNodeGen.create(true);
+
         @SuppressWarnings("unused")
-        public int access(NativePointer receiver, String identifier) {
+        public int access(NativePointer receiver, Object arg) {
+            String identifier = asString.execute(arg);
             if ("bind".equals(identifier)) {
                 return INVOCABLE;
             } else {
