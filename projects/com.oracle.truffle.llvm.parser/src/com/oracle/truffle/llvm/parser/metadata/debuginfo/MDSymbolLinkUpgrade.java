@@ -60,8 +60,6 @@ final class MDSymbolLinkUpgrade implements MetadataVisitor {
 
     private MDCompileUnit currentCU;
 
-    private MDCompileUnit currentCU;
-
     private MDSymbolLinkUpgrade(MDKind dbgKind) {
         this.dbgKind = dbgKind;
         this.currentCU = null;

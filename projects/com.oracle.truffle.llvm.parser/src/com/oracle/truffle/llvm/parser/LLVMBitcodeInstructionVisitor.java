@@ -325,15 +325,17 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                 }
 
                 if (valueRead != null) {
-                    final FrameSlot containerSlot = frame.findOrAddFrameSlot(LLVMDebugValueContainer.FRAMESLOT_NAME, FrameSlotKind.Object);
-                    addInstructionUnchecked(nodeFactory.createDebugDeclaration(var.getVariable(), valueRead, containerSlot));
+                    final FrameSlot frameSlot = getDebugValueSlot(var.getVariable());
+                    final LLVMExpressionNode debugValue = nodeFactory.createDebugDeclaration(var.getVariable(), valueRead, frameSlot);
+                    addInstructionUnchecked(debugValue);
                 }
             } else if (valueOffset != null && valueOffset == 0) {
                 // the dbg.value intrinsic may specify only parts of a variable by giving a value to
                 // be stored at an offset into the variable, but this never happens in practice
                 final FrameSlot frameSlot = getDebugValueSlot(var.getVariable());
                 final LLVMExpressionNode valueNode = symbols.resolve(valueSymbol);
-                addInstructionUnchecked(nodeFactory.createDebugValue(var.getVariable(), valueNode, containerSlot, false));
+                final LLVMExpressionNode debugValue = nodeFactory.createDebugValue(var.getVariable(), valueNode, frameSlot);
+                addInstructionUnchecked(debugValue);
             }
         }
 

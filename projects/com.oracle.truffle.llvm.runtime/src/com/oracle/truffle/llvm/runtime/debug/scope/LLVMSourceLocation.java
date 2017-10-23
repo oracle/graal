@@ -199,14 +199,6 @@ public final class LLVMSourceLocation {
         this.compileUnit = compileUnit;
     }
 
-    public LLVMSourceLocation getCompileUnit() {
-        return compileUnit;
-    }
-
-    public void setCompileUnit(LLVMSourceLocation compileUnit) {
-        this.compileUnit = compileUnit;
-    }
-
     private SourceSection resolvedSection = null;
 
     public SourceSection getSourceSection() {
@@ -273,9 +265,6 @@ public final class LLVMSourceLocation {
         try {
             final Source source = getSource(scopeFile);
             if (source == null) {
-                return;
-
-            } else if (source == null) {
                 return;
 
             } else if (line <= 0) {
