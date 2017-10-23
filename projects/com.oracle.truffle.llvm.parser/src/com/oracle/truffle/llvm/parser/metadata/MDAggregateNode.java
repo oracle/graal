@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,36 +29,48 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-public final class MDNamedNode extends MDAggregateNode {
+import java.util.Iterator;
 
-    public static final String COMPILEUNIT_NAME = "llvm.dbg.cu";
+abstract class MDAggregateNode implements MDBaseNode, Iterable<MDBaseNode> {
 
-    private final String name;
+    private final MDBaseNode[] elements;
 
-    public MDNamedNode(String name, int size) {
-        super(size);
-        this.name = name;
+    MDAggregateNode(int size) {
+        elements = new MDBaseNode[size];
     }
 
-    public String getName() {
-        return name;
+    void set(int i, MDBaseNode element) {
+        elements[i] = element;
+    }
+
+    MDBaseNode get(int i) {
+        return elements[i];
     }
 
     @Override
-    public void accept(MetadataVisitor visitor) {
-        visitor.visit(this);
-    }
-
-    @Override
-    public String toString() {
-        return String.format("!%s", getName());
-    }
-
-    public static MDNamedNode create(String name, long[] record, MetadataValueList md) {
-        final MDNamedNode node = new MDNamedNode(name, record.length);
-        for (int i = 0; i < record.length; i++) {
-            node.set(i, md.getNonNullable(record[i], node));
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        for (int i = 0; i < elements.length; i++) {
+            if (elements[i] == oldValue) {
+                elements[i] = newValue;
+            }
         }
-        return node;
+    }
+
+    @Override
+    public Iterator<MDBaseNode> iterator() {
+        return new Iterator<MDBaseNode>() {
+
+            private int i = 0;
+
+            @Override
+            public boolean hasNext() {
+                return i < elements.length;
+            }
+
+            @Override
+            public MDBaseNode next() {
+                return elements[i++];
+            }
+        };
     }
 }

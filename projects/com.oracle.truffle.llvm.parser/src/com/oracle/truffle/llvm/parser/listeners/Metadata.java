@@ -265,18 +265,10 @@ public final class Metadata implements ParserListener {
     }
 
     private void createNamedNode(long[] args) {
-        if (lastParsedName == null) {
-            return;
+        if (lastParsedName != null) {
+            metadata.addNamedNode(MDNamedNode.create(lastParsedName, args, metadata));
+            lastParsedName = null;
         }
-
-        final MDNamedNode node = new MDNamedNode(lastParsedName);
-        lastParsedName = null;
-
-        for (long arg : args) {
-            node.add(metadata.getNonNullable(arg, node));
-        }
-
-        metadata.addNamedNode(node);
     }
 
     private void createAttachment(long[] args) {

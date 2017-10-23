@@ -31,13 +31,10 @@ package com.oracle.truffle.llvm.parser.metadata;
 
 import com.oracle.truffle.llvm.parser.listeners.Metadata;
 
-import java.util.ArrayList;
+public final class MDNode extends MDAggregateNode {
 
-public final class MDNode extends ArrayList<MDBaseNode> implements MDBaseNode {
-
-    private static final long serialVersionUID = 1L;
-
-    private MDNode() {
+    private MDNode(int size) {
+        super(size);
     }
 
     @Override
@@ -45,27 +42,19 @@ public final class MDNode extends ArrayList<MDBaseNode> implements MDBaseNode {
         visitor.visit(this);
     }
 
-    @Override
-    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
-        for (int i = 0; i < size(); i++) {
-            if (get(i) == oldValue) {
-                set(i, newValue);
-            }
-        }
-    }
-
-    public static MDNode create38(long[] args, MetadataValueList md) {
-        final MDNode node = new MDNode();
-        for (final long arg : args) {
-            node.add(md.getNullable(arg, node));
+    public static MDNode create38(long[] record, MetadataValueList md) {
+        final MDNode node = new MDNode(record.length);
+        for (int i = 0; i < record.length; i++) {
+            node.set(i, md.getNullable(record[i], node));
         }
         return node;
     }
 
-    public static MDNode create32(long[] args, Metadata md) {
-        final MDNode node = new MDNode();
-        for (int i = 0; i < args.length / 2; i++) {
-            node.add(ParseUtil.resolveReference(args, i, node, md));
+    public static MDNode create32(long[] record, Metadata md) {
+        final int size = record.length / 2;
+        final MDNode node = new MDNode(size);
+        for (int i = 0; i < size; i++) {
+            node.set(i, ParseUtil.resolveReference(record, i, node, md));
         }
         return node;
     }
