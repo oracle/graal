@@ -2456,6 +2456,15 @@ public class FlatNodeGenFactory {
                 Parameter parameter = cache.getParameter();
                 if (ElementUtils.isAssignable(parameter.getType(), context.getType(Node.class)) || ElementUtils.isAssignable(parameter.getType(), context.getType(Node[].class))) {
                     cacheValue = builder.create().startCall("super", "insert").tree(cacheValue).end().build();
+                } else if (ElementUtils.isAssignable(parameter.getType(), context.getType(NodeInterface.class)) || isNodeArray(parameter.getType())) {
+                    if (evaluatedVar == null) {
+                        String fieldName = createFieldName(specialization, cache.getParameter()) + "_";
+                        builder.declaration(cache.getExpression().getResolvedType(), fieldName, cacheValue);
+                        cacheValue = CodeTreeBuilder.singleString(fieldName);
+                    }
+                    builder.startIf().instanceOf(cacheValue, context.getType(Node.class)).end().startBlock();
+                    builder.startStatement().startCall("super", "insert").startGroup().cast(context.getType(Node.class)).tree(cacheValue).end().end().end();
+                    builder.end();
                 }
                 String name = createFieldName(specialization, cache.getParameter());
                 builder.startStatement().string("this.").string(name).string(" = ").tree(cacheValue).end();
