@@ -34,7 +34,7 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 import java.util.HashMap;
 
-public class LLVMSourceContext {
+public final class LLVMSourceContext {
 
     private final HashMap<String, LLVMSourceLocation> sourceScopes;
     private final HashMap<LLVMSourceSymbol, LLVMDebugValue> globals;
@@ -46,7 +46,7 @@ public class LLVMSourceContext {
     }
 
     @TruffleBoundary
-    public void registerSourceScope(String symbolName, LLVMSourceLocation scope) {
+    public synchronized void registerSourceScope(String symbolName, LLVMSourceLocation scope) {
         sourceScopes.put(symbolName, scope);
     }
 
