@@ -1743,7 +1743,8 @@ class AsmFactory {
 
         // copy stack pointer
         LLVMExpressionNode stackPointer = LLVMArgNodeGen.create(0);
-        frameDescriptor.addFrameSlot(LLVMStack.FRAME_ID);
+        FrameSlot stackSlot = frameDescriptor.addFrameSlot(LLVMStack.FRAME_ID);
+        stackSlot.setKind(FrameSlotKind.Long);
         arguments.add(LLVMWriteI64NodeGen.create(stackPointer, frameDescriptor.findFrameSlot(LLVMStack.FRAME_ID), sourceSection));
 
         LLVMExpressionNode node = LLVMToAddressNodeGen.create(stackPointer, PrimitiveType.I64);
