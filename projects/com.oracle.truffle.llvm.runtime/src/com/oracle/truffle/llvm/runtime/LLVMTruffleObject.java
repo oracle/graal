@@ -54,6 +54,10 @@ public final class LLVMTruffleObject {
         }
     }
 
+    public static LLVMTruffleObject createNullPointer() {
+        return new LLVMTruffleObject(null, 0, null, null);
+    }
+
     public LLVMTruffleObject(LLVMTruffleObject orig, Type type) {
         this(orig.getObject(), orig.getOffset(), type, overrideBaseType(orig, type));
     }
