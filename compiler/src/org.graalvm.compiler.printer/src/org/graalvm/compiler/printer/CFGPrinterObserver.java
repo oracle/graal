@@ -63,8 +63,6 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.compiler.debug.DebugOptions;
-import static org.graalvm.compiler.debug.PathUtilities.getGlobalTimeStamp;
 
 /**
  * Observes compilation events and uses {@link CFGPrinter} to produce a control flow graph for the
@@ -155,12 +153,8 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
         if (cfgPrinter == null) {
             try {
-                String ext = ".cfg";
-                String name = String.format("%s-%d_%s", DebugOptions.DumpPath.getValue(options), getGlobalTimeStamp(), ext);
-                int slash = name.lastIndexOf('/');
-                name = name.substring(slash + 1);
-                Path dumpDir = DebugOptions.getDumpDirectory(options);
-                cfgFile = new File(dumpDir.toFile(), name);
+                Path dumpFile = debug.getDumpPath(".cfg", false);
+                cfgFile = dumpFile.toFile();
                 OutputStream out = new BufferedOutputStream(new FileOutputStream(cfgFile));
                 cfgPrinter = new CFGPrinter(out);
             } catch (IOException e) {
