@@ -180,7 +180,7 @@ public class FlatNodeGenFactory {
         return ElementUtils.firstLetterLowerCase(s.getId()) + "_cache";
     }
 
-    private static String createFieldName(SpecializationData specialization, Parameter cacheParameter) {
+    private String createFieldName(SpecializationData specialization, Parameter cacheParameter) {
         if (useSpecializationClass(specialization)) {
             return cacheParameter.getLocalName() + "_";
         } else {
@@ -188,7 +188,7 @@ public class FlatNodeGenFactory {
         }
     }
 
-    private static String createAssumptionFieldName(SpecializationData specialization, AssumptionExpression assumption) {
+    private String createAssumptionFieldName(SpecializationData specialization, AssumptionExpression assumption) {
         if (useSpecializationClass(specialization)) {
             return assumption.getId() + "_";
         } else {
@@ -209,7 +209,17 @@ public class FlatNodeGenFactory {
     }
 
     /* Whether a new class should be generated for specialization instance fields. */
-    private static boolean useSpecializationClass(SpecializationData specialization) {
+    private boolean useSpecializationClass(SpecializationData specialization) {
+        /*
+         * Children with node array require a final field. Therefore we need to always use a
+         * specialization class in this case.
+         */
+        for (CacheExpression expression : specialization.getCaches()) {
+            if (isNodeArray(expression.getExpression().getResolvedType())) {
+                return true;
+            }
+        }
+
         int size = 0;
         for (CacheExpression expression : specialization.getCaches()) {
             TypeMirror type = expression.getParameter().getType();
@@ -492,7 +502,7 @@ public class FlatNodeGenFactory {
                 CodeVariableElement cachedField;
                 if (ElementUtils.isAssignable(type, context.getType(NodeInterface.class))) {
                     cachedField = createNodeField(visibility, type, fieldName, Child.class);
-                } else if (type.getKind() == TypeKind.ARRAY && ElementUtils.isAssignable(((ArrayType) type).getComponentType(), context.getType(NodeInterface.class))) {
+                } else if (isNodeArray(type)) {
                     cachedField = createNodeField(visibility, type, fieldName, Children.class, Modifier.FINAL);
                 } else {
                     if (useSpecializationClass) {
@@ -573,6 +583,13 @@ public class FlatNodeGenFactory {
         }
     }
 
+    private boolean isNodeArray(TypeMirror type) {
+        if (type == null) {
+            return false;
+        }
+        return type.getKind() == TypeKind.ARRAY && ElementUtils.isAssignable(((ArrayType) type).getComponentType(), context.getType(NodeInterface.class));
+    }
+
     private static void setFieldCompilationFinal(CodeVariableElement field, int compilationFinalDimensions) {
         if (field.getModifiers().contains(Modifier.FINAL) && compilationFinalDimensions <= 0) {
             // no need for the compilation final annotation.
@@ -593,7 +610,7 @@ public class FlatNodeGenFactory {
                 TypeMirror type = cache.getParameter().getType();
                 if (ElementUtils.isAssignable(type, context.getType(NodeInterface.class))) {
                     return true;
-                } else if (type.getKind() == TypeKind.ARRAY && ElementUtils.isAssignable(((ArrayType) type).getComponentType(), context.getType(NodeInterface.class))) {
+                } else if (isNodeArray(type)) {
                     return true;
                 }
             }
@@ -2837,7 +2854,7 @@ public class FlatNodeGenFactory {
         return triples;
     }
 
-    private static IfTriple createCacheInitializer(FrameState frameState, SpecializationData specialization, CacheExpression cache) {
+    private IfTriple createCacheInitializer(FrameState frameState, SpecializationData specialization, CacheExpression cache) {
         String name = createFieldName(specialization, cache.getParameter());
         // already initialized
         if (frameState.get(name) != null) {
@@ -2887,7 +2904,7 @@ public class FlatNodeGenFactory {
         return resolvedBindings;
     }
 
-    private static Map<Variable, LocalVariable> bindExpressionValues(FrameState frameState, DSLExpression expression, SpecializationData specialization) throws AssertionError {
+    private Map<Variable, LocalVariable> bindExpressionValues(FrameState frameState, DSLExpression expression, SpecializationData specialization) throws AssertionError {
         Map<Variable, LocalVariable> bindings = new HashMap<>();
         Set<Variable> boundVariables = expression.findBoundVariables();
         if (specialization == null && !boundVariables.isEmpty()) {
@@ -2926,17 +2943,17 @@ public class FlatNodeGenFactory {
         return bindings;
     }
 
-    private static CodeTree createCacheReference(SpecializationData s, Parameter p) {
+    private CodeTree createCacheReference(SpecializationData s, Parameter p) {
         String cacheFieldName = createFieldName(s, p);
         return accessInSpecializationClass(s, cacheFieldName);
     }
 
-    private static CodeTree createAssumptionReference(SpecializationData s, AssumptionExpression a) {
+    private CodeTree createAssumptionReference(SpecializationData s, AssumptionExpression a) {
         String assumptionFieldName = createAssumptionFieldName(s, a);
         return accessInSpecializationClass(s, assumptionFieldName);
     }
 
-    private static CodeTree accessInSpecializationClass(SpecializationData s, String cacheFieldName) {
+    private CodeTree accessInSpecializationClass(SpecializationData s, String cacheFieldName) {
         if (!useSpecializationClass(s)) {
             return CodeTreeBuilder.singleString(cacheFieldName);
         } else {
