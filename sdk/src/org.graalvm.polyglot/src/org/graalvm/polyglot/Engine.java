@@ -39,7 +39,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
 
@@ -522,7 +521,7 @@ public final class Engine implements AutoCloseable {
          *
          * @since 0.8 or earlier
          */
-        public static boolean AOT;
+        static boolean AOT;
 
         static {
             Boolean aot = AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
@@ -542,7 +541,7 @@ public final class Engine implements AutoCloseable {
         private static RuntimeException noPolyglotImplementationFound() {
             String suggestion;
             if (AOT) {
-                suggestion = "Make sure a language is added to the classpath (eg. native-image --js).";
+                suggestion = "Make sure a language is added to the classpath (e.g., native-image --js).";
             } else {
                 suggestion = "Make sure the truffle-api.jar is on the classpath.";
             }
