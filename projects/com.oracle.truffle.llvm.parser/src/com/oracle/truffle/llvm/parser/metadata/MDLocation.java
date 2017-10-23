@@ -86,7 +86,7 @@ public final class MDLocation implements MDBaseNode {
         final long column = args[MDNODE_COLUMN];
 
         final MDLocation location = new MDLocation(line, column);
-        location.scope = md.getNullable(args[MDNODE_SCOPE], location);
+        location.scope = md.getNonNullable(args[MDNODE_SCOPE], location);
         location.inlinedAt = md.getNullable(args[MDNODE_INLINEDAT], location);
 
         return location;
