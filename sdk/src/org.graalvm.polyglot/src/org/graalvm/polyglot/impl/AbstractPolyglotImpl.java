@@ -54,7 +54,7 @@ import org.graalvm.polyglot.Value;
 public abstract class AbstractPolyglotImpl {
 
     protected AbstractPolyglotImpl() {
-        if (!getClass().getName().equals("com.oracle.truffle.api.vm.PolyglotImpl")) {
+        if (!getClass().getName().equals("com.oracle.truffle.api.vm.PolyglotImpl") && !getClass().getName().equals("org.graalvm.polyglot.Engine$PolyglotInvalid")) {
             throw new AssertionError("Only one implementation Engine.Impl allowed.");
         }
     }
