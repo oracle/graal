@@ -1678,7 +1678,7 @@ public class BasicNodeFactory implements NodeFactory {
                 store = LLVMAddressStoreNodeGen.create(type);
             }
         } else if (type instanceof VectorType) {
-            store = LLVMStoreVectorNodeGen.create(type);
+            store = LLVMStoreVectorNodeGen.create(type, size);
         } else {
             throw new AssertionError(type);
         }

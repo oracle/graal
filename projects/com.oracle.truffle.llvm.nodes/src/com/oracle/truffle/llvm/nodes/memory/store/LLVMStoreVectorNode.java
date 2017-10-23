@@ -31,7 +31,9 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -47,8 +49,8 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
-    public LLVMStoreVectorNode(Type type) {
-        super(type, 0);
+    public LLVMStoreVectorNode(Type type, int size) {
+        super(type, size);
     }
 
     @Specialization
@@ -146,4 +148,53 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
         LLVMMemory.putVector(globalAccess.getNativeLocation(address), value);
         return null;
     }
+
+    @Specialization
+    public Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI1Vector value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+        foreignWrite.execute(frame, address, value);
+        return null;
+    }
+
+    @Specialization
+    public Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI8Vector value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+        foreignWrite.execute(frame, address, value);
+        return null;
+    }
+
+    @Specialization
+    public Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI16Vector value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+        foreignWrite.execute(frame, address, value);
+        return null;
+    }
+
+    @Specialization
+    public Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI32Vector value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+        foreignWrite.execute(frame, address, value);
+        return null;
+    }
+
+    @Specialization
+    public Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMFloatVector value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+        foreignWrite.execute(frame, address, value);
+        return null;
+    }
+
+    @Specialization
+    public Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMDoubleVector value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+        foreignWrite.execute(frame, address, value);
+        return null;
+    }
+
+    @Specialization
+    public Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI64Vector value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+        foreignWrite.execute(frame, address, value);
+        return null;
+    }
+
+    @Specialization
+    public Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMAddressVector value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+        foreignWrite.execute(frame, address, value);
+        return null;
+    }
+
 }
