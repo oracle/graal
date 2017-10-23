@@ -116,6 +116,9 @@ final class MDSymbolLinkUpgrade implements MDFollowRefVisitor {
             final GlobalValueSymbol global = (GlobalValueSymbol) symbol;
             attachSymbol(global, mdGlobal);
         }
+        if (currentCU != null) {
+            mdGlobal.setCompileUnit(currentCU);
+        }
     }
 
     private void attachSymbol(MetadataAttachmentHolder container, MDBaseNode ref) {
