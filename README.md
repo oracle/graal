@@ -1,14 +1,14 @@
 ![Sulong Logo](https://raw.githubusercontent.com/mrigger/sulong-logos/master/sulong_black_with_text_transparent_300x185.png)
 
-Sulong is a high-performance LLVM bitcode interpreter build on the
+Sulong is a high-performance LLVM bitcode interpreter built on the
 GraalVM by [Oracle Labs](https://labs.oracle.com).
 
 Sulong is written in Java and uses the Truffle language implementation
 framework and Graal as a dynamic compiler.
 
-With Sulong you can execute C/C++, Fortran, and other programs that can
-be transformed to LLVM bitcode on Graal VM. To execute a program, you
-have to compile the program to LLVM bitcode by a LLVM front end such
+With Sulong you can execute C/C++, Fortran, and other programming languages
+that can be transformed to LLVM bitcode on Graal VM. To execute a program,
+you have to compile the program to LLVM bitcode by a LLVM front end such
 as `clang`.
 
 Graal VM
