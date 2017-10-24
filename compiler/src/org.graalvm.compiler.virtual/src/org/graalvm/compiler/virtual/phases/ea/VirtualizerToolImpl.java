@@ -174,9 +174,9 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
                 if (oldValue.getStackKind() == JavaKind.Double || oldValue.getStackKind() == JavaKind.Long) {
                     // Splitting double word constant by storing over it with an int
                     getDebug().log(DebugContext.DETAILED_LEVEL, "producing second half of double word value %s", this);
-                    UnpackEndianHalfNode halfNode = new UnpackEndianHalfNode(oldValue, JavaKind.Int, false);
-                    addNode(halfNode);
-                    state.setEntry(virtual.getObjectId(), index + 1, halfNode);
+                    ValueNode secondHalf = UnpackEndianHalfNode.create(oldValue, false);
+                    addNode(secondHalf);
+                    state.setEntry(virtual.getObjectId(), index + 1, secondHalf);
                 } else if (accessKind.needsTwoSlots()) {
                     // Storing double word value two int slots
                     assert virtual.entryKind(index + 1) == JavaKind.Int;
@@ -187,9 +187,9 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
                 // Storing into second half of double, so replace previous value
                 getDebug().log(DebugContext.DETAILED_LEVEL, "producing first half of double word value %s", this);
                 ValueNode previous = getEntry(virtual, index - 1);
-                UnpackEndianHalfNode secondHalf = new UnpackEndianHalfNode(previous, JavaKind.Int, true);
-                addNode(secondHalf);
-                state.setEntry(virtual.getObjectId(), index - 1, secondHalf);
+                ValueNode firstHalf = UnpackEndianHalfNode.create(previous, true);
+                addNode(firstHalf);
+                state.setEntry(virtual.getObjectId(), index - 1, firstHalf);
             }
             return true;
         }
