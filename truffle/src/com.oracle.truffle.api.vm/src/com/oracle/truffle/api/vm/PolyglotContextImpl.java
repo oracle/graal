@@ -39,7 +39,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -77,7 +76,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
     /*
      * If the context is closed all operations should fail with IllegalStateException.
      */
-    private volatile boolean closed;
+    volatile boolean closed;
     final PolyglotEngineImpl engine;
     @CompilationFinal(dimensions = 1) final PolyglotLanguageContext[] contexts;
 
@@ -136,12 +135,22 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         this.contexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = new PolyglotLanguageContext(this, engine.hostLanguage, null, applicationArguments.get(PolyglotEngineImpl.HOST_LANGUAGE_ID),
                         new HashMap<>());
 
+        testNoEngineOptions(options);
         for (PolyglotLanguage language : languages) {
             OptionValuesImpl values = language.getOptionValues().copy();
             values.putAll(options);
 
             PolyglotLanguageContext languageContext = new PolyglotLanguageContext(this, language, values, applicationArguments.get(language.getId()), new HashMap<>());
             this.contexts[language.index] = languageContext;
+        }
+    }
+
+    // Test that "engine options" are not present among the options designated for this context
+    private void testNoEngineOptions(Map<String, String> options) {
+        String engineOption = engine.findPublicEngineOption(options);
+        if (engineOption != null) {
+            throw new IllegalArgumentException("Option " + engineOption + " is supported, but cannot be configured for contexts with a shared engine set." +
+                            " To resolve this, configure the option when creating the Engine.");
         }
     }
 
@@ -477,7 +486,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                 resolvedValue = (Value) value;
             } else {
                 PolyglotLanguageContext hostContext = getHostContext();
-                hostContext.ensureInitialized();
+                hostContext.ensureInitialized(null);
                 resolvedValue = hostContext.toHostValue(hostContext.toGuestValue(value));
             }
             polyglotScope.put(symbolName, resolvedValue);
@@ -613,10 +622,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
     public boolean initializeLanguage(String languageId) {
         PolyglotLanguage language = requirePublicLanguage(languageId);
         PolyglotLanguageContext languageContext = this.contexts[language.index];
-        languageContext.checkAccess();
+        languageContext.checkAccess(null);
         Object prev = languageContext.enter();
         try {
-            return languageContext.ensureInitialized();
+            return languageContext.ensureInitialized(null);
         } catch (Throwable t) {
             throw wrapGuestException(languageContext, t);
         } finally {
@@ -630,7 +639,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         Object prev = enter();
         PolyglotLanguageContext languageContext = contexts[language.index];
         try {
-            languageContext.checkAccess();
+            languageContext.checkAccess(null);
             com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) sourceImpl;
             CallTarget target = languageContext.parseCached(source);
             Object result = target.call(PolyglotImpl.EMPTY_ARGS);
@@ -782,20 +791,28 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                     childContext.closeImpl(cancelIfExecuting, waitForPolyglotThreads);
                 }
 
-                LinkedList<PolyglotLanguageContext> contextsToDispose = new LinkedList<>();
-                for (PolyglotLanguageContext context : contexts) {
-                    if (!context.isInitialized()) {
-                        continue;
+                // we need to run finalization at least twice in case a finalization run has
+                // initialized a new contexts
+                boolean finalizationPerformed;
+                do {
+                    finalizationPerformed = false;
+                    // inverse context order is already the right order for context
+                    // disposal/finalization
+                    for (int i = contexts.length - 1; i >= 0; i--) {
+                        PolyglotLanguageContext context = contexts[i];
+                        try {
+                            finalizationPerformed |= context.finalizeContext();
+                        } catch (Exception | Error ex) {
+                            throw wrapGuestException(context, ex);
+                        }
                     }
-                    // Dispose non-internal language contexts first,
-                    // they may depend on internal ones
-                    if (context.language.cache.isInternal()) {
-                        contextsToDispose.addLast(context);
-                    } else {
-                        contextsToDispose.addFirst(context);
-                    }
-                }
-                for (PolyglotLanguageContext context : contextsToDispose) {
+                } while (finalizationPerformed);
+
+                // finalization performed commit close -> no actions allowed on dispose
+                closed = true;
+
+                for (int i = contexts.length - 1; i >= 0; i--) {
+                    PolyglotLanguageContext context = contexts[i];
                     try {
                         context.dispose();
                     } catch (Exception | Error ex) {

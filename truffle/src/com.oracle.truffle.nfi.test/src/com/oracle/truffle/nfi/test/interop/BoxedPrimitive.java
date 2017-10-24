@@ -41,4 +41,9 @@ public class BoxedPrimitive implements TruffleObject {
     public ForeignAccess getForeignAccess() {
         return BoxedPrimitiveMessageResolutionForeign.ACCESS;
     }
+
+    @Override
+    public String toString() {
+        return "boxed<" + primitive + ">";
+    }
 }

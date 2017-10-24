@@ -124,9 +124,6 @@ final class JavaClassDesc {
 
             if (Modifier.isPublic(type.getModifiers())) {
                 for (Constructor<?> c : type.getConstructors()) {
-                    if (c.getDeclaringClass() == Object.class) {
-                        continue;
-                    }
                     SingleMethodDesc overload = SingleMethodDesc.unreflect(c);
                     ctor = ctor == null ? overload : merge(ctor, overload);
                 }

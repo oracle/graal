@@ -32,11 +32,11 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.graph.CachedGraph;
 import org.graalvm.compiler.graph.Edges;
@@ -45,6 +45,7 @@ import org.graalvm.compiler.graph.InputEdges;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeMap;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -54,21 +55,22 @@ import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.util.JavaConstantFormattable;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.graphio.GraphBlocks;
 import org.graalvm.graphio.GraphElements;
 import org.graalvm.graphio.GraphOutput;
 import org.graalvm.graphio.GraphStructure;
 import org.graalvm.graphio.GraphTypes;
+
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 
 public class BinaryGraphPrinter implements
                 GraphStructure<BinaryGraphPrinter.GraphInfo, Node, NodeClass<?>, Edges>,
@@ -262,6 +264,13 @@ public class BinaryGraphPrinter implements
                 updateStringPropertiesForConstant((Map) props, cn);
             }
             props.put("category", "floating");
+        }
+        if (getSnippetReflectionProvider() != null) {
+            for (Map.Entry<String, Object> prop : props.entrySet()) {
+                if (prop.getValue() instanceof JavaConstantFormattable) {
+                    props.put(prop.getKey(), ((JavaConstantFormattable) prop.getValue()).format(this));
+                }
+            }
         }
     }
 

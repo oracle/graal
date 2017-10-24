@@ -67,6 +67,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.replacements.SnippetCounter;
 import org.graalvm.compiler.replacements.SnippetCounter.Group;
+import org.graalvm.compiler.replacements.SnippetIntegerHistogram;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
@@ -247,11 +248,7 @@ public class ArrayCopySnippets implements Snippets {
     }
 
     private static void incrementLengthCounter(int length, Counters counters) {
-        if (length == 0) {
-            counters.zeroLengthDynamicCounter.inc();
-        } else {
-            counters.nonZeroLengthDynamicCounter.inc();
-        }
+        counters.lengthHistogram.inc(length);
     }
 
     private static void checkLimits(Object src, int srcPos, Object dest, int destPos, int length, Counters counters) {
@@ -298,8 +295,7 @@ public class ArrayCopySnippets implements Snippets {
         final SnippetCounter checkAIOOBECounter;
 
         final SnippetCounter zeroLengthStaticCounter;
-        final SnippetCounter zeroLengthDynamicCounter;
-        final SnippetCounter nonZeroLengthDynamicCounter;
+        final SnippetIntegerHistogram lengthHistogram;
 
         final SnippetCounter systemArraycopyCounter;
         final SnippetCounter systemArraycopyCopiedCounter;
@@ -325,8 +321,7 @@ public class ArrayCopySnippets implements Snippets {
             checkAIOOBECounter = new SnippetCounter(checkCounters, "checkAIOOBE", "checkAIOOBE");
 
             zeroLengthStaticCounter = new SnippetCounter(lengthCounters, "0-length copy static", "calls where the length is statically 0");
-            zeroLengthDynamicCounter = new SnippetCounter(lengthCounters, "0-length copy dynamically", "calls where the length is dynamically 0");
-            nonZeroLengthDynamicCounter = new SnippetCounter(lengthCounters, "non-0-length copy dynamically", "calls where the length is dynamically greater than zero");
+            lengthHistogram = new SnippetIntegerHistogram(lengthCounters, 2, "length", "length");
 
             systemArraycopyCounter = new SnippetCounter(callCounters, "native System.arraycopy", "JNI-based System.arraycopy call");
             systemArraycopyCopiedCounter = new SnippetCounter(copiedElementsCounters, "native System.arraycopy", "JNI-based System.arraycopy call");

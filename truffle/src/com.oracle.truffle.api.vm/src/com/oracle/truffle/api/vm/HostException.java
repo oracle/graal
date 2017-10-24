@@ -42,6 +42,11 @@ final class HostException extends RuntimeException implements TruffleException {
     }
 
     @Override
+    public String getMessage() {
+        return getOriginal().getMessage();
+    }
+
+    @Override
     public synchronized Throwable fillInStackTrace() {
         return this;
     }
