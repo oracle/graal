@@ -49,7 +49,7 @@ CXXFLAGS+=-stdlib=libc++ -std=c++11
 LDFLAGS+=-stdlib=libc++ -std=c++11 -lc++abi
 endif
 
-bin/${LIBSULONG}: bin/sulongeh.o bin/misc.o
+bin/${LIBSULONG}: bin/sulongeh.o bin/misc.o bin/posix.o
 	clang++ ${LDFLAGS} -o $@ $+
 
 bin/%.o: src/%.c

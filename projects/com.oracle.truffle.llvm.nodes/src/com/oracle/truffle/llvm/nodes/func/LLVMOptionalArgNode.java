@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,44 +29,58 @@
  */
 package com.oracle.truffle.llvm.nodes.func;
 
-import java.util.List;
-
-import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.dsl.NodeFields;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.llvm.nodes.asm.base.LLVMInlineAssemblyBlockNode;
-import com.oracle.truffle.llvm.nodes.asm.base.LLVMInlineAssemblyPrologueNode;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public class LLVMInlineAssemblyRootNode extends RootNode {
+@NodeFields({@NodeField(name = "index", type = int.class), @NodeField(name = "fallback", type = Object.class)})
+public abstract class LLVMOptionalArgNode extends LLVMExpressionNode {
+    private Converter converter;
 
-    @Child private LLVMInlineAssemblyPrologueNode prologue;
-    @Child private LLVMInlineAssemblyBlockNode block;
-    private final SourceSection sourceSection;
+    public abstract int getIndex();
 
-    private final LLVMExpressionNode result;
+    public abstract Object getFallback();
 
-    public LLVMInlineAssemblyRootNode(LLVMLanguage language, SourceSection sourceSection, FrameDescriptor frameDescriptor,
-                    LLVMExpressionNode[] statements, List<LLVMExpressionNode> writeNodes, LLVMExpressionNode result) {
-        super(language, frameDescriptor);
-        this.sourceSection = sourceSection;
-        this.prologue = new LLVMInlineAssemblyPrologueNode(writeNodes);
-        this.block = new LLVMInlineAssemblyBlockNode(statements);
-        this.result = result;
+    public LLVMOptionalArgNode() {
+        converter = new Converter() {
+            @Override
+            public Object convert(Object o) {
+                return o;
+            }
+        };
     }
 
-    @Override
-    public SourceSection getSourceSection() {
-        return sourceSection;
+    public LLVMOptionalArgNode(Converter converter) {
+        this.converter = converter;
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        prologue.executeGeneric(frame);
-        block.executeGeneric(frame);
-        return result == null ? 0 : result.executeGeneric(frame);
+    @Specialization(guards = "isAddress(frame)")
+    public Object executePointee(VirtualFrame frame) {
+        return converter.convert(((LLVMAddress) get(frame)).copy());
     }
 
+    public boolean isAddress(VirtualFrame frame) {
+        return get(frame) instanceof LLVMAddress;
+    }
+
+    @Specialization(guards = "!isAddress(frame)")
+    public Object executeObject(VirtualFrame frame) {
+        return converter.convert(get(frame));
+    }
+
+    private Object get(VirtualFrame frame) {
+        Object[] args = frame.getArguments();
+        if (args.length > getIndex()) {
+            return args[getIndex()];
+        } else {
+            return getFallback();
+        }
+    }
+
+    public interface Converter {
+        Object convert(Object o);
+    }
 }

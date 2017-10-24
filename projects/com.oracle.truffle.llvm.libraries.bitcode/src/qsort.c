@@ -57,4 +57,6 @@ void sulong_qsort(char *v, long left, long right, int (*comp)(const void *, cons
   sulong_qsort(v, last + 1, right, comp, size);
 }
 
-void qsort(void *v, size_t number, size_t size, int (*comp)(const void *, const void *)) { sulong_qsort(v, 0, number - 1, comp, size); }
+__attribute__((weak)) void qsort(void *v, size_t number, size_t size, int (*comp)(const void *, const void *)) {
+  sulong_qsort(v, 0, number - 1, comp, size);
+}

@@ -27,16 +27,22 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <complex.h>
+package com.oracle.truffle.llvm.nodes.asm.syscall;
 
-__attribute__((weak)) complex double conj(complex double z) {
-  double a = creal(z);
-  double b = cimag(z);
-  return a + -b * I;
-}
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
 
-__attribute__((weak)) complex float conjf(complex float z) {
-  float a = crealf(z);
-  float b = cimagf(z);
-  return a + -b * I;
+public class LLVMAMD64SyscallCloseNode extends LLVMAMD64SyscallOperationNode {
+    @Child private LLVMAMD64PosixCallNode close;
+
+    public LLVMAMD64SyscallCloseNode() {
+        super("close");
+        close = LLVMAMD64PosixCallNodeGen.create("close", "(SINT32):SINT32", 1);
+    }
+
+    @Override
+    public long execute(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
+        int fd = (int) ((long) rdi);
+        return (int) close.execute(fd);
+    }
 }

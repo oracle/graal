@@ -319,16 +319,16 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
 
     private static int doPrimitiveWrite(long currentPtr, Object arg) throws AssertionError {
         if (arg instanceof Boolean) {
-            LLVMMemory.putI1(currentPtr, (boolean) arg);
+            LLVMMemory.putI64(currentPtr, ((boolean) arg) ? 1 : 0);
             return X86_64BitVarArgs.STACK_STEP;
         } else if (arg instanceof Byte) {
-            LLVMMemory.putI8(currentPtr, (byte) arg);
+            LLVMMemory.putI64(currentPtr, Integer.toUnsignedLong((byte) arg));
             return X86_64BitVarArgs.STACK_STEP;
         } else if (arg instanceof Short) {
-            LLVMMemory.putI16(currentPtr, (short) arg);
+            LLVMMemory.putI64(currentPtr, Integer.toUnsignedLong((short) arg));
             return X86_64BitVarArgs.STACK_STEP;
         } else if (arg instanceof Integer) {
-            LLVMMemory.putI32(currentPtr, (int) arg);
+            LLVMMemory.putI64(currentPtr, Integer.toUnsignedLong((int) arg));
             return X86_64BitVarArgs.STACK_STEP;
         } else if (arg instanceof Long) {
             LLVMMemory.putI64(currentPtr, (long) arg);

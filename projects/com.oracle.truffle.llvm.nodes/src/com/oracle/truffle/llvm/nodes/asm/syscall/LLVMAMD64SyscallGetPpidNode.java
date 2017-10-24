@@ -27,16 +27,15 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <complex.h>
+package com.oracle.truffle.llvm.nodes.asm.syscall;
 
-__attribute__((weak)) complex double conj(complex double z) {
-  double a = creal(z);
-  double b = cimag(z);
-  return a + -b * I;
-}
+public class LLVMAMD64SyscallGetPpidNode extends LLVMAMD64SyscallOperationNode {
+    public LLVMAMD64SyscallGetPpidNode() {
+        super("getppid");
+    }
 
-__attribute__((weak)) complex float conjf(complex float z) {
-  float a = crealf(z);
-  float b = cimagf(z);
-  return a + -b * I;
+    @Override
+    public long execute(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
+        return LLVMInfo.getppid();
+    }
 }

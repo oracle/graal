@@ -199,6 +199,7 @@ import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteTupelNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteTupelNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteValueNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteValueNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToAddressNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI16NodeFactory.LLVMToI16NoZeroExtNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI32NodeGen.LLVMToI32NoZeroExtNodeGen;
@@ -228,6 +229,7 @@ import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteAddressN
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI1NodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI64NodeGen;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -258,9 +260,12 @@ class AsmFactory {
 
     private String currentPrefix;
 
+    private final LLVMLanguage language;
     private final SourceSection sourceSection;
 
-    AsmFactory(Type[] argTypes, String asmFlags, Type retType, Type[] retTypes, int[] retOffsets, SourceSection sourceSection) {
+    AsmFactory(LLVMLanguage language, SourceSection sourceSection, Type[] argTypes, String asmFlags, Type retType, Type[] retTypes, int[] retOffsets) {
+        this.language = language;
+        this.sourceSection = sourceSection;
         this.argTypes = argTypes;
         this.asmFlags = asmFlags;
         this.frameDescriptor = new FrameDescriptor();
@@ -270,7 +275,6 @@ class AsmFactory {
         this.retType = retType;
         this.retTypes = retTypes;
         this.retOffsets = retOffsets;
-        this.sourceSection = sourceSection;
         parseArguments();
     }
 
@@ -372,7 +376,7 @@ class AsmFactory {
 
     LLVMInlineAssemblyRootNode finishInline() {
         getArguments();
-        return new LLVMInlineAssemblyRootNode(null, null, frameDescriptor, statements.toArray(new LLVMExpressionNode[statements.size()]), arguments, result);
+        return new LLVMInlineAssemblyRootNode(language, sourceSection, frameDescriptor, statements.toArray(new LLVMExpressionNode[statements.size()]), arguments, result);
     }
 
     void setPrefix(String prefix) {
@@ -463,6 +467,18 @@ class AsmFactory {
             case "ud2":
                 statements.add(new LLVMAMD64Ud2Node());
                 break;
+            case "syscall": {
+                LLVMExpressionNode rax = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rax"));
+                LLVMExpressionNode rdi = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rdi"));
+                LLVMExpressionNode rsi = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rsi"));
+                LLVMExpressionNode rdx = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rdx"));
+                LLVMExpressionNode r10 = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("r10"));
+                LLVMExpressionNode r8 = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("r8"));
+                LLVMExpressionNode r9 = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("r9"));
+                LLVMExpressionNode syscall = LLVMAMD64SyscallNodeGen.create(rax, rdi, rsi, rdx, r10, r8, r9);
+                statements.add(getOperandStore(PrimitiveType.I64, new AsmRegisterOperand("rax"), syscall));
+                break;
+            }
             default:
                 statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceSection, "Unsupported operation: " + operation));
                 return;
@@ -1737,6 +1753,9 @@ class AsmFactory {
     }
 
     private LLVMExpressionNode castResult(LLVMExpressionNode register) {
+        if (retType instanceof PointerType) {
+            return LLVMToAddressNodeGen.create(register, PrimitiveType.I64);
+        }
         switch (((PrimitiveType) retType).getPrimitiveKind()) {
             case I8:
                 return LLVMToI8NoZeroExtNodeGen.create(register);
@@ -1863,7 +1882,7 @@ class AsmFactory {
                 case I32:
                     return LLVMToI32NoZeroExtNodeGen.create(register);
                 case I64:
-                    return LLVMToI64NoZeroExtNodeGen.create(register);
+                    return register;
                 default:
                     throw new AsmParseException("unsupported operand type: " + type);
             }

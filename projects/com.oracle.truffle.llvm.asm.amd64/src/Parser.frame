@@ -28,6 +28,7 @@ Coco/R itself) does not fall under the GNU General Public License.
 -->begin
 
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 
 // Checkstyle: stop
 // @formatter:off
@@ -47,10 +48,10 @@ public class Parser {
 	private LLVMInlineAssemblyRootNode root;
 	-->declarations
 
-	public Parser(String asmSnippet, String asmFlags, Type[] argTypes, Type retType, Type[] retTypes, int[] retOffsets, SourceSection sourceSection) {
+	public Parser(LLVMLanguage language, SourceSection sourceSection, String asmSnippet, String asmFlags, Type[] argTypes, Type retType, Type[] retTypes, int[] retOffsets) {
 		this.scanner = new Scanner(new ByteArrayInputStream(asmSnippet.getBytes()));
 		errors = new Errors();
-		this.factory = new AsmFactory(argTypes, asmFlags, retType, retTypes, retOffsets, sourceSection);
+		this.factory = new AsmFactory(language, sourceSection, argTypes, asmFlags, retType, retTypes, retOffsets);
 	}
 
 	void SynErr (int n) {

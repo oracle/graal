@@ -27,16 +27,28 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <complex.h>
+package com.oracle.truffle.llvm.nodes.asm.syscall;
 
-__attribute__((weak)) complex double conj(complex double z) {
-  double a = creal(z);
-  double b = cimag(z);
-  return a + -b * I;
-}
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
-__attribute__((weak)) complex float conjf(complex float z) {
-  float a = crealf(z);
-  float b = cimagf(z);
-  return a + -b * I;
+public abstract class LLVMAMD64SyscallOpenNode extends LLVMAMD64SyscallOperationNode {
+    @Child private LLVMAMD64PosixCallNode open;
+
+    public LLVMAMD64SyscallOpenNode() {
+        super("open");
+        open = LLVMAMD64PosixCallNodeGen.create("open", "(POINTER,SINT32,SINT32):SINT32", 3);
+    }
+
+    @Specialization
+    protected long execute(LLVMAddress filename, long flags, long mode) {
+        return (int) open.execute(filename.getVal(), (int) flags, (int) mode);
+    }
+
+    @Specialization
+    protected long execute(long filename, long flags, long mode) {
+        return execute(LLVMAddress.fromLong(filename), flags, mode);
+    }
 }

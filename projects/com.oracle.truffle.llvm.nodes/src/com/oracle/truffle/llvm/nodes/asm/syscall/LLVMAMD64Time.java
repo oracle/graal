@@ -27,16 +27,21 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <complex.h>
+package com.oracle.truffle.llvm.nodes.asm.syscall;
 
-__attribute__((weak)) complex double conj(complex double z) {
-  double a = creal(z);
-  double b = cimag(z);
-  return a + -b * I;
-}
-
-__attribute__((weak)) complex float conjf(complex float z) {
-  float a = crealf(z);
-  float b = cimagf(z);
-  return a + -b * I;
+public class LLVMAMD64Time {
+    // @formatter:off;
+    public static final int CLOCK_REALTIME                = 0;
+    public static final int CLOCK_MONOTONIC               = 1;
+    public static final int CLOCK_PROCESS_CPUTIME_ID      = 2;
+    public static final int CLOCK_THREAD_CPUTIME_ID       = 3;
+    public static final int CLOCK_MONOTONIC_RAW           = 4;
+    public static final int CLOCK_REALTIME_COARSE         = 5;
+    public static final int CLOCK_MONOTONIC_COARSE        = 6;
+    public static final int CLOCK_BOOTTIME                = 7;
+    public static final int CLOCK_REALTIME_ALARM          = 8;
+    public static final int CLOCK_BOOTTIME_ALARM          = 9;
+    public static final int CLOCK_SGI_CYCLE               = 10;     /* Hardware specific */
+    public static final int CLOCK_TAI                     = 11;
+    // @formatter:on
 }

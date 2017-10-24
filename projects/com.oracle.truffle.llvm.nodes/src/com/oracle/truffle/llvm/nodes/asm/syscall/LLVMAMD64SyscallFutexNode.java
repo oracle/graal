@@ -27,16 +27,24 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <complex.h>
+package com.oracle.truffle.llvm.nodes.asm.syscall;
 
-__attribute__((weak)) complex double conj(complex double z) {
-  double a = creal(z);
-  double b = cimag(z);
-  return a + -b * I;
-}
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
-__attribute__((weak)) complex float conjf(complex float z) {
-  float a = crealf(z);
-  float b = cimagf(z);
-  return a + -b * I;
+public abstract class LLVMAMD64SyscallFutexNode extends LLVMAMD64SyscallOperationNode {
+    public LLVMAMD64SyscallFutexNode() {
+        super("futex");
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization
+    protected long executeI64(LLVMAddress uaddr, long futexOp, long val, LLVMAddress timeout, LLVMAddress uaddr2, long val3) {
+        return -LLVMAMD64Error.ENOSYS;
+    }
+
+    @Specialization
+    protected long executeI64(long uaddr, long futexOp, long val, long timeout, long uaddr2, long val3) {
+        return executeI64(LLVMAddress.fromLong(uaddr), futexOp, val, LLVMAddress.fromLong(timeout), LLVMAddress.fromLong(uaddr2), val3);
+    }
 }

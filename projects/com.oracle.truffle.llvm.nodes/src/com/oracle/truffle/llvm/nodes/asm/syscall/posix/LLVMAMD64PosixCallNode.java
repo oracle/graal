@@ -27,26 +27,51 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package com.oracle.truffle.llvm.nodes.asm.syscall.posix;
 
-#include <stdlib.h>
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
-__attribute__((weak)) char *strncpy(char *dest, const char *source, size_t n) {
-  int i;
-  for (i = 0; source[i] != '\0' && i < n; i++) {
-    dest[i] = source[i];
-  }
+public abstract class LLVMAMD64PosixCallNode extends LLVMNode {
+    private final String name;
+    private final String signature;
 
-  while (i < n) {
-    dest[i] = '\0';
-    i++;
-  }
-  return dest;
-}
+    @Child private Node nativeExecute;
 
-__attribute__((weak)) char *strcpy(char *dest, const char *source) {
-  int i = 0;
-  do {
-    dest[i] = source[i];
-  } while (source[i++] != '\0');
-  return dest;
+    public LLVMAMD64PosixCallNode(String name, String signature, int args) {
+        this.name = name;
+        this.signature = signature;
+        nativeExecute = Message.createExecute(args).createNode();
+    }
+
+    protected TruffleObject createFunction() {
+        return getContext().getNativeLookup().getNativeFunction("@__sulong_posix_" + name, signature);
+    }
+
+    // Workaround for nice syntax + Truffle DSL
+    public final Object execute(Object... args) {
+        return executeObject(args);
+    }
+
+    public abstract Object executeObject(Object[] args);
+
+    @Specialization
+    public Object doCall(Object[] args, @Cached("createFunction()") TruffleObject function) {
+        try {
+            return ForeignAccess.sendExecute(nativeExecute, function, args);
+        } catch (InteropException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "posix " + name;
+    }
 }
