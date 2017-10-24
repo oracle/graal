@@ -29,7 +29,9 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
@@ -54,6 +56,14 @@ public abstract class LLVMTruffleReadString extends LLVMIntrinsic {
     @Specialization
     public Object executeIntrinsic(LLVMAddress value) {
         return LLVMTruffleIntrinsicUtil.readString(value);
+    }
+
+    @Fallback
+    @TruffleBoundary
+    @SuppressWarnings("unused")
+    public Object fallback(Object value) {
+        System.err.println("Invalid arguments to \"read string\"-builtin.");
+        throw new IllegalArgumentException();
     }
 
 }
