@@ -55,13 +55,6 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
             }),
         ]
 
-    # def before(self, bmSuiteArgs):
-    #     self.currentDir = os.getcwd()
-    #     os.chdir(_benchmarksDirectory())
-
-    # def after(self, bmSuiteArgs):
-    #     os.chdir(self.currentDir)
-
     def createCommandLineArgs(self, benchmarks, runArgs):
         if len(benchmarks) != 1:
             mx.abort("Please run a specific benchmark (mx benchmark csuite:<benchmark-name>) or all the benchmarks (mx benchmark csuite:*)")
