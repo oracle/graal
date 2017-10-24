@@ -242,6 +242,7 @@ suite = {
       ],
       "buildEnv" : {
         "CFLAGS" : "<clangImplicitArgs>",
+        "CPPFLAGS" : "-I<sulong_include>",
       },
       "license" : "BSD-new",
     },

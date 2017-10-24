@@ -29,6 +29,18 @@
  */
 
 #include <stdlib.h>
+#include <truffle.h>
+
+char *convertForeignToCString(const char *s) {
+  int size = truffle_get_size(s);
+  char *cStr = (char *)malloc(sizeof(char) * (size + 1)); // + 1 for \0
+  int i;
+  for (i = 0; i < size; i++) {
+    cStr[i] = s[i];
+  }
+  cStr[i] = '\0';
+  return cStr;
+}
 
 __attribute__((weak)) char *strncpy(char *dest, const char *source, size_t n) {
   int i;
@@ -49,4 +61,69 @@ __attribute__((weak)) char *strcpy(char *dest, const char *source) {
     dest[i] = source[i];
   } while (source[i++] != '\0');
   return dest;
+}
+
+__attribute__((weak)) size_t strlen(const char *s) {
+  if (truffle_has_size(s)) {
+    return (size_t)truffle_get_size(s);
+  }
+
+  int len = 0;
+  while (s[len] != 0) {
+    len++;
+  }
+  return len;
+}
+
+__attribute__((weak)) int strcmp(const char *s1, const char *s2) {
+  if (truffle_has_size(s1) && truffle_has_size(s2)) {
+    int size1 = truffle_get_size(s1);
+    int size2 = truffle_get_size(s2);
+    int i;
+    for (i = 0; i < size1; i++) {
+      char c1 = s1[i];
+      if (i >= size2) {
+        return (int)c1;
+      }
+
+      char c2 = s2[i];
+      if (c1 != c2) {
+        return c1 - c2;
+      }
+    }
+    if (i < size2) {
+      return -s2[i];
+    } else {
+      return 0;
+    }
+  }
+
+  char *cStr1 = NULL;
+  char *cStr2 = NULL;
+
+  if (truffle_has_size(s1)) {
+    cStr1 = convertForeignToCString(s1);
+    s1 = cStr1;
+  }
+
+  if (truffle_has_size(s2)) {
+    cStr2 = convertForeignToCString(s2);
+    s2 = cStr2;
+  }
+
+  // the C implementation:
+  while (*s1 && (*s1 == *s2)) {
+    s1++;
+    s2++;
+  }
+  int result = *(const unsigned char *)s1 - *(const unsigned char *)s2;
+
+  if (cStr1 != NULL) {
+    free(cStr1);
+  }
+
+  if (cStr2 != NULL) {
+    free(cStr2);
+  }
+  return result;
 }
