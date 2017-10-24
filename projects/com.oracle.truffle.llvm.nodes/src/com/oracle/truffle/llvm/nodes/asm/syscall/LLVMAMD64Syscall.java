@@ -70,6 +70,7 @@ public class LLVMAMD64Syscall {
     public static final int SYS_fcntl = 72;
     public static final int SYS_ftruncate = 77;
     public static final int SYS_getcwd = 79;
+    public static final int SYS_unlink = 87;
     public static final int SYS_getuid = 102;
     public static final int SYS_getgid = 104;
     public static final int SYS_setuid = 105;

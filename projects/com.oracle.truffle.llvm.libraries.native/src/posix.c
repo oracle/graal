@@ -130,7 +130,11 @@ int __sulong_posix_lstat(const char* path, struct stat* statbuf)
 
 ssize_t __sulong_posix_sendfile(int out_fd, int in_fd, off_t* offset, size_t count)
 {
+#ifdef __linux__
 	CALL(ssize_t, sendfile, out_fd, in_fd, offset, count);
+#else
+	return -ENOSYS;
+#endif
 }
 
 void* __sulong_posix_mmap(void* addr, size_t length, int prot, int flags, int fd, off_t offset)
@@ -143,118 +147,108 @@ int __sulong_posix_munmap(void* addr, size_t length)
 	CALL(int, munmap, addr, length);
 }
 
+int __sulong_posix_unlink(const char *path)
+{
+	CALL(int, unlink, path);
+}
 
 #else
 
 #include <stdio.h>
 
+#define ERROR() { \
+	fprintf(stderr, "Syscalls not supported on this OS.\n"); \
+	return -ENOSYS; \
+}
+
 int __sulong_posix_open(const char* pathname, int flags, mode_t mode)
 {
-	fprintf(stderr, "Syscalls not supported on this OS.\n");
-    return 0;
+	ERROR();
 }
 
 int __sulong_posix_close(int fd)
 {
-	fprintf(stderr, "Syscalls not supported on this OS.\n");
-    return 0;
+	ERROR();
 }
 
 ssize_t __sulong_posix_read(int fd, void* buf, size_t count)
 {
-	fprintf(stderr, "Syscalls not supported on this OS.\n");
-    return 0;
-
+	ERROR();
 }
 
 ssize_t __sulong_posix_write(int fd, const void* buf, size_t count)
 {
-	fprintf(stderr, "Syscalls not supported on this OS.\n");
-    return 0;
-
+	ERROR();
 }
 
 ssize_t __sulong_posix_readv(int fd, const struct iovec* iov, int iovcnt)
 {
-	fprintf(stderr, "Syscalls not supported on this OS.\n");
-    return 0;
-
+	ERROR();
 }
 
 ssize_t __sulong_posix_writev(int fd, const struct iovec* iov, int iovcnt)
 {
-	fprintf(stderr, "Syscalls not supported on this OS.\n");
-    return 0;
-
+	ERROR();
 }
 
 int __sulong_posix_dup(int oldfd)
 {
-	fprintf(stderr, "Syscalls not supported on this OS.\n");
-    return 0;
-
+	ERROR();
 }
 
 int __sulong_posix_dup2(int oldfd, int newfd)
 {
-	fprintf(stderr, "Syscalls not supported on this OS.\n");
-    return 0;
-
+	ERROR();
 }
 
 int __sulong_posix_dup3(int oldfd, int newfd, int flags)
 {
-	fprintf(stderr, "Syscalls not supported on this OS.\n");
-    return 0;
+	ERROR();
 }
 
 int __sulong_posix_fcntl(int fd, int cmd, void* arg)
 {
-	fprintf(stderr, "Syscalls not supported on this OS.\n");
-    return 0;
-
+	ERROR();
 }
 
 int __sulong_posix_ioctl(int fd, unsigned long request, void* argp)
 {
-	fprintf(stderr, "Syscalls not supported on this OS.\n");
-    return 0;
+	ERROR();
 }
 
 int __sulong_posix_stat(const char* path, struct stat* statbuf)
 {
-	fprintf(stderr, "Syscalls not supported on this OS.\n");
-    return 0;
+	ERROR();
 }
 
 int __sulong_posix_fstat(int fd, struct stat* statbuf)
 {
-	fprintf(stderr, "Syscalls not supported on this OS.\n");
-    return 0;
+	ERROR();
 }
 
 int __sulong_posix_lstat(const char* path, struct stat* statbuf)
 {
-	fprintf(stderr, "Syscalls not supported on this OS.\n");
-    return 0;
+	ERROR();
 }
 
 ssize_t __sulong_posix_sendfile(int out_fd, int in_fd, off_t* offset, size_t count)
 {
-	fprintf(stderr, "Syscalls not supported on this OS.\n");
-    return 0;
+	ERROR();
 }
 
 void* __sulong_posix_mmap(void* addr, size_t length, int prot, int flags, int fd, off_t offset)
 {
-	fprintf(stderr, "Syscalls not supported on this OS.\n");
-    return NULL;
+	ERROR();
 }
 
 int __sulong_posix_munmap(void* addr, size_t length)
 {
-	fprintf(stderr, "Syscalls not supported on this OS.\n");
-    return 0;
+	ERROR();
+}
+
+int __sulong_posix_unlink(const char *path)
+{
+	ERROR();
 }
 
 #endif

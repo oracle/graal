@@ -101,6 +101,8 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                 return new LLVMAMD64SyscallFtruncateNode();
             case LLVMAMD64Syscall.SYS_getcwd:
                 return LLVMAMD64SyscallGetcwdNodeGen.create();
+            case LLVMAMD64Syscall.SYS_unlink:
+                return LLVMAMD64SyscallUnlinkNodeGen.create();
             case LLVMAMD64Syscall.SYS_getuid:
                 return new LLVMAMD64SyscallGetuidNode();
             case LLVMAMD64Syscall.SYS_getgid:
