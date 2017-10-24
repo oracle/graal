@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,51 +27,73 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata;
+package com.oracle.truffle.llvm.runtime.debug;
 
-public final class MDFile implements MDBaseNode {
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-    private final MDReference directory;
+public final class LLVMSourceSymbol {
 
-    private final MDReference file;
+    private final String name;
+    private final LLVMSourceLocation location;
+    private final LLVMSourceType type;
+    private final boolean isGlobal;
 
-    private MDFile(MDReference file, MDReference directory) {
-        this.file = file;
-        this.directory = directory;
+    public LLVMSourceSymbol(String name, LLVMSourceLocation location, LLVMSourceType type, boolean isGlobal) {
+        this.name = name;
+        this.location = location;
+        this.type = type;
+        this.isGlobal = isGlobal;
     }
 
-    @Override
-    public void accept(MetadataVisitor visitor) {
-        visitor.visit(this);
+    public String getName() {
+        return name;
     }
 
-    public MDReference getFile() {
-        return file;
+    public LLVMSourceLocation getLocation() {
+        return location;
     }
 
-    public MDReference getDirectory() {
-        return directory;
+    public LLVMSourceType getType() {
+        return type;
+    }
+
+    public boolean isGlobal() {
+        return isGlobal;
     }
 
     @Override
     public String toString() {
-        return String.format("File (file=%s, directory=%s)", file, directory);
+        return name;
     }
 
-    private static final int ARGINDEX_FILENAME = 1;
-    private static final int ARGINDEX_DIRECTORY = 2;
+    @Override
+    @TruffleBoundary
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
 
-    public static MDFile create38(long[] args, MetadataList md) {
-        // [distinct, filename, directory]
-        final MDReference file = md.getMDRefOrNullRef(args[ARGINDEX_FILENAME]);
-        final MDReference directory = md.getMDRefOrNullRef(args[ARGINDEX_DIRECTORY]);
-        return new MDFile(file, directory);
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        final LLVMSourceSymbol symbol = (LLVMSourceSymbol) o;
+
+        if (isGlobal != symbol.isGlobal) {
+            return false;
+        }
+
+        if (!name.equals(symbol.name)) {
+            return false;
+        }
+
+        return location != null ? !location.equals(symbol.location) : symbol.location != null;
     }
 
-    public static MDFile create32(MDTypedValue[] args) {
-        final MDReference file = ParseUtil.getReference(args[ARGINDEX_FILENAME]);
-        final MDReference directory = ParseUtil.getReference(args[ARGINDEX_DIRECTORY]);
-        return new MDFile(file, directory);
+    @Override
+    @TruffleBoundary
+    public int hashCode() {
+        return name.hashCode();
     }
-
 }

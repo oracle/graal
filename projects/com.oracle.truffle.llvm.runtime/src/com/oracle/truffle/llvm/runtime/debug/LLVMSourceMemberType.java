@@ -32,17 +32,18 @@ package com.oracle.truffle.llvm.runtime.debug;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 public final class LLVMSourceMemberType extends LLVMSourceType {
 
     @CompilationFinal private LLVMSourceType elementType;
 
-    public LLVMSourceMemberType(String name, long size, long align, long offset) {
-        this(name, size, align, offset, LLVMSourceType.UNKNOWN_TYPE);
+    public LLVMSourceMemberType(String name, long size, long align, long offset, LLVMSourceLocation location) {
+        this(name, size, align, offset, LLVMSourceType.UNKNOWN_TYPE, location);
     }
 
-    private LLVMSourceMemberType(String name, long size, long align, long offset, LLVMSourceType elementType) {
-        super(() -> name, size, align, offset);
+    private LLVMSourceMemberType(String name, long size, long align, long offset, LLVMSourceType elementType, LLVMSourceLocation location) {
+        super(() -> name, size, align, offset, location);
         this.elementType = elementType;
     }
 

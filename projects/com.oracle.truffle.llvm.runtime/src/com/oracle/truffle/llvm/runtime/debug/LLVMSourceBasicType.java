@@ -29,12 +29,14 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+
 public final class LLVMSourceBasicType extends LLVMSourceType {
 
     private final Kind kind;
 
-    public LLVMSourceBasicType(String name, long size, long align, long offset, Kind kind) {
-        super(() -> name, size, align, offset);
+    public LLVMSourceBasicType(String name, long size, long align, long offset, Kind kind, LLVMSourceLocation location) {
+        super(() -> name, size, align, offset, location);
         this.kind = kind;
     }
 
@@ -44,7 +46,7 @@ public final class LLVMSourceBasicType extends LLVMSourceType {
 
     @Override
     public LLVMSourceType getOffset(long newOffset) {
-        return new LLVMSourceBasicType(getName(), getSize(), getAlign(), newOffset, kind);
+        return new LLVMSourceBasicType(getName(), getSize(), getAlign(), newOffset, kind, getLocation());
     }
 
     @Override

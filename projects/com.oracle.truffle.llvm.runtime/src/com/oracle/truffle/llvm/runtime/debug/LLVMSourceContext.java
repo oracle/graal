@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,51 +27,41 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata;
+package com.oracle.truffle.llvm.runtime.debug;
 
-public final class MDFile implements MDBaseNode {
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-    private final MDReference directory;
+import java.util.HashMap;
 
-    private final MDReference file;
+public final class LLVMSourceContext {
 
-    private MDFile(MDReference file, MDReference directory) {
-        this.file = file;
-        this.directory = directory;
+    private final HashMap<String, LLVMSourceLocation> sourceScopes;
+    private final HashMap<LLVMSourceSymbol, LLVMDebugValue> globals;
+
+    @TruffleBoundary
+    public LLVMSourceContext() {
+        sourceScopes = new HashMap<>();
+        globals = new HashMap<>();
     }
 
-    @Override
-    public void accept(MetadataVisitor visitor) {
-        visitor.visit(this);
+    @TruffleBoundary
+    public synchronized void registerSourceScope(String symbolName, LLVMSourceLocation scope) {
+        sourceScopes.put(symbolName, scope);
     }
 
-    public MDReference getFile() {
-        return file;
+    @TruffleBoundary
+    public LLVMSourceLocation getSourceScope(String symbolName) {
+        return sourceScopes.get(symbolName);
     }
 
-    public MDReference getDirectory() {
-        return directory;
+    @TruffleBoundary
+    public void registerGlobal(LLVMSourceSymbol symbol, LLVMDebugValue value) {
+        globals.put(symbol, value);
     }
 
-    @Override
-    public String toString() {
-        return String.format("File (file=%s, directory=%s)", file, directory);
+    @TruffleBoundary
+    public LLVMDebugValue getGlobal(LLVMSourceSymbol symbol) {
+        return globals.get(symbol);
     }
-
-    private static final int ARGINDEX_FILENAME = 1;
-    private static final int ARGINDEX_DIRECTORY = 2;
-
-    public static MDFile create38(long[] args, MetadataList md) {
-        // [distinct, filename, directory]
-        final MDReference file = md.getMDRefOrNullRef(args[ARGINDEX_FILENAME]);
-        final MDReference directory = md.getMDRefOrNullRef(args[ARGINDEX_DIRECTORY]);
-        return new MDFile(file, directory);
-    }
-
-    public static MDFile create32(MDTypedValue[] args) {
-        final MDReference file = ParseUtil.getReference(args[ARGINDEX_FILENAME]);
-        final MDReference directory = ParseUtil.getReference(args[ARGINDEX_DIRECTORY]);
-        return new MDFile(file, directory);
-    }
-
 }

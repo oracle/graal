@@ -31,26 +31,70 @@ package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
+import com.oracle.truffle.llvm.parser.metadata.MDCompileUnit;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
+import com.oracle.truffle.llvm.parser.metadata.MDNamedNode;
+import com.oracle.truffle.llvm.parser.metadata.MDNode;
+import com.oracle.truffle.llvm.parser.metadata.MDOldNode;
 import com.oracle.truffle.llvm.parser.metadata.MDReference;
 import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
+import com.oracle.truffle.llvm.parser.metadata.MDTypedValue;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.metadata.MetadataList;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
-final class UpgradeMDToFunctionMappingVisitor implements MDFollowRefVisitor {
+final class MDSymbolLinkUpgrade implements MDFollowRefVisitor {
 
-    static void upgrade(MetadataList metadata) {
-        metadata.accept(new UpgradeMDToFunctionMappingVisitor(metadata));
+    static void perform(MetadataList metadata) {
+        final MDNamedNode cuNode = metadata.find(MDNamedNode.COMPILEUNIT_NAME);
+        if (cuNode == null) {
+            return;
+        }
+        final MDKind dbgKind = metadata.getKind(MDKind.DBG_NAME);
+        cuNode.accept(new MDSymbolLinkUpgrade(dbgKind));
     }
 
-    private final MetadataList metadata;
+    private final MDKind dbgKind;
 
-    private UpgradeMDToFunctionMappingVisitor(MetadataList metadata) {
-        this.metadata = metadata;
+    private MDCompileUnit currentCU;
+
+    private MDSymbolLinkUpgrade(MDKind dbgKind) {
+        this.dbgKind = dbgKind;
+        this.currentCU = null;
+    }
+
+    @Override
+    public void visit(MDCompileUnit md) {
+        currentCU = md;
+        md.getSubprograms().accept(this);
+        md.getGlobalVariables().accept(this);
+        currentCU = null;
+    }
+
+    @Override
+    public void visit(MDNode md) {
+        for (MDReference elt : md) {
+            elt.accept(this);
+        }
+    }
+
+    @Override
+    public void visit(MDOldNode md) {
+        for (MDTypedValue elt : md) {
+            if (elt instanceof MDReference) {
+                ((MDReference) elt).accept(this);
+            }
+        }
+    }
+
+    @Override
+    public void visit(MDNamedNode md) {
+        for (MDReference elt : md) {
+            elt.accept(this);
+        }
     }
 
     @Override
@@ -59,6 +103,9 @@ final class UpgradeMDToFunctionMappingVisitor implements MDFollowRefVisitor {
         if (valueSymbol instanceof FunctionDefinition) {
             final FunctionDefinition function = (FunctionDefinition) valueSymbol;
             attachSymbol(function, md);
+        }
+        if (currentCU != null && md.getCompileUnit() == MDReference.VOID) {
+            md.setCompileUnit(MDReference.fromNode(currentCU));
         }
     }
 
@@ -69,12 +116,13 @@ final class UpgradeMDToFunctionMappingVisitor implements MDFollowRefVisitor {
             final GlobalValueSymbol global = (GlobalValueSymbol) symbol;
             attachSymbol(global, mdGlobal);
         }
-
+        if (currentCU != null) {
+            mdGlobal.setCompileUnit(currentCU);
+        }
     }
 
     private void attachSymbol(MetadataAttachmentHolder container, MDBaseNode ref) {
         if (!container.hasAttachedMetadata() || container.getMetadataAttachment(MDKind.DBG_NAME) == null) {
-            final MDKind dbgKind = metadata.getKind(MDKind.DBG_NAME);
             final MDAttachment dbg = new MDAttachment(dbgKind, MDReference.fromNode(ref));
             container.attachMetadata(dbg);
         }

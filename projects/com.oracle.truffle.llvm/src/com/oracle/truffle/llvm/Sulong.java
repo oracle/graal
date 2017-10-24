@@ -36,6 +36,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.metadata.ScopeProvider;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceScope;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
@@ -43,17 +50,13 @@ import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.metadata.ScopeProvider;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceScope;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
@@ -200,7 +203,21 @@ public final class Sulong extends LLVMLanguage implements ScopeProvider<LLVMCont
     }
 
     @Override
-    public AbstractScope findScope(LLVMContext langContext, Node node, Frame frame) {
-        return new LLVMSourceScope(node);
+    protected SourceSection findSourceLocation(LLVMContext context, Object value) {
+        LLVMSourceLocation location = null;
+        if (value instanceof LLVMSourceType) {
+            location = ((LLVMSourceType) value).getLocation();
+        } else if (value instanceof LLVMDebugObject) {
+            location = ((LLVMDebugObject) value).getDeclaration();
+        }
+        if (location != null) {
+            return location.getSourceSection();
+        }
+        return null;
+    }
+
+    @Override
+    public AbstractScope findScope(LLVMContext context, Node node, Frame frame) {
+        return LLVMSourceScope.create(node, context);
     }
 }

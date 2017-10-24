@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.debug;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,13 +42,13 @@ public final class LLVMSourceStructLikeType extends LLVMSourceType {
     private final List<LLVMSourceMemberType> members;
 
     @TruffleBoundary
-    public LLVMSourceStructLikeType(String name, long size, long align, long offset) {
-        super(() -> name, size, align, offset);
+    public LLVMSourceStructLikeType(String name, long size, long align, long offset, LLVMSourceLocation location) {
+        super(() -> name, size, align, offset, location);
         this.members = new ArrayList<>();
     }
 
-    private LLVMSourceStructLikeType(Supplier<String> name, long size, long align, long offset, List<LLVMSourceMemberType> members) {
-        super(name, size, align, offset);
+    private LLVMSourceStructLikeType(Supplier<String> name, long size, long align, long offset, List<LLVMSourceMemberType> members, LLVMSourceLocation location) {
+        super(name, size, align, offset, location);
         this.members = members;
     }
 
@@ -58,7 +59,7 @@ public final class LLVMSourceStructLikeType extends LLVMSourceType {
 
     @Override
     public LLVMSourceType getOffset(long newOffset) {
-        return new LLVMSourceStructLikeType(this::getName, getSize(), getAlign(), newOffset, members);
+        return new LLVMSourceStructLikeType(this::getName, getSize(), getAlign(), newOffset, members, getLocation());
     }
 
     @Override
@@ -109,6 +110,29 @@ public final class LLVMSourceStructLikeType extends LLVMSourceType {
         for (final LLVMSourceMemberType member : members) {
             if (name.equals(member.getName())) {
                 return member.getOffsetElementType();
+            }
+        }
+        return null;
+    }
+
+    @Override
+    @TruffleBoundary
+    public LLVMSourceLocation getElementDeclaration(long i) {
+        if (0 <= i && i < members.size()) {
+            return members.get((int) i).getLocation();
+        }
+        return null;
+    }
+
+    @Override
+    @TruffleBoundary
+    public LLVMSourceLocation getElementDeclaration(String name) {
+        if (name == null) {
+            return null;
+        }
+        for (final LLVMSourceMemberType member : members) {
+            if (name.equals(member.getName())) {
+                return member.getLocation();
             }
         }
         return null;

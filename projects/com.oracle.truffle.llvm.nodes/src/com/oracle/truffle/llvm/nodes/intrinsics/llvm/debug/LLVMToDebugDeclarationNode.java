@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
-import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -44,19 +44,29 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
-@NodeChild(value = "valueProvider", type = LLVMExpressionNode.class)
-public abstract class LLVMToDebugDeclarationNode extends LLVMExpressionNode {
+public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLVMDebugValueProvider.Builder {
 
     @Child protected Node isPointer = Message.IS_POINTER.createNode();
     @Child protected Node asPointer = Message.AS_POINTER.createNode();
-    @Child protected LLVMToDebugValueNode toDebugValue = LLVMToDebugValueNodeGen.create(null);
+
+    protected static boolean notLLVM(TruffleObject object) {
+        return LLVMExpressionNode.notLLVM(object);
+    }
 
     private static LLVMDebugValueProvider unavailable() {
         // @llvm.dbg.declare is supposed to tell us the location of the variable in memory, there
         // should never be a case where this cannot be resolved to a pointer. If it happens anyhow
         // this is a safe default.
         return LLVMUnavailableDebugValueProvider.INSTANCE;
+    }
+
+    public abstract LLVMDebugValueProvider executeWithTarget(Object value);
+
+    @Override
+    public LLVMDebugValueProvider build(Object irValue) {
+        return executeWithTarget(irValue);
     }
 
     @Specialization
@@ -79,34 +89,35 @@ public abstract class LLVMToDebugDeclarationNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    public Object fromGlobal(LLVMGlobalVariable global) {
-        return toDebugValue.executeWithTarget(global);
+    public LLVMDebugValueProvider fromGlobal(LLVMGlobalVariable value) {
+        return new LLVMConstantGlobalValueProvider(value, LLVMToDebugValueNodeGen.create());
     }
 
     @Specialization
-    public Object fromSharedGlobal(LLVMSharedGlobalVariable shared) {
-        return toDebugValue.executeWithTarget(shared);
+    public LLVMDebugValueProvider fromSharedGlobal(LLVMSharedGlobalVariable value) {
+        return fromGlobal(value.getDescriptor());
     }
 
     @Specialization(guards = "notLLVM(obj)")
-    LLVMDebugValueProvider fromTruffleObject(TruffleObject obj) {
+    public LLVMDebugValueProvider fromTruffleObject(TruffleObject obj) {
         try {
             if (ForeignAccess.sendIsPointer(isPointer, obj)) {
                 final long rawAddress = ForeignAccess.sendAsPointer(asPointer, obj);
                 return fromAddress(LLVMAddress.fromLong(rawAddress));
             }
         } catch (UnsupportedMessageException ignored) {
+            CompilerDirectives.transferToInterpreter();
         }
         return unavailable();
     }
 
     @Specialization(guards = {"obj.getOffset() == 0", "notLLVM(obj.getObject())"})
-    LLVMDebugValueProvider fromLLVMTruffleObject(LLVMTruffleObject obj) {
+    public LLVMDebugValueProvider fromLLVMTruffleObject(LLVMTruffleObject obj) {
         return fromTruffleObject(obj.getObject());
     }
 
     @Specialization
-    LLVMDebugValueProvider fromGenericObject(@SuppressWarnings("unused") Object object) {
+    public LLVMDebugValueProvider fromGenericObject(@SuppressWarnings("unused") Object object) {
         return unavailable();
     }
 }

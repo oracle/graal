@@ -30,15 +30,25 @@
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
+import com.oracle.truffle.llvm.parser.metadata.MDCompositeType;
+import com.oracle.truffle.llvm.parser.metadata.MDDerivedType;
 import com.oracle.truffle.llvm.parser.metadata.MDEnumerator;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
+import com.oracle.truffle.llvm.parser.metadata.MDModule;
+import com.oracle.truffle.llvm.parser.metadata.MDNamedNode;
+import com.oracle.truffle.llvm.parser.metadata.MDNamespace;
+import com.oracle.truffle.llvm.parser.metadata.MDObjCProperty;
 import com.oracle.truffle.llvm.parser.metadata.MDString;
+import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
+import com.oracle.truffle.llvm.parser.metadata.MDTemplateType;
+import com.oracle.truffle.llvm.parser.metadata.MDTemplateTypeParameter;
+import com.oracle.truffle.llvm.parser.metadata.MDTemplateValue;
 
 final class MDNameExtractor implements MDFollowRefVisitor {
 
-    static final String DEFAULT_STRING = "<na>";
+    private static final String DEFAULT_STRING = "<unknown name>";
 
     static String getName(MDBaseNode container) {
         if (container == null) {
@@ -78,5 +88,61 @@ final class MDNameExtractor implements MDFollowRefVisitor {
     @Override
     public void visit(MDEnumerator mdEnumElement) {
         mdEnumElement.getName().accept(this);
+    }
+
+    @Override
+    public void visit(MDNamespace mdNamespace) {
+        mdNamespace.getName().accept(this);
+    }
+
+    @Override
+    public void visit(MDSubprogram md) {
+        md.getName().accept(this);
+        if (DEFAULT_STRING.equals(str)) {
+            md.getDisplayName().accept(this);
+        }
+        if (DEFAULT_STRING.equals(str)) {
+            md.getLinkageName().accept(this);
+        }
+    }
+
+    @Override
+    public void visit(MDCompositeType md) {
+        md.getName().accept(this);
+    }
+
+    @Override
+    public void visit(MDDerivedType md) {
+        md.getName().accept(this);
+    }
+
+    @Override
+    public void visit(MDModule md) {
+        md.getName().accept(this);
+    }
+
+    @Override
+    public void visit(MDNamedNode md) {
+        str = md.getName();
+    }
+
+    @Override
+    public void visit(MDObjCProperty md) {
+        md.getName().accept(this);
+    }
+
+    @Override
+    public void visit(MDTemplateType md) {
+        md.getName().accept(this);
+    }
+
+    @Override
+    public void visit(MDTemplateTypeParameter md) {
+        md.getName().accept(this);
+    }
+
+    @Override
+    public void visit(MDTemplateValue md) {
+        md.getName().accept(this);
     }
 }

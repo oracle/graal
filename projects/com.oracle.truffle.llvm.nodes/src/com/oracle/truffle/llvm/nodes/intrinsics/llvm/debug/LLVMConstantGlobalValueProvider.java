@@ -45,8 +45,11 @@ final class LLVMConstantGlobalValueProvider implements LLVMDebugValueProvider {
 
     private final LLVMGlobalVariable global;
 
-    LLVMConstantGlobalValueProvider(LLVMGlobalVariable global) {
+    private final LLVMDebugValueProvider.Builder valueBuilder;
+
+    LLVMConstantGlobalValueProvider(LLVMGlobalVariable global, Builder valueBuilder) {
         this.global = global;
+        this.valueBuilder = valueBuilder;
     }
 
     @Override
@@ -160,7 +163,7 @@ final class LLVMConstantGlobalValueProvider implements LLVMDebugValueProvider {
         if (isInNative(global)) {
             return new LLVMAllocationValueProvider(getNativeLocation(global));
         } else {
-            return LLVMToDebugValueNodeGen.create(null).executeWithTarget(getManagedValue(global));
+            return valueBuilder.build(getManagedValue(global));
         }
     }
 }

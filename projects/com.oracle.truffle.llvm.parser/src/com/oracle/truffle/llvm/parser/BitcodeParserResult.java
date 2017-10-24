@@ -42,12 +42,14 @@ public final class BitcodeParserResult {
     private final LLVMPhiManager phis;
     private final StackAllocation stackAllocation;
     private final LLVMLabelList labels;
+    private final SourceModel sourceModel;
 
-    private BitcodeParserResult(ModelModule model, LLVMPhiManager phis, StackAllocation stackAllocation, LLVMLabelList labels) {
+    private BitcodeParserResult(ModelModule model, LLVMPhiManager phis, StackAllocation stackAllocation, LLVMLabelList labels, SourceModel sourceModel) {
         this.model = model;
         this.phis = phis;
         this.stackAllocation = stackAllocation;
         this.labels = labels;
+        this.sourceModel = sourceModel;
     }
 
     public ModelModule getModel() {
@@ -74,16 +76,20 @@ public final class BitcodeParserResult {
         return model.getLibraryPaths();
     }
 
+    public SourceModel getSourceModel() {
+        return sourceModel;
+    }
+
     public static BitcodeParserResult getFromSource(Source source, ByteBuffer bytes) {
         final ModelModule model = LLVMScanner.parse(bytes);
 
         // extract SourceSection and LLVMSourceType objects from metadata
-        SourceModel.generate(model, source);
+        final SourceModel sourceModel = SourceModel.generate(model, source);
 
         final LLVMPhiManager phis = LLVMPhiManager.generate(model);
         final StackAllocation stackAllocation = StackAllocation.generate(model);
         final LLVMLabelList labels = LLVMLabelList.generate(model);
 
-        return new BitcodeParserResult(model, phis, stackAllocation, labels);
+        return new BitcodeParserResult(model, phis, stackAllocation, labels, sourceModel);
     }
 }

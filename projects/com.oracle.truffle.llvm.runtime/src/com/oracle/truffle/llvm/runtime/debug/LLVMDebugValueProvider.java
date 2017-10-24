@@ -48,6 +48,12 @@ public interface LLVMDebugValueProvider {
         return builder.toString();
     }
 
+    interface Builder {
+
+        LLVMDebugValueProvider build(Object irValue);
+
+    }
+
     String describeValue(long bitOffset, int bitSize);
 
     @TruffleBoundary

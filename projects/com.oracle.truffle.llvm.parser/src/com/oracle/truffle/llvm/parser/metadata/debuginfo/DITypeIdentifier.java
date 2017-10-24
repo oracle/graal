@@ -27,48 +27,59 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
+import com.oracle.truffle.llvm.parser.metadata.MDCompositeType;
+import com.oracle.truffle.llvm.parser.metadata.MDReference;
+import com.oracle.truffle.llvm.parser.metadata.MDString;
+import com.oracle.truffle.llvm.parser.metadata.MetadataList;
+import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Supplier;
 
-public final class LLVMSourceEnumLikeType extends LLVMSourceType {
+final class DITypeIdentifier {
 
-    private final Map<Long, String> values;
+    private final Map<String, MDCompositeType> identifiedTypes = new HashMap<>();
 
-    @TruffleBoundary
-    public LLVMSourceEnumLikeType(Supplier<String> nameSupplier, long size, long align, long offset, final LLVMSourceLocation location) {
-        this(nameSupplier, size, align, offset, new HashMap<>(), location);
+    private final MetadataVisitor collector = new MDFollowRefVisitor() {
+
+        @Override
+        public void visit(MDCompositeType mdCompositeType) {
+            final String identifier = getIdentifier(mdCompositeType);
+            if (identifier != null) {
+                identifiedTypes.put(identifier, mdCompositeType);
+            }
+        }
+
+    };
+
+    private MetadataList metadata = null;
+
+    public void setMetadata(MetadataList metadata) {
+        this.metadata = metadata;
     }
 
-    private LLVMSourceEnumLikeType(Supplier<String> nameSupplier, long size, long align, long offset, Map<Long, String> values, LLVMSourceLocation location) {
-        super(nameSupplier, size, align, offset, location);
-        this.values = values;
+    MDCompositeType identify(String name) {
+        if (!identifiedTypes.containsKey(name)) {
+            metadata.accept(collector);
+            if (!identifiedTypes.containsKey(name)) {
+                identifiedTypes.put(name, null);
+            }
+        }
+
+        return identifiedTypes.get(name);
     }
 
-    public void addValue(long id, String representation) {
-        CompilerAsserts.neverPartOfCompilation();
-        values.put(id, representation);
-    }
-
-    @Override
-    @TruffleBoundary
-    public String getElementName(long i) {
-        return values.get(i);
-    }
-
-    @Override
-    public LLVMSourceType getOffset(long newOffset) {
-        return new LLVMSourceEnumLikeType(this::getName, getSize(), getAlign(), getOffset(), values, getLocation());
-    }
-
-    @Override
-    public boolean isEnum() {
-        return true;
+    private static String getIdentifier(MDCompositeType type) {
+        MDBaseNode id = type.getIdentifier();
+        if (id != MDReference.VOID) {
+            id = ((MDReference) id).get();
+            if (id instanceof MDString) {
+                return ((MDString) id).getString();
+            }
+        }
+        return null;
     }
 }

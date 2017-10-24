@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,51 +27,26 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata;
+package com.oracle.truffle.llvm.runtime.debug;
 
-public final class MDFile implements MDBaseNode {
+public final class LLVMDebugValue {
 
-    private final MDReference directory;
+    private final LLVMSourceSymbol variable;
+    private final LLVMDebugValueProvider.Builder builder;
+    private final Object value;
 
-    private final MDReference file;
-
-    private MDFile(MDReference file, MDReference directory) {
-        this.file = file;
-        this.directory = directory;
+    public LLVMDebugValue(LLVMSourceSymbol variable, LLVMDebugValueProvider.Builder builder, Object value) {
+        this.variable = variable;
+        this.builder = builder;
+        this.value = value;
     }
 
-    @Override
-    public void accept(MetadataVisitor visitor) {
-        visitor.visit(this);
+    public LLVMSourceSymbol getVariable() {
+        return variable;
     }
 
-    public MDReference getFile() {
-        return file;
+    public LLVMDebugObject getValue() {
+        final LLVMDebugValueProvider valueProvider = builder.build(value);
+        return LLVMDebugObject.instantiate(variable.getType(), 0L, valueProvider, variable.getLocation());
     }
-
-    public MDReference getDirectory() {
-        return directory;
-    }
-
-    @Override
-    public String toString() {
-        return String.format("File (file=%s, directory=%s)", file, directory);
-    }
-
-    private static final int ARGINDEX_FILENAME = 1;
-    private static final int ARGINDEX_DIRECTORY = 2;
-
-    public static MDFile create38(long[] args, MetadataList md) {
-        // [distinct, filename, directory]
-        final MDReference file = md.getMDRefOrNullRef(args[ARGINDEX_FILENAME]);
-        final MDReference directory = md.getMDRefOrNullRef(args[ARGINDEX_DIRECTORY]);
-        return new MDFile(file, directory);
-    }
-
-    public static MDFile create32(MDTypedValue[] args) {
-        final MDReference file = ParseUtil.getReference(args[ARGINDEX_FILENAME]);
-        final MDReference directory = ParseUtil.getReference(args[ARGINDEX_DIRECTORY]);
-        return new MDFile(file, directory);
-    }
-
 }

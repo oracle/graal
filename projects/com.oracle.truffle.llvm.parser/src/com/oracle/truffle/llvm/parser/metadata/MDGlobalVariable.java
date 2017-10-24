@@ -45,6 +45,8 @@ public final class MDGlobalVariable extends MDVariable implements MDBaseNode {
 
     private final MDReference variable;
 
+    private MDBaseNode compileUnit;
+
     private MDGlobalVariable(MDReference scope, MDReference name, MDReference displayName, MDReference linkageName, MDReference file, long line,
                     MDReference type, boolean isLocalToCompileUnit, boolean isDefinedInCompileUnit, MDReference staticMembers, MDReference variable) {
         super(scope, name, type, file, line);
@@ -54,6 +56,7 @@ public final class MDGlobalVariable extends MDVariable implements MDBaseNode {
         this.isDefinedInCompileUnit = isDefinedInCompileUnit;
         this.staticMembers = staticMembers;
         this.variable = variable;
+        this.compileUnit = MDReference.VOID;
     }
 
     @Override
@@ -83,6 +86,14 @@ public final class MDGlobalVariable extends MDVariable implements MDBaseNode {
 
     public MDReference getVariable() {
         return variable;
+    }
+
+    public MDBaseNode getCompileUnit() {
+        return compileUnit;
+    }
+
+    public void setCompileUnit(MDBaseNode compileUnit) {
+        this.compileUnit = compileUnit;
     }
 
     @Override

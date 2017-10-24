@@ -38,7 +38,7 @@ public final class MDCompositeType extends MDType implements MDBaseNode {
 
     private final Tag tag;
 
-    private final MDReference context;
+    private final MDReference scope;
 
     private final MDReference derivedFrom;
 
@@ -52,11 +52,11 @@ public final class MDCompositeType extends MDType implements MDBaseNode {
 
     private final MDReference identifier;
 
-    private MDCompositeType(long tag, MDReference context, MDReference name, MDReference file, long line, long size, long align, long offset, long flags, MDReference derivedFrom,
+    private MDCompositeType(long tag, MDReference scope, MDReference name, MDReference file, long line, long size, long align, long offset, long flags, MDReference derivedFrom,
                     MDReference memberDescriptors, long runtimeLanguage, MDReference vTableHolder, MDReference templateParams, MDReference identifier) {
         super(name, size, align, offset, file, line, flags);
         this.tag = Tag.decode(tag);
-        this.context = context;
+        this.scope = scope;
         this.derivedFrom = derivedFrom;
         this.memberDescriptors = memberDescriptors;
         this.runtimeLanguage = runtimeLanguage;
@@ -70,8 +70,8 @@ public final class MDCompositeType extends MDType implements MDBaseNode {
         visitor.visit(this);
     }
 
-    public MDReference getContext() {
-        return context;
+    public MDReference getScope() {
+        return scope;
     }
 
     public MDReference getDerivedFrom() {
@@ -126,8 +126,8 @@ public final class MDCompositeType extends MDType implements MDBaseNode {
     @Override
     public String toString() {
         return String.format(
-                        "CompositeType (tag=%s, context=%s, name=%s, file=%s, line=%d, size=%d, align=%d, offset=%d, flags=%d, derivedFrom=%s, memberDescriptors=%s, runtimeLanguage=%d, vTableHolder=%s, templateParams=%s, identifier=%s)",
-                        tag, context,
+                        "CompositeType (tag=%s, scope=%s, name=%s, file=%s, line=%d, size=%d, align=%d, offset=%d, flags=%d, derivedFrom=%s, memberDescriptors=%s, runtimeLanguage=%d, vTableHolder=%s, templateParams=%s, identifier=%s)",
+                        tag, scope,
                         getName(), getFile(), getLine(), getSize(), getAlign(), getOffset(), getFlags(), derivedFrom, memberDescriptors, runtimeLanguage, vTableHolder, templateParams,
                         identifier);
     }

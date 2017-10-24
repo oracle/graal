@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.debug;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -44,15 +45,15 @@ public final class LLVMSourceDecoratorType extends LLVMSourceType {
 
     @CompilationFinal private long size;
 
-    public LLVMSourceDecoratorType(long size, long align, long offset, Function<String, String> nameDecorator) {
-        super(size, align, offset);
+    public LLVMSourceDecoratorType(long size, long align, long offset, Function<String, String> nameDecorator, LLVMSourceLocation location) {
+        super(size, align, offset, location);
         this.nameDecorator = nameDecorator;
         this.baseType = LLVMSourceType.UNKNOWN_TYPE;
         this.size = size;
     }
 
-    private LLVMSourceDecoratorType(Supplier<String> nameSupplier, long size, long align, long offset, LLVMSourceType baseType, Function<String, String> nameDecorator) {
-        super(nameSupplier, size, align, offset);
+    private LLVMSourceDecoratorType(Supplier<String> nameSupplier, long size, long align, long offset, LLVMSourceType baseType, Function<String, String> nameDecorator, LLVMSourceLocation location) {
+        super(nameSupplier, size, align, offset, location);
         this.baseType = baseType;
         this.nameDecorator = nameDecorator;
         this.size = size;
@@ -151,6 +152,6 @@ public final class LLVMSourceDecoratorType extends LLVMSourceType {
     @Override
     public LLVMSourceType getOffset(long newOffset) {
         final LLVMSourceType offsetBaseType = baseType.getOffset(newOffset);
-        return new LLVMSourceDecoratorType(this::getName, getSize(), getAlign(), getOffset(), offsetBaseType, nameDecorator);
+        return new LLVMSourceDecoratorType(this::getName, getSize(), getAlign(), getOffset(), offsetBaseType, nameDecorator, getLocation());
     }
 }

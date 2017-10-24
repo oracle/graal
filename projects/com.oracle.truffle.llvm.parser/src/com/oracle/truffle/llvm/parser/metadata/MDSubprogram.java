@@ -67,11 +67,13 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
 
     private final MDReference variables;
 
-    private final MDReference function;
+    private MDReference function;
+
+    private MDReference compileUnit;
 
     private MDSubprogram(MDReference scope, MDReference name, MDReference displayName, MDReference linkageName, MDReference file, long line, MDReference type, boolean isLocalToUnit,
                     boolean isDefinedInCompileUnit, long scopeLine, MDReference containingType, long virtuality, long virtualIndex, long flags, boolean isOptimized,
-                    MDReference templateParams, MDReference declaration, MDReference variables, MDReference function) {
+                    MDReference templateParams, MDReference declaration, MDReference variables, MDReference function, MDReference compileUnit) {
         super(name);
         this.scope = scope;
         this.displayName = displayName;
@@ -91,6 +93,7 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
         this.declaration = declaration;
         this.variables = variables;
         this.function = function;
+        this.compileUnit = compileUnit;
     }
 
     @Override
@@ -166,8 +169,20 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
         return scope;
     }
 
+    public void setFunction(MDReference function) {
+        this.function = function;
+    }
+
     public MDReference getFunction() {
         return function;
+    }
+
+    public MDBaseNode getCompileUnit() {
+        return compileUnit;
+    }
+
+    public void setCompileUnit(MDReference compileUnit) {
+        this.compileUnit = compileUnit;
     }
 
     @Override
@@ -193,11 +208,13 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
     private static final int ARGINDEX_38_VIRTUALINDEX = 12;
     private static final int ARGINDEX_38_FLAGS = 13;
     private static final int ARGINDEX_38_OPTIMIZED = 14;
-    private static final int ARGINDEX_38_FN = 15;
+    private static final int ARGINDEX_38_FUNCTION = 15;
+    private static final int ARGINDEX_38_COMPILEUNIT = 15;
     private static final int ARGINDEX_38_TEMPLATEPARAMS = 15;
     private static final int ARGINDEX_38_DECLARATION = 16;
     private static final int ARGINDEX_38_VARIABLES = 17;
     private static final int OFFSET_INDICATOR = 19;
+    private static final int UNIT_INDICATOR = 0;
 
     public static MDSubprogram create38(long[] args, MetadataList md) {
         final int fnOffset = args.length == OFFSET_INDICATOR ? 1 : 0;
@@ -221,14 +238,17 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
         final MDReference variables = md.getMDRefOrNullRef(args[ARGINDEX_38_VARIABLES + fnOffset]);
 
         final MDReference function;
-        if (fnOffset != 0 && args[ARGINDEX_38_FN] != 0) {
-            function = md.getMDRefOrNullRef(args[ARGINDEX_38_FN]);
+        if (fnOffset != 0 && args[ARGINDEX_38_FUNCTION] != 0) {
+            function = md.getMDRefOrNullRef(args[ARGINDEX_38_FUNCTION]);
         } else {
             function = MDReference.VOID;
         }
 
+        final boolean hasUnit = args[UNIT_INDICATOR] >= 2;
+        final MDReference unit = hasUnit ? md.getMDRefOrNullRef(args[ARGINDEX_38_COMPILEUNIT]) : MDReference.VOID;
+
         return new MDSubprogram(scope, name, MDReference.VOID, linkageName, file, line, type, localToCompileUnit, definedInCompileUnit, scopeLine, containingType, virtuality, virtualIndex, flags,
-                        optimized, templateParams, declaration, variables, function);
+                        optimized, templateParams, declaration, variables, function, unit);
     }
 
     private static final int ARGINDEX_32_SCOPE = 2;
@@ -273,7 +293,7 @@ public final class MDSubprogram extends MDName implements MDBaseNode {
         final MDReference variables = ParseUtil.getReferenceIfPresent(args, ARGINDEX_32_VARIABLES);
         final long scopeLine = ParseUtil.asInt64IfPresent(args, ARGINDEX_32_SCOPELINE);
         return new MDSubprogram(scope, name, displayName, linkageName, file, line, type, localToCompileUnit, definedInCompileUnit, scopeLine, containingType, virtuality, virtualIndex, flags,
-                        optimized, templateParams, declaration, variables, function);
+                        optimized, templateParams, declaration, variables, function, MDReference.VOID);
 
     }
 
