@@ -50,8 +50,6 @@ import com.oracle.truffle.dsl.processor.model.TypeCastData;
 import com.oracle.truffle.dsl.processor.model.TypeCheckData;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 
-@SuppressWarnings("deprecation")
-@com.oracle.truffle.api.dsl.internal.DSLOptions
 public class TypeSystemParser extends AbstractParser<TypeSystemData> {
 
     @Override
@@ -72,13 +70,8 @@ public class TypeSystemParser extends AbstractParser<TypeSystemData> {
     protected TypeSystemData parse(Element element, AnnotationMirror mirror) {
         TypeElement templateType = (TypeElement) element;
         AnnotationMirror templateTypeAnnotation = mirror;
-        com.oracle.truffle.api.dsl.internal.DSLOptions options = element.getAnnotation(com.oracle.truffle.api.dsl.internal.DSLOptions.class);
-        if (options == null) {
-            options = TypeSystemParser.class.getAnnotation(com.oracle.truffle.api.dsl.internal.DSLOptions.class);
-        }
-        assert options != null;
 
-        TypeSystemData typeSystem = new TypeSystemData(context, templateType, templateTypeAnnotation, options, false);
+        TypeSystemData typeSystem = new TypeSystemData(context, templateType, templateTypeAnnotation, false);
 
         // annotation type on class path!?
         TypeElement annotationTypeElement = processingEnv.getElementUtils().getTypeElement(getAnnotationType().getCanonicalName());

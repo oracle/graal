@@ -66,11 +66,10 @@ public class SourceSectionTest {
         expectSourceSection(root.getNode(), section);
     }
 
-    @SuppressWarnings("deprecation")
     private static void expectSourceSection(Node root, SourceSection section) {
         assertThat(root.getSourceSection(), is(sameInstance(section)));
         for (Node child : root.getChildren()) {
-            if (child instanceof ArgumentNode || child instanceof com.oracle.truffle.api.dsl.internal.SpecializationNode) {
+            if (child instanceof ArgumentNode) {
                 continue;
             }
             if (child != null) {

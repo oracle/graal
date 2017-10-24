@@ -284,24 +284,4 @@ public class IntrospectionTest {
 
     }
 
-    @SuppressWarnings("deprecation")
-    @com.oracle.truffle.api.dsl.internal.DSLOptions(defaultGenerator = com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator.DEFAULT)
-    @TypeSystem
-    public static class SomeReflectionTS {
-
-    }
-
-    @ExpectError("Reflection is not supported by the used DSL layout. Only the flat DSL layout supports reflection.")
-    @Introspectable
-    @TypeSystemReference(SomeReflectionTS.class)
-    public abstract static class SomeReflection1Node extends Node {
-
-        abstract Object execute(Object o);
-
-        @Specialization
-        protected static int doInt(int o) {
-            return o;
-        }
-    }
-
 }

@@ -63,7 +63,7 @@ public final class SpecializationGroup {
         this.guards.addAll(data.getGuards());
     }
 
-    public SpecializationGroup(List<SpecializationGroup> children, List<TypeGuard> typeGuardsMatches, List<GuardExpression> guardMatches) {
+    private SpecializationGroup(List<SpecializationGroup> children, List<TypeGuard> typeGuardsMatches, List<GuardExpression> guardMatches) {
         assert !children.isEmpty() : "children must not be empty";
         this.typeGuards = typeGuardsMatches;
         this.guards = guardMatches;
@@ -96,7 +96,7 @@ public final class SpecializationGroup {
         return specializations;
     }
 
-    public List<GuardExpression> findElseConnectableGuards() {
+    private List<GuardExpression> findElseConnectableGuards() {
         if (!getTypeGuards().isEmpty()) {
             return Collections.emptyList();
         }
@@ -224,22 +224,13 @@ public final class SpecializationGroup {
         return new SpecializationGroup(newChildren, typeGuardsMatches, guardMatches);
     }
 
-    public static SpecializationGroup create(SpecializationData specialization) {
-        return new SpecializationGroup(specialization);
-    }
-
-    public static SpecializationGroup createDefault(List<SpecializationData> specializations) {
+    public static SpecializationGroup create(List<SpecializationData> specializations) {
         List<SpecializationGroup> groups = new ArrayList<>();
         for (SpecializationData specialization : specializations) {
             groups.add(new SpecializationGroup(specialization));
         }
-        SpecializationGroup group = new SpecializationGroup(createCombinationalGroups(groups), Collections.<TypeGuard> emptyList(), Collections.<GuardExpression> emptyList());
-
-        return group;
-    }
-
-    public static SpecializationGroup createFlat(List<SpecializationData> specializations) {
-        SpecializationGroup group = createDefault(specializations);
+        SpecializationGroup group1 = new SpecializationGroup(createCombinationalGroups(groups), Collections.<TypeGuard> emptyList(), Collections.<GuardExpression> emptyList());
+        SpecializationGroup group = group1;
 
         // trim groups
         while (group.isEmpty() && group.getChildren().size() == 1) {

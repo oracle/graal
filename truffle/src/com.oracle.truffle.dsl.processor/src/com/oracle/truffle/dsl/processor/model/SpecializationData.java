@@ -52,7 +52,6 @@ public final class SpecializationData extends TemplateMethod {
     private List<GuardExpression> guards = Collections.emptyList();
     private List<CacheExpression> caches = Collections.emptyList();
     private List<AssumptionExpression> assumptionExpressions = Collections.emptyList();
-    private List<ShortCircuitData> shortCircuits;
     private final Set<SpecializationData> replaces = new TreeSet<>();
     private final Set<String> replacesNames = new TreeSet<>();
     private final Set<SpecializationData> excludedBy = new TreeSet<>();
@@ -307,14 +306,6 @@ public final class SpecializationData extends TemplateMethod {
 
     public List<GuardExpression> getGuards() {
         return guards;
-    }
-
-    public void setShortCircuits(List<ShortCircuitData> shortCircuits) {
-        this.shortCircuits = shortCircuits;
-    }
-
-    public List<ShortCircuitData> getShortCircuits() {
-        return shortCircuits;
     }
 
     public SpecializationData findNextSpecialization() {

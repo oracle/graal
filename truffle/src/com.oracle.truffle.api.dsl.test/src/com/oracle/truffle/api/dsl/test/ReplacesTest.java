@@ -32,64 +32,20 @@ import static org.junit.Assert.assertThat;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.dsl.Introspectable;
-import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.TypeSystemReference;
-import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.ContainsTestNodeGen;
 import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.PolymorphicToMonomorphic0Factory;
-import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.Replaces1Factory;
 import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.Replaces2Factory;
 import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.Replaces3Factory;
 import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.Replaces4Factory;
 import com.oracle.truffle.api.dsl.test.TestHelper.ExecutionListener;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
-import com.oracle.truffle.api.dsl.test.examples.ExampleTypes;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 
 @SuppressWarnings("unused")
 public class ReplacesTest {
-
-    /*
-     * Tests a simple monomorphic inclusion.
-     */
-    @Test
-    public void testReplaces1() {
-        assertRuns(Replaces1Factory.getInstance(), //
-                        array(1, "a", 2, "b"), //
-                        array(2, "aa", 3, "ba"), //
-                        new ExecutionListener() {
-                            @SuppressWarnings("deprecation")
-                            public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
-                                if (value instanceof String) {
-                                    if (node.getNode() instanceof com.oracle.truffle.api.dsl.internal.SpecializedNode) {
-                                        Assert.assertTrue(((com.oracle.truffle.api.dsl.internal.SpecializedNode) node.getNode()).getSpecializationNode().toString().startsWith("F2Node_"));
-                                    }
-                                }
-                            }
-                        });
-    }
-
-    @NodeChild("a")
-    abstract static class Replaces1 extends ValueNode {
-
-        @Specialization
-        int f1(int a) {
-            return a + 1;
-        }
-
-        @Specialization(replaces = "f1")
-        Object f2(Object a) {
-            if (a instanceof Integer) {
-                return ((Integer) a) + 1;
-            }
-            return a + "a";
-        }
-    }
 
     /*
      * Tests an inclusion in within a polymorphic chain.
@@ -560,37 +516,4 @@ public class ReplacesTest {
         }
 
     }
-
-    @Test
-    public void testContainsLegacy() {
-        ContainsTest test = ContainsTestNodeGen.create();
-        test.execute(1);
-        Assert.assertTrue(Introspection.getSpecialization(test, "f0").isActive());
-        Assert.assertFalse(Introspection.getSpecialization(test, "f0").isExcluded());
-        Assert.assertFalse(Introspection.getSpecialization(test, "f1").isActive());
-        test.execute("");
-        Assert.assertFalse(Introspection.getSpecialization(test, "f0").isActive());
-        Assert.assertTrue(Introspection.getSpecialization(test, "f0").isExcluded());
-        Assert.assertTrue(Introspection.getSpecialization(test, "f1").isActive());
-    }
-
-    @TypeSystemReference(ExampleTypes.class)
-    @Introspectable
-    abstract static class ContainsTest extends Node {
-
-        abstract Object execute(Object value);
-
-        @Specialization
-        Object f0(int value) {
-            return value;
-        }
-
-        @SuppressWarnings("contains_deprecation")
-        @Specialization(contains = "f0")
-        Object f1(Object value) {
-            return value;
-        }
-
-    }
-
 }
