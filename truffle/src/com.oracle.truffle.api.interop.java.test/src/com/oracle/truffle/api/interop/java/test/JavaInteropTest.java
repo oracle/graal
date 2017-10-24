@@ -816,6 +816,14 @@ public class JavaInteropTest {
     }
 
     @Test
+    public void testNewObject() throws InteropException {
+        TruffleObject objectClass = JavaInterop.asTruffleObject(Object.class);
+        Object object = ForeignAccess.sendNew(Message.createNew(0).createNode(), objectClass);
+        assertThat(object, CoreMatchers.instanceOf(TruffleObject.class));
+        assertTrue(JavaInterop.isJavaObject(Object.class, (TruffleObject) object));
+    }
+
+    @Test
     public void testNewArray() throws InteropException {
         TruffleObject longArrayClass = JavaInterop.asTruffleObject(long[].class);
         Object longArray = ForeignAccess.sendNew(Message.createNew(1).createNode(), longArrayClass, 4);
