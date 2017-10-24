@@ -48,11 +48,11 @@ endif
 
 %/ref.out: %.c $(BC_FILE)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) clang $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(LDFLAGS) -o $@ $^
+	$(QUIETLY) clang $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 %/ref.out: %.cpp $(BC_FILE)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) clang++ $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(LDFLAGS) -o $@ $^
+	$(QUIETLY) clang++ $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
 
 %.bc: %.ll
 	$(QUIETLY) $(DRAGONEGG_LLVMAS) -o $@ $<
@@ -60,15 +60,15 @@ endif
 define OPT_RULES
 %/$(1).bc: %.c
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) clang -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) -g -o $$@ $$<
+	$(QUIETLY) clang -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g -o $$@ $$<
 
 %/$(1).bc: %.cpp
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) clang++ -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) -g -o $$@ $$<
+	$(QUIETLY) clang++ -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g -o $$@ $$<
 
 %/gcc_$(1).ll: %.c
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(DRAGONEGG_GCC) -w -S --std=gnu99 -fplugin=$(DRAGONEGG) -fplugin-arg-dragonegg-emit-ir -$(1) $(CPPFLAGS) -o $$@ $$<
+	$(QUIETLY) $(DRAGONEGG_GCC) -w -S --std=gnu99 -fplugin=$(DRAGONEGG) -fplugin-arg-dragonegg-emit-ir -$(1) $(CPPFLAGS) $(CFLAGS) -o $$@ $$<
 endef
 
 $(eval $(call OPT_RULES,O0,-O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS}))
