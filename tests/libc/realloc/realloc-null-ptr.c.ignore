@@ -1,0 +1,11 @@
+#include <stdlib.h>
+
+int main() {
+  long *addr = (long *)realloc(0, sizeof(long) * 3);
+  addr[0] = 3;
+  addr[1] = 2;
+  addr[2] = 5;
+  if ((addr[0] + addr[1] + addr[2]) != 10) {
+    abort();
+  }
+}

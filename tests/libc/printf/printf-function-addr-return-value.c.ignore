@@ -1,0 +1,7 @@
+#include <stdio.h>
+
+static const char *test = "TEST\n";
+
+const char *getTest() { return test; }
+
+int main() { printf("%s\n", getTest()); }
