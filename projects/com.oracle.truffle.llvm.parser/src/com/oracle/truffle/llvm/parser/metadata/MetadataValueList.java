@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import com.oracle.truffle.llvm.parser.ValueList;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

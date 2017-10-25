@@ -27,21 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata;
+package com.oracle.truffle.llvm.parser;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.ListIterator;
 
-class ValueList<V extends ValueList.Value<V>> {
+public class ValueList<V extends ValueList.Value<V>> {
 
-    interface Value<V> {
+    public interface Value<V> {
 
         void replace(V oldValue, V newValue);
 
     }
 
-    interface PlaceholderFactory<V extends ValueList.Value<V>> {
+    public interface PlaceholderFactory<V extends ValueList.Value<V>> {
 
         /**
          * Produce a new unique value used as placeholder for a forward referenced symbol.
@@ -52,22 +54,81 @@ class ValueList<V extends ValueList.Value<V>> {
 
     }
 
+    private static final int NO_UNRESOLVED_VALUES = -1;
+
     private final ValueList<V> parent;
 
+    // forward references are generally rare except for metadata in some older ir versions, we try
+    // to optimize handling them by always remembering which forward reference will be resolved next
     private final PlaceholderFactory<V> placeholderFactory;
     private final HashMap<Integer, ForwardReference> forwardReferences;
+    private final LinkedList<Integer> unresolvedIndices;
+    private int nextUnresolved;
 
     private final ArrayList<V> valueList;
 
-    ValueList(PlaceholderFactory<V> placeholderFactory) {
+    public ValueList(PlaceholderFactory<V> placeholderFactory) {
         this(null, placeholderFactory);
     }
 
-    ValueList(ValueList<V> parent, PlaceholderFactory<V> placeholderFactory) {
+    public ValueList(ValueList<V> parent, PlaceholderFactory<V> placeholderFactory) {
         this.parent = parent;
         this.placeholderFactory = placeholderFactory;
         this.valueList = new ArrayList<>();
         this.forwardReferences = new HashMap<>();
+        this.nextUnresolved = NO_UNRESOLVED_VALUES;
+        this.unresolvedIndices = new LinkedList<>();
+    }
+
+    private void resolveForwardReference(int valueIndex, V newValue) {
+        final ForwardReference fwdRef = forwardReferences.remove(valueIndex);
+        fwdRef.resolve(newValue);
+
+        unresolvedIndices.removeLast();
+        if (unresolvedIndices.isEmpty()) {
+            nextUnresolved = NO_UNRESOLVED_VALUES;
+        } else {
+            nextUnresolved = unresolvedIndices.getLast();
+        }
+    }
+
+    private V getReference(int valueIndex, V dependent) {
+        final ForwardReference fwdRef;
+        if (forwardReferences.containsKey(valueIndex)) {
+            fwdRef = forwardReferences.get(valueIndex);
+
+        } else {
+            fwdRef = new ForwardReference(placeholderFactory.newValue());
+            forwardReferences.put(valueIndex, fwdRef);
+            addUnresolvedIndex(valueIndex);
+        }
+
+        fwdRef.addDependent(dependent);
+        return fwdRef.getPlaceholder();
+    }
+
+    private void addUnresolvedIndex(int valueIndex) {
+        // LLVM uses a depth-first approach to emit symbols. This list is sorted in
+        // descending order, so we should always be inserting newly discovered forward
+        // references in the beginning, but special cases may occur.
+        if (unresolvedIndices.isEmpty() || valueIndex < nextUnresolved) {
+            nextUnresolved = valueIndex;
+            unresolvedIndices.addLast(valueIndex);
+
+        } else if (valueIndex > unresolvedIndices.getFirst()) {
+            unresolvedIndices.addFirst(valueIndex);
+
+        } else {
+            final ListIterator<Integer> it = unresolvedIndices.listIterator();
+            while (it.hasNext()) {
+                int next = it.next();
+                if (valueIndex > next) {
+                    it.previous();
+                    it.add(valueIndex);
+                    break;
+                }
+            }
+        }
     }
 
     public void add(V newValue) {
@@ -75,9 +136,8 @@ class ValueList<V extends ValueList.Value<V>> {
 
         valueList.add(newValue);
 
-        if (forwardReferences.containsKey(valueIndex)) {
-            final ForwardReference fwdRef = forwardReferences.remove(valueIndex);
-            fwdRef.resolve(newValue);
+        if (nextUnresolved == valueIndex) {
+            resolveForwardReference(valueIndex, newValue);
         }
     }
 
@@ -97,17 +157,7 @@ class ValueList<V extends ValueList.Value<V>> {
             return valueList.get(actualIndex);
         }
 
-        final ForwardReference fwdRef;
-        if (forwardReferences.containsKey(actualIndex)) {
-            fwdRef = forwardReferences.get(actualIndex);
-
-        } else {
-            fwdRef = new ForwardReference(placeholderFactory.newValue());
-            forwardReferences.put(actualIndex, fwdRef);
-        }
-
-        fwdRef.addDependent(dependent);
-        return fwdRef.getPlaceholder();
+        return getReference(actualIndex, dependent);
     }
 
     public V getOrNull(int index) {
