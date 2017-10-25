@@ -173,6 +173,11 @@ int __sulong_posix_pipe2(int pipefd[2], int flags)
 #endif
 }
 
+int __sulong_posix_bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
+{
+	CALL(int, bind, sockfd, addr, addrlen);
+}
+
 #else
 
 #include <stdio.h>
@@ -278,6 +283,11 @@ int __sulong_posix_socket(int domain, int type, int protocol)
 }
 
 int __sulong_posix_pipe(int pipefd[2])
+{
+	ERROR();
+}
+
+int __sulong_posix_bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
 {
 	ERROR();
 }
