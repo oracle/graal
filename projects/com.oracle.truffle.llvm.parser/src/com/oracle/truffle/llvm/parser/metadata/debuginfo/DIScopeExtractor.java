@@ -149,17 +149,8 @@ final class DIScopeExtractor {
             final LLVMSourceLocation scope = new LLVMSourceLocation(Kind.FILE, DEFAULT_LINE, DEFAULT_COLUMN);
             scopes.put(md, scope);
 
-            String name = null;
-            final MDBaseNode nameRef = md.getFile();
-            if (nameRef instanceof MDString) {
-                name = ((MDString) nameRef).getString();
-            }
-
-            String directory = null;
-            final MDBaseNode dirRef = md.getDirectory();
-            if (dirRef instanceof MDString) {
-                directory = ((MDString) dirRef).getString();
-            }
+            final String name = MDString.getIfInstance(md.getFile());
+            final String directory = MDString.getIfInstance(md.getDirectory());
 
             scope.setFile(new LLVMSourceFile(name, directory));
         }
@@ -225,19 +216,15 @@ final class DIScopeExtractor {
 
             } else if (fileNode instanceof MDString) {
                 // old-format metadata
-                String file = ((MDString) fileNode).getString();
-                String directory = null;
-                final MDBaseNode dirNode = md.getDirectory();
-                if (dirNode instanceof MDString) {
-                    directory = ((MDString) dirNode).getString();
-                }
+                final String file = MDString.getIfInstance(fileNode);
+                final String directory = MDString.getIfInstance(md.getDirectory());
                 scope.setFile(new LLVMSourceFile(file, directory));
                 return;
             }
 
-            final MDBaseNode splitDbgFileName = md.getSplitdebugFilename();
-            if (splitDbgFileName instanceof MDString) {
-                scope.setFile(new LLVMSourceFile(((MDString) splitDbgFileName).getString(), null));
+            final String splitDbgFileName = MDString.getIfInstance(md.getSplitdebugFilename());
+            if (splitDbgFileName != null) {
+                scope.setFile(new LLVMSourceFile(splitDbgFileName, null));
             }
         }
 
@@ -291,10 +278,6 @@ final class DIScopeExtractor {
             final LLVMSourceLocation scope = resolve(ref);
             scopes.put(ref, scope);
             scopes.put(md, scope);
-        }
-
-        @Override
-        public void ifVisitNotOverwritten(MDBaseNode md) {
         }
     }
 }

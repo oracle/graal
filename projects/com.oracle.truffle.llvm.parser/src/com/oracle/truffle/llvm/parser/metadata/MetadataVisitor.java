@@ -29,143 +29,139 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-public interface MetadataVisitor {
-    /**
-     * We normally don't need to implement all visitors, but want to have a default implementation
-     * for those visitors which are not handled explicitly. This little method allows us to do so.
-     */
-    default void ifVisitNotOverwritten(@SuppressWarnings("unused") MDBaseNode md) {
-    }
+import com.oracle.truffle.llvm.parser.ValueList;
+
+public interface MetadataVisitor extends ValueList.ValueVisitor<MDBaseNode> {
 
     default void visit(MDAttachment md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDBasicType md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDCompileUnit md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDCompositeType md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDDerivedType md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDEnumerator md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDExpression md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDFile md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDGenericDebug md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDGlobalVariable md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDImportedEntity md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDKind md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDLexicalBlock md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDLexicalBlockFile md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDLocalVariable md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDMacro md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDMacroFile md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDModule md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDNamedNode md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDNamespace md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDNode md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDObjCProperty md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDString md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDSubprogram md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDSubrange md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDSubroutine md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDTemplateType md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDTemplateTypeParameter md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDTemplateValue md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDValue md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDLocation md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDGlobalVariableExpression md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 
     default void visit(MDVoidNode md) {
-        ifVisitNotOverwritten(md);
+        defaultAction(md);
     }
 }

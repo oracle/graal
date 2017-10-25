@@ -29,21 +29,17 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import java.util.ArrayList;
-import java.util.List;
-
-public final class MDGenericDebug implements MDBaseNode {
+public final class MDGenericDebug extends MDAggregateNode {
 
     private final long tag;
     private final long version;
 
     private MDBaseNode header;
-    private List<MDBaseNode> dwarfOps;
 
-    private MDGenericDebug(long tag, long version, List<MDBaseNode> dwarfOps) {
+    private MDGenericDebug(long tag, long version, int size) {
+        super(size);
         this.tag = tag;
         this.version = version;
-        this.dwarfOps = dwarfOps;
         this.header = MDVoidNode.INSTANCE;
     }
 
@@ -59,19 +55,11 @@ public final class MDGenericDebug implements MDBaseNode {
         return header;
     }
 
-    public List<MDBaseNode> getDwarfOps() {
-        return dwarfOps;
-    }
-
     @Override
     public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        super.replace(oldValue, newValue);
         if (header == oldValue) {
             header = newValue;
-        }
-        for (int i = 0; i < dwarfOps.size(); i++) {
-            if (dwarfOps.get(i) == oldValue) {
-                dwarfOps.set(i, newValue);
-            }
         }
     }
 
@@ -89,12 +77,12 @@ public final class MDGenericDebug implements MDBaseNode {
         final long tag = args[ARGINDEX_TAG];
         final long version = args[ARGINDEX_VERSION];
 
-        final List<MDBaseNode> dwarfOps = new ArrayList<>(args.length - ARGINDEX_DATASTART);
-        final MDGenericDebug debug = new MDGenericDebug(tag, version, dwarfOps);
+        final int size = args.length - ARGINDEX_DATASTART;
+        final MDGenericDebug debug = new MDGenericDebug(tag, version, size);
 
         debug.header = md.getNullable(args[ARGINDEX_HEADER], debug);
-        for (int i = ARGINDEX_DATASTART; i < args.length; i++) {
-            dwarfOps.add(md.getNullable(args[i], debug));
+        for (int i = 0, j = ARGINDEX_DATASTART; i < args.length; i++, j++) {
+            debug.set(i, md.getNullable(args[j], debug));
         }
 
         return debug;

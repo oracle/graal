@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
-import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDCompositeType;
 import com.oracle.truffle.llvm.parser.metadata.MDString;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
@@ -72,7 +71,6 @@ final class DITypeIdentifier {
     }
 
     private static String getIdentifier(MDCompositeType type) {
-        final MDBaseNode id = type.getIdentifier();
-        return id instanceof MDString ? ((MDString) id).getString() : null;
+        return MDString.getIfInstance(type.getIdentifier());
     }
 }

@@ -106,6 +106,9 @@ public final class MDGlobalVariable extends MDVariable implements MDBaseNode {
         if (variable == oldValue) {
             variable = newValue;
         }
+        if (compileUnit == oldValue) {
+            compileUnit = newValue;
+        }
     }
 
     private static final int ARGINDEX_38_SCOPE = 1;

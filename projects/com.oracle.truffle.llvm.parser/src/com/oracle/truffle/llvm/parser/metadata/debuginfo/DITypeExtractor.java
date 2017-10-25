@@ -89,7 +89,7 @@ final class DITypeExtractor implements MetadataVisitor {
     }
 
     @Override
-    public void ifVisitNotOverwritten(MDBaseNode md) {
+    public void defaultAction(MDBaseNode md) {
         parsedTypes.put(md, UNKNOWN_TYPE);
     }
 

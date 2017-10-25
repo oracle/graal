@@ -57,7 +57,7 @@ public final class MDAttachment implements MDBaseNode {
 
     @Override
     public String toString() {
-        return String.format("Attachment (kind=%s, md=%s)", kind, value);
+        return String.format("Attachment !%s", kind);
     }
 
     @Override

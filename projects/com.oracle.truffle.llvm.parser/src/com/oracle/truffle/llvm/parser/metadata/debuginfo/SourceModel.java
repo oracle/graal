@@ -239,9 +239,10 @@ public final class SourceModel {
             currentFunction = new Function(bitcodeSource, function);
             typeIdentifier.setMetadata(function.getMetadata());
 
-            if (function.hasAttachedMetadata()) {
-                final MDBaseNode scopeRef = function.getMetadataAttachment(MDKind.DBG_NAME);
-                currentFunction.setLexicalScope(scopeExtractor.resolve(scopeRef));
+            final MDBaseNode debugInfo = getDebugInfo(function);
+            if (debugInfo != null) {
+                final LLVMSourceLocation scope = scopeExtractor.resolve(debugInfo);
+                currentFunction.setLexicalScope(scope);
             }
 
             function.accept(this);

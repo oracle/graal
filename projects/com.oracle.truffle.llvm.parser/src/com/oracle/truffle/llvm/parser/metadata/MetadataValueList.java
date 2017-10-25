@@ -36,18 +36,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public final class MetadataValueList extends ValueList<MDBaseNode> {
+public final class MetadataValueList extends ValueList<MDBaseNode, MetadataVisitor> {
 
-    private static final ValueList.PlaceholderFactory<MDBaseNode> PLACEHOLDER_FACTORY = () -> new MDBaseNode() {
+    private static final ValueList.PlaceholderFactory<MDBaseNode, MetadataVisitor> PLACEHOLDER_FACTORY = () -> new MDBaseNode() {
         @Override
         public void accept(MetadataVisitor visitor) {
-            // TODO fail silently
             throw new IllegalStateException("Unresolved Forward Reference!");
         }
 
         @Override
         public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
-            // TODO fail silently
             throw new IllegalStateException("Unresolved Forward Reference!");
         }
 
@@ -144,14 +142,5 @@ public final class MetadataValueList extends ValueList<MDBaseNode> {
         final MDKind newKind = MDKind.create(nextArtificialKindId--, name);
         kinds.add(newKind);
         return newKind;
-    }
-
-    public void accept(MetadataVisitor visitor) {
-        for (int i = 0; i < size(); i++) {
-            final MDBaseNode value = getOrNull(i);
-            if (value != null) {
-                value.accept(visitor);
-            }
-        }
     }
 }

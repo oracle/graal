@@ -35,15 +35,24 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.ListIterator;
 
-public class ValueList<V extends ValueList.Value<V>> {
+public class ValueList<V extends ValueList.Value<V, C>, C extends ValueList.ValueVisitor<V>> {
 
-    public interface Value<V> {
+    public interface ValueVisitor<V> {
 
-        void replace(V oldValue, V newValue);
+        default void defaultAction(@SuppressWarnings("unused") V v) {
+        }
 
     }
 
-    public interface PlaceholderFactory<V extends ValueList.Value<V>> {
+    public interface Value<V, C extends ValueVisitor<V>> {
+
+        void replace(V oldValue, V newValue);
+
+        void accept(C visitor);
+
+    }
+
+    public interface PlaceholderFactory<V extends ValueList.Value<V, C>, C extends ValueList.ValueVisitor<V>> {
 
         /**
          * Produce a new unique value used as placeholder for a forward referenced symbol.
@@ -56,22 +65,22 @@ public class ValueList<V extends ValueList.Value<V>> {
 
     private static final int NO_UNRESOLVED_VALUES = -1;
 
-    private final ValueList<V> parent;
+    private final ValueList<V, C> parent;
 
     // forward references are generally rare except for metadata in some older ir versions, we try
     // to optimize handling them by always remembering which forward reference will be resolved next
-    private final PlaceholderFactory<V> placeholderFactory;
+    private final PlaceholderFactory<V, C> placeholderFactory;
     private final HashMap<Integer, ForwardReference> forwardReferences;
     private final LinkedList<Integer> unresolvedIndices;
     private int nextUnresolved;
 
     private final ArrayList<V> valueList;
 
-    public ValueList(PlaceholderFactory<V> placeholderFactory) {
+    public ValueList(PlaceholderFactory<V, C> placeholderFactory) {
         this(null, placeholderFactory);
     }
 
-    public ValueList(ValueList<V> parent, PlaceholderFactory<V> placeholderFactory) {
+    public ValueList(ValueList<V, C> parent, PlaceholderFactory<V, C> placeholderFactory) {
         this.parent = parent;
         this.placeholderFactory = placeholderFactory;
         this.valueList = new ArrayList<>();
@@ -185,6 +194,16 @@ public class ValueList<V extends ValueList.Value<V>> {
             size += parent.size();
         }
         return size;
+    }
+
+    public void accept(C visitor) {
+        if (parent != null) {
+            parent.accept(visitor);
+        }
+
+        for (V value : valueList) {
+            value.accept(visitor);
+        }
     }
 
     private final class ForwardReference {

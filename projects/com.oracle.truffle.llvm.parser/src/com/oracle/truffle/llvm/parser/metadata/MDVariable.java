@@ -76,15 +76,12 @@ public abstract class MDVariable extends MDName {
     @Override
     public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
         super.replace(oldValue, newValue);
-
         if (scope == oldValue) {
             scope = newValue;
         }
-
         if (type == oldValue) {
             type = newValue;
         }
-
         if (file == oldValue) {
             file = newValue;
         }

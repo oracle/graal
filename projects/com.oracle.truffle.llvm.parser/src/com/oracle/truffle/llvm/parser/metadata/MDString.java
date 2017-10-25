@@ -91,4 +91,12 @@ public final class MDString implements MDBaseNode {
         }
         return strings;
     }
+
+    public static String getIfInstance(MDBaseNode strNode) {
+        if (strNode instanceof MDString) {
+            return ((MDString) strNode).getString();
+        } else {
+            return null;
+        }
+    }
 }
