@@ -39,6 +39,8 @@
 #include <sys/ioctl.h>
 #include <sys/uio.h>
 #include <sys/mman.h>
+#include <sys/socket.h>
+
 
 #ifdef __linux__
 
@@ -152,6 +154,25 @@ int __sulong_posix_unlink(const char *path)
 	CALL(int, unlink, path);
 }
 
+int __sulong_posix_socket(int domain, int type, int protocol)
+{
+	CALL(int, socket, domain, type, protocol);
+}
+
+int __sulong_posix_pipe(int pipefd[2])
+{
+	CALL(int, pipe, pipefd);
+}
+
+int __sulong_posix_pipe2(int pipefd[2], int flags)
+{
+#ifdef __linux__
+	CALL(int, pipe2, pipefd, flags);
+#else
+	CALL(int, pipe, pipefd);
+#endif
+}
+
 #else
 
 #include <stdio.h>
@@ -247,6 +268,16 @@ int __sulong_posix_munmap(void* addr, size_t length)
 }
 
 int __sulong_posix_unlink(const char *path)
+{
+	ERROR();
+}
+
+int __sulong_posix_socket(int domain, int type, int protocol)
+{
+	ERROR();
+}
+
+int __sulong_posix_pipe(int pipefd[2])
 {
 	ERROR();
 }
