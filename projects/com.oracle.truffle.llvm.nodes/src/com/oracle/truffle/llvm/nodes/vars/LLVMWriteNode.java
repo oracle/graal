@@ -29,10 +29,12 @@
  */
 package com.oracle.truffle.llvm.nodes.vars;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.source.SourceSection;
@@ -107,12 +109,20 @@ public abstract class LLVMWriteNode extends LLVMExpressionNode {
     public abstract static class LLVMWriteI64Node extends LLVMWriteNode {
         @Specialization
         protected Object writeI64(VirtualFrame frame, long value) {
-            frame.setLong(getSlot(), value);
+            if (getSlot().getKind() == FrameSlotKind.Long) {
+                frame.setLong(getSlot(), value);
+            } else {
+                frame.setObject(getSlot(), value);
+            }
             return null;
         }
 
         @Specialization
         protected Object writePointer(VirtualFrame frame, LLVMTruffleObject value) {
+            if (getSlot().getKind() == FrameSlotKind.Long) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getSlot().setKind(FrameSlotKind.Object);
+            }
             frame.setObject(getSlot(), value);
             return null;
         }

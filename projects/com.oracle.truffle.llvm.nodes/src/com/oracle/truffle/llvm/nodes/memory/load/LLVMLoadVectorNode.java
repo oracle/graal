@@ -33,9 +33,12 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
@@ -64,6 +67,15 @@ public class LLVMLoadVectorNode {
         public LLVMI1Vector executeI1Vector(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             return LLVMMemory.getI1Vector(globalAccess.getNativeLocation(addr), getSize());
         }
+
+        LLVMForeignReadNode createForeignRead() {
+            return new LLVMForeignReadNode(ForeignToLLVMType.VECTOR, getSize());
+        }
+
+        @Specialization
+        public Object executeForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+            return foreignRead.execute(frame, addr);
+        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -80,6 +92,15 @@ public class LLVMLoadVectorNode {
         @Specialization
         public LLVMI8Vector executeI8Vector(LLVMAddress addr) {
             return LLVMMemory.getI8Vector(addr, getSize());
+        }
+
+        LLVMForeignReadNode createForeignRead() {
+            return new LLVMForeignReadNode(ForeignToLLVMType.VECTOR, getSize());
+        }
+
+        @Specialization
+        public Object executeForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+            return foreignRead.execute(frame, addr);
         }
     }
 
@@ -98,6 +119,15 @@ public class LLVMLoadVectorNode {
         public LLVMI16Vector executeI16Vector(LLVMAddress addr) {
             return LLVMMemory.getI16Vector(addr, getSize());
         }
+
+        LLVMForeignReadNode createForeignRead() {
+            return new LLVMForeignReadNode(ForeignToLLVMType.VECTOR, getSize());
+        }
+
+        @Specialization
+        public Object executeForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+            return foreignRead.execute(frame, addr);
+        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -114,6 +144,15 @@ public class LLVMLoadVectorNode {
         @Specialization
         public LLVMI32Vector executeI32Vector(LLVMAddress addr) {
             return LLVMMemory.getI32Vector(addr, getSize());
+        }
+
+        LLVMForeignReadNode createForeignRead() {
+            return new LLVMForeignReadNode(ForeignToLLVMType.VECTOR, getSize());
+        }
+
+        @Specialization
+        public Object executeForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+            return foreignRead.execute(frame, addr);
         }
     }
 
@@ -132,6 +171,15 @@ public class LLVMLoadVectorNode {
         public LLVMI64Vector executeI64Vector(LLVMAddress addr) {
             return LLVMMemory.getI64Vector(addr, getSize());
         }
+
+        LLVMForeignReadNode createForeignRead() {
+            return new LLVMForeignReadNode(ForeignToLLVMType.VECTOR, getSize());
+        }
+
+        @Specialization
+        public Object executeForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+            return foreignRead.execute(frame, addr);
+        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -149,6 +197,16 @@ public class LLVMLoadVectorNode {
         public LLVMFloatVector executeFloatVector(LLVMAddress addr) {
             return LLVMMemory.getFloatVector(addr, getSize());
         }
+
+        LLVMForeignReadNode createForeignRead() {
+            return new LLVMForeignReadNode(ForeignToLLVMType.VECTOR, getSize());
+        }
+
+        @Specialization
+        public Object executeForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+            return foreignRead.execute(frame, addr);
+        }
+
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -166,6 +224,15 @@ public class LLVMLoadVectorNode {
         public LLVMDoubleVector executeDoubleVector(LLVMAddress addr) {
             return LLVMMemory.getDoubleVector(addr, getSize());
         }
+
+        LLVMForeignReadNode createForeignRead() {
+            return new LLVMForeignReadNode(ForeignToLLVMType.VECTOR, getSize());
+        }
+
+        @Specialization
+        public Object executeForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+            return foreignRead.execute(frame, addr);
+        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -182,6 +249,15 @@ public class LLVMLoadVectorNode {
         @Specialization
         public LLVMAddressVector executeAddressVector(LLVMAddress addr) {
             return LLVMMemory.getAddressVector(addr, getSize());
+        }
+
+        LLVMForeignReadNode createForeignRead() {
+            return new LLVMForeignReadNode(ForeignToLLVMType.VECTOR, getSize());
+        }
+
+        @Specialization
+        public Object executeForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+            return foreignRead.execute(frame, addr);
         }
     }
 

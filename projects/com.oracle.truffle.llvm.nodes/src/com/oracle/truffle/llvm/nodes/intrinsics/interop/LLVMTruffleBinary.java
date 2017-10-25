@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -58,6 +59,11 @@ public final class LLVMTruffleBinary {
             checkLLVMTruffleObject(value);
             return ForeignAccess.sendIsBoxed(foreignIsBoxed, value.getObject());
         }
+
+        @Fallback
+        public Object fallback(@SuppressWarnings("unused") Object value) {
+            return false;
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
@@ -69,6 +75,11 @@ public final class LLVMTruffleBinary {
         public boolean executeIntrinsic(LLVMTruffleObject value) {
             checkLLVMTruffleObject(value);
             return ForeignAccess.sendIsExecutable(foreignIsExecutable, value.getObject());
+        }
+
+        @Fallback
+        public Object fallback(@SuppressWarnings("unused") Object value) {
+            return false;
         }
     }
 
@@ -82,6 +93,11 @@ public final class LLVMTruffleBinary {
             checkLLVMTruffleObject(value);
             return ForeignAccess.sendIsNull(foreignIsNull, value.getObject());
         }
+
+        @Fallback
+        public Object fallback(@SuppressWarnings("unused") Object value) {
+            return false;
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
@@ -93,6 +109,11 @@ public final class LLVMTruffleBinary {
         public boolean executeIntrinsic(LLVMTruffleObject value) {
             checkLLVMTruffleObject(value);
             return ForeignAccess.sendHasSize(foreignHasSize, value.getObject());
+        }
+
+        @Fallback
+        public Object fallback(@SuppressWarnings("unused") Object value) {
+            return false;
         }
     }
 }

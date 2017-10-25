@@ -85,8 +85,6 @@ import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCTypeIntrinsicsFactory.LLV
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMExitNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMSignalNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMSyscall;
-import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMTruffleOnlyIntrinsicsFactory.LLVMStrCmpNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMTruffleOnlyIntrinsicsFactory.LLVMStrlenNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMTruffleReadBytesNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMLoadLibraryNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotEvalNodeGen;
@@ -297,7 +295,6 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
         registerTruffleIntrinsics();
         registerSulongIntrinsics();
         registerAbortIntrinsics();
-        registerTruffleOnlyIntrinsics();
         registerRustIntrinsics();
         registerMathFunctionIntrinsics();
         registerMemoryFunctionIntrinsics(nodeFactory);
@@ -978,23 +975,6 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
             @Override
             protected RootCallTarget generate(FunctionType type) {
                 return wrap("@syscall", new LLVMSyscall());
-            }
-        });
-    }
-
-    protected void registerTruffleOnlyIntrinsics() {
-        factories.put("@strlen", new LLVMNativeIntrinsicFactory(true, true) {
-
-            @Override
-            protected RootCallTarget generate(FunctionType type) {
-                return wrap("@strlen", LLVMStrlenNodeGen.create(context.getNativeLookup().getNativeFunction("@strlen"), LLVMArgNodeGen.create(1)));
-            }
-        });
-        factories.put("@strcmp", new LLVMNativeIntrinsicFactory(true, true) {
-
-            @Override
-            protected RootCallTarget generate(FunctionType type) {
-                return wrap("@strcmp", LLVMStrCmpNodeGen.create(context.getNativeLookup().getNativeFunction("@strcmp"), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
     }

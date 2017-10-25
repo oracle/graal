@@ -82,7 +82,7 @@ double truffle_invoke_d(void *object, const char *name, ...);
 bool truffle_invoke_b(void *object, const char *name, ...);
 
 // GetSize
-int truffle_get_size(void *object);
+int truffle_get_size(const void *object);
 
 // Unbox
 int truffle_unbox_i(void *object);
