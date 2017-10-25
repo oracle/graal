@@ -42,6 +42,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public abstract class ForeignToLLVM extends LLVMNode {
@@ -95,6 +96,7 @@ public abstract class ForeignToLLVM extends LLVMNode {
         FLOAT,
         DOUBLE,
         POINTER,
+        VECTOR,
         ANY,
         VOID
     }
@@ -123,6 +125,8 @@ public abstract class ForeignToLLVM extends LLVMNode {
             return ForeignToLLVMType.POINTER;
         } else if (type instanceof VoidType) {
             return ForeignToLLVMType.VOID;
+        } else if (type instanceof VectorType) {
+            return ForeignToLLVMType.VECTOR;
         } else {
             throw UnsupportedTypeException.raise(new Object[]{type});
         }

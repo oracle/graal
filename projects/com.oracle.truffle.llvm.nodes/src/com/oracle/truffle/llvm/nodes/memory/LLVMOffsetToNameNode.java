@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.memory;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.memory.LLVMOffsetToNameNodeGen.FindMemberNodeGen;
@@ -69,6 +70,7 @@ public abstract class LLVMOffsetToNameNode extends Node {
 
     abstract static class FindMemberNode extends Node {
 
+        public static final String UNKNOWN_MEMBER = "<UNKNOWN>";
         final boolean dereferencedPointer;
 
         FindMemberNode(boolean dereferencedPointer) {
@@ -136,6 +138,12 @@ public abstract class LLVMOffsetToNameNode extends Node {
         @Specialization(replaces = "doStructCached")
         String doStruct(LLVMSourceStructLikeType type, long offset, @SuppressWarnings("unused") int elementSize) {
             return type.getElementNameByOffset(offset * Byte.SIZE);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        Object doFallback(LLVMSourceType type, long offset, int elementSize) {
+            return UNKNOWN_MEMBER;
         }
     }
 }

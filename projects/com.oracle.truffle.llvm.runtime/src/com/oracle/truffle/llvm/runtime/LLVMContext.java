@@ -60,6 +60,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
+import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -198,6 +199,10 @@ public final class LLVMContext {
 
     public int getIndexOffset(int index, AggregateType type) {
         return type.getOffsetOf(index, targetDataLayout);
+    }
+
+    public DataSpecConverter getDataSpecConverter() {
+        return targetDataLayout;
     }
 
     public void addBitcodeLibrary(String l) {

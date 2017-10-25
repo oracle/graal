@@ -29,7 +29,9 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -56,6 +58,14 @@ public abstract class LLVMTruffleStringAsCString extends LLVMIntrinsic {
     @Specialization
     public Object executeIntrinsic(LLVMAddress value) {
         return buildNativeBytes(LLVMTruffleIntrinsicUtil.readString(value));
+    }
+
+    @Fallback
+    @TruffleBoundary
+    @SuppressWarnings("unused")
+    public Object fallback(Object value) {
+        System.err.println("Invalid arguments to asCString-builtin.");
+        throw new IllegalArgumentException();
     }
 
     private static LLVMAddress buildNativeBytes(String str) {

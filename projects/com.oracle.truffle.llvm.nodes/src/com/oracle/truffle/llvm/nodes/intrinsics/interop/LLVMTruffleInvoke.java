@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -145,5 +146,13 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
                     @Cached("create()") LLVMGetStackNode getStack) {
         checkLLVMTruffleObject(value);
         return doInvoke(frame, value.getObject(), id, context, getStack);
+    }
+
+    @Fallback
+    @SuppressWarnings("unused")
+    public Object fallback(VirtualFrame frame, Object value, Object id) {
+        CompilerDirectives.transferToInterpreter();
+        System.err.println("Invalid arguments to invoke-builtin.");
+        throw new IllegalArgumentException();
     }
 }

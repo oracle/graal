@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -45,14 +46,9 @@ public abstract class LLVMTruffleIsTruffleObject extends LLVMIntrinsic {
         return object.getOffset() == 0;
     }
 
-    @Specialization(guards = "notTruffleObject(object)")
+    @Fallback
     public boolean fallback(Object object) {
         return false;
-    }
-
-    // Workaround Truffle DSL bug, @Fallback should be used instead
-    protected boolean notTruffleObject(Object object) {
-        return !(object instanceof LLVMTruffleObject);
     }
 
 }
