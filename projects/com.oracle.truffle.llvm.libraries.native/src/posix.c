@@ -183,6 +183,16 @@ int __sulong_posix_getsockname(int sockfd, struct sockaddr* addr, socklen_t* add
 	CALL(int, getsockname, sockfd, addr, addrlen);
 }
 
+int __sulong_posix_getsockopt(int sockfd, int level, int optname, void* optval, socklen_t* optlen)
+{
+	CALL(int, getsockopt, sockfd, level, optname, optval, optlen);
+}
+
+int __sulong_posix_setsockopt(int sockfd, int level, int optname, const void* optval, socklen_t optlen)
+{
+	CALL(int, setsockopt, sockfd, level, optname, optval, optlen);
+}
+
 #else
 
 #include <stdio.h>
@@ -298,6 +308,16 @@ int __sulong_posix_bind(int sockfd, const struct sockaddr* addr, socklen_t addrl
 }
 
 int __sulong_posix_getsockname(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
+{
+	ERROR();
+}
+
+int __sulong_posix_getsockopt(int sockfd, int level, int optname, void* optval, socklen_t* optlen)
+{
+	ERROR();
+}
+
+int __sulong_posix_setsockopt(int sockfd, int level, int optname, const void* optval, socklen_t optlen)
 {
 	ERROR();
 }

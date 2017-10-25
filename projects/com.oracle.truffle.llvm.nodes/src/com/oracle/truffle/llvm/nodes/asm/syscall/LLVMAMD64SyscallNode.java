@@ -98,6 +98,10 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                 return LLVMAMD64SyscallBindNodeGen.create();
             case LLVMAMD64Syscall.SYS_getsockname:
                 return LLVMAMD64SyscallGetsocknameNodeGen.create();
+            case LLVMAMD64Syscall.SYS_setsockopt:
+                return LLVMAMD64SyscallSetsockoptNodeGen.create();
+            case LLVMAMD64Syscall.SYS_getsockopt:
+                return LLVMAMD64SyscallGetsockoptNodeGen.create();
             case LLVMAMD64Syscall.SYS_exit:
             case LLVMAMD64Syscall.SYS_exit_group: // TODO: implement difference to SYS_exit
                 return new LLVMAMD64SyscallExitNode();

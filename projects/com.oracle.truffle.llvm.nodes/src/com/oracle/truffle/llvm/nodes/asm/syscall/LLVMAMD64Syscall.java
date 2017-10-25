@@ -66,6 +66,9 @@ public class LLVMAMD64Syscall {
     public static final int SYS_socketpair = 53;
     public static final int SYS_setsockopt = 54;
     public static final int SYS_getsockopt = 55;
+    public static final int SYS_clone = 56;
+    public static final int SYS_fork = 57;
+    public static final int SYS_vfork = 58;
     public static final int SYS_exit = 60;
     public static final int SYS_uname = 63;
     public static final int SYS_fcntl = 72;
