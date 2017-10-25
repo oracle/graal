@@ -550,15 +550,14 @@ public abstract class TruffleInstrument {
         }
 
         /**
-         * Find a list of scopes enclosing the given {@link Node node}. There is at least one scope
-         * provided, that corresponds to the enclosing function. The iteration order corresponds
-         * with the scope nesting, from the inner-most to the outer-most. The scopes contain
-         * variables valid at the provided node.
+         * Find a list of local scopes enclosing the given {@link Node node}. There is at least one
+         * scope provided, that corresponds to the enclosing function. The scopes contain variables
+         * valid at the provided node and have a relation to it. Global top scopes are provided by
+         * {@link #findTopScopes(java.lang.String)}. The iteration order corresponds with the scope
+         * nesting, from the inner-most to the outer-most.
          * <p>
-         * In general, there can be a different list of scopes with different variables and
-         * arguments returned for different {@link Frame} instances, as scopes may depend on runtime
-         * information. Known lexical scopes are returned when <code>frame</code> argument is
-         * <code>null</code>.
+         * Scopes may depend on the information provided by the frame. <br/>
+         * Lexical scopes are returned when <code>frame</code> argument is <code>null</code>.
          *
          * @param node a node to get the enclosing scopes for. The node needs to be inside a
          *            {@link RootNode} associated with a language.
@@ -566,11 +565,11 @@ public abstract class TruffleInstrument {
          *            when the program is not running, or is not suspended at the node's location.
          * @return an {@link Iterable} providing list of scopes from the inner-most to the
          *         outer-most.
-         * @see TruffleLanguage#findScopes(java.lang.Object, com.oracle.truffle.api.nodes.Node,
+         * @see TruffleLanguage#findLocalScopes(java.lang.Object, com.oracle.truffle.api.nodes.Node,
          *      com.oracle.truffle.api.frame.Frame)
          * @since 0.30
          */
-        public Iterable<Scope> findScopes(Node node, Frame frame) {
+        public Iterable<Scope> findLocalScopes(Node node, Frame frame) {
             RootNode rootNode = node.getRootNode();
             if (rootNode == null) {
                 throw new IllegalArgumentException("The node " + node + " does not have a RootNode.");
@@ -580,7 +579,7 @@ public abstract class TruffleInstrument {
                 throw new IllegalArgumentException("The root node " + rootNode + " does not have a language associated.");
             }
             final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(languageInfo);
-            Iterable<Scope> langScopes = AccessorInstrumentHandler.langAccess().findScopes(env, node, frame);
+            Iterable<Scope> langScopes = AccessorInstrumentHandler.langAccess().findLocalScopes(env, node, frame);
             assert langScopes != null : languageInfo.getId();
             return langScopes;
         }
@@ -592,8 +591,7 @@ public abstract class TruffleInstrument {
          * @param languageId a language id.
          * @return a list of top scopes, can be empty when no top scopes are provided by the
          *         language
-         * @see TruffleLanguage#findScopes(java.lang.Object, com.oracle.truffle.api.nodes.Node,
-         *      com.oracle.truffle.api.frame.Frame)
+         * @see TruffleLanguage#findTopScopes(java.lang.Object)
          * @since 0.30
          */
         public Iterable<Scope> findTopScopes(String languageId) {

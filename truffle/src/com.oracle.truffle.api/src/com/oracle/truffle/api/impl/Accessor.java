@@ -272,7 +272,7 @@ public abstract class Accessor {
 
         public abstract void finalizeContext(Env localEnv);
 
-        public abstract Iterable<Scope> findScopes(Env env, Node node, Frame frame);
+        public abstract Iterable<Scope> findLocalScopes(Env env, Node node, Frame frame);
 
         public abstract Iterable<Scope> findTopScopes(Env env);
 

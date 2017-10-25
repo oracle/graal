@@ -184,7 +184,7 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
         }
         Debugger debugger = event.getSession().getDebugger();
         MaterializedFrame frame = findTruffleFrame();
-        Iterable<Scope> scopes = debugger.getEnv().findScopes(node, frame);
+        Iterable<Scope> scopes = debugger.getEnv().findLocalScopes(node, frame);
         Iterator<Scope> it = scopes.iterator();
         if (!it.hasNext()) {
             return null;

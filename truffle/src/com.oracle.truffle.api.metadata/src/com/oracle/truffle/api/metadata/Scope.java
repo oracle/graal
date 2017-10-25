@@ -41,7 +41,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  *
  * @since 0.26
  * @deprecated Use
- *             {@link Env#findScopes(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.Frame)}
+ *             {@link Env#findLocalScopes(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.Frame)}
  *             or {@link Env#findTopScopes(java.lang.String)} instead.
  */
 @Deprecated
@@ -74,7 +74,7 @@ public final class Scope {
      *      com.oracle.truffle.api.frame.Frame)
      * @since 0.26
      * @deprecated Use
-     *             {@link TruffleInstrument.Env#findScopes(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.Frame)}
+     *             {@link TruffleInstrument.Env#findLocalScopes(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.Frame)}
      *             instead.
      */
     @Deprecated
@@ -129,7 +129,7 @@ public final class Scope {
 
     /**
      * Get variables declared in this scope and valid at the {@link Node} passed to
-     * <code>findScopes(Env, Node, Frame)</code>. In general, there can be different variables
+     * <code>findLocalScopes(Env, Node, Frame)</code>. In general, there can be different variables
      * returned when different {@link Frame} instances are provided.
      *
      * @param frame The current frame, or <code>null</code> for lexical access when the program is

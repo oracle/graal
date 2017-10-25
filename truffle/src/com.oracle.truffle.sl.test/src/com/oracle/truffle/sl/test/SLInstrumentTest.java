@@ -122,8 +122,8 @@ public class SLInstrumentTest {
             @Override
             public void onEnter(EventContext context, VirtualFrame frame) {
                 Node node = context.getInstrumentedNode();
-                Iterable<Scope> lexicalScopes = env.findScopes(node, null);
-                Iterable<Scope> dynamicScopes = env.findScopes(node, frame);
+                Iterable<Scope> lexicalScopes = env.findLocalScopes(node, null);
+                Iterable<Scope> dynamicScopes = env.findLocalScopes(node, frame);
                 try {
                     verifyLexicalScopes(lexicalScopes, dynamicScopes, context.getInstrumentedSourceSection().getStartLine(), frame.materialize());
                 } catch (ThreadDeath t) {

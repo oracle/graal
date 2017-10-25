@@ -129,8 +129,8 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
 
         @SuppressWarnings("rawtypes")
         public void doTestScope(TruffleInstrument.Env env, Node node, VirtualFrame frame) throws Exception {
-            Iterable<Scope> lscopes = env.findScopes(node, null); // lexical
-            Iterable<Scope> dscopes = env.findScopes(node, frame); // dynamic
+            Iterable<Scope> lscopes = env.findLocalScopes(node, null); // lexical
+            Iterable<Scope> dscopes = env.findLocalScopes(node, frame); // dynamic
             assertNotNull(lscopes);
             assertNotNull(dscopes);
             Iterator<Scope> iterator = lscopes.iterator();
@@ -243,7 +243,7 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
         }
 
         @Override
-        public Iterable<Scope> findScopes(Object context, Node node, Frame frame) {
+        public Iterable<Scope> findLocalScopes(Object context, Node node, Frame frame) {
             return new Iterable<Scope>() {
                 @Override
                 public Iterator<Scope> iterator() {
@@ -382,7 +382,7 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
         public void doTestScope(TruffleInstrument.Env env, Node node, VirtualFrame frame) {
             assertNull(CustomScope.LAST_INSTANCE);
             assertEquals(0, CustomScope.NUM_INSTANCES);
-            Iterable<Scope> lscopes = env.findScopes(node, null);
+            Iterable<Scope> lscopes = env.findLocalScopes(node, null);
             Iterator<Scope> literator = lscopes.iterator();
             assertNotNull(CustomScope.LAST_INSTANCE);
             assertEquals(1, CustomScope.NUM_INSTANCES);
@@ -391,7 +391,7 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
             assertEquals(1, CustomScope.NUM_INSTANCES);
             testScopeContent(lscope, node, null);
 
-            Iterable<Scope> dscopes = env.findScopes(node, frame);
+            Iterable<Scope> dscopes = env.findLocalScopes(node, frame);
             Iterator<Scope> diterator = dscopes.iterator();
             assertEquals(2, CustomScope.NUM_INSTANCES);
             Scope dscope = diterator.next();

@@ -726,12 +726,13 @@ public abstract class TruffleLanguage<C> {
     protected abstract boolean isObjectOfLanguage(Object object);
 
     /**
-     * Find a hierarchy of scopes enclosing the given {@link Node node}. There must be at least one
-     * scope provided, that corresponds to the enclosing function. The language might provide
-     * additional block scopes, closure scopes, etc. The returned scopes have relation to the given
-     * <code>node</code>, global top scopes are provided by {@link #findTopScopes(java.lang.Object)}
-     * . The scope hierarchy should correspond with the scope nesting, from the inner-most to the
-     * outer-most. The scopes are expected to contain variables valid at the associated node.
+     * Find a hierarchy of local scopes enclosing the given {@link Node node}. There must be at
+     * least one scope provided, that corresponds to the enclosing function. The language might
+     * provide additional block scopes, closure scopes, etc. The returned scopes have relation to
+     * the given <code>node</code>, global top scopes are provided by
+     * {@link #findTopScopes(java.lang.Object)}. The scope hierarchy should correspond with the
+     * scope nesting, from the inner-most to the outer-most. The scopes are expected to contain
+     * variables valid at the given node.
      * <p>
      * Scopes may depend on the information provided by the frame. <br/>
      * Lexical scopes are returned when <code>frame</code> argument is <code>null</code>.
@@ -740,26 +741,26 @@ public abstract class TruffleLanguage<C> {
      * {@link FrameDescriptor}'s {@link FrameSlot}s is provided by default.
      * <p>
      * The
-     * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#findScopes(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.Frame)}
+     * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#findLocalScopes(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.Frame)}
      * provides result of this method to instruments.
      *
      * @param context the current context of the language
-     * @param node a node to find the enclosing scopes for, or <code>null</code> to find top scopes.
-     *            The node, if any, is inside a {@link RootNode} associated with this language.
+     * @param node a node to find the enclosing scopes for. The node, is inside a {@link RootNode}
+     *            associated with this language.
      * @param frame The current frame the node is in, or <code>null</code> for lexical access when
      *            the program is not running, or is not suspended at the node's location.
      * @return an iterable with scopes in their nesting order from the inner-most to the outer-most.
      * @since 0.30
      */
-    protected Iterable<Scope> findScopes(C context, Node node, Frame frame) {
+    protected Iterable<Scope> findLocalScopes(C context, Node node, Frame frame) {
         assert node != null;
         return AccessAPI.engineAccess().createDefaultLexicalScope(node, frame);
     }
 
     /**
-     * Find a hierarchy of top-most scope(s) of the language, if any.
+     * Find a hierarchy of top-most scopes of the language, if any.
      * <p>
-     * When not overridden and {@link #getLanguageGlobal(java.lang.Object) global object} is a
+     * When not overridden and the {@link #getLanguageGlobal(java.lang.Object) global object} is a
      * <code>TruffleObject</code> with keys, a single scope is provided by default, whose
      * {@link Scope#getVariables() getVariables()} returns the global object.
      * <p>
@@ -1521,9 +1522,9 @@ public abstract class TruffleLanguage<C> {
             return spi.isObjectOfLanguage(rawValue);
         }
 
-        Iterable<Scope> findScopes(Node node, Frame frame) {
+        Iterable<Scope> findLocalScopes(Node node, Frame frame) {
             assert node != null;
-            return spi.findScopes(context, node, frame);
+            return spi.findLocalScopes(context, node, frame);
         }
 
         Iterable<Scope> findTopScopes() {
@@ -1960,8 +1961,8 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public Iterable<Scope> findScopes(Env env, Node node, Frame frame) {
-            return env.findScopes(node, frame);
+        public Iterable<Scope> findLocalScopes(Env env, Node node, Frame frame) {
+            return env.findLocalScopes(node, frame);
         }
 
         @Override

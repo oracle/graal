@@ -42,7 +42,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  *
  * @since 0.26
  * @deprecated Use
- *             {@link TruffleLanguage#findScopes(java.lang.Object, com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.Frame)}
+ *             {@link TruffleLanguage#findLocalScopes(java.lang.Object, com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.Frame)}
  *             instead.
  */
 @Deprecated

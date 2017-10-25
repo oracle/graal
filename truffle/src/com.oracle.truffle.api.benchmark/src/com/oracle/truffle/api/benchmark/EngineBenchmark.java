@@ -209,9 +209,9 @@ public class EngineBenchmark extends TruffleBenchmark {
         }
 
         @Override
-        protected Iterable<Scope> findScopes(BenchmarkContext context, Node node, Frame frame) {
+        protected Iterable<Scope> findLocalScopes(BenchmarkContext context, Node node, Frame frame) {
             if (node != null) {
-                return super.findScopes(context, node, frame);
+                return super.findLocalScopes(context, node, frame);
             } else {
                 return context.topScopes;
             }
