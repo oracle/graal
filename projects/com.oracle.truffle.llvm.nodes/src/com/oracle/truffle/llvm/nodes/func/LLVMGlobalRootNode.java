@@ -33,7 +33,6 @@ import java.util.Deque;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -46,6 +45,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMAbort;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMSignal;
 import com.oracle.truffle.llvm.runtime.GuestLanguageRuntimeException;
@@ -69,12 +69,12 @@ public class LLVMGlobalRootNode extends RootNode {
 
     @Child private LLVMDispatchNode executeDestructor = LLVMDispatchNodeGen.create(new FunctionType(VoidType.INSTANCE, new Type[]{null, new PointerType(null)}, false));
     private final DirectCallNode main;
-    @CompilationFinal(dimensions = 1) protected final Object[] arguments;
+    @Child LLVMPrepareArgumentsNode prepareArguments;
 
-    public LLVMGlobalRootNode(LLVMLanguage language, FrameDescriptor descriptor, CallTarget main, Object... arguments) {
+    public LLVMGlobalRootNode(LLVMLanguage language, FrameDescriptor descriptor, Source source, Type[] types, CallTarget main) {
         super(language, descriptor);
         this.main = Truffle.getRuntime().createDirectCallNode(main);
-        this.arguments = arguments;
+        this.prepareArguments = new LLVMPrepareArgumentsNode(source, types);
     }
 
     @Override
@@ -86,6 +86,7 @@ public class LLVMGlobalRootNode extends RootNode {
                 Object result = null;
                 assert LLVMSignal.getNumberOfRegisteredSignals() == 0;
 
+                Object[] arguments = prepareArguments.execute(frame);
                 Object[] realArgs = new Object[arguments.length + LLVMCallNode.USER_ARGUMENT_OFFSET];
                 realArgs[0] = basePointer.get();
                 System.arraycopy(arguments, 0, realArgs, LLVMCallNode.USER_ARGUMENT_OFFSET, arguments.length);

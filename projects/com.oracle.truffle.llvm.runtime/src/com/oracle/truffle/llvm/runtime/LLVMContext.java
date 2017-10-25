@@ -79,7 +79,8 @@ public final class LLVMContext {
     private final NativeLookup nativeLookup;
     private final LLVMNativeFunctions nativeFunctions;
     private final LLVMThreadingStack threadingStack;
-    private Object[] mainArguments;
+    private final Object[] mainArguments;
+    private final Map<String, String> environment;
     private Source mainSourceFile;
     private boolean bcLibrariesLoaded;
     private NativeIntrinsicProvider nativeIntrinsicsFactory;
@@ -166,6 +167,7 @@ public final class LLVMContext {
 
         Object mainArgs = env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
         this.mainArguments = mainArgs == null ? env.getApplicationArguments() : (Object[]) mainArgs;
+        this.environment = System.getenv();
 
         addLibraryPaths(SulongEngineOption.getPolyglotOptionSearchPaths(env));
         if (nativeLookup != null) {
@@ -419,12 +421,12 @@ public final class LLVMContext {
         return threadingStack;
     }
 
-    public void setMainArguments(Object[] mainArguments) {
-        this.mainArguments = mainArguments;
-    }
-
     public Object[] getMainArguments() {
         return mainArguments;
+    }
+
+    public Map<String, String> getEnvironment() {
+        return environment;
     }
 
     public void setMainSourceFile(Source mainSourceFile) {
