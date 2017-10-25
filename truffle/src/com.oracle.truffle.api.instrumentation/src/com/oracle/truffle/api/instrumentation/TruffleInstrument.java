@@ -31,12 +31,9 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -525,28 +522,11 @@ public abstract class TruffleInstrument {
         /**
          * Returns the polyglot scope - symbols explicitly exported by languages.
          *
+         * @return a read-only map of symbol names and their values
          * @since 0.30
          */
         public Map<String, ? extends Object> getExportedSymbols() {
-            return new AbstractMap<String, Object>() {
-                private final Map<String, ?> symbols = AccessorInstrumentHandler.engineAccess().getExportedSymbols(vmObject);
-
-                @Override
-                public Set<Map.Entry<String, Object>> entrySet() {
-                    Set<Map.Entry<String, Object>> entries = new LinkedHashSet<>();
-                    for (Map.Entry<String, ?> symbol : symbols.entrySet()) {
-                        Object value = AccessorInstrumentHandler.engineAccess().toGuestValue(symbol.getValue(), vmObject);
-                        entries.add(new SimpleImmutableEntry<>(symbol.getKey(), value));
-                    }
-                    return entries;
-                }
-
-                @Override
-                public Object remove(Object key) {
-                    throw new UnsupportedOperationException();
-                }
-
-            };
+            return AccessorInstrumentHandler.engineAccess().getExportedSymbols(vmObject);
         }
 
         /**

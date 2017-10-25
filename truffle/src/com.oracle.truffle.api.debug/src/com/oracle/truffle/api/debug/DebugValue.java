@@ -225,7 +225,7 @@ public abstract class DebugValue {
         return arrayList;
     }
 
-    final LanguageInfo getTheLanguage() {
+    final LanguageInfo resolveLanguage() {
         LanguageInfo languageInfo;
         if (preferredLanguage != null) {
             languageInfo = preferredLanguage;
@@ -252,7 +252,7 @@ public abstract class DebugValue {
             return null;
         }
         TruffleInstrument.Env env = getDebugger().getEnv();
-        LanguageInfo languageInfo = getTheLanguage();
+        LanguageInfo languageInfo = resolveLanguage();
         if (languageInfo != null) {
             obj = env.findMetaObject(languageInfo, obj);
             if (obj != null) {
@@ -274,7 +274,7 @@ public abstract class DebugValue {
             return null;
         }
         TruffleInstrument.Env env = getDebugger().getEnv();
-        LanguageInfo languageInfo = getTheLanguage();
+        LanguageInfo languageInfo = resolveLanguage();
         if (languageInfo != null) {
             return env.findSourceLocation(languageInfo, obj);
         } else {
@@ -376,7 +376,7 @@ public abstract class DebugValue {
             }
             if (clazz == String.class) {
                 Object val = get();
-                LanguageInfo languageInfo = getTheLanguage();
+                LanguageInfo languageInfo = resolveLanguage();
                 String stringValue;
                 if (languageInfo == null) {
                     stringValue = val.toString();
@@ -467,7 +467,7 @@ public abstract class DebugValue {
             checkValid();
             Object propertyKey = property.getKey();
             // non-String property key
-            LanguageInfo languageInfo = getTheLanguage();
+            LanguageInfo languageInfo = resolveLanguage();
             if (languageInfo != null) {
                 name = getDebugger().getEnv().toString(languageInfo, propertyKey);
             } else {

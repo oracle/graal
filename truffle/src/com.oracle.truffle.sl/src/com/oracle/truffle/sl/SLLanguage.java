@@ -204,9 +204,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     @Override
     public Iterable<Scope> findLocalScopes(SLContext context, Node node, Frame frame) {
         final SLLexicalScope scope = SLLexicalScope.createScope(node);
-        if (scope == null) {
-            return Collections.emptyList();
-        }
         return new Iterable<Scope>() {
             @Override
             public Iterator<Scope> iterator() {

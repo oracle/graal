@@ -30,8 +30,9 @@
  * Services declared in this package are registered by directly implementing the
  * {@link com.oracle.truffle.api.TruffleLanguage} with the appropriate service interface.
  * <p>
- * This package was deprecated since 0.30 in favor of {@link com.oracle.truffle.api.Scope} class and
- * {@link com.oracle.truffle.api.TruffleLanguage#findLocalScopes}.
+ * This package was deprecated since 0.30 in favor of {@link com.oracle.truffle.api.Scope} class,
+ * {@link com.oracle.truffle.api.TruffleLanguage#findLocalScopes} and
+ * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#findLocalScopes}.
  *
  * @since 0.26
  * @deprecated

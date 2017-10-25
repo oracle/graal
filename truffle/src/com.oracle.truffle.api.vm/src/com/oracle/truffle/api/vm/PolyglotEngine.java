@@ -1722,10 +1722,11 @@ public class PolyglotEngine {
                         if (value instanceof DirectValue) {
                             value = ((DirectValue) value).value;
                         }
-                        Map.Entry<String, Object> valueEntry = new AbstractMap.SimpleEntry<>(name, value);
+                        value = toGuestValue(value, vmObject);
+                        Map.Entry<String, Object> valueEntry = new AbstractMap.SimpleImmutableEntry<>(name, value);
                         valueEntries.add(valueEntry);
                     }
-                    return valueEntries;
+                    return Collections.unmodifiableSet(valueEntries);
                 }
 
                 @Override

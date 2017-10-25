@@ -31,12 +31,14 @@ import static com.oracle.truffle.api.vm.VMAccessor.NODES;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
+import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.graalvm.options.OptionValues;
@@ -465,14 +467,31 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public Map<String, ? extends Value> getExportedSymbols(Object vmObject) {
+        public Map<String, ? extends Object> getExportedSymbols(Object vmObject) {
             PolyglotContextImpl currentContext = PolyglotContextImpl.current();
             if (currentContext == null) {
                 return Collections.emptyMap();
             }
+            Set<Map.Entry<String, Object>> entries = new LinkedHashSet<>();
             synchronized (currentContext) {
-                return Collections.unmodifiableMap(new HashMap<>(currentContext.polyglotScope));
+                for (Map.Entry<String, ?> symbol : currentContext.polyglotScope.entrySet()) {
+                    Object value = toGuestValue(symbol.getValue(), vmObject);
+                    entries.add(new AbstractMap.SimpleImmutableEntry<>(symbol.getKey(), value));
+                }
             }
+            Set<Map.Entry<String, Object>> mapEntries = Collections.unmodifiableSet(entries);
+            return new AbstractMap<String, Object>() {
+
+                @Override
+                public Set<Map.Entry<String, Object>> entrySet() {
+                    return mapEntries;
+                }
+
+                @Override
+                public Object remove(Object key) {
+                    throw new UnsupportedOperationException();
+                }
+            };
         }
 
         @SuppressWarnings("deprecation")

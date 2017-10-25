@@ -42,6 +42,7 @@ package com.oracle.truffle.sl.nodes.local;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -114,7 +115,7 @@ public final class SLLexicalScope {
             block = findChildrenBlock(node);
             if (block == null) {
                 // Corrupted SL AST, no block was found
-                return null;
+                return new SLLexicalScope(null, null, (SLBlockNode) null);
             }
             node = null; // node is above the block
         }
@@ -244,9 +245,11 @@ public final class SLLexicalScope {
         if (varSlots == null) {
             if (current != null) {
                 varSlots = collectVars(block, current);
-            } else {
+            } else if (block != null) {
                 // Provide the arguments only when the current node is above the block
                 varSlots = collectArgs(block);
+            } else {
+                varSlots = Collections.emptyMap();
             }
         }
         return varSlots;

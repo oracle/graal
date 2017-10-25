@@ -66,7 +66,7 @@ public final class Scope {
      *
      * @param name name of the scope, a name description like block, name of a function, closure,
      *            script, module, etc.
-     * @param variables variables declared in this scope
+     * @param variables variables declared in this scope, must not be <code>null</code>
      * @since 0.30
      */
     public static Builder newBuilder(String name, Object variables) {
@@ -108,8 +108,8 @@ public final class Scope {
     }
 
     /**
-     * Get arguments of this scope. There might be different arguments returned in {@link Node}
-     * -related scopes when different {@link Frame} instances were provided.
+     * Get arguments of this scope. There might be different arguments returned in local scopes when
+     * different {@link Frame} instances were provided.
      *
      * @return A {@link com.oracle.truffle.api.interop.TruffleObject} containing the arguments as
      *         its properties for named arguments, or as its array for unnamed arguments. A
@@ -135,8 +135,9 @@ public final class Scope {
         private final Object variables;
 
         Builder(String name, Object variables) {
-            this.name = name;
+            assert name != null;
             assert TruffleLanguage.AccessAPI.interopAccess().isTruffleObject(variables) : Objects.toString(variables);
+            this.name = name;
             this.variables = variables;
         }
 

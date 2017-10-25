@@ -67,6 +67,9 @@ final class DefaultScope {
     static Iterable<Scope> lexicalScope(Node node, Frame frame) {
         RootNode root = node.getRootNode();
         String name = root.getName();
+        if (name == null) {
+            name = "local";
+        }
         return Collections.singletonList(Scope.newBuilder(name, getVariables(root, frame)).node(root).arguments(getArguments(frame)).build());
     }
 
