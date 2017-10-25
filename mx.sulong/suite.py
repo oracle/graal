@@ -295,6 +295,15 @@ suite = {
         "OS" : "<os>",
       },
     },
+    "com.oracle.truffle.llvm.tests.libc" : {
+      "subDir" : "tests",
+      "class" : "SulongTestSuite",
+      "variants" : ['O0'],
+      "buildEnv" : {
+        "LDFLAGS" : "-lm",
+        "OS" : "<os>",
+      },
+    },
   },
 
   "distributions" : {
@@ -368,10 +377,10 @@ suite = {
         "com.oracle.truffle.llvm.tests.interop",
         "com.oracle.truffle.llvm.tests.sulong",
         "com.oracle.truffle.llvm.tests.sulongcpp",
+        "com.oracle.truffle.llvm.tests.libc",
       ],
       "license" : "BSD-new",
     },
-
     "SULONG_DOC": {
         "native": True, # Not Java
         "relpath": True,

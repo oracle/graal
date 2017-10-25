@@ -29,7 +29,6 @@ _parserTortureSuiteDirRoot = os.path.join(_gccSuiteDir, "gcc-5.2.0/gcc/testsuite
 _nwccSuiteDir = os.path.join(_testDir, "nwcc/")
 _nwccSuiteDirRoot2 = os.path.join(_nwccSuiteDir, "nwcc_0.8.3/tests/")
 _nwccSuiteDirRoot1 = os.path.join(_nwccSuiteDir, "nwcc_0.8.3/test2/")
-_libcSuiteDir = os.path.join(_testDir, "libc/")
 
 def deleteCachedTests(folderInCache):
     p = os.path.join(_cacheDir, folderInCache)
@@ -113,11 +112,6 @@ def runTypeTests(vmArgs):
     """runs the Type test suite"""
     return run(vmArgs, "com.oracle.truffle.llvm.types.floating.test")
 
-def runLibcTests(vmArgs):
-    """runs the libc test suite"""
-    compileSuite(['libc'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.LibcSuite")
-
 def runPipeTests(vmArgs):
     """runs the Pipe test suite"""
     return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.CaptureOutputTest")
@@ -170,12 +164,6 @@ def compileParserTurtureSuite():
     print("Compiling parser torture files with C ", end='')
     mx_tools.printProgress(mx_tools.multicompileFolder(_parserTortureSuiteDirRoot, _cacheDir, [mx_tools.Tool.CLANG_C], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
 
-def compileLibcSuite():
-    print("Compiling libc suite reference executables ", end='')
-    mx_tools.printProgress(mx_tools.multicompileRefFolder(_libcSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_C], ['-Iinclude', '-lm']))
-    print("Compiling libc files with C ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_libcSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_C], ['-Iinclude', '-lm'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC))
-
 def compileShootoutSuite():
     ensureShootoutsExist()
     excludes = mx_tools.collectExcludePattern(os.path.join(_benchmarksgameSuiteDir, "configs/"))
@@ -207,7 +195,6 @@ testSuites = {
     'parserTorture' : (compileParserTurtureSuite, runParserTortureSuite),
     'type' : (None, runTypeTests),
     'pipe' : (None, runPipeTests),
-    'libc' : (compileLibcSuite, runLibcTests),
 }
 
 
