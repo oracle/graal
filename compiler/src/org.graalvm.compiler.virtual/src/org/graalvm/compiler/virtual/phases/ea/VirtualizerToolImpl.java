@@ -145,14 +145,14 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
         ValueNode oldValue = getEntry(virtual, index);
         boolean canVirtualize = entryKind == accessKind || (entryKind == accessKind.getStackKind() && virtual instanceof VirtualInstanceNode);
         if (!canVirtualize) {
-            if (entryKind == JavaKind.Long && oldValue.getStackKind() == newValue.getStackKind()) {
+            if (entryKind == JavaKind.Long && oldValue.getStackKind() == newValue.getStackKind() && oldValue.getStackKind().isPrimitive()) {
                 /*
                  * Special case: If the entryKind is long, allow arbitrary kinds as long as a value
                  * of the same kind is already there. This can only happen if some other node
                  * initialized the entry with a value of a different kind. One example where this
                  * happens is the Truffle NewFrameNode.
                  */
-                getDebug().log(DebugContext.DETAILED_LEVEL, "virtualizing %s for long entry", this);
+                getDebug().log(DebugContext.DETAILED_LEVEL, "virtualizing %s with primitive of kind %s in long entry ", current, oldValue.getStackKind());
                 canVirtualize = true;
             } else if (entryKind == JavaKind.Int && (accessKind == JavaKind.Long || accessKind == JavaKind.Double) && offset % 8 == 0) {
                 /*
@@ -163,17 +163,18 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
                 if (nextIndex != -1) {
                     canVirtualize = true;
                     assert nextIndex == index + 1 : "expected to be sequential";
+                    getDebug().log(DebugContext.DETAILED_LEVEL, "virtualizing %s for double word stored in two ints", current);
                 }
             }
         }
 
         if (canVirtualize) {
-            getDebug().log(DebugContext.DETAILED_LEVEL, "virtualizing %s for entryKind %s and access kind %s", this, entryKind, accessKind);
+            getDebug().log(DebugContext.DETAILED_LEVEL, "virtualizing %s for entryKind %s and access kind %s", current, entryKind, accessKind);
             state.setEntry(virtual.getObjectId(), index, newValue);
             if (entryKind == JavaKind.Int) {
                 if (oldValue.getStackKind() == JavaKind.Double || oldValue.getStackKind() == JavaKind.Long) {
                     // Splitting double word constant by storing over it with an int
-                    getDebug().log(DebugContext.DETAILED_LEVEL, "producing second half of double word value %s", this);
+                    getDebug().log(DebugContext.DETAILED_LEVEL, "virtualizing %s producing second half of double word value %s", current, oldValue);
                     ValueNode secondHalf = UnpackEndianHalfNode.create(oldValue, false);
                     addNode(secondHalf);
                     state.setEntry(virtual.getObjectId(), index + 1, secondHalf);
@@ -185,8 +186,8 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
             }
             if (oldValue.isConstant() && oldValue.asConstant().equals(JavaConstant.forIllegal())) {
                 // Storing into second half of double, so replace previous value
-                getDebug().log(DebugContext.DETAILED_LEVEL, "producing first half of double word value %s", this);
                 ValueNode previous = getEntry(virtual, index - 1);
+                getDebug().log(DebugContext.DETAILED_LEVEL, "virtualizing %s producing first half of double word value %s", current, previous);
                 ValueNode firstHalf = UnpackEndianHalfNode.create(previous, true);
                 addNode(firstHalf);
                 state.setEntry(virtual.getObjectId(), index - 1, firstHalf);
