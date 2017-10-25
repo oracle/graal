@@ -178,6 +178,11 @@ int __sulong_posix_bind(int sockfd, const struct sockaddr* addr, socklen_t addrl
 	CALL(int, bind, sockfd, addr, addrlen);
 }
 
+int __sulong_posix_getsockname(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
+{
+	CALL(int, getsockname, sockfd, addr, addrlen);
+}
+
 #else
 
 #include <stdio.h>
@@ -288,6 +293,11 @@ int __sulong_posix_pipe(int pipefd[2])
 }
 
 int __sulong_posix_bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
+{
+	ERROR();
+}
+
+int __sulong_posix_getsockname(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
 {
 	ERROR();
 }
