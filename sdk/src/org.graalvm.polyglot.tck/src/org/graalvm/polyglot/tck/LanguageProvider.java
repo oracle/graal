@@ -36,7 +36,7 @@ import org.graalvm.polyglot.Value;
  * implementations are loaded by the {@link ServiceLoader} and should be registered in the
  * 'META-INF/services/org.graalvm.polyglot.tck.LanguageProvider'.
  *
- * @since 0.29
+ * @since 0.30
  */
 public interface LanguageProvider {
 
@@ -45,7 +45,7 @@ public interface LanguageProvider {
      * the tested language.
      *
      * @return the language identification
-     * @since 0.29
+     * @since 0.30
      */
     String getId();
 
@@ -61,7 +61,7 @@ public interface LanguageProvider {
      *
      * @param context the context for a guest language code literal evaluation
      * @return the {@link Value} representing the identity function
-     * @since 0.29
+     * @since 0.30
      */
     Value createIdentityFunction(Context context);
 
@@ -79,7 +79,7 @@ public interface LanguageProvider {
      *
      * @param context the context for a guest language code literal evaluation
      * @return factories creating the language data types
-     * @since 0.29
+     * @since 0.30
      */
     Collection<? extends Snippet> createValueConstructors(Context context);
 
@@ -97,7 +97,7 @@ public interface LanguageProvider {
      *
      * @param context the context for a guest language code literal evaluation
      * @return factories creating the language expressions
-     * @since 0.29
+     * @since 0.30
      */
     Collection<? extends Snippet> createExpressions(Context context);
 
@@ -115,7 +115,7 @@ public interface LanguageProvider {
      *
      * @param context the context for a guest language code literal evaluation
      * @return factories creating the language statements
-     * @since 0.29
+     * @since 0.30
      */
     Collection<? extends Snippet> createStatements(Context context);
 
@@ -129,7 +129,7 @@ public interface LanguageProvider {
      *
      * @param context the context for a guest language code literal evaluation
      * @return the language scripts
-     * @since 0.29
+     * @since 0.30
      */
     Collection<? extends Snippet> createScripts(Context context);
 
@@ -141,7 +141,7 @@ public interface LanguageProvider {
      *
      * @param context the context for a guest language code literal evaluation
      * @return the scripts
-     * @since 0.29
+     * @since 0.30
      */
     Collection<? extends Source> createInvalidSyntaxScripts(Context context);
 }

@@ -31,6 +31,6 @@
  * Provide an implementation of the {@link org.graalvm.polyglot.tck.LanguageProvider} to test
  * language inter-operability.
  *
- * @since 0.29
+ * @since 0.30
  */
 package org.graalvm.polyglot.tck;

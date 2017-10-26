@@ -33,7 +33,7 @@ import org.graalvm.polyglot.Value;
 /**
  * Allows a custom verification of a result of a snippet execution.
  *
- * @since 0.29
+ * @since 0.30
  */
 public interface ResultVerifier extends Consumer<ResultVerifier.SnippetRun> {
 
@@ -52,7 +52,7 @@ public interface ResultVerifier extends Consumer<ResultVerifier.SnippetRun> {
      *            by the execution.
      * @throws PolyglotException may propagate the {@link PolyglotException} from the snippetRun
      * @throws AssertionError may throw an {@link AssertionError} as a result of a verification
-     * @since 0.29
+     * @since 0.30
      */
     @Override
     void accept(SnippetRun snippetRun) throws PolyglotException;
@@ -60,7 +60,7 @@ public interface ResultVerifier extends Consumer<ResultVerifier.SnippetRun> {
     /**
      * Provides the test execution data.
      *
-     * @since 0.29
+     * @since 0.30
      */
     final class SnippetRun {
         private final Snippet snippet;
@@ -79,7 +79,7 @@ public interface ResultVerifier extends Consumer<ResultVerifier.SnippetRun> {
          * Returns the actual parameters of a snippet execution.
          *
          * @return the parameters
-         * @since 0.29
+         * @since 0.30
          */
         public List<? extends Value> getParameters() {
             return parameters;
@@ -89,7 +89,7 @@ public interface ResultVerifier extends Consumer<ResultVerifier.SnippetRun> {
          * Returns the result of a snippet execution.
          *
          * @return the result of a snippet execution or null in case of execution failure.
-         * @since 0.29
+         * @since 0.30
          */
         public Value getResult() {
             return result;
@@ -100,7 +100,7 @@ public interface ResultVerifier extends Consumer<ResultVerifier.SnippetRun> {
          *
          * @return the {@link PolyglotException} thrown during the execution or null in case of
          *         successful execution.
-         * @since 0.29
+         * @since 0.30
          */
         public PolyglotException getException() {
             return exception;
@@ -117,7 +117,7 @@ public interface ResultVerifier extends Consumer<ResultVerifier.SnippetRun> {
          * @param parameters the actual parameters of snippet execution
          * @param result the result of snippet execution
          * @return the {@link SnippetRun}
-         * @since 0.29
+         * @since 0.30
          */
         public static SnippetRun create(final Snippet snippet, final List<? extends Value> parameters, final Value result) {
             Objects.requireNonNull(snippet, "Snippet has to be given.");
@@ -133,7 +133,7 @@ public interface ResultVerifier extends Consumer<ResultVerifier.SnippetRun> {
          * @param parameters the actual parameters of snippet execution
          * @param exception the {@link PolyglotException} thrown during snippet execution
          * @return the {@link SnippetRun}
-         * @since 0.29
+         * @since 0.30
          */
         public static SnippetRun create(final Snippet snippet, final List<? extends Value> parameters, final PolyglotException exception) {
             return new SnippetRun(
@@ -149,7 +149,7 @@ public interface ResultVerifier extends Consumer<ResultVerifier.SnippetRun> {
      * result type is in bounds specified by the {@link Snippet}.
      *
      * @return the default {@link ResultVerifier}
-     * @since 0.29
+     * @since 0.30
      */
     static ResultVerifier getDefaultResultVerfier() {
         return DefaultResultVerifier.INSTANCE;

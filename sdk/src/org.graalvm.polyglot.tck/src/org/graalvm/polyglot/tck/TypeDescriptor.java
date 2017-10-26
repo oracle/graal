@@ -38,7 +38,7 @@ import org.graalvm.polyglot.Value;
  * Represents a type of a polyglot value. Types include primitive types, null type, object type,
  * array type with an optional content type and union type.
  *
- * @since 0.29
+ * @since 0.30
  */
 public final class TypeDescriptor {
 
@@ -46,35 +46,35 @@ public final class TypeDescriptor {
      * The NULL type represents a type of null or undefined value.
      *
      * @see Value#isNull().
-     * @since 0.29
+     * @since 0.30
      */
     public static final TypeDescriptor NULL = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.NULL));
     /**
      * Represents a boolean type.
      *
      * @see Value#isBoolean().
-     * @since 0.29
+     * @since 0.30
      */
     public static final TypeDescriptor BOOLEAN = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.BOOLEAN));
     /**
      * Represents a numeric type.
      *
      * @see Value#isNumber().
-     * @since 0.29
+     * @since 0.30
      */
     public static final TypeDescriptor NUMBER = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.NUMBER));
     /**
      * Represents a string type.
      *
      * @see Value#isString().
-     * @since 0.29
+     * @since 0.30
      */
     public static final TypeDescriptor STRING = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.STRING));
     /**
      * Represents an object created by a guest language.
      *
      * @see Value#hasMembers().
-     * @since 0.29
+     * @since 0.30
      */
     public static final TypeDescriptor OBJECT = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.OBJECT));
     /**
@@ -84,21 +84,21 @@ public final class TypeDescriptor {
      *
      * @see #isAssignable(org.graalvm.polyglot.tck.TypeDescriptor).
      * @see Value#hasMembers().
-     * @since 0.29
+     * @since 0.30
      */
     public static final TypeDescriptor ARRAY = new TypeDescriptor(new ArrayImpl(null));
     /**
      * Represents a host object.
      *
      * @see Value#isHostObject().
-     * @since 0.29
+     * @since 0.30
      */
     public static final TypeDescriptor HOST_OBJECT = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.HOST_OBJECT));
     /**
      * Represents a native pointer.
      *
      * @see Value#isNativePointer().
-     * @since 0.29
+     * @since 0.30
      */
     public static final TypeDescriptor NATIVE_POINTER = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.NATIVE_POINTER));
 
@@ -116,7 +116,7 @@ public final class TypeDescriptor {
     /**
      * {@inheritDoc}
      *
-     * @since 0.29
+     * @since 0.30
      */
     @Override
     public int hashCode() {
@@ -126,7 +126,7 @@ public final class TypeDescriptor {
     /**
      * {@inheritDoc}
      *
-     * @since 0.29
+     * @since 0.30
      */
     @Override
     public boolean equals(Object obj) {
@@ -142,7 +142,7 @@ public final class TypeDescriptor {
     /**
      * {@inheritDoc}
      *
-     * @since 0.29
+     * @since 0.30
      */
     @Override
     public String toString() {
@@ -159,7 +159,7 @@ public final class TypeDescriptor {
      *
      * @param fromType the type to assign
      * @return true if the fromType is assignable to this type
-     * @since 0.29
+     * @since 0.30
      */
     public boolean isAssignable(final TypeDescriptor fromType) {
         final TypeDescriptorImpl narrowedImpl = impl.narrow(impl, fromType.impl);
@@ -171,7 +171,7 @@ public final class TypeDescriptor {
      *
      * @param types the types to include in the union
      * @return the union type containing the given types
-     * @since 0.29
+     * @since 0.30
      */
     public static TypeDescriptor union(TypeDescriptor... types) {
         Objects.requireNonNull(types);
@@ -233,7 +233,7 @@ public final class TypeDescriptor {
      *
      * @param componentType the required component type.
      * @return an array type with given component
-     * @since 0.29
+     * @since 0.30
      */
     public static TypeDescriptor array(TypeDescriptor componentType) {
         return componentType == null ? ARRAY : new TypeDescriptor(new ArrayImpl(componentType.impl));
@@ -244,7 +244,7 @@ public final class TypeDescriptor {
      *
      * @param value the value to create {@link TypeDescriptor} for
      * @return the type of value, may by an union type containing more primitive or array types.
-     * @since 0.29
+     * @since 0.30
      */
     public static TypeDescriptor forValue(final Value value) {
         final List<TypeDescriptor> descs = new ArrayList<>();
