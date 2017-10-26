@@ -201,23 +201,32 @@ def _unittest_config_participant_tck(config):
                     return True
         return has_resource
 
-    def import_visitor(suite, suite_import, predicate, collector, **extra_args):
-        suite_collector(mx.suite(suite_import.name), predicate, collector)
+    def import_visitor(suite, suite_import, predicate, collector, javaProperties, seenSuites, **extra_args):
+        suite_collector(mx.suite(suite_import.name), predicate, collector, javaProperties, seenSuites)
 
-    def suite_collector(suite, predicate, collector):
-        suite.visit_imports(import_visitor, predicate=predicate, collector=collector)
-        def dependency_visitor(dep, edge):
-            if dep.isJARDistribution():
-                collector[dep.path] = None
+    def suite_collector(suite, predicate, collector, javaProperties, seenSuites):
+        if suite.name in seenSuites:
+            return
+        seenSuites.add(suite.name)
+        suite.visit_imports(import_visitor, predicate=predicate, collector=collector, javaProperties=javaProperties, seenSuites=seenSuites)
         for dist in suite.dists:
             if dist.isJARDistribution() and predicate(dist.path):
-                dist.walk_deps(visit=dependency_visitor, ignoredEdges=[mx.DEP_ANNOTATION_PROCESSOR, mx.DEP_BUILD])
-                collector[dist.path] = None
+                for distCpEntry in mx.classpath_entries(dist):
+                    if hasattr(distCpEntry, "getJavaProperties"):
+                        for key, value in dist.getJavaProperties().items():
+                            javaProperties[key] = value
+                    if distCpEntry.isJdkLibrary() or distCpEntry.isJreLibrary():
+                        cpPath = distCpEntry.classpath_repr(mx.get_jdk(), resolve=True)
+                    else:
+                        cpPath = distCpEntry.classpath_repr(resolve=True)
+                    if cpPath:
+                        collector[cpPath] = None
 
+    javaPropertiesToAdd = OrderedDict()
     providers = OrderedDict()
-    suite_collector(mx.primary_suite(), create_filter("META-INF/services/org.graalvm.polyglot.tck.LanguageProvider"), providers)
+    suite_collector(mx.primary_suite(), create_filter("META-INF/services/org.graalvm.polyglot.tck.LanguageProvider"), providers, javaPropertiesToAdd, set())
     languages = OrderedDict()
-    suite_collector(mx.primary_suite(), create_filter("META-INF/truffle/language"), languages)
+    suite_collector(mx.primary_suite(), create_filter("META-INF/truffle/language"), languages, javaPropertiesToAdd, set())
     vmArgs, mainClass, mainClassArgs = config
     cpIndex, cpValue = mx.find_classpath_arg(vmArgs)
     cpBuilder = OrderedDict()
@@ -234,6 +243,8 @@ def _unittest_config_participant_tck(config):
     else:
         vmArgs.append("-cp")
         vmArgs.append(cpValue)
+    for key, value in javaPropertiesToAdd.items():
+        vmArgs.append("-D" + key + "=" + value)
     return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.add_config_participant(_unittest_config_participant_tck)
