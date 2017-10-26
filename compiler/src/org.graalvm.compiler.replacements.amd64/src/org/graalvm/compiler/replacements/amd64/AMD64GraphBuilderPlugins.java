@@ -29,6 +29,7 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
+import static org.graalvm.compiler.serviceprovider.JDK9Method.JAVA_SPECIFICATION_VERSION;
 import static org.graalvm.compiler.serviceprovider.JDK9Method.Java8OrEarlier;
 
 import java.util.Arrays;
@@ -75,6 +76,8 @@ public class AMD64GraphBuilderPlugins {
                 registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, JavaKind.Long, arch, replacementsBytecodeProvider);
                 registerUnsafePlugins(invocationPlugins, replacementsBytecodeProvider);
                 registerStringPlugins(invocationPlugins, arch, replacementsBytecodeProvider);
+                registerStringLatin1Plugins(invocationPlugins, replacementsBytecodeProvider);
+                registerStringUTF16Plugins(invocationPlugins, replacementsBytecodeProvider);
                 registerMathPlugins(invocationPlugins, arch, arithmeticStubs, replacementsBytecodeProvider);
                 registerArraysEqualsPlugins(invocationPlugins, replacementsBytecodeProvider);
             }
@@ -103,6 +106,7 @@ public class AMD64GraphBuilderPlugins {
         }
         if (arch.getFeatures().contains(AMD64.CPUFeature.BMI1) && arch.getFlags().contains(AMD64.Flag.UseCountTrailingZerosInstruction)) {
             r.register1("numberOfTrailingZeros", type, new InvocationPlugin() {
+
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     ValueNode folded = AMD64CountTrailingZerosNode.tryFold(value);
@@ -127,6 +131,7 @@ public class AMD64GraphBuilderPlugins {
                 }
             });
         }
+
     }
 
     private static void registerMathPlugins(InvocationPlugins plugins, AMD64 arch, boolean arithmeticStubs, BytecodeProvider bytecodeProvider) {
@@ -189,6 +194,24 @@ public class AMD64GraphBuilderPlugins {
             r.setAllowOverwrite(true);
             r.registerMethodSubstitution(AMD64StringSubstitutions.class, "indexOf", char[].class, int.class,
                             int.class, char[].class, int.class, int.class, int.class);
+        }
+    }
+
+    private static void registerStringLatin1Plugins(InvocationPlugins plugins, BytecodeProvider replacementsBytecodeProvider) {
+        if (JAVA_SPECIFICATION_VERSION >= 9) {
+            Registration r = new Registration(plugins, "java.lang.StringLatin1", replacementsBytecodeProvider);
+            r.setAllowOverwrite(true);
+            r.registerMethodSubstitution(AMD64StringLatin1Substitutions.class, "compareTo", byte[].class, byte[].class);
+            r.registerMethodSubstitution(AMD64StringLatin1Substitutions.class, "compareToUTF16", byte[].class, byte[].class);
+        }
+    }
+
+    private static void registerStringUTF16Plugins(InvocationPlugins plugins, BytecodeProvider replacementsBytecodeProvider) {
+        if (JAVA_SPECIFICATION_VERSION >= 9) {
+            Registration r = new Registration(plugins, "java.lang.StringUTF16", replacementsBytecodeProvider);
+            r.setAllowOverwrite(true);
+            r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class, "compareTo", byte[].class, byte[].class);
+            r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class, "compareToLatin1", byte[].class, byte[].class);
         }
     }
 

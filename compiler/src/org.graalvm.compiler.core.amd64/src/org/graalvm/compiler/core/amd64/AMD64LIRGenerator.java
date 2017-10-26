@@ -57,6 +57,7 @@ import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
 import org.graalvm.compiler.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
+import org.graalvm.compiler.lir.amd64.AMD64ArrayCompareToOp;
 import org.graalvm.compiler.lir.amd64.AMD64ArrayEqualsOp;
 import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer;
 import org.graalvm.compiler.lir.amd64.AMD64ByteSwapOp;
@@ -437,6 +438,20 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitByteSwap(Value input) {
         Variable result = newVariable(LIRKind.combine(input));
         append(new AMD64ByteSwapOp(result, input));
+        return result;
+    }
+
+    @Override
+    public Variable emitArrayCompareTo(JavaKind kind1, JavaKind kind2, Value array1, Value array2, Value length1, Value length2) {
+        LIRKind resultKind = LIRKind.value(AMD64Kind.DWORD);
+        RegisterValue raxRes = AMD64.rax.asValue(resultKind);
+        RegisterValue cnt1 = AMD64.rcx.asValue(length1.getValueKind());
+        RegisterValue cnt2 = AMD64.rdx.asValue(length2.getValueKind());
+        emitMove(cnt1, length1);
+        emitMove(cnt2, length2);
+        append(new AMD64ArrayCompareToOp(this, kind1, kind2, raxRes, array1, array2, cnt1, cnt2));
+        Variable result = newVariable(resultKind);
+        emitMove(result, raxRes);
         return result;
     }
 
