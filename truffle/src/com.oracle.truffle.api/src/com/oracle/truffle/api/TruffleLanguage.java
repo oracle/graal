@@ -726,13 +726,12 @@ public abstract class TruffleLanguage<C> {
     protected abstract boolean isObjectOfLanguage(Object object);
 
     /**
-     * Find a hierarchy of local scopes enclosing the given {@link Node node}. There must be at
-     * least one scope provided, that corresponds to the enclosing function. The language might
-     * provide additional block scopes, closure scopes, etc. The returned scopes have relation to
-     * the given <code>node</code>, global top scopes are provided by
-     * {@link #findTopScopes(java.lang.Object)}. The scope hierarchy should correspond with the
-     * scope nesting, from the inner-most to the outer-most. The scopes are expected to contain
-     * variables valid at the given node.
+     * Find a hierarchy of local scopes enclosing the given {@link Node node}. Unless the node is in
+     * a global scope, it is expected that there is at least one scope provided, that corresponds to
+     * the enclosing function. The language might provide additional block scopes, closure scopes,
+     * etc. Global top scopes are provided by {@link #findTopScopes(java.lang.Object)}. The scope
+     * hierarchy should correspond with the scope nesting, from the inner-most to the outer-most.
+     * The scopes are expected to contain variables valid at the given node.
      * <p>
      * Scopes may depend on the information provided by the frame. <br/>
      * Lexical scopes are returned when <code>frame</code> argument is <code>null</code>.

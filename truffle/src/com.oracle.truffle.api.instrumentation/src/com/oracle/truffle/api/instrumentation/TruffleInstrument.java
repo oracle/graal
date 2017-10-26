@@ -530,9 +530,10 @@ public abstract class TruffleInstrument {
         }
 
         /**
-         * Find a list of local scopes enclosing the given {@link Node node}. There is at least one
-         * scope provided, that corresponds to the enclosing function. The scopes contain variables
-         * valid at the provided node and have a relation to it. Global top scopes are provided by
+         * Find a list of local scopes enclosing the given {@link Node node}. The scopes contain
+         * variables that are valid at the provided node and that have a relation to it. Unless the
+         * node is in a global scope, it is expected that there is at least one scope provided, that
+         * corresponds to the enclosing function. Global top scopes are provided by
          * {@link #findTopScopes(java.lang.String)}. The iteration order corresponds with the scope
          * nesting, from the inner-most to the outer-most.
          * <p>
