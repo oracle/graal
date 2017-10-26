@@ -30,8 +30,10 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -51,10 +53,13 @@ import com.oracle.truffle.api.instrumentation.test.InstrumentationTest.ReturnLan
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.BlockNode;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.DefineNode;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.ExpressionNode;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.FunctionsObject;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
@@ -520,12 +525,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         @TruffleBoundary
         private void defineFunction() {
             Context context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
-            if (context.callTargets.containsKey(identifier)) {
-                if (context.callTargets.get(identifier) != target) {
+            if (context.callFunctions.callTargets.containsKey(identifier)) {
+                if (context.callFunctions.callTargets.get(identifier) != target) {
                     throw new IllegalArgumentException("Identifier redefinition not supported.");
                 }
             }
-            context.callTargets.put(this.identifier, target);
+            context.callFunctions.callTargets.put(this.identifier, target);
         }
 
     }
@@ -545,7 +550,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             if (callNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 Context context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
-                CallTarget target = context.callTargets.get(identifier);
+                CallTarget target = context.callFunctions.callTargets.get(identifier);
                 callNode = insert(Truffle.getRuntime().createDirectCallNode(target));
             }
             return callNode.call(new Object[0]);
@@ -777,21 +782,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
     @Override
     protected Object findExportedSymbol(Context context, String globalName, boolean onlyExplicit) {
-        TruffleObject functionObject = context.callFunctionObjects.get(globalName);
-        if (functionObject == null) {
-            CallTarget ct = context.callTargets.get(globalName);
-            if (ct == null) {
-                return null;
-            }
-            functionObject = new Function(ct);
-            context.callFunctionObjects.put(globalName, functionObject);
-        }
-        return functionObject;
+        return context.callFunctions.findFunction(globalName);
     }
 
     @Override
     protected Object getLanguageGlobal(Context context) {
-        return context;
+        return context.callFunctions;
     }
 
     @Override
@@ -902,12 +898,136 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         }
     }
 
+    static class FunctionsObject implements TruffleObject {
+
+        final Map<String, CallTarget> callTargets = new HashMap<>();
+        final Map<String, TruffleObject> functions = new HashMap<>();
+
+        FunctionsObject() {
+        }
+
+        TruffleObject findFunction(String name) {
+            TruffleObject functionObject = functions.get(name);
+            if (functionObject == null) {
+                CallTarget ct = callTargets.get(name);
+                if (ct == null) {
+                    return null;
+                }
+                functionObject = new Function(ct);
+                functions.put(name, functionObject);
+            }
+            return functionObject;
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return FunctionsObjectMessageResolutionForeign.ACCESS;
+        }
+
+        public static boolean isInstance(TruffleObject obj) {
+            return obj instanceof FunctionsObject;
+        }
+
+        @MessageResolution(receiverType = FunctionsObject.class)
+        static final class FunctionsObjectMessageResolution {
+
+            @Resolve(message = "KEYS")
+            abstract static class FunctionsObjectKeysNode extends Node {
+
+                @TruffleBoundary
+                public Object access(FunctionsObject fo) {
+                    return new FunctionNamesObject(fo.callTargets.keySet());
+                }
+            }
+
+            @Resolve(message = "KEY_INFO")
+            abstract static class FunctionsObjectKeyInfoNode extends Node {
+
+                private static final int EXISTING_KEY = KeyInfo.newBuilder().setReadable(true).build();
+
+                @TruffleBoundary
+                public Object access(FunctionsObject fo, String name) {
+                    if (fo.callTargets.containsKey(name)) {
+                        return EXISTING_KEY;
+                    } else {
+                        return 0;
+                    }
+                }
+            }
+
+            @Resolve(message = "READ")
+            abstract static class FunctionsObjectReadNode extends Node {
+
+                @TruffleBoundary
+                public Object access(FunctionsObject fo, String name) {
+                    return fo.findFunction(name);
+                }
+            }
+        }
+
+        static final class FunctionNamesObject implements TruffleObject {
+
+            private final Set<String> names;
+
+            private FunctionNamesObject(Set<String> names) {
+                this.names = names;
+            }
+
+            @Override
+            public ForeignAccess getForeignAccess() {
+                return FunctionNamesMessageResolutionForeign.ACCESS;
+            }
+
+            public static boolean isInstance(TruffleObject obj) {
+                return obj instanceof FunctionNamesObject;
+            }
+
+            @MessageResolution(receiverType = FunctionNamesObject.class)
+            static final class FunctionNamesMessageResolution {
+
+                @Resolve(message = "HAS_SIZE")
+                abstract static class FunctionNamesHasSizeNode extends Node {
+
+                    @SuppressWarnings("unused")
+                    public Object access(FunctionNamesObject namesObject) {
+                        return true;
+                    }
+                }
+
+                @Resolve(message = "GET_SIZE")
+                abstract static class FunctionNamesGetSizeNode extends Node {
+
+                    public Object access(FunctionNamesObject namesObject) {
+                        return namesObject.names.size();
+                    }
+                }
+
+                @Resolve(message = "READ")
+                abstract static class FunctionNamesReadNode extends Node {
+
+                    @CompilerDirectives.TruffleBoundary
+                    public Object access(FunctionNamesObject namesObject, int index) {
+                        if (index >= namesObject.names.size()) {
+                            throw UnknownIdentifierException.raise(Integer.toString(index));
+                        }
+                        Iterator<String> iterator = namesObject.names.iterator();
+                        int i = index;
+                        while (i-- > 0) {
+                            iterator.next();
+                        }
+                        return iterator.next();
+                    }
+                }
+
+            }
+        }
+
+    }
 }
 
 class Context {
 
-    final Map<String, CallTarget> callTargets = new HashMap<>();
-    final Map<String, TruffleObject> callFunctionObjects = new HashMap<>();
+    final FunctionsObject callFunctions = new FunctionsObject();
     final OutputStream out;
     final OutputStream err;
     final AllocationReporter allocationReporter;

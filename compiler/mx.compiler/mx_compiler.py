@@ -539,7 +539,8 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         if t: run_vm(_remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
 
     with Task('Javadoc', tasks, tags=GraalTags.doc) as t:
-        if t: mx.javadoc([])
+        # metadata package was deprecated, exclude it
+        if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.api.metadata'], quietForNoPackages=True)
 
 graal_unit_test_runs = [
     UnitTestRun('UnitTests', [], tags=GraalTags.test),
@@ -898,7 +899,11 @@ def microbench(*args):
              "Use `mx benchmark jmh-whitebox:*` and `mx benchmark jmh-dist:*` instead!")
 
 def javadoc(args):
-    mx.javadoc(args)
+    # metadata package was deprecated, exclude it
+    if not '--exclude-packages' in args:
+        args.append('--exclude-packages')
+        args.append('com.oracle.truffle.api.metadata')
+    mx.javadoc(args, quietForNoPackages=True)
 
 def create_archive(srcdir, arcpath, prefix):
     """

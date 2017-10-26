@@ -44,11 +44,20 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLRootNode;
@@ -60,7 +69,7 @@ import com.oracle.truffle.sl.parser.Parser;
 public final class SLFunctionRegistry {
 
     private final SLLanguage language;
-    private final Map<String, SLFunction> functions = new HashMap<>();
+    private final FunctionsObject functionsObject = new FunctionsObject();
 
     public SLFunctionRegistry(SLLanguage language) {
         this.language = language;
@@ -71,10 +80,10 @@ public final class SLFunctionRegistry {
      * it is created.
      */
     public SLFunction lookup(String name, boolean createIfNotPresent) {
-        SLFunction result = functions.get(name);
+        SLFunction result = functionsObject.functions.get(name);
         if (result == null && createIfNotPresent) {
             result = new SLFunction(language, name);
-            functions.put(name, result);
+            functionsObject.functions.put(name, result);
         }
         return result;
     }
@@ -105,7 +114,7 @@ public final class SLFunctionRegistry {
      * Returns the sorted list of all functions, for printing purposes only.
      */
     public List<SLFunction> getFunctions() {
-        List<SLFunction> result = new ArrayList<>(functions.values());
+        List<SLFunction> result = new ArrayList<>(functionsObject.functions.values());
         Collections.sort(result, new Comparator<SLFunction>() {
             public int compare(SLFunction f1, SLFunction f2) {
                 return f1.toString().compareTo(f2.toString());
@@ -114,4 +123,120 @@ public final class SLFunctionRegistry {
         return result;
     }
 
+    public TruffleObject getFunctionsObject() {
+        return functionsObject;
+    }
+
+    static class FunctionsObject implements TruffleObject {
+
+        private final Map<String, SLFunction> functions = new HashMap<>();
+
+        FunctionsObject() {
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return FunctionsObjectMessageResolutionForeign.ACCESS;
+        }
+
+        public static boolean isInstance(TruffleObject obj) {
+            return obj instanceof FunctionsObject;
+        }
+
+        @MessageResolution(receiverType = FunctionsObject.class)
+        static final class FunctionsObjectMessageResolution {
+
+            @Resolve(message = "KEYS")
+            abstract static class FunctionsObjectKeysNode extends Node {
+
+                @TruffleBoundary
+                public Object access(FunctionsObject fo) {
+                    return new FunctionNamesObject(fo.functions.keySet());
+                }
+            }
+
+            @Resolve(message = "KEY_INFO")
+            abstract static class FunctionsObjectKeyInfoNode extends Node {
+
+                @TruffleBoundary
+                public Object access(FunctionsObject fo, String name) {
+                    if (fo.functions.containsKey(name)) {
+                        return 3;
+                    } else {
+                        return 0;
+                    }
+                }
+            }
+
+            @Resolve(message = "READ")
+            abstract static class FunctionsObjectReadNode extends Node {
+
+                @TruffleBoundary
+                public Object access(FunctionsObject fo, String name) {
+                    try {
+                        return fo.functions.get(name);
+                    } catch (IndexOutOfBoundsException ioob) {
+                        return null;
+                    }
+                }
+            }
+
+            static final class FunctionNamesObject implements TruffleObject {
+
+                private final Set<String> names;
+
+                private FunctionNamesObject(Set<String> names) {
+                    this.names = names;
+                }
+
+                @Override
+                public ForeignAccess getForeignAccess() {
+                    return FunctionNamesMessageResolutionForeign.ACCESS;
+                }
+
+                public static boolean isInstance(TruffleObject obj) {
+                    return obj instanceof FunctionNamesObject;
+                }
+
+                @MessageResolution(receiverType = FunctionNamesObject.class)
+                static final class FunctionNamesMessageResolution {
+
+                    @Resolve(message = "HAS_SIZE")
+                    abstract static class FunctionNamesHasSizeNode extends Node {
+
+                        @SuppressWarnings("unused")
+                        public Object access(FunctionNamesObject namesObject) {
+                            return true;
+                        }
+                    }
+
+                    @Resolve(message = "GET_SIZE")
+                    abstract static class FunctionNamesGetSizeNode extends Node {
+
+                        public Object access(FunctionNamesObject namesObject) {
+                            return namesObject.names.size();
+                        }
+                    }
+
+                    @Resolve(message = "READ")
+                    abstract static class FunctionNamesReadNode extends Node {
+
+                        @TruffleBoundary
+                        public Object access(FunctionNamesObject namesObject, int index) {
+                            if (index >= namesObject.names.size()) {
+                                throw UnknownIdentifierException.raise(Integer.toString(index));
+                            }
+                            Iterator<String> iterator = namesObject.names.iterator();
+                            int i = index;
+                            while (i-- > 0) {
+                                iterator.next();
+                            }
+                            return iterator.next();
+                        }
+                    }
+
+                }
+            }
+        }
+    }
 }

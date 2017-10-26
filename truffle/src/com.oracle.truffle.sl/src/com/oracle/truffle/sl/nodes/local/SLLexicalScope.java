@@ -42,6 +42,7 @@ package com.oracle.truffle.sl.nodes.local;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,7 +59,6 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.metadata.ScopeProvider.AbstractScope;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
@@ -70,7 +70,7 @@ import com.oracle.truffle.sl.runtime.SLBigNumber;
 /**
  * Simple language lexical scope. There can be a block scope, or function scope.
  */
-public final class SLLexicalScope extends AbstractScope {
+public final class SLLexicalScope {
 
     private final Node current;
     private final SLBlockNode block;
@@ -115,7 +115,7 @@ public final class SLLexicalScope extends AbstractScope {
             block = findChildrenBlock(node);
             if (block == null) {
                 // Corrupted SL AST, no block was found
-                return null;
+                return new SLLexicalScope(null, null, (SLBlockNode) null);
             }
             node = null; // node is above the block
         }
@@ -159,8 +159,7 @@ public final class SLLexicalScope extends AbstractScope {
         return blockPtr[0];
     }
 
-    @Override
-    protected SLLexicalScope findParent() {
+    public SLLexicalScope findParent() {
         if (parentBlock == null) {
             // This was a root scope.
             return null;
@@ -199,7 +198,6 @@ public final class SLLexicalScope extends AbstractScope {
     /**
      * @return the function name for function scope, "block" otherwise.
      */
-    @Override
     public String getName() {
         if (root != null) {
             return root.getName();
@@ -212,8 +210,7 @@ public final class SLLexicalScope extends AbstractScope {
      * @return the node representing the scope, the block node for block scopes and the
      *         {@link RootNode} for functional scope.
      */
-    @Override
-    protected Node getNode() {
+    public Node getNode() {
         if (root != null) {
             return root;
         } else {
@@ -221,7 +218,6 @@ public final class SLLexicalScope extends AbstractScope {
         }
     }
 
-    @Override
     public Object getVariables(Frame frame) {
         Map<String, FrameSlot> vars = getVars();
         Object[] args = null;
@@ -232,7 +228,6 @@ public final class SLLexicalScope extends AbstractScope {
         return new VariablesMapObject(vars, args, frame);
     }
 
-    @Override
     public Object getArguments(Frame frame) {
         if (root == null) {
             // No arguments for block scope
@@ -250,9 +245,11 @@ public final class SLLexicalScope extends AbstractScope {
         if (varSlots == null) {
             if (current != null) {
                 varSlots = collectVars(block, current);
-            } else {
+            } else if (block != null) {
                 // Provide the arguments only when the current node is above the block
                 varSlots = collectArgs(block);
+            } else {
+                varSlots = Collections.emptyMap();
             }
         }
         return varSlots;

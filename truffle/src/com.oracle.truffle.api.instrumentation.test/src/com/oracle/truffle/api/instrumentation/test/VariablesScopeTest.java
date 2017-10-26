@@ -22,10 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.metadata.test;
+package com.oracle.truffle.api.instrumentation.test;
 
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -38,6 +40,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -47,29 +50,31 @@ import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import org.graalvm.polyglot.Source;
 
 /**
  * Test of {@link Scope}.
  */
-@SuppressWarnings("deprecation")
-public class ScopeTest extends AbstractInstrumentationTest {
+public class VariablesScopeTest extends AbstractInstrumentationTest {
 
     @Test
     public void testDefaultScope() throws Throwable {
-        assureEnabled(engine.getInstruments().get("testScopeInstrument"));
+        assureEnabled(engine.getInstruments().get("testVariablesScopeInstrument"));
         TestScopeInstrument.INSTANCE.setTester(new DefaultScopeTester());
         run("ROOT(DEFINE(\ntestFunction,ROOT(\nVARIABLE(a, 10),\nVARIABLE(b, 20),\nSTATEMENT)),\nCALL(testFunction))");
         TestScopeInstrument.INSTANCE.checkForFailure();
     }
 
-    @TruffleInstrument.Registration(id = "testScopeInstrument", services = Object.class)
+    @TruffleInstrument.Registration(id = "testVariablesScopeInstrument", services = Object.class)
     public static class TestScopeInstrument extends TruffleInstrument {
 
         static TestScopeInstrument INSTANCE;
@@ -116,28 +121,34 @@ public class ScopeTest extends AbstractInstrumentationTest {
         }
 
         interface Tester {
-            void doTestScope(TruffleInstrument.Env env, Node node, VirtualFrame frame);
+            void doTestScope(TruffleInstrument.Env env, Node node, VirtualFrame frame) throws Exception;
         }
     }
 
     private static class DefaultScopeTester implements TestScopeInstrument.Tester {
 
         @SuppressWarnings("rawtypes")
-        public void doTestScope(TruffleInstrument.Env env, Node node, VirtualFrame frame) {
-            Iterable<com.oracle.truffle.api.metadata.Scope> scopes = com.oracle.truffle.api.metadata.Scope.findScopes(env, node, null);
-            assertNotNull(scopes);
-            Iterator<com.oracle.truffle.api.metadata.Scope> iterator = scopes.iterator();
+        public void doTestScope(TruffleInstrument.Env env, Node node, VirtualFrame frame) throws Exception {
+            Iterable<Scope> lscopes = env.findLocalScopes(node, null); // lexical
+            Iterable<Scope> dscopes = env.findLocalScopes(node, frame); // dynamic
+            assertNotNull(lscopes);
+            assertNotNull(dscopes);
+            Iterator<Scope> iterator = lscopes.iterator();
             assertTrue(iterator.hasNext());
-            com.oracle.truffle.api.metadata.Scope scope = iterator.next();
+            Scope lscope = iterator.next();
+            assertFalse(iterator.hasNext());
+            iterator = dscopes.iterator();
+            assertTrue(iterator.hasNext());
+            Scope dscope = iterator.next();
             assertFalse(iterator.hasNext());
             int line = node.getSourceSection().getStartLine();
             if (line == 1 || line == 6) {
-                assertEquals("Line = " + line + ", function name: ", "", scope.getName());
+                assertEquals("Line = " + line + ", function name: ", "", lscope.getName());
             } else {
-                assertEquals("Line = " + line + ", function name: ", "testFunction", scope.getName());
+                assertEquals("Line = " + line + ", function name: ", "testFunction", lscope.getName());
 
                 // Lexical access:
-                TruffleObject vars = (TruffleObject) scope.getVariables(null);
+                TruffleObject vars = (TruffleObject) lscope.getVariables();
                 Map varsMap = JavaInterop.asJavaObject(Map.class, vars);
                 final int numVars = Math.max(line - 3, 0);
                 assertEquals("Line = " + line + ", num vars:", numVars, varsMap.size());
@@ -161,7 +172,7 @@ public class ScopeTest extends AbstractInstrumentationTest {
                 }
 
                 // Dynamic access:
-                vars = (TruffleObject) scope.getVariables(frame);
+                vars = (TruffleObject) dscope.getVariables();
                 varsMap = JavaInterop.asJavaObject(Map.class, vars);
                 assertEquals("Line = " + line + ", num vars:", numVars, varsMap.size());
                 if (numVars >= 1) {
@@ -173,21 +184,43 @@ public class ScopeTest extends AbstractInstrumentationTest {
                     assertEquals("Var b: ", 20, varsMap.get("b"));
                 }
             }
+            if (line == 6) {
+                doTestTopScope(env);
+            }
+        }
+
+        private static void doTestTopScope(TruffleInstrument.Env env) throws UnsupportedMessageException, UnknownIdentifierException {
+            Iterable<Scope> topScopes = env.findTopScopes(InstrumentationTestLanguage.ID);
+            Iterator<Scope> iterator = topScopes.iterator();
+            assertTrue(iterator.hasNext());
+            Scope scope = iterator.next();
+            assertEquals("global", scope.getName());
+            assertNull(scope.getNode());
+            assertNull(scope.getArguments());
+            TruffleObject variables = (TruffleObject) scope.getVariables();
+            TruffleObject keys = ForeignAccess.sendKeys(Message.KEYS.createNode(), variables);
+            assertNotNull(keys);
+            Number size = (Number) ForeignAccess.sendGetSize(Message.GET_SIZE.createNode(), keys);
+            assertEquals(1, size.intValue());
+            String functionName = (String) ForeignAccess.sendRead(Message.READ.createNode(), keys, 0);
+            assertEquals("testFunction", functionName);
+            TruffleObject function = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), variables, functionName);
+            assertTrue(ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), function));
         }
     }
 
     @Test
     public void testSPIScopeCalls() throws Throwable {
-        Source source = Source.create("test-custom-scope-language", "test");
-        assureEnabled(engine.getInstruments().get("testScopeInstrument"));
+        org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.create("test-custom-variables-scope-language", "test");
+        assureEnabled(engine.getInstruments().get("testVariablesScopeInstrument"));
         TestScopeInstrument.INSTANCE.setTester(new CustomScopeTester());
         context.eval(source);
         TestScopeInstrument.INSTANCE.checkForFailure();
     }
 
-    @TruffleLanguage.Registration(id = "test-custom-scope-language", name = "", version = "", mimeType = "x-testCustomScope")
+    @TruffleLanguage.Registration(name = "", version = "", id = "test-custom-variables-scope-language", mimeType = "x-testCustomVariablesScope")
     @ProvidedTags({StandardTags.StatementTag.class})
-    public static class CustomScopeLanguage extends TruffleLanguage<Object> implements com.oracle.truffle.api.metadata.ScopeProvider<Object> {
+    public static class CustomScopeLanguage extends TruffleLanguage<Object> {
 
         @Override
         protected Object createContext(Env env) {
@@ -210,8 +243,46 @@ public class ScopeTest extends AbstractInstrumentationTest {
         }
 
         @Override
-        public com.oracle.truffle.api.metadata.ScopeProvider.AbstractScope findScope(Object context, Node node, Frame frame) {
-            return new CustomScope(node, frame);
+        public Iterable<Scope> findLocalScopes(Object context, Node node, Frame frame) {
+            return new Iterable<Scope>() {
+                @Override
+                public Iterator<Scope> iterator() {
+                    return new Iterator<Scope>() {
+                        CustomScope previous = null;
+                        CustomScope next = new CustomScope(node);
+
+                        @Override
+                        public boolean hasNext() {
+                            if (next == null) {
+                                next = previous.findParent();
+                            }
+                            return next != null;
+                        }
+
+                        @Override
+                        public Scope next() {
+                            if (!hasNext()) {
+                                throw new NoSuchElementException();
+                            }
+                            Scope scope = Scope.newBuilder(next.getName(), next.getVariables(frame)).node(next.getNode()).arguments(next.getArguments(frame)).build();
+                            previous = next;
+                            next = null;
+                            return scope;
+                        }
+                    };
+                }
+            };
+        }
+
+        @Override
+        protected Iterable<Scope> findTopScopes(Object context) {
+            return Collections.singleton(
+                            Scope.newBuilder("TopCustomScope", JavaInterop.asTruffleObject(new TopScopeJavaObject())).arguments(JavaInterop.asTruffleObject(new double[]{11.0, 22.0})).build());
+        }
+
+        public static final class TopScopeJavaObject {
+            public long l = 42;
+            public String s = "top";
         }
 
         public static class CustomRoot extends RootNode {
@@ -239,13 +310,14 @@ public class ScopeTest extends AbstractInstrumentationTest {
             public CustomScopeNode() {
             }
 
+            @SuppressWarnings("unused")
             public Object execute(VirtualFrame frame) {
                 return 1;
             }
 
             @Override
             public SourceSection getSourceSection() {
-                return com.oracle.truffle.api.source.Source.newBuilder("test").name("unknown").mimeType("x-testCustomScope").build().createSection(1);
+                return Source.newBuilder("test").name("unknown").mimeType("x-testCustomVariablesScope").build().createSection(1);
             }
 
             @Override
@@ -255,7 +327,7 @@ public class ScopeTest extends AbstractInstrumentationTest {
         }
     }
 
-    private static class CustomScope extends com.oracle.truffle.api.metadata.ScopeProvider.AbstractScope {
+    private static class CustomScope {
 
         // Checkstyle: stop
         static CustomScope LAST_INSTANCE;
@@ -263,36 +335,22 @@ public class ScopeTest extends AbstractInstrumentationTest {
         // Checkstyle: resume
 
         private final Node node;
-        private final Frame frame;
 
-        private int numGetNames = 0;
-        private int numGetNodes = 0;
-        private int numGetVariables = 0;
-        private int numGetArguments = 0;
-        private int numFindParents = 0;
-
-        CustomScope(Node node, Frame frame) {
+        CustomScope(Node node) {
             this.node = node;
-            this.frame = frame;
             LAST_INSTANCE = this;
             NUM_INSTANCES++;
         }
 
-        @Override
         protected String getName() {
-            numGetNames++;
             return "CustomScope.getName";
         }
 
-        @Override
         protected Node getNode() {
-            numGetNodes++;
             return node;
         }
 
-        @Override
         protected Object getVariables(Frame f) {
-            numGetVariables++;
             if (f == null) {
                 return JavaInterop.asTruffleObject("V1");
             } else {
@@ -300,9 +358,7 @@ public class ScopeTest extends AbstractInstrumentationTest {
             }
         }
 
-        @Override
         protected Object getArguments(Frame f) {
-            numGetArguments++;
             if (f == null) {
                 return JavaInterop.asTruffleObject("A1");
             } else {
@@ -310,12 +366,10 @@ public class ScopeTest extends AbstractInstrumentationTest {
             }
         }
 
-        @Override
-        protected com.oracle.truffle.api.metadata.ScopeProvider.AbstractScope findParent() {
-            numFindParents++;
+        protected CustomScope findParent() {
             Node parent = node.getParent();
             if (parent != null) {
-                return new CustomScope(parent, frame);
+                return new CustomScope(parent);
             } else {
                 return null;
             }
@@ -328,61 +382,85 @@ public class ScopeTest extends AbstractInstrumentationTest {
         public void doTestScope(TruffleInstrument.Env env, Node node, VirtualFrame frame) {
             assertNull(CustomScope.LAST_INSTANCE);
             assertEquals(0, CustomScope.NUM_INSTANCES);
-            Iterable<com.oracle.truffle.api.metadata.Scope> findScopes = com.oracle.truffle.api.metadata.Scope.findScopes(env, node, null);
+            Iterable<Scope> lscopes = env.findLocalScopes(node, null);
+            Iterator<Scope> literator = lscopes.iterator();
             assertNotNull(CustomScope.LAST_INSTANCE);
             assertEquals(1, CustomScope.NUM_INSTANCES);
-            Iterator<com.oracle.truffle.api.metadata.Scope> iterator = findScopes.iterator();
-            assertTrue(iterator.hasNext());
-            com.oracle.truffle.api.metadata.Scope scope = iterator.next();
+            assertTrue(literator.hasNext());
+            Scope lscope = literator.next();
             assertEquals(1, CustomScope.NUM_INSTANCES);
+            testScopeContent(lscope, node, null);
 
-            testScopeContent(scope, node, frame);
+            Iterable<Scope> dscopes = env.findLocalScopes(node, frame);
+            Iterator<Scope> diterator = dscopes.iterator();
+            assertEquals(2, CustomScope.NUM_INSTANCES);
+            Scope dscope = diterator.next();
+            assertEquals(2, CustomScope.NUM_INSTANCES);
+            testScopeContent(dscope, node, frame);
 
-            assertEquals(1, CustomScope.NUM_INSTANCES);
-            assertTrue(iterator.hasNext());
             assertEquals(2, CustomScope.NUM_INSTANCES);
-            scope = iterator.next();
-            assertEquals(2, CustomScope.NUM_INSTANCES);
-
-            testScopeContent(scope, node.getParent(), frame);
-            assertEquals(2, CustomScope.NUM_INSTANCES);
-            assertTrue(iterator.hasNext());
+            assertTrue(literator.hasNext());
             assertEquals(3, CustomScope.NUM_INSTANCES);
-            scope = iterator.next();
+            lscope = literator.next();
             assertEquals(3, CustomScope.NUM_INSTANCES);
+            testScopeContent(lscope, node.getParent(), null);
 
-            assertFalse(iterator.hasNext());
+            assertTrue(diterator.hasNext());
+            assertEquals(4, CustomScope.NUM_INSTANCES);
+            dscope = diterator.next();
+            assertEquals(4, CustomScope.NUM_INSTANCES);
+            testScopeContent(dscope, node.getParent(), frame);
+
+            assertEquals(4, CustomScope.NUM_INSTANCES);
+            assertTrue(literator.hasNext());
+            assertEquals(5, CustomScope.NUM_INSTANCES);
+            lscope = literator.next();
+            assertEquals(5, CustomScope.NUM_INSTANCES);
+
+            assertFalse(literator.hasNext());
             try {
-                iterator.next();
+                literator.next();
                 fail();
             } catch (Exception ex) {
                 // next should fail
             }
-            assertEquals(3, CustomScope.NUM_INSTANCES);
+            assertEquals(5, CustomScope.NUM_INSTANCES);
+            doTestTopScope(env);
         }
 
-        private static void testScopeContent(com.oracle.truffle.api.metadata.Scope scope, Node node, Frame frame) {
-            assertEquals(0, CustomScope.LAST_INSTANCE.numGetNames);
+        private static void testScopeContent(Scope scope, Node node, Frame frame) {
             assertEquals("CustomScope.getName", scope.getName());
-            assertEquals(1, CustomScope.LAST_INSTANCE.numGetNames);
 
-            assertEquals(0, CustomScope.LAST_INSTANCE.numGetNodes);
             assertEquals(node, scope.getNode());
-            assertEquals(1, CustomScope.LAST_INSTANCE.numGetNodes);
 
-            assertEquals(0, CustomScope.LAST_INSTANCE.numGetVariables);
-            assertEquals("V1", JavaInterop.asJavaObject((TruffleObject) scope.getVariables(null)));
-            assertEquals(1, CustomScope.LAST_INSTANCE.numGetVariables);
-            assertEquals("V1V2V3", JavaInterop.asJavaObject((TruffleObject) scope.getVariables(frame)));
-            assertEquals(2, CustomScope.LAST_INSTANCE.numGetVariables);
+            if (frame == null) {
+                assertEquals("V1", JavaInterop.asJavaObject((TruffleObject) scope.getVariables()));
+            } else {
+                assertEquals("V1V2V3", JavaInterop.asJavaObject((TruffleObject) scope.getVariables()));
+            }
 
-            assertEquals(0, CustomScope.LAST_INSTANCE.numGetArguments);
-            assertEquals("A1", JavaInterop.asJavaObject((TruffleObject) scope.getArguments(null)));
-            assertEquals(1, CustomScope.LAST_INSTANCE.numGetArguments);
-            assertEquals("A1A2A3", JavaInterop.asJavaObject((TruffleObject) scope.getArguments(frame)));
-            assertEquals(2, CustomScope.LAST_INSTANCE.numGetArguments);
-            assertEquals(0, CustomScope.LAST_INSTANCE.numFindParents);
+            if (frame == null) {
+                assertEquals("A1", JavaInterop.asJavaObject((TruffleObject) scope.getArguments()));
+            } else {
+                assertEquals("A1A2A3", JavaInterop.asJavaObject((TruffleObject) scope.getArguments()));
+            }
         }
+
+        private static void doTestTopScope(TruffleInstrument.Env env) {
+            Iterable<Scope> topScopes = env.findTopScopes("test-custom-variables-scope-language");
+            Iterator<Scope> iterator = topScopes.iterator();
+            assertTrue(iterator.hasNext());
+            Scope topScope = iterator.next();
+            assertFalse(iterator.hasNext());
+
+            assertEquals("TopCustomScope", topScope.getName());
+            assertNull(topScope.getNode());
+            TruffleObject arguments = (TruffleObject) topScope.getArguments();
+            TruffleObject variables = (TruffleObject) topScope.getVariables();
+            assertTrue(JavaInterop.isJavaObject(arguments));
+            assertTrue(JavaInterop.isJavaObject(variables));
+        }
+
     }
 
 }

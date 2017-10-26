@@ -274,7 +274,7 @@ suite = {
     "com.oracle.truffle.api.debug" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.api.vm", "com.oracle.truffle.api.metadata"],
+      "dependencies" : ["com.oracle.truffle.api.vm"],
       "runtimeDeps" : [
         "java.desktop"
       ],

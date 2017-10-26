@@ -225,6 +225,20 @@ public abstract class DebugValue {
         return arrayList;
     }
 
+    final LanguageInfo resolveLanguage() {
+        LanguageInfo languageInfo;
+        if (preferredLanguage != null) {
+            languageInfo = preferredLanguage;
+        } else if (getScope() != null && getScope().getLanguage() != null) {
+            languageInfo = getScope().getLanguage();
+        } else if (getSourceRoot() != null) {
+            languageInfo = getSourceRoot().getRootNode().getLanguageInfo();
+        } else {
+            languageInfo = null;
+        }
+        return languageInfo;
+    }
+
     /**
      * Get a meta-object of this value, if any. The meta-object represents a description of the
      * value, reveals it's kind and it's features.
@@ -238,18 +252,14 @@ public abstract class DebugValue {
             return null;
         }
         TruffleInstrument.Env env = getDebugger().getEnv();
-        LanguageInfo languageInfo;
-        if (preferredLanguage != null) {
-            languageInfo = preferredLanguage;
-        } else {
-            languageInfo = getSourceRoot().getRootNode().getLanguageInfo();
-        }
+        LanguageInfo languageInfo = resolveLanguage();
         if (languageInfo != null) {
             obj = env.findMetaObject(languageInfo, obj);
-            return new HeapValue(getDebugger(), getSourceRoot(), obj);
-        } else {
-            return null;
+            if (obj != null) {
+                return new HeapValue(getDebugger(), getSourceRoot(), obj);
+            }
         }
+        return null;
     }
 
     /**
@@ -264,12 +274,7 @@ public abstract class DebugValue {
             return null;
         }
         TruffleInstrument.Env env = getDebugger().getEnv();
-        LanguageInfo languageInfo;
-        if (preferredLanguage != null) {
-            languageInfo = preferredLanguage;
-        } else {
-            languageInfo = getSourceRoot().getRootNode().getLanguageInfo();
-        }
+        LanguageInfo languageInfo = resolveLanguage();
         if (languageInfo != null) {
             return env.findSourceLocation(languageInfo, obj);
         } else {
@@ -345,16 +350,22 @@ public abstract class DebugValue {
         private final Debugger debugger;
         // identifiers the original root this value originates from
         private final RootNode sourceRoot;
+        private final String name;
         private final Object value;
 
         HeapValue(Debugger debugger, RootNode root, Object value) {
-            this(debugger, root, null, value);
+            this(debugger, root, null, null, value);
         }
 
-        private HeapValue(Debugger debugger, RootNode root, LanguageInfo preferredLanguage, Object value) {
+        HeapValue(Debugger debugger, String name, Object value) {
+            this(debugger, null, null, name, value);
+        }
+
+        private HeapValue(Debugger debugger, RootNode root, LanguageInfo preferredLanguage, String name, Object value) {
             super(preferredLanguage);
             this.debugger = debugger;
             this.sourceRoot = root;
+            this.name = name;
             this.value = value;
         }
 
@@ -365,12 +376,7 @@ public abstract class DebugValue {
             }
             if (clazz == String.class) {
                 Object val = get();
-                LanguageInfo languageInfo = null;
-                if (preferredLanguage != null) {
-                    languageInfo = preferredLanguage;
-                } else if (sourceRoot != null) {
-                    languageInfo = sourceRoot.getRootNode().getLanguageInfo();
-                }
+                LanguageInfo languageInfo = resolveLanguage();
                 String stringValue;
                 if (languageInfo == null) {
                     stringValue = val.toString();
@@ -394,7 +400,7 @@ public abstract class DebugValue {
 
         @Override
         public String getName() {
-            return null;
+            return name;
         }
 
         @Override
@@ -414,7 +420,7 @@ public abstract class DebugValue {
 
         @Override
         DebugValue createAsInLanguage(LanguageInfo language) {
-            return new HeapValue(debugger, sourceRoot, language, value);
+            return new HeapValue(debugger, sourceRoot, language, name, value);
         }
 
         @Override
@@ -440,7 +446,7 @@ public abstract class DebugValue {
         }
 
         private PropertyValue(Debugger debugger, RootNode root, LanguageInfo preferredLanguage, int keyInfo, Map.Entry<Object, Object> property, DebugScope scope) {
-            super(debugger, root, preferredLanguage, null);
+            super(debugger, root, preferredLanguage, (property.getKey() instanceof String) ? (String) property.getKey() : null, null);
             this.keyInfo = keyInfo;
             this.property = property;
             this.scope = scope;
@@ -454,23 +460,18 @@ public abstract class DebugValue {
 
         @Override
         public String getName() {
+            String name = super.getName();
+            if (name != null) {
+                return name;
+            }
             checkValid();
-            String name;
             Object propertyKey = property.getKey();
-            if (propertyKey instanceof String) {
-                name = (String) propertyKey;
+            // non-String property key
+            LanguageInfo languageInfo = resolveLanguage();
+            if (languageInfo != null) {
+                name = getDebugger().getEnv().toString(languageInfo, propertyKey);
             } else {
-                LanguageInfo languageInfo;
-                if (preferredLanguage != null) {
-                    languageInfo = preferredLanguage;
-                } else {
-                    languageInfo = getSourceRoot().getRootNode().getLanguageInfo();
-                }
-                if (languageInfo != null) {
-                    name = getDebugger().getEnv().toString(languageInfo, propertyKey);
-                } else {
-                    name = Objects.toString(propertyKey);
-                }
+                name = Objects.toString(propertyKey);
             }
             return name;
         }
@@ -521,7 +522,6 @@ public abstract class DebugValue {
 
         private final int keyInfo;
         private final Map<Object, Object> map;
-        private final String name;
         private final DebugScope scope;
 
         PropertyNamedValue(Debugger debugger, RootNode root, TruffleObject object,
@@ -531,23 +531,16 @@ public abstract class DebugValue {
 
         private PropertyNamedValue(Debugger debugger, RootNode root, LanguageInfo preferredLanguage,
                         int keyInfo, Map<Object, Object> map, String name, DebugScope scope) {
-            super(debugger, root, preferredLanguage, null);
+            super(debugger, root, preferredLanguage, name, null);
             this.keyInfo = keyInfo;
             this.map = map;
-            this.name = name;
             this.scope = scope;
-        }
-
-        @Override
-        public String getName() {
-            checkValid();
-            return name;
         }
 
         @Override
         Object get() {
             checkValid();
-            return map.get(name);
+            return map.get(getName());
         }
 
         @Override
@@ -577,12 +570,12 @@ public abstract class DebugValue {
         @Override
         public void set(DebugValue value) {
             checkValid();
-            map.put(name, value.get());
+            map.put(getName(), value.get());
         }
 
         @Override
         DebugValue createAsInLanguage(LanguageInfo language) {
-            return new PropertyNamedValue(getDebugger(), getSourceRoot(), language, keyInfo, map, name, scope);
+            return new PropertyNamedValue(getDebugger(), getSourceRoot(), language, keyInfo, map, getName(), scope);
         }
 
         private void checkValid() {

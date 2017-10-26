@@ -248,11 +248,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
         } catch (IllegalStateException s) {
         }
 
-        try {
-            value.getName();
-            fail();
-        } catch (IllegalStateException s) {
-        }
+        value.getName();    // Name is known
 
     }
 
