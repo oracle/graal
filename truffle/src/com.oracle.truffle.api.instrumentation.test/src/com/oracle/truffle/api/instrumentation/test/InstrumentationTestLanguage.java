@@ -589,7 +589,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                 if (callNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     Context context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
-                    CallTarget target = context.callTargets.get(identifier);
+                    CallTarget target = context.callFunctions.callTargets.get(identifier);
                     callNode = insert(Truffle.getRuntime().createDirectCallNode(target));
                 }
                 Object retval = callNode.call(new Object[0]);
