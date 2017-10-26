@@ -36,7 +36,7 @@ import java.util.Set;
 /**
  * Source information of a particular source location in the profiler.
  * 
- * @since 0.29
+ * @since 0.30
  */
 final class SourceLocation {
 

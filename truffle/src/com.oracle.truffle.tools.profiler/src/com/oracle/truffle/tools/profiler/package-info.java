@@ -26,6 +26,6 @@
 /**
  * Package containing classes implementing the Truffle Profiler.
  *
- * @since 0.29 or older
+ * @since 0.30 or older
  */
 package com.oracle.truffle.tools.profiler;

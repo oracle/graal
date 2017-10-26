@@ -32,7 +32,7 @@ import org.graalvm.options.OptionDescriptors;
 /**
  * The {@linkplain TruffleInstrument instrument} for the CPU sampler.
  *
- * @since 0.29
+ * @since 0.30
  */
 @TruffleInstrument.Registration(id = CPUSamplerInstrument.ID, name = "CPU Sampler", version = "0.1", services = {CPUSampler.class})
 public class CPUSamplerInstrument extends TruffleInstrument {
@@ -40,7 +40,7 @@ public class CPUSamplerInstrument extends TruffleInstrument {
     /**
      * Default constructor.
      *
-     * @since 0.29
+     * @since 0.30
      */
     public CPUSamplerInstrument() {
     }
@@ -48,7 +48,7 @@ public class CPUSamplerInstrument extends TruffleInstrument {
     /**
      * A string used to identify the sampler, i.e. as the name of the tool.
      *
-     * @since 0.29
+     * @since 0.30
      */
     public static final String ID = "cpusampler";
     private static CPUSampler sampler;
@@ -58,7 +58,7 @@ public class CPUSamplerInstrument extends TruffleInstrument {
      * Sets the factory which instantiates the {@link CPUSampler}.
      *
      * @param factory the factory which instantiates the {@link CPUSampler}.
-     * @since 0.29
+     * @since 0.30
      */
     public static void setFactory(ProfilerToolFactory<CPUSampler> factory) {
         CPUSamplerInstrument.factory = factory;
@@ -77,7 +77,7 @@ public class CPUSamplerInstrument extends TruffleInstrument {
      * Called to create the Instrument.
      *
      * @param env environment information for the instrument
-     * @since 0.29
+     * @since 0.30
      */
     @Override
     protected void onCreate(Env env) {
@@ -105,7 +105,7 @@ public class CPUSamplerInstrument extends TruffleInstrument {
 
     /**
      * @return All the {@link OptionDescriptors options} provided by the {@link CPUSampler}.
-     * @since 0.29
+     * @since 0.30
      */
     @Override
     protected OptionDescriptors getOptionDescriptors() {
@@ -116,7 +116,7 @@ public class CPUSamplerInstrument extends TruffleInstrument {
      * Called when the Instrument is to be disposed.
      *
      * @param env environment information for the instrument
-     * @since 0.29
+     * @since 0.30
      */
     @Override
     protected void onDispose(Env env) {

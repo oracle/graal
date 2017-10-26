@@ -34,7 +34,7 @@ import java.io.PrintStream;
 /**
  * The {@linkplain TruffleInstrument instrument} for the CPU tracer.
  *
- * @since 0.29
+ * @since 0.30
  */
 @TruffleInstrument.Registration(id = CPUTracerInstrument.ID, name = "CPU Tracer", version = "0.1", services = {CPUTracer.class})
 public class CPUTracerInstrument extends TruffleInstrument {
@@ -42,7 +42,7 @@ public class CPUTracerInstrument extends TruffleInstrument {
     /**
      * Default constructor.
      *
-     * @since 0.29
+     * @since 0.30
      */
     public CPUTracerInstrument() {
     }
@@ -50,7 +50,7 @@ public class CPUTracerInstrument extends TruffleInstrument {
     /**
      * A string used to identify the tracer, i.e. as the name of the tool.
      *
-     * @since 0.29
+     * @since 0.30
      */
     public static final String ID = "cputracer";
     private static CPUTracer tracer;
@@ -60,7 +60,7 @@ public class CPUTracerInstrument extends TruffleInstrument {
      * Sets the factory which instantiates the {@link CPUTracer}.
      *
      * @param factory the factory which instantiates the {@link CPUTracer}.
-     * @since 0.29
+     * @since 0.30
      */
     public static void setFactory(ProfilerToolFactory<CPUTracer> factory) {
         CPUTracerInstrument.factory = factory;
@@ -79,7 +79,7 @@ public class CPUTracerInstrument extends TruffleInstrument {
      * Called to create the Instrument.
      *
      * @param env environment information for the instrument
-     * @since 0.29
+     * @since 0.30
      */
     @Override
     protected void onCreate(Env env) {
@@ -104,7 +104,7 @@ public class CPUTracerInstrument extends TruffleInstrument {
 
     /**
      * @return A list of the options provided by the {@link CPUTracer}.
-     * @since 0.29
+     * @since 0.30
      */
     @Override
     protected OptionDescriptors getOptionDescriptors() {
@@ -115,7 +115,7 @@ public class CPUTracerInstrument extends TruffleInstrument {
      * Called when the Instrument is to be disposed.
      *
      * @param env environment information for the instrument
-     * @since 0.29
+     * @since 0.30
      */
     @Override
     protected void onDispose(Env env) {

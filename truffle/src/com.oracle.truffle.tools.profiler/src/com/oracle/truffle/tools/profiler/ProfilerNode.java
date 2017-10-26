@@ -38,7 +38,7 @@ import java.util.Set;
  * needed data to the call tree.
  *
  * @param <T> The type of data that should be associated with this node.
- * @since 0.29
+ * @since 0.30
  */
 public final class ProfilerNode<T> {
 
@@ -67,7 +67,7 @@ public final class ProfilerNode<T> {
 
     /**
      * @return the children of this {@link ProfilerNode}
-     * @since 0.29
+     * @since 0.30
      */
     public Collection<ProfilerNode<T>> getChildren() {
         if (children == null) {
@@ -78,7 +78,7 @@ public final class ProfilerNode<T> {
 
     /**
      * @return the parent of this {@link ProfilerNode}
-     * @since 0.29
+     * @since 0.30
      */
     public ProfilerNode<T> getParent() {
         return parent;
@@ -87,7 +87,7 @@ public final class ProfilerNode<T> {
     /**
      * @return true if the parent chain contains a {@link ProfilerNode} with the same
      *         {@link SourceLocation}, otherwise false
-     * @since 0.29
+     * @since 0.30
      */
     public boolean isRecursive() {
         return isRecursiveImpl(this);
@@ -105,7 +105,7 @@ public final class ProfilerNode<T> {
 
     /**
      * @return the {@link SourceSection} associated with this {@link ProfilerNode}
-     * @since 0.29
+     * @since 0.30
      */
     public SourceSection getSourceSection() {
         return sourceLocation.getSourceSection();
@@ -114,7 +114,7 @@ public final class ProfilerNode<T> {
     /**
      * @return The name of the {@linkplain com.oracle.truffle.api.nodes.RootNode root node} in which
      *         the {@link SourceLocation} associated with this {@link ProfilerNode} appears
-     * @since 0.29
+     * @since 0.30
      */
     public String getRootName() {
         return sourceLocation.getRootName();
@@ -123,7 +123,7 @@ public final class ProfilerNode<T> {
     /**
      * @return A set of {@link com.oracle.truffle.api.instrumentation.StandardTags tags} for the
      *         {@link SourceLocation} associated with this {@link ProfilerNode}
-     * @since 0.29
+     * @since 0.30
      */
     public Set<Class<?>> getTags() {
         return sourceLocation.getTags();
@@ -131,7 +131,7 @@ public final class ProfilerNode<T> {
 
     /**
      * @return The additional information attached to this node through the template parameter
-     * @since 0.29
+     * @since 0.30
      */
     public T getPayload() {
         return payload;

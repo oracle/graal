@@ -32,7 +32,7 @@ import org.graalvm.options.OptionDescriptors;
 /**
  * The {@linkplain TruffleInstrument instrument} for the memory tracer.
  *
- * @since 0.29
+ * @since 0.30
  */
 @TruffleInstrument.Registration(id = MemoryTracerInstrument.ID, name = "Memory Tracer", version = "0.1", services = {MemoryTracer.class})
 public class MemoryTracerInstrument extends TruffleInstrument {
@@ -40,7 +40,7 @@ public class MemoryTracerInstrument extends TruffleInstrument {
     /**
      * Default constructor.
      *
-     * @since 0.29
+     * @since 0.30
      */
     public MemoryTracerInstrument() {
     }
@@ -48,7 +48,7 @@ public class MemoryTracerInstrument extends TruffleInstrument {
     /**
      * A string used to identify the tracer, i.e. as the name of the tool.
      *
-     * @since 0.29
+     * @since 0.30
      */
     public static final String ID = "memtracer";
     private static MemoryTracer tracer;
@@ -58,7 +58,7 @@ public class MemoryTracerInstrument extends TruffleInstrument {
      * Sets the factory which instantiates the {@link MemoryTracer}.
      *
      * @param factory the factory which instantiates the {@link MemoryTracer}.
-     * @since 0.29
+     * @since 0.30
      */
     public static void setFactory(ProfilerToolFactory<MemoryTracer> factory) {
         MemoryTracerInstrument.factory = factory;
@@ -77,7 +77,7 @@ public class MemoryTracerInstrument extends TruffleInstrument {
      * Called to create the Instrument.
      *
      * @param env environment information for the instrument
-     * @since 0.29
+     * @since 0.30
      */
     @Override
     protected void onCreate(Env env) {
@@ -103,7 +103,7 @@ public class MemoryTracerInstrument extends TruffleInstrument {
 
     /**
      * @return A list of the options provided by the {@link MemoryTracer}.
-     * @since 0.29
+     * @since 0.30
      */
     @Override
     protected OptionDescriptors getOptionDescriptors() {
@@ -114,7 +114,7 @@ public class MemoryTracerInstrument extends TruffleInstrument {
      * Called when the Instrument is to be disposed.
      *
      * @param env environment information for the instrument
-     * @since 0.29
+     * @since 0.30
      */
     @Override
     protected void onDispose(Env env) {

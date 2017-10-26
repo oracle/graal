@@ -51,7 +51,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * intervals, i.e. the state of the stack is copied and saved into trees of {@linkplain ProfilerNode
  * nodes}, which represent the profile of the execution.
  *
- * @since 0.29
+ * @since 0.30
  */
 public final class CPUSampler implements Closeable {
 
@@ -60,7 +60,7 @@ public final class CPUSampler implements Closeable {
      * template parameter of {@link ProfilerNode}. Differentiates between an execution in compiled
      * code and in the interpreter.
      *
-     * @since 0.29
+     * @since 0.30
      */
     public static final class Payload {
 
@@ -79,7 +79,7 @@ public final class CPUSampler implements Closeable {
         /**
          * @return The number of times the element was found bellow the top of the shadow stack as
          *         compiled code
-         * @since 0.29
+         * @since 0.30
          */
         public int getCompiledHitCount() {
             return compiledHitCount;
@@ -88,7 +88,7 @@ public final class CPUSampler implements Closeable {
         /**
          * @return The number of times the element was found bellow the top of the shadow stack as
          *         interpreted code
-         * @since 0.29
+         * @since 0.30
          */
         public int getInterpretedHitCount() {
             return interpretedHitCount;
@@ -97,7 +97,7 @@ public final class CPUSampler implements Closeable {
         /**
          * @return The number of times the element was found on the top of the shadow stack as
          *         compiled code
-         * @since 0.29
+         * @since 0.30
          */
         public int getSelfCompiledHitCount() {
             return selfCompiledHitCount;
@@ -106,7 +106,7 @@ public final class CPUSampler implements Closeable {
         /**
          * @return The number of times the element was found on the top of the shadow stack as
          *         interpreted code
-         * @since 0.29
+         * @since 0.30
          */
         public int getSelfInterpretedHitCount() {
             return selfInterpretedHitCount;
@@ -114,7 +114,7 @@ public final class CPUSampler implements Closeable {
 
         /**
          * @return Total number of times the element was found on the top of the shadow stack
-         * @since 0.29
+         * @since 0.30
          */
         public int getSelfHitCount() {
             return selfCompiledHitCount + selfInterpretedHitCount;
@@ -122,7 +122,7 @@ public final class CPUSampler implements Closeable {
 
         /**
          * @return Total number of times the element was found bellow the top of the shadow stack
-         * @since 0.29
+         * @since 0.30
          */
         public int getHitCount() {
             return compiledHitCount + interpretedHitCount;
@@ -133,7 +133,7 @@ public final class CPUSampler implements Closeable {
     /**
      * Describes the different modes in which the CPU sampler can operate.
      *
-     * @since 0.29
+     * @since 0.30
      */
     public enum Mode {
         /**
@@ -141,21 +141,21 @@ public final class CPUSampler implements Closeable {
          * compilation. This mode is the default and has the least amount of impact on peek
          * performance.
          *
-         * @since 0.29
+         * @since 0.30
          */
         COMPILED,
         /**
          * Sample {@link RootTag Roots} <b>including</b> the ones that get inlined during
          * compilation.
          *
-         * @since 0.29
+         * @since 0.30
          */
         ROOTS,
         /**
          * Sample all {@link com.oracle.truffle.api.instrumentation.StandardTags.StatementTag
          * Statements}. This mode has serious impact on peek performance.
          *
-         * @since 0.29
+         * @since 0.30
          */
         STATEMENTS
     }
@@ -200,7 +200,7 @@ public final class CPUSampler implements Closeable {
      * Controls whether the sampler is collecting data or not.
      *
      * @param collecting the new state of the sampler.
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized void setCollecting(boolean collecting) {
         if (this.collecting != collecting) {
@@ -211,7 +211,7 @@ public final class CPUSampler implements Closeable {
 
     /**
      * @return whether or not the sampler is currently collecting data.
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized boolean isCollecting() {
         return collecting;
@@ -221,7 +221,7 @@ public final class CPUSampler implements Closeable {
      * Sets the {@link Mode mode} for the sampler.
      * 
      * @param mode the new mode for the sampler.
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized void setMode(Mode mode) {
         verifyConfigAllowed();
@@ -232,7 +232,7 @@ public final class CPUSampler implements Closeable {
      * Sets the sampling period i.e. the time between two samples of the shadow stack are taken.
      *
      * @param samplePeriod the new sampling period.
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized void setPeriod(long samplePeriod) {
         verifyConfigAllowed();
@@ -244,7 +244,7 @@ public final class CPUSampler implements Closeable {
 
     /**
      * @return the sampling period i.e. the time between two samples of the shadow stack are taken.
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized long getPeriod() {
         return period;
@@ -255,7 +255,7 @@ public final class CPUSampler implements Closeable {
      * would have been taken and when the sampler actually starts taking samples.
      *
      * @param delay the delay period.
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized void setDelay(long delay) {
         verifyConfigAllowed();
@@ -267,7 +267,7 @@ public final class CPUSampler implements Closeable {
      * than the provided size during execution can be checked with {@linkplain #hasStackOverflowed}
      *
      * @param stackLimit the new size of the shadow stack
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized void setStackLimit(int stackLimit) {
         verifyConfigAllowed();
@@ -279,7 +279,7 @@ public final class CPUSampler implements Closeable {
 
     /**
      * @return size of the shadow stack
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized int getStackLimit() {
         return stackLimit;
@@ -290,7 +290,7 @@ public final class CPUSampler implements Closeable {
      * parts of the executed source code that is specified by the filter.
      *
      * @param filter The new filter describing which part of the source code to sample
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized void setFilter(SourceSectionFilter filter) {
         verifyConfigAllowed();
@@ -299,7 +299,7 @@ public final class CPUSampler implements Closeable {
 
     /**
      * @return The filter describing which part of the source code to sample
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized SourceSectionFilter getFilter() {
         return filter;
@@ -307,7 +307,7 @@ public final class CPUSampler implements Closeable {
 
     /**
      * @return Total number of samples taken during execution
-     * @since 0.29
+     * @since 0.30
      */
     public long getSampleCount() {
         return samplesTaken.get();
@@ -315,7 +315,7 @@ public final class CPUSampler implements Closeable {
 
     /**
      * @return was the shadow stack size insufficient for the execution.
-     * @since 0.29
+     * @since 0.30
      */
     public boolean hasStackOverflowed() {
         return stackOverflowed;
@@ -323,7 +323,7 @@ public final class CPUSampler implements Closeable {
 
     /**
      * @return The roots of the trees representing the profile of the execution.
-     * @since 0.29
+     * @since 0.30
      */
     public Collection<ProfilerNode<Payload>> getRootNodes() {
         return rootNode.getChildren();
@@ -332,7 +332,7 @@ public final class CPUSampler implements Closeable {
     /**
      * Erases all the data gathered by the sampler and resets the sample count to 0.
      *
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized void clearData() {
         samplesTaken.set(0);
@@ -344,7 +344,7 @@ public final class CPUSampler implements Closeable {
 
     /**
      * @return whether or not the sampler has collected any data so far.
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized boolean hasData() {
         Map<SourceLocation, ProfilerNode<Payload>> rootChildren = rootNode.children;
@@ -354,7 +354,7 @@ public final class CPUSampler implements Closeable {
     /**
      * Closes the sampler for fuhrer use, deleting all the gathered data.
      *
-     * @since 0.29
+     * @since 0.30
      */
     @Override
     public synchronized void close() {

@@ -54,7 +54,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * The tracer counts how many times each of the elements of interest (e.g. functions, statements,
  * etc.) are executed.
  *
- * @since 0.29
+ * @since 0.30
  */
 public final class CPUTracer implements Closeable {
 
@@ -80,7 +80,7 @@ public final class CPUTracer implements Closeable {
      * Controls whether the tracer is collecting data or not.
      *
      * @param collecting the new state of the tracer.
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized void setCollecting(boolean collecting) {
         if (closed) {
@@ -94,7 +94,7 @@ public final class CPUTracer implements Closeable {
 
     /**
      * @return whether or not the sampler is currently collecting data.
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized boolean isCollecting() {
         return collecting;
@@ -105,7 +105,7 @@ public final class CPUTracer implements Closeable {
      * only parts of the executed source code.
      *
      * @param filter The filter describing which part of the source code to trace
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized void setFilter(SourceSectionFilter filter) {
         verifyConfigAllowed();
@@ -114,7 +114,7 @@ public final class CPUTracer implements Closeable {
 
     /**
      * @return The filter describing which part of the source code to sample
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized SourceSectionFilter getFilter() {
         return filter;
@@ -122,7 +122,7 @@ public final class CPUTracer implements Closeable {
 
     /**
      * @return All the payloads the tracer has gathered as an unmodifiable collection
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized Collection<Payload> getPayloads() {
         return Collections.unmodifiableCollection(payloadMap.values());
@@ -131,7 +131,7 @@ public final class CPUTracer implements Closeable {
     /**
      * Erases all the data gathered by the tracer.
      *
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized void clearData() {
         payloadMap.clear();
@@ -184,7 +184,7 @@ public final class CPUTracer implements Closeable {
     /**
      * Closes the tracer for fuhrer use, deleting all the gathered data.
      *
-     * @since 0.29
+     * @since 0.30
      */
     @Override
     public synchronized void close() {
@@ -196,7 +196,7 @@ public final class CPUTracer implements Closeable {
      * Holds data on how many times a section of source code was executed. Differentiates between
      * compiled and interpreted executions.
      *
-     * @since 0.29
+     * @since 0.30
      */
     public static final class Payload {
 
@@ -211,7 +211,7 @@ public final class CPUTracer implements Closeable {
 
         /**
          * @return The name of the root this counter is associated with.
-         * @since 0.29
+         * @since 0.30
          */
         public String getRootName() {
             return location.getRootName();
@@ -220,7 +220,7 @@ public final class CPUTracer implements Closeable {
         /**
          * @return A set of tags for the {@link SourceLocation} associated with this
          *         {@link ProfilerNode}
-         * @since 0.29
+         * @since 0.30
          */
         public Set<Class<?>> getTags() {
             return location.getTags();
@@ -228,7 +228,7 @@ public final class CPUTracer implements Closeable {
 
         /**
          * @return The source section for which this {@link Payload} is counting executions
-         * @since 0.29
+         * @since 0.30
          */
         public SourceSection getSourceSection() {
             return location.getSourceSection();
@@ -236,7 +236,7 @@ public final class CPUTracer implements Closeable {
 
         /**
          * @return The number of times the associated source sections was executed as compiled code
-         * @since 0.29
+         * @since 0.30
          */
         public long getCountCompiled() {
             return countCompiled;
@@ -244,7 +244,7 @@ public final class CPUTracer implements Closeable {
 
         /**
          * @return The number of times the associated source sections was interpreted
-         * @since 0.29
+         * @since 0.30
          */
         public long getCountInterpreted() {
             return countInterpreted;
@@ -252,7 +252,7 @@ public final class CPUTracer implements Closeable {
 
         /**
          * @return The total number of times the associated source sections was executed
-         * @since 0.29
+         * @since 0.30
          */
         public long getCount() {
             return countCompiled + countInterpreted;

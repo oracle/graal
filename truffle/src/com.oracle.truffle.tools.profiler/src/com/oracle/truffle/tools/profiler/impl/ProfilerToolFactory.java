@@ -30,7 +30,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
  * Functional interface used to implement factories for profiler tools.
  *
  * @param <T> The class which the implementation creates.
- * @since 0.29
+ * @since 0.30
  */
 public interface ProfilerToolFactory<T> {
     /**
@@ -38,7 +38,7 @@ public interface ProfilerToolFactory<T> {
      * 
      * @param env environment info available to template argument constructor.
      * @return A new instance of the template argument.
-     * @since 0.29
+     * @since 0.30
      */
     T create(TruffleInstrument.Env env);
 }

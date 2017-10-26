@@ -57,7 +57,7 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  * <p>
  * NOTE: This profiler is still experimental with limited capabilities.
  *
- * @since 0.29
+ * @since 0.30
  */
 public final class MemoryTracer implements Closeable {
 
@@ -115,7 +115,7 @@ public final class MemoryTracer implements Closeable {
      * Controls whether the tracer is collecting data or not.
      *
      * @param collecting the new state of the tracer.
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized void setCollecting(boolean collecting) {
         if (closed) {
@@ -129,7 +129,7 @@ public final class MemoryTracer implements Closeable {
 
     /**
      * @return whether or not the sampler is currently collecting data.
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized boolean isCollecting() {
         return collecting;
@@ -137,7 +137,7 @@ public final class MemoryTracer implements Closeable {
 
     /**
      * @return The roots of the trees representing the profile of the execution.
-     * @since 0.29
+     * @since 0.30
      */
     public Collection<ProfilerNode<Payload>> getRootNodes() {
         return rootNode.getChildren();
@@ -146,7 +146,7 @@ public final class MemoryTracer implements Closeable {
     /**
      * Erases all the data gathered by the tracer.
      *
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized void clearData() {
         Map<SourceLocation, ProfilerNode<Payload>> rootChildren = rootNode.children;
@@ -157,7 +157,7 @@ public final class MemoryTracer implements Closeable {
 
     /**
      * @return whether or not the sampler has collected any data so far.
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized boolean hasData() {
         Map<SourceLocation, ProfilerNode<Payload>> rootChildren = rootNode.children;
@@ -166,7 +166,7 @@ public final class MemoryTracer implements Closeable {
 
     /**
      * @return size of the shadow stack
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized int getStackLimit() {
         return stackLimit;
@@ -177,7 +177,7 @@ public final class MemoryTracer implements Closeable {
      * provided size during execution can be checked with {@linkplain #hasStackOverflowed}
      *
      * @param stackLimit the new size of the shadow stack
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized void setStackLimit(int stackLimit) {
         verifyConfigAllowed();
@@ -189,7 +189,7 @@ public final class MemoryTracer implements Closeable {
 
     /**
      * @return was the shadow stack size insufficient for the execution.
-     * @since 0.29
+     * @since 0.30
      */
     public boolean hasStackOverflowed() {
         return stackOverflowed;
@@ -200,7 +200,7 @@ public final class MemoryTracer implements Closeable {
      * observe only parts of the executed source code.
      *
      * @param filter The new filter describing which part of the source code to sample
-     * @since 0.29
+     * @since 0.30
      */
     public synchronized void setFilter(SourceSectionFilter filter) {
         verifyConfigAllowed();
@@ -210,7 +210,7 @@ public final class MemoryTracer implements Closeable {
     /**
      * Closes the tracer for fuhrer use, deleting all the gathered data.
      *
-     * @since 0.29
+     * @since 0.30
      */
     @Override
     public void close() {
@@ -286,7 +286,7 @@ public final class MemoryTracer implements Closeable {
      * Used as a template parameter for {@link ProfilerNode}. Holds information about
      * {@link AllocationEventInfo allocation events}.
      *
-     * @since 0.29
+     * @since 0.30
      */
     public static final class Payload {
 
@@ -300,7 +300,7 @@ public final class MemoryTracer implements Closeable {
         /**
          * @return Total number of allocations recorded while the associated element was on the
          *         shadow stack
-         * @since 0.29
+         * @since 0.30
          */
         public long getTotalAllocations() {
             return totalAllocations;
@@ -310,7 +310,7 @@ public final class MemoryTracer implements Closeable {
          * Increases the number of total allocations recorded while the associated element was on
          * the shadow stack.
          *
-         * @since 0.29
+         * @since 0.30
          */
         public void incrementTotalAllocations() {
             this.totalAllocations++;
@@ -319,7 +319,7 @@ public final class MemoryTracer implements Closeable {
         /**
          * @return Information about all the {@link AllocationEventInfo allocation events} that
          *         happened while the associated element was at the top of the shadow stack.
-         * @since 0.29
+         * @since 0.30
          */
         public List<AllocationEventInfo> getEvents() {
             return events;
@@ -329,7 +329,7 @@ public final class MemoryTracer implements Closeable {
     /**
      * Stores informatino about a single {@link AllocationEvent}.
      *
-     * @since 0.29
+     * @since 0.30
      */
     public static final class AllocationEventInfo {
         private final LanguageInfo language;
@@ -346,7 +346,7 @@ public final class MemoryTracer implements Closeable {
 
         /**
          * @return The {@link LanguageInfo language} from which the allocation originated
-         * @since 0.29
+         * @since 0.30
          */
         public LanguageInfo getLanguage() {
             return language;
@@ -354,7 +354,7 @@ public final class MemoryTracer implements Closeable {
 
         /**
          * @return the amount of memory that was allocated
-         * @since 0.29
+         * @since 0.30
          */
         public long getAllocated() {
             return allocated;
@@ -362,7 +362,7 @@ public final class MemoryTracer implements Closeable {
 
         /**
          * @return Whether the allocation was a re-allocation
-         * @since 0.29
+         * @since 0.30
          */
         public boolean isReallocation() {
             return reallocation;
@@ -372,7 +372,7 @@ public final class MemoryTracer implements Closeable {
          * @return A String representation of the
          *         {@linkplain com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#findMetaObject(LanguageInfo, Object)
          *         meta object}
-         * @since 0.29
+         * @since 0.30
          */
         public String getMetaObjectString() {
             return metaObjectString;
