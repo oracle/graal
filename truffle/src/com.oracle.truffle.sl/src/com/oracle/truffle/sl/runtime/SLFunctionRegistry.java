@@ -213,6 +213,7 @@ public final class SLFunctionRegistry {
                     @Resolve(message = "GET_SIZE")
                     abstract static class FunctionNamesGetSizeNode extends Node {
 
+                        @TruffleBoundary
                         public Object access(FunctionNamesObject namesObject) {
                             return namesObject.names.size();
                         }
