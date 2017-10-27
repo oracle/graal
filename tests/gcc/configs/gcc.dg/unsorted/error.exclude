@@ -985,6 +985,7 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/trad/comment-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/trad/macro.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/trad/redef1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/trad/mi5.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/debug/tls-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/debug/redecl-4.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/debug/20011223-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/debug/pr43972.c
