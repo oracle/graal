@@ -701,6 +701,22 @@ class AsmFactory {
                 } else {
                     throw new AsmParseException("invalid operand type: " + dstType);
                 }
+            case "bswap":
+                if (dstType instanceof PrimitiveType) {
+                    LLVMExpressionNode src = getOperandLoad(dstType, operand);
+                    switch (dstPrimitiveType) {
+                        case I32:
+                            statements.add(LLVMAMD64BswaplNodeGen.create(src));
+                            return;
+                        case I64:
+                            statements.add(LLVMAMD64BswapqNodeGen.create(src));
+                            return;
+                        default:
+                            throw new AsmParseException("invalid operand size: " + dstPrimitiveType);
+                    }
+                } else {
+                    throw new AsmParseException("invalid operand type: " + dstType);
+                }
             default:
                 statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceSection, "Unsupported operation: " + operation));
                 return;
