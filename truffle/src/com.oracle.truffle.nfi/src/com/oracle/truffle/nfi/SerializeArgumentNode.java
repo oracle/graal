@@ -292,7 +292,7 @@ abstract class SerializeArgumentNode extends Node {
         }
 
         @Specialization(guards = "checkExecutable(isExecutable, object)")
-        protected boolean serializeFallback(NativeArgumentBuffer buffer, TruffleObject object,
+        protected boolean serializeExecutable(NativeArgumentBuffer buffer, TruffleObject object,
                         @SuppressWarnings("unused") @Cached("createIsExecutable()") Node isExecutable) {
             argType.serialize(buffer, createClosure(object));
             return true;
@@ -303,12 +303,24 @@ abstract class SerializeArgumentNode extends Node {
             return LibFFIClosure.create(ctxRef.get(), signature, object);
         }
 
+        @Specialization(replaces = "serializeNativePointer", guards = "!checkExecutable(isExecutable, object)")
+        protected boolean serializePointer(NativeArgumentBuffer buffer, TruffleObject object,
+                        @SuppressWarnings("unused") @Cached("createIsExecutable()") Node isExecutable,
+                        @Cached("createAsPointer()") AsPointerNode asPointer) {
+            argType.serialize(buffer, asPointer.execute(object));
+            return true;
+        }
+
         static Node createIsExecutable() {
             return Message.IS_EXECUTABLE.createNode();
         }
 
         static boolean checkExecutable(Node isExecutable, TruffleObject obj) {
             return ForeignAccess.sendIsExecutable(isExecutable, obj);
+        }
+
+        static AsPointerNode createAsPointer() {
+            return AsPointerNodeGen.create();
         }
     }
 

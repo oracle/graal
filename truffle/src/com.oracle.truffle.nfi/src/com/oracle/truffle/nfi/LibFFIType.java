@@ -639,7 +639,7 @@ abstract class LibFFIType {
 
         @Override
         public Object slowpathPrepareArgument(TruffleObject value) {
-            return value;
+            return PrepareArgument.EXECUTABLE;
         }
     }
 
@@ -741,18 +741,31 @@ abstract class LibFFIType {
     }
 
     public enum PrepareArgument {
+        /**
+         * The {@link TruffleObject} should be unboxed, and the result should be passed on.
+         */
         UNBOX,
-        POINTER
+        /**
+         * If the {@link TruffleObject} is a pointer ({@link Message#IS_POINTER}, it should be sent
+         * the {@link Message#AS_POINTER} message, and the result passed on. Otherwise, the object
+         * should be transformed to a pointer with {@link Message#TO_NATIVE}.
+         */
+        POINTER,
+        /**
+         * The caller should check whether the object is {@link Message#IS_EXECUTABLE}. If it is, it
+         * should be directly passed to the {@link #serialize} method. Otherwise, it should be
+         * treated as {@link #POINTER}.
+         */
+        EXECUTABLE
     }
 
     /**
      * Prepare the argument so it can be passed to the {@link #serialize} method. This should only
      * be called from the slow-path, on the fast-path the node created by
      * {@link #createSerializeArgumentNode()} will do this already in a more efficient way. If this
-     * method returns {@link PrepareArgument#UNBOX}, you should send an {@link Message#UNBOX}
-     * message to the object and try again. If this method returns {@link PrepareArgument#POINTER},
-     * you should try to convert this object to a pointer with {@link Message#AS_POINTER} or
-     * {@link Message#TO_NATIVE}.
+     * returns one of the {@link PrepareArgument} enum values, special handling is required (see
+     * documentation of {@link PrepareArgument}). Otherwise, the return value of this function
+     * should be passed directly to the {@link #serialize} method.
      */
     @TruffleBoundary
     public abstract Object slowpathPrepareArgument(TruffleObject value);

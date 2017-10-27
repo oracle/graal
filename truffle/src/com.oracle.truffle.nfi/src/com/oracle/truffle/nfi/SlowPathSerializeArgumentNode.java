@@ -59,9 +59,18 @@ abstract class SlowPathSerializeArgumentNode extends Node {
     @Specialization(replaces = "cacheType", guards = {"value != null"})
     protected Object genericWithPrepare(NativeArgumentBuffer buffer, LibFFIType type, TruffleObject value,
                     @Cached("createUnbox()") Node unbox,
+                    @Cached("createIsExecutable()") Node isExecutable,
                     @Cached("createAsPointer()") AsPointerNode asPointer,
                     @Cached("createRecursive()") SlowPathSerializeArgumentNode recursive) {
         Object prepared = type.slowpathPrepareArgument(value);
+        if (prepared == PrepareArgument.EXECUTABLE) {
+            if (ForeignAccess.sendIsExecutable(isExecutable, value)) {
+                prepared = value;
+            } else {
+                prepared = PrepareArgument.POINTER;
+            }
+        }
+
         if (prepared == PrepareArgument.POINTER) {
             prepared = asPointer.execute(value);
         } else if (prepared == PrepareArgument.UNBOX) {
@@ -83,6 +92,10 @@ abstract class SlowPathSerializeArgumentNode extends Node {
 
     protected static Node createUnbox() {
         return Message.UNBOX.createNode();
+    }
+
+    protected static Node createIsExecutable() {
+        return Message.IS_EXECUTABLE.createNode();
     }
 
     protected static SlowPathSerializeArgumentNode createRecursive() {
