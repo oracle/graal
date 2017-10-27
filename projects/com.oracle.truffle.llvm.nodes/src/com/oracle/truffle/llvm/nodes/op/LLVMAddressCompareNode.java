@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,6 +38,7 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.LLVMAddressEQNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.LLVMAddressEqualsNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.LLVMAddressNEQNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.ToComparableValueNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -231,13 +232,15 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         return op.compare(convertVal1.executeWithTarget(val1), convertVal2.executeWithTarget(val2));
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    abstract static class LLVMAddressEQNode extends LLVMExpressionNode {
+    abstract static class LLVMAddressEqualsNode extends Node {
+
+        abstract boolean execute(Object val1, Object val2);
+
         protected boolean isNullAddress(LLVMAddress a) {
             return a.getVal() == 0;
         }
 
-        protected ToComparableValue create() {
+        protected ToComparableValue createToComparable() {
             return ToComparableValueNodeGen.create(null);
         }
 
@@ -266,48 +269,30 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         }
 
         @Specialization(guards = {"!isSpecialCase(val1, val2)"})
-        public boolean doGenericCompare(Object val1, Object val2, @Cached("create()") ToComparableValue convertVal1, @Cached("create()") ToComparableValue convertVal2) {
+        public boolean doGenericCompare(Object val1, Object val2, @Cached("createToComparable()") ToComparableValue convertVal1, @Cached("createToComparable()") ToComparableValue convertVal2) {
             return convertVal1.executeWithTarget(val1).getVal() == convertVal2.executeWithTarget(val2).getVal();
         }
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    abstract static class LLVMAddressNEQNode extends LLVMExpressionNode {
-        protected boolean isNullAddress(LLVMAddress a) {
-            return a.getVal() == 0;
-        }
+    abstract static class LLVMAddressEQNode extends LLVMExpressionNode {
 
-        protected ToComparableValue create() {
-            return ToComparableValueNodeGen.create(null);
-        }
-
-        @Specialization(guards = {"isNullAddress(val2)"})
-        @SuppressWarnings("unused")
-        public boolean globalNEQNull(LLVMGlobalVariable val1, LLVMAddress val2) {
-            return true;
-        }
-
-        @Specialization(guards = {"isNullAddress(val1)"})
-        @SuppressWarnings("unused")
-        public boolean globalNEQNull(LLVMAddress val1, LLVMGlobalVariable val2) {
-            return true;
-        }
+        @Child LLVMAddressEqualsNode equals = LLVMAddressEqualsNodeGen.create();
 
         @Specialization
-        public boolean globalNEQ(LLVMGlobalVariable val1, LLVMGlobalVariable val2) {
-            return val1 != val2;
+        public boolean doCompare(Object val1, Object val2) {
+            return equals.execute(val1, val2);
         }
+    }
 
-        protected boolean isSpecialCase(Object val1, Object val2) {
-            boolean c1 = val1 instanceof LLVMGlobalVariable && val2 instanceof LLVMAddress && isNullAddress((LLVMAddress) val2);
-            boolean c2 = val1 instanceof LLVMAddress && val2 instanceof LLVMGlobalVariable && isNullAddress((LLVMAddress) val1);
-            boolean c3 = val1 instanceof LLVMGlobalVariable && val2 instanceof LLVMGlobalVariable;
-            return c1 || c2 || c3;
-        }
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    abstract static class LLVMAddressNEQNode extends LLVMExpressionNode {
 
-        @Specialization(guards = {"!isSpecialCase(val1, val2)"})
-        public boolean doGenericCompare(Object val1, Object val2, @Cached("create()") ToComparableValue convertVal1, @Cached("create()") ToComparableValue convertVal2) {
-            return convertVal1.executeWithTarget(val1).getVal() != convertVal2.executeWithTarget(val2).getVal();
+        @Child LLVMAddressEqualsNode equals = LLVMAddressEqualsNodeGen.create();
+
+        @Specialization
+        public boolean doCompare(Object val1, Object val2) {
+            return !equals.execute(val1, val2);
         }
     }
 
