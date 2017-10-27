@@ -436,7 +436,7 @@ public final class SourceSectionFilter {
          *
          * @param filter an existing filter to be included
          * @return the builder to chain calls
-         * @since 0.28
+         * @since 0.30
          */
         public Builder and(SourceSectionFilter filter) {
             for (EventFilterExpression e : filter.expressions) {
