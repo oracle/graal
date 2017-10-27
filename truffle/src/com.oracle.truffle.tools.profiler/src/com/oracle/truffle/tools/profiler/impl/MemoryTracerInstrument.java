@@ -73,6 +73,7 @@ public class MemoryTracerInstrument extends TruffleInstrument {
             Class.forName(MemoryTracer.class.getName(), true, MemoryTracer.class.getClassLoader());
         } catch (ClassNotFoundException ex) {
             // Can not happen
+            throw new AssertionError();
         }
     }
 

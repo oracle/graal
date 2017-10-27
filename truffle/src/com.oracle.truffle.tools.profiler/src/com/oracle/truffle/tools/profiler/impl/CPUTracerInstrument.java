@@ -75,6 +75,7 @@ public class CPUTracerInstrument extends TruffleInstrument {
             Class.forName(CPUTracer.class.getName(), true, CPUTracer.class.getClassLoader());
         } catch (ClassNotFoundException ex) {
             // Can not happen
+            throw new AssertionError();
         }
     }
 

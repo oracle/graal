@@ -73,6 +73,7 @@ public class CPUSamplerInstrument extends TruffleInstrument {
             Class.forName(CPUSampler.class.getName(), true, CPUSampler.class.getClassLoader());
         } catch (ClassNotFoundException ex) {
             // Can not happen
+            throw new AssertionError();
         }
     }
 
