@@ -51,7 +51,7 @@ public class CPUSamplerInstrument extends TruffleInstrument {
      * @since 0.30
      */
     public static final String ID = "cpusampler";
-    private static CPUSampler sampler;
+    private CPUSampler sampler;
     private static ProfilerToolFactory<CPUSampler> factory;
 
     /**

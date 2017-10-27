@@ -51,7 +51,7 @@ public class MemoryTracerInstrument extends TruffleInstrument {
      * @since 0.30
      */
     public static final String ID = "memtracer";
-    private static MemoryTracer tracer;
+    private MemoryTracer tracer;
     private static ProfilerToolFactory<MemoryTracer> factory;
 
     /**
