@@ -100,7 +100,10 @@ Travis configuration.
 
 MacOS: Apple's default LLVM does not contain the `opt` tool, which a Sulong
 build needs. We recommend installing LLVM via `homebrew` and appending the
-bin path to the `PATH`.
+bin path to the `PATH`. For best experience we suggest to install LLVM 4.0.
+
+    brew install llvm@4
+    export PATH="/usr/local/opt/llvm@4/bin:$PATH"
 
 How to get started?
 -------------------
