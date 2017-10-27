@@ -91,6 +91,9 @@ public final class LLVMContext {
 
     private final List<ContextExtension> contextExtension;
 
+    private final ThreadLocal<LLVMAddress> tls = ThreadLocal.withInitial(LLVMAddress::nullPointer);
+    private final ThreadLocal<LLVMAddress> clearChildTid = ThreadLocal.withInitial(LLVMAddress::nullPointer);
+
     // #define SIG_DFL ((__sighandler_t) 0) /* Default action. */
     private final LLVMFunction sigDfl;
 
@@ -267,6 +270,14 @@ public final class LLVMContext {
 
     public LLVMScope getGlobalScope() {
         return globalScope;
+    }
+
+    public ThreadLocal<LLVMAddress> getThreadLocalStorage() {
+        return tls;
+    }
+
+    public ThreadLocal<LLVMAddress> getClearChildTid() {
+        return clearChildTid;
     }
 
     @TruffleBoundary

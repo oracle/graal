@@ -111,8 +111,12 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                 return new LLVMAMD64SyscallSetgidNode();
             case LLVMAMD64Syscall.SYS_getppid:
                 return new LLVMAMD64SyscallGetPpidNode();
+            case LLVMAMD64Syscall.SYS_arch_prctl:
+                return LLVMAMD64SyscallArchPrctlNodeGen.create();
             case LLVMAMD64Syscall.SYS_futex:
                 return LLVMAMD64SyscallFutexNodeGen.create();
+            case LLVMAMD64Syscall.SYS_set_tid_address:
+                return LLVMAMD64SyscallSetTidAddressNodeGen.create();
             case LLVMAMD64Syscall.SYS_clock_gettime:
                 return LLVMAMD64SyscallClockGetTimeNodeGen.create();
             default:

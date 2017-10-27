@@ -181,7 +181,9 @@ import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64XorNodeFactory.LLVMAMD64XorwNo
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64AddressComputationNodeFactory.LLVMAMD64AddressDisplacementComputationNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64AddressComputationNodeFactory.LLVMAMD64AddressNoBaseOffsetComputationNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64AddressComputationNodeFactory.LLVMAMD64AddressOffsetComputationNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64AddressComputationNodeFactory.LLVMAMD64AddressSegmentComputationNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64Flags;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64GetTlsNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ReadAddressNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ReadRegisterNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64Target;
@@ -1055,6 +1057,9 @@ class AsmFactory {
                 if (dstType instanceof PrimitiveType) {
                     LLVMExpressionNode srcA = getOperandLoad(dstType, a);
                     out = srcA;
+                } else if (dstType instanceof PointerType) {
+                    LLVMExpressionNode srcA = getOperandLoad(dstType, a);
+                    out = srcA;
                 } else {
                     throw new AsmParseException("invalid operand type: " + dstType);
                 }
@@ -1873,11 +1878,22 @@ class AsmFactory {
             AsmOperand offset = op.getOffset();
             int shift = op.getShift();
             LLVMExpressionNode baseAddress;
+            assert op.getSegment() == null || op.getSegment().equals("%fs");
+            LLVMExpressionNode segment = null;
+            if (op.getSegment() != null) {
+                segment = new LLVMAMD64GetTlsNode();
+            }
             if (base != null) {
                 baseAddress = getOperandLoad(new PointerType(type), base);
             } else if (offset != null) {
                 LLVMExpressionNode offsetNode = getOperandLoad(null, offset);
-                return LLVMAMD64AddressNoBaseOffsetComputationNodeGen.create(displacement, shift, offsetNode);
+                if (op.getSegment() != null) {
+                    return LLVMAMD64AddressOffsetComputationNodeGen.create(displacement, shift, segment, offsetNode);
+                } else {
+                    return LLVMAMD64AddressNoBaseOffsetComputationNodeGen.create(displacement, shift, offsetNode);
+                }
+            } else if (op.getSegment() != null) {
+                return LLVMAMD64AddressDisplacementComputationNodeGen.create(displacement, segment);
             } else {
                 if (type instanceof PrimitiveType) {
                     switch (((PrimitiveType) type).getPrimitiveKind()) {
@@ -1890,6 +1906,8 @@ class AsmFactory {
                         default:
                             throw new AsmParseException("unknown type: " + type);
                     }
+                } else if (type instanceof PointerType) {
+                    return LLVMAMD64I64NodeGen.create(displacement);
                 } else {
                     throw new AsmParseException("invalid type: " + type);
                 }
@@ -1900,6 +1918,9 @@ class AsmFactory {
             } else {
                 LLVMExpressionNode offsetNode = getOperandLoad(null, offset);
                 address = LLVMAMD64AddressOffsetComputationNodeGen.create(displacement, shift, baseAddress, offsetNode);
+            }
+            if (op.getSegment() != null) {
+                address = LLVMAMD64AddressSegmentComputationNodeGen.create(address, segment);
             }
             return address;
         } else {
@@ -2023,22 +2044,30 @@ class AsmFactory {
             }
         } else if (operand instanceof AsmMemoryOperand) {
             LLVMExpressionNode address = getOperandAddress(operand);
+            LLVMExpressionNode addr = LLVMToAddressNodeGen.create(address, PrimitiveType.I8);
             LLVMLoadNode load;
-            switch (((PrimitiveType) type).getPrimitiveKind()) {
-                case I8:
-                    load = LLVMI8LoadNodeGen.create();
-                    return LLVMLoadExpressionNodeGen.create(load, address);
-                case I16:
-                    load = LLVMI16LoadNodeGen.create();
-                    return LLVMLoadExpressionNodeGen.create(load, address);
-                case I32:
-                    load = LLVMI32LoadNodeGen.create();
-                    return LLVMLoadExpressionNodeGen.create(load, address);
-                case I64:
-                    load = LLVMI64LoadNodeGen.create();
-                    return LLVMLoadExpressionNodeGen.create(load, address);
-                default:
-                    throw new AsmParseException("unsupported operand type: " + type);
+            if (type instanceof PrimitiveType) {
+                switch (((PrimitiveType) type).getPrimitiveKind()) {
+                    case I8:
+                        load = LLVMI8LoadNodeGen.create();
+                        return LLVMLoadExpressionNodeGen.create(load, addr);
+                    case I16:
+                        load = LLVMI16LoadNodeGen.create();
+                        return LLVMLoadExpressionNodeGen.create(load, addr);
+                    case I32:
+                        load = LLVMI32LoadNodeGen.create();
+                        return LLVMLoadExpressionNodeGen.create(load, addr);
+                    case I64:
+                        load = LLVMI64LoadNodeGen.create();
+                        return LLVMLoadExpressionNodeGen.create(load, addr);
+                    default:
+                        throw new AsmParseException("unsupported operand type: " + type);
+                }
+            } else if (type instanceof PointerType) {
+                load = LLVMAddressDirectLoadNodeGen.create();
+                return LLVMLoadExpressionNodeGen.create(load, addr);
+            } else {
+                throw new AsmParseException("unsupported operand type: " + type);
             }
         }
         throw new AsmParseException("unsupported operand: " + operand);

@@ -29,18 +29,9 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-
-public abstract class LLVMAMD64SyscallOperationNode extends LLVMNode {
-    private final String name;
-
-    public LLVMAMD64SyscallOperationNode(String name) {
-        this.name = name;
-    }
-
-    public abstract long execute(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9);
-
-    public final String getName() {
-        return name;
-    }
+public class LLVMAMD64ArchPrctl {
+    public static final int ARCH_SET_GS = 0x1001;
+    public static final int ARCH_SET_FS = 0x1002;
+    public static final int ARCH_GET_FS = 0x1003;
+    public static final int ARCH_GET_GS = 0x1004;
 }

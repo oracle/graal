@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.asm.amd64;
 
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 class AsmMemoryOperand implements AsmOperand {
@@ -37,16 +39,22 @@ class AsmMemoryOperand implements AsmOperand {
     public static final int SCALE_4 = 4;
     public static final int SCALE_8 = 8;
 
+    private final String segment;
     private final String displacement;
     private final AsmOperand base;
     private final AsmOperand offset;
     private final int scale;
 
-    AsmMemoryOperand(String displacement, AsmOperand base, AsmOperand offset, int scale) {
+    AsmMemoryOperand(String segment, String displacement, AsmOperand base, AsmOperand offset, int scale) {
+        this.segment = segment;
         this.displacement = displacement;
         this.base = base;
         this.offset = offset;
         this.scale = scale;
+    }
+
+    public String getSegment() {
+        return segment;
     }
 
     public int getDisplacement() {
@@ -86,12 +94,15 @@ class AsmMemoryOperand implements AsmOperand {
 
     @Override
     public Type getType() {
-        return null;
+        return new PointerType(PrimitiveType.I8);
     }
 
     @Override
     public String toString() {
         StringBuilder b = new StringBuilder();
+        if (segment != null) {
+            b.append(segment).append(':');
+        }
         if (displacement != null) {
             b.append(displacement);
         }
