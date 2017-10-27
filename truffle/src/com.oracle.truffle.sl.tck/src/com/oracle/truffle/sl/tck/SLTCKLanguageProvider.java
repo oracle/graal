@@ -61,6 +61,7 @@ public class SLTCKLanguageProvider implements LanguageProvider {
     private static final String ID = "sl";
     private static final String PATTERN_VALUE_FNC = "function %s() {return %s;}";
     private static final String PATTERN_BIN_OP_FNC = "function %s(a,b) {return a %s b;}";
+    private static final String PATTERN_POST_OP_FNC = "function %s(a) {a %s;}";
     private static final String[] PATTERN_STATEMENTS = {
                     "function %s() {r = 0;\n%s\nreturn r;\n}",
                     "function %s(p1) {r = 0;\n%s\nreturn r;\n}",
@@ -83,7 +84,7 @@ public class SLTCKLanguageProvider implements LanguageProvider {
         res.add(createValueConstructor(context, "1", "number", "createNumber", TypeDescriptor.NUMBER));
         res.add(createValueConstructor(context, "9223372036854775808", "bigNumber", "createBigNumber", TypeDescriptor.NUMBER));
         res.add(createValueConstructor(context, "\"string\"", "string", "createString", TypeDescriptor.STRING));
-        final Snippet.Builder opb = Snippet.newBuilder(
+        Snippet.Builder opb = Snippet.newBuilder(
                         "object",
                         eval(
                                         context,
@@ -94,6 +95,20 @@ public class SLTCKLanguageProvider implements LanguageProvider {
                                                         "}",
                                         "createObject"),
                         TypeDescriptor.OBJECT);
+        res.add(opb.build());
+        opb = Snippet.newBuilder(
+                        "function",
+                        eval(
+                                        context,
+                                        "function fn() {\n" +
+                                                        "}" +
+                                                        "function createFunction() {\n" +
+                                                        "return fn;\n" +
+                                                        "}",
+                                        "createFunction"),
+                        TypeDescriptor.union(
+                                        TypeDescriptor.OBJECT,
+                                        TypeDescriptor.EXECUTABLE));
         res.add(opb.build());
         return Collections.unmodifiableCollection(res);
     }
@@ -153,6 +168,9 @@ public class SLTCKLanguageProvider implements LanguageProvider {
                 Assert.assertTrue(TypeDescriptor.BOOLEAN.isAssignable(TypeDescriptor.forValue(snippetRun.getResult())));
             }
         }).build());
+        res.add(createPostfixOperator(context, "()", "callNoArg", TypeDescriptor.NULL, TypeDescriptor.executable(null)).build());
+        res.add(createPostfixOperator(context, "(1)", "callOneArg", TypeDescriptor.NULL, TypeDescriptor.executable(null, TypeDescriptor.NUMBER)).build());
+        res.add(createPostfixOperator(context, "(1, \"\")", "callTwoArgs", TypeDescriptor.NULL, TypeDescriptor.executable(null, TypeDescriptor.NUMBER, TypeDescriptor.STRING)).build());
         return Collections.unmodifiableCollection(res);
     }
 
@@ -208,6 +226,16 @@ public class SLTCKLanguageProvider implements LanguageProvider {
                     final TypeDescriptor rtype) {
         final Value fnc = eval(context, String.format(PATTERN_BIN_OP_FNC, functionName, operator), functionName);
         return Snippet.newBuilder(operator, fnc, type).parameterTypes(ltype, rtype);
+    }
+
+    private static Snippet.Builder createPostfixOperator(
+                    final Context context,
+                    final String operator,
+                    final String functionName,
+                    final TypeDescriptor type,
+                    final TypeDescriptor ltype) {
+        final Value fnc = eval(context, String.format(PATTERN_POST_OP_FNC, functionName, operator), functionName);
+        return Snippet.newBuilder(operator, fnc, type).parameterTypes(ltype);
     }
 
     private static Snippet createStatement(

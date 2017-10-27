@@ -24,6 +24,9 @@
  */
 package com.oracle.truffle.tck.tests;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.graalvm.polyglot.tck.TypeDescriptor;
 import org.junit.Assert;
 import org.junit.Test;
@@ -142,5 +145,87 @@ public class TypeDescriptorTest {
         Assert.assertTrue(numOrBoolOrArrNumBool.isAssignable(arrNum));
         final TypeDescriptor objOrArrNum = TypeDescriptor.union(TypeDescriptor.OBJECT, arrNum);
         Assert.assertTrue(numOrBoolOrArrNumBool.isAssignable(objOrArrNum));
+    }
+
+    @Test
+    public void testExecutable() {
+        final TypeDescriptor exeAnyAny = TypeDescriptor.EXECUTABLE;
+        final TypeDescriptor exeAnyNoArgs = TypeDescriptor.executable(null);
+        final TypeDescriptor exeAnyStr = TypeDescriptor.executable(null, TypeDescriptor.STRING);
+        final TypeDescriptor exeAnyStrNum = TypeDescriptor.executable(null, TypeDescriptor.STRING, TypeDescriptor.NUMBER);
+        final TypeDescriptor exeStrNoArgs = TypeDescriptor.executable(TypeDescriptor.STRING);
+        final TypeDescriptor exeStrStr = TypeDescriptor.executable(TypeDescriptor.STRING, TypeDescriptor.STRING);
+        final TypeDescriptor exeAnyUnionUnion = TypeDescriptor.executable(null, TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.STRING),
+                        TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.OBJECT));
+        final List<TypeDescriptor> eds = new ArrayList<>();
+        Collections.addAll(eds, exeAnyAny, exeAnyNoArgs, exeAnyStr, exeAnyStrNum, exeStrNoArgs, exeStrStr, exeAnyUnionUnion);
+        final List<TypeDescriptor> otherTypes = new ArrayList<>();
+        Collections.addAll(otherTypes, PREDEFINED);
+        otherTypes.add(TypeDescriptor.array(TypeDescriptor.BOOLEAN));
+        otherTypes.add(TypeDescriptor.union(TypeDescriptor.BOOLEAN, TypeDescriptor.NUMBER));
+        for (TypeDescriptor td : otherTypes) {
+            for (TypeDescriptor ed : eds) {
+                Assert.assertFalse(ed.isAssignable(td));
+                Assert.assertFalse(td.isAssignable(ed));
+            }
+        }
+        Assert.assertTrue(exeAnyAny.isAssignable(exeAnyNoArgs));
+        Assert.assertFalse(exeAnyAny.isAssignable(exeAnyStr));
+        Assert.assertFalse(exeAnyAny.isAssignable(exeAnyStrNum));
+        Assert.assertTrue(exeAnyAny.isAssignable(exeStrNoArgs));
+        Assert.assertFalse(exeAnyAny.isAssignable(exeStrStr));
+        Assert.assertFalse(exeAnyAny.isAssignable(exeAnyUnionUnion));
+        Assert.assertTrue(exeAnyNoArgs.isAssignable(exeAnyAny));
+        Assert.assertFalse(exeAnyNoArgs.isAssignable(exeAnyStr));
+        Assert.assertFalse(exeAnyNoArgs.isAssignable(exeAnyStrNum));
+        Assert.assertTrue(exeAnyNoArgs.isAssignable(exeStrNoArgs));
+        Assert.assertFalse(exeAnyNoArgs.isAssignable(exeStrStr));
+        Assert.assertFalse(exeAnyNoArgs.isAssignable(exeAnyUnionUnion));
+        Assert.assertTrue(exeAnyStr.isAssignable(exeAnyAny));
+        Assert.assertTrue(exeAnyStr.isAssignable(exeAnyNoArgs));
+        Assert.assertFalse(exeAnyStr.isAssignable(exeAnyStrNum));
+        Assert.assertTrue(exeAnyStr.isAssignable(exeStrNoArgs));
+        Assert.assertTrue(exeAnyStr.isAssignable(exeStrStr));
+        Assert.assertFalse(exeAnyStr.isAssignable(exeAnyUnionUnion));
+        Assert.assertTrue(exeAnyStrNum.isAssignable(exeAnyAny));
+        Assert.assertTrue(exeAnyStrNum.isAssignable(exeAnyNoArgs));
+        Assert.assertTrue(exeAnyStrNum.isAssignable(exeAnyStr));
+        Assert.assertTrue(exeAnyStrNum.isAssignable(exeStrNoArgs));
+        Assert.assertTrue(exeAnyStrNum.isAssignable(exeStrStr));
+        Assert.assertTrue(exeAnyStrNum.isAssignable(exeAnyUnionUnion));
+        Assert.assertFalse(exeStrNoArgs.isAssignable(exeAnyAny));
+        Assert.assertFalse(exeStrNoArgs.isAssignable(exeAnyNoArgs));
+        Assert.assertFalse(exeStrNoArgs.isAssignable(exeAnyStr));
+        Assert.assertFalse(exeStrNoArgs.isAssignable(exeAnyStrNum));
+        Assert.assertFalse(exeStrNoArgs.isAssignable(exeStrStr));
+        Assert.assertFalse(exeStrNoArgs.isAssignable(exeAnyUnionUnion));
+        Assert.assertFalse(exeStrStr.isAssignable(exeAnyAny));
+        Assert.assertFalse(exeStrStr.isAssignable(exeAnyNoArgs));
+        Assert.assertFalse(exeStrStr.isAssignable(exeAnyStr));
+        Assert.assertFalse(exeStrStr.isAssignable(exeAnyStrNum));
+        Assert.assertTrue(exeStrStr.isAssignable(exeStrNoArgs));
+        Assert.assertFalse(exeStrStr.isAssignable(exeAnyUnionUnion));
+        Assert.assertTrue(exeAnyUnionUnion.isAssignable(exeAnyAny));
+        Assert.assertTrue(exeAnyUnionUnion.isAssignable(exeAnyNoArgs));
+        Assert.assertTrue(exeAnyUnionUnion.isAssignable(exeAnyStr));
+        Assert.assertTrue(exeAnyUnionUnion.isAssignable(exeAnyStrNum));
+        Assert.assertTrue(exeAnyUnionUnion.isAssignable(exeStrNoArgs));
+        Assert.assertTrue(exeAnyUnionUnion.isAssignable(exeStrStr));
+        // Arrays
+        final TypeDescriptor ae1 = TypeDescriptor.array(TypeDescriptor.EXECUTABLE);
+        final TypeDescriptor ae2 = TypeDescriptor.array(TypeDescriptor.executable(null, TypeDescriptor.BOOLEAN));
+        final TypeDescriptor ab = TypeDescriptor.array(TypeDescriptor.BOOLEAN);
+        Assert.assertFalse(ae1.isAssignable(ae2));
+        Assert.assertFalse(ae1.isAssignable(ab));
+        Assert.assertTrue(ae2.isAssignable(ae1));
+        Assert.assertFalse(ae2.isAssignable(ab));
+        // Unions
+        final TypeDescriptor ue1 = TypeDescriptor.union(TypeDescriptor.EXECUTABLE, TypeDescriptor.OBJECT);
+        final TypeDescriptor ue2 = TypeDescriptor.union(TypeDescriptor.executable(null, TypeDescriptor.BOOLEAN), TypeDescriptor.STRING);
+        final TypeDescriptor up = TypeDescriptor.union(TypeDescriptor.BOOLEAN, TypeDescriptor.NUMBER);
+        Assert.assertFalse(ue1.isAssignable(ue2));
+        Assert.assertFalse(ue1.isAssignable(up));
+        Assert.assertTrue(ue2.isAssignable(ue1));
+        Assert.assertFalse(ue2.isAssignable(up));
     }
 }
