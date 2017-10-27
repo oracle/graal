@@ -138,7 +138,7 @@ public final class CPUSampler implements Closeable {
     public enum Mode {
         /**
          * Sample {@link RootTag Roots} <b>excluding</b> the ones that get inlined during
-         * compilation. This mode is the default and has the least amount of impact on peek
+         * compilation. This mode is the default and has the least amount of impact on peak
          * performance.
          *
          * @since 0.30
