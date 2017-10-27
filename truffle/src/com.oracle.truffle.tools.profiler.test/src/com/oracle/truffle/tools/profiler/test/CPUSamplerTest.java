@@ -43,7 +43,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
     @Before
     public void setupSampler() {
-        sampler = engine.getRuntime().getInstruments().get(CPUSamplerInstrument.ID).lookup(CPUSampler.class);
+        sampler = CPUSamplerInstrument.getSampler(engine);
         Assert.assertNotNull(sampler);
     }
 
