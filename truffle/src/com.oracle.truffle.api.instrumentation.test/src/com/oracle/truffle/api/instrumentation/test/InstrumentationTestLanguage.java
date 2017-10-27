@@ -128,7 +128,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
     public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT};
     public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE", "ARGUMENT", "PRINT",
-                    "ALLOCATION", "WASTE_TIME"};
+                    "ALLOCATION", "SLEEP"};
 
     // used to test that no getSourceSection calls happen in certain situations
     private static int rootSourceSectionQueryCount;
@@ -242,7 +242,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
             int argumentIndex = 0;
             int numberOfIdents = 0;
-            if (tag.equals("DEFINE") || tag.equals("ARGUMENT") || tag.equals("CALL") || tag.equals("RECURSIVE_CALL") || tag.equals("LOOP") || tag.equals("CONSTANT")) {
+            if (tag.equals("DEFINE") || tag.equals("ARGUMENT") || tag.equals("CALL") || tag.equals("RECURSIVE_CALL") || tag.equals("LOOP") || tag.equals("CONSTANT") || tag.equals("SLEEP")) {
                 numberOfIdents = 1;
             } else if (tag.equals("VARIABLE") || tag.equals("PRINT")) {
                 numberOfIdents = 2;
@@ -332,8 +332,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                     return new PrintNode(idents[0], idents[1], childArray);
                 case "ALLOCATION":
                     return new AllocationNode(new BaseNode[0]);
-                case "WASTE_TIME":
-                    return new WasteTime(new BaseNode[0]);
+                case "SLEEP":
+                    return new SleepNode(parseIdent(idents[0]), new BaseNode[0]);
                 default:
                     throw new AssertionError();
             }
@@ -615,16 +615,19 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         }
     }
 
-    private static class WasteTime extends InstrumentedNode {
+    private static class SleepNode extends InstrumentedNode {
 
-        WasteTime(BaseNode[] children) {
+        private final int timeToSleep;
+
+        SleepNode(Object timeToSleep, BaseNode[] children) {
             super(children);
+            this.timeToSleep = (Integer)timeToSleep;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             try {
-                Thread.sleep(1);
+                Thread.sleep(timeToSleep);
             } catch (InterruptedException e) {
             }
             return null;
