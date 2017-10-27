@@ -82,11 +82,11 @@ public class MemoryTracerInstrument extends TruffleInstrument {
 
     /**
      * Does a lookup in the runtime instruments of the engine and returns an instance of the
-     * {@link CPUTracer}
+     * {@link CPUTracer}.
      * 
      * @since 0.30
      */
-    public static MemoryTracer getSampler(PolyglotEngine engine) {
+    public static MemoryTracer getTracer(PolyglotEngine engine) {
         PolyglotRuntime.Instrument instrument = engine.getRuntime().getInstruments().get(ID);
         if (instrument == null) {
             throw new IllegalStateException("Memory Tracer is not installed.");

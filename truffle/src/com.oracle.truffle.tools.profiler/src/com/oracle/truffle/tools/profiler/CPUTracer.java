@@ -85,7 +85,7 @@ public final class CPUTracer implements Closeable {
      * @since 0.30
      */
     public static CPUTracer find(PolyglotEngine engine) {
-        return CPUTracerInstrument.getSampler(engine);
+        return CPUTracerInstrument.getTracer(engine);
     }
 
     /**

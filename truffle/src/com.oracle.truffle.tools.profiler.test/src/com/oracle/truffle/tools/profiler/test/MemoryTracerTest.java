@@ -39,7 +39,7 @@ public class MemoryTracerTest extends AbstractProfilerTest {
 
     @Before
     public void setupTracer() {
-        tracer = MemoryTracerInstrument.getSampler(engine);
+        tracer = MemoryTracerInstrument.getTracer(engine);
         Assert.assertNotNull(tracer);
     }
 

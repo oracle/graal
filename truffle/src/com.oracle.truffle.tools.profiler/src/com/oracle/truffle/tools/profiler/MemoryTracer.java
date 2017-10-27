@@ -120,7 +120,7 @@ public final class MemoryTracer implements Closeable {
      * @since 0.30
      */
     public static MemoryTracer find(PolyglotEngine engine) {
-        return MemoryTracerInstrument.getSampler(engine);
+        return MemoryTracerInstrument.getTracer(engine);
     }
 
     /**

@@ -83,11 +83,11 @@ public class CPUTracerInstrument extends TruffleInstrument {
 
     /**
      * Does a lookup in the runtime instruments of the engine and returns an instance of the
-     * {@link CPUTracer}
+     * {@link CPUTracer}.
      * 
      * @since 0.30
      */
-    public static CPUTracer getSampler(PolyglotEngine engine) {
+    public static CPUTracer getTracer(PolyglotEngine engine) {
         PolyglotRuntime.Instrument instrument = engine.getRuntime().getInstruments().get(ID);
         if (instrument == null) {
             throw new IllegalStateException("Tracer is not installed.");

@@ -81,7 +81,7 @@ public class CPUSamplerInstrument extends TruffleInstrument {
 
     /**
      * Does a lookup in the runtime instruments of the engine and returns an instance of the
-     * {@link CPUSampler}
+     * {@link CPUSampler}.
      * 
      * @since 0.30
      */
