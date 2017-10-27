@@ -29,8 +29,6 @@
  */
 #define _GNU_SOURCE
 
-
-
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -193,6 +191,26 @@ int __sulong_posix_setsockopt(int sockfd, int level, int optname, const void* op
 	CALL(int, setsockopt, sockfd, level, optname, optval, optlen);
 }
 
+ssize_t __sulong_posix_sendto(int socket, const void* message, size_t length, int flags, const struct sockaddr* dest_addr, socklen_t dest_len)
+{
+	CALL(ssize_t, sendto, socket, message, length, flags, dest_addr, dest_len);
+}
+
+ssize_t __sulong_posix_sendmsg(int socket, const struct msghdr* message, int flags)
+{
+	CALL(ssize_t, sendmsg, socket, message, flags);
+}
+
+ssize_t __sulong_posix_recvfrom(int socket, void* restrict buffer, size_t length, int flags, struct sockaddr* restrict address, socklen_t* restrict address_len)
+{
+	CALL(ssize_t, recvfrom, socket, buffer, length, flags, address, address_len);
+}
+
+ssize_t __sulong_posix_recvmsg(int socket, struct msghdr* message, int flags)
+{
+	CALL(ssize_t, recvmsg, socket, message, flags);
+}
+
 #else
 
 #include <stdio.h>
@@ -318,6 +336,26 @@ int __sulong_posix_getsockopt(int sockfd, int level, int optname, void* optval, 
 }
 
 int __sulong_posix_setsockopt(int sockfd, int level, int optname, const void* optval, socklen_t optlen)
+{
+	ERROR();
+}
+
+ssize_t __sulong_posix_sendto(int socket, const void* message, size_t length, int flags, const struct sockaddr* dest_addr, socklen_t dest_len)
+{
+	ERROR();
+}
+
+ssize_t __sulong_posix_sendmsg(int socket, const struct msghdr* message, int flags)
+{
+	ERROR();
+}
+
+ssize_t __sulong_posix_recvfrom(int socket, void* restrict buffer, size_t length, int flags, struct sockaddr* restrict address, socklen_t* restrict address_len)
+{
+	ERROR();
+}
+
+ssize_t __sulong_posix_recvmsg(int socket, struct msghdr* message, int flags)
 {
 	ERROR();
 }
