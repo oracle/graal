@@ -121,7 +121,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     }
 
     final Source defaultRecursiveSourceForSampling = makeSource("ROOT(" +
-                    "DEFINE(foo,ROOT(BLOCK(SLEEP(1),RECURSIVE_CALL(foo))))," +
+                    "DEFINE(foo,ROOT(BLOCK(SLEEP(1),RECURSIVE_CALL(foo, 10))))," +
                     "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(foo)))))," +
                     "CALL(bar)" +
                     ")");

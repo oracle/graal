@@ -112,7 +112,7 @@ public class MemoryTracerTest extends AbstractProfilerTest {
 
     @Test
     public void testOneAllocationInRootRecursive() {
-        final String oneAllocationSource = "ROOT(" + "DEFINE(foo,ROOT(BLOCK(STATEMENT,RECURSIVE_CALL(foo))))," + "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(foo)))))," + "ALLOCATION,CALL(bar)" +
+        final String oneAllocationSource = "ROOT(" + "DEFINE(foo,ROOT(BLOCK(STATEMENT,RECURSIVE_CALL(foo, 10))))," + "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(foo)))))," + "ALLOCATION,CALL(bar)" +
                         ")";
 
         Assert.assertFalse(tracer.isCollecting());
@@ -189,7 +189,7 @@ public class MemoryTracerTest extends AbstractProfilerTest {
 
     @Test
     public void testMultipleAllocationRecursive() {
-        final String oneAllocationSource = "ROOT(" + "DEFINE(foo,ROOT(BLOCK(ALLOCATION,STATEMENT,RECURSIVE_CALL(foo))))," + "DEFINE(bar,ROOT(BLOCK(ALLOCATION,STATEMENT,LOOP(10, CALL(foo)))))," +
+        final String oneAllocationSource = "ROOT(" + "DEFINE(foo,ROOT(BLOCK(ALLOCATION,STATEMENT,RECURSIVE_CALL(foo, 10))))," + "DEFINE(bar,ROOT(BLOCK(ALLOCATION,STATEMENT,LOOP(10, CALL(foo)))))," +
                         "ALLOCATION,CALL(bar)" + ")";
 
         Assert.assertFalse(tracer.isCollecting());

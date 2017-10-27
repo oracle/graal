@@ -51,7 +51,7 @@ public abstract class AbstractProfilerTest {
 
     protected final Source defaultRecursiveSource = makeSource(
             "ROOT(" +
-                    "DEFINE(foo,ROOT(BLOCK(STATEMENT,RECURSIVE_CALL(foo))))," +
+                    "DEFINE(foo,ROOT(BLOCK(STATEMENT,RECURSIVE_CALL(foo, 10))))," +
                     "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(foo)))))," +
                     "CALL(bar)" +
             ")");

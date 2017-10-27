@@ -242,9 +242,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
             int argumentIndex = 0;
             int numberOfIdents = 0;
-            if (tag.equals("DEFINE") || tag.equals("ARGUMENT") || tag.equals("CALL") || tag.equals("RECURSIVE_CALL") || tag.equals("LOOP") || tag.equals("CONSTANT") || tag.equals("SLEEP")) {
+            if (tag.equals("DEFINE") || tag.equals("ARGUMENT") || tag.equals("CALL") || tag.equals("LOOP") || tag.equals("CONSTANT") || tag.equals("SLEEP")) {
                 numberOfIdents = 1;
-            } else if (tag.equals("VARIABLE") || tag.equals("PRINT")) {
+            } else if (tag.equals("VARIABLE") || tag.equals("RECURSIVE_CALL") || tag.equals("PRINT")) {
                 numberOfIdents = 2;
             }
             String[] idents = new String[numberOfIdents];
@@ -313,7 +313,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                 case "CALL":
                     return new CallNode(idents[0], childArray);
                 case "RECURSIVE_CALL":
-                    return new RecursiveCallNode(idents[0], childArray);
+                    return new RecursiveCallNode(idents[0], (Integer) parseIdent(idents[1]), childArray);
                 case "LOOP":
                     return new LoopNode(parseIdent(idents[0]), childArray);
                 case "BLOCK":
@@ -574,12 +574,13 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
         @Child private DirectCallNode callNode;
         private final String identifier;
-        private final int depth = 10;
+        private final int depth;
         private int currentDepth = 0;
 
-        RecursiveCallNode(String identifier, BaseNode[] children) {
+        RecursiveCallNode(String identifier, int depth, BaseNode[] children) {
             super(children);
             this.identifier = identifier;
+            this.depth = depth;
         }
 
         @Override
