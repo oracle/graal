@@ -61,6 +61,9 @@ public class CPUSamplerInstrument extends TruffleInstrument {
      * @since 0.30
      */
     public static void setFactory(ProfilerToolFactory<CPUSampler> factory) {
+        if (factory == null || !factory.getClass().getName().startsWith("com.oracle.truffle.tools.profiler")) {
+            throw new IllegalArgumentException("Wrong factory: " + factory);
+        }
         CPUSamplerInstrument.factory = factory;
     }
 

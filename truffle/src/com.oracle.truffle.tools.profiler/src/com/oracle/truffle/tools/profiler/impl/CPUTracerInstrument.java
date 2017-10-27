@@ -63,6 +63,9 @@ public class CPUTracerInstrument extends TruffleInstrument {
      * @since 0.30
      */
     public static void setFactory(ProfilerToolFactory<CPUTracer> factory) {
+        if (factory == null || !factory.getClass().getName().startsWith("com.oracle.truffle.tools.profiler")) {
+            throw new IllegalArgumentException("Wrong factory: " + factory);
+        }
         CPUTracerInstrument.factory = factory;
     }
 
