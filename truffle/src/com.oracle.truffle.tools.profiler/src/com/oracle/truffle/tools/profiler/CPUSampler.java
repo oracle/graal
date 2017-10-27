@@ -30,6 +30,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.tools.profiler.impl.CPUSamplerInstrument;
 import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
 
@@ -194,6 +195,17 @@ public final class CPUSampler implements Closeable {
 
     CPUSampler(Env env) {
         this.env = env;
+    }
+
+    /**
+     * Finds {@link CPUSampler} associated with given engine.
+     *
+     * @param engine the engine to find debugger for
+     * @return an instance of associated {@link CPUSampler}
+     * @since 0.30
+     */
+    public static CPUSampler find(PolyglotEngine engine) {
+        return CPUSamplerInstrument.getSampler(engine);
     }
 
     /**
