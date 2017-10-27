@@ -81,7 +81,9 @@ public class MemoryTracerInstrument extends TruffleInstrument {
     }
 
     /**
-     * Does a lookup in the runtime instruments of the engine and returns an instance of the {@link CPUTracer}
+     * Does a lookup in the runtime instruments of the engine and returns an instance of the
+     * {@link CPUTracer}
+     * 
      * @since 0.30
      */
     public static MemoryTracer getSampler(PolyglotEngine engine) {

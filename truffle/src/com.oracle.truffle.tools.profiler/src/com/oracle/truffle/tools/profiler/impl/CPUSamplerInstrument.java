@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
-import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.vm.PolyglotEngine;
@@ -81,7 +80,9 @@ public class CPUSamplerInstrument extends TruffleInstrument {
     }
 
     /**
-     * Does a lookup in the runtime instruments of the engine and returns an instance of the {@link CPUSampler}
+     * Does a lookup in the runtime instruments of the engine and returns an instance of the
+     * {@link CPUSampler}
+     * 
      * @since 0.30
      */
     public static CPUSampler getSampler(PolyglotEngine engine) {

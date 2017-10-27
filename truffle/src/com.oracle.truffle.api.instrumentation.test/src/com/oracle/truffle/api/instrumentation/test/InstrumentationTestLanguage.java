@@ -622,7 +622,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
         SleepNode(Object timeToSleep, BaseNode[] children) {
             super(children);
-            this.timeToSleep = (Integer)timeToSleep;
+            this.timeToSleep = (Integer) timeToSleep;
         }
 
         @Override

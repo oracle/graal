@@ -28,7 +28,6 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotRuntime;
-import com.oracle.truffle.tools.profiler.CPUSampler;
 import com.oracle.truffle.tools.profiler.CPUTracer;
 import org.graalvm.options.OptionDescriptors;
 
@@ -83,7 +82,9 @@ public class CPUTracerInstrument extends TruffleInstrument {
     }
 
     /**
-     * Does a lookup in the runtime instruments of the engine and returns an instance of the {@link CPUTracer}
+     * Does a lookup in the runtime instruments of the engine and returns an instance of the
+     * {@link CPUTracer}
+     * 
      * @since 0.30
      */
     public static CPUTracer getSampler(PolyglotEngine engine) {
