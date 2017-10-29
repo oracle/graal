@@ -23,6 +23,8 @@
 
 package org.graalvm.compiler.core.amd64;
 
+import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
+import static jdk.vm.ci.code.ValueUtil.isAllocatableValue;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.AND;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
@@ -93,18 +95,8 @@ import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.Variable;
-import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
+import org.graalvm.compiler.lir.amd64.*;
 import org.graalvm.compiler.lir.amd64.AMD64Arithmetic.FPDivRemOp;
-import org.graalvm.compiler.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
-import org.graalvm.compiler.lir.amd64.AMD64Binary;
-import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer;
-import org.graalvm.compiler.lir.amd64.AMD64ClearRegisterOp;
-import org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicUnaryOp;
-import org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicBinaryOp;
-import org.graalvm.compiler.lir.amd64.AMD64MulDivOp;
-import org.graalvm.compiler.lir.amd64.AMD64ShiftOp;
-import org.graalvm.compiler.lir.amd64.AMD64SignExtendOp;
-import org.graalvm.compiler.lir.amd64.AMD64Unary;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGenerator;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -293,8 +285,26 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         boolean isAvx = ((AMD64) target.arch).getFeatures().contains(CPUFeature.AVX);
         switch ((AMD64Kind) a.getPlatformKind()) {
             case DWORD:
+                if (isJavaConstant(b) && !setFlags) {
+                    long displacement = asJavaConstant(b).asLong();
+                    if (NumUtil.isInt(displacement) && displacement != 1) {
+                        Variable result = getLIRGen().newVariable(resultKind);
+                        AMD64AddressValue address = new AMD64AddressValue(resultKind, getLIRGen().asAllocatable(a), (int)displacement);
+                        getLIRGen().append(new AMD64Move.LeaOp(result, address, OperandSize.DWORD));
+                        return result;
+                    }
+                }
                 return emitBinary(resultKind, ADD, DWORD, true, a, b, setFlags);
             case QWORD:
+                if (isJavaConstant(b) && !setFlags) {
+                    long displacement = asJavaConstant(b).asLong();
+                    if (NumUtil.isInt(displacement) && displacement != 1) {
+                        Variable result = getLIRGen().newVariable(resultKind);
+                        AMD64AddressValue address = new AMD64AddressValue(resultKind, getLIRGen().asAllocatable(a), (int)displacement);
+                        getLIRGen().append(new AMD64Move.LeaOp(result, address, OperandSize.QWORD));
+                        return result;
+                    }
+                }
                 return emitBinary(resultKind, ADD, QWORD, true, a, b, setFlags);
             case SINGLE:
                 if (isAvx) {
@@ -319,8 +329,26 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         boolean isAvx = ((AMD64) target.arch).getFeatures().contains(CPUFeature.AVX);
         switch ((AMD64Kind) a.getPlatformKind()) {
             case DWORD:
+                if (isJavaConstant(b) && !setFlags) {
+                    long displacement = asJavaConstant(b).asLong();
+                    if (NumUtil.isInt(displacement) && displacement != 1) {
+                        Variable result = getLIRGen().newVariable(resultKind);
+                        AMD64AddressValue address = new AMD64AddressValue(resultKind, getLIRGen().asAllocatable(a), (int)-displacement);
+                        getLIRGen().append(new AMD64Move.LeaOp(result, address, OperandSize.DWORD));
+                        return result;
+                    }
+                }
                 return emitBinary(resultKind, SUB, DWORD, false, a, b, setFlags);
             case QWORD:
+                if (isJavaConstant(b) && !setFlags) {
+                    long displacement = asJavaConstant(b).asLong();
+                    if (NumUtil.isInt(displacement) && displacement != 1) {
+                        Variable result = getLIRGen().newVariable(resultKind);
+                        AMD64AddressValue address = new AMD64AddressValue(resultKind, getLIRGen().asAllocatable(a), (int)-displacement);
+                        getLIRGen().append(new AMD64Move.LeaOp(result, address, OperandSize.QWORD));
+                        return result;
+                    }
+                }
                 return emitBinary(resultKind, SUB, QWORD, false, a, b, setFlags);
             case SINGLE:
                 if (isAvx) {

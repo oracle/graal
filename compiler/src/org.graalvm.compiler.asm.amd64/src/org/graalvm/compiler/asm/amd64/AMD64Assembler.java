@@ -1967,6 +1967,12 @@ public class AMD64Assembler extends Assembler {
         }
     }
 
+    public final void lead(Register dst, AMD64Address src) {
+        prefix(src, dst);
+        emitByte(0x8D);
+        emitOperandHelper(dst, src, 0);
+    }
+
     public final void leaq(Register dst, AMD64Address src) {
         prefixq(src, dst);
         emitByte(0x8D);
