@@ -85,7 +85,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
     final OutputStream out;
     final OutputStream err;
     final InputStream in;
-    private final Map<String, Value> polyglotScope = new HashMap<>();
+    final Map<String, Value> polyglotScope = new HashMap<>();
     final Predicate<String> classFilter;
     final boolean hostAccessAllowed;
     final boolean createThreadAllowed;

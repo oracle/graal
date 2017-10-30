@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.metadata;
+package com.oracle.truffle.api.vm;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,9 +33,12 @@ import java.util.Objects;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
@@ -48,27 +51,41 @@ import com.oracle.truffle.api.nodes.RootNode;
 /**
  * A default frame slot based implementation of variables contained in the (default) frame scope.
  */
-@SuppressWarnings("deprecation")
-final class DefaultScopeVariables extends com.oracle.truffle.api.metadata.ScopeProvider.AbstractScope {
+final class DefaultScope {
 
-    private final RootNode root;
-
-    DefaultScopeVariables(Node node) {
-        this.root = node.getRootNode();
+    static Iterable<Scope> topScope(TruffleLanguage<?> language, Object context, Object global) {
+        TruffleObject globalObject;
+        if (global instanceof TruffleObject && hasKeys((TruffleObject) global)) {
+            globalObject = (TruffleObject) global;
+        } else {
+            // For compatibility with TruffleLanguage.lookupSymbol()
+            globalObject = new LookupSymbolGlobalObject(language, context);
+        }
+        return Collections.singletonList(Scope.newBuilder("global", globalObject).build());
     }
 
-    @Override
-    public String getName() {
-        return root.getName();
+    static Iterable<Scope> lexicalScope(Node node, Frame frame) {
+        RootNode root = node.getRootNode();
+        String name = root.getName();
+        if (name == null) {
+            name = "local";
+        }
+        return Collections.singletonList(Scope.newBuilder(name, getVariables(root, frame)).node(root).arguments(getArguments(frame)).build());
     }
 
-    @Override
-    public Node getNode() {
-        return root;
+    private static boolean hasKeys(TruffleObject object) {
+        try {
+            TruffleObject keys = ForeignAccess.sendKeys(Message.KEYS.createNode(), object);
+            if (keys == null) {
+                return false;
+            }
+            return ForeignAccess.sendHasSize(Message.HAS_SIZE.createNode(), keys);
+        } catch (UnsupportedMessageException ex) {
+            return false;
+        }
     }
 
-    @Override
-    public Object getVariables(Frame frame) {
+    private static Object getVariables(RootNode root, Frame frame) {
         List<? extends FrameSlot> slots;
         if (frame == null) {
             slots = root.getFrameDescriptor().getSlots();
@@ -108,20 +125,14 @@ final class DefaultScopeVariables extends com.oracle.truffle.api.metadata.ScopeP
         return new VariablesMapObject(slotsMap, frame);
     }
 
-    @Override
-    public Object getArguments(Frame frame) {
+    private static Object getArguments(Frame frame) {
         Object[] args;
         if (frame == null) {
             args = new Object[0];
         } else {
             args = frame.getArguments();
         }
-        return new ArguentsArrayObject(args);
-    }
-
-    @Override
-    protected com.oracle.truffle.api.metadata.ScopeProvider.AbstractScope findParent() {
-        return null;
+        return new ArgumentsArrayObject(args);
     }
 
     static final class VariablesMapObject implements TruffleObject {
@@ -152,6 +163,21 @@ final class DefaultScopeVariables extends com.oracle.truffle.api.metadata.ScopeP
                 @TruffleBoundary
                 public Object access(VariablesMapObject varMap) {
                     return new VariableNamesObject(varMap.slots.keySet());
+                }
+            }
+
+            @Resolve(message = "KEY_INFO")
+            abstract static class VarsMapKeyInfoNode extends Node {
+
+                private static final int existingInfo = KeyInfo.newBuilder().setReadable(true).setWritable(true).build();
+
+                @TruffleBoundary
+                public Object access(VariablesMapObject varMap, String name) {
+                    if (varMap.slots.containsKey(name)) {
+                        return existingInfo;
+                    } else {
+                        return 0;
+                    }
                 }
             }
 
@@ -216,6 +242,7 @@ final class DefaultScopeVariables extends com.oracle.truffle.api.metadata.ScopeP
             @Resolve(message = "HAS_SIZE")
             abstract static class VarNamesHasSizeNode extends Node {
 
+                @SuppressWarnings("unused")
                 public Object access(VariableNamesObject varNames) {
                     return true;
                 }
@@ -245,11 +272,11 @@ final class DefaultScopeVariables extends com.oracle.truffle.api.metadata.ScopeP
         }
     }
 
-    static final class ArguentsArrayObject implements TruffleObject {
+    static final class ArgumentsArrayObject implements TruffleObject {
 
         final Object[] args;
 
-        ArguentsArrayObject(Object[] args) {
+        ArgumentsArrayObject(Object[] args) {
             this.args = args;
         }
 
@@ -259,16 +286,17 @@ final class DefaultScopeVariables extends com.oracle.truffle.api.metadata.ScopeP
         }
 
         public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof ArguentsArrayObject;
+            return obj instanceof ArgumentsArrayObject;
         }
 
-        @MessageResolution(receiverType = ArguentsArrayObject.class)
+        @MessageResolution(receiverType = ArgumentsArrayObject.class)
         static final class ArguentsArrayMessageResolution {
 
             @Resolve(message = "HAS_SIZE")
             abstract static class ArgsArrHasSizeNode extends Node {
 
-                public Object access(ArguentsArrayObject argsArr) {
+                @SuppressWarnings("unused")
+                public Object access(ArgumentsArrayObject argsArr) {
                     return true;
                 }
             }
@@ -276,7 +304,7 @@ final class DefaultScopeVariables extends com.oracle.truffle.api.metadata.ScopeP
             @Resolve(message = "GET_SIZE")
             abstract static class ArgsArrGetSizeNode extends Node {
 
-                public Object access(ArguentsArrayObject argsArr) {
+                public Object access(ArgumentsArrayObject argsArr) {
                     return argsArr.args.length;
                 }
             }
@@ -285,7 +313,7 @@ final class DefaultScopeVariables extends com.oracle.truffle.api.metadata.ScopeP
             abstract static class ArgsArrReadNode extends Node {
 
                 @TruffleBoundary
-                public Object access(ArguentsArrayObject argsArr, int index) {
+                public Object access(ArgumentsArrayObject argsArr, int index) {
                     try {
                         return argsArr.args[index];
                     } catch (IndexOutOfBoundsException ioob) {
@@ -298,13 +326,71 @@ final class DefaultScopeVariables extends com.oracle.truffle.api.metadata.ScopeP
             abstract static class ArgsArrWriteNode extends Node {
 
                 @TruffleBoundary
-                public Object access(ArguentsArrayObject argsArr, int index, Object value) {
+                public Object access(ArgumentsArrayObject argsArr, int index, Object value) {
                     try {
                         argsArr.args[index] = value;
                         return value;
                     } catch (IndexOutOfBoundsException ioob) {
                         throw UnknownIdentifierException.raise(Integer.toString(index));
                     }
+                }
+            }
+
+        }
+    }
+
+    static class LookupSymbolGlobalObject implements TruffleObject {
+
+        private final TruffleLanguage<?> language;
+        private final Object context;
+
+        LookupSymbolGlobalObject(TruffleLanguage<?> language, Object context) {
+            this.language = language;
+            this.context = context;
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return LookupSymbolMessageResolutionForeign.ACCESS;
+        }
+
+        public static boolean isInstance(TruffleObject obj) {
+            return obj instanceof LookupSymbolGlobalObject;
+        }
+
+        @MessageResolution(receiverType = LookupSymbolGlobalObject.class)
+        static class LookupSymbolMessageResolution {
+
+            @Resolve(message = "KEYS")
+            abstract static class SymbolsKeysNode extends Node {
+
+                @TruffleBoundary
+                @SuppressWarnings("unused")
+                public Object access(LookupSymbolGlobalObject obj) {
+                    // lookupSymbol() has an unknown set of symbols
+                    return new VariableNamesObject(Collections.emptySet());
+                }
+            }
+
+            @Resolve(message = "KEY_INFO")
+            abstract static class SymbolsKeyInfoNode extends Node {
+
+                private static final int existingInfo = KeyInfo.newBuilder().setReadable(true).setWritable(true).build();
+
+                @TruffleBoundary
+                public Object access(LookupSymbolGlobalObject obj, String name) {
+                    Object symbol = VMAccessor.LANGUAGE.lookupSymbol(obj.language, obj.context, name);
+                    return symbol != null ? existingInfo : 0;
+                }
+            }
+
+            @Resolve(message = "READ")
+            abstract static class SymbolsReadNode extends Node {
+
+                @TruffleBoundary
+                public Object access(LookupSymbolGlobalObject obj, String name) {
+                    Object symbol = VMAccessor.LANGUAGE.lookupSymbol(obj.language, obj.context, name);
+                    return symbol;
                 }
             }
 

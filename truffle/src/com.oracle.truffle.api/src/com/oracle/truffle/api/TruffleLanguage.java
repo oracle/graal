@@ -45,6 +45,7 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
@@ -624,7 +625,9 @@ public abstract class TruffleLanguage<C> {
      * @param symbolName the name of the symbol to look up.
      *
      * @since 0.27
+     * @deprecated Implement {@link #findTopScopes(java.lang.Object)} instead.
      */
+    @Deprecated
     protected Object lookupSymbol(C context, String symbolName) {
         return null;
     }
@@ -721,6 +724,57 @@ public abstract class TruffleLanguage<C> {
      * @since 0.8 or earlier
      */
     protected abstract boolean isObjectOfLanguage(Object object);
+
+    /**
+     * Find a hierarchy of local scopes enclosing the given {@link Node node}. Unless the node is in
+     * a global scope, it is expected that there is at least one scope provided, that corresponds to
+     * the enclosing function. The language might provide additional block scopes, closure scopes,
+     * etc. Global top scopes are provided by {@link #findTopScopes(java.lang.Object)}. The scope
+     * hierarchy should correspond with the scope nesting, from the inner-most to the outer-most.
+     * The scopes are expected to contain variables valid at the given node.
+     * <p>
+     * Scopes may depend on the information provided by the frame. <br/>
+     * Lexical scopes are returned when <code>frame</code> argument is <code>null</code>.
+     * <p>
+     * When not overridden, the enclosing {@link RootNode}'s scope with variables read from its
+     * {@link FrameDescriptor}'s {@link FrameSlot}s is provided by default.
+     * <p>
+     * The
+     * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#findLocalScopes(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.Frame)}
+     * provides result of this method to instruments.
+     *
+     * @param context the current context of the language
+     * @param node a node to find the enclosing scopes for. The node, is inside a {@link RootNode}
+     *            associated with this language.
+     * @param frame The current frame the node is in, or <code>null</code> for lexical access when
+     *            the program is not running, or is not suspended at the node's location.
+     * @return an iterable with scopes in their nesting order from the inner-most to the outer-most.
+     * @since 0.30
+     */
+    protected Iterable<Scope> findLocalScopes(C context, Node node, Frame frame) {
+        assert node != null;
+        return AccessAPI.engineAccess().createDefaultLexicalScope(node, frame);
+    }
+
+    /**
+     * Find a hierarchy of top-most scopes of the language, if any.
+     * <p>
+     * When not overridden and the {@link #getLanguageGlobal(java.lang.Object) global object} is a
+     * <code>TruffleObject</code> with keys, a single scope is provided by default, whose
+     * {@link Scope#getVariables() getVariables()} returns the global object.
+     * <p>
+     * The
+     * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#findTopScopes(java.lang.String)}
+     * provides result of this method to instruments.
+     *
+     * @param context the current context of the language
+     * @return an iterable with scopes in their nesting order from the inner-most to the outer-most.
+     * @since 0.30
+     */
+    protected Iterable<Scope> findTopScopes(C context) {
+        Object global = getLanguageGlobal(context);
+        return AccessAPI.engineAccess().createDefaultTopScope(this, context, global);
+    }
 
     /**
      * Runs source code in a halted execution context, or at top level.
@@ -1467,6 +1521,15 @@ public abstract class TruffleLanguage<C> {
             return spi.isObjectOfLanguage(rawValue);
         }
 
+        Iterable<Scope> findLocalScopes(Node node, Frame frame) {
+            assert node != null;
+            return spi.findLocalScopes(context, node, frame);
+        }
+
+        Iterable<Scope> findTopScopes() {
+            return spi.findTopScopes(context);
+        }
+
         void dispose() {
             Object c = getContext();
             if (c != UNSET_CONTEXT) {
@@ -1578,6 +1641,10 @@ public abstract class TruffleLanguage<C> {
             return API.nodes();
         }
 
+        static InteropSupport interopAccess() {
+            return API.interopSupport();
+        }
+
         @Override
         protected LanguageSupport languageSupport() {
             return new LanguageImpl();
@@ -1608,12 +1675,9 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public Object lookupSymbol(Env env, String globalName) {
-            if (env.context != Env.UNSET_CONTEXT) {
-                return env.spi.lookupSymbol(env.context, globalName);
-            } else {
-                return null;
-            }
+        @SuppressWarnings("unchecked")
+        public Object lookupSymbol(TruffleLanguage<?> language, Object context, String globalName) {
+            return ((TruffleLanguage<Object>) language).lookupSymbol(context, globalName);
         }
 
         @Override
@@ -1893,6 +1957,16 @@ public abstract class TruffleLanguage<C> {
         @Override
         public <S> S lookup(LanguageInfo language, Class<S> type) {
             return TruffleLanguage.AccessAPI.nodesAccess().getLanguageSpi(language).lookup(type);
+        }
+
+        @Override
+        public Iterable<Scope> findLocalScopes(Env env, Node node, Frame frame) {
+            return env.findLocalScopes(node, frame);
+        }
+
+        @Override
+        public Iterable<Scope> findTopScopes(Env env) {
+            return env.findTopScopes();
         }
 
         @Override

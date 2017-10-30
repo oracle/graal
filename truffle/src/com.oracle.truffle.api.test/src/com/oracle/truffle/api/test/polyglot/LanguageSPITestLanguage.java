@@ -93,11 +93,6 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
     }
 
     @Override
-    protected Object lookupSymbol(LanguageContext context, String symbolName) {
-        return super.lookupSymbol(context, symbolName);
-    }
-
-    @Override
     protected Object getLanguageGlobal(LanguageContext context) {
         return null;
     }

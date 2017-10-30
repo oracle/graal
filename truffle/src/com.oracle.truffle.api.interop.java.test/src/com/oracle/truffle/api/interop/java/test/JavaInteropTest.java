@@ -119,6 +119,13 @@ public class JavaInteropTest {
     }
 
     @Test
+    public void nullAsJavaObject() {
+        TruffleObject nullObject = JavaInterop.asTruffleObject(null);
+        assertTrue(JavaInterop.isJavaObject(nullObject));
+        assertNull(JavaInterop.asJavaObject(nullObject));
+    }
+
+    @Test
     public void doubleWrap() {
         data.x = 32;
         data.y = 10.1;

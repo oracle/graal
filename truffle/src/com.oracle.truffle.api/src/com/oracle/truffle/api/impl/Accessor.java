@@ -42,6 +42,8 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -123,6 +125,8 @@ public abstract class Accessor {
 
         public abstract Object importSymbol(Object vmObject, Env env, String symbolName);
 
+        public abstract Map<String, ?> getExportedSymbols(Object vmObject);
+
         public abstract Object lookupSymbol(Object vmObject, Env env, LanguageInfo language, String symbolName);
 
         public abstract boolean isMimeTypeSupported(Object languageShared, String mimeType);
@@ -152,6 +156,8 @@ public abstract class Accessor {
         public abstract Env getEnvForInstrument(Object vm, String languageId, String mimeType);
 
         public abstract Env getEnvForInstrument(LanguageInfo language);
+
+        public abstract Env getExistingEnvForInstrument(LanguageInfo language);
 
         public abstract LanguageInfo getObjectLanguage(Object obj, Object vmObject);
 
@@ -197,6 +203,10 @@ public abstract class Accessor {
 
         public abstract Thread createThread(Object vmObject, Runnable runnable, Object context);
 
+        public abstract Iterable<Scope> createDefaultLexicalScope(Node node, Frame frame);
+
+        public abstract Iterable<Scope> createDefaultTopScope(TruffleLanguage<?> language, Object context, Object global);
+
     }
 
     public abstract static class LanguageSupport {
@@ -214,7 +224,7 @@ public abstract class Accessor {
 
         public abstract Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit);
 
-        public abstract Object lookupSymbol(TruffleLanguage.Env env, String globalName);
+        public abstract Object lookupSymbol(TruffleLanguage<?> language, Object context, String globalName);
 
         public abstract Object languageGlobal(TruffleLanguage.Env env);
 
@@ -262,6 +272,10 @@ public abstract class Accessor {
 
         public abstract void finalizeContext(Env localEnv);
 
+        public abstract Iterable<Scope> findLocalScopes(Env env, Node node, Frame frame);
+
+        public abstract Iterable<Scope> findTopScopes(Env env);
+
     }
 
     public abstract static class InstrumentSupport {
@@ -281,6 +295,8 @@ public abstract class Accessor {
         public abstract void onFirstExecution(RootNode rootNode);
 
         public abstract void onLoad(RootNode rootNode);
+
+        public abstract Iterable<?> findTopScopes(TruffleLanguage.Env env);
 
         @SuppressWarnings("static-method")
         public final DispatchOutputStream createDispatchOutput(OutputStream out) {

@@ -33,6 +33,7 @@ import static org.graalvm.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCA
 import static org.graalvm.compiler.nodes.java.ArrayLengthNode.readArrayLength;
 import static org.graalvm.compiler.nodes.util.GraphUtil.skipPiWhileNonNull;
 
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
@@ -69,6 +70,7 @@ import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
+import org.graalvm.compiler.nodes.calc.UnpackEndianHalfNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.debug.VerifyHeapNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
@@ -218,9 +220,16 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             lowerBinaryMath((BinaryMathIntrinsicNode) n, tool);
         } else if (n instanceof StringIndexOfNode) {
             lowerIndexOf((StringIndexOfNode) n);
+        } else if (n instanceof UnpackEndianHalfNode) {
+            lowerSecondHalf((UnpackEndianHalfNode) n);
         } else {
             throw GraalError.shouldNotReachHere("Node implementing Lowerable not handled: " + n);
         }
+    }
+
+    private void lowerSecondHalf(UnpackEndianHalfNode n) {
+        ByteOrder byteOrder = target.arch.getByteOrder();
+        n.lower(byteOrder);
     }
 
     private void lowerIndexOf(StringIndexOfNode n) {
