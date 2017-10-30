@@ -106,6 +106,12 @@ public final class LLVMGlobalVariableAccess extends Node {
         container.destroy();
     }
 
+    public boolean isNative(LLVMGlobalVariable global) {
+        Container container = getContainer.executeWithTarget(global.getContainer());
+        CompilerAsserts.partialEvaluationConstant(container.getClass());
+        return container.isNative();
+    }
+
     public LLVMAddress getNativeLocation(LLVMGlobalVariable global) {
         Container container = getContainer.executeWithTarget(global.getContainer());
         CompilerAsserts.partialEvaluationConstant(container.getClass());
