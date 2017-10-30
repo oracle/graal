@@ -57,7 +57,10 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  * allocation information is associated to the top of the stack.
  * <p>
  * NOTE: This profiler is still experimental with limited capabilities.
- *
+ * <p>
+ * Usage example: {@link MemoryTracerSnippets#example}
+ * </p>
+ * 
  * @since 0.30
  */
 public final class MemoryTracer implements Closeable {
@@ -398,5 +401,36 @@ public final class MemoryTracer implements Closeable {
                 return new MemoryTracer(env);
             }
         });
+    }
+}
+
+class MemoryTracerSnippets {
+
+    @SuppressWarnings("unused")
+    public void example() {
+        // @formatter:off
+        // BEGIN: MemoryTracerSnippets#example
+        PolyglotEngine engine = PolyglotEngine.
+                newBuilder().
+                build();
+
+        MemoryTracer tracer = MemoryTracer.find(engine);
+        tracer.setCollecting(true);
+        Source someCode = Source.
+                newBuilder("...").
+                mimeType("...").
+                name("example").build();
+        engine.eval(someCode);
+        tracer.setCollecting(false);
+        // rootNodes is the recorded profile of the execution in tree form.
+
+        tracer.close();
+        // Prints information about the roots of the tree.
+        for (ProfilerNode<MemoryTracer.Payload> node : tracer.getRootNodes()) {
+            final String rootName = node.getRootName();
+            final long allocCount = node.getPayload().getTotalAllocations();
+        }
+        // END: MemoryTracerSnippets#example
+        // @formatter:on
     }
 }

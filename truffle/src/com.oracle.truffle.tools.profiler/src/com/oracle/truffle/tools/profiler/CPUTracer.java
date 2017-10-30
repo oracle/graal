@@ -35,6 +35,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.tools.profiler.impl.CPUTracerInstrument;
@@ -54,7 +55,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * The tracer counts how many times each of the elements of interest (e.g. functions, statements,
  * etc.) are executed.
- *
+ * <p>
+ * Usage example: {@link CPUTracerSnippets#example}
+ * 
  * @since 0.30
  */
 public final class CPUTracer implements Closeable {
@@ -301,5 +304,30 @@ public final class CPUTracer implements Closeable {
                 return new CPUTracer(env);
             }
         });
+    }
+}
+
+class CPUTracerSnippets {
+
+    @SuppressWarnings("unused")
+    public void example() {
+        // @formatter:off
+        // BEGIN: CPUTracerSnippets#example
+        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
+        CPUTracer tracer = CPUTracer.find(engine);
+        tracer.setCollecting(true);
+        Source someCode = Source.newBuilder("...").
+                mimeType("...").
+                name("example").build();
+        engine.eval(someCode);
+        tracer.setCollecting(false);
+        tracer.close();
+        // Read information about execution counts of elements.
+        for (CPUTracer.Payload p : tracer.getPayloads()) {
+            final String rootName = p.getRootName();
+            final long count = p.getCount();
+        }
+        // END: CPUTracerSnippets#example
+        // @formatter:on
     }
 }

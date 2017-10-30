@@ -30,6 +30,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.tools.profiler.impl.CPUSamplerInstrument;
 import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
@@ -51,6 +52,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * The sampler keeps a shadow stack during execution. This shadow stack is sampled at regular
  * intervals, i.e. the state of the stack is copied and saved into trees of {@linkplain ProfilerNode
  * nodes}, which represent the profile of the execution.
+ * <p>
+ * Usage example: {@link CPUSamplerSnippets#example}
  *
  * @since 0.30
  */
@@ -520,5 +523,32 @@ public final class CPUSampler implements Closeable {
                 return new CPUSampler(env);
             }
         });
+    }
+}
+
+class CPUSamplerSnippets {
+
+    @SuppressWarnings("unused")
+    public void example() {
+        // @formatter:off
+        // BEGIN: CPUSamplerSnippets#example
+        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
+
+        CPUSampler sampler = CPUSampler.find(engine);
+        sampler.setCollecting(true);
+        Source someCode = Source.newBuilder("...").
+                mimeType("...").
+                name("example").build();
+        engine.eval(someCode);
+        sampler.setCollecting(false);
+        sampler.close();
+        // Read information about the roots of the tree.
+        for (ProfilerNode<CPUSampler.Payload> node : sampler.getRootNodes()) {
+            final String rootName = node.getRootName();
+            final int selfHitCount = node.getPayload().getSelfHitCount();
+            // ...
+        }
+        // END: CPUSamplerSnippets#example
+        // @formatter:on
     }
 }
