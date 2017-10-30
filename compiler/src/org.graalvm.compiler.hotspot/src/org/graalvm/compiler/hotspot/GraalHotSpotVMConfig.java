@@ -283,11 +283,16 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
                 offset = getFieldOffset(name, Integer.class, "jobject");
                 isHandle = true;
             } catch (JVMCIError e) {
-
+                try {
+                    // JDK-8186777
+                    offset = getFieldOffset(name, Integer.class, "OopHandle");
+                    isHandle = true;
+                } catch (JVMCIError e2) {
+                }
             }
         }
         if (offset == -1) {
-            throw new JVMCIError("cannot get offset of field " + name + " with type oop or jobject");
+            throw new JVMCIError("cannot get offset of field " + name + " with type oop, jobject or OopHandle");
         }
         classMirrorOffset = offset;
         classMirrorIsHandle = isHandle;
