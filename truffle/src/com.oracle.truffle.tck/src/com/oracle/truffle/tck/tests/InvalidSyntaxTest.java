@@ -26,11 +26,9 @@ package com.oracle.truffle.tck.tests;
 
 import java.io.IOException;
 import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Objects;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.junit.AfterClass;
@@ -48,14 +46,18 @@ public class InvalidSyntaxTest {
     private final Source source;
 
     @Parameterized.Parameters(name = "{0}")
-    public static Collection<? extends Source> createInvalidSyntaxTests() {
+    public static Collection<Object[]> createInvalidSyntaxTests() {
         context = new TestContext();
-        return TestUtil.getRequiredLanguages(context).stream().flatMap(new Function<String, Stream<? extends Source>>() {
-            @Override
-            public Stream<? extends Source> apply(String lang) {
-                return context.getInstalledProviders().get(lang).createInvalidSyntaxScripts(context.getContext()).stream();
+        final Collection<Object[]> result = new ArrayList<>();
+        for (String language : TestUtil.getRequiredLanguages(context)) {
+            for (Source src : context.getInstalledProviders().get(language).createInvalidSyntaxScripts(context.getContext())) {
+                result.add(new Object[]{
+                                String.format("%s::%s", language, src.getName()),
+                                src
+                });
             }
-        }).collect(Collectors.toList());
+        }
+        return result;
     }
 
     @AfterClass
@@ -69,7 +71,8 @@ public class InvalidSyntaxTest {
         Engine.newBuilder().build();
     }
 
-    public InvalidSyntaxTest(final Source source) {
+    public InvalidSyntaxTest(final String testName, final Source source) {
+        Objects.requireNonNull(testName);
         Objects.requireNonNull(source);
         this.source = source;
     }
