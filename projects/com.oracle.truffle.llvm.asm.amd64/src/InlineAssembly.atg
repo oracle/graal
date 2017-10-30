@@ -597,6 +597,10 @@ BinOp64<> =						(. String op; AsmOperand a, b; .)
   | "movzwq"
   )							(. op = t.val; .)
   Operand16<out a> "," Operand64<out b>			(. factory.createBinaryOperation(op, a, b); .)
+  |							(. String op; AsmOperand a, b; .)
+  ( "movslq"
+  )							(. op = t.val; .)
+  Operand32<out a> "," Operand64<out b>			(. factory.createBinaryOperation(op, a, b); .)
   .
 
 BinOp<> =						(. String op; AsmOperand a, b; .)
