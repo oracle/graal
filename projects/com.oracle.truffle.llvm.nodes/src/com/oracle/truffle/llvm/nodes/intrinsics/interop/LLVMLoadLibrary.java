@@ -49,14 +49,14 @@ public abstract class LLVMLoadLibrary extends LLVMIntrinsic {
     @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)")
     public Object executeIntrinsicCached(LLVMAddress id, @Cached("pointerOf(id)") long cachedPtr,
                     @Cached("readString(id)") String cachedId, @Cached("getContext()") LLVMContext context) {
-        context.addLibraryToNativeLookup(cachedId);
+        context.addExternalLibrary(cachedId);
         return null;
     }
 
     @Specialization
     public Object executeIntrinsic(LLVMAddress value, @Cached("getContext()") LLVMContext context) {
         String name = LLVMTruffleIntrinsicUtil.readString(value);
-        context.addLibraryToNativeLookup(name);
+        context.addExternalLibrary(name);
         return null;
     }
 

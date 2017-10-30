@@ -38,7 +38,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
+import com.oracle.truffle.llvm.runtime.LLVMNativeFunctions;
+import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -81,7 +82,9 @@ public final class LLVMEndCatchNode extends LLVMExpressionNode {
     public LLVMNativeFunctions.SulongDecrementHandlerCountNode getDecHandlerCount() {
         if (decHandlerCount == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.decHandlerCount = insert(getContext().getNativeFunctions().createDecrementHandlerCount());
+            LLVMContext context = getContext();
+            NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
+            this.decHandlerCount = insert(nfiContextExtension.getNativeSulongFunctions().createDecrementHandlerCount(context));
         }
         return decHandlerCount;
     }
@@ -89,7 +92,9 @@ public final class LLVMEndCatchNode extends LLVMExpressionNode {
     public LLVMNativeFunctions.SulongGetHandlerCountNode getGetHandlerCount() {
         if (getHandlerCount == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.getHandlerCount = insert(getContext().getNativeFunctions().createGetHandlerCount());
+            LLVMContext context = getContext();
+            NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
+            this.getHandlerCount = insert(nfiContextExtension.getNativeSulongFunctions().createGetHandlerCount(context));
         }
         return getHandlerCount;
     }
@@ -97,7 +102,9 @@ public final class LLVMEndCatchNode extends LLVMExpressionNode {
     public LLVMNativeFunctions.SulongGetDestructorNode getGetDestructor() {
         if (getDestructor == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.getDestructor = insert(getContext().getNativeFunctions().createGetDestructor());
+            LLVMContext context = getContext();
+            NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
+            this.getDestructor = insert(nfiContextExtension.getNativeSulongFunctions().createGetDestructor(context));
         }
         return getDestructor;
     }
@@ -105,7 +112,9 @@ public final class LLVMEndCatchNode extends LLVMExpressionNode {
     public LLVMNativeFunctions.SulongGetThrownObjectNode getGetThrownObject() {
         if (getThrownObject == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.getThrownObject = insert(getContext().getNativeFunctions().createGetThrownObject());
+            LLVMContext context = getContext();
+            NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
+            this.getThrownObject = insert(nfiContextExtension.getNativeSulongFunctions().createGetThrownObject(context));
         }
         return getThrownObject;
     }
@@ -113,7 +122,9 @@ public final class LLVMEndCatchNode extends LLVMExpressionNode {
     public LLVMNativeFunctions.SulongSetHandlerCountNode getSetHandlerCount() {
         if (setHandlerCount == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.setHandlerCount = insert(getContext().getNativeFunctions().createSetHandlerCount());
+            LLVMContext context = getContext();
+            NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
+            this.setHandlerCount = insert(nfiContextExtension.getNativeSulongFunctions().createSetHandlerCount(context));
         }
         return setHandlerCount;
     }
