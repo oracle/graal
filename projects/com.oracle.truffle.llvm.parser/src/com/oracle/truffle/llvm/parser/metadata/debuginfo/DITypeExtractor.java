@@ -41,12 +41,10 @@ import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDNode;
-import com.oracle.truffle.llvm.parser.metadata.MDOldNode;
-import com.oracle.truffle.llvm.parser.metadata.MDReference;
 import com.oracle.truffle.llvm.parser.metadata.MDString;
 import com.oracle.truffle.llvm.parser.metadata.MDSubrange;
 import com.oracle.truffle.llvm.parser.metadata.MDSubroutine;
-import com.oracle.truffle.llvm.parser.metadata.MDTypedValue;
+import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceBasicType;
@@ -74,7 +72,7 @@ final class DITypeExtractor implements MetadataVisitor {
     private static final String COUNT_NAME = "<count>";
 
     LLVMSourceType parseType(MDBaseNode mdType) {
-        if (mdType == null) {
+        if (mdType == null || mdType == MDVoidNode.INSTANCE) {
             return null;
         }
         return resolve(mdType);
@@ -91,7 +89,7 @@ final class DITypeExtractor implements MetadataVisitor {
     }
 
     @Override
-    public void ifVisitNotOverwritten(MDBaseNode md) {
+    public void defaultAction(MDBaseNode md) {
         parsedTypes.put(md, UNKNOWN_TYPE);
     }
 
@@ -174,10 +172,10 @@ final class DITypeExtractor implements MetadataVisitor {
                 final LLVMSourceArrayLikeType type = new LLVMSourceArrayLikeType(size, align, offset, location);
                 parsedTypes.put(mdType, type);
 
-                LLVMSourceType baseType = resolve(mdType.getDerivedFrom());
+                LLVMSourceType baseType = resolve(mdType.getBaseType());
 
                 final List<LLVMSourceType> members = new ArrayList<>(1);
-                getElements(mdType.getMemberDescriptors(), members, false);
+                getElements(mdType.getMembers(), members, false);
 
                 for (int i = members.size() - 1; i > 0; i--) {
                     final long length = extractLength(members.get(i));
@@ -206,7 +204,7 @@ final class DITypeExtractor implements MetadataVisitor {
                 parsedTypes.put(mdType, type);
 
                 final List<LLVMSourceType> members = new ArrayList<>();
-                getElements(mdType.getMemberDescriptors(), members, false);
+                getElements(mdType.getMembers(), members, false);
                 for (final LLVMSourceType member : members) {
                     if (member instanceof LLVMSourceMemberType) {
                         type.addMember((LLVMSourceMemberType) member);
@@ -222,7 +220,7 @@ final class DITypeExtractor implements MetadataVisitor {
                 parsedTypes.put(mdType, type);
 
                 final List<LLVMSourceType> members = new ArrayList<>();
-                getElements(mdType.getMemberDescriptors(), members, false);
+                getElements(mdType.getMembers(), members, false);
                 for (final LLVMSourceType member : members) {
                     type.addValue((int) member.getOffset(), member.getName());
                 }
@@ -359,24 +357,13 @@ final class DITypeExtractor implements MetadataVisitor {
             }
 
             case DW_TAG_INHERITANCE: {
-                final LLVMSourceMemberType type = new LLVMSourceMemberType("super " + mdType.toString(), size, align, offset, location);
+                final LLVMSourceMemberType type = new LLVMSourceMemberType("super", size, align, offset, location);
                 parsedTypes.put(mdType, type);
                 final LLVMSourceType baseType = resolve(mdType.getBaseType());
                 type.setElementType(baseType);
                 type.setName(() -> String.format("super (%s)", baseType.getName()));
 
                 break;
-            }
-        }
-    }
-
-    @Override
-    public void visit(MDReference mdRef) {
-        if (!parsedTypes.containsKey(mdRef)) {
-            if (mdRef != MDReference.VOID) {
-                parsedTypes.put(mdRef, resolve(mdRef.get()));
-            } else {
-                parsedTypes.put(mdRef, UNKNOWN_TYPE);
             }
         }
     }
@@ -450,30 +437,16 @@ final class DITypeExtractor implements MetadataVisitor {
         }
     }
 
-    private void getElements(MDReference elemRef, List<LLVMSourceType> elemTypes, boolean includeUnknowns) {
-        if (elemRef == MDReference.VOID) {
-            return;
-        }
-
-        final MDBaseNode elemList = elemRef.get();
+    private void getElements(MDBaseNode elemList, List<LLVMSourceType> elemTypes, boolean includeUnknowns) {
         if (elemList instanceof MDNode) {
             final MDNode elemListNode = (MDNode) elemList;
-            for (MDReference elemNode : elemListNode) {
+            for (MDBaseNode elemNode : elemListNode) {
                 final LLVMSourceType elemType = resolve(elemNode);
                 if (elemType != UNKNOWN_TYPE || includeUnknowns) {
                     elemTypes.add(elemType);
                 }
             }
-        } else if (elemList instanceof MDOldNode) {
-            final MDOldNode elemListNode = (MDOldNode) elemList;
-            for (MDTypedValue elemNode : elemListNode) {
-                if (elemNode != MDReference.VOID && elemNode instanceof MDReference) {
-                    final LLVMSourceType elemType = resolve((MDReference) elemNode);
-                    if (elemType != UNKNOWN_TYPE || includeUnknowns) {
-                        elemTypes.add(elemType);
-                    }
-                }
-            }
+
         }
     }
 

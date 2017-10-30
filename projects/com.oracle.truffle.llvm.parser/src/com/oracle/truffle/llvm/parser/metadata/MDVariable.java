@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2016, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,29 +29,61 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
+public abstract class MDVariable extends MDName {
 
-public final class MDOldNode extends ArrayList<MDTypedValue> implements MDBaseNode {
+    private final long line;
 
-    private static final long serialVersionUID = 1L;
+    private MDBaseNode scope;
+    private MDBaseNode type;
+    private MDBaseNode file;
 
-    public MDOldNode(Collection<? extends MDTypedValue> c) {
-        super(c);
+    MDVariable(long line) {
+        this.line = line;
+
+        this.scope = MDVoidNode.INSTANCE;
+        this.type = MDVoidNode.INSTANCE;
+        this.file = MDVoidNode.INSTANCE;
+    }
+
+    public MDBaseNode getScope() {
+        return scope;
+    }
+
+    public MDBaseNode getType() {
+        return type;
+    }
+
+    public MDBaseNode getFile() {
+        return file;
+    }
+
+    public long getLine() {
+        return line;
+    }
+
+    void setScope(MDBaseNode scope) {
+        this.scope = scope;
+    }
+
+    void setType(MDBaseNode type) {
+        this.type = type;
+    }
+
+    void setFile(MDBaseNode file) {
+        this.file = file;
     }
 
     @Override
-    public void accept(MetadataVisitor visitor) {
-        visitor.visit(this);
-    }
-
-    @Override
-    public String toString() {
-        return String.format("!{%s}", super.toString());
-    }
-
-    public static MDOldNode create32(MDTypedValue[] args) {
-        return new MDOldNode(Arrays.asList(args));
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        super.replace(oldValue, newValue);
+        if (scope == oldValue) {
+            scope = newValue;
+        }
+        if (type == oldValue) {
+            type = newValue;
+        }
+        if (file == oldValue) {
+            file = newValue;
+        }
     }
 }

@@ -29,13 +29,12 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import java.util.ArrayList;
+import com.oracle.truffle.llvm.parser.listeners.Metadata;
 
-public final class MDNode extends ArrayList<MDReference> implements MDBaseNode {
+public final class MDNode extends MDAggregateNode {
 
-    private static final long serialVersionUID = 1L;
-
-    private MDNode() {
+    private MDNode(int size) {
+        super(size);
     }
 
     @Override
@@ -43,15 +42,19 @@ public final class MDNode extends ArrayList<MDReference> implements MDBaseNode {
         visitor.visit(this);
     }
 
-    @Override
-    public String toString() {
-        return String.format("!{%s}", super.toString());
+    public static MDNode create38(long[] record, MetadataValueList md) {
+        final MDNode node = new MDNode(record.length);
+        for (int i = 0; i < record.length; i++) {
+            node.set(i, md.getNullable(record[i], node));
+        }
+        return node;
     }
 
-    public static MDNode create38(long[] args, MetadataList md) {
-        final MDNode node = new MDNode();
-        for (final long arg : args) {
-            node.add(md.getMDRefOrNullRef(arg));
+    public static MDNode create32(long[] record, Metadata md) {
+        final int size = record.length / 2;
+        final MDNode node = new MDNode(size);
+        for (int i = 0; i < size; i++) {
+            node.set(i, ParseUtil.resolveReference(record, i, node, md));
         }
         return node;
     }

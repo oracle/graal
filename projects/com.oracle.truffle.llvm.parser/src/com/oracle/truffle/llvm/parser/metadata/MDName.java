@@ -29,35 +29,26 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-public final class MDFnNode implements MDBaseNode {
+public abstract class MDName implements MDBaseNode {
 
-    private final MDSymbolReference pointer;
+    private MDBaseNode name;
+
+    MDName() {
+        this.name = MDVoidNode.INSTANCE;
+    }
+
+    public MDBaseNode getName() {
+        return name;
+    }
+
+    void setName(MDBaseNode name) {
+        this.name = name;
+    }
 
     @Override
-    public void accept(MetadataVisitor visitor) {
-        visitor.visit(this);
-    }
-
-    private MDFnNode(MDSymbolReference pointer) {
-        this.pointer = pointer;
-    }
-
-    public MDSymbolReference getPointer() {
-        return pointer;
-    }
-
-    @Override
-    public String toString() {
-        return String.format("FnNode (%s)", pointer);
-    }
-
-    public static MDFnNode create(MDTypedValue arg) {
-        if (arg instanceof MDSymbolReference) {
-            return new MDFnNode((MDSymbolReference) arg);
-
-        } else {
-            return null;
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        if (name == oldValue) {
+            name = newValue;
         }
     }
-
 }

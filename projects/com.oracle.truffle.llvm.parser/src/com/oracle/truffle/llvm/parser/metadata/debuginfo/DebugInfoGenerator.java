@@ -33,6 +33,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
 import com.oracle.truffle.llvm.parser.metadata.MDString;
 import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
+import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 
 public final class DebugInfoGenerator {
@@ -49,7 +50,7 @@ public final class DebugInfoGenerator {
         return null;
     }
 
-    private static final class DIVisitor implements MDFollowRefVisitor {
+    private static final class DIVisitor implements MetadataVisitor {
 
         private String diName = null;
 

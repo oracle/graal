@@ -29,17 +29,14 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import java.util.ArrayList;
-
-public final class MDNamedNode extends ArrayList<MDReference> implements MDBaseNode {
+public final class MDNamedNode extends MDAggregateNode {
 
     public static final String COMPILEUNIT_NAME = "llvm.dbg.cu";
 
-    private static final long serialVersionUID = 1L;
-
     private final String name;
 
-    public MDNamedNode(String name) {
+    public MDNamedNode(String name, int size) {
+        super(size);
         this.name = name;
     }
 
@@ -54,6 +51,14 @@ public final class MDNamedNode extends ArrayList<MDReference> implements MDBaseN
 
     @Override
     public String toString() {
-        return String.format("!%s %s", getName(), super.toString());
+        return String.format("!%s", getName());
+    }
+
+    public static MDNamedNode create(String name, long[] record, MetadataValueList md) {
+        final MDNamedNode node = new MDNamedNode(name, record.length);
+        for (int i = 0; i < record.length; i++) {
+            node.set(i, md.getNonNullable(record[i], node));
+        }
+        return node;
     }
 }

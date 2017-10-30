@@ -33,28 +33,47 @@ public final class MDAttachment implements MDBaseNode {
 
     private final MDKind kind;
 
-    private final MDReference mdRef;
+    private MDBaseNode value;
 
-    public MDAttachment(MDKind kind, MDReference mdRef) {
+    public MDAttachment(MDKind kind) {
         this.kind = kind;
-        this.mdRef = mdRef;
+        this.value = MDVoidNode.INSTANCE;
     }
 
     public MDKind getKind() {
         return kind;
     }
 
-    public MDReference getMdRef() {
-        return mdRef;
+    public MDBaseNode getValue() {
+        return value;
+    }
+
+    @Override
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        if (value == oldValue) {
+            value = newValue;
+        }
     }
 
     @Override
     public String toString() {
-        return String.format("Attachment (kind=%s, md=%s)", kind, mdRef);
+        return String.format("Attachment !%s", kind);
     }
 
     @Override
     public void accept(MetadataVisitor visitor) {
         visitor.visit(this);
+    }
+
+    public static MDAttachment create(MDKind kind, long value, MetadataValueList md) {
+        final MDAttachment attachment = new MDAttachment(kind);
+        attachment.value = md.getNonNullable(value, attachment);
+        return attachment;
+    }
+
+    public static MDAttachment create(MDKind kind, MDBaseNode value) {
+        final MDAttachment attachment = new MDAttachment(kind);
+        attachment.value = value;
+        return attachment;
     }
 }

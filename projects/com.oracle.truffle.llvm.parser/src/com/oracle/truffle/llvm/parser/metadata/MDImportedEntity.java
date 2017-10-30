@@ -29,35 +29,31 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.metadata.subtypes.MDName;
-
 public final class MDImportedEntity extends MDName implements MDBaseNode {
 
     private final long tag;
-
-    private final MDReference scope;
-
-    private final MDReference entity;
-
     private final long line;
 
-    private MDImportedEntity(long tag, MDReference scope, MDReference entity, long line, MDReference name) {
-        super(name);
+    private MDBaseNode scope;
+    private MDBaseNode entity;
+
+    private MDImportedEntity(long tag, long line) {
         this.tag = tag;
-        this.scope = scope;
-        this.entity = entity;
         this.line = line;
+
+        this.scope = MDVoidNode.INSTANCE;
+        this.entity = MDVoidNode.INSTANCE;
     }
 
     public long getTag() {
         return tag;
     }
 
-    public MDReference getScope() {
+    public MDBaseNode getScope() {
         return scope;
     }
 
-    public MDReference getEntity() {
+    public MDBaseNode getEntity() {
         return entity;
     }
 
@@ -66,8 +62,14 @@ public final class MDImportedEntity extends MDName implements MDBaseNode {
     }
 
     @Override
-    public String toString() {
-        return String.format("ImportedEntity (tag=%d, scope=%s, entity=%s, line=%d, name=%s)", tag, scope, entity, line, getName());
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        super.replace(oldValue, newValue);
+        if (scope == oldValue) {
+            scope = newValue;
+        }
+        if (entity == oldValue) {
+            entity = newValue;
+        }
     }
 
     @Override
@@ -81,12 +83,16 @@ public final class MDImportedEntity extends MDName implements MDBaseNode {
     private static final int ARGINDEX_LINE = 4;
     private static final int ARGINDEX_NAME = 5;
 
-    public static MDImportedEntity create38(long[] args, MetadataList md) {
+    public static MDImportedEntity create38(long[] args, MetadataValueList md) {
         final long tag = args[ARGINDEX_TAG];
-        final MDReference scope = md.getMDRefOrNullRef(args[ARGINDEX_SCOPE]);
-        final MDReference entity = md.getMDRefOrNullRef(args[ARGINDEX_ENTITY]);
         final long line = args[ARGINDEX_LINE];
-        final MDReference name = md.getMDRefOrNullRef(args[ARGINDEX_NAME]);
-        return new MDImportedEntity(tag, scope, entity, line, name);
+
+        final MDImportedEntity importedEntity = new MDImportedEntity(tag, line);
+
+        importedEntity.scope = md.getNullable(args[ARGINDEX_SCOPE], importedEntity);
+        importedEntity.entity = md.getNullable(args[ARGINDEX_ENTITY], importedEntity);
+        importedEntity.setName(md.getNullable(args[ARGINDEX_NAME], importedEntity));
+
+        return importedEntity;
     }
 }

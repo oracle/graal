@@ -56,6 +56,10 @@ public final class MDKind implements MDBaseNode {
     }
 
     @Override
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+    }
+
+    @Override
     public String toString() {
         return String.format("Kind (id=%d, name=\"%s\")", id, name);
     }

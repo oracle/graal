@@ -69,15 +69,16 @@ public final class FunctionDefinition extends IRScope implements Constant, Value
     private int currentBlock = 0;
     private String name;
 
-    public FunctionDefinition(FunctionType type, String name, Linkage linkage, AttributesCodeEntry paramAttr) {
+    public FunctionDefinition(IRScope parent, FunctionType type, String name, Linkage linkage, AttributesCodeEntry paramAttr) {
+        super(parent);
         this.type = type;
         this.name = name;
         this.paramAttr = paramAttr;
         this.linkage = linkage;
     }
 
-    public FunctionDefinition(FunctionType type, Linkage linkage, AttributesCodeEntry paramAttr) {
-        this(type, LLVMIdentifier.UNKNOWN, linkage, paramAttr);
+    public FunctionDefinition(IRScope parent, FunctionType type, Linkage linkage, AttributesCodeEntry paramAttr) {
+        this(parent, type, LLVMIdentifier.UNKNOWN, linkage, paramAttr);
     }
 
     @Override

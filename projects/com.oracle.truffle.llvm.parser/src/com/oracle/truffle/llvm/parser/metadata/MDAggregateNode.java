@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,38 +27,50 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata.subtypes;
+package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.metadata.MDReference;
+import java.util.Iterator;
 
-public abstract class MDVariable extends MDName {
+abstract class MDAggregateNode implements MDBaseNode, Iterable<MDBaseNode> {
 
-    private final MDReference scope;
-    private final MDReference type;
-    private final MDReference file;
-    private final long line;
+    private final MDBaseNode[] elements;
 
-    protected MDVariable(MDReference scope, MDReference name, MDReference type, MDReference file, long line) {
-        super(name);
-        this.scope = scope;
-        this.type = type;
-        this.file = file;
-        this.line = line;
+    MDAggregateNode(int size) {
+        elements = new MDBaseNode[size];
     }
 
-    public MDReference getScope() {
-        return scope;
+    void set(int i, MDBaseNode element) {
+        elements[i] = element;
     }
 
-    public MDReference getType() {
-        return type;
+    MDBaseNode get(int i) {
+        return elements[i];
     }
 
-    public MDReference getFile() {
-        return file;
+    @Override
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        for (int i = 0; i < elements.length; i++) {
+            if (elements[i] == oldValue) {
+                elements[i] = newValue;
+            }
+        }
     }
 
-    public long getLine() {
-        return line;
+    @Override
+    public Iterator<MDBaseNode> iterator() {
+        return new Iterator<MDBaseNode>() {
+
+            private int i = 0;
+
+            @Override
+            public boolean hasNext() {
+                return i < elements.length;
+            }
+
+            @Override
+            public MDBaseNode next() {
+                return elements[i++];
+            }
+        };
     }
 }

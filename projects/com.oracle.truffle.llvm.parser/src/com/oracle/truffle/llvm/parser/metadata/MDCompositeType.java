@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.metadata.subtypes.MDType;
+import com.oracle.truffle.llvm.parser.listeners.Metadata;
 import com.oracle.truffle.llvm.parser.records.DwTagRecord;
 
 import java.util.Arrays;
@@ -37,32 +37,24 @@ import java.util.Arrays;
 public final class MDCompositeType extends MDType implements MDBaseNode {
 
     private final Tag tag;
-
-    private final MDReference scope;
-
-    private final MDReference derivedFrom;
-
-    private final MDReference memberDescriptors;
-
     private final long runtimeLanguage;
 
-    private final MDReference vTableHolder;
+    private MDBaseNode scope;
+    private MDBaseNode baseType;
+    private MDBaseNode members;
+    private MDBaseNode templateParams;
+    private MDBaseNode identifier;
 
-    private final MDReference templateParams;
-
-    private final MDReference identifier;
-
-    private MDCompositeType(long tag, MDReference scope, MDReference name, MDReference file, long line, long size, long align, long offset, long flags, MDReference derivedFrom,
-                    MDReference memberDescriptors, long runtimeLanguage, MDReference vTableHolder, MDReference templateParams, MDReference identifier) {
-        super(name, size, align, offset, file, line, flags);
+    private MDCompositeType(long tag, long line, long size, long align, long offset, long flags, long runtimeLanguage) {
+        super(size, align, offset, line, flags);
         this.tag = Tag.decode(tag);
-        this.scope = scope;
-        this.derivedFrom = derivedFrom;
-        this.memberDescriptors = memberDescriptors;
         this.runtimeLanguage = runtimeLanguage;
-        this.vTableHolder = vTableHolder;
-        this.templateParams = templateParams;
-        this.identifier = identifier;
+
+        this.scope = MDVoidNode.INSTANCE;
+        this.baseType = MDVoidNode.INSTANCE;
+        this.members = MDVoidNode.INSTANCE;
+        this.templateParams = MDVoidNode.INSTANCE;
+        this.identifier = MDVoidNode.INSTANCE;
     }
 
     @Override
@@ -70,16 +62,16 @@ public final class MDCompositeType extends MDType implements MDBaseNode {
         visitor.visit(this);
     }
 
-    public MDReference getScope() {
+    public MDBaseNode getScope() {
         return scope;
     }
 
-    public MDReference getDerivedFrom() {
-        return derivedFrom;
+    public MDBaseNode getBaseType() {
+        return baseType;
     }
 
-    public MDReference getMemberDescriptors() {
-        return memberDescriptors;
+    public MDBaseNode getMembers() {
+        return members;
     }
 
     public long getRuntimeLanguage() {
@@ -90,16 +82,32 @@ public final class MDCompositeType extends MDType implements MDBaseNode {
         return tag;
     }
 
-    public MDReference getvTableHolder() {
-        return vTableHolder;
-    }
-
-    public MDReference getTemplateParams() {
+    public MDBaseNode getTemplateParams() {
         return templateParams;
     }
 
-    public MDReference getIdentifier() {
+    public MDBaseNode getIdentifier() {
         return identifier;
+    }
+
+    @Override
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        super.replace(oldValue, newValue);
+        if (scope == oldValue) {
+            scope = newValue;
+        }
+        if (baseType == oldValue) {
+            baseType = newValue;
+        }
+        if (members == oldValue) {
+            members = newValue;
+        }
+        if (templateParams == oldValue) {
+            templateParams = newValue;
+        }
+        if (identifier == oldValue) {
+            identifier = newValue;
+        }
     }
 
     public enum Tag {
@@ -123,15 +131,6 @@ public final class MDCompositeType extends MDType implements MDBaseNode {
         }
     }
 
-    @Override
-    public String toString() {
-        return String.format(
-                        "CompositeType (tag=%s, scope=%s, name=%s, file=%s, line=%d, size=%d, align=%d, offset=%d, flags=%d, derivedFrom=%s, memberDescriptors=%s, runtimeLanguage=%d, vTableHolder=%s, templateParams=%s, identifier=%s)",
-                        tag, scope,
-                        getName(), getFile(), getLine(), getSize(), getAlign(), getOffset(), getFlags(), derivedFrom, memberDescriptors, runtimeLanguage, vTableHolder, templateParams,
-                        identifier);
-    }
-
     private static final int ARGINDEX_38_TAG = 1;
     private static final int ARGINDEX_38_NAME = 2;
     private static final int ARGINDEX_38_FILE = 3;
@@ -142,29 +141,32 @@ public final class MDCompositeType extends MDType implements MDBaseNode {
     private static final int ARGINDEX_38_ALIGN = 8;
     private static final int ARGINDEX_38_OFFSET = 9;
     private static final int ARGINDEX_38_FLAGS = 10;
-    private static final int ARGINDEX_38_MEMBERDESCRIPTORS = 11;
+    private static final int ARGINDEX_38_MEMBERS = 11;
     private static final int ARGINDEX_38_RUNTIMELANGUAGE = 12;
-    private static final int ARGINDEX_38_VTABLEHOLDER = 13;
     private static final int ARGINDEX_38_TEMPLATEPARAMS = 14;
     private static final int ARGINDEX_38_IDENTIFIER = 15;
 
-    public static MDCompositeType create38(long[] args, MetadataList md) {
+    public static MDCompositeType create38(long[] args, MetadataValueList md) {
         final long tag = args[ARGINDEX_38_TAG];
-        final MDReference name = md.getMDRefOrNullRef(args[ARGINDEX_38_NAME]);
-        final MDReference file = md.getMDRefOrNullRef(args[ARGINDEX_38_FILE]);
         final long line = args[ARGINDEX_38_LINE];
-        final MDReference scope = md.getMDRefOrNullRef(args[ARGINDEX_38_SCOPE]);
-        final MDReference baseType = md.getMDRefOrNullRef(args[ARGINDEX_38_BASETYPE]);
         final long size = args[ARGINDEX_38_SIZE];
         final long align = args[ARGINDEX_38_ALIGN];
         final long offset = args[ARGINDEX_38_OFFSET];
         final long flags = args[ARGINDEX_38_FLAGS];
-        final MDReference members = md.getMDRefOrNullRef(args[ARGINDEX_38_MEMBERDESCRIPTORS]);
         final long lang = args[ARGINDEX_38_RUNTIMELANGUAGE];
-        final MDReference vTableHolder = md.getMDRefOrNullRef(args[ARGINDEX_38_VTABLEHOLDER]);
-        final MDReference templateParams = md.getMDRefOrNullRef(args[ARGINDEX_38_TEMPLATEPARAMS]);
-        final MDReference idenitifier = md.getMDRefOrNullRef(args[ARGINDEX_38_IDENTIFIER]);
-        return new MDCompositeType(tag, scope, name, file, line, size, align, offset, flags, baseType, members, lang, vTableHolder, templateParams, idenitifier);
+
+        final MDCompositeType compositeType = new MDCompositeType(tag, line, size, align, offset, flags, lang);
+
+        compositeType.scope = md.getNullable(args[ARGINDEX_38_SCOPE], compositeType);
+        compositeType.baseType = md.getNullable(args[ARGINDEX_38_BASETYPE], compositeType);
+        compositeType.members = md.getNullable(args[ARGINDEX_38_MEMBERS], compositeType);
+        compositeType.templateParams = md.getNullable(args[ARGINDEX_38_TEMPLATEPARAMS], compositeType);
+        compositeType.identifier = md.getNullable(args[ARGINDEX_38_IDENTIFIER], compositeType);
+
+        compositeType.setFile(md.getNullable(args[ARGINDEX_38_FILE], compositeType));
+        compositeType.setName(md.getNullable(args[ARGINDEX_38_NAME], compositeType));
+
+        return compositeType;
     }
 
     private static final int ARGINDEX_32_TAG = 0;
@@ -177,24 +179,30 @@ public final class MDCompositeType extends MDType implements MDBaseNode {
     private static final int ARGINDEX_32_OFFSET = 7;
     private static final int ARGINDEX_32_FLAGS = 8;
     private static final int ARGINDEX_32_BASETYPE = 9;
-    private static final int ARGINDEX_32_MEMBERDESCRIPTORS = 10;
+    private static final int ARGINDEX_32_MEMBERS = 10;
     private static final int ARGINDEX_32_RUNTIMELANGUAGE = 11;
     private static final int ARGINDEX_32_TEMPLATEPARAMS = 13;
 
-    public static MDCompositeType create32(MDTypedValue[] args) {
-        final long tag = DwTagRecord.decode(ParseUtil.asInt64(args[ARGINDEX_32_TAG])).code();
-        final MDReference context = ParseUtil.getReference(args[ARGINDEX_32_SCOPE]);
-        final MDReference name = ParseUtil.getReference(args[ARGINDEX_32_NAME]);
-        final MDReference file = ParseUtil.getReference(args[ARGINDEX_32_FILE]);
-        final long line = ParseUtil.asInt32(args[ARGINDEX_32_LINE]);
-        final long size = ParseUtil.asInt64(args[ARGINDEX_32_SIZE]);
-        final long align = ParseUtil.asInt64(args[ARGINDEX_32_ALIGN]);
-        final long offset = ParseUtil.asInt64(args[ARGINDEX_32_OFFSET]);
-        final long flags = ParseUtil.asInt32(args[ARGINDEX_32_FLAGS]);
-        final MDReference baseType = ParseUtil.getReference(args[ARGINDEX_32_BASETYPE]);
-        final MDReference members = ParseUtil.getReferenceIfPresent(args, ARGINDEX_32_MEMBERDESCRIPTORS);
-        final long lang = ParseUtil.asInt64IfPresent(args, ARGINDEX_32_RUNTIMELANGUAGE);
-        final MDReference templateParams = ParseUtil.getReferenceIfPresent(args, ARGINDEX_32_TEMPLATEPARAMS);
-        return new MDCompositeType(tag, context, name, file, line, size, align, offset, flags, baseType, members, lang, MDReference.VOID, templateParams, MDReference.VOID);
+    public static MDCompositeType create32(long[] args, Metadata md) {
+        final long tag = DwTagRecord.decode(ParseUtil.asLong(args, ARGINDEX_32_TAG, md)).code();
+        final long line = ParseUtil.asInt(args, ARGINDEX_32_LINE, md);
+        final long size = ParseUtil.asLong(args, ARGINDEX_32_SIZE, md);
+        final long align = ParseUtil.asLong(args, ARGINDEX_32_ALIGN, md);
+        final long offset = ParseUtil.asLong(args, ARGINDEX_32_OFFSET, md);
+        final long flags = ParseUtil.asInt(args, ARGINDEX_32_FLAGS, md);
+        final long lang = ParseUtil.asLong(args, ARGINDEX_32_RUNTIMELANGUAGE, md);
+
+        final MDCompositeType compositeType = new MDCompositeType(tag, line, size, align, offset, flags, lang);
+
+        compositeType.scope = ParseUtil.resolveReference(args, ARGINDEX_32_SCOPE, compositeType, md);
+        compositeType.baseType = ParseUtil.resolveReference(args, ARGINDEX_32_BASETYPE, compositeType, md);
+
+        compositeType.members = ParseUtil.resolveReference(args, ARGINDEX_32_MEMBERS, compositeType, md);
+        compositeType.templateParams = ParseUtil.resolveReference(args, ARGINDEX_32_TEMPLATEPARAMS, compositeType, md);
+
+        compositeType.setFile(ParseUtil.resolveReference(args, ARGINDEX_32_FILE, compositeType, md));
+        compositeType.setName(ParseUtil.resolveReference(args, ARGINDEX_32_NAME, compositeType, md));
+
+        return compositeType;
     }
 }

@@ -34,26 +34,39 @@ public final class MDGlobalVariableExpression implements MDBaseNode {
     private static final int ARGINDEX_VARIABLE = 1;
     private static final int ARGINDEX_EXPRESSION = 2;
 
-    private final MDReference globalVariable;
-    private final MDReference expression;
+    private MDBaseNode globalVariable;
+    private MDBaseNode expression;
 
-    public MDGlobalVariableExpression(MDReference globalVariable, MDReference expression) {
-        this.globalVariable = globalVariable;
-        this.expression = expression;
+    private MDGlobalVariableExpression() {
+        this.globalVariable = MDVoidNode.INSTANCE;
+        this.expression = MDVoidNode.INSTANCE;
     }
 
-    public static MDGlobalVariableExpression create(long[] args, MetadataList md) {
-        final MDReference varRef = md.getMDRefOrNullRef(args[ARGINDEX_VARIABLE]);
-        final MDReference exprRef = md.getMDRefOrNullRef(args[ARGINDEX_EXPRESSION]);
-        return new MDGlobalVariableExpression(varRef, exprRef);
+    public static MDGlobalVariableExpression create(long[] args, MetadataValueList md) {
+        final MDGlobalVariableExpression expression = new MDGlobalVariableExpression();
+
+        expression.globalVariable = md.getNullable(args[ARGINDEX_VARIABLE], expression);
+        expression.expression = md.getNullable(args[ARGINDEX_EXPRESSION], expression);
+
+        return expression;
     }
 
-    public MDReference getGlobalVariable() {
+    public MDBaseNode getGlobalVariable() {
         return globalVariable;
     }
 
-    public MDReference getExpression() {
+    public MDBaseNode getExpression() {
         return expression;
+    }
+
+    @Override
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        if (globalVariable == oldValue) {
+            globalVariable = newValue;
+        }
+        if (expression == oldValue) {
+            expression = newValue;
+        }
     }
 
     @Override

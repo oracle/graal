@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2016, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,31 +29,58 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.records.DwTagRecord;
+public abstract class MDType extends MDName {
 
-public final class MDEmptyNode implements MDBaseNode {
+    private final long size;
+    private final long align;
+    private final long offset;
+    private final long line;
+    private final long flags;
 
-    private final DwTagRecord tag;
+    private MDBaseNode file;
 
-    private MDEmptyNode(DwTagRecord tag) {
-        this.tag = tag;
+    MDType(long size, long align, long offset, long line, long flags) {
+        this.size = size;
+        this.align = align;
+        this.offset = offset;
+        this.line = line;
+        this.flags = flags;
+        this.file = MDVoidNode.INSTANCE;
+    }
+
+    public long getSize() {
+        return size;
+    }
+
+    public long getAlign() {
+        return align;
+    }
+
+    public long getOffset() {
+        return offset;
+    }
+
+    public MDBaseNode getFile() {
+        return file;
+    }
+
+    public long getLine() {
+        return line;
+    }
+
+    public long getFlags() {
+        return flags;
+    }
+
+    public void setFile(MDBaseNode file) {
+        this.file = file;
     }
 
     @Override
-    public void accept(MetadataVisitor visitor) {
-        visitor.visit(this);
-    }
-
-    public DwTagRecord getTag() {
-        return tag;
-    }
-
-    @Override
-    public String toString() {
-        return String.format("EmptyNode (tag=%s)", tag);
-    }
-
-    public static MDEmptyNode create(DwTagRecord tag) {
-        return new MDEmptyNode(tag);
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        super.replace(oldValue, newValue);
+        if (file == oldValue) {
+            file = newValue;
+        }
     }
 }

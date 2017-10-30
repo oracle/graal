@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-public interface MDBaseNode {
+import com.oracle.truffle.llvm.parser.ValueList;
 
-    void accept(MetadataVisitor visitor);
+public interface MDBaseNode extends ValueList.Value<MDBaseNode, MetadataVisitor> {
 
 }

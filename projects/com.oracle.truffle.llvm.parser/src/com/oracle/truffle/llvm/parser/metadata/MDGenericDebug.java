@@ -29,24 +29,18 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import java.util.ArrayList;
-import java.util.List;
-
-public final class MDGenericDebug implements MDBaseNode {
+public final class MDGenericDebug extends MDAggregateNode {
 
     private final long tag;
-
     private final long version;
 
-    private final MDReference header;
+    private MDBaseNode header;
 
-    private final List<MDReference> dwarfOps;
-
-    private MDGenericDebug(long tag, long version, MDReference header, List<MDReference> dwarfOps) {
+    private MDGenericDebug(long tag, long version, int size) {
+        super(size);
         this.tag = tag;
         this.version = version;
-        this.header = header;
-        this.dwarfOps = dwarfOps;
+        this.header = MDVoidNode.INSTANCE;
     }
 
     public long getTag() {
@@ -57,12 +51,16 @@ public final class MDGenericDebug implements MDBaseNode {
         return version;
     }
 
-    public MDReference getHeader() {
+    public MDBaseNode getHeader() {
         return header;
     }
 
-    public List<MDReference> getDwarfOps() {
-        return dwarfOps;
+    @Override
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        super.replace(oldValue, newValue);
+        if (header == oldValue) {
+            header = newValue;
+        }
     }
 
     @Override
@@ -70,24 +68,23 @@ public final class MDGenericDebug implements MDBaseNode {
         visitor.visit(this);
     }
 
-    @Override
-    public String toString() {
-        return String.format("GenericDebug (tag=%d, version=%d, header=%s, dwarfOps=%s)", getTag(), getVersion(), getHeader(), getDwarfOps());
-    }
-
     private static final int ARGINDEX_TAG = 1;
     private static final int ARGINDEX_VERSION = 2;
     private static final int ARGINDEX_HEADER = 3;
     private static final int ARGINDEX_DATASTART = 4;
 
-    public static MDGenericDebug create38(long[] args, MetadataList md) {
+    public static MDGenericDebug create38(long[] args, MetadataValueList md) {
         final long tag = args[ARGINDEX_TAG];
         final long version = args[ARGINDEX_VERSION];
-        final MDReference header = md.getMDRefOrNullRef(args[ARGINDEX_HEADER]);
-        final List<MDReference> dwarfOps = new ArrayList<>(args.length - ARGINDEX_DATASTART);
-        for (int i = ARGINDEX_DATASTART; i < args.length; i++) {
-            dwarfOps.add(md.getMDRefOrNullRef(args[i]));
+
+        final int size = args.length - ARGINDEX_DATASTART;
+        final MDGenericDebug debug = new MDGenericDebug(tag, version, size);
+
+        debug.header = md.getNullable(args[ARGINDEX_HEADER], debug);
+        for (int i = 0, j = ARGINDEX_DATASTART; i < args.length; i++, j++) {
+            debug.set(i, md.getNullable(args[j], debug));
         }
-        return new MDGenericDebug(tag, version, header, dwarfOps);
+
+        return debug;
     }
 }

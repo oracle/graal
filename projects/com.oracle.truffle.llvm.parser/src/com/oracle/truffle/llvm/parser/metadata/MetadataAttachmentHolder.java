@@ -44,7 +44,7 @@ public interface MetadataAttachmentHolder {
     default MDBaseNode getMetadataAttachment(String kind) {
         for (MDAttachment attachment : getAttachedMetadata()) {
             if (attachment.getKind().getName().equals(kind)) {
-                return attachment.getMdRef();
+                return attachment.getValue();
             }
         }
         return null;
