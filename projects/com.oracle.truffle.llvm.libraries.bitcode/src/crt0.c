@@ -27,36 +27,62 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <stddef.h>
-#include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#ifdef __linux__
+#include <elf.h>
+#else
+#define AT_NULL 0
+typedef struct {
+  long a_type;
+  union {
+    long a_val;
+  } a_un;
+} Elf64_auxv_t;
+#endif
 
-static void sulong_swap(void *vp1, void *vp2, const size_t size) {
-  char *buffer = (char *)malloc(size);
-  memcpy(buffer, vp1, size);
-  memcpy(vp1, vp2, size);
-  memcpy(vp2, buffer, size);
-  free(buffer);
+int main(int argc, char **argv, char **envp);
+
+static Elf64_auxv_t *__auxv;
+
+__attribute__((weak)) int _start(long *p, int type) {
+  int argc = p[0];
+  char **argv = (void *)(p + 1);
+  char **envp = argv + argc + 1;
+
+  int envc = 0;
+  char **ptr;
+  for (ptr = envp; *ptr; ptr++) {
+    envc++;
+  }
+
+  __auxv = (Elf64_auxv_t *)(envp + envc + 1);
+
+  switch (type) {
+  /* C/C++/... */
+  default:
+  case 0:
+    exit(main(argc, argv, envp));
+    break;
+  /* Rust */
+  case 1: {
+    long (*i64main)(long argc, char **argv) = (long (*)(long, char **))main;
+    exit(i64main(argc, argv));
+    break;
+  }
+  }
+  abort();
 }
 
-static void sulong_qsort(char *v, long left, long right, int (*comp)(const void *, const void *), size_t size) {
-  int i, last;
-  if (left >= right) {
-    return;
-  }
-  sulong_swap(&v[left * size], &v[((left + right) / 2) * size], size);
-  last = left;
-  for (i = left + 1; i <= right; i++) {
-    if (comp(&(v[i * size]), &(v[left * size])) < 0) {
-      last++;
-      sulong_swap(&(v[last * size]), &(v[i * size]), size);
+#ifdef __linux__
+__attribute__((weak)) unsigned long getauxval(unsigned long type) {
+  Elf64_auxv_t *auxv;
+  for (auxv = __auxv; auxv->a_type != AT_NULL; auxv++) {
+    if (auxv->a_type == type) {
+      return auxv->a_un.a_val;
     }
   }
-  sulong_swap(&(v[left * size]), &(v[last * size]), size);
-  sulong_qsort(v, left, last - 1, comp, size);
-  sulong_qsort(v, last + 1, right, comp, size);
+  return 0;
 }
-
-__attribute__((weak)) void qsort(void *v, size_t number, size_t size, int (*comp)(const void *, const void *)) {
-  sulong_qsort(v, 0, number - 1, comp, size);
-}
+#endif

@@ -1457,9 +1457,8 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public RootNode createGlobalRootNode(LLVMParserRuntime runtime, RootCallTarget mainCallTarget,
-                    Object[] args, Source sourceFile, Type[] mainTypes) {
-        return LLVMRootNodeFactory.createGlobalRootNode(runtime, mainCallTarget, args, sourceFile, mainTypes);
+    public RootNode createGlobalRootNode(LLVMParserRuntime runtime, RootCallTarget mainCallTarget, Source sourceFile, Type[] mainTypes) {
+        return LLVMRootNodeFactory.createGlobalRootNode(runtime, mainCallTarget, sourceFile, mainTypes);
     }
 
     @Override

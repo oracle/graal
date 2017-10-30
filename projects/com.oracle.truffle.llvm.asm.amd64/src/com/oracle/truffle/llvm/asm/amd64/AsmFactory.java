@@ -1120,7 +1120,7 @@ class AsmFactory {
             }
             case "cmpxchg": {
                 if (dstType instanceof PointerType) {
-                    // dstType = PrimitiveType.I64;
+                    // treat pointers as I64
                     dstPrimitiveType = PrimitiveKind.I64;
                 }
                 if (dstType instanceof PrimitiveType || dstType instanceof PointerType) {
@@ -1737,7 +1737,7 @@ class AsmFactory {
             this.result = StructLiteralNodeGen.create(retOffsets, retTypes, writeNodes, valueNodes, addr);
         }
 
-        todoRegisters.remove("rsp");
+        todoRegisters.remove("rsp"); // rsp is initialized to stack pointer; ignore it here
         // initialize registers
         for (String register : todoRegisters) {
             if (register.startsWith("$")) {

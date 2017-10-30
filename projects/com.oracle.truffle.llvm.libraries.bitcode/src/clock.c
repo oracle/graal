@@ -27,36 +27,11 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <stddef.h>
-#include <stdlib.h>
-#include <string.h>
+#include <time.h>
+#include <stdint.h>
+#include <errno.h>
+#include "syscall.h"
 
-static void sulong_swap(void *vp1, void *vp2, const size_t size) {
-  char *buffer = (char *)malloc(size);
-  memcpy(buffer, vp1, size);
-  memcpy(vp1, vp2, size);
-  memcpy(vp2, buffer, size);
-  free(buffer);
-}
-
-static void sulong_qsort(char *v, long left, long right, int (*comp)(const void *, const void *), size_t size) {
-  int i, last;
-  if (left >= right) {
-    return;
-  }
-  sulong_swap(&v[left * size], &v[((left + right) / 2) * size], size);
-  last = left;
-  for (i = left + 1; i <= right; i++) {
-    if (comp(&(v[i * size]), &(v[left * size])) < 0) {
-      last++;
-      sulong_swap(&(v[last * size]), &(v[i * size]), size);
-    }
-  }
-  sulong_swap(&(v[left * size]), &(v[last * size]), size);
-  sulong_qsort(v, left, last - 1, comp, size);
-  sulong_qsort(v, last + 1, right, comp, size);
-}
-
-__attribute__((weak)) void qsort(void *v, size_t number, size_t size, int (*comp)(const void *, const void *)) {
-  sulong_qsort(v, 0, number - 1, comp, size);
-}
+#ifdef __linux__
+int clock_gettime(clockid_t clk_id, struct timespec *tp) { __SYSCALL_2P(SYS_clock_gettime, clk_id, tp); }
+#endif
