@@ -37,7 +37,6 @@ import java.util.Map;
 import java.util.ServiceLoader;
 
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.metadata.ScopeProvider;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
@@ -49,6 +48,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -64,7 +64,7 @@ import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
                 Sulong.SULONG_LIBRARY_MIME_TYPE, Sulong.LLVM_ELF_SHARED_MIME_TYPE, Sulong.LLVM_ELF_EXEC_MIME_TYPE}, internal = false, interactive = false)
 // TODO: remove Sulong.SULONG_LIBRARY_MIME_TYPE after GR-5904 is closed.
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class})
-public final class Sulong extends LLVMLanguage implements ScopeProvider<LLVMContext> {
+public final class Sulong extends LLVMLanguage {
 
     private static final List<Configuration> configurations = new ArrayList<>();
 
@@ -98,6 +98,7 @@ public final class Sulong extends LLVMLanguage implements ScopeProvider<LLVMCont
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     protected Object lookupSymbol(LLVMContext context, String globalName) {
         String atname = "@" + globalName; // for interop
         if (context.getGlobalScope().functionExists(atname)) {
@@ -217,7 +218,7 @@ public final class Sulong extends LLVMLanguage implements ScopeProvider<LLVMCont
     }
 
     @Override
-    public AbstractScope findScope(LLVMContext context, Node node, Frame frame) {
-        return LLVMSourceScope.create(node, context);
+    protected Iterable<Scope> findLocalScopes(LLVMContext context, Node node, Frame frame) {
+        return LLVMSourceScope.create(node, frame, context);
     }
 }
