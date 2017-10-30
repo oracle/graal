@@ -36,8 +36,10 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMException;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
+import com.oracle.truffle.llvm.runtime.LLVMNativeFunctions;
+import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public final class LLVMRethrowNode extends LLVMExpressionNode {
@@ -59,7 +61,9 @@ public final class LLVMRethrowNode extends LLVMExpressionNode {
     public LLVMNativeFunctions.SulongSetHandlerCountNode getSetHandlerCount() {
         if (setHandlerCount == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            setHandlerCount = insert(getContext().getNativeFunctions().createSetHandlerCount());
+            LLVMContext context = getContext();
+            NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
+            setHandlerCount = insert(nfiContextExtension.getNativeSulongFunctions().createSetHandlerCount(context));
         }
         return setHandlerCount;
     }
@@ -67,7 +71,9 @@ public final class LLVMRethrowNode extends LLVMExpressionNode {
     public LLVMNativeFunctions.SulongGetExceptionPointerNode getGetExceptionPointer() {
         if (getExceptionPointer == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getExceptionPointer = insert(getContext().getNativeFunctions().createGetExceptionPointer());
+            LLVMContext context = getContext();
+            NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
+            getExceptionPointer = insert(nfiContextExtension.getNativeSulongFunctions().createGetExceptionPointer(context));
         }
         return getExceptionPointer;
     }

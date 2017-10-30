@@ -34,8 +34,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMException;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
+import com.oracle.truffle.llvm.runtime.LLVMNativeFunctions;
+import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public final class LLVMThrowExceptionNode extends LLVMExpressionNode {
@@ -60,7 +62,9 @@ public final class LLVMThrowExceptionNode extends LLVMExpressionNode {
     public LLVMNativeFunctions.SulongThrowNode getExceptionInitializaton() {
         if (exceptionInitializaton == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.exceptionInitializaton = insert(getContext().getNativeFunctions().createSulongThrow());
+            LLVMContext context = getContext();
+            NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
+            this.exceptionInitializaton = insert(nfiContextExtension.getNativeSulongFunctions().createSulongThrow(context));
         }
         return exceptionInitializaton;
     }

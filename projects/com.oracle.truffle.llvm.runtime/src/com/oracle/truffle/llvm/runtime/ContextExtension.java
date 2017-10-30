@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,45 +27,11 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
+package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+public interface ContextExtension {
 
-/**
- * This class is the entry point for every intrinsified (substituted) function.
- */
-public abstract class LLVMIntrinsicRootNode extends RootNode {
-
-    private final String name;
-
-    LLVMIntrinsicRootNode(TruffleLanguage<?> language, String name) {
-        super(language, new FrameDescriptor());
-        this.name = name;
+    default Class<?> extensionClass() {
+        return this.getClass();
     }
-
-    public abstract LLVMExpressionNode getNode();
-
-    @Override
-    public String toString() {
-        return name;
-    }
-
-    @NodeChild(type = LLVMExpressionNode.class, value = "node")
-    public abstract static class LLVMIntrinsicExpressionNode extends LLVMIntrinsicRootNode {
-
-        public LLVMIntrinsicExpressionNode(TruffleLanguage<?> language, String name) {
-            super(language, name);
-        }
-
-        @Specialization
-        public Object execute(Object val) {
-            return val;
-        }
-    }
-
 }

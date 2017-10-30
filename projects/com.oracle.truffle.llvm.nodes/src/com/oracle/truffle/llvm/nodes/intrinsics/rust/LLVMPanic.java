@@ -50,20 +50,19 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMPanic extends LLVMIntrinsic {
 
-    private final PanicLocType panicLoc;
-
-    public LLVMPanic(DataSpecConverter dataLayout) {
-        this.panicLoc = PanicLocType.create(dataLayout);
+    protected PanicLocType createPanicLocation() {
+        DataSpecConverter dataSpecConverter = getContext().getDataSpecConverter();
+        return PanicLocType.create(dataSpecConverter);
     }
 
     @Specialization
-    public Object execute(LLVMGlobalVariable panicLocVar, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    public Object execute(LLVMGlobalVariable panicLocVar, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess, @Cached("createPanicLocation()") PanicLocType panicLoc) {
         LLVMAddress addr = globalAccess.getNativeLocation(panicLocVar);
         CompilerDirectives.transferToInterpreter();
         throw panicLoc.read(addr.getVal());
     }
 
-    private static final class PanicLocType {
+    static final class PanicLocType {
 
         private final StrSliceType strslice;
         private final int offsetFilename;

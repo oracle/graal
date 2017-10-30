@@ -37,7 +37,9 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMNativeFunctions;
+import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public final class LLVMBeginCatchNode extends LLVMExpressionNode {
@@ -54,7 +56,9 @@ public final class LLVMBeginCatchNode extends LLVMExpressionNode {
     public LLVMNativeFunctions.SulongGetThrownObjectNode getGetThrownObject() {
         if (getThrownObject == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.getThrownObject = insert(getContext().getNativeFunctions().createGetThrownObject());
+            LLVMContext context = getContext();
+            NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
+            this.getThrownObject = insert(nfiContextExtension.getNativeSulongFunctions().createGetThrownObject(context));
         }
         return getThrownObject;
     }
@@ -62,7 +66,9 @@ public final class LLVMBeginCatchNode extends LLVMExpressionNode {
     public LLVMNativeFunctions.SulongIncrementHandlerCountNode getHandlerCount() {
         if (handlerCount == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.handlerCount = insert(getContext().getNativeFunctions().createIncrementHandlerCount());
+            LLVMContext context = getContext();
+            NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
+            this.handlerCount = insert(nfiContextExtension.getNativeSulongFunctions().createIncrementHandlerCount(context));
         }
         return handlerCount;
     }
