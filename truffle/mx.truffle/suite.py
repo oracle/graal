@@ -878,6 +878,7 @@ suite = {
        "distDependencies" : [
          "TRUFFLE_API",
        ],
+       "javadocType" : "api",
        "description" : "The truffle profiler, supporting CPU sampling and tracing. Memory tracing support is experimental"
      },
 
