@@ -29,20 +29,24 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.ListIterator;
+
 public final class MDExpression implements MDBaseNode {
 
-    private final long[] elements;
+    private final long[] operands;
 
-    public MDExpression(long[] elements) {
-        this.elements = elements;
+    private MDExpression(long[] operands) {
+        this.operands = operands;
     }
 
-    public long getElement(int i) {
-        return elements[i];
+    public long getOperand(int i) {
+        return operands[i];
     }
 
     public int getElementCount() {
-        return elements.length;
+        return operands.length;
     }
 
     @Override
@@ -52,5 +56,89 @@ public final class MDExpression implements MDBaseNode {
     @Override
     public void accept(MetadataVisitor visitor) {
         visitor.visit(this);
+    }
+
+    private static final int INDEX_OPERANDSTART = 1;
+    private static final int INDEX_VERSION = 0;
+    private static final int VERSION_VALUE_SHIFT = 1;
+
+    public static MDExpression create(long[] record) {
+        final int version = (int) (record[INDEX_VERSION] >> VERSION_VALUE_SHIFT);
+
+        long[] ops = Arrays.copyOfRange(record, INDEX_OPERANDSTART, record.length);
+        ops = upgrade(version, ops);
+
+        return new MDExpression(ops);
+    }
+
+    private static final int CURRENT_VERSION = 3;
+    private static final int V0_FRAGMENT_OFFSET = 3;
+    private static final long DEFAULT_OPERAND = 0;
+
+    private static long[] upgrade(int version, long[] originalOps) {
+        final int numOps = originalOps.length;
+        if (numOps == 0 || version >= CURRENT_VERSION) {
+            return originalOps;
+        }
+
+        long[] ops = originalOps;
+
+        if (version >= 0 && numOps >= V0_FRAGMENT_OFFSET && ops[numOps - V0_FRAGMENT_OFFSET] == DwarfOpcode.BIT_PIECE) {
+            ops[numOps - V0_FRAGMENT_OFFSET] = DwarfOpcode.LLVM_FRAGMENT;
+        }
+
+        if (version >= 1 && ops[0] == DwarfOpcode.DEREF) {
+            System.arraycopy(ops, 1, ops, 0, numOps - 1);
+            ops[numOps - 1] = DwarfOpcode.DEREF;
+            // TODO NeedDeclareExpressionUpgrade = true;
+        }
+
+        if (version >= 2) {
+            final LinkedList<Long> buffer = new LinkedList<>();
+
+            int i = 0;
+            while (i < numOps) {
+
+                final long op = ops[i++];
+                switch ((int) op) {
+
+                    case (int) DwarfOpcode.PLUS:
+                        buffer.addLast(DwarfOpcode.PLUS_UCONST);
+                        buffer.addLast(i < numOps ? ops[i++] : DEFAULT_OPERAND);
+                        break;
+
+                    case (int) DwarfOpcode.MINUS:
+                        buffer.addLast(DwarfOpcode.CONSTU);
+                        buffer.addLast(i < numOps ? ops[i++] : DEFAULT_OPERAND);
+                        buffer.addLast(DwarfOpcode.MINUS);
+                        break;
+
+                    case (int) DwarfOpcode.CONSTU:
+                        buffer.addLast(op);
+                        buffer.addLast(i < numOps ? ops[i++] : DEFAULT_OPERAND);
+                        break;
+
+                    case (int) DwarfOpcode.LLVM_FRAGMENT:
+                        buffer.addLast(op);
+                        buffer.addLast(i < numOps ? ops[i++] : DEFAULT_OPERAND);
+                        buffer.addLast(i < numOps ? ops[i++] : DEFAULT_OPERAND);
+                        break;
+
+                    default:
+                        buffer.addLast(op);
+                        break;
+                }
+            }
+
+            if (ops.length != buffer.size()) {
+                ops = new long[buffer.size()];
+            }
+            final ListIterator<Long> it = buffer.listIterator();
+            for (int j = 0; j < ops.length && it.hasNext(); j++) {
+                ops[j] = it.next();
+            }
+        }
+
+        return ops;
     }
 }

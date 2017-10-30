@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.listeners;
 
-import java.util.Arrays;
-
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDBasicType;
@@ -212,7 +210,7 @@ public final class Metadata implements ParserListener {
                 break;
 
             case EXPRESSION:
-                createExpression(args);
+                metadata.add(MDExpression.create(args));
                 break;
 
             case OBJC_PROPERTY:
@@ -286,14 +284,6 @@ public final class Metadata implements ParserListener {
                 }
             }
         }
-    }
-
-    private static final int EXPRESSION_ARGSTARTINDEX = 1;
-
-    private void createExpression(long[] args) {
-        // TODO handle
-        final long[] elements = Arrays.copyOfRange(args, EXPRESSION_ARGSTARTINDEX, args.length);
-        metadata.add(new MDExpression(elements));
     }
 
     private static final int ARGINDEX_IDENT = 0;
