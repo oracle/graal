@@ -144,7 +144,7 @@ public class ErrorTypeTest {
                             canBeInvoked = false;
                             break;
                         } else {
-                            args.add(Collections.singletonList(slotArgs.get(0)));
+                            args.add(Collections.singletonList(findBestApplicableArg(slotArgs, overloads, j)));
                         }
                     }
                 }
@@ -170,6 +170,33 @@ public class ErrorTypeTest {
                 }
             }
         }
+    }
+
+    private static Map.Entry<String, ? extends Snippet> findBestApplicableArg(final List<Map.Entry<String, ? extends Snippet>> applicableTypes, final Collection<? extends Snippet> overloads,
+                    final int parameterIndex) {
+        final Iterator<Map.Entry<String, ? extends Snippet>> it = applicableTypes.iterator();
+        final Collection<TypeDescriptor> overloadsTypes = new ArrayList<>();
+        for (Snippet overload : overloads) {
+            final List<? extends TypeDescriptor> params = overload.getParameterTypes();
+            if (parameterIndex < params.size()) {
+                overloadsTypes.add(params.get(parameterIndex));
+            }
+        }
+        Map.Entry<String, ? extends Snippet> bestSoFar = it.next();
+        while (isCoveredByOverload(bestSoFar, overloadsTypes) && it.hasNext()) {
+            bestSoFar = it.next();
+        }
+        return bestSoFar;
+    }
+
+    private static boolean isCoveredByOverload(final Map.Entry<String, ? extends Snippet> value, final Collection<? extends TypeDescriptor> overloadsTypes) {
+        final TypeDescriptor valueType = value.getValue().getReturnType();
+        for (TypeDescriptor td : overloadsTypes) {
+            if (td.isAssignable(valueType)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean areParametersAssignable(final List<? extends TypeDescriptor> into, List<? extends TypeDescriptor> from) {
