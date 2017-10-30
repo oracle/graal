@@ -1043,6 +1043,7 @@ public final class LLVMInteropTest {
     }
 
     @Test
+    @Ignore // TODO: re-enable GR-6632
     public void testVirtualMallocCompare1() throws Exception {
         Runner runner = new Runner("virtualMallocCompare1");
         runner.load();
