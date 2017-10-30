@@ -2,7 +2,6 @@ from __future__ import print_function
 
 import argparse
 import mx
-import mx_gate
 import mx_unittest
 import mx_subst
 import os
@@ -212,19 +211,9 @@ def compileSuite(args=None):
         if compileCommand is not None:
             compileCommand()
 
-def runSuite(args=None):
-    """executes all the test suites or selected ones (see -h or --help)"""
-    vmArgs, otherArgs = mx_sulong.truffle_extract_VM_args(args)
-    parser = argparse.ArgumentParser(description="Compiles all or selected test suites.")
-    parser.add_argument('suite', nargs='*', help=' '.join(testSuites.keys()), default=testSuites.keys())
-    parsedArgs = parser.parse_args(otherArgs)
-
-    tasks = []
-    for testSuiteName in parsedArgs.suite:
-        with mx_gate.Task('Test%s' % testSuiteName.capitalize(), tasks) as t:
-            if t:
-                _, runCommand = testSuites[testSuiteName]
-                runCommand(vmArgs)
+def runSuite(suite):
+    _, runCommand = testSuites[suite]
+    runCommand([])
 
 def ensureLLVMSuiteExists():
     """downloads the LLVM suite if not downloaded yet"""

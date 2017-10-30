@@ -72,35 +72,35 @@ add_config_participant(_unittest_config_participant)
 
 def _sulong_gate_runner(args, tasks):
     with Task('TestBenchmarks', tasks, tags=['benchmarks', 'sulongMisc']) as t:
-        if t: mx_testsuites.runSuite(['shootout'])
+        if t: mx_testsuites.runSuite('shootout')
     with Task('TestTypes', tasks, tags=['type', 'sulongMisc']) as t:
-        if t: mx_testsuites.runSuite(['type'])
+        if t: mx_testsuites.runSuite('type')
     with Task('TestPipe', tasks, tags=['pipe', 'sulongMisc']) as t:
-        if t: mx_testsuites.runSuite(['pipe', 'sulongMisc'])
+        if t: mx_testsuites.runSuite('pipe')
     with Task('TestLLVM', tasks, tags=['llvm']) as t:
-        if t: mx_testsuites.runSuite(['llvm'])
+        if t: mx_testsuites.runSuite('llvm')
     with Task('TestNWCC', tasks, tags=['nwcc']) as t:
-        if t: mx_testsuites.runSuite(['nwcc'])
+        if t: mx_testsuites.runSuite('nwcc')
     with Task('TestGCCParserTorture', tasks, tags=['parser']) as t:
-        if t: mx_testsuites.runSuite(['parserTorture'])
+        if t: mx_testsuites.runSuite('parserTorture')
     with Task('TestGCC_C', tasks, tags=['gcc_c']) as t:
-        if t: mx_testsuites.runSuite(['gcc_c'])
+        if t: mx_testsuites.runSuite('gcc_c')
     with Task('TestGCC_CPP', tasks, tags=['gcc_cpp']) as t:
-        if t: mx_testsuites.runSuite(['gcc_cpp'])
+        if t: mx_testsuites.runSuite('gcc_cpp')
     with Task('TestGCC_Fortran', tasks, tags=['gcc_fortran']) as t:
-        if t: mx_testsuites.runSuite(['gcc_fortran'])
+        if t: mx_testsuites.runSuite('gcc_fortran')
     with Task("TestSulong", tasks, tags=['sulong', 'sulongBasic']) as t:
         if t: mx_unittest.unittest(['SulongSuite'])
     with Task("TestInterop", tasks, tags=['interop', 'sulongBasic']) as t:
         if t: mx_unittest.unittest(['LLVMInteropTest'])
     with Task('TestAssembly', tasks, tags=['assembly', 'sulongMisc']) as t:
-        if t: mx_testsuites.runSuite(['assembly'])
+        if t: mx_testsuites.runSuite('assembly')
     with Task('TestArgs', tasks, tags=['args', 'sulongMisc']) as t:
-        if t: mx_testsuites.runSuite(['args'])
+        if t: mx_testsuites.runSuite('args')
     with Task('TestCallback', tasks, tags=['callback', 'sulongMisc']) as t:
-        if t: mx_testsuites.runSuite(['callback'])
+        if t: mx_testsuites.runSuite('callback')
     with Task('TestVarargs', tasks, tags=['vaargs', 'sulongMisc']) as t:
-        if t: mx_testsuites.runSuite(['vaargs'])
+        if t: mx_testsuites.runSuite('vaargs')
 
 add_gate_runner(_suite, _sulong_gate_runner)
 
@@ -534,7 +534,6 @@ mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
 
 
 mx.update_commands(_suite, {
-    'test' : [mx_testsuites.runSuite, ''],
     'pulldragonegg' : [pullInstallDragonEgg, ''],
     'lli' : [runLLVM, ''],
 })
