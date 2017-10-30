@@ -105,7 +105,7 @@ public final class CPUTracer implements Closeable {
     }
 
     /**
-     * @return whether or not the sampler is currently collecting data.
+     * @return whether or not the tracer is currently collecting data.
      * @since 0.30
      */
     public synchronized boolean isCollecting() {
