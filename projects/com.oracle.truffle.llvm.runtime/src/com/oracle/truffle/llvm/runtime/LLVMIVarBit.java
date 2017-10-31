@@ -441,4 +441,29 @@ public final class LLVMIVarBit {
     public String toString() {
         return String.format("i%d %s", getBitSize(), asBigInteger().toString());
     }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + Arrays.hashCode(arr);
+        result = prime * result + bits;
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        LLVMIVarBit other = (LLVMIVarBit) obj;
+        return compare(other) == 0;
+    }
+
 }
