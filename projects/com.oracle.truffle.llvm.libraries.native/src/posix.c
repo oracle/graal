@@ -236,6 +236,11 @@ int __sulong_posix_getgid(void)
 	CALL(int, getgid);
 }
 
+int __sulong_posix_ftruncate(int fildes, off_t length)
+{
+	CALL(int, ftruncate, fildes, length);
+}
+
 #else
 
 #include <stdio.h>
