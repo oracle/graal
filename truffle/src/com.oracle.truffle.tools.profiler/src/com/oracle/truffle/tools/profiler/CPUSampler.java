@@ -147,7 +147,7 @@ public final class CPUSampler implements Closeable {
          *
          * @since 0.30
          */
-        COMPILED,
+        EXCLUDE_INLINED_ROOTS,
         /**
          * Sample {@link RootTag Roots} <b>including</b> the ones that get inlined during
          * compilation.
@@ -164,7 +164,7 @@ public final class CPUSampler implements Closeable {
         STATEMENTS
     }
 
-    private Mode mode = Mode.COMPILED;
+    private Mode mode = Mode.EXCLUDE_INLINED_ROOTS;
 
     static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().tagIs(RootTag.class).build();
 
@@ -396,7 +396,7 @@ public final class CPUSampler implements Closeable {
         }
         this.stackOverflowed = false;
         this.shadowStack = new ShadowStack(stackLimit);
-        this.stacksBinding = this.shadowStack.install(env.getInstrumenter(), combine(f, mode), mode == Mode.COMPILED);
+        this.stacksBinding = this.shadowStack.install(env.getInstrumenter(), combine(f, mode), mode == Mode.EXCLUDE_INLINED_ROOTS);
 
         this.samplerTask = new SamplingTimerTask();
         this.samplerThread.schedule(samplerTask, 0, period);
@@ -405,7 +405,7 @@ public final class CPUSampler implements Closeable {
 
     private static SourceSectionFilter combine(SourceSectionFilter filter, Mode mode) {
         List<Class<?>> tags = new ArrayList<>();
-        if (mode == Mode.COMPILED || mode == Mode.ROOTS) {
+        if (mode == Mode.EXCLUDE_INLINED_ROOTS || mode == Mode.ROOTS) {
             tags.add(StandardTags.RootTag.class);
         }
         if (mode == Mode.STATEMENTS) {

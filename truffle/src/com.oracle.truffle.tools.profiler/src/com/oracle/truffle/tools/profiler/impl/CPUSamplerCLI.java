@@ -67,7 +67,7 @@ class CPUSamplerCLI extends ProfilerCLI {
                     });
 
     static final OptionType<CPUSampler.Mode> CLI_MODE_TYPE = new OptionType<>("Mode",
-                    CPUSampler.Mode.COMPILED,
+                    CPUSampler.Mode.EXCLUDE_INLINED_ROOTS,
                     new Function<String, CPUSampler.Mode>() {
                         @Override
                         public CPUSampler.Mode apply(String s) {
@@ -83,9 +83,9 @@ class CPUSamplerCLI extends ProfilerCLI {
 
     // @formatter:off
     @Option(name = "Mode",
-            help = "Describes level of sampling detail. NOTE: Increased detail can lead to reduced accuracy. Modes: 'compiled' - samples roots excluding inlined functions (default), " +
+            help = "Describes level of sampling detail. NOTE: Increased detail can lead to reduced accuracy. Modes: 'exclude_inlined_roots' - samples roots excluding inlined functions (default), " +
                     "'roots' - samples roots including inlined functions, 'statements' - samples all statements.", category = OptionCategory.USER)
-    static final OptionKey<CPUSampler.Mode> MODE = new OptionKey<>(CPUSampler.Mode.COMPILED, CLI_MODE_TYPE);
+    static final OptionKey<CPUSampler.Mode> MODE = new OptionKey<>(CPUSampler.Mode.EXCLUDE_INLINED_ROOTS, CLI_MODE_TYPE);
     // @formatter:om
     @Option(name = "Period", help = "Period in milliseconds to sample the stack.", category = OptionCategory.USER) static final OptionKey<Long> SAMPLE_PERIOD = new OptionKey<>(1L);
 
