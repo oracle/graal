@@ -325,13 +325,22 @@ public final class LLVMIVarBit {
     }
 
     public int compare(LLVMIVarBit other) {
-        for (int i = 0; i < getByteSize(); i++) {
+        int thisWidth = bits;
+        int otherWidth = other.bits;
+        if (thisWidth != otherWidth) {
+            return thisWidth - otherWidth;
+        }
+        for (int i = 0; i < getByteSize() - 1; i++) {
             int diff = arr[i] - other.getBytes()[i];
             if (diff != 0) {
                 return diff;
             }
         }
-        return 0;
+        byte thisByte = arr[getByteSize() - 1];
+        byte otherByte = other.getBytes()[getByteSize() - 1];
+        int maskLength = Byte.SIZE - (getByteSize() * Byte.SIZE - bits);
+        byte mask = (byte) (((1 << maskLength) - 1) & 0xFF);
+        return (thisByte & mask) - (otherByte & mask);
     }
 
     private interface SimpleOp {
