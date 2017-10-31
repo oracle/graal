@@ -29,17 +29,20 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
+
 public class LLVMAMD64SyscallSetuidNode extends LLVMAMD64SyscallOperationNode {
+    @Child private LLVMAMD64PosixCallNode setuid;
+
     public LLVMAMD64SyscallSetuidNode() {
         super("setuid");
+        setuid = LLVMAMD64PosixCallNodeGen.create("setuid", "(SINT32):SINT32", 1);
     }
 
     @Override
     public long execute(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
         long uid = (long) rdi;
-        if (uid == LLVMSecurity.getuid()) {
-            return 0;
-        }
-        return -LLVMAMD64Error.EPERM;
+        return (int) setuid.execute((int) uid);
     }
 }

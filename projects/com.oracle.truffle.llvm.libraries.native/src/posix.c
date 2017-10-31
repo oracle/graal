@@ -246,6 +246,16 @@ off_t __sulong_posix_lseek(int fildes, off_t offset, int whence)
 	CALL(off_t, lseek, fildes, offset, whence);
 }
 
+int __sulong_posix_setuid(uid_t uid)
+{
+	CALL(int, setuid, uid);
+}
+
+int __sulong_posix_setgid(gid_t gid)
+{
+	CALL(int, setgid, gid);
+}
+
 #else
 
 #include <stdio.h>
@@ -416,6 +426,16 @@ int __sulong_posix_getgid(void)
 }
 
 off_t __sulong_posix_lseek(int fildes, off_t offset, int whence)
+{
+	ERROR();
+}
+
+int __sulong_posix_setuid(uid_t uid)
+{
+	ERROR();
+}
+
+int __sulong_posix_setgid(gid_t gid)
 {
 	ERROR();
 }
