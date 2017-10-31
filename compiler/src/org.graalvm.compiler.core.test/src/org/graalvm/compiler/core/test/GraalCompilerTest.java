@@ -862,7 +862,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         Result actual = executeActual(options, method, receiver, args);
         profile = method.getProfilingInfo(); // profile can change after execution
         for (DeoptimizationReason reason : shouldNotDeopt) {
-            Assert.assertEquals((int) deoptCounts.get(reason), profile.getDeoptimizationCount(reason));
+            Assert.assertEquals("wrong number of deopt counts for " + reason, (int) deoptCounts.get(reason), profile.getDeoptimizationCount(reason));
         }
         return actual;
     }
