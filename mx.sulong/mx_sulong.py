@@ -61,6 +61,20 @@ basicLLVMDependencies = [
     'llvm-as'
 ]
 
+# the file paths that we want to check with clang-format
+clangFormatCheckPaths = [
+    join(_suite.dir, "include"),
+    _libPath,
+    _captureSrcDir
+]
+
+# the clang-format versions that can be used for formatting the test case C and C++ files
+clangFormatVersions = [
+    '3.8',
+    '3.9',
+    '4.0',
+]
+
 def _unittest_config_participant(config):
     (vmArgs, mainClass, mainClassArgs) = config
     libs = [mx_subst.path_substitutions.substitute('<path:SULONG_TEST_NATIVE>/<lib:sulongtest>')]
@@ -71,6 +85,8 @@ add_config_participant(_unittest_config_participant)
 
 
 def _sulong_gate_runner(args, tasks):
+    with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
+        if t: clangformatcheck()
     with Task('TestBenchmarks', tasks, tags=['benchmarks', 'sulongMisc']) as t:
         if t: mx_testsuites.runSuite('shootout')
     with Task('TestTypes', tasks, tags=['type', 'sulongMisc']) as t:
@@ -104,6 +120,38 @@ def _sulong_gate_runner(args, tasks):
 
 add_gate_runner(_suite, _sulong_gate_runner)
 
+def clangformatcheck(args=None):
+    """ Performs a format check on the include/truffle.h file """
+    for f in clangFormatCheckPaths:
+        checkCFiles(f)
+
+def checkCFiles(targetDir):
+    error = False
+    for path, _, files in os.walk(targetDir):
+        for f in files:
+            if f.endswith('.c') or f.endswith('.cpp') or f.endswith('.h'):
+                if not checkCFile(path + '/' + f):
+                    error = True
+    if error:
+        mx.log_error("found formatting errors!")
+        exit(-1)
+
+def checkCFile(targetFile):
+    """ Checks the formatting of a C file and returns True if the formatting is okay """
+    clangFormat = findInstalledLLVMProgram('clang-format', clangFormatVersions)
+    if clangFormat is None:
+        exit("Unable to find 'clang-format' executable with one the supported versions '" + ", ".join(clangFormatVersions) + "'")
+    formatCommand = [clangFormat, targetFile]
+    formattedContent = subprocess.check_output(formatCommand).splitlines()
+    with open(targetFile) as f:
+        originalContent = f.read().splitlines()
+    if not formattedContent == originalContent:
+        # modify the file to the right format
+        subprocess.check_output(formatCommand + ['-i'])
+        mx.log('\n'.join(formattedContent))
+        mx.log('\nmodified formatting in {0} to the format above'.format(targetFile))
+        return False
+    return True
 
 # platform dependent
 def pullLLVMBinaries(args=None):
