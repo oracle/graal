@@ -226,6 +226,16 @@ int __sulong_posix_accept(int socket, struct sockaddr* restrict address, socklen
 	CALL(int, accept, socket, address, address_len);
 }
 
+int __sulong_posix_getuid(void)
+{
+	CALL(int, getuid);
+}
+
+int __sulong_posix_getgid(void)
+{
+	CALL(int, getgid);
+}
+
 #else
 
 #include <stdio.h>
@@ -381,6 +391,16 @@ int __sulong_posix_listen(int socket, int backlog)
 }
 
 int __sulong_posix_connect(int socket, const struct sockaddr* address, socklen_t address_len)
+{
+	ERROR();
+}
+
+int __sulong_posix_getuid(void)
+{
+	ERROR();
+}
+
+int __sulong_posix_getgid(void)
 {
 	ERROR();
 }
