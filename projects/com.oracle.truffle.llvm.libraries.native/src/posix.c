@@ -211,6 +211,11 @@ ssize_t __sulong_posix_recvmsg(int socket, struct msghdr* message, int flags)
 	CALL(ssize_t, recvmsg, socket, message, flags);
 }
 
+int __sulong_posix_listen(int socket, int backlog)
+{
+	CALL(int, listen, socket, backlog);
+}
+
 #else
 
 #include <stdio.h>
@@ -356,6 +361,11 @@ ssize_t __sulong_posix_recvfrom(int socket, void* restrict buffer, size_t length
 }
 
 ssize_t __sulong_posix_recvmsg(int socket, struct msghdr* message, int flags)
+{
+	ERROR();
+}
+
+int __sulong_posix_listen(int socket, int backlog)
 {
 	ERROR();
 }

@@ -104,6 +104,8 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                 return LLVMAMD64SyscallRecvmsgNodeGen.create();
             case LLVMAMD64Syscall.SYS_bind:
                 return LLVMAMD64SyscallBindNodeGen.create();
+            case LLVMAMD64Syscall.SYS_listen:
+                return new LLVMAMD64SyscallListenNode();
             case LLVMAMD64Syscall.SYS_getsockname:
                 return LLVMAMD64SyscallGetsocknameNodeGen.create();
             case LLVMAMD64Syscall.SYS_setsockopt:
