@@ -82,6 +82,8 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                 return LLVMAMD64SyscallReadvNodeGen.create();
             case LLVMAMD64Syscall.SYS_writev:
                 return LLVMAMD64SyscallWritevNodeGen.create();
+            case LLVMAMD64Syscall.SYS_access:
+                return LLVMAMD64SyscallAccessNodeGen.create();
             case LLVMAMD64Syscall.SYS_pipe:
                 return LLVMAMD64SyscallPipeNodeGen.create();
             case LLVMAMD64Syscall.SYS_dup:
@@ -151,6 +153,8 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                 return LLVMAMD64SyscallSetTidAddressNodeGen.create();
             case LLVMAMD64Syscall.SYS_clock_gettime:
                 return LLVMAMD64SyscallClockGetTimeNodeGen.create();
+            case LLVMAMD64Syscall.SYS_faccessat:
+                return LLVMAMD64SyscallFaccessatNodeGen.create();
             case LLVMAMD64Syscall.SYS_pipe2:
                 return LLVMAMD64SyscallPipe2NodeGen.create();
             default:

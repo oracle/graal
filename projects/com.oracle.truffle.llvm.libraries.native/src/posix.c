@@ -266,6 +266,16 @@ gid_t __sulong_posix_getegid(void)
 	CALL(gid_t, getegid);
 }
 
+int __sulong_posix_access(const char* path, int amode)
+{
+	CALL(int, access, path, amode);
+}
+
+int __sulong_posix_faccessat(int fd, const char* path, int amode, int flag)
+{
+	CALL(int, faccessat, fd, path, amode, flag);
+}
+
 #else
 
 #include <stdio.h>
@@ -456,6 +466,16 @@ uid_t __sulong_posix_geteuid(void)
 }
 
 gid_t __sulong_posix_getegid(void)
+{
+	ERROR();
+}
+
+int __sulong_posix_access(const char* path, int amode)
+{
+	ERROR();
+}
+
+int __sulong_posix_faccessat(int fd, const char* path, int amode, int flag)
 {
 	ERROR();
 }
