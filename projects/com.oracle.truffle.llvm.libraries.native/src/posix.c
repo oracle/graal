@@ -216,6 +216,11 @@ int __sulong_posix_listen(int socket, int backlog)
 	CALL(int, listen, socket, backlog);
 }
 
+int __sulong_posix_connect(int socket, const struct sockaddr* address, socklen_t address_len)
+{
+	CALL(int, connect, socket, address, address_len);
+}
+
 #else
 
 #include <stdio.h>
@@ -366,6 +371,11 @@ ssize_t __sulong_posix_recvmsg(int socket, struct msghdr* message, int flags)
 }
 
 int __sulong_posix_listen(int socket, int backlog)
+{
+	ERROR();
+}
+
+int __sulong_posix_connect(int socket, const struct sockaddr* address, socklen_t address_len)
 {
 	ERROR();
 }
