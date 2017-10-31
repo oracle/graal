@@ -117,6 +117,11 @@ public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
         return false;
     }
 
+    @Override
+    protected boolean mightBeOptimized(ValueNode value) {
+        return super.mightBeOptimized(value) || value instanceof CompressionNode;
+    }
+
     private boolean improveUncompression(AMD64AddressNode addr, CompressionNode compression, ValueNode other, boolean isBaseNegated, boolean isIndexNegated) {
         if (isBaseNegated || isIndexNegated || compression.getOp() != CompressionOp.Uncompress) {
             return false;
