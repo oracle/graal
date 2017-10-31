@@ -221,6 +221,11 @@ int __sulong_posix_connect(int socket, const struct sockaddr* address, socklen_t
 	CALL(int, connect, socket, address, address_len);
 }
 
+int __sulong_posix_accept(int socket, struct sockaddr* restrict address, socklen_t* restrict address_len)
+{
+	CALL(int, accept, socket, address, address_len);
+}
+
 #else
 
 #include <stdio.h>
