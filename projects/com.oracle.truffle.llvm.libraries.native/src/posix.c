@@ -241,6 +241,11 @@ int __sulong_posix_ftruncate(int fildes, off_t length)
 	CALL(int, ftruncate, fildes, length);
 }
 
+off_t __sulong_posix_lseek(int fildes, off_t offset, int whence)
+{
+	CALL(off_t, lseek, fildes, offset, whence);
+}
+
 #else
 
 #include <stdio.h>
@@ -406,6 +411,11 @@ int __sulong_posix_getuid(void)
 }
 
 int __sulong_posix_getgid(void)
+{
+	ERROR();
+}
+
+off_t __sulong_posix_lseek(int fildes, off_t offset, int whence)
 {
 	ERROR();
 }

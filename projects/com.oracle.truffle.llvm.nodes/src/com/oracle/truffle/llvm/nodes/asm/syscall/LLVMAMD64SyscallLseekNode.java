@@ -29,9 +29,15 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
+
 public class LLVMAMD64SyscallLseekNode extends LLVMAMD64SyscallOperationNode {
+    @Child private LLVMAMD64PosixCallNode lseek;
+
     public LLVMAMD64SyscallLseekNode() {
         super("lseek");
+        lseek = LLVMAMD64PosixCallNodeGen.create("lseek", "(SINT32,SINT64,SINT32):SINT64", 3);
     }
 
     @Override
@@ -39,6 +45,6 @@ public class LLVMAMD64SyscallLseekNode extends LLVMAMD64SyscallOperationNode {
         int fd = (int) ((long) rdi);
         long offset = (long) rsi;
         int whence = (int) ((long) rdx);
-        return LLVMFile.lseek(fd, offset, whence);
+        return (long) lseek.execute(fd, offset, whence);
     }
 }
