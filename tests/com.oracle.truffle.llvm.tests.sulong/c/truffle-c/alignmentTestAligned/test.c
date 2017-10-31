@@ -43,7 +43,7 @@ int main() {
   if (__alignof__(long)!= 8) {
     abort();
   }
-  if (__alignof__(float)!= 8) {
+  if (__alignof__(float)!= 4) {
     abort();
   }
   if (__alignof__(double)!= 8) {
