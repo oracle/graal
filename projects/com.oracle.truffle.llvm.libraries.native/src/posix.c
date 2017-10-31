@@ -256,6 +256,16 @@ int __sulong_posix_setgid(gid_t gid)
 	CALL(int, setgid, gid);
 }
 
+uid_t __sulong_posix_geteuid(void)
+{
+	CALL(uid_t, geteuid);
+}
+
+gid_t __sulong_posix_getegid(void)
+{
+	CALL(gid_t, getegid);
+}
+
 #else
 
 #include <stdio.h>
@@ -436,6 +446,16 @@ int __sulong_posix_setuid(uid_t uid)
 }
 
 int __sulong_posix_setgid(gid_t gid)
+{
+	ERROR();
+}
+
+uid_t __sulong_posix_geteuid(void)
+{
+	ERROR();
+}
+
+gid_t __sulong_posix_getegid(void)
 {
 	ERROR();
 }

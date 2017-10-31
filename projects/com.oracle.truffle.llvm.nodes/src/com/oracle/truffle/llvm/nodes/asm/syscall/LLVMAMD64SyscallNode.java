@@ -137,6 +137,10 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                 return new LLVMAMD64SyscallSetuidNode();
             case LLVMAMD64Syscall.SYS_setgid:
                 return new LLVMAMD64SyscallSetgidNode();
+            case LLVMAMD64Syscall.SYS_geteuid:
+                return new LLVMAMD64SyscallGeteuidNode();
+            case LLVMAMD64Syscall.SYS_getegid:
+                return new LLVMAMD64SyscallGetegidNode();
             case LLVMAMD64Syscall.SYS_getppid:
                 return new LLVMAMD64SyscallGetPpidNode();
             case LLVMAMD64Syscall.SYS_arch_prctl:
