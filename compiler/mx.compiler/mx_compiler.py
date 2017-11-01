@@ -467,6 +467,23 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     for r in unit_test_runs:
         r.run(suites, tasks, ['-XX:-UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments))
 
+    # Run selected tests (initially those from GR-6581) under -Xcomp
+    xcompTests = [
+        'BlackholeDirectiveTest',
+        'OpaqueDirectiveTest',
+        'ControlFlowAnchorDirectiveTest',
+        'ConditionalElimination',
+        'MarkUnsafeAccessTest',
+        'PEAAssertionsTest',
+        'MergeCanonicalizerTest',
+        'ExplicitExceptionTest',
+        'GuardedIntrinsicTest',
+        'HashCodeTest',
+        'ProfilingInfoTest',
+        'GraalOSRLockTest'
+    ]
+    UnitTestRun('XcompUnitTests', [], tags=GraalTags.test).run(['compiler'], tasks, ['-Xcomp', '-XX:-UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments) + xcompTests)
+
     # Ensure makegraaljdk works
     with Task('MakeGraalJDK', tasks, tags=GraalTags.test) as t:
         if t and isJDK8:

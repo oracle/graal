@@ -1901,7 +1901,7 @@ public class BytecodeParser implements GraphBuilderContext {
                     if (newProfile != profile) {
                         if (newProfile.getTypes().length == 0) {
                             // All profiled types select the intrinsic so
-                            // emit a fixed guard instead of a if-then-else.
+                            // emit a fixed guard instead of an if-then-else.
                             lastInstr = append(new FixedGuardNode(compare, TypeCheckedInliningViolated, InvalidateReprofile, false));
                             return new IntrinsicGuard(currentLastInstr, intrinsicReceiver, mark, null, null);
                         }
