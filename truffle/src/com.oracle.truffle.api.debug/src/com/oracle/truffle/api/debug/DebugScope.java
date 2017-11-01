@@ -24,10 +24,14 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.metadata.Scope;
-import com.oracle.truffle.api.nodes.RootNode;
 import java.util.Iterator;
+
+import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Representation of guest language scope at the current suspension point. It contains a set of
@@ -41,19 +45,34 @@ public final class DebugScope {
 
     private final Scope scope;
     private final Iterator<Scope> iterator;
+    private final Debugger debugger;
     private final SuspendedEvent event;
     private final MaterializedFrame frame;
     private final RootNode root;
+    private final LanguageInfo language;
     private DebugScope parent;
     private ValuePropertiesCollection variables;
 
-    DebugScope(Scope scope, Iterator<Scope> iterator, SuspendedEvent event,
-                    MaterializedFrame frame, RootNode root) {
+    DebugScope(Scope scope, Iterator<Scope> iterator, Debugger debugger,
+                    SuspendedEvent event, MaterializedFrame frame, RootNode root) {
+        this(scope, iterator, debugger, event, frame, root, null);
+    }
+
+    DebugScope(Scope scope, Iterator<Scope> iterator, Debugger debugger,
+                    LanguageInfo language) {
+        this(scope, iterator, debugger, null, null, null, language);
+    }
+
+    private DebugScope(Scope scope, Iterator<Scope> iterator, Debugger debugger,
+                    SuspendedEvent event, MaterializedFrame frame, RootNode root,
+                    LanguageInfo language) {
         this.scope = scope;
         this.iterator = iterator;
+        this.debugger = debugger;
         this.event = event;
         this.frame = frame;
         this.root = root;
+        this.language = language;
     }
 
     /**
@@ -74,7 +93,7 @@ public final class DebugScope {
     public DebugScope getParent() {
         verifyValidState();
         if (parent == null && iterator.hasNext()) {
-            parent = new DebugScope(iterator.next(), iterator, event, frame, root);
+            parent = new DebugScope(iterator.next(), iterator, debugger, event, frame, root, language);
         }
         return parent;
     }
@@ -87,7 +106,24 @@ public final class DebugScope {
      * @since 0.26
      */
     public boolean isFunctionScope() {
-        return root.equals(scope.getNode());
+        return root != null && root.equals(scope.getNode());
+    }
+
+    /**
+     * Get a source section representing this scope. Please note that while this scope does not
+     * provide variables that are valid only after the suspension point, the source section can
+     * actually span after the suspension point.
+     *
+     * @return the source section, or <code>null</code> when not available.
+     * @since 0.29
+     */
+    public SourceSection getSourceSection() {
+        Node node = scope.getNode();
+        if (node != null) {
+            return node.getEncapsulatingSourceSection();
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -103,8 +139,8 @@ public final class DebugScope {
      */
     public Iterable<DebugValue> getArguments() {
         verifyValidState();
-        Object argumentssObj = scope.getArguments(frame);
-        ValuePropertiesCollection arguments = (argumentssObj != null) ? DebugValue.getProperties(argumentssObj, event.getSession().getDebugger(), root, this) : null;
+        Object argumentssObj = scope.getArguments();
+        ValuePropertiesCollection arguments = (argumentssObj != null) ? DebugValue.getProperties(argumentssObj, debugger, root, this) : null;
         return arguments;
     }
 
@@ -139,13 +175,19 @@ public final class DebugScope {
     private ValuePropertiesCollection getVariables() {
         verifyValidState();
         if (variables == null) {
-            Object variablesObj = scope.getVariables(frame);
-            variables = DebugValue.getProperties(variablesObj, event.getSession().getDebugger(), root, this);
+            Object variablesObj = scope.getVariables();
+            variables = DebugValue.getProperties(variablesObj, debugger, root, this);
         }
         return variables;
     }
 
+    LanguageInfo getLanguage() {
+        return language;
+    }
+
     void verifyValidState() {
-        event.verifyValidState(false);
+        if (event != null) {
+            event.verifyValidState(false);
+        }
     }
 }

@@ -119,6 +119,13 @@ public class JavaInteropTest {
     }
 
     @Test
+    public void nullAsJavaObject() {
+        TruffleObject nullObject = JavaInterop.asTruffleObject(null);
+        assertTrue(JavaInterop.isJavaObject(nullObject));
+        assertNull(JavaInterop.asJavaObject(nullObject));
+    }
+
+    @Test
     public void doubleWrap() {
         data.x = 32;
         data.y = 10.1;
@@ -813,6 +820,14 @@ public class JavaInteropTest {
         Object hashMap = ForeignAccess.sendNew(Message.createNew(0).createNode(), hashMapClass);
         assertThat(hashMap, CoreMatchers.instanceOf(TruffleObject.class));
         assertTrue(JavaInterop.isJavaObject(HashMap.class, (TruffleObject) hashMap));
+    }
+
+    @Test
+    public void testNewObject() throws InteropException {
+        TruffleObject objectClass = JavaInterop.asTruffleObject(Object.class);
+        Object object = ForeignAccess.sendNew(Message.createNew(0).createNode(), objectClass);
+        assertThat(object, CoreMatchers.instanceOf(TruffleObject.class));
+        assertTrue(JavaInterop.isJavaObject(Object.class, (TruffleObject) object));
     }
 
     @Test

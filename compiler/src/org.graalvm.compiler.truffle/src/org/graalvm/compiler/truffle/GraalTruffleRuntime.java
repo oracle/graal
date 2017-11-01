@@ -77,7 +77,6 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleOptionsOverrideScope;
 import org.graalvm.compiler.truffle.debug.CompilationStatisticsListener;
-import org.graalvm.compiler.truffle.debug.PrintCallTargetProfiling;
 import org.graalvm.compiler.truffle.debug.TraceCompilationASTListener;
 import org.graalvm.compiler.truffle.debug.TraceCompilationCallTreeListener;
 import org.graalvm.compiler.truffle.debug.TraceCompilationFailureListener;
@@ -242,7 +241,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         TraceCompilationCallTreeListener.install(this);
         TraceInliningListener.install(this);
         TraceSplittingListener.install(this);
-        PrintCallTargetProfiling.install(this);
         CompilationStatisticsListener.install(this);
         TraceCompilationASTListener.install(this);
         installShutdownHooks();

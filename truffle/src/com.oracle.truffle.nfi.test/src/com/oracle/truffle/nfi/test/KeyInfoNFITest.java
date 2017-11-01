@@ -32,6 +32,7 @@ import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.nfi.test.interop.BoxedPrimitive;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 import java.util.ArrayList;
@@ -51,8 +52,9 @@ import org.junit.runners.Parameterized.Parameters;
 @Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
 public class KeyInfoNFITest extends NFITest {
 
-    private static void addTest(List<Object[]> ret, String symbol, Supplier<TruffleObject> object, String description, boolean read, boolean invoke) {
+    private static void addTest(List<Object[]> ret, Object symbol, Supplier<TruffleObject> object, String description, boolean read, boolean invoke) {
         ret.add(new Object[]{symbol, object, description, read, invoke});
+        ret.add(new Object[]{new BoxedPrimitive(symbol), object, description, read, invoke});
     }
 
     @Parameters(name = "{2}[{0}]")
@@ -60,6 +62,7 @@ public class KeyInfoNFITest extends NFITest {
         List<Object[]> ret = new ArrayList<>();
         addTest(ret, "increment_SINT32", () -> testLibrary, "testLibrary", true, false);
         addTest(ret, "__NOT_EXISTING__", () -> testLibrary, "testLibrary", false, false);
+        addTest(ret, 42, () -> testLibrary, "testLibrary", false, false);
 
         Supplier<TruffleObject> symbol = () -> {
             try {
@@ -70,15 +73,17 @@ public class KeyInfoNFITest extends NFITest {
         };
         addTest(ret, "bind", symbol, "symbol", false, true);
         addTest(ret, "__NOT_EXISTING__", symbol, "symbol", false, false);
+        addTest(ret, 42, symbol, "symbol", false, false);
 
         Supplier<TruffleObject> boundSymbol = () -> lookupAndBind("increment_SINT32", "(sint32):sint32");
         addTest(ret, "bind", boundSymbol, "boundSymbol", false, true);
         addTest(ret, "__NOT_EXISTING__", boundSymbol, "boundSymbol", false, false);
+        addTest(ret, 42, boundSymbol, "boundSymbol", false, false);
 
         return ret;
     }
 
-    @Parameter(0) public String symbol;
+    @Parameter(0) public Object symbol;
     @Parameter(1) public Supplier<TruffleObject> object;
     @Parameter(2) public String description;
 

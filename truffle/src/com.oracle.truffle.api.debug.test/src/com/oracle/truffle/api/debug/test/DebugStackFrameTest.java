@@ -39,6 +39,7 @@ import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.source.SourceSection;
 
 import org.graalvm.polyglot.Source;
 
@@ -172,6 +173,58 @@ public class DebugStackFrameTest extends AbstractDebugTest {
         }
     }
 
+    @Test
+    public void testSourceSections() {
+        final Source source = testSource("ROOT(DEFINE(a,ROOT(\n" +
+                        "  STATEMENT())\n" +
+                        "),\n" +
+                        "DEFINE(b,ROOT(\n" +
+                        "  CALL(a))\n" +
+                        "), \n" +
+                        "CALL(b))\n");
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                SourceSection ss = frame.getSourceSection();
+                assertSection(ss, "STATEMENT()", 2, 3, 2, 13);
+                SourceSection fss = getFunctionSourceSection(frame);
+                assertSection(fss, "ROOT(\n  STATEMENT())\n", 1, 15, 2, 15);
+                Iterator<DebugStackFrame> stackFrames = event.getStackFrames().iterator();
+                assertEquals(frame, stackFrames.next()); // The top one
+                frame = stackFrames.next(); // b
+                ss = frame.getSourceSection();
+                assertSection(ss, "CALL(a)", 5, 3, 5, 9);
+                fss = getFunctionSourceSection(frame);
+                assertSection(fss, "ROOT(\n  CALL(a))\n", 4, 10, 5, 11);
+                frame = stackFrames.next(); // root
+                ss = frame.getSourceSection();
+                assertSection(ss, "CALL(b)", 7, 1, 7, 7);
+                fss = getFunctionSourceSection(frame);
+                assertSection(fss, source.getCharacters().toString(), 1, 1, 7, 9);
+                assertFalse(stackFrames.hasNext());
+                event.prepareContinue();
+            });
+            expectDone();
+        }
+    }
+
+    private static SourceSection getFunctionSourceSection(DebugStackFrame frame) {
+        // There are only function scopes in the InstrumentationTestLanguage
+        assertTrue(frame.getScope().isFunctionScope());
+        return frame.getScope().getSourceSection();
+    }
+
+    private static void assertSection(SourceSection ss, String code, int startLine, int startColumn, int endLine, int endcolumn) {
+        assertEquals(code, ss.getCharacters());
+        assertEquals("startLine", startLine, ss.getStartLine());
+        assertEquals("startColumn", startColumn, ss.getStartColumn());
+        assertEquals("endLine", endLine, ss.getEndLine());
+        assertEquals("endColumn", endcolumn, ss.getEndColumn());
+    }
+
     private static void assertInvalidDebugValue(DebugValue value) {
         try {
             value.as(String.class);
@@ -195,11 +248,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
         } catch (IllegalStateException s) {
         }
 
-        try {
-            value.getName();
-            fail();
-        } catch (IllegalStateException s) {
-        }
+        value.getName();    // Name is known
 
     }
 

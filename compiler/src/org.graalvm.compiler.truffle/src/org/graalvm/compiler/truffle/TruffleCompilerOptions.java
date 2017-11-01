@@ -246,9 +246,6 @@ public class TruffleCompilerOptions {
     @Option(help = "Number of stack trace elements printed by TraceTruffleTransferToInterpreter and TraceTruffleAssumptions", type = OptionType.Debug)
     public static final OptionKey<Integer> TraceTruffleStackTraceLimit = new OptionKey<>(20);
 
-    @Option(help = "Print a summary of execution counts for all executed CallTargets. Introduces counter overhead for each call.", type = OptionType.Debug)
-    public static final OptionKey<Boolean> TruffleCallTargetProfiling = new OptionKey<>(false);
-
     @Option(help = "Print Truffle compilation statistics at the end of a run.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TruffleCompilationStatistics = new OptionKey<>(false);
 

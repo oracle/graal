@@ -50,6 +50,7 @@ import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.Accessor.Nodes;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
@@ -1579,6 +1580,11 @@ final class InstrumentationHandler {
                 if (handler != null) {
                     handler.onLoad(rootNode);
                 }
+            }
+
+            @Override
+            public Iterable<Scope> findTopScopes(TruffleLanguage.Env env) {
+                return TruffleInstrument.Env.findTopScopes(env);
             }
 
             private static InstrumentationHandler getHandler(RootNode rootNode) {

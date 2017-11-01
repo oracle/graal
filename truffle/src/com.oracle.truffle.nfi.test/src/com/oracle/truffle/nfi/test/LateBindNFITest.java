@@ -31,6 +31,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.nfi.test.interop.BoxedPrimitive;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -50,23 +51,33 @@ public class LateBindNFITest extends NFITest {
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
             TruffleObject symbol = (TruffleObject) frame.getArguments()[0];
-            TruffleObject bound = (TruffleObject) ForeignAccess.sendInvoke(bind, symbol, "bind", "(sint32):sint32");
-            return ForeignAccess.sendExecute(execute, bound, frame.getArguments()[1]);
+            Object signature = frame.getArguments()[1];
+            TruffleObject bound = (TruffleObject) ForeignAccess.sendInvoke(bind, symbol, "bind", signature);
+            return ForeignAccess.sendExecute(execute, bound, frame.getArguments()[2]);
         }
     }
 
-    @Test
-    public void testLateBind(@Inject(BindAndExecuteNode.class) CallTarget callTarget) {
+    private static void testLateBind(CallTarget callTarget, Object symbol, Object signature) {
         TruffleObject increment;
         try {
-            increment = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), testLibrary, "increment_SINT32");
+            increment = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), testLibrary, symbol);
         } catch (InteropException e) {
             throw new AssertionError(e);
         }
 
-        Object ret = callTarget.call(increment, 41);
+        Object ret = callTarget.call(increment, signature, 41);
 
         Assert.assertThat("return value", ret, is(instanceOf(Integer.class)));
         Assert.assertEquals("return value", 42, (int) (Integer) ret);
+    }
+
+    @Test
+    public void testLateBind(@Inject(BindAndExecuteNode.class) CallTarget callTarget) {
+        testLateBind(callTarget, "increment_SINT32", "(sint32):sint32");
+    }
+
+    @Test
+    public void testLateBindBoxed(@Inject(BindAndExecuteNode.class) CallTarget callTarget) {
+        testLateBind(callTarget, new BoxedPrimitive("increment_SINT32"), new BoxedPrimitive("(sint32):sint32"));
     }
 }

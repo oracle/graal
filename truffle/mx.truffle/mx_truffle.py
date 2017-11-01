@@ -29,6 +29,8 @@
 import os
 from os.path import exists
 import re
+import zipfile
+from collections import OrderedDict
 
 import mx
 
@@ -186,6 +188,66 @@ mx.update_commands(_suite, {
     'javadoc' : [javadoc, '[SL args|@VM options]'],
     'sl' : [sl, '[SL args|@VM options]'],
 })
+
+def _unittest_config_participant_tck(config):
+    def create_filter(requiredResource):
+        def has_resource(jar):
+            with zipfile.ZipFile(jar, "r") as zf:
+                try:
+                    zf.getinfo(requiredResource)
+                except KeyError:
+                    return False
+                else:
+                    return True
+        return has_resource
+
+    def import_visitor(suite, suite_import, predicate, collector, javaProperties, seenSuites, **extra_args):
+        suite_collector(mx.suite(suite_import.name), predicate, collector, javaProperties, seenSuites)
+
+    def suite_collector(suite, predicate, collector, javaProperties, seenSuites):
+        if suite.name in seenSuites:
+            return
+        seenSuites.add(suite.name)
+        suite.visit_imports(import_visitor, predicate=predicate, collector=collector, javaProperties=javaProperties, seenSuites=seenSuites)
+        for dist in suite.dists:
+            if dist.isJARDistribution() and predicate(dist.path):
+                for distCpEntry in mx.classpath_entries(dist):
+                    if hasattr(distCpEntry, "getJavaProperties"):
+                        for key, value in dist.getJavaProperties().items():
+                            javaProperties[key] = value
+                    if distCpEntry.isJdkLibrary() or distCpEntry.isJreLibrary():
+                        cpPath = distCpEntry.classpath_repr(mx.get_jdk(), resolve=True)
+                    else:
+                        cpPath = distCpEntry.classpath_repr(resolve=True)
+                    if cpPath:
+                        collector[cpPath] = None
+
+    javaPropertiesToAdd = OrderedDict()
+    providers = OrderedDict()
+    suite_collector(mx.primary_suite(), create_filter("META-INF/services/org.graalvm.polyglot.tck.LanguageProvider"), providers, javaPropertiesToAdd, set())
+    languages = OrderedDict()
+    suite_collector(mx.primary_suite(), create_filter("META-INF/truffle/language"), languages, javaPropertiesToAdd, set())
+    vmArgs, mainClass, mainClassArgs = config
+    cpIndex, cpValue = mx.find_classpath_arg(vmArgs)
+    cpBuilder = OrderedDict()
+    if cpValue:
+        for cpElement in cpValue.split(os.pathsep):
+            cpBuilder[cpElement] = None
+    for langCpElement in languages:
+        cpBuilder[langCpElement] = None
+    for providerCpElement in providers:
+        cpBuilder[providerCpElement] = None
+    cpValue = os.pathsep.join((e for e in cpBuilder))
+    if cpIndex:
+        vmArgs[cpIndex] = cpValue
+    else:
+        vmArgs.append("-cp")
+        vmArgs.append(cpValue)
+    for key, value in javaPropertiesToAdd.items():
+        vmArgs.append("-D" + key + "=" + value)
+    return (vmArgs, mainClass, mainClassArgs)
+
+mx_unittest.add_config_participant(_unittest_config_participant_tck)
 
 """
 Merges META-INF/truffle/language and META-INF/truffle/instrument files.

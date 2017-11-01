@@ -87,6 +87,14 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         writeVersion();
     }
 
+    GraphProtocol(GraphProtocol<?, ?, ?, ?, ?, ?, ?, ?, ?> parent) {
+        this.versionMajor = parent.versionMajor;
+        this.versionMinor = parent.versionMinor;
+        this.constantPool = parent.constantPool;
+        this.buffer = parent.buffer;
+        this.channel = parent.channel;
+    }
+
     @SuppressWarnings("all")
     public final void print(Graph graph, Map<? extends Object, ? extends Object> properties, int id, String format, Object... args) throws IOException {
         writeByte(BEGIN_GRAPH);
@@ -257,7 +265,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
     private void flush() throws IOException {
         buffer.flip();
         /*
-         * Try not to let interrupted threads aborting the write. There's still a race here but an
+         * Try not to let interrupted threads abort the write. There's still a race here but an
          * interrupt that's been pending for a long time shouldn't stop this writing.
          */
         boolean interrupted = Thread.interrupted();

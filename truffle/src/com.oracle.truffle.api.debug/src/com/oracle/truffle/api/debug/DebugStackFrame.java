@@ -32,12 +32,12 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.debug.DebugValue.HeapValue;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
-import com.oracle.truffle.api.metadata.Scope;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
@@ -146,8 +146,8 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
      */
     public SourceSection getSourceSection() {
         verifyValidState(true);
-        EventContext context = getContext();
         if (currentFrame == null) {
+            EventContext context = getContext();
             return context.getInstrumentedSourceSection();
         } else {
             Node callNode = currentFrame.getCallNode();
@@ -161,6 +161,8 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
     /**
      * Get the current inner-most scope. The scope remain valid as long as the current stack frame
      * remains valid.
+     * <p>
+     * Use {@link DebuggerSession#getTopScope(java.lang.String)} to get scopes with global validity.
      * <p>
      * This method is not thread-safe and will throw an {@link IllegalStateException} if called on
      * another thread than it was created with.
@@ -182,12 +184,12 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
         }
         Debugger debugger = event.getSession().getDebugger();
         MaterializedFrame frame = findTruffleFrame();
-        Iterable<Scope> scopes = Scope.findScopes(debugger.getEnv(), node, frame);
+        Iterable<Scope> scopes = debugger.getEnv().findLocalScopes(node, frame);
         Iterator<Scope> it = scopes.iterator();
         if (!it.hasNext()) {
             return null;
         }
-        return new DebugScope(it.next(), it, event, frame, root);
+        return new DebugScope(it.next(), it, debugger, event, frame, root);
     }
 
     /**

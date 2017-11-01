@@ -2,7 +2,25 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 0.30
+
+* Truffle languages are being [finalized](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage##finalizeContext-C-) before disposal. This allows languages to run code with all languages still in a valid state. It is no longer allowed to access other languages during language disposal.
+* Truffle languages can now declare dependent languages. This allows to take influence on the disposal order.
+* All classes of the [com.oracle.truffle.api.metadata](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/metadata/package-summary.html) package were deprecated. As a replacement use [Scope](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/Scope.html), [TruffleLanguage.findLocalScopes](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#findLocalScopes-C-com.oracle.truffle.api.nodes.Node-com.oracle.truffle.api.frame.Frame-) and [TruffleInstrument.Env.findLocalScopes](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#findLocalScopes-com.oracle.truffle.api.nodes.Node-com.oracle.truffle.api.frame.Frame-) instead.
+* Added the ability to access [top scopes](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#findTopScopes-java.lang.String-) of languages and [exported symbols](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#getExportedSymbols--) of the polyglot scope using the instrumentation API.
+* Added the ability to access [top scopes](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html#getTopScope-java.lang.String-) and [exported symbols](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html#getExportedSymbols--) using the debugger API.
+* Added the [and](graal/truffle/javadoc/com/oracle/truffle/api/instrumentation/SourceSectionFilter.Builder.html#and-com.oracle.truffle.api.instrumentation.SourceSectionFilter-) method to the [SourceSectionFilter Builder](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/instrumentation/SourceSectionFilter.Builder.html) which allows composing filters.
+* Added the new profiler infrastructure, including the [CPU sampler](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/tools/profiler/CPUSampler.html), [CPU tracer](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/tools/profiler/CPUTracer.html) and an experimental [Memory tracer](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/tools/profiler/MemoryTracer.html).
+* Added a new [TCK SPI](https://github.com/graalvm/graal/blob/master/truffle/docs/TCK.md) based on the org.graalvm.polyglot API to test a language inter-operability. To test the language inter-operability implement the [LanguageProvider](http://graalvm.github.io/graal/truffle/javadoc/org/graalvm/polyglot/tck/LanguageProvider.html).
+
+## Version 0.29
+
+* [SourceSectionFilter.Builder.includeInternal](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/instrumentation/SourceSectionFilter.Builder.html#includeInternal-boolean-) added to be able to exclude internal code from instrumentation.
+* Debugger step filtering is extended with [include of internal code](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/debug/SuspensionFilter.Builder.html#includeInternal-boolean-) and [source filter](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/debug/SuspensionFilter.Builder.html#sourceIs-java.util.function.Predicate-). By default, debugger now does not step into internal code, unless a step filter that is set to include internal code is applied.
+* [DebugScope.getSourceSection](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/debug/DebugScope.html#getSourceSection--) added to provide source section of a scope.
+
 ## Version 0.28
+4-Oct-2017
 
 * Truffle languages may support [access](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#isThreadAccessAllowed-java.lang.Thread-boolean-) to contexts from multiple threads at the same time. By default the language supports only single-threaded access. 
 * Languages now need to use the language environment to [create](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#createThread-java.lang.Runnable-) new threads for a context. Creating Threads using the java.lang.Thread constructor is no longer allowed and will be blocked in the next release.

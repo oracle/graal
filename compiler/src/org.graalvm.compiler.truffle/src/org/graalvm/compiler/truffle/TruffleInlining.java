@@ -38,9 +38,11 @@ import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerOptions;
+import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class TruffleInlining implements Iterable<TruffleInliningDecision> {
 
@@ -77,7 +79,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
             if (decision == null) {
                 // Cache miss
                 decision = exploreCallSite(stack, callStackNodeCount, policy, callNode, visitedNodes, rejectedDecisionsCache);
-                if (!policy.isAllowed(decision.getProfile(), callStackNodeCount, callNode.getRootNode().getCompilerOptions())) {
+                if (!policy.isAllowed(decision.getProfile(), callStackNodeCount, getCompilerOptions(callNode.getRootNode()))) {
                     rejectedDecisionsCache.put(currentTarget, decision);
                     toRemoveFromCache.add(currentTarget);
                 }
@@ -133,7 +135,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
              * We make a preliminary optimistic inlining decision with best possible characteristics
              * to avoid the exploration of unnecessary paths in the inlining tree.
              */
-            final CompilerOptions options = callNode.getRootNode().getCompilerOptions();
+            final CompilerOptions options = getCompilerOptions(callNode.getRootNode());
             if (policy.isAllowed(new TruffleInliningProfile(callNode, nodeCount, nodeCount, frequency, recursions), callStackNodeCount, options)) {
                 List<TruffleInliningDecision> exploredCallSites = exploreCallSites(callStack, callStackNodeCount + nodeCount, policy, visitedNodes, rejectedDecisionsCache);
                 childCallSites = decideInlining(exploredCallSites, policy, nodeCount, options);
@@ -185,6 +187,10 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
             }
         }
         return callSites;
+    }
+
+    private static CompilerOptions getCompilerOptions(RootNode rootNode) {
+        return rootNode != null ? rootNode.getCompilerOptions() : DefaultCompilerOptions.INSTANCE;
     }
 
     public int getInlinedNodeCount() {

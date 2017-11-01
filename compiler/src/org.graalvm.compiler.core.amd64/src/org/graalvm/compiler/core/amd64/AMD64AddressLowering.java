@@ -39,7 +39,6 @@ import org.graalvm.compiler.phases.common.AddressLoweringPhase.AddressLowering;
 import jdk.vm.ci.meta.JavaConstant;
 
 public class AMD64AddressLowering extends AddressLowering {
-
     @Override
     public AddressNode lower(ValueNode address) {
         return lower(address, null);
@@ -174,7 +173,7 @@ public class AMD64AddressLowering extends AddressLowering {
         return value;
     }
 
-    private static ValueNode improveInput(AMD64AddressNode address, ValueNode node, int shift, boolean negateExtractedDisplacement) {
+    private ValueNode improveInput(AMD64AddressNode address, ValueNode node, int shift, boolean negateExtractedDisplacement) {
         if (node == null) {
             return null;
         }
@@ -183,16 +182,32 @@ public class AMD64AddressLowering extends AddressLowering {
         if (c != null) {
             return improveConstDisp(address, node, c, null, shift, negateExtractedDisplacement);
         } else {
-            if (node.stamp() instanceof IntegerStamp && ((IntegerStamp) node.stamp()).getBits() == 64) {
-                if (node instanceof ZeroExtendNode) {
-                    if (((ZeroExtendNode) node).getInputBits() == 32) {
-                        /*
-                         * We can just swallow a zero-extend from 32 bit to 64 bit because the upper
-                         * half of the register will always be zero.
-                         */
-                        return ((ZeroExtendNode) node).getValue();
+            if (node.stamp() instanceof IntegerStamp) {
+                if (node instanceof ZeroExtendNode && (((ZeroExtendNode) node).getInputBits() == 32)) {
+                    /*
+                     * we can't just swallow all zero-extends as we might encounter something like
+                     * the following: ZeroExtend(Add(negativeValue, positiveValue)).
+                     *
+                     * if we swallow the zero-extend in this case and subsequently optimize the add,
+                     * we might end up with a negative value that has less than 64 bits in base or
+                     * index. such a value would require sign extension instead of zero-extension
+                     * but the backend can only do zero-extension. if we ever want to optimize that
+                     * further, we would also need to be careful about over-/underflows.
+                     *
+                     * furthermore, we also can't swallow zero-extends with less than 32 bits as
+                     * most of these values are immediately sign-extended to 32 bit by the backend
+                     * (therefore, the subsequent implicit zero-extension to 64 bit won't do what we
+                     * expect).
+                     */
+                    ValueNode value = ((ZeroExtendNode) node).getValue();
+                    if (!mightBeOptimized(value)) {
+                        // if the value is not optimized further by the address lowering, then we
+                        // can safely rely on the backend doing the implicitly zero-extension.
+                        return value;
                     }
-                } else if (node instanceof AddNode) {
+                }
+
+                if (node instanceof AddNode) {
                     AddNode add = (AddNode) node;
                     if (add.getX().isConstant()) {
                         return improveConstDisp(address, node, add.getX().asJavaConstant(), add.getY(), shift, negateExtractedDisplacement);
@@ -204,6 +219,13 @@ public class AMD64AddressLowering extends AddressLowering {
         }
 
         return node;
+    }
+
+    /**
+     * This method returns true for all nodes that might be optimized by the address lowering.
+     */
+    protected boolean mightBeOptimized(ValueNode value) {
+        return value instanceof AddNode || value instanceof LeftShiftNode || value instanceof NegateNode || value instanceof ZeroExtendNode;
     }
 
     private static ValueNode improveConstDisp(AMD64AddressNode address, ValueNode original, JavaConstant c, ValueNode other, int shift, boolean negateExtractedDisplacement) {

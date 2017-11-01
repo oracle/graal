@@ -36,9 +36,19 @@ import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.tools.Profiler;
 
 /**
@@ -79,8 +89,58 @@ public class ProfilerRetrievalTest {
         }
 
         @Override
-        protected Object lookupSymbol(Profiler context, String symbolName) {
-            return "profiler".equals(symbolName) && context != null;
+        protected Iterable<Scope> findTopScopes(Profiler context) {
+            return Collections.singleton(Scope.newBuilder("Profiler top scope", new TopScopeObject(context)).build());
+        }
+
+        static final class TopScopeObject implements TruffleObject {
+
+            private final Profiler context;
+
+            private TopScopeObject(Profiler context) {
+                this.context = context;
+            }
+
+            @Override
+            public ForeignAccess getForeignAccess() {
+                return TopScopeObjectMessageResolutionForeign.ACCESS;
+            }
+
+            public static boolean isInstance(TruffleObject obj) {
+                return obj instanceof TopScopeObject;
+            }
+
+            @MessageResolution(receiverType = TopScopeObject.class)
+            static class TopScopeObjectMessageResolution {
+
+                @Resolve(message = "KEY_INFO")
+                abstract static class VarsMapInfoNode extends Node {
+
+                    private static final int EXISTING_INFO = KeyInfo.newBuilder().setReadable(true).build();
+
+                    @SuppressWarnings("unused")
+                    public Object access(TopScopeObject ts, String name) {
+                        if ("profiler".equals(name)) {
+                            return EXISTING_INFO;
+                        } else {
+                            return 0;
+                        }
+                    }
+                }
+
+                @Resolve(message = "READ")
+                abstract static class VarsMapReadNode extends Node {
+
+                    @CompilerDirectives.TruffleBoundary
+                    public Object access(TopScopeObject ts, String name) {
+                        if ("profiler".equals(name)) {
+                            return JavaInterop.asTruffleObject(ts.context != null);
+                        } else {
+                            throw UnknownIdentifierException.raise(name);
+                        }
+                    }
+                }
+            }
         }
 
         @Override
