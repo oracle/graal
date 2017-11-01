@@ -38,6 +38,7 @@ import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Timer;
@@ -77,8 +78,7 @@ public final class CPUSampler implements Closeable {
         int selfCompiledHitCount;
         int selfInterpretedHitCount;
 
-        long firstHitTime;
-        long lastHitTime;
+        final List<Long> selfHitTimes = new ArrayList<>();
 
         /**
          * @return The number of times the element was found bellow the top of the shadow stack as
@@ -132,6 +132,14 @@ public final class CPUSampler implements Closeable {
             return compiledHitCount + interpretedHitCount;
         }
 
+        /**
+         * @return An immutable list of time stamps for the times that the element was on the top of
+         *         the stack
+         * @since 0.30
+         */
+        public List<Long> getSelfHitTimes() {
+            return Collections.unmodifiableList(selfHitTimes);
+        }
     }
 
     /**
@@ -195,6 +203,8 @@ public final class CPUSampler implements Closeable {
     private final ProfilerNode<Payload> rootNode = new ProfilerNode<>(this, new Payload());
 
     private final Env env;
+
+    private boolean gatherSelfHitTimes = false;
 
     CPUSampler(Env env) {
         this.env = env;
@@ -378,6 +388,29 @@ public final class CPUSampler implements Closeable {
         clearData();
     }
 
+    /**
+     * @return Whether or not timestamp information for the element at the top of the stack for each
+     *         sample is gathered
+     *
+     * @since 0.30
+     */
+    public boolean isGatherSelfHitTimes() {
+        return gatherSelfHitTimes;
+    }
+
+    /**
+     * Sets whether or not to gather timestamp information for the element at the top of the stack
+     * for each sample.
+     * 
+     * @param gatherSelfHitTimes new value for whether or not to gather timestamps
+     *
+     * @since 0.30
+     */
+    public void setGatherSelfHitTimes(boolean gatherSelfHitTimes) {
+        verifyConfigAllowed();
+        this.gatherSelfHitTimes = gatherSelfHitTimes;
+    }
+
     private void resetSampling() {
         assert Thread.holdsLock(this);
         cleanup();
@@ -484,9 +517,8 @@ public final class CPUSampler implements Closeable {
                 SourceLocation location = correctedStackInfo.getStack()[i];
                 boolean isCompiled = correctedStackInfo.getCompiledStack()[i];
 
-                treeNode = addOrUpdateChild(timestamp, treeNode, location);
+                treeNode = addOrUpdateChild(treeNode, location);
                 Payload payload = treeNode.getPayload();
-                payload.lastHitTime = timestamp;
                 if (i == correctedStackInfo.getLength() - 1) {
                     // last element is counted as self time
                     if (isCompiled) {
@@ -494,6 +526,10 @@ public final class CPUSampler implements Closeable {
                     } else {
                         payload.selfInterpretedHitCount++;
                     }
+                    if (gatherSelfHitTimes) {
+                        payload.selfHitTimes.add(timestamp);
+                    }
+                    assert payload.selfHitTimes.size() == payload.getSelfHitCount();
                 }
                 if (isCompiled) {
                     payload.compiledHitCount++;
@@ -504,11 +540,10 @@ public final class CPUSampler implements Closeable {
             return true;
         }
 
-        private ProfilerNode<Payload> addOrUpdateChild(long timestamp, ProfilerNode<Payload> treeNode, SourceLocation location) {
+        private ProfilerNode<Payload> addOrUpdateChild(ProfilerNode<Payload> treeNode, SourceLocation location) {
             ProfilerNode<Payload> child = treeNode.findChild(location);
             if (child == null) {
                 Payload payload = new Payload();
-                payload.firstHitTime = timestamp;
                 child = new ProfilerNode<>(treeNode, location, payload);
                 treeNode.addChild(location, child);
             }
