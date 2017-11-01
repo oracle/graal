@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.instrumentation;
 
 import java.io.PrintStream;
+import java.util.Set;
 import java.util.concurrent.locks.Lock;
 
 import com.oracle.truffle.api.Assumption;
@@ -33,12 +34,18 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.nodes.NodeVisitor;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -267,6 +274,12 @@ public final class ProbeNode extends Node {
         CompilerAsserts.neverPartOfCompilation();
         seen = (byte) (seen | 0b100);
     }
+    void onInputValue(VirtualFrame frame, EventBinding<?> targetBinding, EventContext inputContext, int inputIndex, Object inputValue) {
+        EventChainNode localChain = lazyUpdate(frame);
+        if (localChain != null) {
+            localChain.onInputValue(context, frame, targetBinding, inputContext, inputIndex, inputValue);
+        }
+    }
 
     EventContext getContext() {
         return context;
@@ -291,7 +304,7 @@ public final class ProbeNode extends Node {
         }
     }
 
-    private EventChainNode lazyUpdate(VirtualFrame frame) {
+    EventChainNode lazyUpdate(VirtualFrame frame) {
         Assumption localVersion = this.version;
         if (localVersion == null || !localVersion.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -315,7 +328,7 @@ public final class ProbeNode extends Node {
             if (nextChain == null) {
                 // chain is null -> remove wrapper;
                 // Note: never set child nodes to null, can cause races
-                InstrumentationHandler.removeWrapper(ProbeNode.this);
+                InstrumentationHandler.removeWrapper(frame, ProbeNode.this);
                 return null;
             }
 
@@ -349,7 +362,29 @@ public final class ProbeNode extends Node {
         return null;
     }
 
-    ProbeNode.EventChainNode createEventChainCallback(EventBinding.Source<?> binding) {
+    EventChainNode createParentEventChainCallback(VirtualFrame frame, EventBinding.Source<?>  binding, RootNode rootNode, Set<Class<?>> providedTags) {
+        EventChainNode parent = findParentChain(frame, binding);
+        if (!(parent instanceof EventProviderWithInputChainNode)) {
+            // this event is unreachable because nobody is listening to it.
+            return null;
+        }
+
+        EventContext parentContext = parent.findProbe().getContext();
+        EventProviderWithInputChainNode parentChain = (EventProviderWithInputChainNode) parent;
+        int index = indexOfChild(binding, rootNode, providedTags, parentContext.getInstrumentedNode(), parentContext.getInstrumentedSourceSection(), context.getInstrumentedNode());
+        if (index < 0 || index >= parentChain.inputCount) {
+            // not found. a child got replaced?
+            // TODO what to do if child was not found?
+            // we should not continue with an out of bounds child index.
+            assert false;
+            return null;
+        }
+        ProbeNode probe = parent.findProbe();
+        return new InputValueChainNode(binding, probe, context, index);
+    }
+
+    ProbeNode.EventChainNode createEventChainCallback(VirtualFrame frame, EventBinding.Source<?> binding, RootNode rootNode, Set<Class<?>> providedTags, Node instrumentedNode,
+                    SourceSection instrumentedNodeSourceSection) {
         ProbeNode.EventChainNode next;
         Object element = binding.getElement();
         if (element instanceof ExecutionEventListener) {
@@ -361,9 +396,69 @@ public final class ProbeNode extends Node {
                 // error occurred creating the event node
                 return null;
             }
-            next = new EventProviderChainNode(binding, eventNode);
+            if (binding.getInputFilter() != null) {
+                EventChainNode parent = findParentChain(frame, binding);
+                EventProviderWithInputChainNode parentChain = ((EventProviderWithInputChainNode) parent);
+
+                int baseInput;
+                if (parentChain == null) {
+                    baseInput = 0;
+                } else {
+                    EventContext parentContext = parentChain.findProbe().getContext();
+                    int childIndex = indexOfChild(binding, rootNode, providedTags, parentContext.getInstrumentedNode(), parentContext.getInstrumentedSourceSection(), instrumentedNode);
+                    int inputBaseIndex = parentChain.inputBaseIndex;
+                    if (childIndex < 0) {
+                        // be conservative if child could not be identified
+                        baseInput = inputBaseIndex + parentChain.inputCount;
+                    } else {
+                        // we can reuse frame slots next silbing nodes for child nodes.
+                        baseInput = inputBaseIndex + childIndex;
+                    }
+                }
+                int inputCount = countChildren(binding, rootNode, providedTags, instrumentedNode, instrumentedNodeSourceSection);
+                next = new EventProviderWithInputChainNode(binding, eventNode, baseInput, inputCount);
+            } else {
+                next = new EventProviderChainNode(binding, eventNode);
+            }
         }
         return next;
+    }
+
+    private static int indexOfChild(EventBinding<?> binding, RootNode rootNode, Set<Class<?>> providedTags, Node instrumentedNode, SourceSection instrumentedNodeSourceSection, Node lookupChild) {
+        InputChildIndexLookup visitor = new InputChildIndexLookup(binding, rootNode, providedTags, instrumentedNode, instrumentedNodeSourceSection, lookupChild);
+        NodeUtil.forEachChild(instrumentedNode, visitor);
+        return visitor.found ? visitor.index : -1;
+    }
+
+    private static int countChildren(EventBinding<?> binding, RootNode rootNode, Set<Class<?>> providedTags, Node instrumentedNode, SourceSection instrumentedNodeSourceSection) {
+        InputChildIndexLookup visitor = new InputChildIndexLookup(binding, rootNode, providedTags, instrumentedNode, instrumentedNodeSourceSection, null);
+        NodeUtil.forEachChild(instrumentedNode, visitor);
+        return visitor.index;
+    }
+
+    private EventChainNode findParentChain(VirtualFrame frame, EventBinding<?> binding) {
+        Node node = getParent().getParent();
+        while (node != null) {
+            // TODO we should avoid materializing the source section here
+            if (node instanceof WrapperNode) {
+                ProbeNode probe = ((WrapperNode) node).getProbeNode();
+                EventChainNode c = probe.lazyUpdate(frame);
+                if (c != null) {
+                    c = c.find(binding);
+                }
+                if (c != null) {
+                    return c;
+                }
+            } else if (node instanceof RootNode) {
+                break;
+            }
+            node = node.getParent();
+        }
+        if (node == null) {
+            throw new IllegalStateException("The AST node is not yet adopted. ");
+        }
+        return null;
+
     }
 
     private ExecutionEventNode createEventNode(EventBinding.Source<?> binding, Object element) {
@@ -461,6 +556,48 @@ public final class ProbeNode extends Node {
         return r1; // The first one wins
     }
 
+    private static class InputChildIndexLookup implements NodeVisitor {
+
+        private final EventBinding<?> binding;
+        private final Set<Class<?>> providedTags;
+        private final RootNode rootNode;
+        private final Node instrumentedNode;
+        private final SourceSection instrumentedNodeSourceSection;
+
+        private final Node lookupNode;
+
+        boolean found = false;
+        int index;
+
+        InputChildIndexLookup(EventBinding<?> binding, RootNode rootNode, Set<Class<?>> providedTags, Node instrumentedNode, SourceSection instrumentedNodeSourceSection, Node lookupNode) {
+            this.binding = binding;
+            this.providedTags = providedTags;
+            this.rootNode = rootNode;
+            this.instrumentedNode = instrumentedNode;
+            this.instrumentedNodeSourceSection = instrumentedNodeSourceSection;
+            this.lookupNode = lookupNode;
+        }
+
+        public boolean visit(Node node) {
+            if (found) {
+                return false;
+            }
+            if (lookupNode == node) {
+                found = true;
+                return false;
+            }
+            SourceSection sourceSection = node.getSourceSection();
+            if (InstrumentationHandler.isInstrumentableNode(node, sourceSection)) {
+                if (binding.isChildInstrumentedFull(providedTags, rootNode, instrumentedNode, instrumentedNodeSourceSection, node, sourceSection)) {
+                    index++;
+                }
+                return true;
+            }
+            NodeUtil.forEachChild(node, this);
+            return true;
+        }
+    }
+
     abstract static class EventChainNode extends Node {
 
         @Child private ProbeNode.EventChainNode next;
@@ -470,6 +607,14 @@ public final class ProbeNode extends Node {
 
         EventChainNode(EventBinding.Source<?> binding) {
             this.binding = binding;
+        }
+
+        final ProbeNode findProbe() {
+            Node parent = this;
+            while (parent != null && !(parent instanceof ProbeNode)) {
+                parent = parent.getParent();
+            }
+            return (ProbeNode) parent;
         }
 
         final void setNext(ProbeNode.EventChainNode next) {
@@ -573,6 +718,30 @@ public final class ProbeNode extends Node {
         }
 
         protected abstract void innerOnEnter(EventContext context, VirtualFrame frame);
+
+        final void onInputValue(EventContext context, VirtualFrame frame, EventBinding<?> inputBinding, EventContext inputContext, int inputIndex, Object inputValue) {
+            if (next != null) {
+                next.onInputValue(context, frame, binding, inputContext, inputIndex, inputValue);
+            }
+            try {
+                if (binding == inputBinding) {
+                    innerOnInputValue(context, frame, binding, inputContext, inputIndex, inputValue);
+                }
+            } catch (Throwable t) {
+                if (!seenException) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    seenException = true;
+                }
+                if (binding.isLanguageBinding()) {
+                    throw t;
+                } else {
+                    CompilerDirectives.transferToInterpreter();
+                    exceptionEventForClientInstrument(binding, "onInputValue", t);
+                }
+            }
+        }
+
+        protected abstract void innerOnInputValue(EventContext context, VirtualFrame frame, EventBinding<?> targetBinding, EventContext inputContext, int inputIndex, Object inputValue);
 
         final void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
             UnwindException unwind = null;
@@ -761,6 +930,14 @@ public final class ProbeNode extends Node {
         }
 
         protected abstract Object innerOnUnwind(EventContext context, VirtualFrame frame, Object info);
+
+        EventChainNode find(EventBinding<?> b) {
+            if (binding == b) {
+                assert next == null || next.find(b) == null : "only one chain entry per binding allowed";
+                return this;
+            }
+            return next != null ? next.find(b) : null;
+        }
     }
 
     private static class EventFilterChainNode extends ProbeNode.EventChainNode {
@@ -770,6 +947,11 @@ public final class ProbeNode extends Node {
         EventFilterChainNode(EventBinding.Source<?> binding, ExecutionEventListener listener) {
             super(binding);
             this.listener = listener;
+        }
+
+        @Override
+        protected void innerOnInputValue(EventContext context, VirtualFrame frame, EventBinding<?> binding, EventContext inputContext, int inputIndex, Object inputValue) {
+            listener.onInputValue(context, frame, inputContext, inputIndex, inputValue);
         }
 
         @Override
@@ -798,7 +980,178 @@ public final class ProbeNode extends Node {
 
     }
 
-    private static class EventProviderChainNode extends ProbeNode.EventChainNode {
+    static class EventProviderWithInputChainNode extends EventProviderChainNode {
+
+        static final Object[] EMPTY_ARRAY = new Object[0];
+        @CompilationFinal(dimensions = 1) private volatile FrameSlot[] inputSlots;
+        final int inputBaseIndex;
+        final int inputCount;
+
+        EventProviderWithInputChainNode(EventBinding<?> binding, ExecutionEventNode eventNode, int inputBaseIndex, int inputCount) {
+            super(binding, eventNode);
+            this.inputBaseIndex = inputBaseIndex;
+            this.inputCount = inputCount;
+        }
+
+        protected final void saveInputValue(VirtualFrame frame, int inputIndex, Object value) {
+            verifyIndex(inputIndex);
+            if (inputSlots == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                initializeSlots();
+            }
+            frame.setObject(inputSlots[inputIndex], value);
+        }
+
+        private void initializeSlots() {
+            Lock lock = getLock();
+            lock.lock();
+            try {
+                if (inputSlots == null) {
+                    FrameDescriptor frameDescriptor = getRootNode().getFrameDescriptor();
+                    FrameSlot[] slots = new FrameSlot[inputCount];
+                    for (int i = 0; i < inputCount; i++) {
+                        int slotIndex = inputBaseIndex + i;
+                        slots[i] = frameDescriptor.findOrAddFrameSlot(new SavedInputValueID(getBinding(), slotIndex));
+                    }
+                    inputSlots = slots;
+                }
+            } finally {
+                lock.unlock();
+            }
+        }
+
+        private void verifyIndex(int inputIndex) {
+            if (inputIndex >= inputCount || inputIndex < 0) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalArgumentException("Invalid input input index.");
+            }
+        }
+
+        @Override
+        protected void innerOnDispose(EventContext context, VirtualFrame frame) {
+            Lock lock = getLock();
+            lock.lock();
+            try {
+                if (inputSlots != null) {
+                    FrameSlot[] slots = inputSlots;
+                    inputSlots = null;
+
+                    RootNode rootNode = context.getInstrumentedNode().getRootNode();
+                    if (rootNode == null) {
+                        return;
+                    }
+                    FrameDescriptor descriptor = rootNode.getFrameDescriptor();
+                    assert descriptor != null;
+
+                    for (FrameSlot slot : slots) {
+                        FrameSlot resolvedSlot = descriptor.findFrameSlot(slot.getIdentifier());
+                        if (resolvedSlot != null) {
+                            descriptor.removeFrameSlot(slot.getIdentifier());
+                        } else {
+                            // slot might be shared and already removed by another event provider
+                            // node.
+                        }
+                    }
+                }
+            } finally {
+                lock.unlock();
+            }
+            super.innerOnDispose(context, frame);
+        }
+
+        @Override
+        protected void innerOnReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+            super.innerOnReturnExceptional(context, frame, exception);
+            clearSlots(frame);
+        }
+
+        @Override
+        protected void innerOnReturnValue(EventContext context, VirtualFrame frame, Object result) {
+            super.innerOnReturnValue(context, frame, result);
+            clearSlots(frame);
+        }
+
+        @ExplodeLoop
+        private void clearSlots(VirtualFrame frame) {
+            FrameSlot[] slots = inputSlots;
+            if (slots != null) {
+                for (int i = 0; i < slots.length; i++) {
+                    frame.setObject(slots[i], null);
+                }
+            }
+        }
+
+        protected final Object getSavedInputValue(VirtualFrame frame, int inputIndex) {
+            try {
+                verifyIndex(inputIndex);
+                if (inputSlots == null) {
+                    // never saved any value
+                    return null;
+                }
+                return frame.getObject(inputSlots[inputIndex]);
+            } catch (FrameSlotTypeException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError(e);
+            }
+        }
+
+        @ExplodeLoop
+        protected final Object[] getSavedInputValues(VirtualFrame frame) {
+            FrameSlot[] slots = inputSlots;
+            if (slots == null) {
+                return EMPTY_ARRAY;
+            }
+            Object[] inputValues = new Object[slots.length];
+            for (int i = 0; i < slots.length; i++) {
+                try {
+                    inputValues[i] = frame.getObject(slots[i]);
+                } catch (FrameSlotTypeException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new AssertionError(e);
+                }
+            }
+            return inputValues;
+        }
+
+        private static final class SavedInputValueID {
+
+            private final EventBinding<?> binding;
+            private final int index;
+
+            SavedInputValueID(EventBinding<?> binding, int index) {
+                this.binding = binding;
+                this.index = index;
+            }
+
+            @Override
+            public int hashCode() {
+                return (31 * binding.hashCode()) * 31 + index;
+            }
+
+            @Override
+            public String toString() {
+                return "SavedInputValue(binding=" + binding.hashCode() + ":" + index + ")";
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                if (this == obj) {
+                    return true;
+                } else if (obj == null || getClass() != obj.getClass()) {
+                    return false;
+                }
+                SavedInputValueID other = (SavedInputValueID) obj;
+                if (binding != other.binding) {
+                    return false;
+                } else if (index != other.index) {
+                    return false;
+                }
+                return true;
+            }
+        }
+    }
+
+    static class EventProviderChainNode extends ProbeNode.EventChainNode {
 
         @Child private ExecutionEventNode eventNode;
 
@@ -808,7 +1161,12 @@ public final class ProbeNode extends Node {
         }
 
         @Override
-        protected void innerOnEnter(EventContext context, VirtualFrame frame) {
+        protected final void innerOnInputValue(EventContext context, VirtualFrame frame, EventBinding<?> binding, EventContext inputContext, int inputIndex, Object inputValue) {
+            eventNode.onInputValue(frame, inputContext, inputIndex, inputValue);
+        }
+
+        @Override
+        protected final void innerOnEnter(EventContext context, VirtualFrame frame) {
             eventNode.onEnter(frame);
         }
 
@@ -832,5 +1190,49 @@ public final class ProbeNode extends Node {
             eventNode.onDispose(frame);
         }
 
+    }
+
+    private static class InputValueChainNode extends ProbeNode.EventChainNode {
+
+        private final EventBinding<?> targetBinding;
+        private final ProbeNode parentProbe;
+        private final int inputIndex;
+        private final EventContext inputContext;
+
+        InputValueChainNode(EventBinding<?> binding, ProbeNode parentProbe, EventContext inputContext, int inputIndex) {
+            super(binding);
+            this.targetBinding = binding;
+            this.parentProbe = parentProbe;
+            this.inputContext = inputContext;
+            this.inputIndex = inputIndex;
+        }
+
+        @Override
+        EventChainNode find(EventBinding<?> b) {
+            // cannot be found
+            return getNext().find(b);
+        }
+
+        @Override
+        @SuppressWarnings("hiding")
+        protected void innerOnInputValue(EventContext context, VirtualFrame frame, EventBinding<?> binding, EventContext inputContext, int inputIndex, Object inputValue) {
+        }
+
+        @Override
+        protected void innerOnEnter(EventContext context, VirtualFrame frame) {
+        }
+
+        @Override
+        protected void innerOnDispose(EventContext context, VirtualFrame frame) {
+        }
+
+        @Override
+        protected void innerOnReturnValue(EventContext context, VirtualFrame frame, Object result) {
+            parentProbe.onInputValue(frame, targetBinding, inputContext, inputIndex, result);
+        }
+
+        @Override
+        protected void innerOnReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+        }
     }
 }

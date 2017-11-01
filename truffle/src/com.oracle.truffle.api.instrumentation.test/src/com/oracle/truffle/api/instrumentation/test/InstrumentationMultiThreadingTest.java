@@ -167,8 +167,8 @@ public class InstrumentationMultiThreadingTest {
             public void onEnter(EventContext context, VirtualFrame frame) {
             }
         };
-        bindings[bi++] = instrumenter.attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), dummyListener);
-        bindings[bi++] = instrumenter.attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), dummyListener);
+        bindings[bi++] = instrumenter.attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), dummyListener);
+        bindings[bi++] = instrumenter.attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), dummyListener);
         bindings[bi++] = instrumenter.attachLoadSourceListener(SourceFilter.ANY, new LoadSourceListener() {
 
             public void onLoad(LoadSourceEvent event) {

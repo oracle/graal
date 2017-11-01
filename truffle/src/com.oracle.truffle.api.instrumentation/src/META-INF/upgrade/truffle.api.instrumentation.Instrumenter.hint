@@ -1,0 +1,19 @@
+<!suppress-warnings="contains_deprecation">
+
+'Instrumenter#attachFactory got renamed':
+$s.attachFactory($1, $2)
+::
+$s instanceof com.oracle.truffle.api.instrumentation.Instrumenter
+=>
+'to Instrumenter#attachExecutionEventFactory':
+$s.attachExecutionEventFactory($1, $2)
+;;
+
+'Instrumenter#attachListener got renamed':
+$s.attachListener($1, $2)
+::
+$s instanceof com.oracle.truffle.api.instrumentation.Instrumenter
+=>
+'to Instrumenter#attachExecutionEventListener':
+$s.attachExecutionEventListener($1, $2)
+;;

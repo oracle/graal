@@ -791,7 +791,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
         private synchronized void enableCancel() {
             if (cancellationBinding == null) {
-                cancellationBinding = instrumenter.attachListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+                cancellationBinding = instrumenter.attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
                     public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
                         cancelExecution(context);
                     }

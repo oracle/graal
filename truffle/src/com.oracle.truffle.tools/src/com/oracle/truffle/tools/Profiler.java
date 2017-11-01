@@ -296,7 +296,7 @@ public final class Profiler {
                 filterBuilder.mimeTypeIs(mimeTypes);
             }
             final SourceSectionFilter filter = filterBuilder.tagIs(StandardTags.RootTag.class).sourceIs(notInternal).build();
-            binding = instrumenter.attachFactory(filter, new ExecutionEventNodeFactory() {
+            binding = instrumenter.attachExecutionEventFactory(filter, new ExecutionEventNodeFactory() {
                 public ExecutionEventNode create(EventContext context) {
                     return createCountingNode(context);
                 }

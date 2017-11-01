@@ -95,7 +95,34 @@ public final class StandardTags {
      * @since 0.12
      */
     public final class RootTag {
+
         private RootTag() {
+            /* No instances */
+        }
+    }
+
+    /**
+     * Marks program locations as to be considered expressions of the languages. Common examples for
+     * expressions are:
+     * <ul>
+     * <li>Literal expressions
+     * <li>Arithmetic expressions like addition and multiplication
+     * <li>Condition expressions
+     * <li>Function calls
+     * <li>Array, Object or variable reads and writes
+     * <li>Instantiations
+     * </ul>
+     * Use case descriptions:
+     * <ul>
+     * <li><b>Coverage:</b> To compute expression coverage.</li>
+     * <li><b>Debugger:</b> Fine grained debugging of expressions.</li>
+     * </ul>
+     *
+     * @since 0.30
+     */
+    public final class ExpressionTag {
+
+        private ExpressionTag() {
             /* No instances */
         }
     }

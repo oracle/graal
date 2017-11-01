@@ -41,7 +41,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Represents the context of an instrumentation event.
+ * Represents the context of an execution event.
  *
  * Instances of {@link EventContext} should be neither stored, cached nor hashed. One exception is
  * when they are stored in {@link ExecutionEventNode} implementations. The equality and hashing
@@ -59,6 +59,10 @@ public final class EventContext {
     EventContext(ProbeNode probeNode, SourceSection sourceSection) {
         this.sourceSection = sourceSection;
         this.probeNode = probeNode;
+    }
+
+    ProbeNode getProbeNode() {
+        return probeNode;
     }
 
     /**

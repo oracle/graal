@@ -47,6 +47,22 @@ public interface ExecutionEventListener {
     void onEnter(EventContext context, VirtualFrame frame);
 
     /**
+     * Invoked immediately after each return value event of child nodes that match the
+     * {@link Instrumenter#attachExecutionEventListener(SourceSectionFilter, SourceSectionFilter, ExecutionEventListener)
+     * input filter}. Event listeners cannot save input values for later events. If that is required
+     * attach an event node factory instead.
+     *
+     * @param context indicating the current location in the guest language AST
+     * @param frame the current frame in use
+     * @param inputContext the event context of the input child node
+     * @param inputIndex the child index of the input
+     * @param inputValue the return value of the input child
+     * @since 0.30
+     */
+    default void onInputValue(EventContext context, VirtualFrame frame, EventContext inputContext, int inputIndex, Object inputValue) {
+    }
+
+    /**
      * Invoked immediately after an {@link EventContext#getInstrumentedNode() instrumented node} is
      * successfully executed. The order in which multiple event listeners are notified matches the
      * order they are

@@ -276,7 +276,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     }
 
     @TruffleLanguage.Registration(id = "test-language-instrumentation-language", name = "", version = "", mimeType = "testLanguageInstrumentation")
-    @ProvidedTags({InstrumentationTestLanguage.ExpressionNode.class, StandardTags.StatementTag.class})
+    @ProvidedTags({StandardTags.ExpressionTag.class, StandardTags.StatementTag.class})
     public static class TestLanguageInstrumentationLanguage extends InstrumentationTestLanguage {
 
         static int installInstrumentsCounter = 0;
@@ -287,7 +287,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
         private static void installInstruments(Instrumenter instrumenter) {
             installInstrumentsCounter++;
-            instrumenter.attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
+            instrumenter.attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
                 public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
                 }
 
@@ -301,7 +301,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                 }
             });
 
-            instrumenter.attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventListener() {
+            instrumenter.attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventListener() {
                 public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
                     throw new AssertionError();
                 }
@@ -391,7 +391,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         protected void onCreate(Env env) {
             // Not to get error: declares service, but doesn't register it
             env.registerService(new Object());
-            env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
+            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
 
                 public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
                     returnedValue++;
@@ -437,7 +437,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         protected void onCreate(Env env) {
             // Not to get error: declares service, but doesn't register it
             env.registerService(new Object());
-            env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
+            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
 
                 public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
                     throw new MyLanguageException();
@@ -516,7 +516,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         protected void onCreate(Env env) {
             // Not to get error: declares service, but doesn't register it
             env.registerService(new Object());
-            env.getInstrumenter().attachFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventNodeFactory() {
+            env.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventNodeFactory() {
                 public ExecutionEventNode create(EventContext context) {
                     createCalls++;
                     return new ExecutionEventNode() {
@@ -570,7 +570,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         protected void onCreate(final Env env) {
             // Not to get error: declares service, but doesn't register it
             env.registerService(new Object());
-            env.getInstrumenter().attachFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventNodeFactory() {
+            env.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventNodeFactory() {
                 public ExecutionEventNode create(EventContext context) {
 
                     final CallTarget target;
@@ -593,7 +593,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                 }
             });
 
-            env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
+            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
 
                 public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
                 }
@@ -639,7 +639,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         protected void onCreate(final Env env) {
             // Not to get error: declares service, but doesn't register it
             env.registerService(new Object());
-            env.getInstrumenter().attachFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventNodeFactory() {
+            env.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventNodeFactory() {
                 @SuppressWarnings("deprecation")
                 public ExecutionEventNode create(EventContext context) {
 
@@ -663,7 +663,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                 }
             });
 
-            env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
+            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
 
                 public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
                 }
@@ -909,7 +909,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         protected void onCreate(final Env env) {
             // Not to get error: declares service, but doesn't register it
             env.registerService(new Object());
-            env.getInstrumenter().attachListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
                 public void onEnter(EventContext context, VirtualFrame frame) {
                     onStatement++;
                 }
@@ -944,7 +944,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
         @Override
         protected void onCreate(final Env env) {
-            env.getInstrumenter().attachListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
                 public void onEnter(EventContext context, VirtualFrame frame) {
                     onStatement++;
                 }
@@ -1121,7 +1121,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
         @Override
         protected void onCreate(final Env env) {
-            env.getInstrumenter().attachListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
                 public void onEnter(EventContext context, VirtualFrame frame) {
                     if (exceptionOnEnter != null) {
                         throw exceptionOnEnter;
@@ -1164,7 +1164,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         @Override
         protected void onCreate(final Env env) {
             try {
-                env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().tagIs(Foobar.class).build(), new ExecutionEventListener() {
+                env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(Foobar.class).build(), new ExecutionEventListener() {
                     public void onEnter(EventContext context, VirtualFrame frame) {
                     }
 
@@ -1289,7 +1289,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     }
 
     @TruffleLanguage.Registration(id = "testIsNodeTaggedWith1-lang", name = "", version = "", mimeType = "testIsNodeTaggedWith1")
-    @ProvidedTags({InstrumentationTestLanguage.ExpressionNode.class, StandardTags.StatementTag.class})
+    @ProvidedTags({StandardTags.ExpressionTag.class, StandardTags.StatementTag.class})
     public static class TestIsNodeTaggedWith1Language extends InstrumentationTestLanguage {
 
         static Instrumenter instrumenter;
@@ -1337,7 +1337,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             onCreateCalls++;
             env.registerService(this);
             env.registerService(env.getInstrumenter());
-            env.getInstrumenter().attachFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventNodeFactory() {
+            env.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventNodeFactory() {
 
                 public ExecutionEventNode create(EventContext context) {
                     expressionNode = context.getInstrumentedNode();
@@ -1346,7 +1346,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                 }
             });
 
-            env.getInstrumenter().attachFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventNodeFactory() {
+            env.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventNodeFactory() {
 
                 public ExecutionEventNode create(EventContext context) {
                     statementNode = context.getInstrumentedNode();
@@ -1570,7 +1570,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         @Override
         protected void onCreate(Env env) {
             env.registerService(this);
-            env.getInstrumenter().attachListener(SourceSectionFilter.ANY, this);
+            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, this);
         }
 
         @Override

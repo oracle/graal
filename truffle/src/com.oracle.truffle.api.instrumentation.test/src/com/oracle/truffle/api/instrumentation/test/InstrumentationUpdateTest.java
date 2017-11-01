@@ -195,7 +195,7 @@ public class InstrumentationUpdateTest {
 
     private void setEventFilter(SourceSectionFilter filter) {
         EventBinding<?> old = this.eventBinding;
-        eventBinding = instrumentEnv.getInstrumenter().attachListener(filter, new ExecutionEventListener() {
+        eventBinding = instrumentEnv.getInstrumenter().attachExecutionEventListener(filter, new ExecutionEventListener() {
             public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
             }
 

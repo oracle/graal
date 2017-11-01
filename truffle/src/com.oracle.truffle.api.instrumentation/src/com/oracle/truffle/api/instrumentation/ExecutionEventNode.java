@@ -24,10 +24,18 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.ProbeNode.EventProviderChainNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode.EventProviderWithInputChainNode;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * An event node created by an {@link ExecutionEventNodeFactory} for a specific locations of a guest
@@ -47,13 +55,34 @@ public abstract class ExecutionEventNode extends Node {
     /**
      * Invoked immediately before the {@link EventContext#getInstrumentedNode() instrumented node}
      * is executed. The order in which multiple event listeners are notified matches the order they
-     * are {@link Instrumenter#attachListener(SourceSectionFilter, ExecutionEventListener) attached}
-     * .
+     * are
+     * {@link Instrumenter#attachExecutionEventListener(SourceSectionFilter, ExecutionEventListener)
+     * attached}.
      *
      * @param frame the current frame used in the instrumented node
      * @since 0.12
      */
     protected void onEnter(VirtualFrame frame) {
+        // do nothing by default
+    }
+
+    /**
+     * Invoked immediately after each return value event of child nodes that match the
+     * {@link Instrumenter#attachExecutionEventFactory(SourceSectionFilter, SourceSectionFilter, ExecutionEventNodeFactory)
+     * input filter}. Input values can be {@link #saveInputValue(VirtualFrame, int, Object) saved}
+     * to make them {@link #getSavedInputValues(VirtualFrame)} accessible in
+     * {@link #onReturnValue(VirtualFrame, Object) onReturn} or
+     * {@link #onReturnExceptional(VirtualFrame, Throwable) onReturnExceptional} events.
+     *
+     * @param frame the current frame in use
+     * @param inputContext the event context of the input child node
+     * @param inputIndex the child index of the input
+     * @param inputValue the return value of the input child
+     * @see #saveInputValue(VirtualFrame, int, Object)
+     * @see #getSavedInputValues(VirtualFrame)
+     * @since 0.30
+     */
+    protected void onInputValue(VirtualFrame frame, EventContext inputContext, int inputIndex, Object inputValue) {
         // do nothing by default
     }
 
@@ -67,7 +96,6 @@ public abstract class ExecutionEventNode extends Node {
      * @since 0.12
      */
     protected void onReturnValue(VirtualFrame frame, Object result) {
-        // do nothing by default
     }
 
     /**
@@ -115,6 +143,58 @@ public abstract class ExecutionEventNode extends Node {
      * @since 0.12
      */
     protected void onDispose(VirtualFrame frame) {
+    }
+
+    /**
+     * Saves an input value reported by
+     * {@link #onInputValue(VirtualFrame, EventContext, int, Object)} for use in later events. Saved
+     * input values can be restored using {@link #getSavedInputValues(VirtualFrame)} in
+     * {@link #onReturnValue(VirtualFrame, Object) onReturn} or
+     * {@link #onReturnExceptional(VirtualFrame, Throwable) onReturnExceptional} events. The
+     * implementation ensures that a minimal number of frame slots is used to save input values. It
+     * uses the AST structure to reuse frame slots efficiently whenever possible. The used frame
+     * slots are freed if the event binding is {@link EventBinding#dispose() disposed}.
+     *
+     * @param frame the frame to store the input value in
+     * @param inputIndex the child input index
+     * @param inputValue the input value
+     * @throws IllegalArgumentException for invalid input indexes for non-existing input nodes.
+     * @see #onInputValue(VirtualFrame, EventContext, int, Object)
+     * @since 0.30
+     */
+    protected final void saveInputValue(VirtualFrame frame, int inputIndex, Object inputValue) {
+        EventProviderWithInputChainNode node = getChainNode();
+        if (node != null) {
+            node.saveInputValue(frame, inputIndex, inputValue);
+        }
+    }
+
+    /**
+     * Returns all saved input values. For valid input indices that did not save any value
+     * <code>null</code> is returned. If all inputs were filtered or a <code>null</code> input
+     * filter was provided then an empty array is returned.
+     *
+     * @param frame the frame to read the input values from.
+     * @see #saveInputValue(VirtualFrame, int, Object)
+     * @see #onInputValue(VirtualFrame, EventContext, int, Object)
+     * @since 0.30
+     */
+    protected final Object[] getSavedInputValues(VirtualFrame frame) {
+        EventProviderWithInputChainNode node = getChainNode();
+        if (node != null) {
+            return node.getSavedInputValues(frame);
+        } else {
+            return EventProviderWithInputChainNode.EMPTY_ARRAY;
+        }
+    }
+
+    private EventProviderWithInputChainNode getChainNode() {
+        Node parent = getParent();
+        if (parent instanceof EventProviderWithInputChainNode) {
+            return (EventProviderWithInputChainNode) parent;
+        } else {
+            return null;
+        }
     }
 
 }
