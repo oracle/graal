@@ -191,14 +191,14 @@ public class DebugStackFrameTest extends AbstractDebugTest {
                 SourceSection ss = frame.getSourceSection();
                 assertSection(ss, "STATEMENT()", 2, 3, 2, 13);
                 SourceSection fss = getFunctionSourceSection(frame);
-                assertSection(fss, "a,ROOT(\n  STATEMENT())\n", 1, 13, 2, 15);
+                assertSection(fss, "ROOT(\n  STATEMENT())\n", 1, 15, 2, 15);
                 Iterator<DebugStackFrame> stackFrames = event.getStackFrames().iterator();
                 assertEquals(frame, stackFrames.next()); // The top one
                 frame = stackFrames.next(); // b
                 ss = frame.getSourceSection();
                 assertSection(ss, "CALL(a)", 5, 3, 5, 9);
                 fss = getFunctionSourceSection(frame);
-                assertSection(fss, "b,ROOT(\n  CALL(a))\n", 4, 8, 5, 11);
+                assertSection(fss, "ROOT(\n  CALL(a))\n", 4, 10, 5, 11);
                 frame = stackFrames.next(); // root
                 ss = frame.getSourceSection();
                 assertSection(ss, "CALL(b)", 7, 1, 7, 7);
