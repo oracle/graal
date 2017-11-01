@@ -757,7 +757,8 @@ public class AMD64Move {
         @Use({REG}) private AllocatableValue input;
         @Alive({REG, ILLEGAL}) private AllocatableValue baseRegister;
 
-        protected Pointer(LIRInstructionClass<? extends Pointer> type, AllocatableValue result, AllocatableValue input, AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
+        protected Pointer(LIRInstructionClass<? extends Pointer> type, AllocatableValue result, AllocatableValue input, AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull,
+                        LIRKindTool lirKindTool) {
             super(type);
             this.result = result;
             this.input = input;
