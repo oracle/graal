@@ -307,6 +307,20 @@ public class LanguageSPITest {
     }
 
     @Test
+    public void testLookupHostArray() {
+        Context context = Context.newBuilder().allowHostAccess(true).build();
+        Value value = eval(context, new Function<Env, Object>() {
+            public Object apply(Env t) {
+                return t.lookupHostSymbol("java.lang.String[]");
+            }
+        });
+        assertTrue(value.isHostObject());
+        Object map = value.asHostObject();
+        assertSame(map, String[].class);
+        context.close();
+    }
+
+    @Test
     public void testLookupHostDisabled() {
         Context context = Context.newBuilder().allowHostAccess(false).build();
         try {
