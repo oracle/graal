@@ -11,6 +11,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added the ability to access [top scopes](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html#getTopScope-java.lang.String-) and [exported symbols](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html#getExportedSymbols--) using the debugger API.
 * Added the [and](graal/truffle/javadoc/com/oracle/truffle/api/instrumentation/SourceSectionFilter.Builder.html#and-com.oracle.truffle.api.instrumentation.SourceSectionFilter-) method to the [SourceSectionFilter Builder](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/instrumentation/SourceSectionFilter.Builder.html) which allows composing filters.
 * Added the new profiler infrastructure, including the [CPU sampler](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/tools/profiler/CPUSampler.html), [CPU tracer](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/tools/profiler/CPUTracer.html) and an experimental [Memory tracer](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/tools/profiler/MemoryTracer.html).
+* Added a new [TCK SPI](https://github.com/graalvm/graal/blob/master/truffle/docs/TCK.md) based on the org.graalvm.polyglot API to test a language inter-operability. To test the language inter-operability implement the [LanguageProvider](http://graalvm.github.io/graal/truffle/javadoc/org/graalvm/polyglot/tck/LanguageProvider.html).
 
 ## Version 0.29
 
