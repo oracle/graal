@@ -163,7 +163,6 @@ def compileParserTurtureSuite():
     print("Compiling parser torture files with C ", end='')
     mx_tools.printProgress(mx_tools.multicompileFolder(_parserTortureSuiteDirRoot, _cacheDir, [mx_tools.Tool.CLANG_C], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
 
-
 def compileShootoutSuite():
     ensureShootoutsExist()
     excludes = mx_tools.collectExcludePattern(os.path.join(_benchmarksgameSuiteDir, "configs/"))
