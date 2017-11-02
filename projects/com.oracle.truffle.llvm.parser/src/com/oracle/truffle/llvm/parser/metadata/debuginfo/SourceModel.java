@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
+import com.oracle.truffle.llvm.parser.metadata.MDExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MDLocation;
@@ -61,19 +62,27 @@ import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public final class SourceModel {
 
     public static final int LLVM_DBG_INTRINSICS_VALUE_ARGINDEX = 0;
 
     public static final String LLVM_DBG_DECLARE_NAME = "@llvm.dbg.declare";
+    public static final int LLVM_DBG_DECLARE_ARGSIZE = 3;
     public static final int LLVM_DBG_DECLARE_LOCALREF_ARGINDEX = 1;
+    public static final int LLVM_DBG_DECLARE_EXPR_ARGINDEX = 2;
 
     public static final String LLVM_DBG_VALUE_NAME = "@llvm.dbg.value";
+    public static final int LLVM_DBG_VALUE_ARGSIZE = 4;
     public static final int LLVM_DBG_VALUE_LOCALREF_ARGINDEX = 2;
+    public static final int LLVM_DBG_VALUE_EXPR_ARGINDEX = 3;
 
     public static SourceModel generate(ModelModule irModel, Source bitcodeSource) {
         final MetadataValueList moduleMetadata = irModel.getMetadata();
@@ -91,11 +100,14 @@ public final class SourceModel {
 
         private final Map<Instruction, LLVMSourceLocation> instructions = new HashMap<>();
 
+        private final Map<LLVMSourceSymbol, Variable> locals = new HashMap<>();
+
         private LLVMSourceLocation lexicalScope;
 
         private Function(Source bitcodeSource, FunctionDefinition definition) {
             this.bitcodeSource = bitcodeSource;
             this.definition = definition;
+            this.lexicalScope = null;
         }
 
         public SourceSection getSourceSection() {
@@ -125,20 +137,36 @@ public final class SourceModel {
         public LLVMSourceLocation getLexicalScope() {
             return lexicalScope;
         }
+
+        Variable getLocal(LLVMSourceSymbol symbol) {
+            if (locals.containsKey(symbol)) {
+                return locals.get(symbol);
+            }
+
+            final Variable variable = new Variable(symbol);
+            locals.put(symbol, variable);
+            return variable;
+        }
+
+        public Set<Variable> getPartialValues() {
+            return locals.values().stream().filter(Variable::hasFragments).collect(Collectors.toSet());
+        }
     }
 
     public static final class Variable implements Symbol {
 
-        private final Symbol symbol;
-
         private final LLVMSourceSymbol variable;
 
-        private Variable(Symbol symbol, LLVMSourceSymbol variable) {
-            this.symbol = symbol;
+        private List<ValueFragment> fragments;
+        private boolean hasFullDefinition;
+
+        private Variable(LLVMSourceSymbol variable) {
             this.variable = variable;
+            this.fragments = null;
+            this.hasFullDefinition = false;
         }
 
-        public LLVMSourceSymbol getVariable() {
+        public LLVMSourceSymbol getSymbol() {
             return variable;
         }
 
@@ -146,12 +174,47 @@ public final class SourceModel {
             return variable.getName();
         }
 
-        public Symbol getSymbol() {
-            return symbol;
-        }
-
         public LLVMSourceType getSourceType() {
             return variable.getType();
+        }
+
+        public boolean hasFragments() {
+            return fragments != null;
+        }
+
+        public int getFragmentIndex(int offset, int length) {
+            if (fragments != null) {
+                for (int i = 0; i < fragments.size(); i++) {
+                    final ValueFragment fragment = fragments.get(i);
+                    if (fragment.getOffset() == offset && fragment.getLength() == length) {
+                        return i;
+                    }
+                }
+            }
+            return -1;
+        }
+
+        public List<ValueFragment> getFragments() {
+            return fragments != null ? fragments : Collections.emptyList();
+        }
+
+        private void addFragment(ValueFragment fragment) {
+            if (fragments == null) {
+                fragments = new ArrayList<>();
+            }
+
+            if (!fragments.contains(fragment)) {
+                fragments.add(fragment);
+            }
+        }
+
+        private void processFragments() {
+            if (fragments != null) {
+                if (hasFullDefinition) {
+                    addFragment(ValueFragment.create(0, (int) variable.getType().getSize()));
+                }
+                Collections.sort(fragments);
+            }
         }
 
         @Override
@@ -162,6 +225,10 @@ public final class SourceModel {
         @Override
         public String toString() {
             return variable.getName();
+        }
+
+        private void addFullDefinition() {
+            hasFullDefinition = true;
         }
     }
 
@@ -248,6 +315,10 @@ public final class SourceModel {
             function.accept(this);
             function.setSourceFunction(currentFunction);
 
+            for (Variable local : currentFunction.locals.values()) {
+                local.processFragments();
+            }
+
             typeIdentifier.setMetadata(moduleMetadata);
             currentFunction = null;
         }
@@ -297,30 +368,33 @@ public final class SourceModel {
         public void visit(VoidCallInstruction call) {
             final Symbol callTarget = call.getCallTarget();
             if (callTarget instanceof FunctionDeclaration) {
-                int mdlocalArgumentIndex = -1;
+                int mdlocalArgIndex = -1;
+                int mdExprArgIndex = -1;
                 switch (((FunctionDeclaration) callTarget).getName()) {
                     case LLVM_DBG_DECLARE_NAME:
-                        if (call.getArgumentCount() >= LLVM_DBG_DECLARE_LOCALREF_ARGINDEX) {
-                            mdlocalArgumentIndex = LLVM_DBG_DECLARE_LOCALREF_ARGINDEX;
+                        if (call.getArgumentCount() >= LLVM_DBG_DECLARE_ARGSIZE) {
+                            mdlocalArgIndex = LLVM_DBG_DECLARE_LOCALREF_ARGINDEX;
+                            mdExprArgIndex = LLVM_DBG_DECLARE_EXPR_ARGINDEX;
                         }
                         break;
 
                     case LLVM_DBG_VALUE_NAME:
-                        if (call.getArgumentCount() >= LLVM_DBG_VALUE_LOCALREF_ARGINDEX) {
-                            mdlocalArgumentIndex = LLVM_DBG_VALUE_LOCALREF_ARGINDEX;
+                        if (call.getArgumentCount() >= LLVM_DBG_VALUE_ARGSIZE) {
+                            mdlocalArgIndex = LLVM_DBG_VALUE_LOCALREF_ARGINDEX;
+                            mdExprArgIndex = LLVM_DBG_VALUE_EXPR_ARGINDEX;
                         }
                         break;
                 }
 
-                if (mdlocalArgumentIndex >= 0) {
-                    handleDebugIntrinsic(call, mdlocalArgumentIndex);
+                if (mdlocalArgIndex >= 0) {
+                    handleDebugIntrinsic(call, mdlocalArgIndex, mdExprArgIndex);
                 }
             }
 
             defaultAction(call);
         }
 
-        private void handleDebugIntrinsic(VoidCallInstruction call, int mdlocalArgumentIndex) {
+        private void handleDebugIntrinsic(VoidCallInstruction call, int mdlocalArgIndex, int mdExprArgIndex) {
             Symbol value = call.getArgument(LLVM_DBG_INTRINSICS_VALUE_ARGINDEX);
             if (value instanceof MetadataConstant) {
                 // the first argument should reference the allocation site of the variable
@@ -342,18 +416,40 @@ public final class SourceModel {
                 ((FunctionParameter) value).setSourceVariable(true);
             }
 
-            final Symbol mdLocalMDRef = call.getArgument(mdlocalArgumentIndex);
+            final Symbol mdLocalMDRef = call.getArgument(mdlocalArgIndex);
+            final Variable variable;
             if (mdLocalMDRef instanceof MetadataConstant) {
                 final long mdIndex = ((MetadataConstant) mdLocalMDRef).getValue();
                 final MDBaseNode mdLocal = currentFunction.definition.getMetadata().getOrNull((int) mdIndex);
 
-                final LLVMSourceSymbol variable = getSourceVariable(mdLocal, false);
-                final Variable var = new Variable(value, variable);
+                final LLVMSourceSymbol symbol = getSourceVariable(mdLocal, false);
+                variable = currentFunction.getLocal(symbol);
 
                 // ensure that lifetime analysis does not kill the variable before it is used in
                 // the call
                 call.replace(call.getArgument(LLVM_DBG_INTRINSICS_VALUE_ARGINDEX), value);
-                call.replace(mdLocalMDRef, var);
+                call.replace(mdLocalMDRef, variable);
+
+            } else {
+                variable = null;
+            }
+
+            final Symbol expr = call.getArgument(mdExprArgIndex);
+            if (expr instanceof MetadataConstant) {
+                final int exprIndex = (int) ((MetadataConstant) expr).getValue();
+                final MDBaseNode exprNode = currentFunction.definition.getMetadata().getOrNull(exprIndex);
+                if (exprNode instanceof MDExpression) {
+                    final MDExpression expression = (MDExpression) exprNode;
+                    call.replace(expr, expression);
+
+                    if (variable != null) {
+                        if (ValueFragment.describesFragment(expression)) {
+                            variable.addFragment(ValueFragment.parse(expression));
+                        } else {
+                            variable.addFullDefinition();
+                        }
+                    }
+                }
             }
         }
     }

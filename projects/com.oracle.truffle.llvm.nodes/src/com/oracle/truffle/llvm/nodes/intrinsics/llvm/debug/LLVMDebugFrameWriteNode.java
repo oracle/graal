@@ -54,7 +54,7 @@ public abstract class LLVMDebugFrameWriteNode extends LLVMExpressionNode {
 
     @Specialization
     public Object write(VirtualFrame frame, Object llvmValue) {
-        final LLVMDebugValue value = new LLVMDebugValue(variable, valueProcessor, llvmValue);
+        final LLVMDebugValue value = LLVMDebugValue.createValue(variable, valueProcessor, llvmValue);
         frame.setObject(frameSlot, value);
         return null;
     }

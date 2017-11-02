@@ -118,10 +118,9 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNode
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI32NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI64NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI8NodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugAggregateNodeFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugFrameWriteNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMToDebugDeclarationNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMToDebugDeclarationNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMToDebugValueNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMToDebugValueNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVACopyNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVAEnd;
@@ -1916,22 +1915,36 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createDebugDeclaration(LLVMSourceSymbol variable, LLVMExpressionNode valueRead, FrameSlot valueSlot) {
-        final LLVMToDebugDeclarationNode toDebugNode = LLVMToDebugDeclarationNodeGen.create();
-        return LLVMDebugFrameWriteNodeGen.create(valueSlot, variable, toDebugNode, valueRead);
+    public LLVMDebugValueProvider.Builder createDebugDeclarationBuilder() {
+        return LLVMToDebugDeclarationNodeGen.create();
     }
 
     @Override
-    public LLVMExpressionNode createDebugValue(LLVMSourceSymbol variable, LLVMExpressionNode valueRead, FrameSlot valueSlot) {
-        final LLVMToDebugValueNode toDebugNode = LLVMToDebugValueNodeGen.create();
-        return LLVMDebugFrameWriteNodeGen.create(valueSlot, variable, toDebugNode, valueRead);
+    public LLVMDebugValueProvider.Builder createDebugValueBuilder() {
+        return LLVMToDebugValueNodeGen.create();
+    }
+
+    @Override
+    public LLVMExpressionNode createDebugWrite(LLVMSourceSymbol variable, LLVMExpressionNode valueRead, FrameSlot targetSlot, LLVMDebugValueProvider.Builder valueBuilder) {
+        return LLVMDebugFrameWriteNodeGen.create(targetSlot, variable, valueBuilder, valueRead);
+    }
+
+    @Override
+    public LLVMExpressionNode createDebugFragmentWrite(LLVMSourceSymbol variable, LLVMExpressionNode valueRead, FrameSlot targetSlot, LLVMDebugValueProvider.Builder valueBuilder,
+                    LLVMExpressionNode aggregateRead, int partIndex, int[] clearParts) {
+        return LLVMDebugAggregateNodeFactory.DefinePartNodeGen.create(targetSlot, variable, partIndex, valueBuilder, clearParts, aggregateRead, valueRead);
+    }
+
+    @Override
+    public LLVMExpressionNode createDebugFragmentInit(FrameSlot targetSlot, LLVMSourceSymbol variable, int[] offsets, int[] lengths) {
+        return LLVMDebugAggregateNodeFactory.InitNodeGen.create(targetSlot, variable, offsets, lengths);
     }
 
     @Override
     public LLVMDebugValue createGlobalVariableDebug(LLVMSourceSymbol variable, LLVMExpressionNode globalSymbol) {
         final LLVMDebugValueProvider.Builder toDebugNode = LLVMToDebugValueNodeGen.create();
         final Object globalDescriptor = globalSymbol.executeGeneric(null);
-        return new LLVMDebugValue(variable, toDebugNode, globalDescriptor);
+        return LLVMDebugValue.createValue(variable, toDebugNode, globalDescriptor);
     }
 
     @Override

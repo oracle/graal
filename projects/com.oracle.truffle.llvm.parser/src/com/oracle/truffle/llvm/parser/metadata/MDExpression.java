@@ -29,11 +29,17 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import com.oracle.truffle.llvm.runtime.types.MetaType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.ListIterator;
 
-public final class MDExpression implements MDBaseNode {
+public final class MDExpression implements MDBaseNode, Symbol {
+
+    public static final MDExpression EMPTY = new MDExpression(new long[0]);
 
     private final long[] operands;
 
@@ -140,5 +146,33 @@ public final class MDExpression implements MDBaseNode {
         }
 
         return ops;
+    }
+
+    @Override
+    public Type getType() {
+        return MetaType.METADATA;
+    }
+
+    @Override
+    public void replace(Symbol original, Symbol replacement) {
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        final MDExpression that = (MDExpression) o;
+        return Arrays.equals(operands, that.operands);
+    }
+
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(operands);
     }
 }
