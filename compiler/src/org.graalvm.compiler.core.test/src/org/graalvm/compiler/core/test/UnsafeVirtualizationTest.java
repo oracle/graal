@@ -37,7 +37,15 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class UnsafeVirtualizationTest extends GraalCompilerTest {
 
-    public static class A {
+    public static class Base {
+        /*
+         * This padding ensure that the size of the Base class ends up as a multiple of 8, which
+         * makes the first field of the subclass 8-byte aligned.
+         */
+        double padding;
+    }
+
+    public static class A extends Base {
         int f1;
         int f2;
     }
@@ -79,6 +87,13 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         return (int) UNSAFE.getDouble(a, AF1Offset);
     }
 
+    public static int unsafeSnippet4(double i1) {
+        A a = new A();
+        UNSAFE.putDouble(a, AF1Offset, i1);
+        UNSAFE.putDouble(a, AF1Offset, i1);
+        return UNSAFE.getInt(a, AF1Offset) + UNSAFE.getInt(a, AF2Offset);
+    }
+
     @Test
     public void testUnsafePEA01() {
         testPartialEscapeReadElimination("unsafeSnippet1", false, 1.0);
@@ -97,7 +112,15 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         testPartialEscapeReadElimination("unsafeSnippet3", true, 1);
     }
 
+    @Test
+    public void testUnsafePEA04() {
+        testPartialEscapeReadElimination("unsafeSnippet4", false, 1.0);
+        testPartialEscapeReadElimination("unsafeSnippet4", true, 1.0);
+    }
+
     public void testPartialEscapeReadElimination(String snippet, boolean canonicalizeBefore, Object... args) {
+        assert AF1Offset % 8 == 0 : "First of the two int-fields must be 8-byte aligned";
+
         ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
         OptionValues options = graph.getOptions();

@@ -172,16 +172,16 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
             getDebug().log(DebugContext.DETAILED_LEVEL, "virtualizing %s for entryKind %s and access kind %s", current, entryKind, accessKind);
             state.setEntry(virtual.getObjectId(), index, newValue);
             if (entryKind == JavaKind.Int) {
-                if (oldValue.getStackKind() == JavaKind.Double || oldValue.getStackKind() == JavaKind.Long) {
+                if (accessKind.needsTwoSlots()) {
+                    // Storing double word value two int slots
+                    assert virtual.entryKind(index + 1) == JavaKind.Int;
+                    state.setEntry(virtual.getObjectId(), index + 1, getIllegalConstant());
+                } else if (oldValue.getStackKind() == JavaKind.Double || oldValue.getStackKind() == JavaKind.Long) {
                     // Splitting double word constant by storing over it with an int
                     getDebug().log(DebugContext.DETAILED_LEVEL, "virtualizing %s producing second half of double word value %s", current, oldValue);
                     ValueNode secondHalf = UnpackEndianHalfNode.create(oldValue, false);
                     addNode(secondHalf);
                     state.setEntry(virtual.getObjectId(), index + 1, secondHalf);
-                } else if (accessKind.needsTwoSlots()) {
-                    // Storing double word value two int slots
-                    assert virtual.entryKind(index + 1) == JavaKind.Int;
-                    state.setEntry(virtual.getObjectId(), index + 1, getIllegalConstant());
                 }
             }
             if (oldValue.isConstant() && oldValue.asConstant().equals(JavaConstant.forIllegal())) {
