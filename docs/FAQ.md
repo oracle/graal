@@ -18,24 +18,14 @@ A heavily documented Truffle language sample implementation is
 ### How does mx execute a specific command?
 
 To get a command line command you can use the `-v` mx option. For
-example, `mx -v test` prints the command line when executing the
-Sulong test cases.
+example, `mx -v lli test.bc` prints the command line mx uses to run
+the file `test.bc` with Sulong.
 
 ### What can I do when Java files got corrupted?
 
 You can clean your workspace with `mx clean`. If you only want to clean
 Java or native projects you can use `mx clean` with the options
 `--no-native` or `--no-java`.
-
-### How can I debug a failing test case?
-
-To attach a debugger to Sulong tests, run `mx -d test gcc`.
-To get a verbose output of all tests that run as part of a suite, run
-`mx -v test gcc`. This also prints names for all individual tests.
-You can use the test names to run a single test of a suite.
-For example, `test[c/max-unsigned-short-to-float-cast.c]` is part of the
-SulongSuite. You can run this single test using
-`mx unittest SulongSuite#test[c/max-unsigned-short-to-float-cast.c]`
 
 ## Eclipse
 
