@@ -36,24 +36,23 @@ import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
 import com.oracle.truffle.llvm.parser.metadata.MDNamedNode;
 import com.oracle.truffle.llvm.parser.metadata.MDNode;
-import com.oracle.truffle.llvm.parser.metadata.MDOldNode;
-import com.oracle.truffle.llvm.parser.metadata.MDReference;
 import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
-import com.oracle.truffle.llvm.parser.metadata.MDTypedValue;
+import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
-import com.oracle.truffle.llvm.parser.metadata.MetadataList;
+import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
+import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
-final class MDSymbolLinkUpgrade implements MDFollowRefVisitor {
+final class MDSymbolLinkUpgrade implements MetadataVisitor {
 
-    static void perform(MetadataList metadata) {
-        final MDNamedNode cuNode = metadata.find(MDNamedNode.COMPILEUNIT_NAME);
+    static void perform(MetadataValueList metadata) {
+        final MDNamedNode cuNode = metadata.getNamedNode(MDNamedNode.COMPILEUNIT_NAME);
         if (cuNode == null) {
             return;
         }
-        final MDKind dbgKind = metadata.getKind(MDKind.DBG_NAME);
+        final MDKind dbgKind = metadata.findKind(MDKind.DBG_NAME);
         cuNode.accept(new MDSymbolLinkUpgrade(dbgKind));
     }
 
@@ -76,23 +75,14 @@ final class MDSymbolLinkUpgrade implements MDFollowRefVisitor {
 
     @Override
     public void visit(MDNode md) {
-        for (MDReference elt : md) {
+        for (MDBaseNode elt : md) {
             elt.accept(this);
         }
     }
 
     @Override
-    public void visit(MDOldNode md) {
-        for (MDTypedValue elt : md) {
-            if (elt instanceof MDReference) {
-                ((MDReference) elt).accept(this);
-            }
-        }
-    }
-
-    @Override
     public void visit(MDNamedNode md) {
-        for (MDReference elt : md) {
+        for (MDBaseNode elt : md) {
             elt.accept(this);
         }
     }
@@ -104,8 +94,8 @@ final class MDSymbolLinkUpgrade implements MDFollowRefVisitor {
             final FunctionDefinition function = (FunctionDefinition) valueSymbol;
             attachSymbol(function, md);
         }
-        if (currentCU != null && md.getCompileUnit() == MDReference.VOID) {
-            md.setCompileUnit(MDReference.fromNode(currentCU));
+        if (currentCU != null && md.getCompileUnit() == MDVoidNode.INSTANCE) {
+            md.setCompileUnit(currentCU);
         }
     }
 
@@ -123,7 +113,7 @@ final class MDSymbolLinkUpgrade implements MDFollowRefVisitor {
 
     private void attachSymbol(MetadataAttachmentHolder container, MDBaseNode ref) {
         if (!container.hasAttachedMetadata() || container.getMetadataAttachment(MDKind.DBG_NAME) == null) {
-            final MDAttachment dbg = new MDAttachment(dbgKind, MDReference.fromNode(ref));
+            final MDAttachment dbg = MDAttachment.create(dbgKind, ref);
             container.attachMetadata(dbg);
         }
     }

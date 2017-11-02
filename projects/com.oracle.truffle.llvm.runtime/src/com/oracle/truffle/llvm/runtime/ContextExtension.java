@@ -27,31 +27,11 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata;
+package com.oracle.truffle.llvm.runtime;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
+public interface ContextExtension {
 
-public final class MDOldNode extends ArrayList<MDTypedValue> implements MDBaseNode {
-
-    private static final long serialVersionUID = 1L;
-
-    public MDOldNode(Collection<? extends MDTypedValue> c) {
-        super(c);
-    }
-
-    @Override
-    public void accept(MetadataVisitor visitor) {
-        visitor.visit(this);
-    }
-
-    @Override
-    public String toString() {
-        return String.format("!{%s}", super.toString());
-    }
-
-    public static MDOldNode create32(MDTypedValue[] args) {
-        return new MDOldNode(Arrays.asList(args));
+    default Class<?> extensionClass() {
+        return this.getClass();
     }
 }

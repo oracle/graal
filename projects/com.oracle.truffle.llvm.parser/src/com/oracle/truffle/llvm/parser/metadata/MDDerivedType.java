@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.metadata.subtypes.MDType;
+import com.oracle.truffle.llvm.parser.listeners.Metadata;
 import com.oracle.truffle.llvm.parser.records.DwTagRecord;
 
 import java.util.Arrays;
@@ -38,17 +38,17 @@ public final class MDDerivedType extends MDType implements MDBaseNode {
 
     // TODO extend with objective c property names
 
-    private final MDReference baseType;
-
     private final Tag tag;
 
-    private final MDReference scope;
+    private MDBaseNode baseType;
+    private MDBaseNode scope;
 
-    private MDDerivedType(long tag, MDReference name, MDReference file, long line, MDReference scope, MDReference baseType, long size, long align, long offset, long flags) {
-        super(name, size, align, offset, file, line, flags);
+    private MDDerivedType(long tag, long line, long size, long align, long offset, long flags) {
+        super(size, align, offset, line, flags);
         this.tag = Tag.decode(tag);
-        this.scope = scope;
-        this.baseType = baseType;
+
+        this.scope = MDVoidNode.INSTANCE;
+        this.baseType = MDVoidNode.INSTANCE;
     }
 
     @Override
@@ -56,7 +56,7 @@ public final class MDDerivedType extends MDType implements MDBaseNode {
         visitor.visit(this);
     }
 
-    public MDReference getBaseType() {
+    public MDBaseNode getBaseType() {
         return baseType;
     }
 
@@ -64,25 +64,19 @@ public final class MDDerivedType extends MDType implements MDBaseNode {
         return tag;
     }
 
-    public MDReference getScope() {
+    public MDBaseNode getScope() {
         return scope;
     }
 
     @Override
-    public String toString() {
-        return String.format("DerivedType (tag=%s,name=%s, file=%s, line=%d, scope=%s, size=%d, align=%d, offset=%d, flags=%d, baseType=%s])", getTag(), getName(), getFile(), getLine(), getScope(),
-                        getSize(), getAlign(), getOffset(), getFlags(), baseType);
-    }
-
-    private boolean isOnlyReference() {
-        return getSize() == 0 && getAlign() == 0 && getOffset() == 0 && getFlags() == 0;
-    }
-
-    public MDReference getTrueBaseType() {
-        if (isOnlyReference() && baseType.get() instanceof MDDerivedType) {
-            return ((MDDerivedType) baseType.get()).getTrueBaseType();
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        super.replace(oldValue, newValue);
+        if (baseType == oldValue) {
+            baseType = newValue;
         }
-        return baseType;
+        if (scope == oldValue) {
+            scope = newValue;
+        }
     }
 
     public enum Tag {
@@ -120,18 +114,23 @@ public final class MDDerivedType extends MDType implements MDBaseNode {
     private static final int ARGINDEX_38_OFFSET = 9;
     private static final int ARGINDEX_38_FLAGS = 10;
 
-    public static MDDerivedType create38(long[] args, MetadataList md) {
+    public static MDDerivedType create38(long[] args, MetadataValueList md) {
         final long tag = args[ARGINDEX_38_TAG];
-        final MDReference name = md.getMDRefOrNullRef(args[ARGINDEX_38_NAME]);
-        final MDReference file = md.getMDRefOrNullRef(args[ARGINDEX_38_FILE]);
         final long line = args[ARGINDEX_38_LINE];
-        final MDReference scope = md.getMDRefOrNullRef(args[ARGINDEX_38_SCOPE]);
-        final MDReference baseType = md.getMDRefOrNullRef(args[ARGINDEX_38_BASETYPE]);
         final long size = args[ARGINDEX_38_SIZE];
         final long align = args[ARGINDEX_38_ALIGN];
         final long offset = args[ARGINDEX_38_OFFSET];
         final long flags = args[ARGINDEX_38_FLAGS];
-        return new MDDerivedType(tag, name, file, line, scope, baseType, size, align, offset, flags);
+
+        final MDDerivedType derivedType = new MDDerivedType(tag, line, size, align, offset, flags);
+
+        derivedType.scope = md.getNullable(args[ARGINDEX_38_SCOPE], derivedType);
+        derivedType.baseType = md.getNullable(args[ARGINDEX_38_BASETYPE], derivedType);
+
+        derivedType.setFile(md.getNullable(args[ARGINDEX_38_FILE], derivedType));
+        derivedType.setName(md.getNullable(args[ARGINDEX_38_NAME], derivedType));
+
+        return derivedType;
     }
 
     private static final int ARGINDEX_32_TAG = 0;
@@ -145,17 +144,22 @@ public final class MDDerivedType extends MDType implements MDBaseNode {
     private static final int ARGINDEX_32_FLAGS = 8;
     private static final int ARGINDEX_32_BASETYPE = 9;
 
-    public static MDDerivedType create32(MDTypedValue[] args) {
-        final long tag = DwTagRecord.decode(ParseUtil.asInt64(args[ARGINDEX_32_TAG])).code();
-        final MDReference scope = ParseUtil.getReference(args[ARGINDEX_32_SCOPE]);
-        final MDReference name = ParseUtil.getReference(args[ARGINDEX_32_NAME]);
-        final MDReference file = ParseUtil.getReference(args[ARGINDEX_32_FILE]);
-        final long line = ParseUtil.asInt32(args[ARGINDEX_32_LINE]);
-        final long size = ParseUtil.asInt64(args[ARGINDEX_32_SIZE]);
-        final long align = ParseUtil.asInt64(args[ARGINDEX_32_ALIGN]);
-        final long offset = ParseUtil.asInt64(args[ARGINDEX_32_OFFSET]);
-        final long flags = ParseUtil.asInt32(args[ARGINDEX_32_FLAGS]);
-        final MDReference baseType = ParseUtil.getReference(args[ARGINDEX_32_BASETYPE]);
-        return new MDDerivedType(tag, name, file, line, scope, baseType, size, align, offset, flags);
+    public static MDDerivedType create32(long[] args, Metadata md) {
+        final long tag = DwTagRecord.decode(ParseUtil.asLong(args, ARGINDEX_32_TAG, md)).code();
+        final long line = ParseUtil.asInt(args, ARGINDEX_32_LINE, md);
+        final long size = ParseUtil.asLong(args, ARGINDEX_32_SIZE, md);
+        final long align = ParseUtil.asLong(args, ARGINDEX_32_ALIGN, md);
+        final long offset = ParseUtil.asLong(args, ARGINDEX_32_OFFSET, md);
+        final long flags = ParseUtil.asLong(args, ARGINDEX_32_FLAGS, md);
+
+        final MDDerivedType derivedType = new MDDerivedType(tag, line, size, align, offset, flags);
+
+        derivedType.scope = ParseUtil.resolveReference(args, ARGINDEX_32_SCOPE, derivedType, md);
+        derivedType.baseType = ParseUtil.resolveReference(args, ARGINDEX_32_BASETYPE, derivedType, md);
+
+        derivedType.setFile(ParseUtil.resolveReference(args, ARGINDEX_32_FILE, derivedType, md));
+        derivedType.setName(ParseUtil.resolveReference(args, ARGINDEX_32_NAME, derivedType, md));
+
+        return derivedType;
     }
 }

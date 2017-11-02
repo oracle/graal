@@ -33,7 +33,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMNativeFunctions;
+import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -53,7 +55,9 @@ public final class LLVMFreeExceptionNode extends LLVMExpressionNode {
     public LLVMNativeFunctions.SulongFreeExceptionNode getFreeException() {
         if (freeException == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.freeException = insert(getContext().getNativeFunctions().createFreeException());
+            LLVMContext context = getContext();
+            NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
+            this.freeException = insert(nfiContextExtension.getNativeSulongFunctions().createFreeException(context));
         }
         return freeException;
     }

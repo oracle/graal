@@ -27,32 +27,25 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata.subtypes;
-
-import com.oracle.truffle.llvm.parser.metadata.MDReference;
+package com.oracle.truffle.llvm.parser.metadata;
 
 public abstract class MDType extends MDName {
 
     private final long size;
-
     private final long align;
-
     private final long offset;
-
-    private final MDReference file;
-
     private final long line;
-
     private final long flags;
 
-    public MDType(MDReference name, long size, long align, long offset, MDReference file, long line, long flags) {
-        super(name);
+    private MDBaseNode file;
+
+    MDType(long size, long align, long offset, long line, long flags) {
         this.size = size;
         this.align = align;
         this.offset = offset;
-        this.file = file;
         this.line = line;
         this.flags = flags;
+        this.file = MDVoidNode.INSTANCE;
     }
 
     public long getSize() {
@@ -67,7 +60,7 @@ public abstract class MDType extends MDName {
         return offset;
     }
 
-    public MDReference getFile() {
+    public MDBaseNode getFile() {
         return file;
     }
 
@@ -77,5 +70,17 @@ public abstract class MDType extends MDName {
 
     public long getFlags() {
         return flags;
+    }
+
+    public void setFile(MDBaseNode file) {
+        this.file = file;
+    }
+
+    @Override
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        super.replace(oldValue, newValue);
+        if (file == oldValue) {
+            file = newValue;
+        }
     }
 }

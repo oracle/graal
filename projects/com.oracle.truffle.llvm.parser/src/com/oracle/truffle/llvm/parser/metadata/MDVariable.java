@@ -29,35 +29,61 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-public final class MDFnNode implements MDBaseNode {
+public abstract class MDVariable extends MDName {
 
-    private final MDSymbolReference pointer;
+    private final long line;
+
+    private MDBaseNode scope;
+    private MDBaseNode type;
+    private MDBaseNode file;
+
+    MDVariable(long line) {
+        this.line = line;
+
+        this.scope = MDVoidNode.INSTANCE;
+        this.type = MDVoidNode.INSTANCE;
+        this.file = MDVoidNode.INSTANCE;
+    }
+
+    public MDBaseNode getScope() {
+        return scope;
+    }
+
+    public MDBaseNode getType() {
+        return type;
+    }
+
+    public MDBaseNode getFile() {
+        return file;
+    }
+
+    public long getLine() {
+        return line;
+    }
+
+    void setScope(MDBaseNode scope) {
+        this.scope = scope;
+    }
+
+    void setType(MDBaseNode type) {
+        this.type = type;
+    }
+
+    void setFile(MDBaseNode file) {
+        this.file = file;
+    }
 
     @Override
-    public void accept(MetadataVisitor visitor) {
-        visitor.visit(this);
-    }
-
-    private MDFnNode(MDSymbolReference pointer) {
-        this.pointer = pointer;
-    }
-
-    public MDSymbolReference getPointer() {
-        return pointer;
-    }
-
-    @Override
-    public String toString() {
-        return String.format("FnNode (%s)", pointer);
-    }
-
-    public static MDFnNode create(MDTypedValue arg) {
-        if (arg instanceof MDSymbolReference) {
-            return new MDFnNode((MDSymbolReference) arg);
-
-        } else {
-            return null;
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        super.replace(oldValue, newValue);
+        if (scope == oldValue) {
+            scope = newValue;
+        }
+        if (type == oldValue) {
+            type = newValue;
+        }
+        if (file == oldValue) {
+            file = newValue;
         }
     }
-
 }

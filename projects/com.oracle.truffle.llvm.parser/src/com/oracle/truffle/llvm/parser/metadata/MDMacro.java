@@ -29,21 +29,18 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.metadata.subtypes.MDName;
-
 public final class MDMacro extends MDName implements MDBaseNode {
 
     private final long type;
-
     private final long line;
 
-    private final MDReference value;
+    private MDBaseNode value;
 
-    private MDMacro(long type, long line, MDReference name, MDReference value) {
-        super(name);
+    private MDMacro(long type, long line) {
         this.type = type;
         this.line = line;
-        this.value = value;
+
+        this.value = MDVoidNode.INSTANCE;
     }
 
     @Override
@@ -59,13 +56,16 @@ public final class MDMacro extends MDName implements MDBaseNode {
         return line;
     }
 
-    public MDReference getValue() {
+    public MDBaseNode getValue() {
         return value;
     }
 
     @Override
-    public String toString() {
-        return String.format("Macro (type=%d, line=%d, name=%s, value=%s)", type, line, getName(), value);
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        super.replace(oldValue, newValue);
+        if (value == oldValue) {
+            value = newValue;
+        }
     }
 
     private static final int ARGINDEX_TYPE = 1;
@@ -73,11 +73,15 @@ public final class MDMacro extends MDName implements MDBaseNode {
     private static final int ARGINDEX_NAME = 3;
     private static final int ARGINDEX_VALUE = 4;
 
-    public static MDMacro create38(long[] args, MetadataList md) {
+    public static MDMacro create38(long[] args, MetadataValueList md) {
         final long type = args[ARGINDEX_TYPE];
         final long line = args[ARGINDEX_LINE];
-        final MDReference name = md.getMDRefOrNullRef(args[ARGINDEX_NAME]);
-        final MDReference value = md.getMDRefOrNullRef(args[ARGINDEX_VALUE]);
-        return new MDMacro(type, line, name, value);
+
+        final MDMacro macro = new MDMacro(type, line);
+
+        macro.value = md.getNullable(args[ARGINDEX_VALUE], macro);
+        macro.setName(md.getNullable(args[ARGINDEX_NAME], macro));
+
+        return macro;
     }
 }

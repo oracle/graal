@@ -5,12 +5,11 @@ import shutil
 import subprocess
 
 import mx
-import mx_findbugs
 import mx_subst
 import re
-import argparse
 import mx_benchmark
 import mx_sulong_benchmarks
+import mx_unittest
 
 from mx_unittest import add_config_participant
 from mx_gate import Task, add_gate_runner
@@ -42,30 +41,6 @@ supportedGCCVersions = [
     '4.7'
 ]
 
-# the files that should be checked to not contain http links (but https ones)
-httpCheckFiles = [
-    __file__,
-    join(_suite.dir, ".travis.yml")
-]
-
-# the file paths that we want to check with clang-format
-clangFormatCheckPaths = [
-    join(_suite.dir, "include"),
-    _libPath,
-    _captureSrcDir
-]
-
-# the file paths on which we want to use the mdl Markdown file checker
-mdlCheckDirectories = [
-    _suite.dir
-]
-
-
-# the file paths for which we do not want to apply the mdl Markdown file checker
-mdlCheckExcludeDirectories = [
-    join(_suite.dir, 'mx') # we exclude the mx directory since we download it into the sulong folder in the Travis gate
-]
-
 # the LLVM versions supported by the current bitcode parser that bases on the textual format
 # sorted by priority in descending order (highest priority on top)
 supportedLLVMVersions = [
@@ -77,13 +52,6 @@ supportedLLVMVersions = [
     '5.0',
 ]
 
-# the clang-format versions that can be used for formatting the test case C and C++ files
-clangFormatVersions = [
-    '3.8',
-    '3.9',
-    '4.0',
-]
-
 # the basic LLVM dependencies for running the test cases and executing the mx commands
 basicLLVMDependencies = [
     'clang',
@@ -91,6 +59,20 @@ basicLLVMDependencies = [
     'opt',
     'llc',
     'llvm-as'
+]
+
+# the file paths that we want to check with clang-format
+clangFormatCheckPaths = [
+    join(_suite.dir, "include"),
+    _libPath,
+    _captureSrcDir
+]
+
+# the clang-format versions that can be used for formatting the test case C and C++ files
+clangFormatVersions = [
+    '3.8',
+    '3.9',
+    '4.0',
 ]
 
 def _unittest_config_participant(config):
@@ -102,42 +84,74 @@ def _unittest_config_participant(config):
 add_config_participant(_unittest_config_participant)
 
 
-def _graal_llvm_gate_runner(args, tasks):
-    """gate function"""
-    executeGate()
+def _sulong_gate_runner(args, tasks):
+    with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
+        if t: clangformatcheck()
+    with Task('TestBenchmarks', tasks, tags=['benchmarks', 'sulongMisc']) as t:
+        if t: mx_testsuites.runSuite('shootout')
+    with Task('TestTypes', tasks, tags=['type', 'sulongMisc']) as t:
+        if t: mx_testsuites.runSuite('type')
+    with Task('TestPipe', tasks, tags=['pipe', 'sulongMisc']) as t:
+        if t: mx_testsuites.runSuite('pipe')
+    with Task('TestLLVM', tasks, tags=['llvm']) as t:
+        if t: mx_testsuites.runSuite('llvm')
+    with Task('TestNWCC', tasks, tags=['nwcc']) as t:
+        if t: mx_testsuites.runSuite('nwcc')
+    with Task('TestGCCParserTorture', tasks, tags=['parser']) as t:
+        if t: mx_testsuites.runSuite('parserTorture')
+    with Task('TestGCC_C', tasks, tags=['gcc_c']) as t:
+        if t: mx_testsuites.runSuite('gcc_c')
+    with Task('TestGCC_CPP', tasks, tags=['gcc_cpp']) as t:
+        if t: mx_testsuites.runSuite('gcc_cpp')
+    with Task('TestGCC_Fortran', tasks, tags=['gcc_fortran']) as t:
+        if t: mx_testsuites.runSuite('gcc_fortran')
+    with Task("TestSulong", tasks, tags=['sulong', 'sulongBasic']) as t:
+        if t: mx_unittest.unittest(['SulongSuite'])
+    with Task("TestInterop", tasks, tags=['interop', 'sulongBasic']) as t:
+        if t: mx_unittest.unittest(['LLVMInteropTest'])
+    with Task('TestAssembly', tasks, tags=['assembly', 'sulongMisc']) as t:
+        if t: mx_testsuites.runSuite('assembly')
+    with Task('TestArgs', tasks, tags=['args', 'sulongMisc']) as t:
+        if t: mx_testsuites.runSuite('args')
+    with Task('TestCallback', tasks, tags=['callback', 'sulongMisc']) as t:
+        if t: mx_testsuites.runSuite('callback')
+    with Task('TestVarargs', tasks, tags=['vaargs', 'sulongMisc']) as t:
+        if t: mx_testsuites.runSuite('vaargs')
 
-add_gate_runner(_suite, _graal_llvm_gate_runner)
+add_gate_runner(_suite, _sulong_gate_runner)
 
-def executeGate():
-    """executes the TruffleLLVM gate tasks"""
-    tasks = []
-    with Task('BasicChecks', tasks) as t:
-        if t: runChecks()
-    mx_testsuites.runSuite()
+def clangformatcheck(args=None):
+    """ Performs a format check on the include/truffle.h file """
+    for f in clangFormatCheckPaths:
+        checkCFiles(f)
 
-def travis1(args=None):
-    """executes a Travis job"""
-    tasks = []
-    with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac', '--dependencies', 'SULONG_TEST'])
-    with Task('TestBenchmarks', tasks) as t:
-        if t: mx_testsuites.runSuite(['shootout'])
-    with Task('TestTypes', tasks) as t:
-        if t: mx_testsuites.runSuite(['type'])
-    with Task('TestPipe', tasks) as t:
-        if t: mx_testsuites.runSuite(['pipe'])
-    with Task('TestLLVM', tasks) as t:
-        if t: mx_testsuites.runSuite(['llvm'])
+def checkCFiles(targetDir):
+    error = False
+    for path, _, files in os.walk(targetDir):
+        for f in files:
+            if f.endswith('.c') or f.endswith('.cpp') or f.endswith('.h'):
+                if not checkCFile(path + '/' + f):
+                    error = True
+    if error:
+        mx.log_error("found formatting errors!")
+        exit(-1)
 
-def travis2(args=None):
-    """executes the third Travis job (Javac build, NWCC, GCC compilation test cases)"""
-    tasks = []
-    with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac', '--dependencies', 'SULONG_TEST'])
-    with Task('TestNWCC', tasks) as t:
-        if t: mx_testsuites.runSuite(['nwcc'])
-    with Task('TestGCCSuiteCompile', tasks) as t:
-        if t: mx_testsuites.runSuite(['parserTorture'])
+def checkCFile(targetFile):
+    """ Checks the formatting of a C file and returns True if the formatting is okay """
+    clangFormat = findInstalledLLVMProgram('clang-format', clangFormatVersions)
+    if clangFormat is None:
+        exit("Unable to find 'clang-format' executable with one the supported versions '" + ", ".join(clangFormatVersions) + "'")
+    formatCommand = [clangFormat, targetFile]
+    formattedContent = subprocess.check_output(formatCommand).splitlines()
+    with open(targetFile) as f:
+        originalContent = f.read().splitlines()
+    if not formattedContent == originalContent:
+        # modify the file to the right format
+        subprocess.check_output(formatCommand + ['-i'])
+        mx.log('\n'.join(formattedContent))
+        mx.log('\nmodified formatting in {0} to the format above'.format(targetFile))
+        return False
+    return True
 
 # platform dependent
 def pullLLVMBinaries(args=None):
@@ -364,46 +378,6 @@ def runLLVM(args=None, out=None):
     vmArgs, sulongArgs = truffle_extract_VM_args(args)
     return mx.run_java(getCommonOptions(False) + vmArgs + getClasspathOptions() + ["com.oracle.truffle.llvm.Sulong"] + sulongArgs, out=out)
 
-def runChecks(args=None):
-    """runs all the static analysis tools or selected ones (see -h or --help)"""
-    vmArgs, otherArgs = truffle_extract_VM_args(args)
-    parser = argparse.ArgumentParser(description="Executes all or selected static analysis tools")
-    parser.add_argument('check', nargs='*', help=' '.join(checkCases.keys()), default=checkCases.keys())
-    parser.add_argument('--verbose', dest='verbose', action='store_const', const=True, default=False, help='Display the check names before execution')
-    parsedArgs = parser.parse_args(otherArgs)
-    error = False
-    for checkName in parsedArgs.check:
-        if parsedArgs.verbose:
-            mx.log('executing {0}'.format(checkName))
-        command = checkCases[checkName]
-        optionalRetValue = command(vmArgs)
-        if optionalRetValue:
-            error = True
-            if parsedArgs.verbose:
-                mx.log('failed {0}'.format(checkName))
-        elif parsedArgs.verbose:
-            mx.log('passed {0}'.format(checkName))
-    if error:
-        exit(-1)
-
-def findBugs(args=None):
-    tasks = []
-    with Task('Clean', tasks) as t:
-        if t: mx.clean([]) # we need a clean build before running findbugs
-    with Task('Build', tasks) as t:
-        if t: mx.build(['--force-javac'])
-    with Task('Findbugs', tasks) as t:
-        if t and mx_findbugs.findbugs([]) != 0:
-            t.abort('FindBugs warnings were found')
-
-def compileWithEcjStrict(args=None):
-    """build project with the option --warning-as-error"""
-    if mx.get_env('JDT'):
-        mx.clean([])
-        mx.command_function('build')(['-p', '--warning-as-error'])
-    else:
-        exit('JDT environment variable not set. Cannot execute BuildJavaWithEcj task.')
-
 def getCommonOptions(withAssertion, lib_args=None):
     options = ['-Dgraal.TruffleCompilationExceptionsArePrinted=true',
         '-Dgraal.ExitVMOnException=true']
@@ -570,66 +544,6 @@ _env_flags = []
 if 'CPPFLAGS' in os.environ:
     _env_flags = os.environ['CPPFLAGS'].split(' ')
 
-def mdlCheck(args=None):
-    """runs mdl on all .md files in the projects and root directory"""
-    error = False
-    for mdlCheckPath in mdlCheckDirectories:
-        for path, _, files in os.walk(mdlCheckPath):
-            for f in files:
-                if f.endswith('.md') and not any(path.startswith(exclude) for exclude in mdlCheckExcludeDirectories):
-                    absPath = path + '/' + f
-                    mdlCheckCommand = 'mdl -r~MD026,~MD002,~MD029,~MD032,~MD033,~MD003,~MD001 ' + absPath
-                    try:
-                        subprocess.check_output(mdlCheckCommand, stderr=subprocess.STDOUT, shell=True)
-                    except subprocess.CalledProcessError as e:
-                        mx.log_error(e) # prints command and return value
-                        mx.log_error(e.output) # prints process output
-                        error = True
-    if error:
-        exit(-1)
-
-def clangformatcheck(args=None):
-    """ Performs a format check on the include/truffle.h file """
-    for f in clangFormatCheckPaths:
-        checkCFiles(f)
-
-def checkCFiles(targetDir):
-    error = False
-    for path, _, files in os.walk(targetDir):
-        for f in files:
-            if f.endswith('.c') or f.endswith('.cpp') or f.endswith('.h'):
-                if not checkCFile(path + '/' + f):
-                    error = True
-    if error:
-        mx.log_error("found formatting errors!")
-        exit(-1)
-
-def checkCFile(targetFile):
-    """ Checks the formatting of a C file and returns True if the formatting is okay """
-    clangFormat = findInstalledLLVMProgram('clang-format', clangFormatVersions)
-    if clangFormat is None:
-        exit("Unable to find 'clang-format' executable with one the supported versions '" + ", ".join(clangFormatVersions) + "'")
-    formatCommand = [clangFormat, targetFile]
-    formattedContent = subprocess.check_output(formatCommand).splitlines()
-    with open(targetFile) as f:
-        originalContent = f.read().splitlines()
-    if not formattedContent == originalContent:
-        # modify the file to the right format
-        subprocess.check_output(formatCommand + ['-i'])
-        mx.log('\n'.join(formattedContent))
-        mx.log('\nmodified formatting in {0} to the format above'.format(targetFile))
-        return False
-    return True
-
-def checkNoHttp(args=None):
-    """checks that https is used instead of http in Travis and the mx script"""
-    for f in httpCheckFiles:
-        line_number = 0
-        for line in open(f):
-            if "http" + chr(58) + "//" in line:
-                mx.log_error("http:" + chr(58) + " in line " + str(line_number) + " of " + str(f) + " could be a security issue! please change to https://")
-                exit(-1)
-            line_number += 1
 
 # used by mx_sulong_benchmarks:
 
@@ -666,24 +580,8 @@ class SulongDocsProject(ArchiveProject):
 
 mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
 
-checkCases = {
-    'mdl' : mdlCheck,
-    'ecj' : compileWithEcjStrict,
-    'checkstyle' : mx.checkstyle,
-    'findbugs' : findBugs,
-    'canonicalizeprojects' : mx.canonicalizeprojects,
-    'httpcheck' : checkNoHttp,
-    'checkoverlap' : mx.checkoverlap,
-    'clangformatcheck' : clangformatcheck,
-    'pylint' : mx.pylint,
-    'eclipseformat' : (lambda args: mx.eclipseformat(['--primary'] + args))
-}
 
 mx.update_commands(_suite, {
-    'check' : [runChecks, ''],
-    'test' : [mx_testsuites.runSuite, ''],
     'pulldragonegg' : [pullInstallDragonEgg, ''],
     'lli' : [runLLVM, ''],
-    'travis1' : [travis1, ''],
-    'travis2' : [travis2, ''],
 })

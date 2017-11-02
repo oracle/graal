@@ -140,7 +140,29 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
 
         @Override
         TruffleObject createNativeWrapper(LLVMFunctionDescriptor descriptor) {
-            return descriptor.context.createNativeWrapper(descriptor);
+            CompilerAsserts.neverPartOfCompilation();
+
+            TruffleObject wrapper = null;
+            LLVMAddress pointer = null;
+            if (UnresolvedFunction.isNFIAvailable(descriptor)) {
+                NFIContextExtension nfiContextExtension = descriptor.context.getContextExtension(NFIContextExtension.class);
+                wrapper = nfiContextExtension.createNativeWrapper(descriptor);
+                if (wrapper != null) {
+                    try {
+                        pointer = LLVMAddress.fromLong(ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), wrapper));
+                    } catch (UnsupportedMessageException e) {
+                        throw new AssertionError(e);
+                    }
+                }
+            }
+
+            if (wrapper == null) {
+                pointer = LLVMAddress.fromLong(LLVMFunction.tagSulongFunctionPointer(descriptor.getFunctionId()));
+                wrapper = new LLVMTruffleAddress(pointer, descriptor.getType(), descriptor.context);
+            }
+
+            descriptor.context.registerFunctionPointer(pointer, descriptor);
+            return wrapper;
         }
     }
 
@@ -177,17 +199,26 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
         void resolve(LLVMFunctionDescriptor descriptor) {
             if (descriptor.isNullFunction()) {
                 descriptor.setFunction(new NullFunction());
-            } else if (descriptor.context.getNativeIntrinsicsProvider().isIntrinsified(descriptor.functionName)) {
-                Intrinsic intrinsification = new Intrinsic(descriptor.context.getNativeIntrinsicsProvider(), descriptor.functionName);
+            } else if (canIntrinsify(descriptor)) {
+                NativeIntrinsicProvider nativeIntrinsicProvider = descriptor.getContext().getContextExtension(NativeIntrinsicProvider.class);
+                Intrinsic intrinsification = new Intrinsic(nativeIntrinsicProvider, descriptor.functionName);
                 descriptor.setFunction(new NativeIntrinsicFunction(intrinsification));
-            } else {
-                NativeLookup nativeLookup = descriptor.context.getNativeLookup();
-                if (nativeLookup == null) {
-                    throw new AssertionError("The NativeLookup is disabled. Failed to look up the function " + descriptor.getName() + ".");
-                }
-                TruffleObject nativeFunction = nativeLookup.getNativeFunction(descriptor.getName());
+            } else if (isNFIAvailable(descriptor)) {
+                NFIContextExtension nfiContextExtension = descriptor.getContext().getContextExtension(NFIContextExtension.class);
+                TruffleObject nativeFunction = nfiContextExtension.getNativeFunction(descriptor.getContext(), descriptor.getName());
                 descriptor.setFunction(new NativeFunction(nativeFunction));
+            } else {
+                throw new AssertionError("Failed to look up the function " + descriptor.getName() + ".");
             }
+        }
+
+        private static boolean isNFIAvailable(LLVMFunctionDescriptor descriptor) {
+            return descriptor.getContext().hasContextExtension(NFIContextExtension.class);
+        }
+
+        private static boolean canIntrinsify(LLVMFunctionDescriptor descriptor) {
+            return descriptor.getContext().hasContextExtension(NativeIntrinsicProvider.class) &&
+                            descriptor.getContext().getContextExtension(NativeIntrinsicProvider.class).isIntrinsified(descriptor.functionName);
         }
 
         @Override

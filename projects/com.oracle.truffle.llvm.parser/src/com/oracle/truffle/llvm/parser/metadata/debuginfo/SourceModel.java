@@ -33,9 +33,9 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
+import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
-import com.oracle.truffle.llvm.parser.metadata.MetadataList;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
@@ -76,7 +76,7 @@ public final class SourceModel {
     public static final int LLVM_DBG_VALUE_LOCALREF_ARGINDEX = 2;
 
     public static SourceModel generate(ModelModule irModel, Source bitcodeSource) {
-        final MetadataList moduleMetadata = irModel.getMetadata();
+        final MetadataValueList moduleMetadata = irModel.getMetadata();
         final Parser parser = new Parser(moduleMetadata, bitcodeSource);
         MDSymbolLinkUpgrade.perform(moduleMetadata);
         irModel.accept(parser);
@@ -193,12 +193,12 @@ public final class SourceModel {
         private final DITypeExtractor typeExtractor;
         private final SourceModel sourceModel;
 
-        private final MetadataList moduleMetadata;
+        private final MetadataValueList moduleMetadata;
         private final Source bitcodeSource;
 
         private Function currentFunction = null;
 
-        private Parser(MetadataList moduleMetadata, Source bitcodeSource) {
+        private Parser(MetadataValueList moduleMetadata, Source bitcodeSource) {
             this.moduleMetadata = moduleMetadata;
             this.bitcodeSource = bitcodeSource;
             this.parsedVariables = new HashMap<>();
@@ -325,7 +325,7 @@ public final class SourceModel {
             if (value instanceof MetadataConstant) {
                 // the first argument should reference the allocation site of the variable
                 final long mdIndex = ((MetadataConstant) value).getValue();
-                value = MDSymbolExtractor.getSymbol(currentFunction.definition.getMetadata().getMDRef(mdIndex));
+                value = MDSymbolExtractor.getSymbol(currentFunction.definition.getMetadata().getOrNull((int) mdIndex));
 
             } else {
                 return;
@@ -345,7 +345,7 @@ public final class SourceModel {
             final Symbol mdLocalMDRef = call.getArgument(mdlocalArgumentIndex);
             if (mdLocalMDRef instanceof MetadataConstant) {
                 final long mdIndex = ((MetadataConstant) mdLocalMDRef).getValue();
-                final MDBaseNode mdLocal = currentFunction.definition.getMetadata().getMDRef(mdIndex);
+                final MDBaseNode mdLocal = currentFunction.definition.getMetadata().getOrNull((int) mdIndex);
 
                 final LLVMSourceSymbol variable = getSourceVariable(mdLocal, false);
                 final Variable var = new Variable(value, variable);

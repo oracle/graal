@@ -39,6 +39,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMAtExitNode;
@@ -125,22 +126,26 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexMul;
 import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMLangStartNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMPanicNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMProcessExitNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMPrintStackTraceNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunConstructorFunctionsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunDestructorFunctionsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunGlobalVariableInitalizationNodeGen;
 import com.oracle.truffle.llvm.parser.NodeFactory;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NativeIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
+public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextExtension {
+
+    @Override
+    public Class<?> extensionClass() {
+        return NativeIntrinsicProvider.class;
+    }
 
     @Override
     @TruffleBoundary
@@ -177,14 +182,10 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
     protected final Map<String, LLVMNativeIntrinsicFactory> factories = new HashMap<>();
     protected final Demangler demangler = new Demangler();
-    protected final LLVMLanguage language;
-    protected final LLVMContext context;
-    protected final DataSpecConverter dataLayout;
+    protected final TruffleLanguage<?> language;
 
-    public LLVMNativeIntrinsicsProvider(LLVMContext context, LLVMLanguage language, DataSpecConverter dataLayout) {
+    public NFIIntrinsicsProvider(TruffleLanguage<?> language) {
         this.language = language;
-        this.context = context;
-        this.dataLayout = dataLayout;
     }
 
     public abstract static class LLVMNativeIntrinsicFactory {
@@ -291,7 +292,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
         }
     }
 
-    public LLVMNativeIntrinsicsProvider collectIntrinsics(NodeFactory nodeFactory) {
+    public NFIIntrinsicsProvider collectIntrinsics(NodeFactory nodeFactory) {
         registerTruffleIntrinsics();
         registerSulongIntrinsics();
         registerAbortIntrinsics();
@@ -366,6 +367,12 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
             }
         });
 
+        factories.put("@__sulong_print_stacktrace", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@__sulong_print_stacktrace", LLVMPrintStackTraceNodeGen.create());
+            }
+        });
     }
 
     protected void registerTruffleIntrinsics() {
@@ -999,7 +1006,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap("@core::panicking::panic", LLVMPanicNodeGen.create(dataLayout, LLVMArgNodeGen.create(1)));
+                return wrap("@core::panicking::panic", LLVMPanicNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
     }

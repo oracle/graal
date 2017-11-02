@@ -33,18 +33,18 @@ public final class MDSubroutine implements MDBaseNode {
 
     private final long flags;
 
-    private final MDReference types;
+    private MDBaseNode types;
 
-    private MDSubroutine(long flags, MDReference types) {
+    private MDSubroutine(long flags) {
         this.flags = flags;
-        this.types = types;
+        this.types = MDVoidNode.INSTANCE;
     }
 
     public long getFlags() {
         return flags;
     }
 
-    public MDReference getTypes() {
+    public MDBaseNode getTypes() {
         return types;
     }
 
@@ -54,16 +54,19 @@ public final class MDSubroutine implements MDBaseNode {
     }
 
     @Override
-    public String toString() {
-        return String.format("Subroutine (flags=%d, types=%s)", flags, types);
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        if (types == oldValue) {
+            types = newValue;
+        }
     }
 
     private static final int ARGINDEX_FLAGS = 1;
     private static final int ARGINDEX_TYPES = 2;
 
-    public static MDSubroutine create38(long[] args, MetadataList md) {
+    public static MDSubroutine create38(long[] args, MetadataValueList md) {
         final long flags = args[ARGINDEX_FLAGS];
-        final MDReference subroutineTypes = md.getMDRefOrNullRef(args[ARGINDEX_TYPES]);
-        return new MDSubroutine(flags, subroutineTypes);
+        final MDSubroutine subroutine = new MDSubroutine(flags);
+        subroutine.types = md.getNullable(args[ARGINDEX_TYPES], subroutine);
+        return subroutine;
     }
 }

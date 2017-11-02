@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,38 +27,22 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata.subtypes;
+#include <stdio.h>
+#include <stdint.h>
+#include "syscall.h"
 
-import com.oracle.truffle.llvm.parser.metadata.MDReference;
+#define ABORT_STATUS 134
 
-public abstract class MDVariable extends MDName {
+void __sulong_print_stacktrace();
+void __clear_exit_handlers();
 
-    private final MDReference scope;
-    private final MDReference type;
-    private final MDReference file;
-    private final long line;
-
-    protected MDVariable(MDReference scope, MDReference name, MDReference type, MDReference file, long line) {
-        super(name);
-        this.scope = scope;
-        this.type = type;
-        this.file = file;
-        this.line = line;
-    }
-
-    public MDReference getScope() {
-        return scope;
-    }
-
-    public MDReference getType() {
-        return type;
-    }
-
-    public MDReference getFile() {
-        return file;
-    }
-
-    public long getLine() {
-        return line;
-    }
+__attribute__((weak)) void abort() {
+  int64_t result;
+  fprintf(stderr, "abort()\n\n");
+  __sulong_print_stacktrace();
+  __clear_exit_handlers();
+  __SYSCALL_1(result, SYS_exit, ABORT_STATUS);
+  for (;;) {
+    __SYSCALL_1(result, SYS_exit, ABORT_STATUS);
+  }
 }

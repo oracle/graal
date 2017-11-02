@@ -39,7 +39,6 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -58,7 +57,6 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LazyToTruffleConve
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
@@ -108,10 +106,6 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             context.getSourceContext().registerSourceScope(rootNode.getName(), sourceScope);
         }
 
-        String astPrintTarget = context.getEnv().getOptions().get(SulongEngineOption.PRINT_FUNCTION_ASTS);
-        if (SulongEngineOption.isTrue(astPrintTarget)) {
-            NodeUtil.printTree(SulongEngineOption.getStream(astPrintTarget), rootNode);
-        }
         return Truffle.getRuntime().createCallTarget(rootNode);
     }
 

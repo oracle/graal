@@ -67,17 +67,25 @@ script:
 matrix:
   fast_finish: true
   include:
-  - env: TEST_COMMAND='mx check --verbose' COMPILE_COMMAND=''
+  - env: TEST_COMMAND='mx gate --tags style' COMPILE_COMMAND=''
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx unittest SulongSuite LLVMInteropTest' COMPILE_COMMAND='mx build'
+  - env: TEST_COMMAND='mx gate --tags fullbuild' COMPILE_COMMAND=''
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx test llvm args assembly type vaargs pipe callback shootout nwcc parserTorture' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
+  - env: TEST_COMMAND='mx gate --tags sulongBasic' COMPILE_COMMAND='mx build'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx test gcc_c' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
+  - env: TEST_COMMAND='mx gate --tags misc' COMPILE_COMMAND='mx build'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx test gcc_cpp' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
+  - env: TEST_COMMAND='mx gate --tags nwcc' COMPILE_COMMAND='mx build'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx test gcc_fortran' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
+  - env: TEST_COMMAND='mx gate --tags llvm' COMPILE_COMMAND='mx build'
+    jdk: oraclejdk8
+  - env: TEST_COMMAND='mx gate --tags parser' COMPILE_COMMAND='mx build'
+    jdk: oraclejdk8
+  - env: TEST_COMMAND='mx gate --tags gcc_c' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
+    jdk: oraclejdk8
+  - env: TEST_COMMAND='mx gate --tags gcc_cpp' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
+    jdk: oraclejdk8
+  - env: TEST_COMMAND='mx gate --tags gcc_fortran' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
     jdk: oraclejdk8
 after_failure:
   - find . -iname "*.log" -print0 | xargs -0 cat

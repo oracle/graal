@@ -27,17 +27,26 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata.debuginfo;
+package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.metadata.MDReference;
-import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
+public final class MDVoidNode implements MDBaseNode {
 
-interface MDFollowRefVisitor extends MetadataVisitor {
+    public static MDVoidNode INSTANCE = new MDVoidNode();
+
+    private MDVoidNode() {
+    }
 
     @Override
-    default void visit(MDReference ref) {
-        if (ref != MDReference.VOID) {
-            ref.get().accept(this);
-        }
+    public void accept(MetadataVisitor visitor) {
+        visitor.visit(this);
+    }
+
+    @Override
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+    }
+
+    @Override
+    public String toString() {
+        return "VOID";
     }
 }

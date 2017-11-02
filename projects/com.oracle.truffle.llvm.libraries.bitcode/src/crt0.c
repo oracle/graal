@@ -27,33 +27,62 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata;
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#ifdef __linux__
+#include <elf.h>
+#else
+#define AT_NULL 0
+typedef struct {
+  long a_type;
+  union {
+    long a_val;
+  } a_un;
+} Elf64_auxv_t;
+#endif
 
-import com.oracle.truffle.llvm.parser.records.DwTagRecord;
+int main(int argc, char **argv, char **envp);
 
-public final class MDEmptyNode implements MDBaseNode {
+static Elf64_auxv_t *__auxv;
 
-    private final DwTagRecord tag;
+__attribute__((weak)) int _start(long *p, int type) {
+  int argc = p[0];
+  char **argv = (void *)(p + 1);
+  char **envp = argv + argc + 1;
 
-    private MDEmptyNode(DwTagRecord tag) {
-        this.tag = tag;
-    }
+  int envc = 0;
+  char **ptr;
+  for (ptr = envp; *ptr; ptr++) {
+    envc++;
+  }
 
-    @Override
-    public void accept(MetadataVisitor visitor) {
-        visitor.visit(this);
-    }
+  __auxv = (Elf64_auxv_t *)(envp + envc + 1);
 
-    public DwTagRecord getTag() {
-        return tag;
-    }
-
-    @Override
-    public String toString() {
-        return String.format("EmptyNode (tag=%s)", tag);
-    }
-
-    public static MDEmptyNode create(DwTagRecord tag) {
-        return new MDEmptyNode(tag);
-    }
+  switch (type) {
+  /* C/C++/... */
+  default:
+  case 0:
+    exit(main(argc, argv, envp));
+    break;
+  /* Rust */
+  case 1: {
+    long (*i64main)(long argc, char **argv) = (long (*)(long, char **))main;
+    exit(i64main(argc, argv));
+    break;
+  }
+  }
+  abort();
 }
+
+#ifdef __linux__
+__attribute__((weak)) unsigned long getauxval(unsigned long type) {
+  Elf64_auxv_t *auxv;
+  for (auxv = __auxv; auxv->a_type != AT_NULL; auxv++) {
+    if (auxv->a_type == type) {
+      return auxv->a_un.a_val;
+    }
+  }
+  return 0;
+}
+#endif

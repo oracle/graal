@@ -38,6 +38,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Base64;
+import java.util.List;
 import java.util.function.Consumer;
 
 import com.oracle.truffle.api.CallTarget;
@@ -51,11 +52,13 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.parser.BitcodeParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -102,7 +105,6 @@ public final class Runner {
 
     public CallTarget parse(LLVMLanguage language, LLVMContext context, Source code) throws IOException {
         try {
-            parseDynamicBitcodeLibraries(language, context);
 
             CallTarget mainFunction = null;
             ByteBuffer bytes;
@@ -120,7 +122,11 @@ public final class Runner {
 
             assert bytes != null;
 
-            LLVMParserResult parserResult = parseBitcodeFile(code, bytes, language, context);
+            BitcodeParserResult bitcodeParserResult = BitcodeParserResult.getFromSource(code, bytes);
+            context.addLibraryPaths(bitcodeParserResult.getLibraryPaths());
+            context.addExternalLibraries(bitcodeParserResult.getLibraries());
+            parseDynamicBitcodeLibraries(language, context);
+            LLVMParserResult parserResult = parseBitcodeFile(code, bitcodeParserResult, language, context);
             mainFunction = parserResult.getMainCallTarget();
             if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
                 mainFunction = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
@@ -143,7 +149,8 @@ public final class Runner {
     }
 
     private static void visitBitcodeLibraries(LLVMContext context, Consumer<Source> sharedLibraryConsumer) throws IOException {
-        for (Path p : context.getBitcodeLibraries()) {
+        List<Path> externalLibraries = context.getExternalLibraries(p -> p.toString().endsWith(".bc"));
+        for (Path p : externalLibraries) {
             addLibrary(p, sharedLibraryConsumer);
         }
     }
@@ -190,6 +197,13 @@ public final class Runner {
     }
 
     public static void disposeContext(LLVMContext context) {
+        LLVMFunctionDescriptor atexitDescriptor = context.getGlobalScope().getFunctionDescriptor(context, "@__sulong_funcs_on_exit");
+        if (atexitDescriptor != null) {
+            RootCallTarget atexit = atexitDescriptor.getLLVMIRFunction();
+            try (StackPointer stackPointer = context.getThreadingStack().getStack().takeStackPointer()) {
+                atexit.call(stackPointer.get());
+            }
+        }
         assert context.getThreadingStack().checkThread();
         for (RootCallTarget destructorFunction : context.getDestructorFunctions()) {
             try (StackPointer stackPointer = context.getThreadingStack().getStack().takeStackPointer()) {
@@ -204,7 +218,7 @@ public final class Runner {
         context.getThreadingStack().freeStacks();
     }
 
-    private LLVMParserResult parseBitcodeFile(Source source, ByteBuffer bytes, LLVMLanguage language, LLVMContext context) {
-        return LLVMParserRuntime.parse(source, bytes, language, context, nodeFactory);
+    private LLVMParserResult parseBitcodeFile(Source source, BitcodeParserResult bitcodeParserResult, LLVMLanguage language, LLVMContext context) {
+        return LLVMParserRuntime.parse(source, bitcodeParserResult, language, context, nodeFactory);
     }
 }

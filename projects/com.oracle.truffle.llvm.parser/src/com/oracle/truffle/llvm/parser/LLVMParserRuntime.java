@@ -29,19 +29,14 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
@@ -64,7 +59,6 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -84,11 +78,7 @@ public final class LLVMParserRuntime {
     private static final Comparator<Pair<Integer, ?>> ASCENDING_PRIORITY = (p1, p2) -> p1.getFirst() >= p2.getFirst() ? 1 : -1;
     private static final Comparator<Pair<Integer, ?>> DESCENDING_PRIORITY = (p1, p2) -> p1.getFirst() < p2.getFirst() ? 1 : -1;
 
-    public static LLVMParserResult parse(Source source, ByteBuffer bytes, LLVMLanguage language, LLVMContext context, NodeFactory nodeFactory) {
-        BitcodeParserResult parserResult = BitcodeParserResult.getFromSource(source, bytes);
-        context.addLibraryPaths(parserResult.getLibraryPaths());
-        context.addNativeLibraries(parserResult.getLibraries());
-
+    public static LLVMParserResult parse(Source source, BitcodeParserResult parserResult, LLVMLanguage language, LLVMContext context, NodeFactory nodeFactory) {
         ModelModule model = parserResult.getModel();
         StackAllocation stack = parserResult.getStackAllocation();
         LLVMPhiManager phiManager = parserResult.getPhis();
@@ -101,7 +91,6 @@ public final class LLVMParserRuntime {
 
         DataLayoutConverter.DataSpecConverterImpl targetDataLayout = DataLayoutConverter.getConverter(layout.getDataLayout());
         context.setDataLayoutConverter(targetDataLayout);
-        context.setNativeIntrinsicsFactory(nodeFactory.getNativeIntrinsicsFactory(language, context, targetDataLayout));
         LLVMParserRuntime runtime = new LLVMParserRuntime(source, language, context, stack, nodeFactory, module.getAliases());
 
         runtime.initializeFunctions(phiManager, labels, module.getFunctions());
@@ -130,10 +119,11 @@ public final class LLVMParserRuntime {
         RootCallTarget mainFunctionCallTarget;
         if (runtime.getScope().functionExists("@main")) {
             LLVMFunctionDescriptor mainDescriptor = runtime.getScope().getFunctionDescriptor(context, "@main");
-            RootCallTarget mainCallTarget = mainDescriptor.getLLVMIRFunction();
-            RootNode globalFunction = nodeFactory.createGlobalRootNode(runtime, mainCallTarget, context.getMainArguments(), source, mainDescriptor.getType().getArgumentTypes());
+            LLVMFunctionDescriptor startDescriptor = runtime.getScope().getFunctionDescriptor(context, "@_start");
+            RootCallTarget startCallTarget = startDescriptor.getLLVMIRFunction();
+            RootNode globalFunction = nodeFactory.createGlobalRootNode(runtime, startCallTarget, source, mainDescriptor.getType().getArgumentTypes());
             RootCallTarget globalFunctionRoot = Truffle.getRuntime().createCallTarget(globalFunction);
-            RootNode globalRootNode = nodeFactory.createGlobalRootNodeWrapping(runtime, globalFunctionRoot, mainDescriptor.getType().getReturnType());
+            RootNode globalRootNode = nodeFactory.createGlobalRootNodeWrapping(runtime, globalFunctionRoot, startDescriptor.getType().getReturnType());
             mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(globalRootNode);
         } else {
             mainFunctionCallTarget = null;
@@ -169,9 +159,6 @@ public final class LLVMParserRuntime {
                             index -> LLVMFunctionDescriptor.createDescriptor(context, functionName, function.getType(), index));
             LazyToTruffleConverterImpl lazyConverter = new LazyToTruffleConverterImpl(this, context, nodeFactory, function, source, stack.getFrame(functionName), phiManager.getPhiMap(functionName),
                             labels.labels(functionName));
-            if (!context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING)) {
-                lazyConverter.convert();
-            }
             functionDescriptor.declareInSulong(lazyConverter, Linkage.isWeak(function.getLinkage()));
         }
     }
@@ -313,19 +300,6 @@ public final class LLVMParserRuntime {
 
     public void addDestructor(LLVMExpressionNode destructorNode) {
         deallocations.add(destructorNode);
-    }
-
-    public long getNativeHandle(String name) {
-        CompilerAsserts.neverPartOfCompilation();
-        try {
-            return ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), context.getNativeLookup().getNativeDataObject(name));
-        } catch (UnsupportedMessageException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    public LLVMNativeFunctions getNativeFunctions() {
-        return context.getNativeFunctions();
     }
 
     public NodeFactory getNodeFactory() {

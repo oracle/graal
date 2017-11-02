@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -42,6 +43,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -50,15 +52,16 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
-public final class NativeLookup {
-
+public final class NFIContextExtension implements ContextExtension {
     private final TruffleObject defaultLibrary;
     private final Map<Path, TruffleObject> libraryHandles = new HashMap<>();
     private final TruffleLanguage.Env env;
+    private final LLVMNativeFunctions nativeFunctions;
 
-    NativeLookup(Env env) {
+    public NFIContextExtension(Env env) {
         this.env = env;
         this.defaultLibrary = loadDefaultLibrary();
+        this.nativeFunctions = new LLVMNativeFunctions(this);
     }
 
     public static class UnsupportedNativeTypeException extends Exception {
@@ -77,14 +80,47 @@ public final class NativeLookup {
         }
     }
 
-    public void addLibraries(List<Path> libraries) {
+    public long getNativeHandle(LLVMContext context, String name) {
         CompilerAsserts.neverPartOfCompilation();
+        try {
+            return ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), getNativeDataObject(context, name));
+        } catch (UnsupportedMessageException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public LLVMNativeFunctions getNativeSulongFunctions() {
+        return nativeFunctions;
+    }
+
+    @TruffleBoundary
+    public TruffleObject createNativeWrapper(LLVMFunctionDescriptor descriptor) {
+        TruffleObject wrapper = null;
+
+        try {
+            String signature = getNativeSignature(descriptor.getType(), 0);
+            TruffleObject createNativeWrapper = getNativeFunction(descriptor.getContext(), "@createNativeWrapper", String.format("(env, %s):object", signature));
+            try {
+                wrapper = (TruffleObject) ForeignAccess.sendExecute(Message.createExecute(1).createNode(), createNativeWrapper, descriptor);
+            } catch (InteropException ex) {
+                throw new AssertionError(ex);
+            }
+        } catch (UnsupportedNativeTypeException ex) {
+            // ignore, fall back to tagged id
+        }
+        return wrapper;
+    }
+
+    private void addLibraries(LLVMContext context) {
+        CompilerAsserts.neverPartOfCompilation();
+        context.addExternalLibrary("libsulong." + getNativeLibrarySuffix());
+        List<Path> libraries = context.getExternalLibraries(f -> f.toString().contains("." + getNativeLibrarySuffix()));
         for (Path l : libraries) {
             addLibrary(l);
         }
     }
 
-    public void addLibrary(Path l) throws UnsatisfiedLinkError {
+    private void addLibrary(Path l) throws UnsatisfiedLinkError {
         CompilerAsserts.neverPartOfCompilation();
         if (!libraryHandles.containsKey(l) && !handeledBySulong(l)) {
             try {
@@ -93,6 +129,14 @@ public final class NativeLookup {
                 System.err.println(l.toString() + " not found!\n" + e.getMessage());
                 throw e;
             }
+        }
+    }
+
+    private static String getNativeLibrarySuffix() {
+        if (System.getProperty("os.name").toLowerCase().contains("mac")) {
+            return "dylib";
+        } else {
+            return "so";
         }
     }
 
@@ -135,12 +179,12 @@ public final class NativeLookup {
         }
     }
 
-    private static String getNativeType(Type type) throws UnsupportedNativeTypeException {
+    private String getNativeType(Type type) throws UnsupportedNativeTypeException {
         if (type instanceof FunctionType) {
-            return prepareSignature((FunctionType) type, 0);
+            return getNativeSignature((FunctionType) type, 0);
         } else if (type instanceof PointerType && ((PointerType) type).getPointeeType() instanceof FunctionType) {
             FunctionType functionType = (FunctionType) ((PointerType) type).getPointeeType();
-            return prepareSignature(functionType, 0);
+            return getNativeSignature(functionType, 0);
         } else if (type instanceof PointerType) {
             return "POINTER";
         } else if (type instanceof PrimitiveType) {
@@ -170,7 +214,7 @@ public final class NativeLookup {
         throw new UnsupportedNativeTypeException(type);
     }
 
-    private static String[] getNativeTypes(Type[] argTypes, int skipArguments) throws UnsupportedNativeTypeException {
+    private String[] getNativeTypes(Type[] argTypes, int skipArguments) throws UnsupportedNativeTypeException {
         String[] types = new String[argTypes.length - skipArguments];
         for (int i = skipArguments; i < argTypes.length; i++) {
             types[i - skipArguments] = getNativeType(argTypes[i]);
@@ -184,8 +228,10 @@ public final class NativeLookup {
      */
     private static final String NO_MANGLE_PREFIX = "\"\\01_";
 
-    public TruffleObject getNativeFunction(String nameIn) {
+    public TruffleObject getNativeFunction(LLVMContext context, String nameIn) {
         CompilerAsserts.neverPartOfCompilation();
+        addLibraries(context);
+
         String name = nameIn;
         if (name.contains(NO_MANGLE_PREFIX)) {
             name = name.replace(NO_MANGLE_PREFIX, "");
@@ -198,11 +244,17 @@ public final class NativeLookup {
             }
         }
         TruffleObject symbol = getNativeFunction(defaultLibrary, name);
-        return symbol;
+        if (symbol == null) {
+            throw new LinkageError(String.format("External function %s cannot be found.", name));
+        } else {
+            return symbol;
+        }
     }
 
-    public TruffleObject getNativeDataObject(String name) {
+    public TruffleObject getNativeDataObject(LLVMContext context, String name) {
         CompilerAsserts.neverPartOfCompilation();
+        addLibraries(context);
+
         String realName = name.substring(1);
         for (TruffleObject libraryHandle : libraryHandles.values()) {
             TruffleObject symbol = getNativeDataObject(libraryHandle, realName);
@@ -211,7 +263,11 @@ public final class NativeLookup {
             }
         }
         TruffleObject symbol = getNativeDataObject(defaultLibrary, realName);
-        return symbol;
+        if (symbol == null) {
+            throw new LinkageError(String.format("External variable %s cannot be found.", name));
+        } else {
+            return symbol;
+        }
     }
 
     private static TruffleObject getNativeDataObject(TruffleObject libraryHandle, String name) {
@@ -241,9 +297,9 @@ public final class NativeLookup {
         }
     }
 
-    public TruffleObject getNativeFunction(String name, String signature) {
+    public TruffleObject getNativeFunction(LLVMContext context, String name, String signature) {
         CompilerAsserts.neverPartOfCompilation();
-        TruffleObject nativeSymbol = getNativeFunction(name);
+        TruffleObject nativeSymbol = getNativeFunction(context, name);
         if (nativeSymbol != null) {
             return bindNativeFunction(nativeSymbol, signature);
         } else {
@@ -251,7 +307,7 @@ public final class NativeLookup {
         }
     }
 
-    static String prepareSignature(FunctionType type, int skipArguments) throws UnsupportedNativeTypeException {
+    public String getNativeSignature(FunctionType type, int skipArguments) throws UnsupportedNativeTypeException {
         CompilerAsserts.neverPartOfCompilation();
         // TODO varargs
         CompilerAsserts.neverPartOfCompilation();

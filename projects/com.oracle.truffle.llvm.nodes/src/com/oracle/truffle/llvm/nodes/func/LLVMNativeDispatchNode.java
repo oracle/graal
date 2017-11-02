@@ -48,7 +48,8 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
-import com.oracle.truffle.llvm.runtime.NativeLookup.UnsupportedNativeTypeException;
+import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.NFIContextExtension.UnsupportedNativeTypeException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -58,17 +59,11 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 public abstract class LLVMNativeDispatchNode extends LLVMNode {
 
     private final FunctionType type;
-    private final String signature;
     @Child private Node identityExecuteNode = Message.createExecute(1).createNode();
     @Child private Node nativeCallNode;
 
     protected LLVMNativeDispatchNode(FunctionType type) {
         this.type = type;
-        try {
-            this.signature = LLVMContext.getNativeSignature(type, LLVMCallNode.USER_ARGUMENT_OFFSET);
-        } catch (UnsupportedNativeTypeException ex) {
-            throw new AssertionError(ex);
-        }
         this.nativeCallNode = Message.createExecute(type.getArgumentTypes().length).createNode();
     }
 
@@ -76,7 +71,15 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
 
     @TruffleBoundary
     protected TruffleObject identityFunction() {
-        return getContext().getNativeLookup().getNativeFunction("@identity", String.format("(POINTER):%s", signature));
+        LLVMContext context = getContext();
+        NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
+        String signature;
+        try {
+            signature = nfiContextExtension.getNativeSignature(type, LLVMCallNode.USER_ARGUMENT_OFFSET);
+        } catch (UnsupportedNativeTypeException e) {
+            throw new IllegalStateException(e);
+        }
+        return nfiContextExtension.getNativeFunction(context, "@identity", String.format("(POINTER):%s", signature));
     }
 
     protected TruffleObject dispatchIdentity(TruffleObject identity, long pointer) {

@@ -29,45 +29,51 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.metadata.subtypes.MDName;
-
 public final class MDModule extends MDName implements MDBaseNode {
 
-    private final MDReference scope;
+    private MDBaseNode scope;
+    private MDBaseNode configurationMacros;
+    private MDBaseNode includePath;
+    private MDBaseNode sysRoot;
 
-    private final MDReference configurationMacros;
-
-    private final MDReference includePath;
-
-    private final MDReference sysRoot;
-
-    private MDModule(MDReference scope, MDReference name, MDReference configurationMacros, MDReference includePath, MDReference sysRoot) {
-        super(name);
-        this.scope = scope;
-        this.configurationMacros = configurationMacros;
-        this.includePath = includePath;
-        this.sysRoot = sysRoot;
+    private MDModule() {
+        this.scope = MDVoidNode.INSTANCE;
+        this.configurationMacros = MDVoidNode.INSTANCE;
+        this.includePath = MDVoidNode.INSTANCE;
+        this.sysRoot = MDVoidNode.INSTANCE;
     }
 
-    public MDReference getScope() {
+    public MDBaseNode getScope() {
         return scope;
     }
 
-    public MDReference getConfigurationMacros() {
+    public MDBaseNode getConfigurationMacros() {
         return configurationMacros;
     }
 
-    public MDReference getIncludePath() {
+    public MDBaseNode getIncludePath() {
         return includePath;
     }
 
-    public MDReference getSysRoot() {
+    public MDBaseNode getSysRoot() {
         return sysRoot;
     }
 
     @Override
-    public String toString() {
-        return String.format("Module (scope=%s, name=%s, configurationMacros=%s, includePath=%s, sysRoot=%s)", scope, getName(), configurationMacros, includePath, sysRoot);
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        super.replace(oldValue, newValue);
+        if (scope == oldValue) {
+            scope = newValue;
+        }
+        if (configurationMacros == oldValue) {
+            configurationMacros = newValue;
+        }
+        if (includePath == oldValue) {
+            includePath = newValue;
+        }
+        if (sysRoot == oldValue) {
+            sysRoot = newValue;
+        }
     }
 
     @Override
@@ -81,12 +87,15 @@ public final class MDModule extends MDName implements MDBaseNode {
     private static final int ARGINDEX_INCLUDEPATH = 4;
     private static final int ARGINDEX_SYSROOT = 5;
 
-    public static MDModule create38(long[] args, MetadataList md) {
-        final MDReference scope = md.getMDRefOrNullRef(args[ARGINDEX_SCOPE]);
-        final MDReference name = md.getMDRefOrNullRef(args[ARGINDEX_NAME]);
-        final MDReference configurationMacros = md.getMDRefOrNullRef(args[ARGINDEX_CONFIGURATIONMACROS]);
-        final MDReference includePath = md.getMDRefOrNullRef(args[ARGINDEX_INCLUDEPATH]);
-        final MDReference sysRoot = md.getMDRefOrNullRef(args[ARGINDEX_SYSROOT]);
-        return new MDModule(scope, name, configurationMacros, includePath, sysRoot);
+    public static MDModule create38(long[] args, MetadataValueList md) {
+        final MDModule module = new MDModule();
+
+        module.scope = md.getNullable(args[ARGINDEX_SCOPE], module);
+        module.configurationMacros = md.getNullable(args[ARGINDEX_CONFIGURATIONMACROS], module);
+        module.includePath = md.getNullable(args[ARGINDEX_INCLUDEPATH], module);
+        module.sysRoot = md.getNullable(args[ARGINDEX_SYSROOT], module);
+        module.setName(md.getNullable(args[ARGINDEX_NAME], module));
+
+        return module;
     }
 }

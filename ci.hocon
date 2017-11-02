@@ -95,16 +95,6 @@ requireJDT: {
     }
 }
 
-sulongSuite : {
-    run: [
-        [mx, build],
-        [mx, unittest, SulongSuite, --enable-timing],
-        [mx, unittest, LLVMInteropTest, --enable-timing],
-        [mx, test, nwcc],
-        [mx, test, llvm],
-    ]
-}
-
 deploy-command: [
     ["mx", "build"]
     ["mx", "deploy-binary", "--skip-existing", "lafo-snapshots"]
@@ -136,19 +126,18 @@ ruby-downstream-test: {
 }
 
 builds = [
-  ${gateStyle} { name: gate-style, run: [[mx, check, --verbose, checkstyle, mdl, canonicalizeprojects, httpcheck, checkoverlap, clangformatcheck, pylint, eclipseformat ]] }
-  ${gateTest38-linux} ${requireJDT} { name: gate-full-build, run: [[mx, check, --verbose, ecj, findbugs]] }
+  ${gateStyle} { name: gate-style, run: [[mx, gate, --tags, "style"]] }
+  ${gateStyle} ${requireJDT} { name: gate-fullbuild, run: [[mx, gate, --tags, "fullbuild"]] }
+  ${gateTest38-linux} { name: gate-misc0, run: [[mx, gate, --tags, "build,assembly,args,callback,vaargs"]] }
+  ${gateTest38-linux} ${requireGCC} { name: gate-misc1, run: [[mx, gate, --tags, "build,benchmarks,type,pipe"]] }
+  ${gateTest38-linux} ${requireGCC} { name: gate-parser, run: [[mx, gate, --tags, "build,parser"]] }
+  ${gateTest38-linux} { name: gate-gcc_c, run: [[mx, gate, --tags, "build,gcc_c"]] }
+  ${gateTest38-linux} { name: gate-gcc_cpp, run: [[mx, gate, --tags, "build,gcc_cpp"]] }
+  ${gateTest38-linux} ${requireGCC} { name: gate-gcc_fortran, run: [[mx, gate, --tags, "build,gcc_fortran"]] }
+  ${gateTest38-linux} ${requireGCC} { name: gate-basic_v38, run: [[mx, gate, --tags, "build,nwcc,llvm,sulong,interop"]] }
+  ${gateTest40-linux} ${requireGCC} { name: gate-basic_v40, run: [[mx, gate, --tags, "build,nwcc,llvm,sulong,interop"]] }
+  ${gateTest40-darwin} { name: gate-basic_mac, run: [[mx, gate, --tags, "build,nwcc,llvm,sulong,interop"]] }
 
-  ${gateTest38-linux} { name: gate-suite-gcc_c, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, gcc_c]] }
-  ${gateTest38-linux} { name: gate-suite-gcc_cpp, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, gcc_cpp]] }
-  ${gateTest38-linux} ${requireGCC} { name: gate-suite-gcc_fortran, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, gcc_fortran]] }
-
-  ${gateTest38-linux} ${requireGCC} { name: gate-travis1, run: [[mx, travis1]] }
-  ${gateTest38-linux} ${requireGCC} { name: gate-travis2, run: [[mx, travis2]] }
-  ${gateTest38-linux} ${requireGCC} ${sulongSuite} { name: gate-sulong-v38-linux }
-  ${gateTest40-linux} ${requireGCC} ${sulongSuite} { name: gate-sulong-v40-linux }
-  ${gateTest40-darwin} ${sulongSuite} { name: gate-sulong-v40-darwin }
-  ${gateTest38-linux} { name: gate-var-v38, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, assembly], [mx, test, args], [mx, test, callback], [mx, test, vaargs]] }
   ${gateTest38-linux} ${ruby-downstream-test} { name: gate-ruby-downstream }
 
   ${deploy-binaries-linux} { name: postmerge-deploy-binaries-linux-amd64 }

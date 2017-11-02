@@ -33,7 +33,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -123,7 +123,7 @@ public abstract class LLVMSelectNode extends LLVMExpressionNode {
     public abstract static class LLVMFunctionSelectNode extends LLVMSelectNode {
 
         @Specialization
-        public LLVMFunctionDescriptor execute(boolean cond, LLVMFunctionDescriptor trueBranch, LLVMFunctionDescriptor elseBranch) {
+        public LLVMFunction execute(boolean cond, LLVMFunction trueBranch, LLVMFunction elseBranch) {
             return conditionProfile.profile(cond) ? trueBranch : elseBranch;
         }
 

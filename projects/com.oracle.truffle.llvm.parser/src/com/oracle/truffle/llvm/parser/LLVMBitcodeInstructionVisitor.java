@@ -784,7 +784,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             cases[i] = symbols.resolve(zwitch.getCaseValue(i));
         }
 
-        LLVMControlFlowNode node = nodeFactory.createSwitch(runtime, cond, successors, cases, (PrimitiveType) llvmType, getPhiWriteNodes(zwitch), sourceFunction.getSourceSection(zwitch));
+        LLVMControlFlowNode node = nodeFactory.createSwitch(runtime, cond, successors, cases, llvmType, getPhiWriteNodes(zwitch), sourceFunction.getSourceSection(zwitch));
         setControlFlowNode(node);
     }
 

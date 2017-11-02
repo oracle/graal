@@ -52,9 +52,10 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.LLVMNativeFunctions.NullPointerNode;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.NullPointerNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -229,7 +230,9 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
         protected TruffleObject nullPointer() {
             if (nullPointer == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                nullPointer = insert(getContext().getNativeFunctions().createNullPointerNode());
+                LLVMContext context = getContext();
+                NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
+                nullPointer = insert(nfiContextExtension.getNativeSulongFunctions().createNullPointerNode(context));
             }
             return nullPointer.getNullPointer();
         }

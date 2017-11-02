@@ -29,54 +29,48 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import java.util.Iterator;
 
-import java.util.function.Supplier;
+abstract class MDAggregateNode implements MDBaseNode, Iterable<MDBaseNode> {
 
-public class MDSymbolReference extends MDTypedValue implements MDBaseNode {
+    private final MDBaseNode[] elements;
 
-    public static final MDSymbolReference VOID = new MDSymbolReference(VoidType.INSTANCE, null) {
-
-        @Override
-        public boolean isPresent() {
-            return false;
-        }
-
-        @Override
-        public Symbol get() {
-            throw new IndexOutOfBoundsException("VOID cannot be dereferenced!");
-        }
-
-        @Override
-        public String toString() {
-            return "VOID";
-        }
-    };
-
-    private final Supplier<Symbol> valueSupplier;
-
-    public MDSymbolReference(Type baseType, Supplier<Symbol> valueSupplier) {
-        super(baseType);
-        this.valueSupplier = valueSupplier;
+    MDAggregateNode(int size) {
+        elements = new MDBaseNode[size];
     }
 
-    public Symbol get() {
-        return valueSupplier.get();
+    void set(int i, MDBaseNode element) {
+        elements[i] = element;
     }
 
-    public boolean isPresent() {
-        return valueSupplier.get() != null;
+    MDBaseNode get(int i) {
+        return elements[i];
     }
 
     @Override
-    public void accept(MetadataVisitor visitor) {
-        visitor.visit(this);
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        for (int i = 0; i < elements.length; i++) {
+            if (elements[i] == oldValue) {
+                elements[i] = newValue;
+            }
+        }
     }
 
     @Override
-    public String toString() {
-        return String.format("SymbolRef (%s %s)", getType(), isPresent() ? get() : "<forward ref>");
+    public Iterator<MDBaseNode> iterator() {
+        return new Iterator<MDBaseNode>() {
+
+            private int i = 0;
+
+            @Override
+            public boolean hasNext() {
+                return i < elements.length;
+            }
+
+            @Override
+            public MDBaseNode next() {
+                return elements[i++];
+            }
+        };
     }
 }

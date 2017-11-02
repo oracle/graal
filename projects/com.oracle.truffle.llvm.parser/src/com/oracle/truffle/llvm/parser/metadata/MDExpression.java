@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import java.util.Arrays;
-
 public final class MDExpression implements MDBaseNode {
 
     private final long[] elements;
@@ -48,8 +46,7 @@ public final class MDExpression implements MDBaseNode {
     }
 
     @Override
-    public String toString() {
-        return String.format("Expression (elements=%s)", Arrays.toString(elements));
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
     }
 
     @Override

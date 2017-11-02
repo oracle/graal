@@ -27,19 +27,28 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata.subtypes;
+package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.metadata.MDReference;
+public abstract class MDName implements MDBaseNode {
 
-public abstract class MDName {
+    private MDBaseNode name;
 
-    private final MDReference name;
+    MDName() {
+        this.name = MDVoidNode.INSTANCE;
+    }
 
-    protected MDName(MDReference name) {
+    public MDBaseNode getName() {
+        return name;
+    }
+
+    void setName(MDBaseNode name) {
         this.name = name;
     }
 
-    public MDReference getName() {
-        return name;
+    @Override
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        if (name == oldValue) {
+            name = newValue;
+        }
     }
 }

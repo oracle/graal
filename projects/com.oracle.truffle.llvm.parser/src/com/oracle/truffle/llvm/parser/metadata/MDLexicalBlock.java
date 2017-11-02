@@ -29,21 +29,22 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import com.oracle.truffle.llvm.parser.listeners.Metadata;
+
 public final class MDLexicalBlock implements MDBaseNode {
 
-    private final MDReference scope;
-
-    private final MDReference file;
-
     private final long line;
-
     private final long column;
 
-    private MDLexicalBlock(MDReference scope, MDReference file, long line, long column) {
-        this.scope = scope;
-        this.file = file;
+    private MDBaseNode scope;
+    private MDBaseNode file;
+
+    private MDLexicalBlock(long line, long column) {
         this.line = line;
         this.column = column;
+
+        this.scope = MDVoidNode.INSTANCE;
+        this.file = MDVoidNode.INSTANCE;
     }
 
     @Override
@@ -51,7 +52,7 @@ public final class MDLexicalBlock implements MDBaseNode {
         visitor.visit(this);
     }
 
-    public MDReference getFile() {
+    public MDBaseNode getFile() {
         return file;
     }
 
@@ -63,13 +64,18 @@ public final class MDLexicalBlock implements MDBaseNode {
         return column;
     }
 
-    public MDReference getScope() {
+    public MDBaseNode getScope() {
         return scope;
     }
 
     @Override
-    public String toString() {
-        return String.format("LexicalBlock (scope=%s, file=%s, line=%d, column=%d)", scope, file, line, column);
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        if (scope == oldValue) {
+            scope = newValue;
+        }
+        if (file == oldValue) {
+            file = newValue;
+        }
     }
 
     private static final int ARGINDEX_38_SCOPE = 1;
@@ -77,13 +83,15 @@ public final class MDLexicalBlock implements MDBaseNode {
     private static final int ARGINDEX_38_LINE = 3;
     private static final int ARGINDEX_38_COLUMN = 4;
 
-    public static MDLexicalBlock create38(long[] args, MetadataList md) {
+    public static MDLexicalBlock create38(long[] args, MetadataValueList md) {
         // [distinct, scope, file, line, column]
-        final MDReference scope = md.getMDRefOrNullRef(args[ARGINDEX_38_SCOPE]);
-        final MDReference file = md.getMDRefOrNullRef(args[ARGINDEX_38_FILE]);
         final long line = args[ARGINDEX_38_LINE];
         final long column = args[ARGINDEX_38_COLUMN];
-        return new MDLexicalBlock(scope, file, line, column);
+
+        final MDLexicalBlock block = new MDLexicalBlock(line, column);
+        block.scope = md.getNullable(args[ARGINDEX_38_SCOPE], block);
+        block.file = md.getNullable(args[ARGINDEX_38_FILE], block);
+        return block;
     }
 
     private static final int ARGINDEX_32_SCOPE = 1;
@@ -91,12 +99,14 @@ public final class MDLexicalBlock implements MDBaseNode {
     private static final int ARGINDEX_32_COLUMN = 3;
     private static final int ARGINDEX_32_FILE = 4;
 
-    public static MDLexicalBlock create32(MDTypedValue[] args) {
-        final MDReference scope = ParseUtil.getReference(args[ARGINDEX_32_SCOPE]);
-        final long line = ParseUtil.asInt32(args[ARGINDEX_32_LINE]);
-        final long column = ParseUtil.asInt32(args[ARGINDEX_32_COLUMN]);
-        final MDReference file = ParseUtil.getReference(args[ARGINDEX_32_FILE]);
+    public static MDLexicalBlock create32(long[] args, Metadata md) {
+        final long line = ParseUtil.asInt(args, ARGINDEX_32_LINE, md);
+        final long column = ParseUtil.asInt(args, ARGINDEX_32_COLUMN, md);
         // asInt32(args[5); // Unique ID to identify blocks from a template function
-        return new MDLexicalBlock(scope, file, line, column);
+
+        final MDLexicalBlock block = new MDLexicalBlock(line, column);
+        block.scope = ParseUtil.resolveReference(args, ARGINDEX_32_SCOPE, block, md);
+        block.file = ParseUtil.resolveReference(args, ARGINDEX_32_FILE, block, md);
+        return block;
     }
 }

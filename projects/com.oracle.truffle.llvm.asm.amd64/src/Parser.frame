@@ -46,10 +46,12 @@ public class Parser {
 	public final Errors errors;
 	private final AsmFactory factory;
 	private LLVMInlineAssemblyRootNode root;
+	private final String snippet;
 	-->declarations
 
 	public Parser(LLVMLanguage language, SourceSection sourceSection, String asmSnippet, String asmFlags, Type[] argTypes, Type retType, Type[] retTypes, int[] retOffsets) {
 		this.scanner = new Scanner(new ByteArrayInputStream(asmSnippet.getBytes()));
+		snippet = asmSnippet;
 		errors = new Errors();
 		this.factory = new AsmFactory(language, sourceSection, argTypes, asmFlags, retType, retTypes, retOffsets);
 	}
@@ -117,8 +119,16 @@ public class Parser {
 		la = new Token();
 		la.val = "";
 		Get();
+		try {
 -->parseRoot
-		if(root == null)
+		} catch (Throwable exc) {
+			String msg = String.format("ASM error in %s: %s", snippet, exc.getMessage());
+			throw new RuntimeException(msg, exc);
+		}
+		if (errors.count > 0) {
+			throw new RuntimeException("ASM error in " + snippet);
+		}
+		if (root == null)
 			throw new IllegalStateException();
 		return root;
 	}

@@ -27,20 +27,11 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata;
+#include <time.h>
+#include <stdint.h>
+#include <errno.h>
+#include "syscall.h"
 
-import com.oracle.truffle.llvm.runtime.types.Type;
-
-public abstract class MDTypedValue {
-
-    private final Type baseType;
-
-    MDTypedValue(Type baseType) {
-        this.baseType = baseType;
-    }
-
-    public Type getType() {
-        return baseType;
-    }
-
-}
+#ifdef __linux__
+int clock_gettime(clockid_t clk_id, struct timespec *tp) { __SYSCALL_2P(SYS_clock_gettime, clk_id, tp); }
+#endif
