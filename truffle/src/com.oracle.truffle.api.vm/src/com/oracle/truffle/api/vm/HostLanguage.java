@@ -31,7 +31,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.graalvm.polyglot.proxy.Proxy;
@@ -79,11 +78,11 @@ class HostLanguage extends TruffleLanguage<HostContext> {
             if (TruffleOptions.AOT) {
                 throw new HostLanguageException(String.format("The host class %s is not accessible in native mode.", className));
             }
-            Class<?> loadedClass = classCache.computeIfAbsent(className, new Function<String, Class<?>>() {
-                public Class<?> apply(String cn) {
-                    return loadClass(cn);
-                }
-            });
+            Class<?> loadedClass = classCache.get(className);
+            if (loadedClass == null) {
+                loadedClass = loadClass(className);
+                classCache.put(className, loadedClass);
+            }
             assert loadedClass != null;
             return loadedClass;
         }
