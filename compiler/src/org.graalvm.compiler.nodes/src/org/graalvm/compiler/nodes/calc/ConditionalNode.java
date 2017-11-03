@@ -55,8 +55,8 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
 
     public static final NodeClass<ConditionalNode> TYPE = NodeClass.create(ConditionalNode.class);
     @Input(InputType.Condition) LogicNode condition;
-    @Input ValueNode trueValue;
-    @Input ValueNode falseValue;
+    @Input(InputType.Value) ValueNode trueValue;
+    @Input(InputType.Value) ValueNode falseValue;
 
     public LogicNode condition() {
         return condition;
