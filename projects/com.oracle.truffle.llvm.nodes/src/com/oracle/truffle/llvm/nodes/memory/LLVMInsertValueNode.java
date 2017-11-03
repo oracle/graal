@@ -43,13 +43,13 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 @NodeChildren({@NodeChild, @NodeChild, @NodeChild})
 public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
 
-    protected final int sourceAggregateSize;
+    protected final long sourceAggregateSize;
     protected final int offset;
     @Child private LLVMStoreNode store;
     @Child private LLVMMemMoveNode memMove;
     private final Type type;
 
-    public LLVMInsertValueNode(LLVMStoreNode store, LLVMMemMoveNode memMove, int sourceAggregateSize, int offset, Type type) {
+    public LLVMInsertValueNode(LLVMStoreNode store, LLVMMemMoveNode memMove, long sourceAggregateSize, int offset, Type type) {
         this.sourceAggregateSize = sourceAggregateSize;
         this.offset = offset;
         this.store = store;
