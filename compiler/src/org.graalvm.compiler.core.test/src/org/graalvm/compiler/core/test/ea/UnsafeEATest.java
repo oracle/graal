@@ -86,7 +86,7 @@ public class UnsafeEATest extends EATestBase {
             for (JavaKind k : javaKinds) {
                 args[i++] = JavaConstant.defaultForKind(k).asBoxedPrimitive();
             }
-            Result result = executeActual(method, null, args);
+            Result result = executeExpected(method, null, args);
             assertTrue(result.returnValue.equals(expectedConstantResult.asBoxedPrimitive()));
         }
     }
