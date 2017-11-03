@@ -440,12 +440,18 @@ def _is_batik_supported(jdk):
         mx.warn('Batik uses Sun internal class com.sun.image.codec.jpeg.TruncatedFileException which is not present in ' + jdk.home)
         return False
 
-def _gate_dacapo(name, iterations, extraVMarguments=None):
-    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true', '-Dgraal.CompilationFailureAction=ExitVM'] + _remove_empty_entries(extraVMarguments)
+def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, set_start_heap_size=True, threads=None):
+    vmargs = ['-XX:+UseSerialGC'] if force_serial_gc else []
+    if set_start_heap_size:
+        vmargs += ['-Xms2g']
+    vmargs += ['-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true', '-Dgraal.CompilationFailureAction=ExitVM'] + _remove_empty_entries(extraVMarguments)
     dacapoJar = mx.library('DACAPO').get_path(True)
     if name == 'batik' and not _is_batik_supported(jdk):
         return
-    _gate_java_benchmark(vmargs + ['-jar', dacapoJar, name, '-n', str(iterations)], r'^===== DaCapo 9\.12 ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
+    args = ['-n', str(iterations)]
+    if threads is not None:
+        args += ['-t', str(threads)]
+    _gate_java_benchmark(vmargs + ['-jar', dacapoJar, name] + args, r'^===== DaCapo 9\.12 ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
 
 def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
     vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Dgraal.CompilationFailureAction=ExitVM'] + _remove_empty_entries(extraVMarguments)
@@ -554,6 +560,15 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     # ensure -Xcomp still works
     with Task('XCompMode:product', tasks, tags=GraalTags.test) as t:
         if t: run_vm(_remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
+
+    # ensure CMS still works
+    with Task('DaCapo_pmd:CMS', tasks, tags=GraalTags.test) as t:
+        if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseConcMarkSweepGC'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+
+    if isJDK8:
+        # ensure CMSIncrementalMode still works
+        with Task('DaCapo_pmd:CMSIncrementalMode', tasks, tags=GraalTags.test) as t:
+            if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseConcMarkSweepGC', '-XX:+CMSIncrementalMode'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
     with Task('Javadoc', tasks, tags=GraalTags.doc) as t:
         # metadata package was deprecated, exclude it
