@@ -528,8 +528,8 @@ public final class CPUSampler implements Closeable {
                     }
                     if (gatherSelfHitTimes) {
                         payload.selfHitTimes.add(timestamp);
+                        assert payload.selfHitTimes.size() == payload.getSelfHitCount();
                     }
-                    assert payload.selfHitTimes.size() == payload.getSelfHitCount();
                 }
                 if (isCompiled) {
                     payload.compiledHitCount++;
