@@ -42,6 +42,8 @@ typedef struct {
 } Elf64_auxv_t;
 #endif
 
+extern char **environ;
+
 int main(int argc, char **argv, char **envp);
 
 static Elf64_auxv_t *__auxv;
@@ -57,6 +59,7 @@ __attribute__((weak)) int _start(long *p, int type) {
     envc++;
   }
 
+  environ = envp;
   __auxv = (Elf64_auxv_t *)(envp + envc + 1);
 
   switch (type) {
