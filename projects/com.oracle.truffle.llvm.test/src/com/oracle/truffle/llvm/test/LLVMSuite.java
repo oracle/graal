@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.test.alpha;
+package com.oracle.truffle.llvm.test;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -42,18 +42,18 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.llvm.test.options.TestOptions;
 
 @RunWith(Parameterized.class)
-public final class NWCCSuite extends BaseSuiteHarness {
+public final class LLVMSuite extends BaseSuiteHarness {
 
-    private static final Path NWCC_SUITE_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/nwcc").toPath();
-    private static final Path NWCC_SOURCE_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/nwcc/nwcc_0.8.3").toPath();
-    private static final Path NWCC_CONFIG_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/nwcc/configs").toPath();
+    private static final Path LLVM_SUITE_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/llvm").toPath();
+    private static final Path LLVM_SOURCE_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/llvm/test-suite-3.2.src/").toPath();
+    private static final Path LLVM_CONFIG_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/llvm/configs").toPath();
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public String testName;
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        return collectTestCases(NWCC_CONFIG_DIR, NWCC_SUITE_DIR, NWCC_SOURCE_DIR);
+        return collectTestCases(LLVM_CONFIG_DIR, LLVM_SUITE_DIR, LLVM_SOURCE_DIR);
     }
 
     @Override
@@ -63,7 +63,7 @@ public final class NWCCSuite extends BaseSuiteHarness {
 
     @AfterClass
     public static void printStatistics() {
-        printStatistics("NWCC", NWCC_SOURCE_DIR, NWCC_CONFIG_DIR, f -> true);
+        printStatistics("LLVM", LLVM_SOURCE_DIR, LLVM_CONFIG_DIR, f -> true);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2016, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,13 +27,13 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.test.alpha;
+package com.oracle.truffle.llvm.test;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.junit.runner.RunWith;
@@ -44,46 +44,30 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.llvm.test.options.TestOptions;
 
 @RunWith(Parameterized.class)
-public final class CallbackTest extends BaseSulongOnlyHarness {
+public final class InlineAssemblyTest extends BaseSuiteHarness {
 
-    private static final Path OTHER_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/other").toPath();
-    private static final String testSuffix = "_clang_O0.bc";
+    private static final Path ASSEMBLY_SUITE_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/inlineassemblytests").toPath();
 
     @Parameter(value = 0) public Path path;
-    @Parameter(value = 1) public RunConfiguration configuration;
-    @Parameter(value = 2) public String name;
+    @Parameter(value = 1) public String testName;
 
-    @Parameters(name = "{2}")
+    @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-
-        final Map<Path, RunConfiguration> runs = new HashMap<>();
-        runs.put(new File(OTHER_DIR + "/callbackTest001/callbackTest001" + testSuffix).toPath(), new RunConfiguration(16, null));
-        runs.put(new File(OTHER_DIR + "/callbackTest002/callbackTest002" + testSuffix).toPath(),
-                        new RunConfiguration(14, null));
-        runs.put(new File(OTHER_DIR + "/callbackTest003/callbackTest003" + testSuffix).toPath(),
-                        new RunConfiguration(42, null));
-        runs.put(new File(OTHER_DIR + "/callbackTest004/callbackTest004" + testSuffix).toPath(),
-                        new RunConfiguration(42, null));
-        runs.put(new File(OTHER_DIR + "/callbackTest005/callbackTest005" + testSuffix).toPath(),
-                        new RunConfiguration(42, null));
-        runs.put(new File(OTHER_DIR + "/callbackTest006/callbackTest006" + testSuffix).toPath(),
-                        new RunConfiguration(0, null));
-        runs.put(new File(OTHER_DIR + "/callbackTest008/callbackTest008" + testSuffix).toPath(),
-                        new RunConfiguration(0, null));
-        runs.put(new File(OTHER_DIR + "/callbackTest007/callbackTest007" + testSuffix).toPath(),
-                        new RunConfiguration(0, null));
-
-        return runs.keySet().stream().map(k -> new Object[]{k, runs.get(k), k.getFileName().toString()}).collect(Collectors.toList());
+        try {
+            return Files.walk(ASSEMBLY_SUITE_DIR).filter(isExecutable).map(f -> f.getParent()).map(f -> new Object[]{f, f.toString()}).collect(Collectors.toList());
+        } catch (IOException e) {
+            throw new AssertionError("Test cases not found", e);
+        }
     }
 
     @Override
-    public Path getPath() {
+    protected Path getTestDirectory() {
         return path;
     }
 
     @Override
-    public RunConfiguration getConfiguration() {
-        return configuration;
+    protected String getTestName() {
+        return testName;
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,13 +27,13 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.test.alpha;
+package com.oracle.truffle.llvm.test;
 
 import java.io.File;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.junit.runner.RunWith;
@@ -44,9 +44,10 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.llvm.test.options.TestOptions;
 
 @RunWith(Parameterized.class)
-public final class MainArgsTest extends BaseSulongOnlyHarness {
+public final class CallbackTest extends BaseSulongOnlyHarness {
 
-    private static final Path OTHER_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/other/main-args").toPath();
+    private static final Path OTHER_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/other").toPath();
+    private static final String testSuffix = "_clang_O0.bc";
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public RunConfiguration configuration;
@@ -55,13 +56,24 @@ public final class MainArgsTest extends BaseSulongOnlyHarness {
     @Parameters(name = "{2}")
     public static Collection<Object[]> data() {
 
-        List<RunConfiguration> configs = new ArrayList<>();
-        configs.add(new RunConfiguration(1, null));
-        configs.add(new RunConfiguration(194, null, new String[]{"test"}));
-        configs.add(new RunConfiguration(96, null, new String[]{"hello", "world!"}));
-        configs.add(new RunConfiguration(154, null, new String[]{"1", "2", "3"}));
-        configs.add(new RunConfiguration(193, null, new String[]{"a", "b", "cd", "efg"}));
-        return configs.stream().map(c -> new Object[]{new File(OTHER_DIR + "/main-args_clang_O0.bc").toPath(), c, String.valueOf(configs.indexOf(c))}).collect(Collectors.toList());
+        final Map<Path, RunConfiguration> runs = new HashMap<>();
+        runs.put(new File(OTHER_DIR + "/callbackTest001/callbackTest001" + testSuffix).toPath(), new RunConfiguration(16, null));
+        runs.put(new File(OTHER_DIR + "/callbackTest002/callbackTest002" + testSuffix).toPath(),
+                        new RunConfiguration(14, null));
+        runs.put(new File(OTHER_DIR + "/callbackTest003/callbackTest003" + testSuffix).toPath(),
+                        new RunConfiguration(42, null));
+        runs.put(new File(OTHER_DIR + "/callbackTest004/callbackTest004" + testSuffix).toPath(),
+                        new RunConfiguration(42, null));
+        runs.put(new File(OTHER_DIR + "/callbackTest005/callbackTest005" + testSuffix).toPath(),
+                        new RunConfiguration(42, null));
+        runs.put(new File(OTHER_DIR + "/callbackTest006/callbackTest006" + testSuffix).toPath(),
+                        new RunConfiguration(0, null));
+        runs.put(new File(OTHER_DIR + "/callbackTest008/callbackTest008" + testSuffix).toPath(),
+                        new RunConfiguration(0, null));
+        runs.put(new File(OTHER_DIR + "/callbackTest007/callbackTest007" + testSuffix).toPath(),
+                        new RunConfiguration(0, null));
+
+        return runs.keySet().stream().map(k -> new Object[]{k, runs.get(k), k.getFileName().toString()}).collect(Collectors.toList());
     }
 
     @Override
