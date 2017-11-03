@@ -71,6 +71,31 @@ __attribute__((weak)) int _start(long *p, int type) {
     exit(i64main(argc, argv));
     break;
   }
+  /* non-standard C: void main(int, char**, char**) */
+  case 2: {
+    void (*vmain)(int argc, char **argv, char **envp) = (void (*)(int, char **, char **))main;
+    vmain(argc, argv, envp);
+    exit(0);
+    break;
+  }
+  /* non-standard C: char main(int, char**, char**) */
+  case 3: {
+    char (*i8main)(int argc, char **argv, char **envp) = (char (*)(int, char **, char **))main;
+    exit(i8main(argc, argv, envp));
+    break;
+  }
+  /* non-standard C: short main(int, char**, char**) */
+  case 4: {
+    short (*i16main)(int argc, char **argv, char **envp) = (short (*)(int, char **, char **))main;
+    exit(i16main(argc, argv, envp));
+    break;
+  }
+  /* non-standard C: long main(int, char**, char**) */
+  case 5: {
+    long (*i64main)(int argc, char **argv, char **envp) = (long (*)(int, char **, char **))main;
+    exit(i64main(argc, argv, envp));
+    break;
+  }
   }
   abort();
 }

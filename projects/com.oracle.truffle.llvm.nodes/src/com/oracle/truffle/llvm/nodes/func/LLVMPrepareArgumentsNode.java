@@ -51,6 +51,7 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public class LLVMPrepareArgumentsNode extends LLVMNode {
     private static final long AT_NULL = 0;
@@ -59,6 +60,7 @@ public class LLVMPrepareArgumentsNode extends LLVMNode {
 
     private static final String PLATFORM = "x86_64";
 
+    private final Type returnType;
     @CompilationFinal(dimensions = 1) private final Type[] types;
 
     @Child private LLVMMalloc malloc;
@@ -69,7 +71,8 @@ public class LLVMPrepareArgumentsNode extends LLVMNode {
     @Child private LLVMStoreNode storeAddress;
     @Child private LLVMStoreCStringNode cstr;
 
-    public LLVMPrepareArgumentsNode(Source source, Type[] types) {
+    public LLVMPrepareArgumentsNode(Source source, Type returnType, Type[] types) {
+        this.returnType = returnType;
         this.types = types;
         getargs = new LLVMGetArgumentsNode(source);
         memorySize = new LLVMGetArgumentSizeNode();
@@ -91,6 +94,21 @@ public class LLVMPrepareArgumentsNode extends LLVMNode {
         if (types.length > 0 && types[0] instanceof PrimitiveType) {
             if (((PrimitiveType) types[0]).getPrimitiveKind() == PrimitiveKind.I64) {
                 type = 1;
+            }
+        }
+        if (returnType instanceof VoidType) {
+            type = 2;
+        } else if (returnType instanceof PrimitiveType) {
+            switch (((PrimitiveType) returnType).getPrimitiveKind()) {
+                case I8:
+                    type = 3;
+                    break;
+                case I16:
+                    type = 4;
+                    break;
+                case I64:
+                    type = 5;
+                    break;
             }
         }
 
