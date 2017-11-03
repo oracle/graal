@@ -44,6 +44,9 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     public void setupSampler() {
         sampler = CPUSampler.find(engine);
         Assert.assertNotNull(sampler);
+        synchronized (sampler) {
+            sampler.setGatherSelfHitTimes(true);
+        }
     }
 
     @Test
@@ -95,6 +98,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         Assert.assertEquals(1, children.size());
         ProfilerNode<CPUSampler.Payload> program = children.iterator().next();
         Assert.assertEquals("", program.getRootName());
+        checkTimeline(program.getPayload());
 
         children = program.getChildren();
         Assert.assertEquals(2, children.size());
@@ -104,16 +108,19 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             baz = iterator.next();
         }
         Assert.assertEquals("baz", baz.getRootName());
+        checkTimeline(baz.getPayload());
 
         children = baz.getChildren();
         Assert.assertEquals(1, children.size());
         ProfilerNode<CPUSampler.Payload> bar = children.iterator().next();
         Assert.assertEquals("bar", bar.getRootName());
+        checkTimeline(bar.getPayload());
 
         children = bar.getChildren();
         Assert.assertEquals(1, children.size());
         ProfilerNode<CPUSampler.Payload> foo = children.iterator().next();
         Assert.assertEquals("foo", foo.getRootName());
+        checkTimeline(foo.getPayload());
 
         children = foo.getChildren();
         Assert.assertTrue(children.size() == 0);
@@ -138,16 +145,19 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         Assert.assertEquals(1, children.size());
         ProfilerNode<CPUSampler.Payload> program = children.iterator().next();
         Assert.assertEquals("", program.getRootName());
+        checkTimeline(program.getPayload());
 
         children = program.getChildren();
         Assert.assertEquals(1, children.size());
         ProfilerNode<CPUSampler.Payload> bar = children.iterator().next();
         Assert.assertEquals("bar", bar.getRootName());
+        checkTimeline(bar.getPayload());
 
         children = bar.getChildren();
         Assert.assertEquals(1, children.size());
         ProfilerNode<CPUSampler.Payload> foo = children.iterator().next();
         Assert.assertEquals("foo", foo.getRootName());
+        checkTimeline(foo.getPayload());
 
         // RECURSIVE_CALL does recutions to depth 10
         for (int i = 0; i < 10; i++) {
@@ -155,6 +165,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             Assert.assertEquals(1, children.size());
             foo = children.iterator().next();
             Assert.assertEquals("foo", foo.getRootName());
+            checkTimeline(bar.getPayload());
         }
 
         children = foo.getChildren();
@@ -170,5 +181,9 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             execute(defaultSourceForSampling);
         }
         Assert.assertTrue(sampler.hasStackOverflowed());
+    }
+
+    private static void checkTimeline(CPUSampler.Payload payload) {
+        Assert.assertEquals("Timeline length and self hit count to not match!", payload.getSelfHitCount(), payload.getSelfHitTimes().size());
     }
 }
