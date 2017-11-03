@@ -49,33 +49,33 @@ def runShootoutSuite(vmArgs):
     """runs the Sulong test suite"""
     mx_sulong.ensureDragonEggExists()
     compileSuite(['shootout'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.ShootoutsSuite", extraLibs=["libgmp.so.10"])
+    return run(vmArgs, "com.oracle.truffle.llvm.test.ShootoutsSuite", extraLibs=["libgmp.so.10"])
 
 def runLLVMSuite(vmArgs):
     """runs the LLVM test suite"""
     compileSuite(['llvm'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.LLVMSuite")
+    return run(vmArgs, "com.oracle.truffle.llvm.test.LLVMSuite")
 
 def runNWCCSuite(vmArgs):
     """runs the NWCC test suite"""
     compileSuite(['nwcc'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.NWCCSuite")
+    return run(vmArgs, "com.oracle.truffle.llvm.test.NWCCSuite")
 
 def runGCCSuite_c(vmArgs):
     """runs the LLVM test suite"""
     compileSuite(['gcc_c'])
-    return run(vmArgs + ['-Dsulongtest.fileExtensionFilter=.c'], "com.oracle.truffle.llvm.test.alpha.GCCSuite")
+    return run(vmArgs + ['-Dsulongtest.fileExtensionFilter=.c'], "com.oracle.truffle.llvm.test.GCCSuite")
 
 def runGCCSuite_cpp(vmArgs):
     """runs the LLVM test suite"""
     compileSuite(['gcc_cpp'])
-    return run(vmArgs + ['-Dsulongtest.fileExtensionFilter=.cpp:.C:.cc'], "com.oracle.truffle.llvm.test.alpha.GCCSuite")
+    return run(vmArgs + ['-Dsulongtest.fileExtensionFilter=.cpp:.C:.cc'], "com.oracle.truffle.llvm.test.GCCSuite")
 
 def runGCCSuite_fortran(vmArgs):
     """runs the LLVM test suite"""
     mx_sulong.ensureDragonEggExists()
     compileSuite(['gcc_fortran'])
-    return run(vmArgs + ['-Dsulongtest.fileExtensionFilter=.f90:.f:.f03'], "com.oracle.truffle.llvm.test.alpha.GCCSuite", extraLibs=["libgfortran.so.3"])
+    return run(vmArgs + ['-Dsulongtest.fileExtensionFilter=.f90:.f:.f03'], "com.oracle.truffle.llvm.test.GCCSuite", extraLibs=["libgfortran.so.3"])
 
 def compileOtherTests():
     print("Compiling Other with clang -O0", end='')
@@ -84,28 +84,28 @@ def compileOtherTests():
 def runArgsTests(vmArgs):
     """runs the Sulong test suite"""
     compileSuite(['args'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.MainArgsTest")
+    return run(vmArgs, "com.oracle.truffle.llvm.test.MainArgsTest")
 
 def runCallbackTests(vmArgs):
     """runs the Sulong test suite"""
     compileSuite(['callback'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.CallbackTest")
+    return run(vmArgs, "com.oracle.truffle.llvm.test.CallbackTest")
 
 def runVAargsTests(vmArgs):
     """runs the Sulong test suite"""
     compileSuite(['vaargs'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.VAArgsTest")
+    return run(vmArgs, "com.oracle.truffle.llvm.test.VAArgsTest")
 
 def runInlineAssemblySuite(vmArgs):
     """runs the InlineAssembly test suite"""
     compileSuite(['assembly'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.InlineAssemblyTest")
+    return run(vmArgs, "com.oracle.truffle.llvm.test.InlineAssemblyTest")
 
 def runParserTortureSuite(vmArgs):
     """runs the ParserTorture test suite"""
     mx_sulong.ensureDragonEggExists()
     compileSuite(['parserTorture'])
-    return run(vmArgs + ['-Dpolyglot.llvm.parseOnly=true'], "com.oracle.truffle.llvm.test.alpha.ParserTortureSuite")
+    return run(vmArgs + ['-Dpolyglot.llvm.parseOnly=true'], "com.oracle.truffle.llvm.test.ParserTortureSuite")
 
 def runTypeTests(vmArgs):
     """runs the Type test suite"""
@@ -113,7 +113,7 @@ def runTypeTests(vmArgs):
 
 def runPipeTests(vmArgs):
     """runs the Pipe test suite"""
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.CaptureOutputTest")
+    return run(vmArgs, "com.oracle.truffle.llvm.test.CaptureOutputTest")
 
 def compileLLVMSuite():
     deleteCachedTests('llvm')

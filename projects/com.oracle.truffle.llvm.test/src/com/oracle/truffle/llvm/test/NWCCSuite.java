@@ -27,57 +27,47 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.test.alpha;
+package com.oracle.truffle.llvm.test;
 
 import java.io.File;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
 
-import org.graalvm.polyglot.Context;
-import org.junit.Test;
+import org.junit.AfterClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.test.options.TestOptions;
 
 @RunWith(Parameterized.class)
-public final class ParserTortureSuite {
+public final class NWCCSuite extends BaseSuiteHarness {
 
-    private static final Path GCC_SUITE_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/gcc.c-torture").toPath();
-    private static final Path GCC_CONFIG_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/gcc/compileConfigs").toPath();
+    private static final Path NWCC_SUITE_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/nwcc").toPath();
+    private static final Path NWCC_SOURCE_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/nwcc/nwcc_0.8.3").toPath();
+    private static final Path NWCC_CONFIG_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/nwcc/configs").toPath();
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public String testName;
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        return BaseTestHarness.collectRegularRun(GCC_CONFIG_DIR, GCC_SUITE_DIR);
+        return collectTestCases(NWCC_CONFIG_DIR, NWCC_SUITE_DIR, NWCC_SOURCE_DIR);
     }
 
-    @Test
-    public void test() throws Exception {
-        List<Path> testCandidates = Files.walk(path).filter(BaseTestHarness.isFile).filter(BaseTestHarness.isSulong).collect(Collectors.toList());
-        for (Path candidate : testCandidates) {
-
-            if (!candidate.toAbsolutePath().toFile().exists()) {
-                throw new AssertionError("File " + candidate.toAbsolutePath().toFile() + " does not exist.");
-            }
-
-            try {
-                Context context = Context.create();
-                context.eval(org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.NAME, candidate.toFile()).build());
-                context.close();
-            } catch (Throwable e) {
-                throw e;
-            }
-        }
-
+    @Override
+    protected Path getTestDirectory() {
+        return path;
     }
 
+    @AfterClass
+    public static void printStatistics() {
+        printStatistics("NWCC", NWCC_SOURCE_DIR, NWCC_CONFIG_DIR, f -> true);
+    }
+
+    @Override
+    protected String getTestName() {
+        return testName;
+    }
 }

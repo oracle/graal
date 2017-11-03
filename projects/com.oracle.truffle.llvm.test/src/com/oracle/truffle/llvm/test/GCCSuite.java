@@ -27,17 +27,16 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.test.alpha;
+package com.oracle.truffle.llvm.test;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
+import org.junit.AfterClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
@@ -46,35 +45,44 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.llvm.test.options.TestOptions;
 
 @RunWith(Parameterized.class)
-public final class SulongSuite extends BaseSuiteHarness {
+public final class GCCSuite extends BaseSuiteHarness {
 
-    private static final boolean IS_MAC = System.getProperty("os.name").toLowerCase().indexOf("mac") >= 0;
+    private static final Path GCC_SUITE_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/gcc").toPath();
+    private static final Path GCC_SOURCE_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/gcc/gcc-5.2.0").toPath();
+    private static final Path GCC_CONFIG_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/gcc/configs").toPath();
+
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public String testName;
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        Path suitesPath = new File(TestOptions.TEST_SUITE_PATH).toPath();
-        try {
-            Stream<Path> destDirs = Files.walk(suitesPath).filter(path -> path.endsWith("ref.out")).map(Path::getParent);
-            return destDirs.map(testPath -> new Object[]{testPath, suitesPath.relativize(testPath).toString()}).collect(Collectors.toList());
-        } catch (IOException e) {
-            throw new AssertionError("Test cases not found", e);
-        }
-    }
-
-    @Override
-    protected Predicate<? super Path> getIsSulongFilter() {
-        return f -> {
-            boolean isBC = f.getFileName().toString().endsWith(".bc");
-            boolean isOut = f.getFileName().toString().endsWith(".out");
-            return isBC || (isOut && !IS_MAC);
-        };
+        return collectTestCases(GCC_CONFIG_DIR, GCC_SUITE_DIR, GCC_SOURCE_DIR);
     }
 
     @Override
     protected Path getTestDirectory() {
         return path;
+    }
+
+    @Override
+    protected Predicate<String> filterFileName() {
+        return s -> !s.endsWith("clangcpp_O0.bc");
+    }
+
+    @AfterClass
+    public static void printStatistics() {
+        HashSet<Path> ignoredFolders = new HashSet<>();
+        ignoredFolders.add(Paths.get("gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile"));
+        ignoredFolders.add(Paths.get("gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/compile"));
+        ignoredFolders.add(Paths.get("gcc-5.2.0/gcc/testsuite/objc/compile"));
+        ignoredFolders.add(Paths.get("gcc-5.2.0/gcc/testsuite/gcc.dg/noncompile"));
+
+        printStatistics("GCC", GCC_SOURCE_DIR, GCC_CONFIG_DIR, f -> !f.toString().contains("/compile/") && !f.toString().contains("/noncompile/"));
+
+        // gcc torture execute only
+        printStatistics("gcc.c-torture/execute", Paths.get(GCC_SOURCE_DIR.toAbsolutePath().toString() + "/gcc/testsuite/gcc.c-torture/execute"),
+                        Paths.get(GCC_CONFIG_DIR.toAbsolutePath().toString() + "/gcc.c-torture/execute"),
+                        t -> true);
     }
 
     @Override
