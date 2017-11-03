@@ -275,12 +275,6 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
         }
     }
 
-    public LLVM80BitFloat add(LLVM80BitFloat right) {
-        double doubleValue = getDoubleValue();
-        double doubleValue2 = right.getDoubleValue();
-        return fromDouble(doubleValue + doubleValue2);
-    }
-
     @SuppressWarnings("unused")
     private LLVM80BitFloat add2(LLVM80BitFloat right) {
         int leftExponent = getExponent();
@@ -332,18 +326,6 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
         int newExponent = leftExponent + overFlow;
         long newFraction = resultLo + resultHi << Integer.SIZE;
         return LLVM80BitFloat.fromRawValues(newSign, newExponent, newFraction);
-    }
-
-    public LLVM80BitFloat sub(LLVM80BitFloat right) {
-        return add(right.negate());
-    }
-
-    public LLVM80BitFloat mul(LLVM80BitFloat right) {
-        return fromDouble(getDoubleValue() * right.getDoubleValue());
-    }
-
-    public LLVM80BitFloat div(LLVM80BitFloat right) {
-        return fromDouble(getDoubleValue() / right.getDoubleValue());
     }
 
     public LLVM80BitFloat rem(LLVM80BitFloat right) {
