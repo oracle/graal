@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
@@ -40,65 +43,85 @@ import com.oracle.truffle.api.nodes.Node;
 public final class LLVMNativeFunctions {
 
     private final NFIContextExtension nfiContext;
+    private final Map<String, TruffleObject> nativeFunctions;
 
     public LLVMNativeFunctions(NFIContextExtension nfiContext) {
         this.nfiContext = nfiContext;
+        this.nativeFunctions = new HashMap<>();
+    }
+
+    private TruffleObject getNativeFunction(LLVMContext context, String name, String signature) {
+        return nativeFunctions.computeIfAbsent(name, s -> nfiContext.getNativeFunction(context, name, signature));
     }
 
     public NullPointerNode createNullPointerNode(LLVMContext context) {
-        return new NullPointerNode(nfiContext.getNativeFunction(context, "@getNullPointer", "():POINTER"));
+        TruffleObject nullPointerFunction = getNativeFunction(context, "@getNullPointer", "():POINTER");
+        return new NullPointerNode(nullPointerFunction);
     }
 
     public DynamicCastNode createDynamicCast(LLVMContext context) {
-        return new DynamicCastNode(nfiContext.getNativeFunction(context, "@__dynamic_cast", "(POINTER,POINTER,POINTER,UINT64):POINTER"));
+        TruffleObject dynamicCastFunction = getNativeFunction(context, "@__dynamic_cast", "(POINTER,POINTER,POINTER,UINT64):POINTER");
+        return new DynamicCastNode(dynamicCastFunction);
     }
 
     public SulongCanCatchNode createSulongCanCatch(LLVMContext context) {
-        return new SulongCanCatchNode(nfiContext.getNativeFunction(context, "@sulong_eh_canCatch", "(POINTER,POINTER,POINTER):UINT32"));
+        TruffleObject canCatchFunction = getNativeFunction(context, "@sulong_eh_canCatch", "(POINTER,POINTER,POINTER):UINT32");
+        return new SulongCanCatchNode(canCatchFunction);
     }
 
     public SulongThrowNode createSulongThrow(LLVMContext context) {
-        return new SulongThrowNode(nfiContext.getNativeFunction(context, "@sulong_eh_throw", "(POINTER,POINTER,POINTER,POINTER,POINTER):VOID"));
+        TruffleObject throwFunction = getNativeFunction(context, "@sulong_eh_throw", "(POINTER,POINTER,POINTER,POINTER,POINTER):VOID");
+        return new SulongThrowNode(throwFunction);
     }
 
     public SulongGetThrownObjectNode createGetThrownObject(LLVMContext context) {
-        return new SulongGetThrownObjectNode(nfiContext.getNativeFunction(context, "@sulong_eh_getThrownObject", "(POINTER):POINTER"));
+        TruffleObject getThrownObjectFunction = getNativeFunction(context, "@sulong_eh_getThrownObject", "(POINTER):POINTER");
+        return new SulongGetThrownObjectNode(getThrownObjectFunction);
     }
 
     public SulongGetExceptionPointerNode createGetExceptionPointer(LLVMContext context) {
-        return new SulongGetExceptionPointerNode(nfiContext.getNativeFunction(context, "@sulong_eh_getExceptionPointer", "(POINTER):POINTER"));
+        TruffleObject getExceptionPointerFunction = getNativeFunction(context, "@sulong_eh_getExceptionPointer", "(POINTER):POINTER");
+        return new SulongGetExceptionPointerNode(getExceptionPointerFunction);
     }
 
     public SulongGetUnwindHeaderNode createGetUnwindHeader(LLVMContext context) {
-        return new SulongGetUnwindHeaderNode(nfiContext.getNativeFunction(context, "@sulong_eh_unwindHeader", "(POINTER):POINTER"));
+        TruffleObject getUnwindHeaderFunction = getNativeFunction(context, "@sulong_eh_unwindHeader", "(POINTER):POINTER");
+        return new SulongGetUnwindHeaderNode(getUnwindHeaderFunction);
     }
 
     public SulongFreeExceptionNode createFreeException(LLVMContext context) {
-        return new SulongFreeExceptionNode(nfiContext.getNativeFunction(context, "@__cxa_free_exception", "(POINTER):VOID"));
+        TruffleObject freeFunction = getNativeFunction(context, "@__cxa_free_exception", "(POINTER):VOID");
+        return new SulongFreeExceptionNode(freeFunction);
     }
 
     public SulongGetDestructorNode createGetDestructor(LLVMContext context) {
-        return new SulongGetDestructorNode(nfiContext.getNativeFunction(context, "@sulong_eh_getDestructor", "(POINTER):POINTER"));
+        TruffleObject getDestructorFunction = getNativeFunction(context, "@sulong_eh_getDestructor", "(POINTER):POINTER");
+        return new SulongGetDestructorNode(getDestructorFunction);
     }
 
     public SulongGetExceptionTypeNode createGetExceptionType(LLVMContext context) {
-        return new SulongGetExceptionTypeNode(nfiContext.getNativeFunction(context, "@sulong_eh_getType", "(POINTER):POINTER"));
+        TruffleObject getExceptionTypeFunction = getNativeFunction(context, "@sulong_eh_getType", "(POINTER):POINTER");
+        return new SulongGetExceptionTypeNode(getExceptionTypeFunction);
     }
 
     public SulongDecrementHandlerCountNode createDecrementHandlerCount(LLVMContext context) {
-        return new SulongDecrementHandlerCountNode(nfiContext.getNativeFunction(context, "@sulong_eh_decrementHandlerCount", "(POINTER):VOID"));
+        TruffleObject decrementHandlerCountFunction = getNativeFunction(context, "@sulong_eh_decrementHandlerCount", "(POINTER):VOID");
+        return new SulongDecrementHandlerCountNode(decrementHandlerCountFunction);
     }
 
     public SulongIncrementHandlerCountNode createIncrementHandlerCount(LLVMContext context) {
-        return new SulongIncrementHandlerCountNode(nfiContext.getNativeFunction(context, "@sulong_eh_incrementHandlerCount", "(POINTER):VOID"));
+        TruffleObject incrementHandlerCountFunction = getNativeFunction(context, "@sulong_eh_incrementHandlerCount", "(POINTER):VOID");
+        return new SulongIncrementHandlerCountNode(incrementHandlerCountFunction);
     }
 
     public SulongGetHandlerCountNode createGetHandlerCount(LLVMContext context) {
-        return new SulongGetHandlerCountNode(nfiContext.getNativeFunction(context, "@sulong_eh_getHandlerCount", "(POINTER):SINT32"));
+        TruffleObject getHandlerCountFunction = getNativeFunction(context, "@sulong_eh_getHandlerCount", "(POINTER):SINT32");
+        return new SulongGetHandlerCountNode(getHandlerCountFunction);
     }
 
     public SulongSetHandlerCountNode createSetHandlerCount(LLVMContext context) {
-        return new SulongSetHandlerCountNode(nfiContext.getNativeFunction(context, "@sulong_eh_setHandlerCount", "(POINTER,SINT32):VOID"));
+        TruffleObject setHandlerCountFunction = getNativeFunction(context, "@sulong_eh_setHandlerCount", "(POINTER,SINT32):VOID");
+        return new SulongSetHandlerCountNode(setHandlerCountFunction);
     }
 
     protected static class HeapFunctionNode extends Node {
