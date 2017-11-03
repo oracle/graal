@@ -265,8 +265,10 @@ public abstract class InstrumentPhase extends BasePhase<PhaseContext> {
              */
             List<Map.Entry<String, Point>> sortedEntries = new ArrayList<>();
             for (Map.Entry<String, Point> entry : pointMap.entrySet()) {
-                Map.Entry<String, Point> immutableEntry = new AbstractMap.SimpleImmutableEntry<>(entry.getKey(), entry.getValue());
-                sortedEntries.add(immutableEntry);
+                if (entry.getValue().shouldInclude()) {
+                    Map.Entry<String, Point> immutableEntry = new AbstractMap.SimpleImmutableEntry<>(entry.getKey(), entry.getValue());
+                    sortedEntries.add(immutableEntry);
+                }
             }
 
             Collections.sort(sortedEntries, entriesComparator);
@@ -285,8 +287,11 @@ public abstract class InstrumentPhase extends BasePhase<PhaseContext> {
             }
 
             List<Point> sortedPoints = new ArrayList<>();
-            sortedPoints.addAll(pointMap.values());
-
+            for (Point p : pointMap.values()) {
+                if (p.shouldInclude()) {
+                    sortedPoints.add(p);
+                }
+            }
             Collections.sort(sortedPoints, pointsComparator);
 
             ArrayList<String> histogram = new ArrayList<>();
@@ -371,5 +376,9 @@ public abstract class InstrumentPhase extends BasePhase<PhaseContext> {
         public abstract long getHotness();
 
         public abstract boolean isPrettified(OptionValues options);
+
+        public boolean shouldInclude() {
+            return true;
+        }
     }
 }
