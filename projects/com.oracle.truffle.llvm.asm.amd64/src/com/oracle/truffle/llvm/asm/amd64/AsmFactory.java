@@ -289,6 +289,9 @@ class AsmFactory {
         int outIndex = 0;
 
         for (String token : tokens) {
+            if (token.isEmpty()) {
+                continue;
+            }
             boolean isTilde = false;
             boolean isInput = true;
             boolean isOutput = false;
