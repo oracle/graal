@@ -234,7 +234,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         ResolvedJavaType type = metaAccess.lookupJavaType(OptimizedCallTarget.class);
         for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
             if (method.getAnnotation(TruffleCallBoundary.class) != null) {
-                setNotInlineableOrCompileable(method);
+                setNotInlinableOrCompilable(method);
             }
         }
     }
@@ -242,11 +242,11 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     /**
      * Informs the VM to never compile or inline {@code method}.
      */
-    private static void setNotInlineableOrCompileable(ResolvedJavaMethod method) {
-        // JDK-8180487 introduced a breaking API change so reflection is required.
+    private static void setNotInlinableOrCompilable(ResolvedJavaMethod method) {
+        // JDK-8180487 and JDK-8186478 introduced breaking API changes so reflection is required.
         Method[] methods = HotSpotResolvedJavaMethod.class.getMethods();
         for (Method m : methods) {
-            if (m.getName().equals("setNotInlineable") || m.getName().equals("setNotInlineableOrCompileable")) {
+            if (m.getName().equals("setNotInlineable") || m.getName().equals("setNotInlinableOrCompilable") || m.getName().equals("setNotInlineableOrCompileable")) {
                 try {
                     m.invoke(method);
                     return;
@@ -255,7 +255,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
                 }
             }
         }
-        throw new GraalError("Could not find setNotInlineable or setNotInlineableOrCompileable in %s", HotSpotResolvedJavaMethod.class);
+        throw new GraalError("Could not find setNotInlineable, setNotInlinableOrCompilable or setNotInlineableOrCompileable in %s", HotSpotResolvedJavaMethod.class);
     }
 
     /**
