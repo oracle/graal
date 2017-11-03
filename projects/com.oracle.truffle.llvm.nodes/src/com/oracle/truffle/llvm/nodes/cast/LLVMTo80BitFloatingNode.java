@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nodes.cast;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -77,6 +78,11 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
         public LLVM80BitFloat executeLLVM80BitFloatNode(LLVM80BitFloat from) {
             return from;
         }
+
+        @Specialization
+        public LLVM80BitFloat executeLLVM80BitFloatNode(LLVMIVarBit from) {
+            return LLVM80BitFloat.fromBytesBigEndian(from.getBytes());
+        }
     }
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
@@ -110,6 +116,11 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
         @Specialization
         public LLVM80BitFloat executeLLVM80BitFloatNode(LLVM80BitFloat from) {
             return from;
+        }
+
+        @Specialization
+        public LLVM80BitFloat executeLLVM80BitFloatNode(LLVMIVarBit from) {
+            return LLVM80BitFloat.fromBytesBigEndian(from.getBytes());
         }
     }
 
