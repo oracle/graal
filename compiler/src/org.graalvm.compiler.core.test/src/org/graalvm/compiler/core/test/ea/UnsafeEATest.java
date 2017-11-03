@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.core.test.ea;
 
-import java.nio.ByteOrder;
+import java.nio.ByteBuffer;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.graph.Graph;
@@ -173,7 +173,10 @@ public class UnsafeEATest extends EATestBase {
 
     @Test
     public void testSimpleDoubleOverwriteWithSecondInt() {
-        int value = (int) (Double.doubleToRawLongBits(10.1) >> (getTarget().arch.getByteOrder() == ByteOrder.BIG_ENDIAN ? 32 : 0));
+        ByteBuffer bb = ByteBuffer.allocate(8).order(getTarget().arch.getByteOrder());
+        bb.putDouble(10.1);
+        int value = bb.getInt(4);
+
         testEscapeAnalysis("testSimpleDoubleOverwriteWithSecondIntSnippet", JavaConstant.forInt(value), false);
     }
 
@@ -186,13 +189,48 @@ public class UnsafeEATest extends EATestBase {
 
     @Test
     public void testSimpleDoubleOverwriteWithFirstInt() {
-        int value = (int) (Double.doubleToRawLongBits(10.1) >> (getTarget().arch.getByteOrder() == ByteOrder.BIG_ENDIAN ? 0 : 32));
+        ByteBuffer bb = ByteBuffer.allocate(8).order(getTarget().arch.getByteOrder());
+        bb.putDouble(10.1);
+        int value = bb.getInt(0);
+
         testEscapeAnalysis("testSimpleDoubleOverwriteWithFirstIntSnippet", JavaConstant.forInt(value), false);
     }
 
     public static int testSimpleDoubleOverwriteWithFirstIntSnippet() {
         TestClassInt x = new TestClassInt();
         UNSAFE.putDouble(x, fieldOffset1, 10.1);
+        UNSAFE.putInt(x, fieldOffset2, 10);
+        return UNSAFE.getInt(x, fieldOffset1);
+    }
+
+    @Test
+    public void testSimpleLongOverwriteWithSecondInt() {
+        ByteBuffer bb = ByteBuffer.allocate(8).order(getTarget().arch.getByteOrder());
+        bb.putLong(0, 0x1122334455667788L);
+        int value = bb.getInt(4);
+
+        testEscapeAnalysis("testSimpleLongOverwriteWithSecondIntSnippet", JavaConstant.forInt(value), false);
+    }
+
+    public static int testSimpleLongOverwriteWithSecondIntSnippet() {
+        TestClassInt x = new TestClassInt();
+        UNSAFE.putLong(x, fieldOffset1, 0x1122334455667788L);
+        UNSAFE.putInt(x, fieldOffset1, 10);
+        return UNSAFE.getInt(x, fieldOffset2);
+    }
+
+    @Test
+    public void testSimpleLongOverwriteWithFirstInt() {
+        ByteBuffer bb = ByteBuffer.allocate(8).order(getTarget().arch.getByteOrder());
+        bb.putLong(0, 0x1122334455667788L);
+        int value = bb.getInt(0);
+
+        testEscapeAnalysis("testSimpleLongOverwriteWithFirstIntSnippet", JavaConstant.forInt(value), false);
+    }
+
+    public static int testSimpleLongOverwriteWithFirstIntSnippet() {
+        TestClassInt x = new TestClassInt();
+        UNSAFE.putLong(x, fieldOffset1, 0x1122334455667788L);
         UNSAFE.putInt(x, fieldOffset2, 10);
         return UNSAFE.getInt(x, fieldOffset1);
     }

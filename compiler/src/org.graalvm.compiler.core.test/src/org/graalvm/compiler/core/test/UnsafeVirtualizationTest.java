@@ -37,7 +37,15 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class UnsafeVirtualizationTest extends GraalCompilerTest {
 
-    public static class A {
+    public static class Base {
+        /*
+         * This padding ensure that the size of the Base class ends up as a multiple of 8, which
+         * makes the first field of the subclass 8-byte aligned.
+         */
+        double padding;
+    }
+
+    public static class A extends Base {
         int f1;
         int f2;
     }
@@ -65,18 +73,39 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         return UNSAFE.getInt(a, AF1Offset) + UNSAFE.getInt(a, AF2Offset);
     }
 
-    public static int unsafeSnippet2(int i1) {
+    public static long unsafeSnippet2a(int i1) {
+        A a = new A();
+        UNSAFE.putDouble(a, AF1Offset, i1);
+        a.f1 = i1;
+        return UNSAFE.getLong(a, AF1Offset);
+    }
+
+    public static long unsafeSnippet2b(int i1) {
         A a = new A();
         UNSAFE.putDouble(a, AF1Offset, i1);
         a.f2 = i1;
-        return (int) UNSAFE.getDouble(a, AF1Offset);
+        return UNSAFE.getLong(a, AF1Offset);
     }
 
-    public static int unsafeSnippet3(int i1) {
+    public static long unsafeSnippet3a(int i1) {
+        A a = new A();
+        UNSAFE.putDouble(a, AF1Offset, i1);
+        UNSAFE.putInt(a, AF1Offset, i1);
+        return UNSAFE.getLong(a, AF1Offset);
+    }
+
+    public static long unsafeSnippet3b(int i1) {
         A a = new A();
         UNSAFE.putDouble(a, AF1Offset, i1);
         UNSAFE.putInt(a, AF2Offset, i1);
-        return (int) UNSAFE.getDouble(a, AF1Offset);
+        return UNSAFE.getLong(a, AF1Offset);
+    }
+
+    public static int unsafeSnippet4(double i1) {
+        A a = new A();
+        UNSAFE.putDouble(a, AF1Offset, i1);
+        UNSAFE.putDouble(a, AF1Offset, i1);
+        return UNSAFE.getInt(a, AF1Offset) + UNSAFE.getInt(a, AF2Offset);
     }
 
     @Test
@@ -87,17 +116,31 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
 
     @Test
     public void testUnsafePEA02() {
-        testPartialEscapeReadElimination("unsafeSnippet2", false, 1);
-        testPartialEscapeReadElimination("unsafeSnippet2", true, 1);
+        testPartialEscapeReadElimination("unsafeSnippet2a", false, 1);
+        testPartialEscapeReadElimination("unsafeSnippet2a", true, 1);
+
+        testPartialEscapeReadElimination("unsafeSnippet2b", false, 1);
+        testPartialEscapeReadElimination("unsafeSnippet2b", true, 1);
     }
 
     @Test
     public void testUnsafePEA03() {
-        testPartialEscapeReadElimination("unsafeSnippet3", false, 1);
-        testPartialEscapeReadElimination("unsafeSnippet3", true, 1);
+        testPartialEscapeReadElimination("unsafeSnippet3a", false, 1);
+        testPartialEscapeReadElimination("unsafeSnippet3a", true, 1);
+
+        testPartialEscapeReadElimination("unsafeSnippet3b", false, 1);
+        testPartialEscapeReadElimination("unsafeSnippet3b", true, 1);
+    }
+
+    @Test
+    public void testUnsafePEA04() {
+        testPartialEscapeReadElimination("unsafeSnippet4", false, 1.0);
+        testPartialEscapeReadElimination("unsafeSnippet4", true, 1.0);
     }
 
     public void testPartialEscapeReadElimination(String snippet, boolean canonicalizeBefore, Object... args) {
+        assert AF1Offset % 8 == 0 : "First of the two int-fields must be 8-byte aligned";
+
         ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
         OptionValues options = graph.getOptions();
