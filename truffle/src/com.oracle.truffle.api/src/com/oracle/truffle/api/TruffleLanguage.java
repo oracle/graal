@@ -492,7 +492,7 @@ public abstract class TruffleLanguage<C> {
         private boolean disposed;
 
         ParsingRequest(Source source, Node node, MaterializedFrame frame, String... argumentNames) {
-            Objects.nonNull(source);
+            Objects.requireNonNull(source);
             this.node = node;
             this.frame = frame;
             this.source = source;
