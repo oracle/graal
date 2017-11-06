@@ -34,5 +34,5 @@ import com.oracle.truffle.api.nodes.Node;
 
 public abstract class LLVMMemMoveNode extends Node {
 
-    public abstract Object executeWithTarget(VirtualFrame frame, Object target, Object source, long length);
+    public abstract Object executeWithTarget(VirtualFrame frame, Object target, Object source, Object length);
 }

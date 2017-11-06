@@ -73,13 +73,25 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
     }
 
     @Specialization
+    public Object execute(LLVMAddress address, LLVMAddress value) {
+        LLVMMemory.putI64(address, value.getVal());
+        return null;
+    }
+
+    @Specialization
+    public Object execute(LLVMAddress address, LLVMGlobalVariable value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        LLVMMemory.putI64(address, globalAccess.getNativeLocation(value).getVal());
+        return null;
+    }
+
+    @Specialization
     public Object execute(LLVMVirtualAllocationAddress address, long value) {
         address.writeI64(value);
         return null;
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMTruffleObject address, long value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    public Object execute(VirtualFrame frame, LLVMTruffleObject address, Object value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(frame, address, value);
         return null;
     }

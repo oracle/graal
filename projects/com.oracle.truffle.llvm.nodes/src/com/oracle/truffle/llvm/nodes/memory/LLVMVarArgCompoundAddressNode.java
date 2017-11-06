@@ -29,16 +29,12 @@
  */
 package com.oracle.truffle.llvm.nodes.memory;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.NodeFields;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "source")})
@@ -49,13 +45,7 @@ public abstract class LLVMVarArgCompoundAddressNode extends LLVMExpressionNode {
     public abstract int getAlignment();
 
     @Specialization
-    public LLVMVarArgCompoundValue byValue(LLVMGlobalVariable source, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
-        return byValue(access.getNativeLocation(source));
+    public LLVMVarArgCompoundValue byValue(Object source) {
+        return LLVMVarArgCompoundValue.create(source, getLength(), getAlignment());
     }
-
-    @Specialization
-    public LLVMVarArgCompoundValue byValue(LLVMAddress source) {
-        return LLVMVarArgCompoundValue.create(source.getVal(), getLength(), getAlignment());
-    }
-
 }
