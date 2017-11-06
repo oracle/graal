@@ -165,6 +165,15 @@ public class DebugValueTest extends AbstractDebugTest {
         @MessageResolution(receiverType = NoAttributesTruffleObject.class)
         static final class NoAttributesMessageResolution {
 
+            @Resolve(message = "HAS_KEYS")
+            abstract static class NoAttributesHasKeysNode extends Node {
+
+                @SuppressWarnings("unused")
+                public Object access(NoAttributesTruffleObject ato) {
+                    return true;
+                }
+            }
+
             @Resolve(message = "KEYS")
             abstract static class NoAttributesKeysNode extends Node {
 
@@ -214,6 +223,15 @@ public class DebugValueTest extends AbstractDebugTest {
 
         @MessageResolution(receiverType = ModifiableAttributesTruffleObject.class)
         static final class ModifiableAttributesMessageResolution {
+
+            @Resolve(message = "HAS_KEYS")
+            abstract static class ModifiableAttributesHasKeysNode extends Node {
+
+                @SuppressWarnings("unused")
+                public Object access(ModifiableAttributesTruffleObject ato) {
+                    return true;
+                }
+            }
 
             @Resolve(message = "KEYS")
             abstract static class ModifiableAttributesKeysNode extends Node {

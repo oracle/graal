@@ -30,6 +30,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.EngineAPITestLanguage.LanguageContext;
 
@@ -85,7 +86,17 @@ public class EngineAPITestLanguage extends TruffleLanguage<LanguageContext> {
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
-        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+        Object value;
+        String code = request.getSource().getCharacters().toString();
+        if (code.isEmpty()) {
+            value = 42;
+        } else if (code.endsWith(".class")) {
+            Class<?> clazz = Class.forName(code.substring(0, code.length() - ".class".length()));
+            value = JavaInterop.asTruffleObject(clazz);
+        } else {
+            value = null;
+        }
+        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(value));
     }
 
     @Override

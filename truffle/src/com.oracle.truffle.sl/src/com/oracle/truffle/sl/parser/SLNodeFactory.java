@@ -165,6 +165,8 @@ public class SLNodeFactory {
         final SLReadArgumentNode readArg = new SLReadArgumentNode(parameterCount);
         SLExpressionNode assignment = createAssignment(createStringLiteral(nameToken, false), readArg);
         methodNodes.add(assignment);
+        final SourceSection argSource = source.createSection(nameToken.charPos, nameToken.val.length());
+        readArg.setSourceSection(argSource);
         parameterCount++;
     }
 
@@ -441,9 +443,17 @@ public class SLNodeFactory {
         }
 
         String name = ((SLStringLiteralNode) nameNode).executeGeneric(null);
-        FrameSlot frameSlot = frameDescriptor.findOrAddFrameSlot(name);
+        FrameSlot frameSlot = frameDescriptor.findFrameSlot(name);
+        boolean declaration = false;
+        if (frameSlot == null) {
+            declaration = true;
+            frameSlot = frameDescriptor.addFrameSlot(name);
+        }
         lexicalScope.locals.put(name, frameSlot);
-        final SLExpressionNode result = SLWriteLocalVariableNodeGen.create(valueNode, frameSlot);
+        final SLWriteLocalVariableNode result = SLWriteLocalVariableNodeGen.create(valueNode, frameSlot);
+        if (declaration) {
+            result.setDeclaredVariableLocation(nameNode.getSourceSection());
+        }
 
         if (valueNode.getSourceSection() != null) {
             final int start = nameNode.getSourceSection().getCharIndex();

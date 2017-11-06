@@ -163,6 +163,25 @@ public final class Value {
     }
 
     /**
+     * Returns <code>true</code> if the value can be instantiated. This indicates that the
+     * {@link #newInstance(Object...)} can be used with this value.
+     *
+     * @since 1.0
+     */
+    public boolean canInstantiate() {
+        return impl.canInstantiate(receiver);
+    }
+
+    /**
+     *
+     *
+     * @since 1.0
+     */
+    public Value newInstance(Object... arguments) {
+        return impl.newInstance(receiver, arguments);
+    }
+
+    /**
      *
      *
      * @since 1.0

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.nodes.local;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -47,6 +48,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 
 /**
@@ -56,6 +58,8 @@ import com.oracle.truffle.sl.nodes.SLExpressionNode;
 @NodeChild("valueNode")
 @NodeField(name = "slot", type = FrameSlot.class)
 public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
+
+    @CompilationFinal private SourceSection declaredVariableLocation;
 
     /**
      * Returns the descriptor of the accessed local variable. The implementation of this method is
@@ -125,5 +129,13 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
 
     protected boolean isBooleanOrIllegal(@SuppressWarnings("unused") VirtualFrame frame) {
         return getSlot().getKind() == FrameSlotKind.Boolean || getSlot().getKind() == FrameSlotKind.Illegal;
+    }
+
+    public void setDeclaredVariableLocation(SourceSection sourceSection) {
+        this.declaredVariableLocation = sourceSection;
+    }
+
+    public SourceSection getDeclaredVariableLocation() {
+        return declaredVariableLocation;
     }
 }

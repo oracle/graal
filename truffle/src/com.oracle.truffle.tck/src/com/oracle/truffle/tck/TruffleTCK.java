@@ -58,7 +58,7 @@ import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.interop.ForeignAccess.Factory26;
+import com.oracle.truffle.api.interop.ForeignAccess.Factory30;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -126,7 +126,7 @@ import com.oracle.truffle.tck.impl.TestObject;
  * interop package} defines what types of data can be interchanged between the languages and the
  * <em>TCK</em> does its best to make sure all these data are really accepted as an input on a
  * boundary of your {@link TruffleLanguage language implementation}. That doesn't mean such data
- * need to be used internally, many languages do conversions in their {@link Factory26 foreign
+ * need to be used internally, many languages do conversions in their {@link Factory30 foreign
  * access} {@link RootNode nodes} to more suitable internal representation. Such conversion is fully
  * acceptable as nobody prescribes what is the actual type of output after executing a function/code
  * snippet in your language.

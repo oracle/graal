@@ -34,7 +34,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 
-final class ArrayTruffleObject implements TruffleObject, ForeignAccess.Factory26 {
+final class ArrayTruffleObject implements TruffleObject, ForeignAccess.Factory30 {
     private final ForeignAccess access;
     private final Object[] values;
     private final Thread forbiddenDupl;
@@ -61,6 +61,11 @@ final class ArrayTruffleObject implements TruffleObject, ForeignAccess.Factory26
 
     @Override
     public CallTarget accessIsExecutable() {
+        return target(RootNode.createConstantNode(Boolean.FALSE));
+    }
+
+    @Override
+    public CallTarget accessIsInstantiable() {
         return target(RootNode.createConstantNode(Boolean.FALSE));
     }
 
@@ -121,7 +126,17 @@ final class ArrayTruffleObject implements TruffleObject, ForeignAccess.Factory26
     }
 
     @Override
+    public CallTarget accessHasKeys() {
+        return target(RootNode.createConstantNode(Boolean.FALSE));
+    }
+
+    @Override
     public CallTarget accessKeys() {
+        return null;
+    }
+
+    @Override
+    public CallTarget accessKeyDeclaredLocation() {
         return null;
     }
 

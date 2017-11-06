@@ -150,13 +150,15 @@ abstract class MessageGenerator extends InteropNodeGenerator {
 
         Object currentMessage = Utils.getMessage(processingEnv, messageName);
         if (currentMessage != null) {
-            if (Message.READ.toString().equalsIgnoreCase(messageName) || Message.KEY_INFO.toString().equalsIgnoreCase(messageName)) {
+            if (Message.READ.toString().equalsIgnoreCase(messageName) || Message.KEY_INFO.toString().equalsIgnoreCase(messageName) ||
+                            Message.KEY_DECLARED_LOCATION.toString().equalsIgnoreCase(messageName)) {
                 return new ReadGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
             } else if (Message.WRITE.toString().equalsIgnoreCase(messageName)) {
                 return new WriteGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
             } else if (Message.IS_NULL.toString().equalsIgnoreCase(messageName) || Message.IS_EXECUTABLE.toString().equalsIgnoreCase(messageName) ||
                             Message.IS_BOXED.toString().equalsIgnoreCase(messageName) || Message.HAS_SIZE.toString().equalsIgnoreCase(messageName) ||
                             Message.GET_SIZE.toString().equalsIgnoreCase(messageName) || Message.UNBOX.toString().equalsIgnoreCase(messageName) ||
+                            Message.IS_INSTANTIABLE.toString().equalsIgnoreCase(messageName) || Message.HAS_KEYS.toString().equalsIgnoreCase(messageName) ||
                             Message.IS_POINTER.toString().equalsIgnoreCase(messageName) ||
                             Message.AS_POINTER.toString().equalsIgnoreCase(messageName) || Message.TO_NATIVE.toString().equalsIgnoreCase(messageName)) {
                 return new UnaryGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);

@@ -63,6 +63,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
 import com.oracle.truffle.sl.runtime.SLBigNumber;
@@ -78,6 +79,7 @@ public final class SLLexicalScope {
     private final RootNode root;
     private SLLexicalScope parent;
     private Map<String, FrameSlot> varSlots;
+    private Map<String, SourceSection> varDeclaredLocations;
 
     /**
      * Create a new block SL lexical scope.
@@ -220,13 +222,13 @@ public final class SLLexicalScope {
     }
 
     public Object getVariables(Frame frame) {
-        Map<String, FrameSlot> vars = getVars();
+        getVars();
         Object[] args = null;
         // Use arguments when the current node is above the block
         if (current == null) {
             args = (frame != null) ? frame.getArguments() : null;
         }
-        return new VariablesMapObject(vars, args, frame);
+        return new VariablesMapObject(varSlots, varDeclaredLocations, args, frame);
     }
 
     public Object getArguments(Frame frame) {
@@ -235,22 +237,25 @@ public final class SLLexicalScope {
             return null;
         }
         // The slots give us names of the arguments:
-        Map<String, FrameSlot> argSlots = collectArgs(block);
+        Map<String, FrameSlot> argSlots = new LinkedHashMap<>(4);
+        Map<String, SourceSection> locations = new LinkedHashMap<>(4);
+        collectArgs(block, argSlots, locations);
         // The frame's arguments array give us the argument values:
         Object[] args = (frame != null) ? frame.getArguments() : null;
         // Create a TruffleObject having the arguments as properties:
-        return new VariablesMapObject(argSlots, args, frame);
+        return new VariablesMapObject(argSlots, locations, args, frame);
     }
 
     private Map<String, FrameSlot> getVars() {
         if (varSlots == null) {
             if (current != null) {
-                varSlots = collectVars(block, current);
+                collectVars(block, current);
             } else if (block != null) {
                 // Provide the arguments only when the current node is above the block
-                varSlots = collectArgs(block);
+                collectArgs(block);
             } else {
                 varSlots = Collections.emptyMap();
+                varDeclaredLocations = Collections.emptyMap();
             }
         }
         return varSlots;
@@ -266,11 +271,12 @@ public final class SLLexicalScope {
         return false;
     }
 
-    private Map<String, FrameSlot> collectVars(Node varsBlock, Node currentNode) {
+    private void collectVars(Node varsBlock, Node currentNode) {
         // Variables are slot-based.
         // To collect declared variables, traverse the block's AST and find slots associated
         // with SLWriteLocalVariableNode. The traversal stops when we hit the current node.
-        Map<String, FrameSlot> slots = new LinkedHashMap<>(1 << 2);
+        Map<String, FrameSlot> slots = new LinkedHashMap<>(4);
+        Map<String, SourceSection> locations = new LinkedHashMap<>(4);
         NodeUtil.forEachChild(varsBlock, new NodeVisitor() {
             @Override
             public boolean visit(Node node) {
@@ -289,20 +295,32 @@ public final class SLLexicalScope {
                     SLWriteLocalVariableNode wn = (SLWriteLocalVariableNode) node;
                     String name = Objects.toString(wn.getSlot().getIdentifier());
                     if (!hasParentVar(name)) {
+                        SourceSection declaredVariableLocation = wn.getDeclaredVariableLocation();
+                        if (declaredVariableLocation != null) {
+                            locations.put(name, declaredVariableLocation);
+                        }
                         slots.put(name, wn.getSlot());
                     }
                 }
                 return true;
             }
         });
-        return slots;
+        this.varSlots = slots;
+        this.varDeclaredLocations = locations;
     }
 
-    private static Map<String, FrameSlot> collectArgs(Node block) {
+    private void collectArgs(Node blockNode) {
+        Map<String, FrameSlot> args = new LinkedHashMap<>(4);
+        Map<String, SourceSection> locations = new LinkedHashMap<>(4);
+        collectArgs(blockNode, args, locations);
+        this.varSlots = args;
+        this.varDeclaredLocations = locations;
+    }
+
+    private static void collectArgs(Node block, Map<String, FrameSlot> args, Map<String, SourceSection> locations) {
         // Arguments are pushed to frame slots at the beginning of the function block.
         // To collect argument slots, search for SLReadArgumentNode inside of
         // SLWriteLocalVariableNode.
-        Map<String, FrameSlot> args = new LinkedHashMap<>(1 << 2);
         NodeUtil.forEachChild(block, new NodeVisitor() {
 
             private SLWriteLocalVariableNode wn; // The current write node containing a slot
@@ -320,6 +338,7 @@ public final class SLLexicalScope {
                     String name = Objects.toString(slot.getIdentifier());
                     assert !args.containsKey(name) : name + " argument exists already.";
                     args.put(name, slot);
+                    locations.put(name, ((SLReadArgumentNode) node).getSourceSection());
                     return true;
                 } else if (wn == null && (node instanceof SLStatementNode)) {
                     // A different SL node - we're done.
@@ -329,17 +348,18 @@ public final class SLLexicalScope {
                 }
             }
         });
-        return args;
     }
 
     static final class VariablesMapObject implements TruffleObject {
 
         final Map<String, ? extends FrameSlot> slots;
+        final Map<String, ? extends SourceSection> locations;
         final Object[] args;
         final Frame frame;
 
-        private VariablesMapObject(Map<String, ? extends FrameSlot> slots, Object[] args, Frame frame) {
+        private VariablesMapObject(Map<String, ? extends FrameSlot> slots, Map<String, ? extends SourceSection> locations, Object[] args, Frame frame) {
             this.slots = slots;
+            this.locations = locations;
             this.args = args;
             this.frame = frame;
         }
@@ -355,6 +375,15 @@ public final class SLLexicalScope {
 
         @MessageResolution(receiverType = VariablesMapObject.class)
         static final class VariablesMapMessageResolution {
+
+            @Resolve(message = "HAS_KEYS")
+            abstract static class VarsMapHasKeysNode extends Node {
+
+                public Object access(VariablesMapObject varMap) {
+                    assert varMap != null;
+                    return true;
+                }
+            }
 
             @Resolve(message = "KEYS")
             abstract static class VarsMapKeysNode extends Node {
@@ -412,6 +441,14 @@ public final class SLLexicalScope {
                 }
             }
 
+            @Resolve(message = "KEY_DECLARED_LOCATION")
+            abstract static class VarsMapDeclaredLocationNode extends Node {
+
+                @TruffleBoundary
+                public Object access(VariablesMapObject varMap, String name) {
+                    return varMap.locations.get(name);
+                }
+            }
         }
     }
 

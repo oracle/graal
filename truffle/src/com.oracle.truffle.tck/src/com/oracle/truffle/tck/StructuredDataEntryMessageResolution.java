@@ -33,6 +33,15 @@ import com.oracle.truffle.api.nodes.Node;
 @MessageResolution(receiverType = StructuredDataEntry.class)
 class StructuredDataEntryMessageResolution {
 
+    @Resolve(message = "HAS_KEYS")
+    abstract static class StructuredDataEntryHasKeysNode extends Node {
+
+        @SuppressWarnings("unused")
+        public Object access(StructuredDataEntry data) {
+            return true;
+        }
+    }
+
     @Resolve(message = "KEYS")
     abstract static class StructuredDataEntryKeysNode extends Node {
 

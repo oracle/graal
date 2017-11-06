@@ -34,7 +34,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 
-final class BoxedValue implements TruffleObject, ForeignAccess.Factory26 {
+final class BoxedValue implements TruffleObject, ForeignAccess.Factory30 {
     private final Object value;
 
     BoxedValue(Object v) {
@@ -53,6 +53,11 @@ final class BoxedValue implements TruffleObject, ForeignAccess.Factory26 {
 
     @Override
     public CallTarget accessIsExecutable() {
+        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(Boolean.FALSE));
+    }
+
+    @Override
+    public CallTarget accessIsInstantiable() {
         return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(Boolean.FALSE));
     }
 
@@ -118,6 +123,11 @@ final class BoxedValue implements TruffleObject, ForeignAccess.Factory26 {
     }
 
     @Override
+    public CallTarget accessHasKeys() {
+        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(Boolean.FALSE));
+    }
+
+    @Override
     public CallTarget accessKeys() {
         return null;
     }
@@ -134,6 +144,11 @@ final class BoxedValue implements TruffleObject, ForeignAccess.Factory26 {
 
     @Override
     public CallTarget accessToNative() {
+        return null;
+    }
+
+    @Override
+    public CallTarget accessKeyDeclaredLocation() {
         return null;
     }
 

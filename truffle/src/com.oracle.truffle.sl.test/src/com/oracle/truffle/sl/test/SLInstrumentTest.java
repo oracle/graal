@@ -40,24 +40,6 @@
  */
 package com.oracle.truffle.sl.test;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Scope;
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.EventBinding;
-import com.oracle.truffle.api.instrumentation.EventContext;
-import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.api.vm.PolyglotRuntime;
-import com.oracle.truffle.sl.SLLanguage;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -65,8 +47,10 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -76,13 +60,38 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import org.junit.Test;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.Source;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.EventBinding;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
+
 /**
  * Test of SL instrumentation.
  */
 public class SLInstrumentTest {
 
     @Test
-    public void testLexicalScopes() {
+    public void testLexicalScopes() throws Exception {
         String code = "function test(n) {\n" +
                         "  a = 1;\n" +          // 2
                         "  if (a > 0) {\n" +
@@ -107,46 +116,47 @@ public class SLInstrumentTest {
                         "function main() {\n" +
                         "  test(\"n_n\");\n" +
                         "}";
-        Source source = Source.newBuilder(code).name("testing").mimeType(SLLanguage.MIME_TYPE).build();
-        PolyglotEngine engine = PolyglotEngine.newBuilder().setOut(new java.io.OutputStream() {
+        Source source = Source.newBuilder("sl", code, "testing").build();
+        List<Throwable> throwables;
+        try (Engine engine = Engine.newBuilder().out(new java.io.OutputStream() {
             // null output stream
             @Override
             public void write(int b) throws IOException {
             }
-        }).build();
-        PolyglotRuntime.Instrument envInstr = engine.getRuntime().getInstruments().get("testEnvironmentHandlerInstrument");
-        envInstr.setEnabled(true);
-        TruffleInstrument.Env env = envInstr.lookup(Environment.class).env;
-        List<Throwable> throwables = new ArrayList<>();
-        env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().lineIn(1, source.getLineCount()).build(), new ExecutionEventListener() {
-            @Override
-            public void onEnter(EventContext context, VirtualFrame frame) {
-                Node node = context.getInstrumentedNode();
-                Iterable<Scope> lexicalScopes = env.findLocalScopes(node, null);
-                Iterable<Scope> dynamicScopes = env.findLocalScopes(node, frame);
-                try {
-                    verifyLexicalScopes(lexicalScopes, dynamicScopes, context.getInstrumentedSourceSection().getStartLine(), frame.materialize());
-                } catch (ThreadDeath t) {
-                    throw t;
-                } catch (Throwable t) {
-                    CompilerDirectives.transferToInterpreter();
-                    PrintStream lsErr = System.err;
-                    lsErr.println("Line = " + context.getInstrumentedSourceSection().getStartLine());
-                    lsErr.println("Node = " + node + ", class = " + node.getClass().getName());
-                    t.printStackTrace(lsErr);
-                    throwables.add(t);
+        }).build()) {
+            Instrument envInstr = engine.getInstruments().get("testEnvironmentHandlerInstrument");
+            TruffleInstrument.Env env = envInstr.lookup(Environment.class).env;
+            throwables = new ArrayList<>();
+            env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().lineIn(1, source.getLineCount()).build(), new ExecutionEventListener() {
+                @Override
+                public void onEnter(EventContext context, VirtualFrame frame) {
+                    Node node = context.getInstrumentedNode();
+                    Iterable<Scope> lexicalScopes = env.findLocalScopes(node, null);
+                    Iterable<Scope> dynamicScopes = env.findLocalScopes(node, frame);
+                    try {
+                        verifyLexicalScopes(lexicalScopes, dynamicScopes, context.getInstrumentedSourceSection().getStartLine(), frame.materialize());
+                    } catch (ThreadDeath t) {
+                        throw t;
+                    } catch (Throwable t) {
+                        CompilerDirectives.transferToInterpreter();
+                        PrintStream lsErr = System.err;
+                        lsErr.println("Line = " + context.getInstrumentedSourceSection().getStartLine());
+                        lsErr.println("Node = " + node + ", class = " + node.getClass().getName());
+                        t.printStackTrace(lsErr);
+                        throwables.add(t);
+                    }
                 }
-            }
 
-            @Override
-            public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-            }
+                @Override
+                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                }
 
-            @Override
-            public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
-            }
-        });
-        engine.eval(source);
+                @Override
+                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+                }
+            });
+            Context.newBuilder().engine(engine).build().eval(source);
+        }
         Assert.assertTrue(throwables.toString(), throwables.isEmpty());
     }
 
@@ -155,6 +165,7 @@ public class SLInstrumentTest {
         int depth = 0;
         switch (line) {
             case 1:
+                break;
             case 2:
                 for (Scope ls : lexicalScopes) {
                     // Test that ls.getNode() returns the current root node:
@@ -478,21 +489,21 @@ public class SLInstrumentTest {
         String fullOutput = "5\n4\n3\n2\n1\n120\n";
         String fullLines = "[5, 4, 3, 2, 1, 120]";
         // Pure exec:
-        Source source = Source.newBuilder(code).name("testing").mimeType(SLLanguage.MIME_TYPE).build();
+        Source source = Source.newBuilder("sl", code, "testing").build();
         ByteArrayOutputStream engineOut = new ByteArrayOutputStream();
-        PolyglotEngine engine = PolyglotEngine.newBuilder().setOut(engineOut).build();
-        engine.eval(source);
+        Engine engine = Engine.newBuilder().out(engineOut).build();
+        Context context = Context.newBuilder().engine(engine).build();
+        context.eval(source);
         String engineOutput = fullOutput;
         Assert.assertEquals(engineOutput, engineOut.toString());
 
         // Check output
-        PolyglotRuntime.Instrument outInstr = engine.getRuntime().getInstruments().get("testEnvironmentHandlerInstrument");
-        outInstr.setEnabled(true);
+        Instrument outInstr = engine.getInstruments().get("testEnvironmentHandlerInstrument");
         TruffleInstrument.Env env = outInstr.lookup(Environment.class).env;
         ByteArrayOutputStream consumedOut = new ByteArrayOutputStream();
         EventBinding<ByteArrayOutputStream> outputConsumerBinding = env.getInstrumenter().attachOutConsumer(consumedOut);
         Assert.assertEquals(0, consumedOut.size());
-        engine.eval(source);
+        context.eval(source);
         BufferedReader fromOutReader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(consumedOut.toByteArray())));
         engineOutput = engineOutput + fullOutput;
         Assert.assertEquals(engineOutput, engineOut.toString());
@@ -503,7 +514,7 @@ public class SLInstrumentTest {
         ByteArrayOutputStream consumedOut2 = new ByteArrayOutputStream();
         EventBinding<ByteArrayOutputStream> outputConsumerBinding2 = env.getInstrumenter().attachOutConsumer(consumedOut2);
         Assert.assertEquals(0, consumedOut2.size());
-        engine.eval(source);
+        context.eval(source);
         fromOutReader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(consumedOut.toByteArray())));
         BufferedReader fromOutReader2 = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(consumedOut2.toByteArray())));
         engineOutput = engineOutput + fullOutput;
@@ -518,7 +529,7 @@ public class SLInstrumentTest {
         outputConsumerBinding.dispose();
         consumedOut.reset();
         consumedOut2.reset();
-        engine.eval(source);
+        context.eval(source);
         engineOutput = engineOutput + fullOutput;
         Assert.assertEquals(engineOutput, engineOut.toString());
         Assert.assertEquals(0, consumedOut.size());
@@ -529,20 +540,139 @@ public class SLInstrumentTest {
         // Remaining closes and pure exec successful:
         consumedOut2.reset();
         outputConsumerBinding2.dispose();
-        engine.eval(source);
+        context.eval(source);
         engineOutput = engineOutput + fullOutput;
         Assert.assertEquals(engineOutput, engineOut.toString());
         Assert.assertEquals(0, consumedOut.size());
         Assert.assertEquals(0, consumedOut2.size());
 
-        // Add a reader again and disable the instrument:
-        env.getInstrumenter().attachOutConsumer(consumedOut);
-        outInstr.setEnabled(false);
-        engine.eval(source);
-        engineOutput = engineOutput + fullOutput;
-        Assert.assertEquals(engineOutput, engineOut.toString());
-        Assert.assertEquals(0, consumedOut.size());
-        Assert.assertEquals(0, consumedOut2.size());
+    }
+
+    @Test
+    public void testDeclaredLocations() throws Exception {
+        String code = "function main() {\n" +
+                        "  test(\"n_n\");\n" +  // 2
+                        "}\n" +
+                        "function test(n) {\n" +
+                        "  a = 1;\n" +          // 5
+                        "  if (a > 0) {\n" +
+                        "    b1 = a;\n" +
+                        "    foo(n, a, b1);\n" +
+                        "  }\n" +
+                        "}\n" +
+                        "function foo(n, xx, y123) {\n" +
+                        "  return xx + y123;\n" +   // 12
+                        "}\n";
+        Source source = Source.newBuilder("sl", code, "testing").build();
+        Node declaredLocationNode = Message.KEY_DECLARED_LOCATION.createNode();
+        List<Throwable> throwables;
+        try (Engine engine = Engine.newBuilder().build()) {
+            Instrument envInstr = engine.getInstruments().get("testEnvironmentHandlerInstrument");
+            TruffleInstrument.Env env = envInstr.lookup(Environment.class).env;
+            throwables = new ArrayList<>();
+            env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().tagIs(StatementTag.class).build(), new ExecutionEventListener() {
+                @Override
+                public void onEnter(EventContext context, VirtualFrame frame) {
+                    Node node = context.getInstrumentedNode();
+                    Iterable<Scope> lexicalScopes = env.findLocalScopes(node, null);
+                    try {
+                        verifyDeclaredLocations(lexicalScopes, context.getInstrumentedSourceSection().getStartLine(), declaredLocationNode);
+                    } catch (ThreadDeath t) {
+                        throw t;
+                    } catch (Throwable t) {
+                        CompilerDirectives.transferToInterpreter();
+                        PrintStream lsErr = System.err;
+                        lsErr.println("Line = " + context.getInstrumentedSourceSection().getStartLine());
+                        lsErr.println("Node = " + node + ", class = " + node.getClass().getName());
+                        t.printStackTrace(lsErr);
+                        throwables.add(t);
+                    }
+                }
+
+                @Override
+                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                }
+
+                @Override
+                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+                }
+            });
+            Context.newBuilder().engine(engine).build().eval(source);
+        }
+        Assert.assertTrue(throwables.toString(), throwables.isEmpty());
+    }
+
+    private static void verifyDeclaredLocations(Iterable<Scope> lexicalScopes, int line, Node declaredLocationNode) throws InteropException {
+        SourceSection ss = null;
+        int declarationLine = line;
+        switch (line) {
+            case 2:
+                break;
+            case 5:
+                TruffleObject args = (TruffleObject) lexicalScopes.iterator().next().getArguments();
+                TruffleObject vars = (TruffleObject) lexicalScopes.iterator().next().getVariables();
+                ss = ForeignAccess.sendKeyDeclaredLocation(declaredLocationNode, args, "n");
+                assertNotNull(ss);
+                assertEquals(ss, ForeignAccess.sendKeyDeclaredLocation(declaredLocationNode, vars, "n"));
+                declarationLine = 4;
+                assertEquals(15, ss.getStartColumn());
+                assertEquals(15, ss.getEndColumn());
+                break;
+            case 6:
+                args = (TruffleObject) lexicalScopes.iterator().next().getArguments();
+                ss = ForeignAccess.sendKeyDeclaredLocation(declaredLocationNode, args, "n");
+                assertNotNull(ss);
+                assertEquals(4, ss.getStartLine());
+                assertEquals(15, ss.getStartColumn());
+                vars = (TruffleObject) lexicalScopes.iterator().next().getVariables();
+                ss = ForeignAccess.sendKeyDeclaredLocation(declaredLocationNode, vars, "a");
+                assertNotNull(ss);
+                declarationLine = 5;
+                assertEquals(3, ss.getStartColumn());
+                assertEquals(3, ss.getEndColumn());
+                break;
+            case 7:
+                break;
+            case 8:
+                Iterator<Scope> scopes = lexicalScopes.iterator();
+                vars = (TruffleObject) scopes.next().getVariables();
+                ss = ForeignAccess.sendKeyDeclaredLocation(declaredLocationNode, vars, "b1");
+                assertNotNull(ss);
+                assertEquals(7, ss.getStartLine());
+                assertEquals(7, ss.getEndLine());
+                assertEquals(5, ss.getStartColumn());
+                assertEquals(6, ss.getEndColumn());
+                vars = (TruffleObject) scopes.next().getVariables();
+                ss = ForeignAccess.sendKeyDeclaredLocation(declaredLocationNode, vars, "a");
+                assertNotNull(ss);
+                declarationLine = 5;
+                assertEquals(3, ss.getStartColumn());
+                break;
+            case 12:
+                args = (TruffleObject) lexicalScopes.iterator().next().getArguments();
+                ss = ForeignAccess.sendKeyDeclaredLocation(declaredLocationNode, args, "n");
+                declarationLine = 11;
+                assertEquals(declarationLine, ss.getStartLine());
+                assertEquals(declarationLine, ss.getEndLine());
+                assertEquals(14, ss.getStartColumn());
+                assertEquals(14, ss.getEndColumn());
+                ss = ForeignAccess.sendKeyDeclaredLocation(declaredLocationNode, args, "xx");
+                assertEquals(declarationLine, ss.getStartLine());
+                assertEquals(declarationLine, ss.getEndLine());
+                assertEquals(17, ss.getStartColumn());
+                assertEquals(18, ss.getEndColumn());
+                ss = ForeignAccess.sendKeyDeclaredLocation(declaredLocationNode, args, "y123");
+                assertEquals(21, ss.getStartColumn());
+                assertEquals(24, ss.getEndColumn());
+                break;
+            default:
+                fail("Untested line: " + line);
+                break;
+        }
+        if (ss != null) {
+            assertEquals(declarationLine, ss.getStartLine());
+            assertEquals(declarationLine, ss.getEndLine());
+        }
     }
 
     String readLinesList(BufferedReader br) throws IOException {
@@ -557,7 +687,7 @@ public class SLInstrumentTest {
         return lines.toString();
     }
 
-    @TruffleInstrument.Registration(id = "testEnvironmentHandlerInstrument")
+    @TruffleInstrument.Registration(id = "testEnvironmentHandlerInstrument", services = Environment.class)
     public static class EnvironmentHandlerInstrument extends TruffleInstrument {
 
         @Override

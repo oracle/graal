@@ -67,7 +67,7 @@ import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.ForeignAccess.Factory;
-import com.oracle.truffle.api.interop.ForeignAccess.Factory26;
+import com.oracle.truffle.api.interop.ForeignAccess.Factory30;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -461,7 +461,7 @@ public class SLDebugDirectTest {
 
     }
 
-    private static class ExecNotifyHandlerForeign implements Factory26, Factory {
+    private static class ExecNotifyHandlerForeign implements Factory30, Factory {
 
         private final ExecNotifyHandler nh;
 
@@ -556,6 +556,21 @@ public class SLDebugDirectTest {
 
         @Override
         public CallTarget accessToNative() {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        @Override
+        public CallTarget accessIsInstantiable() {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        @Override
+        public CallTarget accessHasKeys() {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        @Override
+        public CallTarget accessKeyDeclaredLocation() {
             throw new UnsupportedOperationException("Not supported yet.");
         }
 

@@ -35,6 +35,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.impl.ReadOnlyArrayList;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Encapsulates types of access to {@link TruffleObject}. If you want to expose your own objects to
@@ -68,40 +69,16 @@ public final class ForeignAccess {
      * @param baseClass the super class of all {@link TruffleObject}s handled by this factory (if
      *            <code>null</code> then the second interface must also implement {@link Factory})
      * @param factory the factory that handles access requests to {@link Message}s known as of
-     *            version 0.10
+     *            version 0.30
      * @return new instance wrapping <code>factory</code>
-     * @since 0.8 or earlier
-     * @deprecated Use {@link Factory18} and
-     *             {@link #create(java.lang.Class, com.oracle.truffle.api.interop.ForeignAccess.Factory18)}
+     * @since 0.30
      */
-    @Deprecated
-    public static ForeignAccess create(final Class<? extends TruffleObject> baseClass, final Factory10 factory) {
+    public static ForeignAccess create(final Class<? extends TruffleObject> baseClass, final Factory30 factory) {
         if (baseClass == null) {
             Factory f = (Factory) factory;
             assert f != null;
         }
-        return new ForeignAccess(new DelegatingFactory10(baseClass, factory));
-    }
-
-    /**
-     * Creates new instance of {@link ForeignAccess} that delegates to provided factory.
-     *
-     * @param baseClass the super class of all {@link TruffleObject}s handled by this factory (if
-     *            <code>null</code> then the second interface must also implement {@link Factory})
-     * @param factory the factory that handles access requests to {@link Message}s known as of
-     *            version 0.18
-     * @return new instance wrapping <code>factory</code>
-     * @since 0.18
-     * @deprecated Use {@link Factory26} and
-     *             {@link #create(java.lang.Class, com.oracle.truffle.api.interop.ForeignAccess.Factory26)}
-     */
-    @Deprecated
-    public static ForeignAccess create(final Class<? extends TruffleObject> baseClass, final Factory18 factory) {
-        if (baseClass == null) {
-            Factory f = (Factory) factory;
-            assert f != null;
-        }
-        return new ForeignAccess(new DelegatingFactory18(baseClass, factory));
+        return new ForeignAccess(new DelegatingFactory30(baseClass, factory));
     }
 
     /**
@@ -113,7 +90,10 @@ public final class ForeignAccess {
      *            version 0.26
      * @return new instance wrapping <code>factory</code>
      * @since 0.26
+     * @deprecated Use {@link Factory30} and
+     *             {@link #create(java.lang.Class, com.oracle.truffle.api.interop.ForeignAccess.Factory30)}
      */
+    @Deprecated
     public static ForeignAccess create(final Class<? extends TruffleObject> baseClass, final Factory26 factory) {
         if (baseClass == null) {
             Factory f = (Factory) factory;
@@ -126,40 +106,19 @@ public final class ForeignAccess {
      * Creates new instance of {@link ForeignAccess} that delegates to provided factory.
      *
      * @param factory the factory that handles access requests to {@link Message}s known as of
-     *            version 0.10
-     * @param languageCheck a {@link RootNode} that performs the language check on receiver objects
-     * @return new instance wrapping <code>factory</code>
-     * @since 0.13
-     * @deprecated Use {@link Factory18} and
-     *             {@link #create(com.oracle.truffle.api.interop.ForeignAccess.Factory18, com.oracle.truffle.api.nodes.RootNode)
-     *             its associated factory} method
-     */
-    @Deprecated
-    public static ForeignAccess create(final Factory10 factory, final RootNode languageCheck) {
-        return new ForeignAccess(languageCheck, new DelegatingFactory10(null, factory));
-    }
-
-    /**
-     * Creates new instance of {@link ForeignAccess} that delegates to provided factory.
-     *
-     * @param factory the factory that handles access requests to {@link Message}s known as of
-     *            version 0.18
+     *            version 0.26
      * @param languageCheck a {@link RootNode} that performs the language check on receiver objects,
      *            can be <code>null</code>, but then the factory must also implement {@link Factory}
      *            interface
      * @return new instance wrapping <code>factory</code>
-     * @since 0.18
-     * @deprecated Use {@link Factory26} and
-     *             {@link #create(com.oracle.truffle.api.interop.ForeignAccess.Factory26, com.oracle.truffle.api.nodes.RootNode)
-     *             its associated factory} method
+     * @since 0.26
      */
-    @Deprecated
-    public static ForeignAccess create(final Factory18 factory, final RootNode languageCheck) {
+    public static ForeignAccess create(final Factory30 factory, final RootNode languageCheck) {
         if (languageCheck == null) {
             Factory f = (Factory) factory;
             assert f != null;
         }
-        return new ForeignAccess(languageCheck, new DelegatingFactory18(null, factory));
+        return new ForeignAccess(languageCheck, new DelegatingFactory30(null, factory));
     }
 
     /**
@@ -172,7 +131,11 @@ public final class ForeignAccess {
      *            interface
      * @return new instance wrapping <code>factory</code>
      * @since 0.26
+     * @deprecated Use {@link Factory26} and
+     *             {@link #create(com.oracle.truffle.api.interop.ForeignAccess.Factory26, com.oracle.truffle.api.nodes.RootNode)
+     *             its associated factory} method
      */
+    @Deprecated
     public static ForeignAccess create(final Factory26 factory, final RootNode languageCheck) {
         if (languageCheck == null) {
             Factory f = (Factory) factory;
@@ -216,128 +179,6 @@ public final class ForeignAccess {
     @Deprecated
     public static Object execute(Node foreignNode, VirtualFrame frame, TruffleObject receiver, Object... arguments) {
         return ((InteropAccessNode) foreignNode).executeOld(receiver, arguments);
-    }
-
-    /**
-     * @since 0.11
-     * @deprecated use {@link #send(Node, TruffleObject, Object...)} instead
-     */
-    @Deprecated
-    public static Object send(Node foreignNode, @SuppressWarnings("unused") VirtualFrame frame, TruffleObject receiver, Object... arguments) throws InteropException {
-        return send(foreignNode, receiver, arguments);
-    }
-
-    /**
-     * @since 0.11
-     * @deprecated use {@link #sendRead(Node, TruffleObject, Object)} instead
-     */
-    @Deprecated
-    public static Object sendRead(Node readNode, @SuppressWarnings("unused") VirtualFrame frame, TruffleObject receiver, Object identifier)
-                    throws UnknownIdentifierException, UnsupportedMessageException {
-        return sendRead(readNode, receiver, identifier);
-    }
-
-    /**
-     * @since 0.11
-     * @deprecated use {@link #sendWrite(Node, TruffleObject, Object, Object)} instead
-     */
-    @Deprecated
-    public static Object sendWrite(Node writeNode, @SuppressWarnings("unused") VirtualFrame frame, TruffleObject receiver, Object identifier, Object value)
-                    throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
-        return sendWrite(writeNode, receiver, identifier, value);
-    }
-
-    /**
-     * @since 0.11
-     * @deprecated use {@link #sendUnbox(Node, TruffleObject)} instead
-     */
-    @Deprecated
-    public static Object sendUnbox(Node unboxNode, @SuppressWarnings("unused") VirtualFrame frame, TruffleObject receiver) throws UnsupportedMessageException {
-        return sendUnbox(unboxNode, receiver);
-    }
-
-    /**
-     * @since 0.11
-     * @deprecated use {@link #sendExecute(Node, TruffleObject, Object...)} instead
-     */
-    @Deprecated
-    public static Object sendExecute(Node executeNode, @SuppressWarnings("unused") VirtualFrame frame, TruffleObject receiver, Object... arguments)
-                    throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-        return sendExecute(executeNode, receiver, arguments);
-    }
-
-    /**
-     * @since 0.11
-     * @deprecated use {@link #sendIsExecutable(Node, TruffleObject)} instead
-     */
-    @Deprecated
-    public static boolean sendIsExecutable(Node isExecutableNode, @SuppressWarnings("unused") VirtualFrame frame, TruffleObject receiver) {
-        return sendIsExecutable(isExecutableNode, receiver);
-    }
-
-    /**
-     * @since 0.11
-     * @deprecated use {@link #sendInvoke(Node, TruffleObject, String, Object...)} instead
-     */
-    @Deprecated
-    public static Object sendInvoke(Node invokeNode, @SuppressWarnings("unused") VirtualFrame frame, TruffleObject receiver, String identifier, Object... arguments)
-                    throws UnsupportedTypeException, ArityException, UnknownIdentifierException, UnsupportedMessageException {
-        return sendInvoke(invokeNode, receiver, identifier, arguments);
-    }
-
-    /**
-     * @since 0.11
-     * @deprecated use {@link #sendNew(Node, TruffleObject, Object...)} instead
-     */
-    @Deprecated
-    public static Object sendNew(Node newNode, @SuppressWarnings("unused") VirtualFrame frame, TruffleObject receiver, Object... arguments)
-                    throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-        return sendNew(newNode, receiver, arguments);
-    }
-
-    /**
-     * @since 0.11
-     * @deprecated use {@link #sendIsNull(Node, TruffleObject)} instead
-     */
-    @Deprecated
-    public static boolean sendIsNull(Node isNullNode, @SuppressWarnings("unused") VirtualFrame frame, TruffleObject receiver) {
-        return sendIsNull(isNullNode, receiver);
-    }
-
-    /**
-     * @since 0.11
-     * @deprecated use {@link #sendHasSize(Node, TruffleObject)} instead
-     */
-    @Deprecated
-    public static boolean sendHasSize(Node hasSizeNode, @SuppressWarnings("unused") VirtualFrame frame, TruffleObject receiver) {
-        return sendHasSize(hasSizeNode, receiver);
-    }
-
-    /**
-     * @since 0.11
-     * @deprecated use {@link #sendGetSize(Node, TruffleObject)} instead
-     */
-    @Deprecated
-    public static Object sendGetSize(Node getSizeNode, @SuppressWarnings("unused") VirtualFrame frame, TruffleObject receiver) throws UnsupportedMessageException {
-        return sendGetSize(getSizeNode, receiver);
-    }
-
-    /**
-     * @since 0.11
-     * @deprecated use {@link #sendIsBoxed(Node, TruffleObject)} instead
-     */
-    @Deprecated
-    public static boolean sendIsBoxed(Node isBoxedNode, @SuppressWarnings("unused") VirtualFrame frame, TruffleObject receiver) {
-        return sendIsBoxed(isBoxedNode, receiver);
-    }
-
-    /**
-     * @since 0.18
-     * @deprecated use {@link #sendKeys(Node, TruffleObject)} instead
-     */
-    @Deprecated
-    public static TruffleObject sendKeys(Node keysNode, @SuppressWarnings("unused") VirtualFrame frame, TruffleObject receiver) throws UnsupportedMessageException {
-        return sendKeys(keysNode, receiver);
     }
 
     /**
@@ -580,6 +421,27 @@ public final class ForeignAccess {
     }
 
     /**
+     * Sends an {@link Message#IS_INSTANTIABLE IS_INSTANTIABLE message} to the foreign receiver
+     * object by executing the <code>isInstantiableNode</code>.
+     *
+     * @param isInstantiableNode the createNode created by {@link Message#createNode()}
+     * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
+     *            method
+     * @return return value, if any
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     * @since 0.30
+     */
+    public static boolean sendIsInstantiable(Node isInstantiableNode, TruffleObject receiver) {
+        try {
+            return (boolean) ((InteropAccessNode) isInstantiableNode).executeOrFalse(receiver);
+        } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("Unexpected exception caught.", e);
+        }
+    }
+
+    /**
      * Sends an INVOKE {@link Message} to the foreign receiver object by executing the
      * <code> invokeNode </code>.
      *
@@ -790,6 +652,36 @@ public final class ForeignAccess {
     }
 
     /**
+     * Sends an {@link Message#HAS_KEYS HAS_KEYS message} to the foreign receiver object by
+     * executing the <code>hasKeysNode</code>. If the object does not support the message, a
+     * {@link Message#KEYS} message is sent to test the presence of keys.
+     *
+     * @param hasKeysNode the createNode created by {@link Message#createNode()}
+     * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
+     *            method
+     * @return return value, if any
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     * @since 0.30
+     */
+    public static boolean sendHasKeys(Node hasKeysNode, TruffleObject receiver) {
+        try {
+            return (boolean) ((InteropAccessNode) hasKeysNode).execute(receiver);
+        } catch (UnsupportedMessageException ex) {
+            CompilerDirectives.transferToInterpreter();
+            try {
+                sendKeys(Message.KEYS.createNode(), receiver, true);
+                return true;
+            } catch (UnsupportedMessageException uex) {
+                return false;
+            }
+        } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("Unexpected exception caught.", e);
+        }
+    }
+
+    /**
      * Sends a {@link Message#KEYS} message to the foreign receiver object.
      *
      * @param keysNode the createNode created by {@link Message#createNode()}
@@ -845,6 +737,36 @@ public final class ForeignAccess {
     }
 
     /**
+     * Sends a {@link Message#KEY_DECLARED_LOCATION KEY_DECLARED_LOCATION message} to the foreign
+     * receiver object by executing the <code>keyDeclaredLocationNode</code>.
+     *
+     * @param keyDeclaredLocationNode the createNode created by {@link Message#createNode()}
+     * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
+     *            method
+     * @param identifier name of the property to find the declared location of
+     * @return the {@link SourceSection}, or <code>null</code> when no declared location was found.
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
+     *             {@link Message#createNode() message represented} by
+     *             <code>keyDeclaredLocationNode</code>
+     * @throws UnknownIdentifierException if the <code>receiver</code> does not allow reading a
+     *             property for the given <code>identifier</code>
+     * @since 0.30
+     */
+    public static SourceSection sendKeyDeclaredLocation(Node keyDeclaredLocationNode, TruffleObject receiver, Object identifier) throws UnknownIdentifierException, UnsupportedMessageException {
+        try {
+            return ((InteropAccessNode) keyDeclaredLocationNode).executeGetSourceSection(receiver, identifier);
+        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw e;
+        } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("Unexpected exception caught.", e);
+        }
+    }
+
+    /**
      * Read only access to foreign call arguments inside of a frame.
      *
      * @param frame the frame that was called via
@@ -873,12 +795,10 @@ public final class ForeignAccess {
     @Override
     public String toString() {
         Object f;
-        if (factory instanceof DelegatingFactory26) {
+        if (factory instanceof DelegatingFactory30) {
+            f = ((DelegatingFactory30) factory).factory;
+        } else if (factory instanceof DelegatingFactory26) {
             f = ((DelegatingFactory26) factory).factory;
-        } else if (factory instanceof DelegatingFactory18) {
-            f = ((DelegatingFactory18) factory).factory;
-        } else if (factory instanceof DelegatingFactory10) {
-            f = ((DelegatingFactory10) factory).factory;
         } else {
             f = factory;
         }
@@ -912,8 +832,8 @@ public final class ForeignAccess {
      * a {@code Message}. The {@code TruffleObject} instance provides a {@link ForeignAccess}
      * instance (built via {@link #create(com.oracle.truffle.api.interop.ForeignAccess.Factory)})
      * that provides an AST snippet for a given {@link Message}. Rather than using this generic
-     * {@code Factory}, consider implementing {@link Factory18} interface that captures the set of
-     * messages each language should implement as of Truffle version 0.18.
+     * {@code Factory}, consider implementing {@link Factory30} interface that captures the set of
+     * messages each language should implement as of Truffle version 0.30.
      *
      * @since 0.8 or earlier
      */
@@ -944,8 +864,207 @@ public final class ForeignAccess {
      * Specialized {@link Factory factory} that handles {@link Message messages} known as of release
      * 0.26 of the Truffle API.
      *
-     * @since 0.26
+     * @since 0.30
      */
+    public interface Factory30 {
+        /**
+         * Handles {@link Message#IS_NULL} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.30
+         */
+        CallTarget accessIsNull();
+
+        /**
+         * Handles {@link Message#IS_EXECUTABLE} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.30
+         */
+        CallTarget accessIsExecutable();
+
+        /**
+         * Handles {@link Message#IS_INSTANTIABLE} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.30
+         */
+        CallTarget accessIsInstantiable();
+
+        /**
+         * Handles {@link Message#IS_BOXED} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.30
+         */
+        CallTarget accessIsBoxed();
+
+        /**
+         * Handles {@link Message#HAS_SIZE} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.30
+         */
+        CallTarget accessHasSize();
+
+        /**
+         * Handles {@link Message#GET_SIZE} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.30
+         */
+        CallTarget accessGetSize();
+
+        /**
+         * Handles {@link Message#UNBOX} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.30
+         */
+        CallTarget accessUnbox();
+
+        /**
+         * Handles {@link Message#READ} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.30
+         */
+        CallTarget accessRead();
+
+        /**
+         * Handles {@link Message#WRITE} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.30
+         */
+        CallTarget accessWrite();
+
+        /**
+         * Handles {@link Message#createExecute(int)} messages.
+         *
+         * @param argumentsLength number of parameters the messages has been created for
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.30
+         */
+        CallTarget accessExecute(int argumentsLength);
+
+        /**
+         * Handles {@link Message#createInvoke(int)} messages.
+         *
+         * @param argumentsLength number of parameters the messages has been created for
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.30
+         */
+        CallTarget accessInvoke(int argumentsLength);
+
+        /**
+         * Handles {@link Message#createNew(int)} messages.
+         *
+         * @param argumentsLength number of parameters the messages has been created for
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.30
+         */
+        CallTarget accessNew(int argumentsLength);
+
+        /**
+         * Handles {@link Message#HAS_KEYS} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.30
+         */
+        CallTarget accessHasKeys();
+
+        /**
+         * Handles request for access to a message not known in version 0.10. The parameter to the
+         * returned {@link CallTarget} is going to be the object/receiver. The return value is
+         * supposed to be a {@link TruffleObject} that represents an array (responds to
+         * {@link Message#HAS_SIZE} and {@link Message#GET_SIZE} and its element represent
+         * {@link String} names of properties of the receiver.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.30
+         */
+        CallTarget accessKeys();
+
+        /**
+         * Handles {@link Message#KEY_INFO} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.30
+         */
+        CallTarget accessKeyInfo();
+
+        /**
+         * Handles {@link Message#IS_POINTER} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.30
+         */
+        CallTarget accessIsPointer();
+
+        /**
+         * Handles {@link Message#AS_POINTER} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.30
+         */
+        CallTarget accessAsPointer();
+
+        /**
+         * Handles {@link Message#TO_NATIVE} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.30
+         */
+        CallTarget accessToNative();
+
+        /**
+         * Handles {@link Message#KEY_DECLARED_LOCATION} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.30
+         */
+        CallTarget accessKeyDeclaredLocation();
+
+        /**
+         * Handles request for access to a message not known in version 0.18.
+         *
+         * @param unknown the message
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.30
+         */
+        CallTarget accessMessage(Message unknown);
+    }
+
+    /**
+     * Specialized {@link Factory factory} that handles {@link Message messages} known as of release
+     * 0.26 of the Truffle API.
+     *
+     * @since 0.26
+     * @deprecated extended set of messages is now supported, consider implementing
+     *             {@link Factory30}
+     */
+    @Deprecated
     public interface Factory26 {
         /**
          * Handles {@link Message#IS_NULL} message.
@@ -1115,271 +1234,11 @@ public final class ForeignAccess {
         CallTarget accessMessage(Message unknown);
     }
 
-    /**
-     * Specialized {@link Factory factory} that handles {@link Message messages} known as of release
-     * 0.18 of the Truffle API.
-     *
-     * @since 0.18
-     * @deprecated extended set of messages is now supported, consider implementing
-     *             {@link Factory26}
-     */
-    @Deprecated
-    public interface Factory18 {
-        /**
-         * Handles {@link Message#IS_NULL} message.
-         *
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.18
-         */
-        CallTarget accessIsNull();
-
-        /**
-         * Handles {@link Message#IS_EXECUTABLE} message.
-         *
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.18
-         */
-        CallTarget accessIsExecutable();
-
-        /**
-         * Handles {@link Message#IS_BOXED} message.
-         *
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.18
-         */
-        CallTarget accessIsBoxed();
-
-        /**
-         * Handles {@link Message#HAS_SIZE} message.
-         *
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.18
-         */
-        CallTarget accessHasSize();
-
-        /**
-         * Handles {@link Message#GET_SIZE} message.
-         *
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.18
-         */
-        CallTarget accessGetSize();
-
-        /**
-         * Handles {@link Message#UNBOX} message.
-         *
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.18
-         */
-        CallTarget accessUnbox();
-
-        /**
-         * Handles {@link Message#READ} message.
-         *
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.18
-         */
-        CallTarget accessRead();
-
-        /**
-         * Handles {@link Message#WRITE} message.
-         *
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.18
-         */
-        CallTarget accessWrite();
-
-        /**
-         * Handles {@link Message#createExecute(int)} messages.
-         *
-         * @param argumentsLength number of parameters the messages has been created for
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.18
-         */
-        CallTarget accessExecute(int argumentsLength);
-
-        /**
-         * Handles {@link Message#createInvoke(int)} messages.
-         *
-         * @param argumentsLength number of parameters the messages has been created for
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.18
-         */
-        CallTarget accessInvoke(int argumentsLength);
-
-        /**
-         * Handles {@link Message#createNew(int)} messages.
-         *
-         * @param argumentsLength number of parameters the messages has been created for
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.18
-         */
-        CallTarget accessNew(int argumentsLength);
-
-        /**
-         * Handles request for access to a message not known in version 0.10. The parameter to the
-         * returned {@link CallTarget} is going to be the object/receiver. The return value is
-         * supposed to be a {@link TruffleObject} that represents an array (responds to
-         * {@link Message#HAS_SIZE} and {@link Message#GET_SIZE} and its element represent
-         * {@link String} names of properties of the receiver.
-         *
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.18
-         */
-        CallTarget accessKeys();
-
-        /**
-         * Handles request for access to a message not known in version 0.18.
-         *
-         * @param unknown the message
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.18
-         */
-        CallTarget accessMessage(Message unknown);
-
-    }
-
-    /**
-     * Specialized {@link Factory factory} that handles {@link Message messages} known as of release
-     * 0.10 of the Truffle API.
-     *
-     * @since 0.8 or earlier
-     * @deprecated extended set of messages is now supported, consider implementing
-     *             {@link Factory18}
-     */
-    @Deprecated
-    public interface Factory10 {
-        /**
-         * Handles {@link Message#IS_NULL} message.
-         *
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.8 or earlier
-         */
-        CallTarget accessIsNull();
-
-        /**
-         * Handles {@link Message#IS_EXECUTABLE} message.
-         *
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.8 or earlier
-         */
-        CallTarget accessIsExecutable();
-
-        /**
-         * Handles {@link Message#IS_BOXED} message.
-         *
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.8 or earlier
-         */
-        CallTarget accessIsBoxed();
-
-        /**
-         * Handles {@link Message#HAS_SIZE} message.
-         *
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.8 or earlier
-         */
-        CallTarget accessHasSize();
-
-        /**
-         * Handles {@link Message#GET_SIZE} message.
-         *
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.8 or earlier
-         */
-        CallTarget accessGetSize();
-
-        /**
-         * Handles {@link Message#UNBOX} message.
-         *
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.8 or earlier
-         */
-        CallTarget accessUnbox();
-
-        /**
-         * Handles {@link Message#READ} message.
-         *
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.8 or earlier
-         */
-        CallTarget accessRead();
-
-        /**
-         * Handles {@link Message#WRITE} message.
-         *
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.8 or earlier
-         */
-        CallTarget accessWrite();
-
-        /**
-         * Handles {@link Message#createExecute(int)} messages.
-         *
-         * @param argumentsLength number of parameters the messages has been created for
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.8 or earlier
-         */
-        CallTarget accessExecute(int argumentsLength);
-
-        /**
-         * Handles {@link Message#createInvoke(int)} messages.
-         *
-         * @param argumentsLength number of parameters the messages has been created for
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.8 or earlier
-         */
-        CallTarget accessInvoke(int argumentsLength);
-
-        /**
-         * Handles {@link Message#createNew(int)} messages.
-         *
-         * @param argumentsLength number of parameters the messages has been created for
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.9
-         */
-        CallTarget accessNew(int argumentsLength);
-
-        /**
-         * Handles request for access to a message not known in version 1.0.
-         *
-         * @param unknown the message
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.8 or earlier
-         */
-        CallTarget accessMessage(Message unknown);
-    }
-
-    private static class DelegatingFactory10 implements Factory {
+    private static class DelegatingFactory30 implements Factory {
         private final Class<?> baseClass;
-        private final Factory10 factory;
+        private final Factory30 factory;
 
-        DelegatingFactory10(Class<?> baseClass, Factory10 factory) {
+        DelegatingFactory30(Class<?> baseClass, Factory30 factory) {
             this.baseClass = baseClass;
             this.factory = factory;
         }
@@ -1397,7 +1256,7 @@ public final class ForeignAccess {
             return accessMessage(factory, msg);
         }
 
-        private static CallTarget accessMessage(Factory10 factory, Message msg) {
+        private static CallTarget accessMessage(Factory30 factory, Message msg) {
             if (msg instanceof KnownMessage) {
                 switch (msg.hashCode()) {
                     case Execute.EXECUTE:
@@ -1408,65 +1267,16 @@ public final class ForeignAccess {
                         return factory.accessNew(((Execute) msg).getArity());
                     case GetSize.HASH:
                         return factory.accessGetSize();
+                    case HasKeys.HASH:
+                        return factory.accessHasKeys();
                     case HasSize.HASH:
                         return factory.accessHasSize();
                     case IsBoxed.HASH:
                         return factory.accessIsBoxed();
                     case IsExecutable.HASH:
                         return factory.accessIsExecutable();
-                    case IsNull.HASH:
-                        return factory.accessIsNull();
-                    case Read.HASH:
-                        return factory.accessRead();
-                    case Unbox.HASH:
-                        return factory.accessUnbox();
-                    case Write.HASH:
-                        return factory.accessWrite();
-                }
-            }
-            return factory.accessMessage(msg);
-        }
-    }
-
-    private static class DelegatingFactory18 implements Factory {
-        private final Class<?> baseClass;
-        private final Factory18 factory;
-
-        DelegatingFactory18(Class<?> baseClass, Factory18 factory) {
-            this.baseClass = baseClass;
-            this.factory = factory;
-        }
-
-        @Override
-        public boolean canHandle(TruffleObject obj) {
-            if (baseClass == null) {
-                return ((Factory) factory).canHandle(obj);
-            }
-            return baseClass.isInstance(obj);
-        }
-
-        @Override
-        public CallTarget accessMessage(Message msg) {
-            return accessMessage(factory, msg);
-        }
-
-        private static CallTarget accessMessage(Factory18 factory, Message msg) {
-            if (msg instanceof KnownMessage) {
-                switch (msg.hashCode()) {
-                    case Execute.EXECUTE:
-                        return factory.accessExecute(((Execute) msg).getArity());
-                    case Execute.INVOKE:
-                        return factory.accessInvoke(((Execute) msg).getArity());
-                    case Execute.NEW:
-                        return factory.accessNew(((Execute) msg).getArity());
-                    case GetSize.HASH:
-                        return factory.accessGetSize();
-                    case HasSize.HASH:
-                        return factory.accessHasSize();
-                    case IsBoxed.HASH:
-                        return factory.accessIsBoxed();
-                    case IsExecutable.HASH:
-                        return factory.accessIsExecutable();
+                    case IsInstantiable.HASH:
+                        return factory.accessIsInstantiable();
                     case IsNull.HASH:
                         return factory.accessIsNull();
                     case Read.HASH:
@@ -1477,6 +1287,16 @@ public final class ForeignAccess {
                         return factory.accessWrite();
                     case Keys.HASH:
                         return factory.accessKeys();
+                    case KeyInfoMsg.HASH:
+                        return factory.accessKeyInfo();
+                    case IsPointer.HASH:
+                        return factory.accessIsPointer();
+                    case AsPointer.HASH:
+                        return factory.accessAsPointer();
+                    case ToNative.HASH:
+                        return factory.accessToNative();
+                    case KeyDeclaredLocation.HASH:
+                        return factory.accessKeyDeclaredLocation();
                 }
             }
             return factory.accessMessage(msg);

@@ -59,7 +59,7 @@ public class ForeignAccessToStringTest {
         }
     }
 
-    private static class Simple10TestingFactory implements ForeignAccess.Factory26, ForeignAccess.Factory {
+    private static class Simple10TestingFactory implements ForeignAccess.Factory30, ForeignAccess.Factory {
         @Override
         public CallTarget accessIsNull() {
             return null;
@@ -144,6 +144,21 @@ public class ForeignAccessToStringTest {
         }
 
         public CallTarget accessToNative() {
+            return null;
+        }
+
+        @Override
+        public CallTarget accessIsInstantiable() {
+            return null;
+        }
+
+        @Override
+        public CallTarget accessHasKeys() {
+            return null;
+        }
+
+        @Override
+        public CallTarget accessKeyDeclaredLocation() {
             return null;
         }
     }
