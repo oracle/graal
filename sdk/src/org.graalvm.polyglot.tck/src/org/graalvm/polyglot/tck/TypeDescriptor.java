@@ -120,7 +120,7 @@ public final class TypeDescriptor {
     /**
      * Represents a union of all predefined types.
      *
-     * @see 0.30
+     * @since 0.30
      */
     public static final TypeDescriptor ANY = union(PREDEFINED_TYPES);
 
