@@ -1,7 +1,7 @@
 #include <stdio.h>
 
-void foo() throw() {
-	printf("Throwing an int!");
+void foo() throw(int) {
+	printf("Throwing an int!\n");
 	throw 42;
 }
 
@@ -10,6 +10,6 @@ int main () {
 	try {
 		foo();
 	} catch (...) {
-		printf("Caught car exception");
+		printf("Caught int exception\n");
 	}
 }
