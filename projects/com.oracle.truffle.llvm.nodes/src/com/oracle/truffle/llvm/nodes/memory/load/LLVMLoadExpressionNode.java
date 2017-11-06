@@ -29,16 +29,23 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.load;
 
+import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public abstract class LLVM80BitFloatLoadNode extends LLVMLoadNode {
+@NodeChild(type = LLVMExpressionNode.class)
+public abstract class LLVMLoadExpressionNode extends LLVMExpressionNode {
+
+    @Child private LLVMLoadNode load;
+
+    public LLVMLoadExpressionNode(LLVMLoadNode load) {
+        this.load = load;
+    }
 
     @Specialization
-    public LLVM80BitFloat execute80BitFloat(LLVMAddress address) {
-        return LLVMMemory.get80BitFloat(address);
+    public Object store(VirtualFrame frame, Object address) {
+        return load.executeWithTarget(frame, address);
     }
 
 }

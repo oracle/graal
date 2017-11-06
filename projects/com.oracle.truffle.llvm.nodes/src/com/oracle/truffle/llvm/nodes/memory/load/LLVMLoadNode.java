@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,16 +29,10 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.load;
 
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
-public abstract class LLVM80BitFloatLoadNode extends LLVMLoadNode {
+public abstract class LLVMLoadNode extends LLVMNode {
 
-    @Specialization
-    public LLVM80BitFloat execute80BitFloat(LLVMAddress address) {
-        return LLVMMemory.get80BitFloat(address);
-    }
-
+    public abstract Object executeWithTarget(VirtualFrame frame, Object address);
 }
