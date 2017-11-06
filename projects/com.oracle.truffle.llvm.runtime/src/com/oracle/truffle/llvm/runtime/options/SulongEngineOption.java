@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -84,6 +84,10 @@ public final class SulongEngineOption {
     public static final String ENABLE_LVI_NAME = "llvm.enableLVI";
     public static final String ENABLE_LVI_INFO = "Enable source-level inspection of local variables.";
 
+    public static final OptionKey<Boolean> STACKTRACE_ON_ABORT = new OptionKey<>(false);
+    public static final String STACKTRACE_ON_ABORT_NAME = "llvm.printStackTraceOnAbort";
+    public static final String STACKTRACE_ON_ABORT_INFO = "Prints a C stack trace when abort() is called.";
+
     public static List<OptionDescriptor> describeOptions() {
         ArrayList<OptionDescriptor> options = new ArrayList<>();
         options.add(OptionDescriptor.newBuilder(SulongEngineOption.CONFIGURATION, SulongEngineOption.CONFIGURATION_NAME).help(SulongEngineOption.CONFIGURATION_INFO).category(
@@ -105,6 +109,8 @@ public final class SulongEngineOption {
                         SulongEngineOption.PARSE_ONLY_INFO).category(
                                         OptionCategory.EXPERT).build());
         options.add(OptionDescriptor.newBuilder(SulongEngineOption.ENABLE_LVI, SulongEngineOption.ENABLE_LVI_NAME).help(SulongEngineOption.ENABLE_LVI_INFO).category(OptionCategory.DEBUG).build());
+        options.add(OptionDescriptor.newBuilder(SulongEngineOption.STACKTRACE_ON_ABORT, SulongEngineOption.STACKTRACE_ON_ABORT_NAME).help(SulongEngineOption.STACKTRACE_ON_ABORT_INFO).category(
+                        OptionCategory.DEBUG).build());
         return options;
     }
 

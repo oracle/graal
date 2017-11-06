@@ -130,6 +130,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMPrintStackTraceNodeGe
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunConstructorFunctionsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunDestructorFunctionsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunGlobalVariableInitalizationNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMShouldPrintStackTraceOnAbortNodeGen;
 import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
@@ -371,6 +372,13 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
             @Override
             protected RootCallTarget generate(FunctionType type) {
                 return wrap("@__sulong_print_stacktrace", LLVMPrintStackTraceNodeGen.create());
+            }
+        });
+
+        factories.put("@__sulong_should_print_stacktrace_on_abort", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@__sulong_should_print_stacktrace_on_abort", LLVMShouldPrintStackTraceOnAbortNodeGen.create());
             }
         });
     }
