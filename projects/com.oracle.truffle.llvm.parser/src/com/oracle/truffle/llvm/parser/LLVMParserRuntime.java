@@ -287,7 +287,7 @@ public final class LLVMParserRuntime {
     }
 
     public LLVMExpressionNode allocateFunctionLifetime(Type type, int size, int alignment) {
-        return nodeFactory.createAlloc(this, type, size, alignment, null, null);
+        return nodeFactory.createAlloca(this, type, size, alignment);
     }
 
     public LLVMExpressionNode getGlobalAddress(LLVMSymbolReadResolver symbolResolver, GlobalValueSymbol var) {

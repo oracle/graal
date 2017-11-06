@@ -90,8 +90,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMInvariantEndNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMInvariantStartNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMLifetimeEndNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMLifetimeStartNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemCopyFactory.LLVMMemI32CopyNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemCopyFactory.LLVMMemI64CopyNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemCopyNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemMoveFactory.LLVMMemMoveI64NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemSetNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMNoOpNodeGen;
@@ -122,7 +121,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMToDebugValueNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMToDebugValueNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVACopyNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVAEnd;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVAStart;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64VAStartNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_ConversionDoubleToIntNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_ConversionFloatToIntNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMFunctionLiteralNode;
@@ -153,6 +152,7 @@ import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstructionFactory.LLVMAllo
 import com.oracle.truffle.llvm.nodes.memory.LLVMCompareExchangeNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMFenceNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMInsertValueNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.LLVMNativeStackAllocationNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStructByValueNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMVarArgCompoundAddressNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.NativeMemSetNodeGen;
@@ -264,6 +264,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
@@ -888,34 +889,40 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createAlloc(LLVMParserRuntime runtime, Type type, int byteSize, int alignment, Type llvmType, LLVMExpressionNode numElements) {
-        if (numElements == null) {
-            assert llvmType == null;
-            if (type instanceof StructureType) {
-                StructureType struct = (StructureType) type;
-                final int[] offsets = new int[struct.getNumberOfElements()];
-                final Type[] types = new Type[struct.getNumberOfElements()];
-                int currentOffset = 0;
-                for (int i = 0; i < struct.getNumberOfElements(); i++) {
-                    final Type elemType = struct.getElementType(i);
+    public LLVMExpressionNode createAlloca(LLVMParserRuntime runtime, Type type, int byteSize, int alignment) {
+        if (type instanceof StructureType) {
+            StructureType struct = (StructureType) type;
+            final int[] offsets = new int[struct.getNumberOfElements()];
+            final Type[] types = new Type[struct.getNumberOfElements()];
+            int currentOffset = 0;
+            for (int i = 0; i < struct.getNumberOfElements(); i++) {
+                final Type elemType = struct.getElementType(i);
 
-                    if (!struct.isPacked()) {
-                        currentOffset += runtime.getContext().getBytePadding(currentOffset, elemType);
-                    }
-
-                    offsets[i] = currentOffset;
-                    types[i] = elemType;
-                    currentOffset += runtime.getContext().getByteSize(elemType);
+                if (!struct.isPacked()) {
+                    currentOffset += runtime.getContext().getBytePadding(currentOffset, elemType);
                 }
-                LLVMAllocaConstInstruction alloc = LLVMAllocaConstInstructionNodeGen.create(byteSize, alignment, type);
-                alloc.setTypes(types);
-                alloc.setOffsets(offsets);
-                return alloc;
+
+                offsets[i] = currentOffset;
+                types[i] = elemType;
+                currentOffset += runtime.getContext().getByteSize(elemType);
             }
-            return LLVMAllocaConstInstructionNodeGen.create(byteSize, alignment, type);
-        } else {
-            return LLVMAllocaInstructionNodeGen.create(numElements, byteSize, alignment, type);
+            LLVMAllocaConstInstruction alloc = LLVMAllocaConstInstructionNodeGen.create(byteSize, alignment, type);
+            alloc.setTypes(types);
+            alloc.setOffsets(offsets);
+            return alloc;
         }
+        return LLVMAllocaConstInstructionNodeGen.create(byteSize, alignment, type);
+    }
+
+    @Override
+    public LLVMExpressionNode createAlloca(LLVMParserRuntime runtime, Type elementType, LLVMExpressionNode numElements, int alignment) {
+        int byteSize = runtime.getContext().getByteSize(elementType);
+        return LLVMAllocaInstructionNodeGen.create(numElements, byteSize, alignment, elementType);
+    }
+
+    @Override
+    public LLVMStackAllocationNode createStackAllocation(LLVMParserRuntime runtime) {
+        return LLVMNativeStackAllocationNodeGen.create();
     }
 
     @Override
@@ -973,13 +980,13 @@ public class BasicNodeFactory implements NodeFactory {
             }
             offsets[i] = currentOffset;
             int byteSize = runtime.getContext().getByteSize(resolvedType);
-            nodes[i] = createStructWriteNode(runtime, resolvedType);
+            nodes[i] = createMemoryStore(runtime, resolvedType);
             currentOffset += byteSize;
         }
         return StructLiteralNodeGen.create(offsets, types, nodes, constants, alloc);
     }
 
-    private LLVMStoreNode createStructWriteNode(LLVMParserRuntime runtime, Type resolvedType) {
+    private LLVMStoreNode createMemoryStore(LLVMParserRuntime runtime, Type resolvedType) {
         if (resolvedType instanceof ArrayType || resolvedType instanceof StructureType) {
             int byteSize = runtime.getContext().getByteSize(resolvedType);
             return LLVMStructStoreNodeGen.create(createMemMove(), resolvedType, byteSize);
@@ -1157,9 +1164,9 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createLLVMBuiltin(LLVMParserRuntime runtime, Symbol target, LLVMExpressionNode[] args, int callerArgumentCount, SourceSection sourceSection) {
         /*
-         * This LLVM Builtins are *not* function intrinsics. Builtins replace statements that look
-         * like function calls but are actually LLVM intrinsics. An example is llvm.stackpointer.
-         * Also, it is not possible to retrieve the functionpointer of such pseudo-call-targets.
+         * This LLVM Builtins are *not* function intrinsics. Builtins replace statements that look like
+         * function calls but are actually LLVM intrinsics. An example is llvm.stackpointer. Also, it is not
+         * possible to retrieve the functionpointer of such pseudo-call-targets.
          *
          * This builtins shall not be used for regular function intrinsification!
          */
@@ -1202,9 +1209,8 @@ public class BasicNodeFactory implements NodeFactory {
             case "@llvm.ctlz.i64":
                 return CountLeadingZeroesI64NodeGen.create(args[1], args[2], sourceSection);
             case "@llvm.memcpy.p0i8.p0i8.i64":
-                return LLVMMemI64CopyNodeGen.create(createMemMove(), args[1], args[2], args[3], args[4], args[5], sourceSection);
             case "@llvm.memcpy.p0i8.p0i8.i32":
-                return LLVMMemI32CopyNodeGen.create(createMemMove(), args[1], args[2], args[3], args[4], args[5], sourceSection);
+                return LLVMMemCopyNodeGen.create(createMemMove(), args[1], args[2], args[3], args[4], args[5], sourceSection);
             case "@llvm.ctpop.i32":
                 return CountSetBitsI32NodeGen.create(args[1], sourceSection);
             case "@llvm.ctpop.i64":
@@ -1263,7 +1269,7 @@ public class BasicNodeFactory implements NodeFactory {
             case "@llvm.frameaddress":
                 return LLVMFrameAddressNodeGen.create(args[1], sourceSection);
             case "@llvm.va_start":
-                return new LLVMX86_64BitVAStart(callerArgumentCount, args[1], createMemMove(), sourceSection);
+                return LLVMX86_64VAStartNodeGen.create(callerArgumentCount, sourceSection, createStackAllocation(runtime), createMemMove(), args[1]);
             case "@llvm.va_end":
                 return new LLVMX86_64BitVAEnd(args[1], sourceSection);
             case "@llvm.va_copy":
@@ -1461,8 +1467,9 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createCopyStructByValue(LLVMParserRuntime runtime, int length, int alignment, LLVMExpressionNode parameterNode) {
-        return LLVMStructByValueNodeGen.create(createMemMove(), parameterNode, length, alignment);
+    public LLVMExpressionNode createCopyStructByValue(LLVMParserRuntime runtime, Type type, int length, int alignment, LLVMExpressionNode parameterNode) {
+        LLVMStackAllocationNode allocationNode = createStackAllocation(runtime);
+        return LLVMStructByValueNodeGen.create(createMemMove(), allocationNode, parameterNode, length);
     }
 
     @Override
