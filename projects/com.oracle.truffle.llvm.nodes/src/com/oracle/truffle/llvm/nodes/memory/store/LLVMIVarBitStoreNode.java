@@ -31,8 +31,10 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -41,7 +43,15 @@ import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 public abstract class LLVMIVarBitStoreNode extends LLVMStoreNode {
 
     public LLVMIVarBitStoreNode(VariableBitWidthType type) {
-        super(type, 0);
+        super(type, getSize(type));
+    }
+
+    private static int getSize(VariableBitWidthType type) {
+        int nrFullBytes = type.getBitSize() / Byte.SIZE;
+        if (type.getBitSize() % Byte.SIZE != 0) {
+            nrFullBytes += 1;
+        }
+        return nrFullBytes;
     }
 
     @Specialization
@@ -56,4 +66,9 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNode {
         return null;
     }
 
+    @Specialization
+    public Object execute(VirtualFrame frame, LLVMTruffleObject address, LLVMIVarBit value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+        foreignWrite.execute(frame, address, value);
+        return null;
+    }
 }

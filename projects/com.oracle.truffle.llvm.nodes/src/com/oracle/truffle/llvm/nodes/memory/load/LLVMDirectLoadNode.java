@@ -58,6 +58,14 @@ public abstract class LLVMDirectLoadNode {
 
         public abstract int getBitWidth();
 
+        private int getByteSize() {
+            int nrFullBytes = getBitWidth() / Byte.SIZE;
+            if (getBitWidth() % Byte.SIZE != 0) {
+                nrFullBytes += 1;
+            }
+            return nrFullBytes;
+        }
+
         @Specialization
         public LLVMIVarBit executeI64(LLVMAddress addr) {
             return LLVMMemory.getIVarBit(addr, getBitWidth());
@@ -66,6 +74,15 @@ public abstract class LLVMDirectLoadNode {
         @Specialization
         public LLVMIVarBit executeI64(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             return LLVMMemory.getIVarBit(globalAccess.getNativeLocation(addr), getBitWidth());
+        }
+
+        LLVMForeignReadNode createForeignRead() {
+            return new LLVMForeignReadNode(ForeignToLLVMType.VARBIT, getByteSize());
+        }
+
+        @Specialization
+        public Object executeForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+            return foreignRead.execute(frame, addr);
         }
     }
 
