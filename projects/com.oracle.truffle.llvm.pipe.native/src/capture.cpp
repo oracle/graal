@@ -47,7 +47,7 @@ static bool check_error(JNIEnv *env, int ret) {
   }
 }
 
-JNIEXPORT jint JNICALL Java_com_oracle_truffle_llvm_pipe_CaptureOutput_startCapturing(JNIEnv *env, jclass self, jstring filename) {
+JNIEXPORT jint JNICALL Java_com_oracle_truffle_llvm_pipe_CaptureOutput_startCapturing(JNIEnv *env, jclass self, jint stdFd, jstring filename) {
   const char *path = env->GetStringUTFChars(filename, NULL);
 
   int fd = open(path, O_WRONLY);
@@ -57,29 +57,38 @@ JNIEXPORT jint JNICALL Java_com_oracle_truffle_llvm_pipe_CaptureOutput_startCapt
     return -1;
   }
 
-  int oldStdOut = dup(1);
-  if (check_error(env, oldStdOut)) {
+  int oldFd = dup(stdFd);
+  if (check_error(env, oldFd)) {
     close(fd);
     return -1;
   }
 
-  int result = dup2(fd, 1);
+  int result = dup2(fd, stdFd);
   if (check_error(env, result)) {
     close(fd);
-    close(oldStdOut);
+    close(oldFd);
     return -1;
   }
 
   close(fd);
-  return oldStdOut;
+  return oldFd;
 }
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_llvm_pipe_CaptureOutput_stopCapturing(JNIEnv *env, jclass self, jint oldStdOut) {
+JNIEXPORT void JNICALL Java_com_oracle_truffle_llvm_pipe_CaptureOutput_stopCapturing(JNIEnv *env, jclass self, jint oldStdOut, jint oldStdErr) {
   if (check_error(env, fflush(stdout))) {
     return;
   }
-  if (check_error(env, dup2(oldStdOut, 1))) {
+  if (check_error(env, fflush(stderr))) {
     return;
   }
-  check_error(env, close(oldStdOut));
+  if (check_error(env, dup2(oldStdOut, com_oracle_truffle_llvm_pipe_CaptureOutput_STDOUT))) {
+    return;
+  }
+  if (check_error(env, dup2(oldStdErr, com_oracle_truffle_llvm_pipe_CaptureOutput_STDERR))) {
+    return;
+  }
+  if (check_error(env, close(oldStdOut))) {
+    return;
+  }
+  check_error(env, close(oldStdErr));
 }

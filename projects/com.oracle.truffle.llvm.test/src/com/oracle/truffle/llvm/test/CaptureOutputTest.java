@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,7 +42,7 @@ public class CaptureOutputTest {
         String captured;
         try (CaptureOutput out = new CaptureOutput()) {
             System.out.print(string);
-            captured = out.getResult();
+            captured = out.getStdOut();
         }
         System.out.println("MUST NOT BE IN CAPTURE");
         assertEquals(string, captured);
@@ -54,9 +54,33 @@ public class CaptureOutputTest {
         String captured;
         try (CaptureOutput out = new CaptureOutput()) {
             System.out.print(string);
-            captured = out.getResult();
+            captured = out.getStdOut();
         }
         System.out.println("MUST NOT BE IN CAPTURE");
+        assertEquals(string, captured);
+    }
+
+    @Test
+    public void testErrCapturing() throws IOException {
+        String string = "Testoutput";
+        String captured;
+        try (CaptureOutput out = new CaptureOutput()) {
+            System.err.print(string);
+            captured = out.getStdErr();
+        }
+        System.err.println("MUST NOT BE IN CAPTURE");
+        assertEquals(string, captured);
+    }
+
+    @Test
+    public void testErrCapturing2() throws IOException {
+        String string = "Does it work again?";
+        String captured;
+        try (CaptureOutput out = new CaptureOutput()) {
+            System.err.print(string);
+            captured = out.getStdErr();
+        }
+        System.err.println("MUST NOT BE IN CAPTURE");
         assertEquals(string, captured);
     }
 
@@ -79,7 +103,7 @@ public class CaptureOutputTest {
                 System.out.print(line);
                 result.append(line);
             }
-            capture = out.getResult();
+            capture = out.getStdOut();
         }
 
         assertEquals(result.toString(), capture);

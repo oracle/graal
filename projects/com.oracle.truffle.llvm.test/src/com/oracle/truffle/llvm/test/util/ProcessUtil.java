@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -105,8 +105,8 @@ public class ProcessUtil {
             try (CaptureOutput out = new CaptureOutput()) {
                 int result = Sulong.executeMain(bitcodeFile, args);
                 System.out.flush();
-                String stdout = out.getResult();
-                return new ProcessResult(bitcodeFile.getName(), result, "", stdout);
+                System.err.flush();
+                return new ProcessResult(bitcodeFile.getName(), result, out.getStdErr(), out.getStdOut());
             }
         } else {
             String aotArgs = TestOptions.TEST_AOT_ARGS == null ? "" : TestOptions.TEST_AOT_ARGS + " ";
