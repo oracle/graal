@@ -32,15 +32,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.tck.Snippet;
 import org.graalvm.polyglot.proxy.ProxyArray;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.graalvm.polyglot.proxy.ProxyPrimitive;
-import org.graalvm.polyglot.tck.TypeDescriptor;
 import org.graalvm.polyglot.tck.LanguageProvider;
+import org.graalvm.polyglot.tck.Snippet;
+import org.graalvm.polyglot.tck.TypeDescriptor;
 
 public final class JavaHostLanguageProvider implements LanguageProvider {
     private static final String ID = "java-host";
@@ -95,7 +97,16 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
 
     @Override
     public Value createIdentityFunction(final Context context) {
-        return null;
+        final String symbolName = "$$java-identity$$"; // some symbol unlikely to conflict
+        Value oldValue = context.importSymbol(symbolName);
+        context.exportSymbol(symbolName, new ProxyExecutable() {
+            public Object execute(Value... arguments) {
+                return arguments[0];
+            }
+        });
+        Value javaIdentity = context.importSymbol(symbolName);
+        context.exportSymbol(symbolName, oldValue);
+        return javaIdentity;
     }
 
     @Override
