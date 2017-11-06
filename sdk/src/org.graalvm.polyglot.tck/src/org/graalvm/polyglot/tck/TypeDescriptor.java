@@ -114,8 +114,15 @@ public final class TypeDescriptor {
     public static final TypeDescriptor EXECUTABLE = new TypeDescriptor(new ExecutableImpl(null, Collections.emptyList()));
 
     private static final TypeDescriptor[] PREDEFINED_TYPES = new TypeDescriptor[]{
-                    NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, NATIVE_POINTER, OBJECT, ARRAY
+                    NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, NATIVE_POINTER, OBJECT, ARRAY, EXECUTABLE
     };
+
+    /**
+     * Represents a union of all predefined types.
+     *
+     * @since 0.30
+     */
+    public static final TypeDescriptor ANY = union(PREDEFINED_TYPES);
 
     private final TypeDescriptorImpl impl;
 
