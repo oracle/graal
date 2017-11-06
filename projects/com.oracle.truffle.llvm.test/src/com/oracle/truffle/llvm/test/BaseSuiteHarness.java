@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -48,6 +48,7 @@ import org.junit.Test;
 import com.oracle.truffle.llvm.test.options.TestOptions;
 import com.oracle.truffle.llvm.test.util.ProcessUtil;
 import com.oracle.truffle.llvm.test.util.ProcessUtil.ProcessResult;
+import org.junit.Assert;
 
 public abstract class BaseSuiteHarness extends BaseTestHarness {
 
@@ -64,9 +65,7 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
         }
         Path referenceFile = files.get(0);
         List<Path> testCandidates = Files.walk(getTestDirectory()).filter(isFile).filter(getIsSulongFilter()).collect(Collectors.toList());
-        ProcessResult processResult = ProcessUtil.executeNativeCommand(referenceFile.toAbsolutePath().toString());
-        String referenceStdOut = processResult.getStdOutput();
-        final int referenceReturnValue = processResult.getReturnValue();
+        ProcessResult referenceResult = ProcessUtil.executeNativeCommand(referenceFile.toAbsolutePath().toString());
 
         for (Path candidate : testCandidates) {
             if (!filterFileName().test(candidate.getFileName().toString())) {
@@ -76,20 +75,18 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
             if (!candidate.toAbsolutePath().toFile().exists()) {
                 fail(getTestName(), new AssertionError("File " + candidate.toAbsolutePath().toFile() + " does not exist."));
             }
-            ProcessResult out = ProcessUtil.executeSulongTestMain(candidate.toAbsolutePath().toFile(), new String[]{});
-            int sulongResult = out.getReturnValue();
-            String sulongStdOut = out.getStdOutput();
+            ProcessResult result = ProcessUtil.executeSulongTestMain(candidate.toAbsolutePath().toFile(), new String[]{});
 
-            if (sulongResult != (sulongResult & 0xFF)) {
-                fail(getTestName(), new AssertionError("Broken unittest " + getTestDirectory() + ". Test exits with invalid value."));
+            int sulongRet = result.getReturnValue();
+            if (sulongRet != (sulongRet & 0xFF)) {
+                fail(getTestName(), new AssertionError("Broken unittest " + getTestDirectory() + ". Test exits with invalid value: " + sulongRet));
             }
+
             String testName = candidate.getFileName().toString() + " in " + getTestDirectory().toAbsolutePath().toString();
-            if (referenceReturnValue != sulongResult) {
-                fail(getTestName(), new AssertionError(testName + " failed. Posix return value missmatch. Expected: " + referenceReturnValue + " but was: " + sulongResult));
-            }
-
-            if (!referenceStdOut.equals(sulongStdOut)) {
-                fail(getTestName(), new AssertionError(testName + " failed. Output (stdout) missmatch. Expected: " + referenceStdOut + " but was: " + sulongStdOut));
+            try {
+                Assert.assertEquals(testName, referenceResult, result);
+            } catch (AssertionError e) {
+                fail(getTestName(), e);
             }
         }
         pass(getTestName());

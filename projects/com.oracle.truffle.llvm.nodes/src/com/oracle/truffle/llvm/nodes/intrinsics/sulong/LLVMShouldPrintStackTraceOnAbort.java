@@ -27,25 +27,19 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <stdio.h>
-#include <stdint.h>
-#include "syscall.h"
+package com.oracle.truffle.llvm.nodes.intrinsics.sulong;
 
-#define ABORT_STATUS 134
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
-void __sulong_print_stacktrace();
-void __clear_exit_handlers();
-int __sulong_should_print_stacktrace_on_abort();
+public abstract class LLVMShouldPrintStackTraceOnAbort extends LLVMIntrinsic {
 
-__attribute__((weak)) void abort() {
-  int64_t result;
-  if (__sulong_should_print_stacktrace_on_abort()) {
-    fprintf(stderr, "abort()\n\n");
-    __sulong_print_stacktrace();
-  }
-  __clear_exit_handlers();
-  __SYSCALL_1(result, SYS_exit, ABORT_STATUS);
-  for (;;) {
-    __SYSCALL_1(result, SYS_exit, ABORT_STATUS);
-  }
+    @Specialization
+    public int execute(@Cached("getContextReference()") ContextReference<LLVMContext> ctxRef) {
+        return ctxRef.get().getEnv().getOptions().get(SulongEngineOption.STACKTRACE_ON_ABORT) ? 1 : 0;
+    }
 }
