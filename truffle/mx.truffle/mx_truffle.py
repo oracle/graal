@@ -247,7 +247,11 @@ def _unittest_config_participant_tck(config):
         vmArgs.append("-D" + key + "=" + value)
     return (vmArgs, mainClass, mainClassArgs)
 
-mx_unittest.add_config_participant(_unittest_config_participant_tck)
+_shouldRunTCKParticipant = True
+
+def should_add_tck_participant(shouldInstal):
+    global _shouldRunTCKParticipant
+    _shouldRunTCKParticipant = shouldInstal
 
 """
 Merges META-INF/truffle/language and META-INF/truffle/instrument files.
@@ -305,6 +309,9 @@ class TruffleArchiveParticipant:
             self.arc.zf.writestr(arcname, content + os.linesep)
 
 def mx_post_parse_cmd_line(opts):
+
+    if _shouldRunTCKParticipant:
+        mx_unittest.add_config_participant(_unittest_config_participant_tck)
 
     def _uses_truffle_dsl_processor(dist):
         for dep in dist.deps:
