@@ -26,4 +26,6 @@ int main() {
     abort();
   }
   print(read);
+  fclose(read);
+  unlink(name);
 }

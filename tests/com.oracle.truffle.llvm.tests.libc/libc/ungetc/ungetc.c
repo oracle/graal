@@ -18,4 +18,5 @@ int main() {
   }
   putchar('\n');
   fclose(file);
+  unlink(name);
 }

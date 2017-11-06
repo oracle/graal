@@ -28,4 +28,6 @@ int main() {
     abort();
   }
   print(read, 10);
+  fclose(read);
+  unlink(name);
 }

@@ -10,4 +10,6 @@ int main() {
   while (fgets(buf, 200, read) != NULL) {
     printf("%s\n", buf);
   }
+  fclose(read);
+  unlink(name);
 }

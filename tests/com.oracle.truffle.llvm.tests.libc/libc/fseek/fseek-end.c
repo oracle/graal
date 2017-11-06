@@ -25,4 +25,6 @@ int main() {
   }
   print(read, 5);
   printf("%ld\n", ftell(read));
+  fclose(read);
+  unlink(name);
 }

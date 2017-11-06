@@ -15,4 +15,6 @@ int main() {
     putchar(c);
   }
   putchar('\n');
+  fclose(read);
+  unlink(name);
 }

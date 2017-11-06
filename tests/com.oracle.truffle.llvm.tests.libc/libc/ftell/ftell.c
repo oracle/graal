@@ -12,4 +12,6 @@ int main() {
     printf("%s\n", buf);
   }
   printf("%ld\n", ftell(read));
+  fclose(read);
+  unlink(name);
 }

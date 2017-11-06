@@ -13,4 +13,6 @@ int main() {
     buf[count] = '\0';
     printf("%s (%d chars)\n", buf, count);
   }
+  fclose(read);
+  unlink(name);
 }
