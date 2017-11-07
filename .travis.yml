@@ -21,16 +21,17 @@ env:
     - JVMCI_VERSION="jvmci-0.36"
     - JVMCI_BASE_JDK8="openjdk1.8.0_141"
   matrix:
-    - JDK="jdk8" GATE="style,fullbuild"
-    - JDK="jdk8" GATE="build,test"
-    - JDK="jdk8" GATE="build,bootstraplite"
-    - JDK="jdk9" GATE="style,fullbuild"
-    - JDK="jdk9" GATE="build,test"
-    - JDK="jdk9" GATE="build,bootstraplite"
+    #- JDK="jdk8" GATE="style,fullbuild"
+    - JDK="jdk8" GATE="build"
+    #- JDK="jdk8" GATE="build,bootstraplite"
+    #- JDK="jdk9" GATE="style,fullbuild"
+    - JDK="jdk9" GATE="build"
+    #- JDK="jdk9" GATE="build,bootstraplite"
 install:
   - |
       export MX_PATH=${TRAVIS_BUILD_DIR}/../mx
       git clone https://github.com/graalvm/mx.git ${MX_PATH}
+      cp mx.py ${MX_PATH}
       export PATH=${PATH}:${MX_PATH}
   - |
       if [[ ${GATE} == *style* ]]
@@ -67,6 +68,6 @@ install:
 script:
   - echo ${JAVA_HOME}
   - ${JAVA_HOME}/bin/java -version
-  - mx -v --primary-suite-path ${TRAVIS_BUILD_DIR}/compiler --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
+  - mx --primary-suite-path ${TRAVIS_BUILD_DIR}/compiler --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
 after_failure:
   - cat hs_err*
