@@ -95,46 +95,9 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
 
             if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
                 long i = ((PrimitiveConstant) c).asLong();
-
-                if (i == 0) {
-                    return ConstantNode.forIntegerStamp(stamp, 0);
-                } else if (i == 1) {
-                    return forX;
-                } else if (i == -1) {
-                    return NegateNode.create(forX);
-                } else if (i > 0) {
-                    if (CodeUtil.isPowerOf2(i)) {
-                        return new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(i)));
-                    } else if (CodeUtil.isPowerOf2(i - 1)) {
-                        return AddNode.create(new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(i - 1))), forX);
-                    } else if (CodeUtil.isPowerOf2(i + 1)) {
-                        return SubNode.create(new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(i + 1))), forX);
-                    } else {
-                        int bitCount = Long.bitCount(i);
-                        long highestBitValue = Long.highestOneBit(i);
-                        if (bitCount == 2) {
-                            // e.g., 0b1000_0010
-                            long lowerBitValue = i - highestBitValue;
-                            assert highestBitValue > 0 && lowerBitValue > 0;
-                            ValueNode left = new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(highestBitValue)));
-                            ValueNode right = lowerBitValue == 1 ? forX : new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(lowerBitValue)));
-                            return AddNode.create(left, right);
-                        } else {
-                            // e.g., 0b1111_1101
-                            int shiftToRoundUpToPowerOf2 = CodeUtil.log2(highestBitValue) + 1;
-                            long subValue = (1 << shiftToRoundUpToPowerOf2) - i;
-                            if (CodeUtil.isPowerOf2(subValue) && shiftToRoundUpToPowerOf2 < ((IntegerStamp) stamp).getBits()) {
-                                assert CodeUtil.log2(subValue) >= 1;
-                                ValueNode left = new LeftShiftNode(forX, ConstantNode.forInt(shiftToRoundUpToPowerOf2));
-                                ValueNode right = new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(subValue)));
-                                return SubNode.create(left, right);
-                            }
-                        }
-                    }
-                } else if (i < 0) {
-                    if (CodeUtil.isPowerOf2(-i)) {
-                        return NegateNode.create(LeftShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(-i))));
-                    }
+                ValueNode result = canonical(stamp, forX, i);
+                if (result != null) {
+                    return result;
                 }
             }
 
@@ -144,6 +107,50 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
             }
         }
         return self != null ? self : new MulNode(forX, forY).maybeCommuteInputs();
+    }
+
+    public static ValueNode canonical(Stamp stamp, ValueNode forX, long i) {
+        if (i == 0) {
+            return ConstantNode.forIntegerStamp(stamp, 0);
+        } else if (i == 1) {
+            return forX;
+        } else if (i == -1) {
+            return NegateNode.create(forX);
+        } else if (i > 0) {
+            if (CodeUtil.isPowerOf2(i)) {
+                return new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(i)));
+            } else if (CodeUtil.isPowerOf2(i - 1)) {
+                return AddNode.create(new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(i - 1))), forX);
+            } else if (CodeUtil.isPowerOf2(i + 1)) {
+                return SubNode.create(new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(i + 1))), forX);
+            } else {
+                int bitCount = Long.bitCount(i);
+                long highestBitValue = Long.highestOneBit(i);
+                if (bitCount == 2) {
+                    // e.g., 0b1000_0010
+                    long lowerBitValue = i - highestBitValue;
+                    assert highestBitValue > 0 && lowerBitValue > 0;
+                    ValueNode left = new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(highestBitValue)));
+                    ValueNode right = lowerBitValue == 1 ? forX : new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(lowerBitValue)));
+                    return AddNode.create(left, right);
+                } else {
+                    // e.g., 0b1111_1101
+                    int shiftToRoundUpToPowerOf2 = CodeUtil.log2(highestBitValue) + 1;
+                    long subValue = (1 << shiftToRoundUpToPowerOf2) - i;
+                    if (CodeUtil.isPowerOf2(subValue) && shiftToRoundUpToPowerOf2 < ((IntegerStamp) stamp).getBits()) {
+                        assert CodeUtil.log2(subValue) >= 1;
+                        ValueNode left = new LeftShiftNode(forX, ConstantNode.forInt(shiftToRoundUpToPowerOf2));
+                        ValueNode right = new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(subValue)));
+                        return SubNode.create(left, right);
+                    }
+                }
+            }
+        } else if (i < 0) {
+            if (CodeUtil.isPowerOf2(-i)) {
+                return NegateNode.create(LeftShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(-i))));
+            }
+        }
+        return null;
     }
 
     @Override
