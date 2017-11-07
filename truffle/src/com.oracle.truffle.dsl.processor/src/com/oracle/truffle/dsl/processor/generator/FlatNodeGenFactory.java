@@ -250,9 +250,9 @@ class FlatNodeGenFactory {
         return specialization.getMaximumNumberOfInstances() > 1;
     }
 
-    private static boolean needsFrame(List<SpecializationData> specializations) {
+    private static boolean needsFrameToExecute(List<SpecializationData> specializations) {
         for (SpecializationData specialization : specializations) {
-            if (specialization.isFrameUsed()) {
+            if (specialization.getFrame() != null) {
                 return true;
             }
         }
@@ -341,7 +341,7 @@ class FlatNodeGenFactory {
 
         SpecializationData fallback = node.getGenericSpecialization();
         if (fallback.getMethod() != null && fallback.isReachable()) {
-            clazz.add(createFallbackGuard(fallback));
+            clazz.add(createFallbackGuard());
         }
 
         for (ExecutableTypeData type : genericExecutableTypes) {
@@ -647,12 +647,23 @@ class FlatNodeGenFactory {
         return isValid;
     }
 
-    private Element createFallbackGuard(SpecializationData fallback) {
-        boolean frameUsed = node.isFrameUsedByAnyGuard();
+    private Element createFallbackGuard() {
+        boolean frameUsed = false;
         FrameState frameState = FrameState.load(this);
 
         List<SpecializationData> specializations = new ArrayList<>(reachableSpecializations);
-        specializations.remove(fallback);
+        for (ListIterator<SpecializationData> iterator = specializations.listIterator(); iterator.hasNext();) {
+            SpecializationData specialization = iterator.next();
+            if (specialization.isFallback()) {
+                iterator.remove();
+            } else if (!specialization.isReachesFallback()) {
+                iterator.remove();
+            } else {
+                if (specialization.isFrameUsedByGuard()) {
+                    frameUsed = true;
+                }
+            }
+        }
 
         SpecializationGroup group = SpecializationGroup.create(specializations);
 
@@ -691,7 +702,7 @@ class FlatNodeGenFactory {
         builder.tree(result);
         builder.returnTrue();
 
-        if (!accessesState(reachableSpecializations)) {
+        if (!accessesState(specializations)) {
             method.getModifiers().add(STATIC);
         }
 
@@ -967,7 +978,7 @@ class FlatNodeGenFactory {
 
         final FrameState frameState = FrameState.load(this);
         String frame = null;
-        if (needsFrame(reachableSpecializations)) {
+        if (needsFrameToExecute(reachableSpecializations)) {
             frame = FRAME_VALUE;
         }
 
@@ -2723,7 +2734,7 @@ class FlatNodeGenFactory {
     private CodeTree createCallExecuteAndSpecialize(ExecutableTypeData forType, FrameState frameState) {
         TypeMirror returnType = node.getPolymorphicSpecialization().getReturnType().getType();
         String frame = null;
-        if (needsFrame(reachableSpecializations)) {
+        if (needsFrameToExecute(reachableSpecializations)) {
             frame = FRAME_VALUE;
         }
 
