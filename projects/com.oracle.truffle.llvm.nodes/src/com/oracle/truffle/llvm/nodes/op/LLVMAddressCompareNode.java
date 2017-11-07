@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.op.compare;
+package com.oracle.truffle.llvm.nodes.op;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -37,14 +37,14 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressCompareNodeGen.LLVMAddressEQNodeGen;
-import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressCompareNodeGen.LLVMAddressNEQNodeGen;
-import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressCompareNodeGen.ToComparableValueNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.LLVMAddressEQNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.LLVMAddressNEQNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.ToComparableValueNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
