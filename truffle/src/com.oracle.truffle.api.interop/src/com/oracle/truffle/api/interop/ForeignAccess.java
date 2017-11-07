@@ -68,17 +68,16 @@ public final class ForeignAccess {
      *
      * @param baseClass the super class of all {@link TruffleObject}s handled by this factory (if
      *            <code>null</code> then the second interface must also implement {@link Factory})
-     * @param factory the factory that handles access requests to {@link Message}s known as of
-     *            version 0.30
+     * @param factory the factory that handles access requests to {@link Message}s
      * @return new instance wrapping <code>factory</code>
      * @since 0.30
      */
-    public static ForeignAccess create(final Class<? extends TruffleObject> baseClass, final Factory30 factory) {
+    public static ForeignAccess create(final Class<? extends TruffleObject> baseClass, final FactoryModel factory) {
         if (baseClass == null) {
             Factory f = (Factory) factory;
             assert f != null;
         }
-        return new ForeignAccess(new DelegatingFactory30(baseClass, factory));
+        return new ForeignAccess(new DelegatingFactory(baseClass, factory));
     }
 
     /**
@@ -90,8 +89,8 @@ public final class ForeignAccess {
      *            version 0.26
      * @return new instance wrapping <code>factory</code>
      * @since 0.26
-     * @deprecated Use {@link Factory30} and
-     *             {@link #create(java.lang.Class, com.oracle.truffle.api.interop.ForeignAccess.Factory30)}
+     * @deprecated Use {@link FactoryModel} and
+     *             {@link #create(java.lang.Class, com.oracle.truffle.api.interop.ForeignAccess.FactoryModel)}
      */
     @Deprecated
     public static ForeignAccess create(final Class<? extends TruffleObject> baseClass, final Factory26 factory) {
@@ -105,20 +104,19 @@ public final class ForeignAccess {
     /**
      * Creates new instance of {@link ForeignAccess} that delegates to provided factory.
      *
-     * @param factory the factory that handles access requests to {@link Message}s known as of
-     *            version 0.26
+     * @param factory the factory that handles access requests to {@link Message}s
      * @param languageCheck a {@link RootNode} that performs the language check on receiver objects,
      *            can be <code>null</code>, but then the factory must also implement {@link Factory}
      *            interface
      * @return new instance wrapping <code>factory</code>
-     * @since 0.26
+     * @since 0.30
      */
-    public static ForeignAccess create(final Factory30 factory, final RootNode languageCheck) {
+    public static ForeignAccess create(final FactoryModel factory, final RootNode languageCheck) {
         if (languageCheck == null) {
             Factory f = (Factory) factory;
             assert f != null;
         }
-        return new ForeignAccess(languageCheck, new DelegatingFactory30(null, factory));
+        return new ForeignAccess(languageCheck, new DelegatingFactory(null, factory));
     }
 
     /**
@@ -131,8 +129,8 @@ public final class ForeignAccess {
      *            interface
      * @return new instance wrapping <code>factory</code>
      * @since 0.26
-     * @deprecated Use {@link Factory26} and
-     *             {@link #create(com.oracle.truffle.api.interop.ForeignAccess.Factory26, com.oracle.truffle.api.nodes.RootNode)
+     * @deprecated Use {@link FactoryModel} and
+     *             {@link #create(com.oracle.truffle.api.interop.ForeignAccess.FactoryModel, com.oracle.truffle.api.nodes.RootNode)
      *             its associated factory} method
      */
     @Deprecated
@@ -795,8 +793,8 @@ public final class ForeignAccess {
     @Override
     public String toString() {
         Object f;
-        if (factory instanceof DelegatingFactory30) {
-            f = ((DelegatingFactory30) factory).factory;
+        if (factory instanceof DelegatingFactory) {
+            f = ((DelegatingFactory) factory).factory;
         } else if (factory instanceof DelegatingFactory26) {
             f = ((DelegatingFactory26) factory).factory;
         } else {
@@ -832,8 +830,8 @@ public final class ForeignAccess {
      * a {@code Message}. The {@code TruffleObject} instance provides a {@link ForeignAccess}
      * instance (built via {@link #create(com.oracle.truffle.api.interop.ForeignAccess.Factory)})
      * that provides an AST snippet for a given {@link Message}. Rather than using this generic
-     * {@code Factory}, consider implementing {@link Factory30} interface that captures the set of
-     * messages each language should implement as of Truffle version 0.30.
+     * {@code Factory}, consider implementing {@link FactoryModel} interface that captures the set
+     * of standard messages each language should implement.
      *
      * @since 0.8 or earlier
      */
@@ -861,12 +859,13 @@ public final class ForeignAccess {
     }
 
     /**
-     * Specialized {@link Factory factory} that handles {@link Message messages} known as of release
-     * 0.26 of the Truffle API.
+     * Specialized {@link Factory factory} that handles standard {@link Message messages}. This
+     * interface is updated with new access methods when new messages are added. All default
+     * implementations return <code>null</code>.
      *
      * @since 0.30
      */
-    public interface Factory30 {
+    public interface FactoryModel {
         /**
          * Handles {@link Message#IS_NULL} message.
          *
@@ -874,7 +873,9 @@ public final class ForeignAccess {
          *         supported
          * @since 0.30
          */
-        CallTarget accessIsNull();
+        default CallTarget accessIsNull() {
+            return null;
+        }
 
         /**
          * Handles {@link Message#IS_EXECUTABLE} message.
@@ -883,7 +884,9 @@ public final class ForeignAccess {
          *         supported
          * @since 0.30
          */
-        CallTarget accessIsExecutable();
+        default CallTarget accessIsExecutable() {
+            return null;
+        }
 
         /**
          * Handles {@link Message#IS_INSTANTIABLE} message.
@@ -892,7 +895,9 @@ public final class ForeignAccess {
          *         supported
          * @since 0.30
          */
-        CallTarget accessIsInstantiable();
+        default CallTarget accessIsInstantiable() {
+            return null;
+        }
 
         /**
          * Handles {@link Message#IS_BOXED} message.
@@ -901,7 +906,9 @@ public final class ForeignAccess {
          *         supported
          * @since 0.30
          */
-        CallTarget accessIsBoxed();
+        default CallTarget accessIsBoxed() {
+            return null;
+        }
 
         /**
          * Handles {@link Message#HAS_SIZE} message.
@@ -910,7 +917,9 @@ public final class ForeignAccess {
          *         supported
          * @since 0.30
          */
-        CallTarget accessHasSize();
+        default CallTarget accessHasSize() {
+            return null;
+        }
 
         /**
          * Handles {@link Message#GET_SIZE} message.
@@ -919,7 +928,9 @@ public final class ForeignAccess {
          *         supported
          * @since 0.30
          */
-        CallTarget accessGetSize();
+        default CallTarget accessGetSize() {
+            return null;
+        }
 
         /**
          * Handles {@link Message#UNBOX} message.
@@ -928,7 +939,9 @@ public final class ForeignAccess {
          *         supported
          * @since 0.30
          */
-        CallTarget accessUnbox();
+        default CallTarget accessUnbox() {
+            return null;
+        }
 
         /**
          * Handles {@link Message#READ} message.
@@ -937,7 +950,9 @@ public final class ForeignAccess {
          *         supported
          * @since 0.30
          */
-        CallTarget accessRead();
+        default CallTarget accessRead() {
+            return null;
+        }
 
         /**
          * Handles {@link Message#WRITE} message.
@@ -946,7 +961,9 @@ public final class ForeignAccess {
          *         supported
          * @since 0.30
          */
-        CallTarget accessWrite();
+        default CallTarget accessWrite() {
+            return null;
+        }
 
         /**
          * Handles {@link Message#createExecute(int)} messages.
@@ -956,7 +973,9 @@ public final class ForeignAccess {
          *         supported
          * @since 0.30
          */
-        CallTarget accessExecute(int argumentsLength);
+        default CallTarget accessExecute(int argumentsLength) {
+            return null;
+        }
 
         /**
          * Handles {@link Message#createInvoke(int)} messages.
@@ -966,7 +985,9 @@ public final class ForeignAccess {
          *         supported
          * @since 0.30
          */
-        CallTarget accessInvoke(int argumentsLength);
+        default CallTarget accessInvoke(int argumentsLength) {
+            return null;
+        }
 
         /**
          * Handles {@link Message#createNew(int)} messages.
@@ -976,7 +997,9 @@ public final class ForeignAccess {
          *         supported
          * @since 0.30
          */
-        CallTarget accessNew(int argumentsLength);
+        default CallTarget accessNew(int argumentsLength) {
+            return null;
+        }
 
         /**
          * Handles {@link Message#HAS_KEYS} message.
@@ -985,7 +1008,9 @@ public final class ForeignAccess {
          *         supported
          * @since 0.30
          */
-        CallTarget accessHasKeys();
+        default CallTarget accessHasKeys() {
+            return null;
+        }
 
         /**
          * Handles request for access to a message not known in version 0.10. The parameter to the
@@ -998,7 +1023,9 @@ public final class ForeignAccess {
          *         supported
          * @since 0.30
          */
-        CallTarget accessKeys();
+        default CallTarget accessKeys() {
+            return null;
+        }
 
         /**
          * Handles {@link Message#KEY_INFO} message.
@@ -1007,7 +1034,9 @@ public final class ForeignAccess {
          *         supported
          * @since 0.30
          */
-        CallTarget accessKeyInfo();
+        default CallTarget accessKeyInfo() {
+            return null;
+        }
 
         /**
          * Handles {@link Message#IS_POINTER} message.
@@ -1016,7 +1045,9 @@ public final class ForeignAccess {
          *         supported
          * @since 0.30
          */
-        CallTarget accessIsPointer();
+        default CallTarget accessIsPointer() {
+            return null;
+        }
 
         /**
          * Handles {@link Message#AS_POINTER} message.
@@ -1025,7 +1056,9 @@ public final class ForeignAccess {
          *         supported
          * @since 0.30
          */
-        CallTarget accessAsPointer();
+        default CallTarget accessAsPointer() {
+            return null;
+        }
 
         /**
          * Handles {@link Message#TO_NATIVE} message.
@@ -1034,7 +1067,9 @@ public final class ForeignAccess {
          *         supported
          * @since 0.30
          */
-        CallTarget accessToNative();
+        default CallTarget accessToNative() {
+            return null;
+        }
 
         /**
          * Handles {@link Message#KEY_DECLARED_LOCATION} message.
@@ -1043,17 +1078,21 @@ public final class ForeignAccess {
          *         supported
          * @since 0.30
          */
-        CallTarget accessKeyDeclaredLocation();
+        default CallTarget accessKeyDeclaredLocation() {
+            return null;
+        }
 
         /**
-         * Handles request for access to a message not known in version 0.18.
+         * Handles request for access to a non-standard (unknown) message.
          *
          * @param unknown the message
          * @return call target to handle the message or <code>null</code> if this message is not
          *         supported
          * @since 0.30
          */
-        CallTarget accessMessage(Message unknown);
+        default CallTarget accessMessage(Message unknown) {
+            return null;
+        }
     }
 
     /**
@@ -1062,7 +1101,7 @@ public final class ForeignAccess {
      *
      * @since 0.26
      * @deprecated extended set of messages is now supported, consider implementing
-     *             {@link Factory30}
+     *             {@link FactoryModel}
      */
     @Deprecated
     public interface Factory26 {
@@ -1234,11 +1273,11 @@ public final class ForeignAccess {
         CallTarget accessMessage(Message unknown);
     }
 
-    private static class DelegatingFactory30 implements Factory {
+    private static class DelegatingFactory implements Factory {
         private final Class<?> baseClass;
-        private final Factory30 factory;
+        private final FactoryModel factory;
 
-        DelegatingFactory30(Class<?> baseClass, Factory30 factory) {
+        DelegatingFactory(Class<?> baseClass, FactoryModel factory) {
             this.baseClass = baseClass;
             this.factory = factory;
         }
@@ -1256,7 +1295,7 @@ public final class ForeignAccess {
             return accessMessage(factory, msg);
         }
 
-        private static CallTarget accessMessage(Factory30 factory, Message msg) {
+        private static CallTarget accessMessage(FactoryModel factory, Message msg) {
             if (msg instanceof KnownMessage) {
                 switch (msg.hashCode()) {
                     case Execute.EXECUTE:

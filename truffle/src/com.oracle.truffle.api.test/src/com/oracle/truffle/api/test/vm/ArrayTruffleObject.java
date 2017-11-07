@@ -34,7 +34,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 
-final class ArrayTruffleObject implements TruffleObject, ForeignAccess.Factory30 {
+final class ArrayTruffleObject implements TruffleObject, ForeignAccess.FactoryModel {
     private final ForeignAccess access;
     private final Object[] values;
     private final Thread forbiddenDupl;

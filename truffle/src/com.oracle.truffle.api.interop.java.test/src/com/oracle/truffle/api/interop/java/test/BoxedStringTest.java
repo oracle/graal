@@ -38,7 +38,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class BoxedStringTest implements TruffleObject, ForeignAccess.Factory30 {
+public class BoxedStringTest implements TruffleObject, ForeignAccess.FactoryModel {
     public interface ExactMatchInterop {
         String stringValue();
 

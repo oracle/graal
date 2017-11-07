@@ -67,7 +67,6 @@ import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.ForeignAccess.Factory;
-import com.oracle.truffle.api.interop.ForeignAccess.Factory30;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -77,6 +76,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import com.oracle.truffle.api.interop.ForeignAccess.FactoryModel;
 
 public class SLDebugDirectTest {
     private static final Object UNASSIGNED = new Object();
@@ -461,7 +461,7 @@ public class SLDebugDirectTest {
 
     }
 
-    private static class ExecNotifyHandlerForeign implements Factory30, Factory {
+    private static class ExecNotifyHandlerForeign implements FactoryModel, Factory {
 
         private final ExecNotifyHandler nh;
 

@@ -84,7 +84,7 @@ final class ForeignAccessFactoryGenerator {
         Utils.appendFactoryGeneratedFor(w, "", receiverTypeClass, ElementUtils.getQualifiedName(element));
         Utils.appendVisibilityModifier(w, element);
         w.append("final class ").append(simpleClassName);
-        w.append(" implements Factory30, Factory {\n");
+        w.append(" implements FactoryModel, Factory {\n");
 
         appendSingletonAndGetter(w);
         appendPrivateConstructor(w);
@@ -132,7 +132,7 @@ final class ForeignAccessFactoryGenerator {
             imports.add("com.oracle.truffle.api.CompilerDirectives.TruffleBoundary");
         }
         imports.add("com.oracle.truffle.api.Truffle");
-        imports.add("com.oracle.truffle.api.interop.ForeignAccess.Factory30");
+        imports.add("com.oracle.truffle.api.interop.ForeignAccess.FactoryModel");
         imports.add("com.oracle.truffle.api.interop.ForeignAccess.Factory");
         imports.add("com.oracle.truffle.api.interop.ForeignAccess");
         imports.add("com.oracle.truffle.api.interop.Message");
