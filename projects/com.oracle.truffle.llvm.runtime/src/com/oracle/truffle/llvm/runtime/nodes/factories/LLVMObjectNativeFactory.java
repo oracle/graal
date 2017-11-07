@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.memory;
+package com.oracle.truffle.llvm.runtime.nodes.factories;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
@@ -41,16 +41,16 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.llvm.nodes.memory.LLVMObjectNativeFactoryFactory.CachedAsPointerNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMObjectNativeFactoryFactory.CachedIsPointerNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMObjectNativeFactoryFactory.CachedToNativeNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMObjectNativeFactoryFactory.DynamicObjectAsPointerNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMObjectNativeFactoryFactory.DynamicObjectIsPointerNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMObjectNativeFactoryFactory.DynamicObjectToNativeNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNative;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNative.LLVMObjectAsPointerNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNative.LLVMObjectIsPointerNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNative.LLVMObjectToNativeNode;
+import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectNativeFactoryFactory.CachedAsPointerNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectNativeFactoryFactory.CachedIsPointerNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectNativeFactoryFactory.CachedToNativeNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectNativeFactoryFactory.DynamicObjectAsPointerNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectNativeFactoryFactory.DynamicObjectIsPointerNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectNativeFactoryFactory.DynamicObjectToNativeNodeGen;
 
 public abstract class LLVMObjectNativeFactory {
 

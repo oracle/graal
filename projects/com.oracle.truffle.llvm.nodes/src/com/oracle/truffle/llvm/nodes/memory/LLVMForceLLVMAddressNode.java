@@ -46,6 +46,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNative.LLVMObjectAsPointerNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNative.LLVMObjectIsPointerNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNative.LLVMObjectToNativeNode;
+import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectNativeFactory;
 
 public abstract class LLVMForceLLVMAddressNode extends Node {
 
