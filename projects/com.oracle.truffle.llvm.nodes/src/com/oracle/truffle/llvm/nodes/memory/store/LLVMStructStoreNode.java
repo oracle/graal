@@ -40,10 +40,10 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-@NodeField(type = int.class, name = "structSize")
+@NodeField(type = long.class, name = "structSize")
 public abstract class LLVMStructStoreNode extends LLVMStoreNode {
 
-    public abstract int getStructSize();
+    public abstract long getStructSize();
 
     @Child private LLVMMemMoveNode memMove;
 

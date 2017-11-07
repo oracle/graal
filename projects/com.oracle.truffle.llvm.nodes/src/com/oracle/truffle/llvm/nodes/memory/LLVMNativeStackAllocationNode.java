@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2016, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,23 +29,31 @@
  */
 package com.oracle.truffle.llvm.nodes.memory;
 
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.dsl.NodeField;
-import com.oracle.truffle.api.dsl.NodeFields;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStackAllocationNode;
 
-@NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "source")})
-@NodeFields({@NodeField(name = "length", type = int.class), @NodeField(name = "alignment", type = int.class)})
-public abstract class LLVMVarArgCompoundAddressNode extends LLVMExpressionNode {
-    public abstract int getLength();
+@NeedsStack
+public abstract class LLVMNativeStackAllocationNode extends LLVMStackAllocationNode {
 
-    public abstract int getAlignment();
+    @CompilationFinal private FrameSlot stackPointer;
+
+    protected FrameSlot getStackPointerSlot() {
+        if (stackPointer == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            stackPointer = getRootNode().getFrameDescriptor().findFrameSlot(LLVMStack.FRAME_ID);
+        }
+        return stackPointer;
+    }
 
     @Specialization
-    public LLVMVarArgCompoundValue byValue(Object source) {
-        return LLVMVarArgCompoundValue.create(source, getLength(), getAlignment());
+    public LLVMAddress alloc(VirtualFrame frame, long size) {
+        return LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), size, 8));
     }
 }

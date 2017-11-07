@@ -33,21 +33,21 @@ import com.oracle.truffle.api.CompilerDirectives.ValueType;
 
 @ValueType
 public final class LLVMVarArgCompoundValue {
-    private final long addr;
+    private final Object addr;
     private final int size;
     private final int alignment;
 
-    private LLVMVarArgCompoundValue(long val, int size, int alignment) {
+    private LLVMVarArgCompoundValue(Object val, int size, int alignment) {
         this.addr = val;
         this.size = size;
         this.alignment = alignment;
     }
 
-    public static LLVMVarArgCompoundValue create(long val, int size, int alignment) {
+    public static LLVMVarArgCompoundValue create(Object val, int size, int alignment) {
         return new LLVMVarArgCompoundValue(val, size, alignment);
     }
 
-    public long getAddr() {
+    public Object getAddr() {
         return addr;
     }
 
@@ -59,15 +59,11 @@ public final class LLVMVarArgCompoundValue {
         return alignment;
     }
 
-    public LLVMVarArgCompoundValue increment(long incr) {
-        return new LLVMVarArgCompoundValue(addr + incr, size, alignment);
-    }
-
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof LLVMVarArgCompoundValue) {
             LLVMVarArgCompoundValue curObj = (LLVMVarArgCompoundValue) obj;
-            return curObj.addr == addr && curObj.size == size && curObj.alignment == alignment;
+            return curObj.addr.equals(addr) && curObj.size == size && curObj.alignment == alignment;
         } else {
             return false;
         }
@@ -75,7 +71,7 @@ public final class LLVMVarArgCompoundValue {
 
     @Override
     public int hashCode() {
-        return Long.hashCode(addr) + 11 * Integer.hashCode(size) + 23 * Integer.hashCode(alignment);
+        return addr.hashCode() + 11 * Integer.hashCode(size) + 23 * Integer.hashCode(alignment);
     }
 
     @Override

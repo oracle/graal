@@ -60,6 +60,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     private final LLVMParserRuntime runtime;
@@ -140,9 +141,10 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             LLVMExpressionNode parameterNode = nodeFactory.createFunctionArgNode(argIndex++, parameter.getType());
             FrameSlot slot = frame.findFrameSlot(parameter.getName());
             if (isStructByValue(parameter)) {
-                int size = runtime.getContext().getByteSize(((PointerType) parameter.getType()).getPointeeType());
-                int alignment = runtime.getContext().getByteAlignment(((PointerType) parameter.getType()).getPointeeType());
-                formalParamInits.add(nodeFactory.createFrameWrite(runtime, parameter.getType(), nodeFactory.createCopyStructByValue(runtime, size, alignment, parameterNode), slot, null));
+                Type type = ((PointerType) parameter.getType()).getPointeeType();
+                int size = runtime.getContext().getByteSize(type);
+                int alignment = runtime.getContext().getByteAlignment(type);
+                formalParamInits.add(nodeFactory.createFrameWrite(runtime, parameter.getType(), nodeFactory.createCopyStructByValue(runtime, type, size, alignment, parameterNode), slot, null));
             } else {
                 formalParamInits.add(nodeFactory.createFrameWrite(runtime, parameter.getType(), parameterNode, slot, null));
             }

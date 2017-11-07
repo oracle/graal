@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nodes.memory;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -41,8 +42,20 @@ public abstract class NativeProfiledMemMove extends LLVMMemMoveNode {
 
     @CompilationFinal private boolean inJava = true;
 
+    @Child private LLVMForceLLVMAddressNode convert1 = LLVMForceLLVMAddressNodeGen.create();
+    @Child private LLVMForceLLVMAddressNode convert2 = LLVMForceLLVMAddressNodeGen.create();
+
     @Specialization
-    public Object memmove(LLVMAddress target, LLVMAddress source, long length) {
+    public Object case1(VirtualFrame frame, Object target, Object source, int length) {
+        return memmove(convert1.executeWithTarget(frame, target), convert2.executeWithTarget(frame, source), length);
+    }
+
+    @Specialization
+    public Object case2(VirtualFrame frame, Object target, Object source, long length) {
+        return memmove(convert1.executeWithTarget(frame, target), convert2.executeWithTarget(frame, source), length);
+    }
+
+    private Object memmove(LLVMAddress target, LLVMAddress source, long length) {
         if (inJava) {
             if (length <= MAX_JAVA_LEN) {
                 long targetPointer = target.getVal();

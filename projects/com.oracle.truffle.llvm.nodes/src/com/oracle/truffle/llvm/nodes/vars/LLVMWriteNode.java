@@ -118,7 +118,7 @@ public abstract class LLVMWriteNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object writePointer(VirtualFrame frame, LLVMTruffleObject value) {
+        protected Object writePointer(VirtualFrame frame, Object value) {
             if (getSlot().getKind() == FrameSlotKind.Long) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getSlot().setKind(FrameSlotKind.Object);

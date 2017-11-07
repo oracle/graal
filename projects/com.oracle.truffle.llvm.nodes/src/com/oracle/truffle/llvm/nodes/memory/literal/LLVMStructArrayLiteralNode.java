@@ -48,11 +48,11 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 public abstract class LLVMStructArrayLiteralNode extends LLVMExpressionNode {
 
     @Children private final LLVMExpressionNode[] values;
-    private final int stride;
+    private final long stride;
     @Child private LLVMMemMoveNode memMove;
     private final Type elementType;
 
-    public LLVMStructArrayLiteralNode(LLVMExpressionNode[] values, LLVMMemMoveNode memMove, int stride, Type elementType) {
+    public LLVMStructArrayLiteralNode(LLVMExpressionNode[] values, LLVMMemMoveNode memMove, long stride, Type elementType) {
         this.values = values;
         this.stride = stride;
         this.memMove = memMove;

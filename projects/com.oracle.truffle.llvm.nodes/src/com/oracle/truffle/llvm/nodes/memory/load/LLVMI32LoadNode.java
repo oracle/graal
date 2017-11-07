@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.memory.load;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.IntValueProfile;
@@ -43,10 +42,8 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMI32LoadNode extends LLVMExpressionNode {
+public abstract class LLVMI32LoadNode extends LLVMLoadNode {
 
     private final IntValueProfile profile = IntValueProfile.createIdentityProfile();
 

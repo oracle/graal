@@ -98,7 +98,8 @@ public abstract class ForeignToLLVM extends LLVMNode {
         POINTER,
         VECTOR,
         ANY,
-        VOID
+        VOID,
+        VARBIT
     }
 
     public static ForeignToLLVMType convert(Type type) {

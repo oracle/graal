@@ -296,13 +296,13 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
-    @NodeField(name = "structSize", type = int.class)
+    @NodeField(name = "structSize", type = long.class)
     public abstract static class LLVMStructRetNode extends LLVMRetNode {
 
         @Child private LLVMArgNode argIdx1 = LLVMArgNodeGen.create(1);
         @Child private LLVMMemMoveNode memMove;
 
-        public abstract int getStructSize();
+        public abstract long getStructSize();
 
         public LLVMStructRetNode(SourceSection sourceSection, LLVMMemMoveNode memMove) {
             super(sourceSection);

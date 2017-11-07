@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.memory.load;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -52,11 +51,18 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMDirectLoadNode {
 
-    @NodeChild(type = LLVMExpressionNode.class)
     @NodeField(name = "bitWidth", type = int.class)
-    public abstract static class LLVMIVarBitDirectLoadNode extends LLVMExpressionNode {
+    public abstract static class LLVMIVarBitDirectLoadNode extends LLVMLoadNode {
 
         public abstract int getBitWidth();
+
+        private int getByteSize() {
+            int nrFullBytes = getBitWidth() / Byte.SIZE;
+            if (getBitWidth() % Byte.SIZE != 0) {
+                nrFullBytes += 1;
+            }
+            return nrFullBytes;
+        }
 
         @Specialization
         public LLVMIVarBit executeI64(LLVMAddress addr) {
@@ -67,10 +73,18 @@ public abstract class LLVMDirectLoadNode {
         public LLVMIVarBit executeI64(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             return LLVMMemory.getIVarBit(globalAccess.getNativeLocation(addr), getBitWidth());
         }
+
+        LLVMForeignReadNode createForeignRead() {
+            return new LLVMForeignReadNode(ForeignToLLVMType.VARBIT, getByteSize());
+        }
+
+        @Specialization
+        public Object executeForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+            return foreignRead.execute(frame, addr);
+        }
     }
 
-    @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVM80BitFloatDirectLoadNode extends LLVMExpressionNode {
+    public abstract static class LLVM80BitFloatDirectLoadNode extends LLVMLoadNode {
 
         @Specialization
         public LLVM80BitFloat executeDouble(LLVMAddress addr) {
@@ -83,8 +97,7 @@ public abstract class LLVMDirectLoadNode {
         }
     }
 
-    @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMFunctionDirectLoadNode extends LLVMExpressionNode {
+    public abstract static class LLVMFunctionDirectLoadNode extends LLVMLoadNode {
 
         @Specialization
         public LLVMFunctionHandle executeAddress(LLVMAddress addr) {
@@ -106,8 +119,7 @@ public abstract class LLVMDirectLoadNode {
         }
     }
 
-    @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMAddressDirectLoadNode extends LLVMExpressionNode {
+    public abstract static class LLVMAddressDirectLoadNode extends LLVMLoadNode {
 
         @Child protected ForeignToLLVM toLLVM = ForeignToLLVM.create(ForeignToLLVMType.POINTER);
 
@@ -162,8 +174,7 @@ public abstract class LLVMDirectLoadNode {
 
     }
 
-    @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMStructDirectLoadNode extends LLVMExpressionNode {
+    public abstract static class LLVMStructDirectLoadNode extends LLVMLoadNode {
 
         @Specialization
         public LLVMAddress executeAddress(LLVMAddress addr) {

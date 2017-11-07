@@ -167,16 +167,16 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final Symbol count = allocate.getCount();
         final LLVMExpressionNode result;
         if (count instanceof NullConstant) {
-            result = nodeFactory.createAlloc(runtime, type, size, alignment, null, null);
+            result = nodeFactory.createAlloca(runtime, type, size, alignment);
         } else if (count instanceof IntegerConstant) {
             if (type instanceof VariableBitWidthType) {
-                result = nodeFactory.createAlloc(runtime, type, size * (int) ((IntegerConstant) count).getValue(), alignment, null, null);
+                result = nodeFactory.createAlloca(runtime, type, size * (int) ((IntegerConstant) count).getValue(), alignment);
             } else {
-                result = nodeFactory.createAlloc(runtime, type, size * (int) ((IntegerConstant) count).getValue(), alignment, null, null);
+                result = nodeFactory.createAlloca(runtime, type, size * (int) ((IntegerConstant) count).getValue(), alignment);
             }
         } else {
             LLVMExpressionNode num = symbols.resolve(count);
-            result = nodeFactory.createAlloc(runtime, type, size, alignment, count.getType(), num);
+            result = nodeFactory.createAlloca(runtime, type, num, alignment);
         }
 
         // we never want to step on allocations, only to actual assignments in the source
@@ -229,7 +229,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             final int size = runtime.getContext().getByteSize(targetType);
             final int align = runtime.getContext().getByteAlignment(targetType);
             argTypes[argIndex] = new PointerType(targetType);
-            argNodes[argIndex] = nodeFactory.createAlloc(runtime, targetType, size, align, null, null);
+            argNodes[argIndex] = nodeFactory.createAlloca(runtime, targetType, size, align);
             argIndex++;
         }
         for (int i = 0; argIndex < argumentCount; i++) {
@@ -265,7 +265,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         Type type = landingpadInstruction.getType();
         final int size = runtime.getContext().getByteSize(type);
         final int align = runtime.getContext().getByteAlignment(type);
-        LLVMExpressionNode allocateLandingPadValue = nodeFactory.createAlloc(runtime, type, size, align, null, null);
+        LLVMExpressionNode allocateLandingPadValue = nodeFactory.createAlloca(runtime, type, size, align);
         LLVMExpressionNode[] entries = new LLVMExpressionNode[landingpadInstruction.getClauseSymbols().length];
         for (int i = 0; i < entries.length; i++) {
             entries[i] = symbols.resolve(landingpadInstruction.getClauseSymbols()[i]);
@@ -419,7 +419,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             final int size = runtime.getContext().getByteSize(targetType);
             final int align = runtime.getContext().getByteAlignment(targetType);
             argTypes[argIndex] = new PointerType(targetType);
-            argNodes[argIndex] = nodeFactory.createAlloc(runtime, targetType, size, align, null, null);
+            argNodes[argIndex] = nodeFactory.createAlloca(runtime, targetType, size, align);
             argIndex++;
         }
         for (int i = 0; argIndex < argumentCount; i++, argIndex++) {
@@ -671,7 +671,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final int size = runtime.getContext().getByteSize(sourceType);
         final int alignment = runtime.getContext().getByteAlignment(sourceType);
 
-        final LLVMExpressionNode resultAggregate = nodeFactory.createAlloc(runtime, sourceType, size, alignment, null, null);
+        final LLVMExpressionNode resultAggregate = nodeFactory.createAlloca(runtime, sourceType, size, alignment);
 
         final int offset = runtime.getContext().getIndexOffset(targetIndex, sourceType);
         final LLVMExpressionNode result = nodeFactory.createInsertValue(runtime, resultAggregate, sourceAggregate,

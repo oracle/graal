@@ -27,25 +27,13 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.memory;
+package com.oracle.truffle.llvm.runtime.memory;
 
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.dsl.NodeField;
-import com.oracle.truffle.api.dsl.NodeFields;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 
-@NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "source")})
-@NodeFields({@NodeField(name = "length", type = int.class), @NodeField(name = "alignment", type = int.class)})
-public abstract class LLVMVarArgCompoundAddressNode extends LLVMExpressionNode {
-    public abstract int getLength();
+public abstract class LLVMStackAllocNode extends Node {
 
-    public abstract int getAlignment();
+    public abstract Object executeWithTarget(VirtualFrame frame, int numberOfElements);
 
-    @Specialization
-    public LLVMVarArgCompoundValue byValue(Object source) {
-        return LLVMVarArgCompoundValue.create(source, getLength(), getAlignment());
-    }
 }
