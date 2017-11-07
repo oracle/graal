@@ -95,11 +95,12 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         method.accept(visitor);
         FrameSlot[][] nullableBeforeBlock = getNullableFrameSlots(liveness.getNullableBeforeBlock());
         FrameSlot[][] nullableAfterBlock = getNullableFrameSlots(liveness.getNullableAfterBlock());
-        LLVMExpressionNode body = nodeFactory.createFunctionBlockNode(runtime, frame.findFrameSlot(LLVMException.FRAME_SLOT_ID), visitor.getBlocks(), nullableBeforeBlock, nullableAfterBlock);
+        SourceSection sourceSection = method.getSourceSection();
+        LLVMExpressionNode body = nodeFactory.createFunctionBlockNode(runtime, frame.findFrameSlot(LLVMException.FRAME_SLOT_ID), visitor.getBlocks(), nullableBeforeBlock, nullableAfterBlock,
+                        sourceSection);
 
         List<LLVMExpressionNode> copyArgumentsToFrame = copyArgumentsToFrame();
         LLVMExpressionNode[] copyArgumentsToFrameArray = copyArgumentsToFrame.toArray(new LLVMExpressionNode[copyArgumentsToFrame.size()]);
-        SourceSection sourceSection = method.getSourceSection();
         RootNode rootNode = nodeFactory.createFunctionStartNode(runtime, body, copyArgumentsToFrameArray, sourceSection, frame, method, source);
 
         final LLVMSourceLocation sourceScope = method.getLexicalScope();
