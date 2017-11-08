@@ -32,6 +32,9 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 
 public abstract class LLVMByteSwap {
 
@@ -63,4 +66,39 @@ public abstract class LLVMByteSwap {
         }
     }
 
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMByteSwapV8I16 extends LLVMBuiltin {
+        @Specialization
+        public LLVMI16Vector executeI16Vector(LLVMI16Vector vector) {
+            short[] result = new short[8];
+            for (int i = 0; i < 8; i++) {
+                result[i] = Short.reverseBytes(vector.getValue(i));
+            }
+            return LLVMI16Vector.create(result);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMByteSwapV4I32 extends LLVMBuiltin {
+        @Specialization
+        public LLVMI32Vector executeI32Vector(LLVMI32Vector vector) {
+            int[] result = new int[4];
+            for (int i = 0; i < 4; i++) {
+                result[i] = Integer.reverseBytes(vector.getValue(i));
+            }
+            return LLVMI32Vector.create(result);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMByteSwapV2I64 extends LLVMBuiltin {
+        @Specialization
+        public LLVMI64Vector executeI32Vector(LLVMI64Vector vector) {
+            long[] result = new long[2];
+            for (int i = 0; i < 2; i++) {
+                result[i] = Long.reverseBytes(vector.getValue(i));
+            }
+            return LLVMI64Vector.create(result);
+        }
+    }
 }
