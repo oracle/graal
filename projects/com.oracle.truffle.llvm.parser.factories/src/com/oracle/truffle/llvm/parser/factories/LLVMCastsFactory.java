@@ -271,6 +271,8 @@ final class LLVMCastsFactory {
                 return LLVMToI32ZeroExtNodeGen.create(fromNode);
             } else if (targetType == PrimitiveType.I64) {
                 return LLVMToI64ZeroExtNodeGen.create(fromNode);
+            } else if (targetType == PrimitiveType.X86_FP80) {
+                return LLVMSignedToLLVM80BitFloatNodeGen.create(fromNode);
             } else {
                 throw new AssertionError(targetType + " " + conv);
             }
