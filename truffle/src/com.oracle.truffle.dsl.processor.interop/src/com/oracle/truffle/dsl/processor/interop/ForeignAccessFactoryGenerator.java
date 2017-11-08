@@ -206,35 +206,35 @@ final class ForeignAccessFactoryGenerator {
     private void appendFactoryAccessIsExecutable(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessIsExecutable() {").append("\n");
-        appendOptionalDefaultHandlerBody(w, Message.IS_EXECUTABLE);
+        appendOptionalDefaultHandlerBody(w, Message.IS_EXECUTABLE, Message.createExecute(0));
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessIsInstantiable(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessIsInstantiable() {").append("\n");
-        appendOptionalDefaultHandlerBody(w, Message.IS_INSTANTIABLE);
+        appendOptionalDefaultHandlerBody(w, Message.IS_INSTANTIABLE, Message.createNew(0));
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessIsBoxed(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessIsBoxed() {").append("\n");
-        appendOptionalDefaultHandlerBody(w, Message.IS_BOXED);
+        appendOptionalDefaultHandlerBody(w, Message.IS_BOXED, Message.UNBOX);
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessHasKeys(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessHasKeys() {").append("\n");
-        appendOptionalDefaultHandlerBody(w, Message.HAS_KEYS);
+        appendOptionalDefaultHandlerBody(w, Message.HAS_KEYS, Message.KEYS);
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessHasSize(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessHasSize() {").append("\n");
-        appendOptionalDefaultHandlerBody(w, Message.HAS_SIZE);
+        appendOptionalDefaultHandlerBody(w, Message.HAS_SIZE, Message.GET_SIZE);
         w.append("    }").append("\n");
     }
 
@@ -248,6 +248,10 @@ final class ForeignAccessFactoryGenerator {
         } else {
             w.append("      return Truffle.getRuntime().createCallTarget(").append(messageGenerators.get(message).getRootNodeFactoryInvocation()).append(");").append("\n");
         }
+    }
+
+    private void appendOptionalDefaultHandlerBody(Writer w, Message message, Message testPresentMessage) throws IOException {
+        appendOptionalDefaultHandlerBody(w, message, Boolean.toString(messageGenerators.containsKey(testPresentMessage)));
     }
 
     private void appendFactoryAccessGetSize(Writer w) throws IOException {
@@ -281,7 +285,7 @@ final class ForeignAccessFactoryGenerator {
     private void appendFactoryAccessIsPointer(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessIsPointer() {").append("\n");
-        appendOptionalDefaultHandlerBody(w, Message.IS_POINTER);
+        appendOptionalDefaultHandlerBody(w, Message.IS_POINTER, Message.AS_POINTER);
         w.append("    }").append("\n");
     }
 
