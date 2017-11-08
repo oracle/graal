@@ -29,10 +29,13 @@
  */
 package com.oracle.truffle.llvm.nodes.literals;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNodeGen;
@@ -40,6 +43,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMFunctionVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
@@ -202,4 +206,29 @@ public class LLVMVectorLiteralNode {
             return LLVMAddressVector.create(vals);
         }
     }
+
+    public abstract static class LLVMVectorFunctionLiteralNode extends LLVMExpressionNode {
+
+        @Children private final LLVMExpressionNode[] values;
+
+        public LLVMVectorFunctionLiteralNode(LLVMExpressionNode[] values) {
+            this.values = values;
+        }
+
+        @ExplodeLoop
+        @Specialization
+        public LLVMFunctionVector executeFunctionVector(VirtualFrame frame) {
+            LLVMFunctionDescriptor[] vals = new LLVMFunctionDescriptor[values.length];
+            for (int i = 0; i < values.length; i++) {
+                try {
+                    vals[i] = values[i].executeLLVMFunctionDescriptor(frame);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
+            }
+            return LLVMFunctionVector.create(vals);
+        }
+    }
+
 }
