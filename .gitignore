@@ -45,3 +45,4 @@
 **/src_gen/
 **/test-output/
 **/workingsets.xml
+**/native-image

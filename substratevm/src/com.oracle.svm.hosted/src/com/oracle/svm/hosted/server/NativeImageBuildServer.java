@@ -32,12 +32,15 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.lang.reflect.Field;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.URLClassLoader;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -76,7 +79,7 @@ public final class NativeImageBuildServer {
     private static final String TASK_PREFIX = "-task=";
     static final String PORT_PREFIX = "-port=";
     private static final String LOG_PREFIX = "-logFile=";
-    private static final int SOCKET_TIMEOUT = 4 * 3_600_000;
+    private static final int TIMEOUT_MINUTES = 240;
     private static final String SOCKET_CHARSET = "UTF-8";
     private static final String SUBSTRATEVM_VERSION_PROPERTY = "substratevm.version";
     private static final int SERVER_THREAD_POOL_SIZE = 2;
@@ -96,6 +99,7 @@ public final class NativeImageBuildServer {
 
     private final Gson gson = new Gson();
     private final AtomicLong activeBuildTasks = new AtomicLong();
+    private Instant lastKeepAliveAction = Instant.now();
     private ThreadPoolExecutor threadPoolExecutor;
 
     private NativeImageBuildServer(int port, PrintStream out) {
@@ -124,7 +128,7 @@ public final class NativeImageBuildServer {
     }
 
     private void initThreadPool() {
-        threadPoolExecutor = new ThreadPoolExecutor(SERVER_THREAD_POOL_SIZE, SERVER_THREAD_POOL_SIZE, SOCKET_TIMEOUT, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
+        threadPoolExecutor = new ThreadPoolExecutor(SERVER_THREAD_POOL_SIZE, SERVER_THREAD_POOL_SIZE, Long.MAX_VALUE, TimeUnit.DAYS, new LinkedBlockingQueue<>());
     }
 
     private void log(String commandLine, Object... args) {
@@ -134,7 +138,7 @@ public final class NativeImageBuildServer {
 
     private static void printUsageAndExit() {
         System.out.println("Usage:");
-        System.out.println(String.format("  java -cp <compiler_class_path> com.oracle.svm.hosted.server.NativeImageBuildServer %s<port_number> %s<log_file>", PORT_PREFIX, LOG_PREFIX));
+        System.out.println(String.format("  java -cp <compiler_class_path> " + NativeImageBuildServer.class.getName() + " %s<port_number> %s<log_file>", PORT_PREFIX, LOG_PREFIX));
         System.exit(FAILED_EXIT_STATUS);
     }
 
@@ -201,8 +205,8 @@ public final class NativeImageBuildServer {
         log((port == 0 ? "Server selects port" : "Try binding server to port " + port) + "...");
         try (ServerSocket serverSocket = new ServerSocket()) {
             serverSocket.setReuseAddress(true);
-            serverSocket.setSoTimeout(SOCKET_TIMEOUT);
-            serverSocket.bind(new InetSocketAddress(port));
+            serverSocket.setSoTimeout((int) TimeUnit.MINUTES.toMillis(TIMEOUT_MINUTES));
+            serverSocket.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), port));
 
             /* NOTE: the following command lines are parsed externally */
             log(" Started image build server on port:\n%d\nAccepting requests...\n", serverSocket.getLocalPort());
@@ -259,7 +263,7 @@ public final class NativeImageBuildServer {
             System.gc();
             System.runFinalization();
             System.gc();
-            System.out.println("Available Memory: " + Runtime.getRuntime().freeMemory());
+            log("Available Memory: " + Runtime.getRuntime().freeMemory());
         }
         return true;
     }
@@ -283,7 +287,7 @@ public final class NativeImageBuildServer {
             case version:
                 log("Received 'version' request. Responding with " + System.getProperty(SUBSTRATEVM_VERSION_PROPERTY) + ".\n");
                 SubstrateServerMessage.send(new SubstrateServerMessage(serverCommand.command.toString(), System.getProperty(SUBSTRATEVM_VERSION_PROPERTY)), output);
-                return true;
+                return Instant.now().isBefore(lastKeepAliveAction.plus(Duration.ofMinutes(TIMEOUT_MINUTES)));
             case build:
                 if (activeBuildTasks.incrementAndGet() > 1) {
                     String message = "Can not build image: tasks are already running in the server.\n";
@@ -307,6 +311,7 @@ public final class NativeImageBuildServer {
                                         () -> executeCompilation(arguments));
                         success = true;
                         log("Image building completed.\n");
+                        lastKeepAliveAction = Instant.now();
                     } finally {
                         activeBuildTasks.decrementAndGet();
                         if (success) {

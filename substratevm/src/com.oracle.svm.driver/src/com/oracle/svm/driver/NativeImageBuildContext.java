@@ -36,10 +36,7 @@ import org.graalvm.nativeimage.Platform;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.VMError;
 
-class NativeImageSupport {
-    final String hostedOptionPrefix;
-    final String runtimeOptionPrefix;
-
+class NativeImageBuildContext {
     final String platform;
     final String svmVersion;
     final String graalvmVersion;
@@ -47,10 +44,7 @@ class NativeImageSupport {
     final String helpText;
     final String helpTextX;
 
-    NativeImageSupport() {
-        hostedOptionPrefix = "-H:";
-        runtimeOptionPrefix = "-R:";
-
+    NativeImageBuildContext() {
         platform = getPlatform();
         svmVersion = System.getProperty("substratevm.version");
         String tmpGraalVmVersion = System.getProperty("org.graalvm.version");
@@ -67,11 +61,11 @@ class NativeImageSupport {
     }
 
     private static String getPlatform() {
-        if (Platform.includedIn(Platform.DARWIN.class)) {
-            return "darwin";
+        if (Platform.includedIn(Platform.DARWIN_AMD64.class)) {
+            return "darwin-amd64";
         }
-        if (Platform.includedIn(Platform.LINUX.class)) {
-            return "linux";
+        if (Platform.includedIn(Platform.LINUX_AMD64.class)) {
+            return "linux-amd64";
         }
         throw VMError.shouldNotReachHere();
     }
@@ -92,6 +86,6 @@ class NativeImageFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(NativeImageSupport.class, new NativeImageSupport());
+        ImageSingletons.add(NativeImageBuildContext.class, new NativeImageBuildContext());
     }
 }

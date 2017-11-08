@@ -31,6 +31,10 @@ class SubstrateServerMessage {
     ServerCommand command;
     String payload;
 
+    SubstrateServerMessage() {
+        /* Needed for GSON use in native-image */
+    }
+
     SubstrateServerMessage(String command, String payload) {
         this.command = ServerCommand.valueOf(command);
         this.payload = payload;

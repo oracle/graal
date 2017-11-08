@@ -203,7 +203,7 @@ final class Target_java_lang_UNIXProcess {
     // reaper threads individually (with the only difference being that threads are not recycled)
     @Delete static final Executor processReaperExecutor = null;
 
-    @Alias final int pid = -1;
+    @Alias int pid;
     @Alias OutputStream stdin;
     @Alias InputStream stdout;
     @Alias InputStream stderr;
