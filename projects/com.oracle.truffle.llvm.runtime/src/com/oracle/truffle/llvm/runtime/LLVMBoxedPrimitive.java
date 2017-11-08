@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,20 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-public final class LLVMBoxedPrimitive {
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
+
+/**
+ * This object is used to wrap primitive values that enter LLVM code via interop at points where a
+ * pointer is expected. Semantically this behaves similar to pointer tagging. The resulting pointer
+ * can not be dereferenced, and in pointer comparisons, the same primitive value will result in the
+ * same pointer value.
+ */
+public final class LLVMBoxedPrimitive implements LLVMObjectNativeLibrary.Provider {
 
     private final Object value;
 
@@ -39,5 +52,40 @@ public final class LLVMBoxedPrimitive {
 
     public Object getValue() {
         return value;
+    }
+
+    @Override
+    public LLVMObjectNativeLibrary createLLVMObjectNativeLibrary() {
+        return new LLVMBoxedPrimitiveNativeLibrary();
+    }
+
+    private static final class LLVMBoxedPrimitiveNativeLibrary extends LLVMObjectNativeLibrary {
+
+        @Child private ForeignToLLVM toLLVM;
+
+        @Override
+        public boolean guard(Object obj) {
+            return obj instanceof LLVMBoxedPrimitive;
+        }
+
+        @Override
+        public boolean isPointer(VirtualFrame frame, Object obj) {
+            return true;
+        }
+
+        @Override
+        public long asPointer(VirtualFrame frame, Object obj) throws InteropException {
+            if (toLLVM == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toLLVM = ForeignToLLVM.create(ForeignToLLVMType.I64);
+            }
+            LLVMBoxedPrimitive boxed = (LLVMBoxedPrimitive) obj;
+            return (long) toLLVM.executeWithTarget(boxed.getValue());
+        }
+
+        @Override
+        public LLVMBoxedPrimitive toNative(VirtualFrame frame, Object obj) throws InteropException {
+            return (LLVMBoxedPrimitive) obj;
+        }
     }
 }
