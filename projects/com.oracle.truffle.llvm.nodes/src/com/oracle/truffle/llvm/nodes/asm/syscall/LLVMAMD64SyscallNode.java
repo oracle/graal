@@ -129,6 +129,8 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                 return new LLVMAMD64SyscallFtruncateNode();
             case LLVMAMD64Syscall.SYS_getcwd:
                 return LLVMAMD64SyscallGetcwdNodeGen.create();
+            case LLVMAMD64Syscall.SYS_rename:
+                return LLVMAMD64SyscallRenameNodeGen.create();
             case LLVMAMD64Syscall.SYS_unlink:
                 return LLVMAMD64SyscallUnlinkNodeGen.create();
             case LLVMAMD64Syscall.SYS_getuid:
@@ -153,6 +155,8 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                 return LLVMAMD64SyscallSetTidAddressNodeGen.create();
             case LLVMAMD64Syscall.SYS_clock_gettime:
                 return LLVMAMD64SyscallClockGetTimeNodeGen.create();
+            case LLVMAMD64Syscall.SYS_renameat:
+                return LLVMAMD64SyscallRenameatNodeGen.create();
             case LLVMAMD64Syscall.SYS_faccessat:
                 return LLVMAMD64SyscallFaccessatNodeGen.create();
             case LLVMAMD64Syscall.SYS_pipe2:

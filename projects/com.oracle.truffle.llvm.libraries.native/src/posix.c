@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
@@ -276,6 +277,16 @@ int __sulong_posix_faccessat(int fd, const char* path, int amode, int flag)
 	CALL(int, faccessat, fd, path, amode, flag);
 }
 
+int __sulong_posix_rename(const char* old, const char* new)
+{
+	CALL(int, rename, old, new);
+}
+
+int __sulong_posix_renameat(int oldfd, const char* old, int newfd, const char* new)
+{
+	CALL(int, renameat, oldfd, old, newfd, new);
+}
+
 #else
 
 #include <stdio.h>
@@ -476,6 +487,16 @@ int __sulong_posix_access(const char* path, int amode)
 }
 
 int __sulong_posix_faccessat(int fd, const char* path, int amode, int flag)
+{
+	ERROR();
+}
+
+int __sulong_posix_rename(const char* old, const char* new)
+{
+	ERROR();
+}
+
+int __sulong_posix_renameat(int oldfd, const char* old, int newfd, const char* new)
 {
 	ERROR();
 }

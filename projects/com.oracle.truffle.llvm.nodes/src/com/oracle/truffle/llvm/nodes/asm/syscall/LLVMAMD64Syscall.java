@@ -75,6 +75,7 @@ public class LLVMAMD64Syscall {
     public static final int SYS_fcntl = 72;
     public static final int SYS_ftruncate = 77;
     public static final int SYS_getcwd = 79;
+    public static final int SYS_rename = 82;
     public static final int SYS_unlink = 87;
     public static final int SYS_getuid = 102;
     public static final int SYS_getgid = 104;
@@ -88,6 +89,7 @@ public class LLVMAMD64Syscall {
     public static final int SYS_set_tid_address = 218;
     public static final int SYS_clock_gettime = 228;
     public static final int SYS_exit_group = 231;
+    public static final int SYS_renameat = 264;
     public static final int SYS_faccessat = 269;
     public static final int SYS_pipe2 = 293;
 }
