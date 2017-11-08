@@ -35,6 +35,7 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
 import java.util.Arrays;
+import java.util.function.BiFunction;
 
 @ValueType
 public final class LLVMI1Vector {
@@ -238,6 +239,17 @@ public final class LLVMI1Vector {
 
     public int getLength() {
         return vector.length;
+    }
+
+    public LLVMI1Vector doCompare(LLVMI1Vector other, BiFunction<Boolean, Boolean, Boolean> comparison) {
+        int length = getLength();
+        boolean[] values = new boolean[length];
+
+        for (int i = 0; i < length; i++) {
+            values[i] = comparison.apply(getValue(i), other.getValue(i));
+        }
+
+        return LLVMI1Vector.create(values);
     }
 
 }

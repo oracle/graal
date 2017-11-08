@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.vector;
 
 import java.util.Arrays;
+import java.util.function.BiFunction;
 
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -256,5 +257,16 @@ public final class LLVMAddressVector {
 
     public int getLength() {
         return vector.length;
+    }
+
+    public LLVMI1Vector doCompare(LLVMAddressVector other, BiFunction<Long, Long, Boolean> compare) {
+        int length = other.getLength();
+        boolean[] values = new boolean[length];
+
+        for (int i = 0; i < length; i++) {
+            values[i] = compare.apply(getValue(i), other.getValue(i));
+        }
+
+        return LLVMI1Vector.create(values);
     }
 }
