@@ -197,7 +197,7 @@ public final class Runner {
     }
 
     public static void disposeContext(LLVMContext context) {
-        LLVMFunctionDescriptor atexitDescriptor = context.getGlobalScope().getFunctionDescriptor(context, "@__sulong_funcs_on_exit");
+        LLVMFunctionDescriptor atexitDescriptor = context.getGlobalScope().getFunctionDescriptor("@__sulong_funcs_on_exit");
         if (atexitDescriptor != null) {
             RootCallTarget atexit = atexitDescriptor.getLLVMIRFunction();
             try (StackPointer stackPointer = context.getThreadingStack().getStack().takeStackPointer()) {
