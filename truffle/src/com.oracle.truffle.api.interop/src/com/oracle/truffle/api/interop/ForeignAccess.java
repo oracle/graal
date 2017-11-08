@@ -838,8 +838,8 @@ public final class ForeignAccess {
     public interface Factory {
 
         /**
-         * * Checks whether provided {@link TruffleObject} can be accessed using AST snippets
-         * produced by this {@link Factory}.
+         * Checks whether provided {@link TruffleObject} can be accessed using AST snippets produced
+         * by this {@link Factory}.
          *
          * @param obj the object to check
          * @return true, if the object can be processed
