@@ -51,6 +51,6 @@ public abstract class LLVMTruffleImport extends LLVMIntrinsic {
 
     @TruffleBoundary
     public Object importSymbol(String id) {
-        return getContext().getEnv().importSymbol(id);
+        return getContextReference().get().getEnv().importSymbol(id);
     }
 }

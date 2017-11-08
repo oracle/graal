@@ -102,7 +102,7 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
 
     @Specialization
     public LLVMDebugValueProvider fromFunctionHandle(LLVMFunctionHandle value) {
-        return new LLVMConstantValueProvider.Function(value, getContext());
+        return new LLVMConstantValueProvider.Function(value, getContextReference().get());
     }
 
     @Specialization

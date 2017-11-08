@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -117,17 +118,18 @@ public abstract class LLVMTruffleExecute extends LLVMIntrinsic {
 
     @SuppressWarnings("unused")
     @Specialization(guards = "value == cachedValue")
-    public Object doIntrinsicCachedLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject value, @Cached("value") LLVMTruffleObject cachedValue, @Cached("getContext()") LLVMContext context,
+    public Object doIntrinsicCachedLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject value, @Cached("value") LLVMTruffleObject cachedValue,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("create()") LLVMGetStackNode getStack) {
         checkLLVMTruffleObject(cachedValue);
-        return doExecute(frame, cachedValue.getObject(), context, getStack);
+        return doExecute(frame, cachedValue.getObject(), context.get(), getStack);
     }
 
     @Specialization(replaces = "doIntrinsicCachedLLVMTruffleObject")
-    public Object doIntrinsicLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject value, @Cached("getContext()") LLVMContext context,
+    public Object doIntrinsicLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject value, @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("create()") LLVMGetStackNode getStack) {
         checkLLVMTruffleObject(value);
-        return doExecute(frame, value.getObject(), context, getStack);
+        return doExecute(frame, value.getObject(), context.get(), getStack);
     }
 
     @Fallback

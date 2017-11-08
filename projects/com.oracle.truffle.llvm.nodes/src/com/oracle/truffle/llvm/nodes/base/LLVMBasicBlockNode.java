@@ -156,8 +156,8 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
     private void cacheTrace() {
         if (traceStream == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            traceStream = SulongEngineOption.getStream(getContext().getEnv().getOptions().get(SulongEngineOption.DEBUG));
-            traceEnabledFlag = SulongEngineOption.isTrue(getContext().getEnv().getOptions().get(SulongEngineOption.DEBUG));
+            traceStream = SulongEngineOption.getStream(getContextReference().get().getEnv().getOptions().get(SulongEngineOption.DEBUG));
+            traceEnabledFlag = SulongEngineOption.isTrue(getContextReference().get().getEnv().getOptions().get(SulongEngineOption.DEBUG));
         }
     }
 

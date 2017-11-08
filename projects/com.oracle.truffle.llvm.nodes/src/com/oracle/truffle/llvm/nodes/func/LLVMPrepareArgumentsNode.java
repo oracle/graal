@@ -97,7 +97,7 @@ public class LLVMPrepareArgumentsNode extends LLVMNode {
         Type ptrType = new PointerType(PrimitiveType.I8);
         int ptrsz = LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES;
         String[] args = getStringArgs(mainArgs);
-        String[] env = getenv(getContext().getEnvironment());
+        String[] env = getenv(getContextReference().get().getEnvironment());
         // argc, two NULL pointers and 3 auxv entries
         int offset = (args.length + env.length + 3 + 3 * 2) * ptrsz;
 
@@ -160,7 +160,7 @@ public class LLVMPrepareArgumentsNode extends LLVMNode {
 
         @Override
         public Object executeGeneric(VirtualFrame frame) {
-            Object[] sulongArgs = getContext().getMainArguments();
+            Object[] sulongArgs = getContextReference().get().getMainArguments();
             if (types.length > 3) {
                 throw new AssertionError(sourceFile + " " + Arrays.toString(types));
             }
@@ -180,7 +180,7 @@ public class LLVMPrepareArgumentsNode extends LLVMNode {
         public Object executeGeneric(VirtualFrame frame) {
             int ptrsz = LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES;
             String[] args = getStringArgs((Object[]) getargs.executeGeneric(frame));
-            String[] env = getenv(getContext().getEnvironment());
+            String[] env = getenv(getContextReference().get().getEnvironment());
 
             // argc, two NULL pointers and 3 auxv entries
             int size = (args.length + env.length + 3 + 3 * 2) * ptrsz;

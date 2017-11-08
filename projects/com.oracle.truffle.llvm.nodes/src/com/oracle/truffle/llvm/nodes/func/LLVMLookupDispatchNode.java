@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nodes.func;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -106,7 +107,7 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
     }
 
     protected LLVMFunctionDescriptor lookupFunction(LLVMFunctionHandle function) {
-        return getContext().getFunctionDescriptor(function);
+        return getContextReference().get().getFunctionDescriptor(function);
     }
 
     protected LLVMDispatchNode createCachedDispatch() {
@@ -119,10 +120,10 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
 
     @CompilationFinal private LLVMThreadingStack threadingStack = null;
 
-    private LLVMThreadingStack getThreadingStack(LLVMContext context) {
+    private LLVMThreadingStack getThreadingStack(ContextReference<LLVMContext> context) {
         if (threadingStack == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            threadingStack = context.getThreadingStack();
+            threadingStack = context.get().getThreadingStack();
         }
         return threadingStack;
     }
@@ -132,12 +133,12 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
                     @Cached("createCrossLanguageCallNode(arguments)") Node crossLanguageCallNode,
                     @Cached("createLLVMDataEscapeNodes()") LLVMDataEscapeNode[] dataEscapeNodes,
                     @Cached("createToLLVMNode()") ForeignToLLVM toLLVMNode,
-                    @Cached("getContext()") LLVMContext context,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("create()") LLVMGetStackNode getStack) {
         try {
             LLVMStack stack = getStack.executeWithTarget(getThreadingStack(context), Thread.currentThread());
             stack.setStackPointer((long) arguments[0]);
-            Object ret = ForeignAccess.sendExecute(crossLanguageCallNode, function.getObject(), getForeignArguments(dataEscapeNodes, arguments, context));
+            Object ret = ForeignAccess.sendExecute(crossLanguageCallNode, function.getObject(), getForeignArguments(dataEscapeNodes, arguments, context.get()));
             stack.setStackPointer((long) arguments[0]);
             return toLLVMNode.executeWithTarget(ret);
         } catch (InteropException e) {

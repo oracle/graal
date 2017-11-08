@@ -34,6 +34,7 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -57,11 +58,11 @@ public final class LLVMNativeCallUtils {
         }
     }
 
-    static Object callNativeFunction(boolean enabled, LLVMContext context, Node nativeCall, TruffleObject function, Object[] nativeArgs, LLVMFunctionDescriptor descriptor) {
+    static Object callNativeFunction(boolean enabled, ContextReference<LLVMContext> context, Node nativeCall, TruffleObject function, Object[] nativeArgs, LLVMFunctionDescriptor descriptor) {
         CompilerAsserts.partialEvaluationConstant(enabled);
         if (enabled) {
             if (descriptor != null) {
-                traceNativeCall(context, descriptor);
+                traceNativeCall(context.get(), descriptor);
             }
         }
         try {

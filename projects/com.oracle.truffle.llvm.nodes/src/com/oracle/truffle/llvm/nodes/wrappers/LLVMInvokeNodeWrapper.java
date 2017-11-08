@@ -29,12 +29,10 @@
  */
 package com.oracle.truffle.llvm.nodes.wrappers;
 
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMInvokeNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public class LLVMInvokeNodeWrapper implements InstrumentableFactory<LLVMInvokeNode> {
@@ -100,16 +98,6 @@ public class LLVMInvokeNodeWrapper implements InstrumentableFactory<LLVMInvokeNo
         @Override
         public void writeResult(VirtualFrame frame, Object value) {
             delegateNode.writeResult(frame, value);
-        }
-
-        @Override
-        public LLVMThreadingStack getThreadingStack() {
-            return delegateNode.getThreadingStack();
-        }
-
-        @Override
-        public FrameSlot getStackPointerSlot() {
-            return delegateNode.getStackPointerSlot();
         }
 
         @Override

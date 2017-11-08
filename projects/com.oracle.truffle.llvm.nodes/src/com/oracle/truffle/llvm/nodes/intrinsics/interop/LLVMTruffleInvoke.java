@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -98,8 +99,9 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
     }
 
     @ExplodeLoop
-    private Object doInvoke(VirtualFrame frame, TruffleObject value, String id, LLVMContext context,
+    private Object doInvoke(VirtualFrame frame, TruffleObject value, String id, ContextReference<LLVMContext> contextReference,
                     LLVMGetStackNode getStack) {
+        LLVMContext context = contextReference.get();
         Object[] evaluatedArgs = new Object[args.length];
         for (int i = 0; i < args.length; i++) {
             evaluatedArgs[i] = prepareValuesForEscape[i].executeWithTarget(args[i].executeGeneric(frame), context);
@@ -116,7 +118,7 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
         }
     }
 
-    private Object doInvoke(VirtualFrame frame, TruffleObject value, LLVMAddress id, LLVMContext context, LLVMGetStackNode getStack) {
+    private Object doInvoke(VirtualFrame frame, TruffleObject value, LLVMAddress id, ContextReference<LLVMContext> context, LLVMGetStackNode getStack) {
         String name = LLVMTruffleIntrinsicUtil.readString(id);
         return doInvoke(frame, value, name, context, getStack);
     }
@@ -126,7 +128,7 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
     public Object doIntrinsicReceiverCachedLLVMTruffleObjectCached(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id,
                     @Cached("value") LLVMTruffleObject cachedValue,
                     @Cached("pointerOf(id)") long cachedPtr,
-                    @Cached("readString(id)") String cachedId, @Cached("getContext()") LLVMContext context,
+                    @Cached("readString(id)") String cachedId, @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("create()") LLVMGetStackNode getStack) {
         checkLLVMTruffleObject(cachedValue);
         return doInvoke(frame, cachedValue.getObject(), cachedId, context, getStack);
@@ -135,14 +137,14 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
     @SuppressWarnings("unused")
     @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)", replaces = "doIntrinsicReceiverCachedLLVMTruffleObjectCached")
     public Object doIntrinsicLLVMTruffleObjectCached(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, @Cached("pointerOf(id)") long cachedPtr,
-                    @Cached("readString(id)") String cachedId, @Cached("getContext()") LLVMContext context,
+                    @Cached("readString(id)") String cachedId, @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("create()") LLVMGetStackNode getStack) {
         checkLLVMTruffleObject(value);
         return doInvoke(frame, value.getObject(), cachedId, context, getStack);
     }
 
     @Specialization
-    public Object doIntrinsicLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, @Cached("getContext()") LLVMContext context,
+    public Object doIntrinsicLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("create()") LLVMGetStackNode getStack) {
         checkLLVMTruffleObject(value);
         return doInvoke(frame, value.getObject(), id, context, getStack);
