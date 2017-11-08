@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.func;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -49,7 +48,6 @@ import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI3
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI64ProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI8ProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.wrappers.LLVMInvokeNodeWrapper;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
@@ -203,24 +201,6 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
         }
 
         @Override
-        public LLVMThreadingStack getThreadingStack() {
-            if (threadingStack == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                threadingStack = getContext().getThreadingStack();
-            }
-            return threadingStack;
-        }
-
-        @Override
-        public FrameSlot getStackPointerSlot() {
-            if (stackPointer == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                stackPointer = getRootNode().getFrameDescriptor().findFrameSlot(LLVMStack.FRAME_ID);
-            }
-            return stackPointer;
-        }
-
-        @Override
         @ExplodeLoop
         public void writePhis(VirtualFrame frame, int successorIndex) {
             if (profile.profile(successorIndex == NORMAL_SUCCESSOR)) {
@@ -246,10 +226,6 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
     public abstract void execute(VirtualFrame frame);
 
     public abstract void writeResult(VirtualFrame frame, Object value);
-
-    public abstract LLVMThreadingStack getThreadingStack();
-
-    public abstract FrameSlot getStackPointerSlot();
 
     public abstract void writePhis(VirtualFrame frame, int successorIndex);
 

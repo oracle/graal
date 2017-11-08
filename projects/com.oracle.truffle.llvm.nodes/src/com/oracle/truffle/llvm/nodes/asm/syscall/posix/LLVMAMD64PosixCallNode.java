@@ -53,7 +53,7 @@ public abstract class LLVMAMD64PosixCallNode extends LLVMNode {
     }
 
     protected TruffleObject createFunction() {
-        LLVMContext context = getContext();
+        LLVMContext context = getContextReference().get();
         NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
         return nfiContextExtension.getNativeFunction(context, "@__sulong_posix_" + name, signature);
     }

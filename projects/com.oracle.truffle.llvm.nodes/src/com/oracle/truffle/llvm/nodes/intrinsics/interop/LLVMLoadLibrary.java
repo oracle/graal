@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -48,15 +49,15 @@ public abstract class LLVMLoadLibrary extends LLVMIntrinsic {
     @SuppressWarnings("unused")
     @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)")
     public Object executeIntrinsicCached(LLVMAddress id, @Cached("pointerOf(id)") long cachedPtr,
-                    @Cached("readString(id)") String cachedId, @Cached("getContext()") LLVMContext context) {
-        context.addExternalLibrary(cachedId);
+                    @Cached("readString(id)") String cachedId, @Cached("getContextReference()") ContextReference<LLVMContext> context) {
+        context.get().addExternalLibrary(cachedId);
         return null;
     }
 
     @Specialization
-    public Object executeIntrinsic(LLVMAddress value, @Cached("getContext()") LLVMContext context) {
+    public Object executeIntrinsic(LLVMAddress value, @Cached("getContextReference()") ContextReference<LLVMContext> context) {
         String name = LLVMTruffleIntrinsicUtil.readString(value);
-        context.addExternalLibrary(name);
+        context.get().addExternalLibrary(name);
         return null;
     }
 

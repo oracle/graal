@@ -64,7 +64,7 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
     public LLVMNativeFunctions.SulongGetUnwindHeaderNode getGetUnwindHeader() {
         if (getUnwindHeader == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            LLVMContext context = getContext();
+            LLVMContext context = getContextReference().get();
             NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
             this.getUnwindHeader = insert(nfiContextExtension.getNativeSulongFunctions().createGetUnwindHeader(context));
         }
@@ -74,7 +74,7 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
     public LLVMNativeFunctions.SulongGetExceptionTypeNode getGetExceptionType() {
         if (getExceptionType == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            LLVMContext context = getContext();
+            LLVMContext context = getContextReference().get();
             NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
             this.getExceptionType = insert(nfiContextExtension.getNativeSulongFunctions().createGetExceptionType(context));
         }
@@ -144,7 +144,7 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
         public LLVMNativeFunctions.SulongCanCatchNode getCanCatch() {
             if (canCatch == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                LLVMContext context = getContext();
+                LLVMContext context = getContextReference().get();
                 NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
                 this.canCatch = insert(nfiContextExtension.getNativeSulongFunctions().createSulongCanCatch(context));
             }
@@ -182,7 +182,7 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
         public LLVMNativeFunctions.SulongCanCatchNode getCanCatch() {
             if (canCatch == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                LLVMContext context = getContext();
+                LLVMContext context = getContextReference().get();
                 NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
                 this.canCatch = insert(nfiContextExtension.getNativeSulongFunctions().createSulongCanCatch(context));
             }

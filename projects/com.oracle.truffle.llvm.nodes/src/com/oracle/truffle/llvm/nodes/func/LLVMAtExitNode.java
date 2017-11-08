@@ -60,7 +60,7 @@ public final class LLVMAtExitNode extends LLVMExpressionNode {
     public LinkedList<DestructorStackElement> getDestructorStack() {
         if (destructorStack == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.destructorStack = getContext().getDestructorStack();
+            this.destructorStack = getContextReference().get().getDestructorStack();
         }
         return destructorStack;
     }

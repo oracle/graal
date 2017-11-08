@@ -39,6 +39,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
@@ -62,8 +63,8 @@ import sun.misc.SignalHandler;
 public abstract class LLVMSignal extends LLVMExpressionNode {
 
     @Specialization
-    public LLVMFunction doSignal(int signal, LLVMFunction handler, @Cached("getContext()") LLVMContext context) {
-        return setSignalHandler(context, signal, handler);
+    public LLVMFunction doSignal(int signal, LLVMFunction handler, @Cached("getContextReference()") ContextReference<LLVMContext> context) {
+        return setSignalHandler(context.get(), signal, handler);
     }
 
     private static LLVMFunction setSignalHandler(LLVMContext context, int signalId, LLVMFunction function) {

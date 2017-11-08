@@ -63,10 +63,6 @@ public abstract class LLVMNode extends Node {
         return getRootNode().getLanguage(LLVMLanguage.class).getContextReference();
     }
 
-    public final LLVMContext getContext() {
-        return getRootNode().getLanguage(LLVMLanguage.class).getContextReference().get();
-    }
-
     public final LLVMLanguage getLLVMLanguage() {
         return getRootNode().getLanguage(LLVMLanguage.class);
     }
@@ -75,20 +71,20 @@ public abstract class LLVMNode extends Node {
         return new LLVMGlobalVariableAccess();
     }
 
-    protected static PrintStream debugStream(LLVMContext context) {
-        return SulongEngineOption.getStream(context.getEnv().getOptions().get(SulongEngineOption.DEBUG));
+    protected static PrintStream debugStream(ContextReference<LLVMContext> context) {
+        return SulongEngineOption.getStream(context.get().getEnv().getOptions().get(SulongEngineOption.DEBUG));
     }
 
-    protected static boolean debugEnabled(LLVMContext context) {
-        return SulongEngineOption.isTrue(context.getEnv().getOptions().get(SulongEngineOption.DEBUG));
+    protected static boolean debugEnabled(ContextReference<LLVMContext> context) {
+        return SulongEngineOption.isTrue(context.get().getEnv().getOptions().get(SulongEngineOption.DEBUG));
     }
 
-    protected static PrintStream nativeCallStatisticsStream(LLVMContext context) {
-        return SulongEngineOption.getStream(context.getEnv().getOptions().get(SulongEngineOption.NATIVE_CALL_STATS));
+    protected static PrintStream nativeCallStatisticsStream(ContextReference<LLVMContext> context) {
+        return SulongEngineOption.getStream(context.get().getEnv().getOptions().get(SulongEngineOption.NATIVE_CALL_STATS));
     }
 
-    protected static boolean nativeCallStatisticsEnabled(LLVMContext context) {
-        return SulongEngineOption.isTrue(context.getEnv().getOptions().get(SulongEngineOption.NATIVE_CALL_STATS));
+    protected static boolean nativeCallStatisticsEnabled(ContextReference<LLVMContext> context) {
+        return SulongEngineOption.isTrue(context.get().getEnv().getOptions().get(SulongEngineOption.NATIVE_CALL_STATS));
     }
 
     @Override

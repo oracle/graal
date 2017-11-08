@@ -53,7 +53,7 @@ public final class LLVMRethrowNode extends LLVMExpressionNode {
     public LinkedList<LLVMAddress> getCaughtExceptionStack() {
         if (caughtExceptionStack == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            caughtExceptionStack = getContext().getCaughtExceptionStack();
+            caughtExceptionStack = getContextReference().get().getCaughtExceptionStack();
         }
         return caughtExceptionStack;
     }
@@ -61,7 +61,7 @@ public final class LLVMRethrowNode extends LLVMExpressionNode {
     public LLVMNativeFunctions.SulongSetHandlerCountNode getSetHandlerCount() {
         if (setHandlerCount == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            LLVMContext context = getContext();
+            LLVMContext context = getContextReference().get();
             NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
             setHandlerCount = insert(nfiContextExtension.getNativeSulongFunctions().createSetHandlerCount(context));
         }
@@ -71,7 +71,7 @@ public final class LLVMRethrowNode extends LLVMExpressionNode {
     public LLVMNativeFunctions.SulongGetExceptionPointerNode getGetExceptionPointer() {
         if (getExceptionPointer == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            LLVMContext context = getContext();
+            LLVMContext context = getContextReference().get();
             NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
             getExceptionPointer = insert(nfiContextExtension.getNativeSulongFunctions().createGetExceptionPointer(context));
         }

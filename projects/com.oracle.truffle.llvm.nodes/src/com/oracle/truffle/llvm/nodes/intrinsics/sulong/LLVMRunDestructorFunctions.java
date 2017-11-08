@@ -33,11 +33,14 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 
 public abstract class LLVMRunDestructorFunctions extends LLVMIntrinsic {
 
@@ -45,10 +48,10 @@ public abstract class LLVMRunDestructorFunctions extends LLVMIntrinsic {
     @CompilationFinal(dimensions = 1) private RootCallTarget[] targets;
 
     @Specialization
-    public Object execute() {
+    public Object execute(@Cached("getContextReference()") ContextReference<LLVMContext> context) {
         if (targets == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            List<RootCallTarget> destructorFunctions = getContext().getDestructorFunctions();
+            List<RootCallTarget> destructorFunctions = context.get().getDestructorFunctions();
             targets = destructorFunctions.toArray(new RootCallTarget[destructorFunctions.size()]);
         }
         for (RootCallTarget target : targets) {

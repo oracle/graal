@@ -86,7 +86,7 @@ public abstract class LLVMLangStart extends LLVMIntrinsic {
 
     @TruffleBoundary
     protected LLVMFunctionDescriptor getMainDescriptor(LLVMAddress main) {
-        return getContext().getFunctionDescriptor(LLVMFunctionHandle.createHandle(main.getVal()));
+        return getContextReference().get().getFunctionDescriptor(LLVMFunctionHandle.createHandle(main.getVal()));
     }
 
     protected LLVMDispatchNode getDispatchNode(LLVMFunctionDescriptor mainDescriptor) {
@@ -96,7 +96,7 @@ public abstract class LLVMLangStart extends LLVMIntrinsic {
 
     protected LLVMLookupDispatchNode getLookupDispatchNode(LLVMAddress main) {
         CompilerAsserts.neverPartOfCompilation();
-        FunctionType functionType = getContext().getFunctionDescriptor(LLVMFunctionHandle.createHandle(main.getVal())).getType();
+        FunctionType functionType = getContextReference().get().getFunctionDescriptor(LLVMFunctionHandle.createHandle(main.getVal())).getType();
         return LLVMLookupDispatchNodeGen.create(functionType);
     }
 

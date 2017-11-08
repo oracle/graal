@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.func;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -205,15 +206,15 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
         protected static TruffleObject doCachedNative(LLVMFunctionHandle handle,
                         @Cached("handle") LLVMFunctionHandle cachedHandle,
                         @Cached("doLookup(cachedHandle)") LLVMFunctionDescriptor descriptor,
-                        @Cached("getContext()") LLVMContext c) {
-            return new LLVMTruffleAddress(LLVMAddress.fromLong(handle.getFunctionPointer()), new PointerType(null), c);
+                        @Cached("getContextReference()") ContextReference<LLVMContext> c) {
+            return new LLVMTruffleAddress(LLVMAddress.fromLong(handle.getFunctionPointer()), new PointerType(null), c.get());
         }
 
         @Specialization(replaces = {"doCachedHandle", "doCachedNative"}, guards = {"!handle.isNullFunction()"})
-        protected TruffleObject doUncachedHandle(LLVMFunctionHandle handle, @Cached("getContext()") LLVMContext c) {
+        protected TruffleObject doUncachedHandle(LLVMFunctionHandle handle, @Cached("getContextReference()") ContextReference<LLVMContext> c) {
             LLVMFunctionDescriptor descriptor = doLookup(handle);
             if (descriptor == null) {
-                return new LLVMTruffleAddress(LLVMAddress.fromLong(handle.getFunctionPointer()), new PointerType(null), c);
+                return new LLVMTruffleAddress(LLVMAddress.fromLong(handle.getFunctionPointer()), new PointerType(null), c.get());
             } else if (descriptor.isNativeFunction()) {
                 return descriptor.getNativeFunction();
             } else {
@@ -222,7 +223,7 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
         }
 
         protected LLVMFunctionDescriptor doLookup(LLVMFunctionHandle handle) {
-            return getContext().getFunctionDescriptor(handle);
+            return getContextReference().get().getFunctionDescriptor(handle);
         }
 
         @Child private NullPointerNode nullPointer;
@@ -230,7 +231,7 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
         protected TruffleObject nullPointer() {
             if (nullPointer == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                LLVMContext context = getContext();
+                LLVMContext context = getContextReference().get();
                 NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
                 nullPointer = insert(nfiContextExtension.getNativeSulongFunctions().createNullPointerNode(context));
             }

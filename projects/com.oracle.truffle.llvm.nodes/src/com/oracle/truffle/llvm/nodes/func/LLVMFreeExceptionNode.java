@@ -55,7 +55,7 @@ public final class LLVMFreeExceptionNode extends LLVMExpressionNode {
     public LLVMNativeFunctions.SulongFreeExceptionNode getFreeException() {
         if (freeException == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            LLVMContext context = getContext();
+            LLVMContext context = getContextReference().get();
             NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
             this.freeException = insert(nfiContextExtension.getNativeSulongFunctions().createFreeException(context));
         }
