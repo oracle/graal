@@ -118,8 +118,8 @@ public final class LLVMParserRuntime {
 
         RootCallTarget mainFunctionCallTarget;
         if (runtime.getScope().functionExists("@main")) {
-            LLVMFunctionDescriptor mainDescriptor = runtime.getScope().getFunctionDescriptor(context, "@main");
-            LLVMFunctionDescriptor startDescriptor = runtime.getScope().getFunctionDescriptor(context, "@_start");
+            LLVMFunctionDescriptor mainDescriptor = runtime.getScope().getFunctionDescriptor("@main");
+            LLVMFunctionDescriptor startDescriptor = runtime.getScope().getFunctionDescriptor("@_start");
             RootCallTarget startCallTarget = startDescriptor.getLLVMIRFunction();
             RootNode globalFunction = nodeFactory.createGlobalRootNode(runtime, startCallTarget, source, mainDescriptor.getType().getArgumentTypes());
             RootCallTarget globalFunctionRoot = Truffle.getRuntime().createCallTarget(globalFunction);

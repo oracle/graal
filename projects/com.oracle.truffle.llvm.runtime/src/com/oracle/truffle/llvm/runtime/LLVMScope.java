@@ -30,16 +30,25 @@
 package com.oracle.truffle.llvm.runtime;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.CanResolve;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext.FunctionFactory;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public final class LLVMScope {
+public final class LLVMScope implements TruffleObject {
 
     private final HashMap<String, LLVMFunctionDescriptor> functions;
     private final LLVMScope parent;
@@ -65,12 +74,12 @@ public final class LLVMScope {
     }
 
     @TruffleBoundary
-    public synchronized LLVMFunctionDescriptor getFunctionDescriptor(LLVMContext context, String name) {
+    public synchronized LLVMFunctionDescriptor getFunctionDescriptor(String name) {
         LLVMFunctionDescriptor functionDescriptor = functions.get(name);
         if (functionDescriptor != null) {
             return functionDescriptor;
         } else if (functionDescriptor == null && parent != null) {
-            return parent.getFunctionDescriptor(context, name);
+            return parent.getFunctionDescriptor(name);
         }
         throw new IllegalStateException("Unknown function: " + name);
     }
@@ -153,6 +162,54 @@ public final class LLVMScope {
                 add(name, variable);
                 return variable;
             }
+        }
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return LLVMGlobalScopeMessageResolutionForeign.ACCESS;
+    }
+
+    @MessageResolution(receiverType = LLVMScope.class)
+    static class LLVMGlobalScopeMessageResolution {
+
+        @CanResolve
+        abstract static class CanResolveLLVMScopeNode extends Node {
+
+            public boolean test(TruffleObject receiver) {
+                return receiver instanceof LLVMScope;
+            }
+        }
+
+        @Resolve(message = "KEYS")
+        public abstract static class KeysOfLLVMScope extends Node {
+
+            protected Object access(LLVMScope receiver) {
+                return getKeys(receiver);
+            }
+
+            @TruffleBoundary
+            private static TruffleObject getKeys(LLVMScope scope) {
+                List<String> keys = scope.functions.keySet().stream().map(s -> s.length() > 0 && s.charAt(0) == '@' ? s.substring(1) : s).collect(Collectors.toList());
+                return JavaInterop.asTruffleObject(keys.toArray(new String[keys.size()]));
+            }
+
+        }
+
+        @Resolve(message = "READ")
+        public abstract static class ReadFromLLVMScope extends Node {
+
+            protected Object access(LLVMScope scope, String globalName) {
+                String atname = "@" + globalName; // for interop
+                if (scope.functionExists(atname)) {
+                    return scope.getFunctionDescriptor(atname);
+                }
+                if (scope.functionExists(globalName)) {
+                    return scope.getFunctionDescriptor(globalName);
+                }
+                return null;
+            }
+
         }
     }
 

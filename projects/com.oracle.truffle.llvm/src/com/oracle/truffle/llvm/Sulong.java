@@ -93,25 +93,19 @@ public final class Sulong extends LLVMLanguage {
 
     @Override
     protected Object findExportedSymbol(LLVMContext context, String globalName, boolean onlyExplicit) {
-        return lookupSymbol(context, globalName);
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    protected Object lookupSymbol(LLVMContext context, String globalName) {
         String atname = "@" + globalName; // for interop
         if (context.getGlobalScope().functionExists(atname)) {
-            return context.getGlobalScope().getFunctionDescriptor(context, atname);
+            return context.getGlobalScope().getFunctionDescriptor(atname);
         }
         if (context.getGlobalScope().functionExists(globalName)) {
-            return context.getGlobalScope().getFunctionDescriptor(context, globalName);
+            return context.getGlobalScope().getFunctionDescriptor(globalName);
         }
         return null;
     }
 
     @Override
     protected Object getLanguageGlobal(LLVMContext context) {
-        return context;
+        return context.getGlobalScope();
     }
 
     @Override
