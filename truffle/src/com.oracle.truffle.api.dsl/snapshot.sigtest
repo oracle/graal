@@ -105,13 +105,6 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.NodeFields
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault com.oracle.truffle.api.dsl.NodeField[] value()
 
-CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.ShortCircuit
- anno 0 java.lang.Deprecated()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
-intf java.lang.annotation.Annotation
-meth public abstract java.lang.String value()
-
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Specialization
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
@@ -120,8 +113,6 @@ meth public abstract !hasdefault java.lang.Class<? extends java.lang.Throwable>[
 meth public abstract !hasdefault java.lang.String insertBefore()
 meth public abstract !hasdefault java.lang.String limit()
 meth public abstract !hasdefault java.lang.String[] assumptions()
-meth public abstract !hasdefault java.lang.String[] contains()
- anno 0 java.lang.Deprecated()
 meth public abstract !hasdefault java.lang.String[] guards()
 meth public abstract !hasdefault java.lang.String[] replaces()
 

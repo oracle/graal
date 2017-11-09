@@ -64,21 +64,4 @@ public abstract class AbstractCompiler implements Compiler {
         return field.get(o);
     }
 
-    protected static String parseHeader(String content) {
-        int index = content.indexOf("/*");
-        if (index == -1) {
-            return null;
-        }
-        if (!content.substring(0, index).trim().equals("")) {
-            // just whitespace before
-            return null;
-        }
-
-        int endIndex = content.indexOf("*/", index);
-        if (endIndex == -1) {
-            return null;
-        }
-        return content.substring(index, endIndex + 2);
-    }
-
 }

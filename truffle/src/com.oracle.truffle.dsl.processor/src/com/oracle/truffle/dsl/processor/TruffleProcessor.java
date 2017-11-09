@@ -128,12 +128,11 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
         }
     }
 
-    @SuppressWarnings("deprecation")
     @Override
     public Set<String> getSupportedAnnotationTypes() {
         Set<String> annotations = new HashSet<>();
         addAnnotations(annotations, Arrays.asList(Fallback.class, TypeSystemReference.class,
-                        com.oracle.truffle.api.dsl.ShortCircuit.class, Specialization.class,
+                        Specialization.class,
                         NodeChild.class,
                         NodeChildren.class));
         addAnnotations(annotations, Arrays.asList(TypeSystem.class));

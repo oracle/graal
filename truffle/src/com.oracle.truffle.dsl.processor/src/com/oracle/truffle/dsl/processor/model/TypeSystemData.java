@@ -46,22 +46,13 @@ public class TypeSystemData extends Template {
 
     private final boolean isDefault;
 
-    @SuppressWarnings("deprecation") private final com.oracle.truffle.api.dsl.internal.DSLOptions options;
-
-    @SuppressWarnings("deprecation")
-    public TypeSystemData(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation, com.oracle.truffle.api.dsl.internal.DSLOptions options, boolean isDefault) {
+    public TypeSystemData(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation, boolean isDefault) {
         super(context, templateType, annotation);
-        this.options = options;
         this.isDefault = isDefault;
     }
 
     public boolean isDefault() {
         return isDefault;
-    }
-
-    @SuppressWarnings("deprecation")
-    public com.oracle.truffle.api.dsl.internal.DSLOptions getOptions() {
-        return options;
     }
 
     @Override

@@ -139,7 +139,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
         return node.isGenerateFactory() ? NodeFactoryFactory.factoryClassName(node) : createNodeTypeName(node);
     }
 
-    public static TypeMirror nodeType(NodeData node) {
+    static TypeMirror nodeType(NodeData node) {
         return new GeneratedTypeMirror(ElementUtils.getPackageName(node.getTemplateType()), createNodeTypeName(node));
     }
 
@@ -153,11 +153,10 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
         return nodeid;
     }
 
-    public static String createNodeTypeName(NodeData node) {
+    static String createNodeTypeName(NodeData node) {
         return resolveNodeId(node) + NODE_SUFFIX;
     }
 
-    @SuppressWarnings("deprecation")
     private static List<CodeTypeElement> generateNodes(ProcessorContext context, NodeData node) {
         if (!node.needsFactory()) {
             return Collections.emptyList();
@@ -170,16 +169,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
             return Arrays.asList(type);
         }
 
-        switch (node.getTypeSystem().getOptions().defaultGenerator()) {
-            case FLAT:
-                type = new FlatNodeGenFactory(context, node).create(type);
-                break;
-            case DEFAULT:
-                type = new DefaultNodeGenFactory(context, node).create(type);
-                break;
-            default:
-                throw new AssertionError();
-        }
+        type = new FlatNodeGenFactory(context, node).create(type);
 
         return Arrays.asList(type);
     }
