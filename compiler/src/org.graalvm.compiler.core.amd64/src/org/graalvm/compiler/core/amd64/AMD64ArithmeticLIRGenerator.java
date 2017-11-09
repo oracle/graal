@@ -298,7 +298,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                     long displacement = asJavaConstant(b).asLong();
                     if (NumUtil.isInt(displacement) && displacement != 1) {
                         Variable result = getLIRGen().newVariable(resultKind);
-                        AMD64AddressValue address = new AMD64AddressValue(resultKind, getLIRGen().asAllocatable(a), (int)displacement);
+                        AMD64AddressValue address = new AMD64AddressValue(resultKind, getLIRGen().asAllocatable(a), (int) displacement);
                         getLIRGen().append(new AMD64Move.LeaOp(result, address, OperandSize.DWORD));
                         return result;
                     }
@@ -309,7 +309,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                     long displacement = asJavaConstant(b).asLong();
                     if (NumUtil.isInt(displacement) && displacement != 1) {
                         Variable result = getLIRGen().newVariable(resultKind);
-                        AMD64AddressValue address = new AMD64AddressValue(resultKind, getLIRGen().asAllocatable(a), (int)displacement);
+                        AMD64AddressValue address = new AMD64AddressValue(resultKind, getLIRGen().asAllocatable(a), (int) displacement);
                         getLIRGen().append(new AMD64Move.LeaOp(result, address, OperandSize.QWORD));
                         return result;
                     }
@@ -342,7 +342,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                     long displacement = asJavaConstant(b).asLong();
                     if (NumUtil.isInt(displacement) && displacement != 1) {
                         Variable result = getLIRGen().newVariable(resultKind);
-                        AMD64AddressValue address = new AMD64AddressValue(resultKind, getLIRGen().asAllocatable(a), (int)-displacement);
+                        AMD64AddressValue address = new AMD64AddressValue(resultKind, getLIRGen().asAllocatable(a), (int) -displacement);
                         getLIRGen().append(new AMD64Move.LeaOp(result, address, OperandSize.DWORD));
                         return result;
                     }
@@ -353,7 +353,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                     long displacement = asJavaConstant(b).asLong();
                     if (NumUtil.isInt(displacement) && displacement != 1) {
                         Variable result = getLIRGen().newVariable(resultKind);
-                        AMD64AddressValue address = new AMD64AddressValue(resultKind, getLIRGen().asAllocatable(a), (int)-displacement);
+                        AMD64AddressValue address = new AMD64AddressValue(resultKind, getLIRGen().asAllocatable(a), (int) -displacement);
                         getLIRGen().append(new AMD64Move.LeaOp(result, address, OperandSize.QWORD));
                         return result;
                     }
