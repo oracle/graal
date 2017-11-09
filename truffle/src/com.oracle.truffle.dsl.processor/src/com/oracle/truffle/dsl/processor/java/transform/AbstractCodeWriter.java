@@ -42,6 +42,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
@@ -50,6 +51,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.AbstractAnnotationValueVisitor7;
 import javax.lang.model.util.ElementFilter;
 
+import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeElementScanner;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -503,6 +505,31 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
         }
 
         writeModifiers(e.getModifiers(), !e.getEnclosingClass().getModifiers().contains(Modifier.FINAL));
+
+        List<TypeParameterElement> typeParameters = e.getTypeParameters();
+        if (!typeParameters.isEmpty()) {
+            write("<");
+            for (int i = 0; i < typeParameters.size(); i++) {
+                TypeParameterElement param = typeParameters.get(i);
+                write(param.getSimpleName().toString());
+                List<? extends TypeMirror> bounds = param.getBounds();
+                if (!bounds.isEmpty()) {
+                    write(" extends ");
+                    for (int j = 0; j < bounds.size(); j++) {
+                        TypeMirror bound = bounds.get(i);
+                        write(useImport(e, bound));
+                        if (j < bounds.size() - 1) {
+                            write(" , ");
+                        }
+                    }
+                }
+
+                if (i < typeParameters.size() - 1) {
+                    write(" , ");
+                }
+            }
+            write("> ");
+        }
 
         if (e.getReturnType() != null) {
             write(useImport(e, e.getReturnType()));

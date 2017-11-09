@@ -276,7 +276,7 @@ public class NodeParser extends AbstractParser<NodeData> {
                     }
                 }
 
-                if (guardBoundByCache) {
+                if (guardBoundByCache && specialization.getMaximumNumberOfInstances() > 1) {
                     specialization.addError(
                                     "A guard cannot be negated for the @%s because it binds @%s parameters. " +
                                                     "To fix this introduce a strictly more generic specialization declared between this specialization and the fallback. " +

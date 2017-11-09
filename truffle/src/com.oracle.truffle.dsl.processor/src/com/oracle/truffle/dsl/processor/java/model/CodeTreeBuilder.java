@@ -313,18 +313,23 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder tree(CodeTree treeToAdd) {
-        if (treeToAdd instanceof BuilderCodeTree) {
-            return push((BuilderCodeTree) treeToAdd, true).end();
-        } else {
-            BuilderCodeTree tree = new BuilderCodeTree(currentElement, GROUP, null, null);
-            currentElement.add(treeToAdd);
-            return push(tree, true).end();
+        if (treeToAdd != null) {
+            if (treeToAdd instanceof BuilderCodeTree) {
+                return push((BuilderCodeTree) treeToAdd, true).end();
+            } else {
+                BuilderCodeTree tree = new BuilderCodeTree(currentElement, GROUP, null, null);
+                currentElement.add(treeToAdd);
+                return push(tree, true).end();
+            }
         }
+        return this;
     }
 
     public CodeTreeBuilder trees(CodeTree... trees) {
         for (CodeTree tree : trees) {
-            tree(tree);
+            if (tree != null) {
+                tree(tree);
+            }
         }
         return this;
     }

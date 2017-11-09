@@ -46,6 +46,7 @@ public class CodeExecutableElement extends CodeElement<Element> implements Execu
 
     private final List<TypeMirror> throwables = new ArrayList<>();
     private final List<VariableElement> parameters = parentableList(this, new ArrayList<VariableElement>());
+    private final List<TypeParameterElement> typeParameters = parentableList(this, new ArrayList<TypeParameterElement>());
 
     private TypeMirror returnType;
     private Name name;
@@ -103,8 +104,8 @@ public class CodeExecutableElement extends CodeElement<Element> implements Execu
     }
 
     @Override
-    public List<? extends TypeParameterElement> getTypeParameters() {
-        return Collections.emptyList();
+    public List<TypeParameterElement> getTypeParameters() {
+        return typeParameters;
     }
 
     public void setVarArgs(boolean varargs) {

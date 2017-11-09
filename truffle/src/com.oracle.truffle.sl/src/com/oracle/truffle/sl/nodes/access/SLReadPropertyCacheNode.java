@@ -101,9 +101,8 @@ public abstract class SLReadPropertyCacheNode extends SLPropertyCacheNode {
      * polymorphic inline cache.
      */
     @TruffleBoundary
-    @Specialization(replaces = {"readCached"}, guards = {"isValidSLObject(receiver)"})
+    @Specialization(replaces = {"readCached"}, guards = "isValidSLObject(receiver)")
     protected static Object readUncached(DynamicObject receiver, Object name) {
-
         Object result = receiver.get(name);
         if (result == null) {
             /* Property does not exist. */
@@ -112,26 +111,11 @@ public abstract class SLReadPropertyCacheNode extends SLPropertyCacheNode {
         return result;
     }
 
-    /**
-     * When no specialization fits, the receiver is either not an object (which is a type error), or
-     * the object has a shape that has been invalidated.
-     */
-    @Fallback
-    protected static Object updateShape(Object r, Object name) {
-        /*
-         * Slow path that we do not handle in compiled code. But no need to invalidate compiled
-         * code.
-         */
+    @Specialization(guards = "!isValidSLObject(receiver)")
+    protected static Object updateShape(DynamicObject receiver, Object name) {
         CompilerDirectives.transferToInterpreter();
-
-        if (!(r instanceof DynamicObject)) {
-            /* Non-object types do not have properties. */
-            throw SLUndefinedNameException.undefinedProperty(name);
-        }
-        DynamicObject receiver = (DynamicObject) r;
         receiver.updateShape();
         return readUncached(receiver, name);
-
     }
 
     /**
@@ -155,6 +139,16 @@ public abstract class SLReadPropertyCacheNode extends SLPropertyCacheNode {
             /* Foreign access was not successful. */
             throw SLUndefinedNameException.undefinedProperty(name);
         }
+    }
+
+    /**
+     * When no specialization fits, the receiver is either not an object (which is a type error), or
+     * the object has a shape that has been invalidated.
+     */
+    @Fallback
+    protected static Object typeError(@SuppressWarnings("unused") Object r, Object name) {
+        /* Non-object types do not have properties. */
+        throw SLUndefinedNameException.undefinedProperty(name);
     }
 
     protected static Node createForeignReadNode() {

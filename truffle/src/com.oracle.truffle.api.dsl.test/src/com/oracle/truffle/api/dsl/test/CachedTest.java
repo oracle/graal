@@ -422,7 +422,7 @@ public class CachedTest {
     @NodeChild
     static class TestCachesOrder2 extends ValueNode {
 
-        @Specialization(guards = "cachedValue == value")
+        @Specialization(guards = "cachedValue == value", limit = "3")
         static int do1(int value, //
                         @Cached("value") int cachedValue,
                         @Cached("get(cachedValue)") int intermediateValue, //
@@ -459,7 +459,7 @@ public class CachedTest {
             return value;
         }
 
-        @Specialization(guards = {"!guard(value)", "value != cachedValue"})
+        @Specialization(guards = {"!guard(value)", "value != cachedValue"}, limit = "3")
         static int do1(int value, @Cached("get(value)") int cachedValue) {
             return cachedValue;
         }
@@ -485,7 +485,7 @@ public class CachedTest {
     @NodeChild
     static class CacheDimensions1 extends ValueNode {
 
-        @Specialization(guards = "value == cachedValue")
+        @Specialization(guards = "value == cachedValue", limit = "3")
         static int[] do1(int[] value, //
                         @Cached(value = "value", dimensions = 1) int[] cachedValue) {
             return cachedValue;
@@ -527,7 +527,7 @@ public class CachedTest {
 
         abstract NodeInterface[] execute(Object value);
 
-        @Specialization(guards = "value == cachedValue")
+        @Specialization(guards = "value == cachedValue", limit = "3")
         static NodeInterface[] do1(NodeInterface[] value, @Cached("value") NodeInterface[] cachedValue) {
             return cachedValue;
         }
@@ -539,7 +539,7 @@ public class CachedTest {
 
         abstract NodeInterface execute(Object value);
 
-        @Specialization(guards = "value == cachedValue")
+        @Specialization(guards = "value == cachedValue", limit = "3")
         static NodeInterface do1(NodeInterface value, @Cached("value") NodeInterface cachedValue) {
             return cachedValue;
         }
@@ -551,7 +551,7 @@ public class CachedTest {
 
         abstract Node[] execute(Object value);
 
-        @Specialization(guards = "value == cachedValue")
+        @Specialization(guards = "value == cachedValue", limit = "3")
         static Node[] do1(Node[] value, @Cached("value") Node[] cachedValue) {
             return cachedValue;
         }
@@ -563,7 +563,7 @@ public class CachedTest {
 
         abstract Node execute(Object value);
 
-        @Specialization(guards = "value == cachedValue")
+        @Specialization(guards = "value == cachedValue", limit = "3")
         static Node do1(Node value, @Cached("value") Node cachedValue) {
             return cachedValue;
         }

@@ -206,7 +206,7 @@ public class AssumptionsTest {
 
         private final Map<Integer, Assumption> assumptions = new HashMap<>();
 
-        @Specialization(guards = "value == cachedValue", assumptions = "getAssumption(cachedValue)")
+        @Specialization(guards = "value == cachedValue", limit = "3", assumptions = "getAssumption(cachedValue)")
         static String do1(int value, @Cached("value") int cachedValue) {
             return "do1";
         }
@@ -361,7 +361,7 @@ public class AssumptionsTest {
 
         abstract int execute(int value);
 
-        @Specialization(guards = "value == cachedValue", assumptions = "createAssumption(cachedValue)")
+        @Specialization(guards = "value == cachedValue", limit = "3", assumptions = "createAssumption(cachedValue)")
         public int s0(int value, @SuppressWarnings("unused") @Cached("value") int cachedValue) {
             return value;
         }
@@ -396,7 +396,7 @@ public class AssumptionsTest {
 
         abstract int execute(int value);
 
-        @Specialization(guards = "value == cachedValue", assumptions = "createAssumption(cachedValue)")
+        @Specialization(guards = "value == cachedValue", limit = "3", assumptions = "createAssumption(cachedValue)")
         @SuppressWarnings("unused")
         public int s0(int value, @Cached("value") int cachedValue, @Cached("createChild()") Node node) {
             return value;
@@ -534,7 +534,7 @@ public class AssumptionsTest {
     @NodeChild
     static class AssumptionArraysAreCompilationFinalCached extends ValueNode {
 
-        @Specialization(guards = "value == cachedValue", assumptions = "createAssumptions()")
+        @Specialization(guards = "value == cachedValue", limit = "3", assumptions = "createAssumptions()")
         static int do1(int value, @SuppressWarnings("unused") @Cached("value") int cachedValue) {
             return value;
         }

@@ -103,7 +103,7 @@ public class IntrospectionTest {
 
         abstract Object execute(Object o);
 
-        @Specialization(guards = "cachedO == o")
+        @Specialization(guards = "cachedO == o", limit = "3")
         protected static int doInt(int o, @SuppressWarnings("unused") @Cached("o") int cachedO) {
             return o;
         }
