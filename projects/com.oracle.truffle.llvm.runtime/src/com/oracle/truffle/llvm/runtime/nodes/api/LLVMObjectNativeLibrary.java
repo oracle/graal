@@ -31,62 +31,47 @@ package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
 
 /**
- * Interface for objects that want to simulate the behavior of native memory. If an object or the
- * {@link ObjectType} of a {@link DynamicObject} implements this interface, raw memory access to
- * this object will be implemented using custom nodes. If an object implements both
- * {@link LLVMObjectNative} and {@link TruffleObject}, the nodes from {@link LLVMObjectNative} have
- * precedence over regular interop.
+ * Interface for objects that have a real native representation, or can be transformed into one. If
+ * an object or the {@link ObjectType} of a {@link DynamicObject} implements
+ * {@link LLVMObjectNativeLibrary.Provider}, it can be used as a pointer value.
  */
-public interface LLVMObjectNative {
+public abstract class LLVMObjectNativeLibrary extends Node {
 
-    LLVMObjectToNativeNode createToNativeNode();
+    public abstract boolean guard(Object obj);
 
-    LLVMObjectIsPointerNode createIsPointerNode();
+    /**
+     * Check whether the object has a representation as native pointer.
+     */
+    public abstract boolean isPointer(VirtualFrame frame, Object obj);
 
-    LLVMObjectAsPointerNode createAsPointerNode();
+    /**
+     * Get the native pointer representation of an object. This can only be called when
+     * {@link #isPointer} is true.
+     */
+    public abstract long asPointer(VirtualFrame frame, Object obj) throws InteropException;
 
-    abstract class LLVMObjectNativeNode extends Node {
+    /**
+     * Transform this object to a native representation. The return value of this method should
+     * return true for {@link #isPointer}. If {@link #isPointer} is already true, this method can
+     * return obj without doing anything else.
+     */
+    public abstract Object toNative(VirtualFrame frame, Object obj) throws InteropException;
 
-        public abstract boolean isNative(Object obj);
+    public static LLVMObjectNativeLibrary createCached(Object obj) {
+        return LLVMObjectNativeFactory.createCached(obj);
     }
 
-    abstract class LLVMObjectToNativeNode extends LLVMObjectNativeNode {
-
-        /**
-         * Transform an object to a pointer.
-         *
-         * @param frame the Truffle frame
-         * @param obj the object that is the base of the read pointer
-         */
-        public abstract Object executeToNative(VirtualFrame frame, Object obj) throws InteropException;
+    public static LLVMObjectNativeLibrary createGeneric() {
+        return LLVMObjectNativeFactory.createGeneric();
     }
 
-    abstract class LLVMObjectIsPointerNode extends LLVMObjectNativeNode {
+    public interface Provider {
 
-        /**
-         * Check if object is a pointer.
-         *
-         * @param frame the Truffle frame
-         * @param obj the object that is queried for IS_POINTER
-         */
-        public abstract boolean executeIsPointer(VirtualFrame frame, Object obj);
+        LLVMObjectNativeLibrary createLLVMObjectNativeLibrary();
     }
-
-    abstract class LLVMObjectAsPointerNode extends LLVMObjectNativeNode {
-
-        /**
-         * Get raw pointer representation of this object.
-         *
-         * @param frame the Truffle frame
-         * @param obj the object that is converted to a pointer
-         */
-        public abstract long executeAsPointer(VirtualFrame frame, Object obj) throws InteropException;
-    }
-
 }
