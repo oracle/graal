@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,9 +30,12 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 
 @ValueType
-public final class LLVMAddress {
+public final class LLVMAddress implements LLVMObjectNativeLibrary.Provider {
 
     public static final int WORD_LENGTH_BIT = 64;
 
@@ -113,4 +116,31 @@ public final class LLVMAddress {
         return new LLVMAddress(val);
     }
 
+    @Override
+    public LLVMObjectNativeLibrary createLLVMObjectNativeLibrary() {
+        return new LLVMAddressNativeLibrary();
+    }
+
+    private static class LLVMAddressNativeLibrary extends LLVMObjectNativeLibrary {
+
+        @Override
+        public boolean guard(Object obj) {
+            return obj instanceof LLVMAddress;
+        }
+
+        @Override
+        public boolean isPointer(VirtualFrame frame, Object obj) {
+            return true;
+        }
+
+        @Override
+        public long asPointer(VirtualFrame frame, Object obj) throws InteropException {
+            return ((LLVMAddress) obj).getVal();
+        }
+
+        @Override
+        public LLVMAddress toNative(VirtualFrame frame, Object obj) throws InteropException {
+            return (LLVMAddress) obj;
+        }
+    }
 }
