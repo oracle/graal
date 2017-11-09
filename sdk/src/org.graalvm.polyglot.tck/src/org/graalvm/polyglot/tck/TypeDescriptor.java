@@ -254,7 +254,7 @@ public final class TypeDescriptor {
      * @since 0.30
      */
     public static TypeDescriptor array(TypeDescriptor componentType) {
-        return componentType == null ? ARRAY : new TypeDescriptor(new ArrayImpl(componentType.impl));
+        return componentType == null || ANY.impl.equals(ANY.impl.narrow(ANY.impl, componentType.impl)) ? ARRAY : new TypeDescriptor(new ArrayImpl(componentType.impl));
     }
 
     /**
@@ -267,7 +267,7 @@ public final class TypeDescriptor {
      */
     public static TypeDescriptor executable(TypeDescriptor returnType, TypeDescriptor... parameterTypes) {
         Objects.requireNonNull(parameterTypes, "Parameter types cannot be null");
-        if (returnType == null && parameterTypes.length == 0) {
+        if ((returnType == null || ANY.impl.equals(ANY.impl.narrow(ANY.impl, returnType.impl))) && parameterTypes.length == 0) {
             return EXECUTABLE;
         }
         final TypeDescriptorImpl retImpl = returnType == null ? null : returnType.impl;
