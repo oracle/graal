@@ -401,7 +401,8 @@ public abstract class Message {
     /**
      * Message to check for having a size. If a {@link TruffleObject} indicates it <em>has a
      * size</em>, it is expected it represents array-like structure and it also properly responds to
-     * {@link #GET_SIZE} message
+     * {@link #GET_SIZE} message. When <code>HAS_SIZE</code> returns <code>false</code>, it
+     * indicates that {@link #GET_SIZE} message is not supported.
      * <p>
      * Calling {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) the target}
      * created for this message should yield value of {@link Boolean}.
@@ -489,13 +490,14 @@ public abstract class Message {
     /**
      * Message to check for having properties. If a {@link TruffleObject} indicates it <em>has
      * keys</em>, it is expected it represents an object structure with properties and it also
-     * properly responds to {@link #KEYS} message.
+     * properly responds to {@link #KEYS} message. When <code>HAS_KEYS</code> returns
+     * <code>false</code>, it indicates that {@link #KEYS} message is not supported.
      * <p>
      * The default implementation requests {@link #KEYS} and returns <code>true</code> if the
      * request was successful and <code>false</code> otherwise.
      * <p>
      * Calling {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) the target}
-     * created for this message should yield value of {@link Boolean}.
+     * created for this message should yield value of type {@link Boolean}.
      *
      * @since 0.30
      * @see ForeignAccess#sendHasKeys(com.oracle.truffle.api.nodes.Node,
@@ -614,7 +616,7 @@ public abstract class Message {
      *
      * <pre>
      * {@link ForeignAccess}.{@link ForeignAccess#sendKeyDeclaredLocation(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object) sendKeyDeclaredLocation}(
-     *   {@link Message#KEY_INFO}.{@link Message#createNode() createNode()},  receiver, nameOfTheProperty
+     *   {@link Message#KEY_DECLARED_LOCATION}.{@link Message#createNode() createNode()},  receiver, nameOfTheProperty
      * );
      * </pre>
      *

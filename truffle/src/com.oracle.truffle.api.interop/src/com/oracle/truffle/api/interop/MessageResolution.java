@@ -42,8 +42,9 @@ import com.oracle.truffle.api.nodes.Node;
  * <code>HAS/IS</code> messages they get a default boolean value depending on presence of
  * corresponding messages. E.g. <code>HAS_SIZE</code> is true if and only if <code>GET_SIZE</code>
  * is provided, <code>IS_EXECUTABLE</code> is true if and only if <code>EXECUTE</code> is provided,
- * etc. Elements in the super class that are annotated with {@link Resolve} will be ignored. For
- * example:
+ * etc. If objects support some messages conditionally, they should provide their own implementation
+ * of <code>HAS/IS</code> messages. Elements in the super class that are annotated with
+ * {@link Resolve} will be ignored. For example:
  *
  * {@link com.oracle.truffle.api.dsl.test.interop.Snippets.ExampleTruffleObjectMR}
  *
