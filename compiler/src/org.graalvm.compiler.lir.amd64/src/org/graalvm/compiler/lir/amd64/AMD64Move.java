@@ -314,7 +314,7 @@ public class AMD64Move {
                 masm.leaq(asRegister(result, AMD64Kind.QWORD), address.toAddress());
             } else {
                 assert size == OperandSize.DWORD;
-                masm.leaq(asRegister(result, AMD64Kind.DWORD), address.toAddress());
+                masm.lead(asRegister(result, AMD64Kind.DWORD), address.toAddress());
             }
         }
     }
