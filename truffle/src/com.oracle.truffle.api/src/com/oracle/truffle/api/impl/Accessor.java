@@ -276,6 +276,8 @@ public abstract class Accessor {
 
         public abstract Iterable<Scope> findTopScopes(Env env);
 
+        public abstract Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments);
+
     }
 
     public abstract static class InstrumentSupport {
@@ -321,6 +323,8 @@ public abstract class Accessor {
         public abstract Object getEngineInstrumenter(Object instrumentationHandler);
 
         public abstract void onNodeInserted(RootNode rootNode, Node tree);
+
+        public abstract void patchInstrumentationHandler(Object instrumentationHandler, DispatchOutputStream out, DispatchOutputStream err, InputStream in);
 
     }
 

@@ -50,10 +50,11 @@ public final class PolyglotLauncher extends Launcher {
 
     private String mainLanguage = null;
 
-    static {
-        // TODO remove temporary hack to initialize engine if not yet initialized.
-        Source.create("js", "");
-    }
+    // Commented out because of GR-6870
+    // static {
+    // // TODO remove temporary hack to initialize engine if not yet initialized.
+    // Source.create("js", "");
+    // }
 
     @Override
     protected void printHelp(OptionCategory maxCategory) {

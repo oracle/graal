@@ -102,9 +102,9 @@ final class InstrumentationHandler {
      */
     private final ConcurrentHashMap<Object, AbstractInstrumenter> instrumenterMap = new ConcurrentHashMap<>();
 
-    private final DispatchOutputStream out;
-    private final DispatchOutputStream err;
-    private final InputStream in;
+    private DispatchOutputStream out;   // effectively final
+    private DispatchOutputStream err;   // effectively final
+    private InputStream in;             // effectively final
     private final Map<Class<?>, Set<Class<?>>> cachedProvidedTags = new ConcurrentHashMap<>();
 
     private final EngineInstrumenter engineInstrumenter;
@@ -709,6 +709,12 @@ final class InstrumentationHandler {
             }
         }
         return allocationReporter;
+    }
+
+    private void patch(DispatchOutputStream newOut, DispatchOutputStream newErr, InputStream newIn) {
+        this.out = newOut;
+        this.err = newErr;
+        this.in = newIn;
     }
 
     static void failInstrumentInitialization(Env env, String message, Throwable t) {
@@ -1585,6 +1591,12 @@ final class InstrumentationHandler {
             @Override
             public Iterable<Scope> findTopScopes(TruffleLanguage.Env env) {
                 return TruffleInstrument.Env.findTopScopes(env);
+            }
+
+            @Override
+            public void patchInstrumentationHandler(Object vm, DispatchOutputStream out, DispatchOutputStream err, InputStream in) {
+                final InstrumentationHandler instrumentationHandler = (InstrumentationHandler) vm;
+                instrumentationHandler.patch(out, err, in);
             }
 
             private static InstrumentationHandler getHandler(RootNode rootNode) {
