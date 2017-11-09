@@ -24,9 +24,6 @@
  */
 package com.oracle.truffle.api;
 
-import java.util.Collection;
-import java.util.Collections;
-
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
@@ -185,19 +182,6 @@ public interface TruffleRuntime {
      * @since 0.8 or earlier
      */
     <T> T getCapability(Class<T> capability);
-
-    /**
-     * Returns a list of all still referenced {@link RootCallTarget} instances that were created
-     * using {@link #createCallTarget(RootNode)}.
-     *
-     * @since 0.8 or earlier
-     * @deprecated Loaded sources and source sections can be accessed using the Truffle
-     *             instrumentation framework. Deprecated in Truffle 0.15.
-     */
-    @Deprecated
-    default Collection<RootCallTarget> getCallTargets() {
-        return Collections.emptyList();
-    }
 
     /**
      * Internal API method. Do not use.
