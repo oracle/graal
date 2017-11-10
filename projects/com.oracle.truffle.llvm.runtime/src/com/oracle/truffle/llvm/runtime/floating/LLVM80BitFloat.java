@@ -342,6 +342,10 @@ public final class LLVM80BitFloat {
         return fromDouble(Math.pow(getDoubleValue(), right.getDoubleValue()));
     }
 
+    public LLVM80BitFloat abs() {
+        return LLVM80BitFloat.fromRawValues(false, biasedExponent, fraction);
+    }
+
     public boolean isPositiveInfinity() {
         return this.equals(POSITIVE_INFINITY);
     }
