@@ -348,9 +348,7 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
             setFunction(newFunction);
         } else {
             // existing function is strong
-            if (newFunction.weak) {
-                // ignore
-            } else {
+            if (!newFunction.weak) {
                 throw new AssertionError("Found multiple strong declarations of function " + getName() + ".");
             }
         }

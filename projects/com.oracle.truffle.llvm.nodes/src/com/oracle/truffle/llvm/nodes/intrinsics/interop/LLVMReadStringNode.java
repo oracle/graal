@@ -30,40 +30,50 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNode.LLVMIncrementPointerNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNode;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeGen;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadNode;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
-@NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMTruffleImport extends LLVMIntrinsic {
+public abstract class LLVMReadStringNode extends Node {
 
-    @Child protected ForeignToLLVM toLLVM = ForeignToLLVM.create(ForeignToLLVMType.POINTER);
+    @Child private LLVMIncrementPointerNode inc = LLVMIncrementPointerNodeGen.create();
+    @Child private LLVMLoadNode read = LLVMI8LoadNodeGen.create();
 
-    protected static LLVMIncrementPointerNode createIncNode() {
-        return LLVMIncrementPointerNodeGen.create();
-    }
-
-    protected static LLVMI8LoadNode loadI8() {
-        return LLVMI8LoadNodeGen.create();
-    }
+    public abstract String executeWithTarget(VirtualFrame frame, Object address);
 
     @Specialization
-    public Object executeIntrinsic(VirtualFrame frame, Object value, @Cached("createReadString()") LLVMReadStringNode readStr) {
-        String id = readStr.executeWithTarget(frame, value);
-        return toLLVM.executeWithTarget(importSymbol(id));
+    public String readString(String address) {
+        return address;
+    }
+
+    @Fallback
+    public String fallback(VirtualFrame frame, Object address) {
+        Object ptr = address;
+        int length = 0;
+        while ((byte) read.executeWithTarget(frame, ptr) != 0) {
+            length++;
+            ptr = inc.executeWithTarget(ptr, Byte.BYTES, PrimitiveType.I8);
+        }
+
+        char[] string = new char[length];
+
+        ptr = address;
+        for (int i = 0; i < length; i++) {
+            string[i] = (char) Byte.toUnsignedInt((byte) read.executeWithTarget(frame, ptr));
+            ptr = inc.executeWithTarget(ptr, Byte.BYTES, PrimitiveType.I8);
+        }
+
+        return toString(string);
     }
 
     @TruffleBoundary
-    public Object importSymbol(String id) {
-        return getContextReference().get().getEnv().importSymbol(id);
+    private static String toString(char[] string) {
+        return new String(string);
     }
 }

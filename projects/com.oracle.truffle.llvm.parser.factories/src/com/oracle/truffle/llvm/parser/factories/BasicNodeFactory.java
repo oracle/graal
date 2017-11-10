@@ -159,6 +159,7 @@ import com.oracle.truffle.llvm.nodes.memory.LLVMInsertValueNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMNativeStackAllocationNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStructByValueNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMVarArgCompoundAddressNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.NativeAllocateStringNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.NativeMemSetNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.NativeProfiledMemMoveNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.literal.LLVM80BitFloatArrayLiteralNodeGen;
@@ -370,6 +371,7 @@ import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStringNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
@@ -1940,6 +1942,11 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMMemMoveNode createMemMove() {
         return NativeProfiledMemMoveNodeGen.create();
+    }
+
+    @Override
+    public LLVMAllocateStringNode createAllocateString() {
+        return NativeAllocateStringNodeGen.create();
     }
 
     @Override

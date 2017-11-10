@@ -36,6 +36,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -43,7 +44,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -55,11 +55,6 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalAccessError("Pointee must be unmodified");
         }
-    }
-
-    private static Object doRead(TruffleObject value, LLVMAddress id, Node foreignRead, ForeignToLLVM toLLVM) {
-        String name = LLVMTruffleIntrinsicUtil.readString(id);
-        return doRead(value, name, foreignRead, toLLVM);
     }
 
     private static Object doRead(TruffleObject value, String name, Node foreignRead, ForeignToLLVM toLLVM) {
@@ -93,17 +88,19 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)")
-        public Object executeIntrinsicCached(LLVMTruffleObject value, LLVMAddress id, @Cached("pointerOf(id)") long cachedPtr,
-                        @Cached("readString(id)") String cachedId) {
+        @Specialization(limit = "2", guards = "cachedId.equals(readStr.executeWithTarget(frame, id))")
+        public Object cached(VirtualFrame frame, LLVMTruffleObject value, Object id,
+                        @Cached("createReadString()") LLVMReadStringNode readStr,
+                        @Cached("readStr.executeWithTarget(frame, id)") String cachedId) {
             checkLLVMTruffleObject(value);
             return doRead(value.getObject(), cachedId, foreignRead, toLLVM);
         }
 
-        @Specialization
-        public Object executeIntrinsic(LLVMTruffleObject value, LLVMAddress id) {
+        @Specialization(replaces = "cached")
+        public Object uncached(VirtualFrame frame, LLVMTruffleObject value, Object id,
+                        @Cached("createReadString()") LLVMReadStringNode readStr) {
             checkLLVMTruffleObject(value);
-            return doRead(value.getObject(), id, foreignRead, toLLVM);
+            return doRead(value.getObject(), readStr.executeWithTarget(frame, id), foreignRead, toLLVM);
         }
 
         @Fallback

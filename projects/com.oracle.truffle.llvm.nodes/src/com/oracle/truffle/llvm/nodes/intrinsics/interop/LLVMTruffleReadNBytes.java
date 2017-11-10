@@ -29,15 +29,23 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -56,6 +64,26 @@ public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
             ptr += Byte.BYTES;
         }
         return new LLVMTruffleObject(JavaInterop.asTruffleObject(bytes), new PointerType(PrimitiveType.I8));
+    }
+
+    @Specialization
+    public Object interop(LLVMTruffleObject objectWithOffset, int n,
+                    @Cached("createForeignReadNode()") Node foreignRead,
+                    @Cached("createToByteNode()") ForeignToLLVM toLLVM) {
+        long offset = objectWithOffset.getOffset();
+        TruffleObject object = objectWithOffset.getObject();
+        byte[] chars = new byte[n];
+        for (int i = 0; i < n; i++) {
+            Object rawValue;
+            try {
+                rawValue = ForeignAccess.sendRead(foreignRead, object, offset + i);
+            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
+            chars[i] = (byte) toLLVM.executeWithTarget(rawValue);
+        }
+        return new LLVMTruffleObject(JavaInterop.asTruffleObject(chars), new PointerType(PrimitiveType.I8));
     }
 
     @Fallback

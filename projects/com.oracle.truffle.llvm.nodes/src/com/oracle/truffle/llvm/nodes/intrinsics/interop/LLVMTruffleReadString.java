@@ -29,41 +29,28 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleReadString extends LLVMIntrinsic {
 
-    @Specialization
-    public Object executeIntrinsic(String value) {
-        return value;
-    }
-
     @SuppressWarnings("unused")
-    @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)")
-    public Object executeIntrinsicCached(LLVMAddress id, @Cached("pointerOf(id)") long cachedPtr,
-                    @Cached("readString(id)") String cachedId) {
+    @Specialization(limit = "2", guards = "cachedId.equals(readStr.executeWithTarget(frame, id))")
+    public Object cached(VirtualFrame frame, Object id,
+                    @Cached("createReadString()") LLVMReadStringNode readStr,
+                    @Cached("readStr.executeWithTarget(frame, id)") String cachedId) {
         return cachedId;
     }
 
-    @Specialization
-    public Object executeIntrinsic(LLVMAddress value) {
-        return LLVMTruffleIntrinsicUtil.readString(value);
-    }
-
-    @Fallback
-    @TruffleBoundary
-    @SuppressWarnings("unused")
-    public Object fallback(Object value) {
-        System.err.println("Invalid arguments to \"read string\"-builtin.");
-        throw new IllegalArgumentException();
+    @Specialization(replaces = "cached")
+    public Object uncached(VirtualFrame frame, Object id,
+                    @Cached("createReadString()") LLVMReadStringNode readStr) {
+        return readStr.executeWithTarget(frame, id);
     }
 
 }
