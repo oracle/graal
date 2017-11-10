@@ -51,12 +51,6 @@ abstract class TypeConversion extends Node {
 
         abstract NativePointer execute(TruffleObject arg);
 
-        @Specialization(guards = "checkNull(isNull, arg)")
-        @SuppressWarnings("unused")
-        NativePointer nullAsPointer(TruffleObject arg, @Cached("createIsNull()") Node isNull) {
-            return new NativePointer(0);
-        }
-
         @Specialization(guards = "checkIsPointer(isPointer, arg)")
         @SuppressWarnings("unused")
         protected NativePointer serializePointer(TruffleObject arg,
@@ -71,11 +65,16 @@ abstract class TypeConversion extends Node {
             }
         }
 
-        @Specialization(guards = {"!checkNull(isNull, arg)", "!checkIsPointer(isPointer, arg)"})
+        @Specialization(guards = "checkNull(isNull, arg)")
+        @SuppressWarnings("unused")
+        NativePointer nullAsPointer(TruffleObject arg, @Cached("createIsNull()") Node isNull) {
+            return new NativePointer(0);
+        }
+
+        @Specialization(guards = "!checkNull(isNull, arg)", replaces = "serializePointer")
         @SuppressWarnings("unused")
         protected NativePointer transitionToNative(TruffleObject arg,
                         @Cached("createIsNull()") Node isNull,
-                        @Cached("createIsPointer()") Node isPointer,
                         @Cached("createToNative()") Node toNative,
                         @Cached("createRecursive()") AsPointerNode recursive) {
             try {
