@@ -181,6 +181,11 @@ public final class TypeDescriptor {
      */
     public boolean isAssignable(final TypeDescriptor fromType) {
         final TypeDescriptorImpl narrowedImpl = impl.narrow(impl, fromType.impl);
+        return fromType.impl.equals(narrowedImpl);
+    }
+
+    boolean intersects(final TypeDescriptor fromType) {
+        final TypeDescriptorImpl narrowedImpl = impl.narrow(impl, fromType.impl);
         return narrowedImpl != null;
     }
 
@@ -463,25 +468,20 @@ public final class TypeDescriptor {
                 }
                 final List<? extends TypeDescriptorImpl> narrowedParamTypes;
                 if (otherExecutable.paramTypes.isEmpty()) {
-                    narrowedParamTypes = paramTypes;
+                    narrowedParamTypes = otherExecutable.paramTypes;
                 } else {
                     if (paramTypes.size() < otherExecutable.paramTypes.size()) {
                         return null;
                     }
                     final List<TypeDescriptorImpl> npts = new ArrayList<>(paramTypes.size());
-                    for (int i = 0; i < paramTypes.size(); i++) {
+                    for (int i = 0; i < otherExecutable.paramTypes.size(); i++) {
                         final TypeDescriptorImpl pt = paramTypes.get(i);
-                        final TypeDescriptorImpl npt;
-                        if (i < otherExecutable.paramTypes.size()) {
-                            final TypeDescriptorImpl opt = otherExecutable.paramTypes.get(i);
-                            npt = opt.narrow(opt, pt);
-                            if (npt == null) {
-                                return null;
-                            }
-                        } else {
-                            npt = pt;
+                        final TypeDescriptorImpl opt = otherExecutable.paramTypes.get(i);
+                        final TypeDescriptorImpl npt = opt.narrow(opt, pt);
+                        if (!pt.equals(npt)) {
+                            return null;
                         }
-                        npts.add(npt);
+                        npts.add(opt);
                     }
                     narrowedParamTypes = npts;
                 }
