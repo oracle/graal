@@ -80,9 +80,9 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
         }
         // Arrays
         result.add(Snippet.newBuilder("Array<int>", export(context, new ValueSupplier<>(new int[]{1, 2})),
-                        TypeDescriptor.array(TypeDescriptor.NUMBER)).build());
+                        TypeDescriptor.intersection(TypeDescriptor.OBJECT, TypeDescriptor.array(TypeDescriptor.NUMBER))).build());
         result.add(Snippet.newBuilder("Array<java.lang.Object>", export(context, new ValueSupplier<>(new Object[]{1, "TEST"})),
-                        TypeDescriptor.ARRAY).build());
+                        TypeDescriptor.intersection(TypeDescriptor.OBJECT, TypeDescriptor.ARRAY)).build());
         // Primitive Proxies
         for (Primitive primitive : primitives) {
             result.add(createProxyPrimitive(context, primitive));
@@ -102,12 +102,12 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
         result.add(Snippet.newBuilder(
                         "ProxyExecutable<...>",
                         export(context, new ValueSupplier<>(new ProxyExecutableImpl())),
-                        TypeDescriptor.EXECUTABLE).build());
+                        TypeDescriptor.intersection(TypeDescriptor.OBJECT, TypeDescriptor.EXECUTABLE)).build());
         // No-args execuable
         result.add(Snippet.newBuilder(
                         "ProxyExecutable<>",
                         export(context, new ValueSupplier<>(new ProxyExecutableImpl(ProxyExecutableImpl.EMPTY, 0))),
-                        TypeDescriptor.executable(TypeDescriptor.ANY)).build());
+                        TypeDescriptor.intersection(TypeDescriptor.OBJECT, TypeDescriptor.executable(TypeDescriptor.ANY))).build());
         for (Primitive primitive : primitives) {
             result.add(createProxyExecutable(context, primitive));
         }
@@ -173,7 +173,7 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
         return Snippet.newBuilder(
                         String.format("Proxy<Array<%s>>", primitive == null ? "" : primitive.name),
                         export(context, new ValueSupplier<>(primitive == null ? ProxyArray.fromArray() : ProxyArray.fromArray(primitive.value, primitive.value))),
-                        primitive == null ? TypeDescriptor.ARRAY : TypeDescriptor.array(primitive.type)).build();
+                        TypeDescriptor.intersection(TypeDescriptor.OBJECT, primitive == null ? TypeDescriptor.ARRAY : TypeDescriptor.array(primitive.type))).build();
     }
 
     private static Snippet createProxyExecutable(
@@ -182,7 +182,7 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
         return Snippet.newBuilder(
                         String.format("ProxyExecutable<%s,%s>", primitive.name, primitive.name),
                         export(context, new ValueSupplier<>(new ProxyExecutableImpl(primitive, 2))),
-                        TypeDescriptor.executable(primitive.type, primitive.type, primitive.type)).build();
+                        TypeDescriptor.intersection(TypeDescriptor.OBJECT, TypeDescriptor.executable(primitive.type, primitive.type, primitive.type))).build();
     }
 
     private static Value export(final Context context, final Supplier<Object> s) {

@@ -41,7 +41,7 @@ final class DefaultResultVerifier implements ResultVerifier {
         }
         final TypeDescriptor resultType = TypeDescriptor.forValue(snippetRun.getResult());
         final TypeDescriptor snippetReturnType = snippetRun.getSnippet().getReturnType();
-        if (!snippetReturnType.intersects(resultType)) {
+        if (!snippetReturnType.isAssignable(resultType)) {
             throw new AssertionError(String.format(
                             "Result is out of type bounds. Expected: %s, Got: %s.",
                             snippetReturnType,

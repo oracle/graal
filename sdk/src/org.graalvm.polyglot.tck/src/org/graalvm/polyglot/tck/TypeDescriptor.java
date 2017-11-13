@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -172,8 +173,10 @@ public final class TypeDescriptor {
      * to itself or to an union type containing the given primitive type. The array type with a
      * component type can be assigned to itself, to an array type without a component type and to an
      * union type containing the given array type or an array type without a component type. The
-     * union type can be assigned to a type for which the intersection of the union type and the
-     * type is non-empty.
+     * union type can be assigned to other union type containing all union elements. The
+     * intersection type can be assigned to type having any intersection type. To the target
+     * intersection type only an intersection type having all the target intersection elements can
+     * be assigned.
      *
      * @param fromType the type to assign
      * @return true if the fromType is assignable to this type
@@ -184,14 +187,9 @@ public final class TypeDescriptor {
         return fromType.impl.equals(narrowedImpl);
     }
 
-    boolean intersects(final TypeDescriptor fromType) {
-        final TypeDescriptorImpl narrowedImpl = impl.narrow(impl, fromType.impl);
-        return narrowedImpl != null;
-    }
-
     /**
-     * Creates a new union type.
-     *
+     * Creates a new union type. The union type is any of the given types.
+     * 
      * @param types the types to include in the union
      * @return the union type containing the given types
      * @since 0.30
@@ -248,6 +246,124 @@ public final class TypeDescriptor {
                 impls.add(seenWildCard ? ARRAY.impl : new ArrayImpl(unionImpl(contentTypes)));
         }
         return impls.size() == 1 ? impls.iterator().next() : new UnionImpl(impls);
+    }
+
+    /**
+     * Creates a new intersection type. The intersection type is all of the given types.
+     * 
+     * @param types the types to include in the intersection
+     * @return the intersection type containing the given types
+     * @since 0.30
+     */
+    public static TypeDescriptor intersection(TypeDescriptor... types) {
+        Objects.requireNonNull(types);
+        final Set<TypeDescriptor> typesSet = new HashSet<>();
+        Collections.addAll(typesSet, types);
+        switch (typesSet.size()) {
+            case 0:
+                throw new IllegalArgumentException("No types.");
+            case 1:
+                return types[0];
+            default:
+                final Set<TypeDescriptorImpl> typeImpls = new HashSet<>();
+                for (TypeDescriptor type : typesSet) {
+                    typeImpls.add(type.impl);
+                }
+                final TypeDescriptorImpl intersectionImpl = intersectionImpl(typeImpls);
+                TypeDescriptor result = isPredefined(intersectionImpl);
+                return result != null ? result : new TypeDescriptor(intersectionImpl);
+        }
+    }
+
+    /**
+     * Normalization of a newly created {@link IntersectionImpl}.
+     * 
+     * @param typeImpls the intersection components
+     * @return new {@link TypeDescriptor} may not be a {@link IntersectionImpl}
+     */
+    private static TypeDescriptorImpl intersectionImpl(final Collection<? extends TypeDescriptorImpl> typeImpls) {
+        final Set<UnionImpl> unions = new HashSet<>();
+        final Set<TypeDescriptorImpl> nonUnionCompoments = new HashSet<>();
+        for (TypeDescriptorImpl typeImpl : typeImpls) {
+            if (typeImpl.getClass() == UnionImpl.class) {
+                unions.add((UnionImpl) typeImpl);
+            } else if (typeImpl.getClass() == IntersectionImpl.class) {
+                nonUnionCompoments.addAll(((IntersectionImpl) typeImpl).types);
+            } else {
+                nonUnionCompoments.add(typeImpl);
+            }
+        }
+        final Set<TypeDescriptorImpl> dnfComponents = new HashSet<>();
+        final TypeDescriptorImpl[][] unionTypes = new TypeDescriptorImpl[unions.size()][];
+        final Iterator<UnionImpl> it = unions.iterator();
+        for (int i = 0; it.hasNext(); i++) {
+            final UnionImpl union = it.next();
+            unionTypes[i] = union.types.toArray(new TypeDescriptorImpl[union.types.size()]);
+        }
+        collectDNFComponents(
+                        unionTypes,
+                        nonUnionCompoments,
+                        new int[unions.size()],
+                        0,
+                        dnfComponents);
+        return dnfComponents.size() == 1 ? dnfComponents.iterator().next() : unionImpl(dnfComponents);
+    }
+
+    /**
+     * Collects all disjunctive normal form components. Computes cartesian product of unions
+     * appended by tail types. The components have also reduced arrays and executables. If there is
+     * a generic ARRAY (EXECUTABLE) the other arrays (executables) are removed.
+     * 
+     * @param unions the union types
+     * @param tail the non union types
+     * @param collector the result collector
+     */
+    private static void collectDNFComponents(
+                    final TypeDescriptorImpl[][] unionTypes,
+                    final Collection<? extends TypeDescriptorImpl> tail,
+                    int[] indexes,
+                    int currentIndex,
+                    final Collection<? super TypeDescriptorImpl> collector) {
+        if (currentIndex == indexes.length) {
+            final Set<TypeDescriptorImpl> currentComponent = new HashSet<>();
+            boolean wca = false, wce = false;
+            for (int i = 0; i < unionTypes.length; i++) {
+                TypeDescriptorImpl component = unionTypes[i][indexes[i]];
+                if (component.equals(ARRAY.impl)) {
+                    wca = true;
+                }
+                if (component.equals(EXECUTABLE.impl)) {
+                    wce = true;
+                }
+                currentComponent.add(component);
+            }
+            for (TypeDescriptorImpl component : tail) {
+                if (component.equals(ARRAY.impl)) {
+                    wca = true;
+                }
+                if (component.equals(EXECUTABLE.impl)) {
+                    wce = true;
+                }
+                currentComponent.add(component);
+            }
+            if (wca || wce) {
+                for (Iterator<TypeDescriptorImpl> it = currentComponent.iterator(); it.hasNext();) {
+                    final TypeDescriptorImpl td = it.next();
+                    if (wca && td.getClass() == ArrayImpl.class && td != ARRAY.impl) {
+                        it.remove();
+                    } else if (wce && td.getClass() == ExecutableImpl.class && td != EXECUTABLE.impl) {
+                        it.remove();
+                    }
+                }
+            }
+            collector.add(
+                            currentComponent.size() == 1 ? currentComponent.iterator().next() : new IntersectionImpl(currentComponent));
+        } else {
+            for (int i = 0; i < unionTypes[currentIndex].length; i++) {
+                indexes[currentIndex] = i;
+                collectDNFComponents(unionTypes, tail, indexes, currentIndex + 1, collector);
+            }
+        }
     }
 
     /**
@@ -343,7 +459,7 @@ public final class TypeDescriptor {
             case 1:
                 return descs.get(0);
             default:
-                return union(descs.toArray(new TypeDescriptor[descs.size()]));
+                return intersection(descs.toArray(new TypeDescriptor[descs.size()]));
         }
     }
 
@@ -407,7 +523,7 @@ public final class TypeDescriptor {
             if (other.getClass() == PrimitiveImpl.class) {
                 return kind == ((PrimitiveImpl) other).kind ? this : null;
             } else {
-                return other.narrow(origType, byType) != null ? this : null;
+                return other.narrow(origType, byType) != null ? byType : null;
             }
         }
 
@@ -607,6 +723,98 @@ public final class TypeDescriptor {
         }
     }
 
+    private static final class IntersectionImpl extends TypeDescriptorImpl {
+        private final Set<TypeDescriptorImpl> types;
+
+        IntersectionImpl(Set<TypeDescriptorImpl> types) {
+            this.types = Collections.unmodifiableSet(types);
+        }
+
+        @Override
+        TypeDescriptorImpl narrow(TypeDescriptorImpl origType, TypeDescriptorImpl byType) {
+            final TypeDescriptorImpl other = other(origType, byType);
+            final Class<? extends TypeDescriptorImpl> otherClz = other.getClass();
+            if (otherClz == PrimitiveImpl.class || otherClz == ArrayImpl.class || otherClz == ExecutableImpl.class) {
+                if (other == origType) {
+                    for (TypeDescriptorImpl type : types) {
+                        final TypeDescriptorImpl narrowed = other.narrow(other, type);
+                        if (narrowed != null) {
+                            return byType;
+                        }
+                    }
+                }
+                return null;
+            } else if (otherClz == IntersectionImpl.class) {
+                final IntersectionImpl origIntersection = (IntersectionImpl) origType;
+                final IntersectionImpl byIntersection = (IntersectionImpl) byType;
+                for (TypeDescriptorImpl subType : origIntersection.types) {
+                    if (byIntersection.types.contains(subType)) {
+                        continue;
+                    } else if (subType.getClass() == ArrayImpl.class) {
+                        boolean included = false;
+                        for (TypeDescriptorImpl bySubType : byIntersection.types) {
+                            if (bySubType.getClass() == ArrayImpl.class) {
+                                final TypeDescriptorImpl narrowedArray = subType.narrow(subType, bySubType);
+                                if (narrowedArray != null) {
+                                    included = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!included) {
+                            return null;
+                        }
+                    } else if (subType.getClass() == ExecutableImpl.class) {
+                        boolean included = false;
+                        for (TypeDescriptorImpl bySubType : byIntersection.types) {
+                            if (bySubType.getClass() == ExecutableImpl.class) {
+                                final TypeDescriptorImpl narrowedExec = subType.narrow(subType, bySubType);
+                                if (narrowedExec != null) {
+                                    included = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!included) {
+                            return null;
+                        }
+                    } else {
+                        return null;
+                    }
+                }
+                return byType;
+            } else {
+                return other.narrow(origType, byType);
+            }
+        }
+
+        @Override
+        Set<? extends TypeDescriptorImpl> explode() {
+            return Collections.singleton(this);
+        }
+
+        @Override
+        public int hashCode() {
+            return types.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == this) {
+                return true;
+            }
+            if (obj == null || obj.getClass() != IntersectionImpl.class) {
+                return false;
+            }
+            return types.equals(((IntersectionImpl) obj).types);
+        }
+
+        @Override
+        public String toString() {
+            return types.stream().map(Object::toString).collect(Collectors.joining(" & ", "[", "]"));
+        }
+    }
+
     private static final class UnionImpl extends TypeDescriptorImpl {
         private final Set<TypeDescriptorImpl> types;
 
@@ -619,10 +827,28 @@ public final class TypeDescriptor {
             final TypeDescriptorImpl other = other(origType, byType);
             final Class<? extends TypeDescriptorImpl> otherClz = other.getClass();
             if (otherClz == PrimitiveImpl.class || otherClz == ArrayImpl.class || otherClz == ExecutableImpl.class) {
-                for (TypeDescriptorImpl type : types) {
-                    final TypeDescriptorImpl narrowed = other == origType ? other.narrow(other, type) : type.narrow(type, other);
-                    if (narrowed != null) {
-                        return narrowed;
+                if (other == byType) {
+                    for (TypeDescriptorImpl type : types) {
+                        final TypeDescriptorImpl narrowed = type.narrow(type, other);
+                        if (narrowed != null) {
+                            return narrowed;
+                        }
+                    }
+                }
+                return null;
+            } else if (otherClz == IntersectionImpl.class) {
+                if (other == byType) {
+                    final UnionImpl origUnion = (UnionImpl) origType;
+                    final IntersectionImpl byIntersection = (IntersectionImpl) byType;
+                    for (TypeDescriptorImpl intersectionSubType : byIntersection.types) {
+                        if (origUnion.types.contains(intersectionSubType)) {
+                            return byType;
+                        }
+                        for (TypeDescriptorImpl unionSubType : origUnion.types) {
+                            if (unionSubType.narrow(unionSubType, intersectionSubType) != null) {
+                                return byType;
+                            }
+                        }
                     }
                 }
                 return null;
@@ -630,47 +856,14 @@ public final class TypeDescriptor {
                 final UnionImpl origUnion = (UnionImpl) origType;
                 final UnionImpl byUnion = (UnionImpl) byType;
                 final Set<TypeDescriptorImpl> copy = new HashSet<>(origUnion.types.size());
-                ArrayImpl arrayToNarrow = null;
-                Collection<ExecutableImpl> execsToNarrow = null;
                 for (TypeDescriptorImpl type : origUnion.types) {
                     if (byUnion.types.contains(type)) {
                         copy.add(type);
-                    } else if (type.getClass() == ArrayImpl.class) {
-                        arrayToNarrow = (ArrayImpl) type;
-                    } else if (type.getClass() == ExecutableImpl.class) {
-                        if (execsToNarrow == null) {
-                            execsToNarrow = new ArrayList<>();
-                        }
-                        execsToNarrow.add((ExecutableImpl) type);
-                    }
-                }
-                if (arrayToNarrow != null) {
-                    ArrayImpl byArray = null;
-                    for (TypeDescriptorImpl type : byUnion.types) {
-                        if (type.getClass() == ArrayImpl.class) {
-                            byArray = (ArrayImpl) type;
-                            break;
-                        }
-                    }
-                    if (byArray != null) {
-                        final TypeDescriptorImpl narrowedArray = arrayToNarrow.narrow(arrayToNarrow, byArray);
-                        if (narrowedArray != null) {
-                            copy.add(narrowedArray);
-                        }
-                    }
-                }
-                if (execsToNarrow != null) {
-                    final List<ExecutableImpl> byExecs = new ArrayList<>();
-                    for (TypeDescriptorImpl type : byUnion.types) {
-                        if (type.getClass() == ExecutableImpl.class) {
-                            byExecs.add((ExecutableImpl) type);
-                        }
-                    }
-                    for (ExecutableImpl execToNarrow : execsToNarrow) {
-                        for (ExecutableImpl byExec : byExecs) {
-                            final TypeDescriptorImpl narrowedExec = execToNarrow.narrow(execToNarrow, byExec);
-                            if (narrowedExec != null) {
-                                copy.add(narrowedExec);
+                    } else if (type.getClass() == ArrayImpl.class || type.getClass() == ExecutableImpl.class || type.getClass() == IntersectionImpl.class) {
+                        for (TypeDescriptorImpl filteredType : byUnion.types) {
+                            final TypeDescriptorImpl narrowed = type.narrow(type, filteredType);
+                            if (narrowed != null) {
+                                copy.add(narrowed);
                                 break;
                             }
                         }

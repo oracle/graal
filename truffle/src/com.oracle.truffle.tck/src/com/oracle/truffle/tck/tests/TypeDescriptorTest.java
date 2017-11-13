@@ -255,4 +255,89 @@ public class TypeDescriptorTest {
         Assert.assertTrue(TypeDescriptor.EXECUTABLE.isAssignable(TypeDescriptor.executable(TypeDescriptor.ANY)));
         Assert.assertTrue(TypeDescriptor.executable(TypeDescriptor.ANY).isAssignable(TypeDescriptor.EXECUTABLE));
     }
+
+    @Test
+    public void testIntersection() {
+        final TypeDescriptor strAndObj = TypeDescriptor.intersection(TypeDescriptor.STRING, TypeDescriptor.OBJECT);
+        final TypeDescriptor strAndNum = TypeDescriptor.intersection(TypeDescriptor.STRING, TypeDescriptor.NUMBER);
+        final TypeDescriptor strAndNumAndObj = TypeDescriptor.intersection(strAndObj, strAndNum);
+
+        Assert.assertTrue(strAndObj.isAssignable(strAndObj));
+        Assert.assertFalse(strAndObj.isAssignable(strAndNum));
+        Assert.assertTrue(strAndObj.isAssignable(strAndNumAndObj));
+        Assert.assertTrue(strAndNum.isAssignable(strAndNum));
+        Assert.assertFalse(strAndNum.isAssignable(strAndObj));
+        Assert.assertTrue(strAndNum.isAssignable(strAndNumAndObj));
+        Assert.assertTrue(strAndNumAndObj.isAssignable(strAndNumAndObj));
+        Assert.assertFalse(strAndNumAndObj.isAssignable(strAndNum));
+        Assert.assertFalse(strAndNumAndObj.isAssignable(strAndObj));
+
+        for (TypeDescriptor predefined : PREDEFINED) {
+            Assert.assertFalse(strAndNum.isAssignable(predefined));
+            Assert.assertFalse(strAndObj.isAssignable(predefined));
+            Assert.assertFalse(strAndNumAndObj.isAssignable(predefined));
+        }
+        Assert.assertFalse(TypeDescriptor.ARRAY.isAssignable(strAndNum));
+        Assert.assertFalse(TypeDescriptor.ARRAY.isAssignable(strAndObj));
+        Assert.assertFalse(TypeDescriptor.ARRAY.isAssignable(strAndNumAndObj));
+        Assert.assertFalse(TypeDescriptor.BOOLEAN.isAssignable(strAndNum));
+        Assert.assertFalse(TypeDescriptor.BOOLEAN.isAssignable(strAndObj));
+        Assert.assertFalse(TypeDescriptor.BOOLEAN.isAssignable(strAndNumAndObj));
+        Assert.assertFalse(TypeDescriptor.HOST_OBJECT.isAssignable(strAndNum));
+        Assert.assertFalse(TypeDescriptor.HOST_OBJECT.isAssignable(strAndObj));
+        Assert.assertFalse(TypeDescriptor.HOST_OBJECT.isAssignable(strAndNumAndObj));
+        Assert.assertFalse(TypeDescriptor.NATIVE_POINTER.isAssignable(strAndNum));
+        Assert.assertFalse(TypeDescriptor.NATIVE_POINTER.isAssignable(strAndObj));
+        Assert.assertFalse(TypeDescriptor.NATIVE_POINTER.isAssignable(strAndNumAndObj));
+        Assert.assertFalse(TypeDescriptor.NULL.isAssignable(strAndNum));
+        Assert.assertFalse(TypeDescriptor.NULL.isAssignable(strAndObj));
+        Assert.assertFalse(TypeDescriptor.NULL.isAssignable(strAndNumAndObj));
+        Assert.assertTrue(TypeDescriptor.NUMBER.isAssignable(strAndNum));
+        Assert.assertFalse(TypeDescriptor.NUMBER.isAssignable(strAndObj));
+        Assert.assertTrue(TypeDescriptor.NUMBER.isAssignable(strAndNumAndObj));
+        Assert.assertFalse(TypeDescriptor.OBJECT.isAssignable(strAndNum));
+        Assert.assertTrue(TypeDescriptor.OBJECT.isAssignable(strAndObj));
+        Assert.assertTrue(TypeDescriptor.OBJECT.isAssignable(strAndNumAndObj));
+        Assert.assertTrue(TypeDescriptor.STRING.isAssignable(strAndNum));
+        Assert.assertTrue(TypeDescriptor.STRING.isAssignable(strAndObj));
+        Assert.assertTrue(TypeDescriptor.STRING.isAssignable(strAndNumAndObj));
+
+        final TypeDescriptor boolOrNum = TypeDescriptor.union(TypeDescriptor.BOOLEAN, TypeDescriptor.NUMBER);
+        final TypeDescriptor strOrNum = TypeDescriptor.union(TypeDescriptor.STRING, TypeDescriptor.NUMBER);
+        Assert.assertFalse(strAndNum.isAssignable(boolOrNum));
+        Assert.assertFalse(strAndNum.isAssignable(strOrNum));
+        Assert.assertTrue(boolOrNum.isAssignable(strAndNum));
+        Assert.assertTrue(strOrNum.isAssignable(strAndNum));
+
+        final TypeDescriptor product = TypeDescriptor.intersection(boolOrNum, strOrNum);
+        // Should be [number | [boolean & number] | [boolean & string] | [string & number]]
+        Assert.assertTrue(product.equals(TypeDescriptor.union(
+                        TypeDescriptor.NUMBER,
+                        TypeDescriptor.intersection(TypeDescriptor.BOOLEAN, TypeDescriptor.NUMBER),
+                        TypeDescriptor.intersection(TypeDescriptor.BOOLEAN, TypeDescriptor.STRING),
+                        TypeDescriptor.intersection(TypeDescriptor.NUMBER, TypeDescriptor.STRING))));
+        Assert.assertTrue(product.isAssignable(strAndNum));
+        Assert.assertFalse(product.isAssignable(strAndObj));
+        Assert.assertTrue(product.isAssignable(strAndNumAndObj));
+        Assert.assertFalse(strAndNum.isAssignable(product));
+        Assert.assertFalse(strAndObj.isAssignable(product));
+        Assert.assertFalse(strAndNumAndObj.isAssignable(product));
+
+        final TypeDescriptor numAndArrNum = TypeDescriptor.intersection(
+                        TypeDescriptor.NUMBER,
+                        TypeDescriptor.array(TypeDescriptor.NUMBER));
+        Assert.assertFalse(numAndArrNum.isAssignable(TypeDescriptor.NUMBER));
+        Assert.assertFalse(numAndArrNum.isAssignable(TypeDescriptor.array(TypeDescriptor.NUMBER)));
+        Assert.assertTrue(TypeDescriptor.NUMBER.isAssignable(numAndArrNum));
+        Assert.assertTrue(TypeDescriptor.array(TypeDescriptor.NUMBER).isAssignable(numAndArrNum));
+        Assert.assertTrue(TypeDescriptor.union(TypeDescriptor.array(TypeDescriptor.NUMBER), TypeDescriptor.OBJECT).isAssignable(numAndArrNum));
+
+        final TypeDescriptor arrAndArrNum = TypeDescriptor.intersection(
+                        TypeDescriptor.ARRAY,
+                        TypeDescriptor.array(TypeDescriptor.NUMBER));
+        Assert.assertTrue(arrAndArrNum.isAssignable(TypeDescriptor.ARRAY));
+        Assert.assertTrue(arrAndArrNum.isAssignable(TypeDescriptor.array(TypeDescriptor.NUMBER)));
+        Assert.assertTrue(TypeDescriptor.ARRAY.isAssignable(arrAndArrNum));
+        Assert.assertFalse(TypeDescriptor.array(TypeDescriptor.NUMBER).isAssignable(arrAndArrNum));
+    }
 }
