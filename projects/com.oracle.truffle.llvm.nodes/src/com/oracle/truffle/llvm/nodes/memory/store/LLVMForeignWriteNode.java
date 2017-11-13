@@ -33,12 +33,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.llvm.nodes.memory.LLVMObjectAccessFactory;
 import com.oracle.truffle.llvm.nodes.memory.LLVMOffsetToNameNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMOffsetToNameNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
+import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactory;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class LLVMForeignWriteNode extends LLVMNode {
