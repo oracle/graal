@@ -233,9 +233,7 @@ public final class LLVMContext {
 
     public void addLibraryPath(String p) {
         Path path = Paths.get(p);
-        if (!path.toFile().exists()) {
-            System.err.println(String.format("Library Path \"%s\" does not exist.", path.toString()));
-        } else {
+        if (path.toFile().exists()) {
             if (!libraryPaths.contains(path)) {
                 libraryPaths.add(path);
             }
