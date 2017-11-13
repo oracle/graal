@@ -7,7 +7,7 @@ linux-amd64: {
 }
 
 darwin-amd64: {
-    capabilities: [darwin_elcapitan, amd64]
+    capabilities: [darwin_sierra, amd64]
 }
 
 common: {
@@ -67,12 +67,7 @@ gateTest40-linux: ${gateTest-linux} {
 
 darwin-llvm : {
     packages: {
-        "llvm@4": ""
-    }
-
-    environment: {
-        # homebrew doesn't put llvm on the path by default
-        PATH: "/Users/graal/slave/buildlog/ci_executor/main//homebrew/Cellar/llvm@4/4.0.1/bin:$PATH"
+        llvm: "==4.0.1"
     }
 }
 
