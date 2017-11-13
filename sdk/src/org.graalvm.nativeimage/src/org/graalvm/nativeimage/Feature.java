@@ -169,6 +169,14 @@ public interface Feature {
     }
 
     /**
+     * Access methods available for {@link Feature#onAnalysisExit()}.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    interface OnAnalysisExitAccess extends FeatureAccess {
+
+    }
+
+    /**
      * Access methods available for {@link Feature#beforeCompilation} and
      * {@link Feature#afterCompilation}.
      */
@@ -299,6 +307,15 @@ public interface Feature {
      * @param access The supported operations that the feature can perform at this time
      */
     default void afterAnalysis(AfterAnalysisAccess access) {
+    }
+
+    /**
+     * Handler for code that needs to run after the analysis, even if an error has occured, e.g.,
+     * like reporting code.
+     *
+     * @param access The supported operations that the feature can perform at this time
+     */
+    default void onAnalysisExit(OnAnalysisExitAccess access) {
     }
 
     /**
