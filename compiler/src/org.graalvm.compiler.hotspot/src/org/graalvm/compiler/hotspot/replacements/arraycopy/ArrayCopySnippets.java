@@ -427,12 +427,12 @@ public class ArrayCopySnippets implements Snippets {
 
             // a few special cases that are easier to handle when all other variables already have a
             // value
-            if (snippetInfo != arraycopyNativeSnippet && arraycopy.getLength().isConstant() && arraycopy.getLength().asJavaConstant().asLong() == 0) {
+            if (snippetInfo != arraycopyNativeSnippet && snippetInfo != arraycopyGenericSnippet && arraycopy.getLength().isConstant() && arraycopy.getLength().asJavaConstant().asLong() == 0) {
                 // Copying 0 element between object arrays with conflicting types will not throw an
-                // exception.
-                if (snippetInfo == arraycopyGenericSnippet) {
-                    arrayTypeCheck = ArrayCopyTypeCheck.LAYOUT_HELPER_BASED_ARRAY_TYPE_CHECK;
-                }
+                // exception - once we pass the preliminary element type checks that we are not
+                // mixing arrays of different basic types, ArrayStoreException is only thrown when
+                // an *astore would have thrown it. Therefore, copying null between object arrays
+                // with conflicting types will also succeed (we do not optimize for such case here).
                 snippetInfo = arraycopyZeroLengthSnippet;
             } else if (snippetInfo == arraycopyExactSnippet && shouldUnroll(arraycopy.getLength())) {
                 snippetInfo = arraycopyUnrolledSnippet;
