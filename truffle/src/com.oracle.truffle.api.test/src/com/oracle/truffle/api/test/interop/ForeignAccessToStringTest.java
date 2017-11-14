@@ -59,7 +59,7 @@ public class ForeignAccessToStringTest {
         }
     }
 
-    private static class Simple10TestingFactory implements ForeignAccess.FactoryModel, ForeignAccess.Factory {
+    private static class Simple10TestingFactory implements ForeignAccess.StandardFactory, ForeignAccess.Factory {
         @Override
         public CallTarget accessIsNull() {
             return null;

@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import java.util.Date;
 
 import org.junit.After;
@@ -50,7 +51,8 @@ public class ValueAPITest {
 
     @Test
     public void testInstantiate() {
-        Value classValue = context.eval(EngineAPITestLanguage.ID, "java.util.Date.class");
+        context.exportSymbol("Date.class", JavaInterop.asTruffleObject(java.util.Date.class));
+        Value classValue = context.importSymbol("Date.class");
         assertTrue(classValue.canInstantiate());
         Value dateInstance = classValue.newInstance();
         Date date = dateInstance.asHostObject();

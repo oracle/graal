@@ -76,7 +76,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import com.oracle.truffle.api.interop.ForeignAccess.FactoryModel;
+import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
 
 public class SLDebugDirectTest {
     private static final Object UNASSIGNED = new Object();
@@ -461,7 +461,7 @@ public class SLDebugDirectTest {
 
     }
 
-    private static class ExecNotifyHandlerForeign implements FactoryModel, Factory {
+    private static class ExecNotifyHandlerForeign implements StandardFactory, Factory {
 
         private final ExecNotifyHandler nh;
 

@@ -48,7 +48,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.interop.ForeignAccess.FactoryModel;
+import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
 
 final class PolyglotProxy {
 
@@ -431,7 +431,7 @@ final class PolyglotProxy {
 
     }
 
-    private static final class EngineProxyFactory implements FactoryModel {
+    private static final class EngineProxyFactory implements StandardFactory {
 
         private static final ForeignAccess INSTANCE = ForeignAccess.create(EngineProxy.class, new EngineProxyFactory());
 

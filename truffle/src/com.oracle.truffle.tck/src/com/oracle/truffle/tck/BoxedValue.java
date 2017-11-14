@@ -34,7 +34,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 
-final class BoxedValue implements TruffleObject, ForeignAccess.FactoryModel {
+final class BoxedValue implements TruffleObject, ForeignAccess.StandardFactory {
     private final Object value;
 
     BoxedValue(Object v) {

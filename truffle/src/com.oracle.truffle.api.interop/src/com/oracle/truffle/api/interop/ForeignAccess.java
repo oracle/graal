@@ -72,7 +72,7 @@ public final class ForeignAccess {
      * @return new instance wrapping <code>factory</code>
      * @since 0.30
      */
-    public static ForeignAccess create(final Class<? extends TruffleObject> baseClass, final FactoryModel factory) {
+    public static ForeignAccess create(final Class<? extends TruffleObject> baseClass, final StandardFactory factory) {
         if (baseClass == null) {
             Factory f = (Factory) factory;
             assert f != null;
@@ -89,8 +89,8 @@ public final class ForeignAccess {
      *            version 0.26
      * @return new instance wrapping <code>factory</code>
      * @since 0.26
-     * @deprecated Use {@link FactoryModel} and
-     *             {@link #create(java.lang.Class, com.oracle.truffle.api.interop.ForeignAccess.FactoryModel)}
+     * @deprecated Use {@link StandardFactory} and
+     *             {@link #create(java.lang.Class, com.oracle.truffle.api.interop.ForeignAccess.StandardFactory)}
      */
     @Deprecated
     public static ForeignAccess create(final Class<? extends TruffleObject> baseClass, final Factory26 factory) {
@@ -111,7 +111,7 @@ public final class ForeignAccess {
      * @return new instance wrapping <code>factory</code>
      * @since 0.30
      */
-    public static ForeignAccess create(final FactoryModel factory, final RootNode languageCheck) {
+    public static ForeignAccess create(final StandardFactory factory, final RootNode languageCheck) {
         if (languageCheck == null) {
             Factory f = (Factory) factory;
             assert f != null;
@@ -129,8 +129,8 @@ public final class ForeignAccess {
      *            interface
      * @return new instance wrapping <code>factory</code>
      * @since 0.26
-     * @deprecated Use {@link FactoryModel} and
-     *             {@link #create(com.oracle.truffle.api.interop.ForeignAccess.FactoryModel, com.oracle.truffle.api.nodes.RootNode)
+     * @deprecated Use {@link StandardFactory} and
+     *             {@link #create(com.oracle.truffle.api.interop.ForeignAccess.StandardFactory, com.oracle.truffle.api.nodes.RootNode)
      *             its associated factory} method
      */
     @Deprecated
@@ -830,8 +830,8 @@ public final class ForeignAccess {
      * a {@code Message}. The {@code TruffleObject} instance provides a {@link ForeignAccess}
      * instance (built via {@link #create(com.oracle.truffle.api.interop.ForeignAccess.Factory)})
      * that provides an AST snippet for a given {@link Message}. Rather than using this generic
-     * {@code Factory}, consider implementing {@link FactoryModel} interface that captures the set
-     * of standard messages each language should implement.
+     * {@code Factory}, consider implementing {@link StandardFactory} interface that captures the
+     * set of standard messages each language should implement.
      *
      * @since 0.8 or earlier
      */
@@ -859,13 +859,13 @@ public final class ForeignAccess {
     }
 
     /**
-     * Specialized {@link Factory factory} that handles standard {@link Message messages}. This
-     * interface is updated with new access methods when new messages are added. All default
+     * Specialized {@link Factory factory} that handles standard foreign {@link Message messages}.
+     * This interface is updated with new access methods when new messages are added. All default
      * implementations return <code>null</code>.
      *
      * @since 0.30
      */
-    public interface FactoryModel {
+    public interface StandardFactory {
         /**
          * Handles {@link Message#IS_NULL} message.
          *
@@ -1101,7 +1101,7 @@ public final class ForeignAccess {
      *
      * @since 0.26
      * @deprecated extended set of messages is now supported, consider implementing
-     *             {@link FactoryModel}
+     *             {@link StandardFactory}
      */
     @Deprecated
     public interface Factory26 {
@@ -1275,9 +1275,9 @@ public final class ForeignAccess {
 
     private static class DelegatingFactory implements Factory {
         private final Class<?> baseClass;
-        private final FactoryModel factory;
+        private final StandardFactory factory;
 
-        DelegatingFactory(Class<?> baseClass, FactoryModel factory) {
+        DelegatingFactory(Class<?> baseClass, StandardFactory factory) {
             this.baseClass = baseClass;
             this.factory = factory;
         }
@@ -1295,7 +1295,7 @@ public final class ForeignAccess {
             return accessMessage(factory, msg);
         }
 
-        private static CallTarget accessMessage(FactoryModel factory, Message msg) {
+        private static CallTarget accessMessage(StandardFactory factory, Message msg) {
             if (msg instanceof KnownMessage) {
                 switch (msg.hashCode()) {
                     case Execute.EXECUTE:
