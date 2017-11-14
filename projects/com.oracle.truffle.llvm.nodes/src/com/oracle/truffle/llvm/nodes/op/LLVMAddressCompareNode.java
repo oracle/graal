@@ -53,6 +53,7 @@ import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.ToComparableVa
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
@@ -305,6 +306,16 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         @Specialization
         boolean doVirtual(LLVMVirtualAllocationAddress v1, LLVMVirtualAllocationAddress v2) {
             return v1.getObject() == v2.getObject() && v1.getOffset() == v2.getOffset();
+        }
+
+        @Specialization
+        boolean doFunctionDescriptor(LLVMFunctionDescriptor f1, LLVMFunctionDescriptor f2) {
+            return f1.getFunctionId() == f2.getFunctionId();
+        }
+
+        @Specialization(replaces = "doFunctionDescriptor")
+        boolean doFunction(LLVMFunction f1, LLVMFunction f2) {
+            return f1.getFunctionPointer() == f2.getFunctionPointer();
         }
 
         @Specialization(guards = "val1.getClass() != val2.getClass()")
