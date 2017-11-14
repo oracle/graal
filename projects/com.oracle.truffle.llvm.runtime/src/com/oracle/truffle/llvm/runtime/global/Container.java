@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -59,6 +59,8 @@ abstract class Container {
 
     abstract void destroy();
 
+    abstract boolean isNative();
+
     abstract LLVMAddress getNativeLocation(LLVMGlobalVariable global);
 
     abstract void putI1(LLVMGlobalVariable global, boolean value);
@@ -110,6 +112,11 @@ abstract class Container {
         UninitializedContainer(Type type, NativeResolver resolver) {
             super(type);
             this.resolver = resolver;
+        }
+
+        @Override
+        boolean isNative() {
+            return false;
         }
 
         @Override
@@ -290,6 +297,11 @@ abstract class Container {
         }
 
         @Override
+        boolean isNative() {
+            return true;
+        }
+
+        @Override
         LLVMAddress getNativeLocation(LLVMGlobalVariable global) {
             return LLVMAddress.fromLong(address);
         }
@@ -414,6 +426,11 @@ abstract class Container {
         AbstractManagedContainer(Type type, NativeAllocator address) {
             super(type);
             this.allocator = address;
+        }
+
+        @Override
+        boolean isNative() {
+            return false;
         }
 
         @Override

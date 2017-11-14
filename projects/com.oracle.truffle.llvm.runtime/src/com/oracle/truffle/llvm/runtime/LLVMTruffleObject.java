@@ -29,14 +29,24 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObjectFactory.BaseToPointerNodeGen;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 @ValueType
-public final class LLVMTruffleObject {
+public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider {
     private final TruffleObject object;
     private final long offset;
     private final Type type;
@@ -99,4 +109,85 @@ public final class LLVMTruffleObject {
         return super.toString() + "(offset=" + getOffset() + ")";
     }
 
+    @Override
+    public LLVMObjectNativeLibrary createLLVMObjectNativeLibrary() {
+        return wrapLibrary(LLVMObjectNativeLibrary.createCached(object));
+    }
+
+    private static LLVMObjectNativeLibrary wrapLibrary(final LLVMObjectNativeLibrary lib) {
+        return new LLVMObjectNativeLibrary() {
+
+            @Child Node isNull;
+            @Child BaseToPointerNode baseToPointer;
+
+            @Override
+            public boolean guard(Object obj) {
+                if (obj instanceof LLVMTruffleObject) {
+                    return lib.guard(((LLVMTruffleObject) obj).getObject());
+                } else {
+                    return false;
+                }
+            }
+
+            @Override
+            public boolean isPointer(VirtualFrame frame, Object obj) {
+                LLVMTruffleObject object = (LLVMTruffleObject) obj;
+                if (lib.isPointer(frame, object.getObject())) {
+                    return true;
+                } else {
+                    if (isNull == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        isNull = insert(Message.IS_NULL.createNode());
+                    }
+                    return ForeignAccess.sendIsNull(isNull, object.getObject());
+                }
+            }
+
+            @Override
+            public long asPointer(VirtualFrame frame, Object obj) throws InteropException {
+                if (baseToPointer == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    baseToPointer = insert(BaseToPointerNodeGen.create());
+                }
+                LLVMTruffleObject object = (LLVMTruffleObject) obj;
+                long base = baseToPointer.executeToPointer(frame, object.getObject(), lib);
+                return base + object.getOffset();
+            }
+
+            @Override
+            public Object toNative(VirtualFrame frame, Object obj) throws InteropException {
+                LLVMTruffleObject object = (LLVMTruffleObject) obj;
+                Object nativeBase = lib.toNative(frame, object.getObject());
+                return new LLVMTruffleObject((TruffleObject) nativeBase, object.offset, object.type, object.baseType);
+            }
+        };
+    }
+
+    abstract static class BaseToPointerNode extends Node {
+
+        protected abstract long executeToPointer(VirtualFrame frame, Object object, LLVMObjectNativeLibrary lib);
+
+        @Specialization(guards = "lib.isPointer(frame, object)")
+        long doPointer(VirtualFrame frame, Object object, LLVMObjectNativeLibrary lib) {
+            try {
+                return lib.asPointer(frame, object);
+            } catch (InteropException ex) {
+                throw ex.raise();
+            }
+        }
+
+        @Specialization(guards = "checkNull(isNull, object)")
+        @SuppressWarnings("unused")
+        long doNull(TruffleObject object, LLVMObjectNativeLibrary lib, @Cached("createIsNull()") Node isNull) {
+            return 0;
+        }
+
+        static Node createIsNull() {
+            return Message.IS_NULL.createNode();
+        }
+
+        static boolean checkNull(Node isNull, TruffleObject object) {
+            return ForeignAccess.sendIsNull(isNull, object);
+        }
+    }
 }
