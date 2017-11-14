@@ -87,6 +87,7 @@ public class LLVMAMD64Syscall {
     public static final int SYS_arch_prctl = 158;
     public static final int SYS_gettid = 186;
     public static final int SYS_futex = 202;
+    public static final int SYS_getdents64 = 217;
     public static final int SYS_set_tid_address = 218;
     public static final int SYS_clock_gettime = 228;
     public static final int SYS_exit_group = 231;

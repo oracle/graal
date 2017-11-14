@@ -40,6 +40,10 @@
 #include <sys/mman.h>
 #include <sys/socket.h>
 
+#ifdef __linux__
+#include <sys/syscall.h>
+#endif
+
 
 #ifdef __linux__
 
@@ -287,6 +291,17 @@ int __sulong_posix_renameat(int oldfd, const char* old, int newfd, const char* n
 	CALL(int, renameat, oldfd, old, newfd, new);
 }
 
+int __sulong_posix_getdents64(unsigned int fd, void* dirp, unsigned int count)
+{
+#ifdef __linux__
+	CALL(int, syscall, __NR_getdents64, fd, dirp, count);
+#else
+	fprintf(stderr, "getdents64 is not supported on this OS.\n");
+	return -ENOSYS;
+#endif
+}
+
+
 #else
 
 #include <stdio.h>
@@ -497,6 +512,11 @@ int __sulong_posix_rename(const char* old, const char* new)
 }
 
 int __sulong_posix_renameat(int oldfd, const char* old, int newfd, const char* new)
+{
+	ERROR();
+}
+
+int __sulong_posix_getdents64(unsigned int fd, void* dirp, unsigned int count)
 {
 	ERROR();
 }
