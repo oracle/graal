@@ -29,8 +29,6 @@ _testDir = join(_suite.dir, "tests")
 _toolDir = join(_suite.dir, "cache", "tools")
 _clangPath = join(_toolDir, "llvm", "bin", "clang")
 
-_dragonEggPath = join(_toolDir, "dragonegg", "dragonegg-3.2.src", "dragonegg.so")
-
 _captureSrcDir = join(_root, "com.oracle.truffle.llvm.pipe.native", "src")
 
 
@@ -180,12 +178,12 @@ def pullLLVMBinaries(args=None):
 
 def dragonEggPath():
     if 'DRAGONEGG' in os.environ:
-        return join(os.environ['DRAGONEGG'], 'dragonegg.so')
+        return join(os.environ['DRAGONEGG'], mx.add_lib_suffix('dragonegg'))
     if 'DRAGONEGG_GCC' in os.environ:
-        path = join(os.environ['DRAGONEGG_GCC'], 'lib', 'dragonegg.so')
+        path = join(os.environ['DRAGONEGG_GCC'], 'lib', mx.add_lib_suffix('dragonegg'))
         if os.path.exists(path):
             return path
-    return _dragonEggPath
+    return None
 
 def dragonEgg(args=None):
     """executes GCC with dragonegg"""
@@ -251,30 +249,6 @@ def getGPP(optional=False):
     if specifiedCPP is not None:
         return specifiedCPP
     return findGCCProgram('g++', optional=optional)
-
-# platform independent
-def pullInstallDragonEgg(args=None):
-    """downloads and installs dragonegg (assumes that compatible GCC and G++ versions are installed)"""
-    toolDir = join(_toolDir, "dragonegg")
-    mx.ensure_dir_exists(toolDir)
-    url = 'https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/dragonegg-3.2.src.tar.gz'
-    localPath = pullsuite(toolDir, [url])
-    tar(localPath, toolDir)
-    os.remove(localPath)
-    if mx.get_os() == 'darwin':
-        gccToolDir = join(_toolDir, "gcc")
-        url = 'https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/gcc-4.6.4.tar.gz'
-        localPath = pullsuite(gccToolDir, [url])
-        tar(localPath, gccToolDir)
-        os.remove(localPath)
-        mx.run(['patch', '-p1', join(_toolDir, 'dragonegg', 'dragonegg-3.2.src', 'Makefile'), join('mx.sulong', 'dragonegg-mac.patch')])
-    os.environ['GCC'] = getGCC()
-    os.environ['CXX'] = getGPP()
-    os.environ['CC'] = getGCC()
-    pullLLVMBinaries()
-    os.environ['LLVM_CONFIG'] = findLLVMProgramForDragonegg('llvm-config')
-    compileCommand = ['make']
-    return mx.run(compileCommand, cwd=join(_toolDir, 'dragonegg', 'dragonegg-3.2.src'))
 
 def findLLVMProgramForDragonegg(program):
     """tries to find a supported version of an installed LLVM program; if the program is not found it downloads the LLVM binaries and checks there"""
@@ -526,14 +500,6 @@ def getClasspathOptions():
     """gets the classpath of the Sulong distributions"""
     return mx.get_runtime_jvm_args('SULONG')
 
-def ensureDragonEggExists():
-    """downloads dragonegg if not downloaded yet"""
-    if not os.path.exists(dragonEggPath()):
-        if 'DRAGONEGG' in os.environ:
-            mx.abort('dragonegg not found at ' + os.environ['DRAGONEGG'])
-        else:
-            pullInstallDragonEgg()
-
 def ensureLLVMBinariesExist():
     """downloads the LLVM binaries if they have not been downloaded yet"""
     for llvmBinary in basicLLVMDependencies:
@@ -582,6 +548,5 @@ mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
 
 
 mx.update_commands(_suite, {
-    'pulldragonegg' : [pullInstallDragonEgg, ''],
     'lli' : [runLLVM, ''],
 })
