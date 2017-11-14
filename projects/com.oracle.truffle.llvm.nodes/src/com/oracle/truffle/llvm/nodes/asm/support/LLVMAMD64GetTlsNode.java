@@ -27,20 +27,22 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.asm.syscall;
+package com.oracle.truffle.llvm.nodes.asm.support;
 
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public abstract class LLVMAMD64SyscallOperationNode extends LLVMNode {
-    private final String name;
-
-    public LLVMAMD64SyscallOperationNode(String name) {
-        this.name = name;
+public class LLVMAMD64GetTlsNode extends LLVMExpressionNode {
+    @TruffleBoundary
+    private LLVMAddress getTLS() {
+        ThreadLocal<LLVMAddress> tls = getContextReference().get().getThreadLocalStorage();
+        return tls.get();
     }
 
-    public abstract long execute(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9);
-
-    public final String getName() {
-        return name;
+    @Override
+    public Object executeGeneric(VirtualFrame frame) {
+        return getTLS();
     }
 }

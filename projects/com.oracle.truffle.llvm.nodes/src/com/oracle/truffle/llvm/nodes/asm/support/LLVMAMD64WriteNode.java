@@ -31,18 +31,29 @@ package com.oracle.truffle.llvm.nodes.asm.support;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMAddressStoreNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMI16StoreNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 public abstract class LLVMAMD64WriteNode extends Node {
     public static final long MASK_16 = 0xFFFFFFFFFFFF0000L;
     public static final long MASK_32 = 0xFFFFFFFF00000000L;
 
     @Child private LLVMAMD64RegisterToLongNode readRegister;
+
+    @Child private LLVMStoreNode storeAddress = LLVMAddressStoreNodeGen.create(PrimitiveType.I64);
+    @Child private LLVMStoreNode storeI8 = LLVMI8StoreNodeGen.create();
+    @Child private LLVMStoreNode storeI16 = LLVMI16StoreNodeGen.create();
+    @Child private LLVMStoreNode storeI32 = LLVMI32StoreNodeGen.create();
+    @Child private LLVMStoreNode storeI64 = LLVMI64StoreNodeGen.create();
 
     private final int shift;
     private final long mask;
@@ -59,63 +70,62 @@ public abstract class LLVMAMD64WriteNode extends Node {
         readRegister = LLVMAMD64RegisterToLongNodeGen.create();
     }
 
-    @Specialization
-    protected void execute(LLVMAddress addr, byte value) {
-        LLVMMemory.putI8(addr, value);
+    @Specialization(guards = "!isFrameSlot(addr)")
+    protected void executeI8(VirtualFrame frame, Object addr, byte value) {
+        storeI8.executeWithTarget(frame, addr, value);
+    }
+
+    @Specialization(guards = "!isFrameSlot(addr)")
+    protected void executeI16(VirtualFrame frame, Object addr, short value) {
+        storeI16.executeWithTarget(frame, addr, value);
+    }
+
+    @Specialization(guards = "!isFrameSlot(addr)")
+    protected void executeI32(VirtualFrame frame, Object addr, int value) {
+        storeI32.executeWithTarget(frame, addr, value);
+    }
+
+    @Specialization(guards = "!isFrameSlot(addr)")
+    protected void executeI64(VirtualFrame frame, Object addr, long value) {
+        storeI64.executeWithTarget(frame, addr, value);
+    }
+
+    @Specialization(guards = "!isFrameSlot(addr)")
+    protected void executeObject(VirtualFrame frame, Object addr, Object value) {
+        storeAddress.executeWithTarget(frame, addr, value);
     }
 
     @Specialization
-    protected void execute(LLVMAddress addr, short value) {
-        LLVMMemory.putI16(addr, value);
-    }
-
-    @Specialization
-    protected void execute(LLVMAddress addr, int value) {
-        LLVMMemory.putI32(addr, value);
-    }
-
-    @Specialization
-    protected void execute(LLVMAddress addr, long value) {
-        LLVMMemory.putI64(addr, value);
-    }
-
-    @Specialization
-    protected void execute(LLVMAddress addr, LLVMAddress value) {
-        LLVMMemory.putAddress(addr, value);
-    }
-
-    @Specialization
-    protected void execute(VirtualFrame frame, FrameSlot slot, byte value) {
+    protected void executeI8(VirtualFrame frame, FrameSlot slot, byte value) {
         long reg = readRegister.execute(frame, slot);
         long val = (reg & mask) | (Byte.toUnsignedLong(value) << shift);
-        slot.setKind(FrameSlotKind.Long);
         frame.setLong(slot, val);
     }
 
     @Specialization
-    protected void execute(VirtualFrame frame, FrameSlot slot, short value) {
+    protected void executeI16(VirtualFrame frame, FrameSlot slot, short value) {
         long reg = readRegister.execute(frame, slot);
         long val = (reg & MASK_16) | Short.toUnsignedLong(value);
-        slot.setKind(FrameSlotKind.Long);
         frame.setLong(slot, val);
     }
 
     @Specialization
-    protected void execute(VirtualFrame frame, FrameSlot slot, int value) {
+    protected void executeI32(VirtualFrame frame, FrameSlot slot, int value) {
         long val = Integer.toUnsignedLong(value);
-        slot.setKind(FrameSlotKind.Long);
         frame.setLong(slot, val);
     }
 
     @Specialization
-    protected void execute(VirtualFrame frame, FrameSlot slot, long value) {
-        slot.setKind(FrameSlotKind.Long);
+    protected void executeI64(VirtualFrame frame, FrameSlot slot, long value) {
         frame.setLong(slot, value);
     }
 
     @Specialization
-    protected void execute(VirtualFrame frame, FrameSlot slot, LLVMAddress value) {
-        slot.setKind(FrameSlotKind.Object);
-        frame.setObject(slot, value);
+    protected void executeAddress(VirtualFrame frame, FrameSlot slot, LLVMAddress value) {
+        frame.setLong(slot, value.getVal());
+    }
+
+    protected static boolean isFrameSlot(Object o) {
+        return o instanceof FrameSlot;
     }
 }

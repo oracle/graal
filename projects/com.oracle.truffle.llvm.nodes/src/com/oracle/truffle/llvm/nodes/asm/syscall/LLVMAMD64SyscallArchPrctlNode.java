@@ -29,18 +29,40 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.IntValueProfile;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
-public abstract class LLVMAMD64SyscallOperationNode extends LLVMNode {
-    private final String name;
+public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMAMD64SyscallOperationNode {
+    private final IntValueProfile profile = IntValueProfile.createIdentityProfile();
 
-    public LLVMAMD64SyscallOperationNode(String name) {
-        this.name = name;
+    public LLVMAMD64SyscallArchPrctlNode() {
+        super("arch_prctl");
     }
 
-    public abstract long execute(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9);
+    @TruffleBoundary
+    private void setTLS(LLVMAddress addr) {
+        ThreadLocal<LLVMAddress> tls = getContextReference().get().getThreadLocalStorage();
+        tls.set(addr);
+    }
 
-    public final String getName() {
-        return name;
+    @Specialization
+    protected long execute(long code, LLVMAddress addr) {
+        switch (profile.profile((int) code)) {
+            case LLVMAMD64ArchPrctl.ARCH_SET_FS:
+                setTLS(addr);
+                break;
+            default:
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError(String.format("not implemented: arch_prcntl(0x%04x)", code));
+        }
+        return 0;
+    }
+
+    @Specialization
+    protected long execute(long code, long addr) {
+        return execute(code, LLVMAddress.fromLong(addr));
     }
 }

@@ -709,10 +709,12 @@ Operand<out AsmOperand op> =				(. op = null; .)
   .
 
 MemoryReference<out AsmMemoryOperand operand> =		(. String displacement = null;
+							   String segment = null;
 							   AsmOperand base = null;
 							   AsmOperand offset = null;
 							   long tmp;
 							   int scale = 1; .)
+  [ SegmentRegister<out segment> ":" ]
   ( ( ident						(. displacement = t.val; .)
     | Number<out tmp>					(. displacement = String.valueOf(tmp); .)
     )
@@ -732,7 +734,7 @@ MemoryReference<out AsmMemoryOperand operand> =		(. String displacement = null;
     ]
     ")"
   )
-							(. operand = new AsmMemoryOperand(displacement, base, offset, scale); .)
+							(. operand = new AsmMemoryOperand(segment, displacement, base, offset, scale); .)
   .
 
 Register8<out AsmRegisterOperand reg> =
@@ -847,7 +849,6 @@ Register64<out AsmRegisterOperand reg> =
   )							(. reg = new AsmRegisterOperand(t.val); .)
   .
 
-/*
 SegmentRegister<out String reg> =
   ( "%cs"
   | "%ds"
@@ -857,7 +858,6 @@ SegmentRegister<out String reg> =
   | "%ss"
   )							(. reg = t.val; .)
   .
-*/
 
 Number<out long n> =					(. n = 0; .)
   ( number						(. n = Long.parseLong(t.val, 10); .)

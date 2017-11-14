@@ -123,4 +123,21 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
             return LLVMAddress.fromLong(displacement + (offset.getVal() << shift));
         }
     }
+
+    @NodeChildren({@NodeChild(value = "base", type = LLVMExpressionNode.class), @NodeChild(value = "offset", type = LLVMExpressionNode.class)})
+    public abstract static class LLVMAMD64AddressSegmentComputationNode extends LLVMAMD64AddressComputationNode {
+        public LLVMAMD64AddressSegmentComputationNode() {
+            super(0);
+        }
+
+        @Specialization
+        protected LLVMAddress executeLLVMAddress(LLVMAddress base, LLVMAddress offset) {
+            return base.increment(offset.getVal());
+        }
+
+        @Specialization
+        protected LLVMAddress executeI64(LLVMAddress base, long offset) {
+            return base.increment(offset);
+        }
+    }
 }
