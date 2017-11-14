@@ -29,17 +29,26 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.sun.security.auth.module.UnixSystem;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
-public class LLVMSecurity {
-    @TruffleBoundary
-    public static long getuid() {
-        return new UnixSystem().getUid();
+public abstract class LLVMAMD64SyscallUnlinkNode extends LLVMAMD64SyscallOperationNode {
+    @Child private LLVMAMD64PosixCallNode unlink;
+
+    public LLVMAMD64SyscallUnlinkNode() {
+        super("unlink");
+        unlink = LLVMAMD64PosixCallNodeGen.create("unlink", "(UINT64):SINT32", 1);
     }
 
-    @TruffleBoundary
-    public static long getgid() {
-        return new UnixSystem().getGid();
+    @Specialization
+    protected long execute(LLVMAddress path) {
+        return (int) unlink.execute(path.getVal());
+    }
+
+    @Specialization
+    protected long execute(long path) {
+        return execute(LLVMAddress.fromLong(path));
     }
 }

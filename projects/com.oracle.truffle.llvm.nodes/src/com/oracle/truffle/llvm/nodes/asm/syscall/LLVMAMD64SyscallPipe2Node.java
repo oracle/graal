@@ -29,19 +29,26 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
-public class LLVMAMD64SyscallGetuidNode extends LLVMAMD64SyscallOperationNode {
-    @Child private LLVMAMD64PosixCallNode getuid;
+public abstract class LLVMAMD64SyscallPipe2Node extends LLVMAMD64SyscallOperationNode {
+    @Child private LLVMAMD64PosixCallNode pipe2;
 
-    public LLVMAMD64SyscallGetuidNode() {
-        super("getuid");
-        getuid = LLVMAMD64PosixCallNodeGen.create("getuid", "():SINT32", 0);
+    public LLVMAMD64SyscallPipe2Node() {
+        super("pipe2");
+        pipe2 = LLVMAMD64PosixCallNodeGen.create("pipe2", "(UINT64,SINT32):SINT32", 2);
     }
 
-    @Override
-    public long execute(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
-        return (int) getuid.execute();
+    @Specialization
+    protected long execute(LLVMAddress pipefd, long flags) {
+        return (int) pipe2.execute(pipefd.getVal(), (int) flags);
+    }
+
+    @Specialization
+    protected long execute(long path, long flags) {
+        return execute(LLVMAddress.fromLong(path), flags);
     }
 }

@@ -82,6 +82,10 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                 return LLVMAMD64SyscallReadvNodeGen.create();
             case LLVMAMD64Syscall.SYS_writev:
                 return LLVMAMD64SyscallWritevNodeGen.create();
+            case LLVMAMD64Syscall.SYS_access:
+                return LLVMAMD64SyscallAccessNodeGen.create();
+            case LLVMAMD64Syscall.SYS_pipe:
+                return LLVMAMD64SyscallPipeNodeGen.create();
             case LLVMAMD64Syscall.SYS_dup:
                 return new LLVMAMD64SyscallDupNode();
             case LLVMAMD64Syscall.SYS_dup2:
@@ -90,6 +94,30 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                 return new LLVMAMD64SyscallGetpidNode();
             case LLVMAMD64Syscall.SYS_sendfile:
                 return LLVMAMD64SyscallSendfileNodeGen.create();
+            case LLVMAMD64Syscall.SYS_socket:
+                return new LLVMAMD64SyscallSocketNode();
+            case LLVMAMD64Syscall.SYS_connect:
+                return LLVMAMD64SyscallConnectNodeGen.create();
+            case LLVMAMD64Syscall.SYS_accept:
+                return LLVMAMD64SyscallAcceptNodeGen.create();
+            case LLVMAMD64Syscall.SYS_sendto:
+                return LLVMAMD64SyscallSendtoNodeGen.create();
+            case LLVMAMD64Syscall.SYS_recvfrom:
+                return LLVMAMD64SyscallRecvfromNodeGen.create();
+            case LLVMAMD64Syscall.SYS_sendmsg:
+                return LLVMAMD64SyscallSendmsgNodeGen.create();
+            case LLVMAMD64Syscall.SYS_recvmsg:
+                return LLVMAMD64SyscallRecvmsgNodeGen.create();
+            case LLVMAMD64Syscall.SYS_bind:
+                return LLVMAMD64SyscallBindNodeGen.create();
+            case LLVMAMD64Syscall.SYS_listen:
+                return new LLVMAMD64SyscallListenNode();
+            case LLVMAMD64Syscall.SYS_getsockname:
+                return LLVMAMD64SyscallGetsocknameNodeGen.create();
+            case LLVMAMD64Syscall.SYS_setsockopt:
+                return LLVMAMD64SyscallSetsockoptNodeGen.create();
+            case LLVMAMD64Syscall.SYS_getsockopt:
+                return LLVMAMD64SyscallGetsockoptNodeGen.create();
             case LLVMAMD64Syscall.SYS_exit:
             case LLVMAMD64Syscall.SYS_exit_group: // TODO: implement difference to SYS_exit
                 return new LLVMAMD64SyscallExitNode();
@@ -101,6 +129,10 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                 return new LLVMAMD64SyscallFtruncateNode();
             case LLVMAMD64Syscall.SYS_getcwd:
                 return LLVMAMD64SyscallGetcwdNodeGen.create();
+            case LLVMAMD64Syscall.SYS_rename:
+                return LLVMAMD64SyscallRenameNodeGen.create();
+            case LLVMAMD64Syscall.SYS_unlink:
+                return LLVMAMD64SyscallUnlinkNodeGen.create();
             case LLVMAMD64Syscall.SYS_getuid:
                 return new LLVMAMD64SyscallGetuidNode();
             case LLVMAMD64Syscall.SYS_getgid:
@@ -109,16 +141,28 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                 return new LLVMAMD64SyscallSetuidNode();
             case LLVMAMD64Syscall.SYS_setgid:
                 return new LLVMAMD64SyscallSetgidNode();
+            case LLVMAMD64Syscall.SYS_geteuid:
+                return new LLVMAMD64SyscallGeteuidNode();
+            case LLVMAMD64Syscall.SYS_getegid:
+                return new LLVMAMD64SyscallGetegidNode();
             case LLVMAMD64Syscall.SYS_getppid:
                 return new LLVMAMD64SyscallGetPpidNode();
             case LLVMAMD64Syscall.SYS_arch_prctl:
                 return LLVMAMD64SyscallArchPrctlNodeGen.create();
+            case LLVMAMD64Syscall.SYS_gettid:
+                return new LLVMAMD64SyscallGettidNode();
             case LLVMAMD64Syscall.SYS_futex:
                 return LLVMAMD64SyscallFutexNodeGen.create();
             case LLVMAMD64Syscall.SYS_set_tid_address:
                 return LLVMAMD64SyscallSetTidAddressNodeGen.create();
             case LLVMAMD64Syscall.SYS_clock_gettime:
                 return LLVMAMD64SyscallClockGetTimeNodeGen.create();
+            case LLVMAMD64Syscall.SYS_renameat:
+                return LLVMAMD64SyscallRenameatNodeGen.create();
+            case LLVMAMD64Syscall.SYS_faccessat:
+                return LLVMAMD64SyscallFaccessatNodeGen.create();
+            case LLVMAMD64Syscall.SYS_pipe2:
+                return LLVMAMD64SyscallPipe2NodeGen.create();
             default:
                 return new LLVMAMD64UnknownSyscallNode((int) rax);
         }

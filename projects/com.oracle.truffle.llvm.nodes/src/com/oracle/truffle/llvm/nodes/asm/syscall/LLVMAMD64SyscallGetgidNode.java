@@ -29,13 +29,19 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
+
 public class LLVMAMD64SyscallGetgidNode extends LLVMAMD64SyscallOperationNode {
+    @Child private LLVMAMD64PosixCallNode getgid;
+
     public LLVMAMD64SyscallGetgidNode() {
         super("getgid");
+        getgid = LLVMAMD64PosixCallNodeGen.create("getgid", "():SINT32", 0);
     }
 
     @Override
     public long execute(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
-        return LLVMSecurity.getgid();
+        return (int) getgid.execute();
     }
 }

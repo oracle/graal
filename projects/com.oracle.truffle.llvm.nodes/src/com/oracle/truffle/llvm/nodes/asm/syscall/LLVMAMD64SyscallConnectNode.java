@@ -29,19 +29,26 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
-public class LLVMAMD64SyscallGetuidNode extends LLVMAMD64SyscallOperationNode {
-    @Child private LLVMAMD64PosixCallNode getuid;
+public abstract class LLVMAMD64SyscallConnectNode extends LLVMAMD64SyscallOperationNode {
+    @Child private LLVMAMD64PosixCallNode connect;
 
-    public LLVMAMD64SyscallGetuidNode() {
-        super("getuid");
-        getuid = LLVMAMD64PosixCallNodeGen.create("getuid", "():SINT32", 0);
+    public LLVMAMD64SyscallConnectNode() {
+        super("connect");
+        connect = LLVMAMD64PosixCallNodeGen.create("connect", "(SINT32,UINT64,SINT32):SINT32", 3);
     }
 
-    @Override
-    public long execute(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
-        return (int) getuid.execute();
+    @Specialization
+    protected long execute(long sockfd, LLVMAddress addr, long addrlen) {
+        return (int) connect.execute((int) sockfd, addr.getVal(), (int) addrlen);
+    }
+
+    @Specialization
+    protected long execute(long sockfd, long addr, long addrlen) {
+        return execute(sockfd, LLVMAddress.fromLong(addr), addrlen);
     }
 }
