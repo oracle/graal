@@ -33,8 +33,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -53,19 +53,19 @@ public abstract class LLVMTruffleImportCached extends LLVMIntrinsic {
         return getContextReference().get().getEnv().importSymbol(id);
     }
 
-    protected static String getString(LLVMAddress value) {
-        return LLVMTruffleIntrinsicUtil.readString(value);
-    }
-
-    protected static long getPtr(LLVMAddress value) {
-        return value.getVal();
-    }
-
     @SuppressWarnings("unused")
-    @Specialization(limit = "10", guards = {"getPtr(value) == cachedAddress"})
-    public Object executeIntrinsic(LLVMAddress value, @Cached("getPtr(value)") long cachedAddress, @Cached("getString(value)") String cachedName,
-                    @Cached("resolve(cachedName)") Object cachedValue) {
-        return cachedValue;
+    @Specialization(limit = "10", guards = {"src.equals(readStr.executeWithTarget(frame, value))"})
+    public Object cached(VirtualFrame frame, Object value,
+                    @Cached("createReadString()") LLVMReadStringNode readStr,
+                    @Cached("readStr.executeWithTarget(frame, value)") String src,
+                    @Cached("resolve(src)") Object symbol) {
+        return symbol;
+    }
+
+    @Specialization(replaces = "cached")
+    public Object uncached(VirtualFrame frame, Object value,
+                    @Cached("createReadString()") LLVMReadStringNode readStr) {
+        return resolve(readStr.executeWithTarget(frame, value));
     }
 
 }

@@ -294,7 +294,7 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
     }
 
     public NFIIntrinsicsProvider collectIntrinsics(NodeFactory nodeFactory) {
-        registerTruffleIntrinsics();
+        registerTruffleIntrinsics(nodeFactory);
         registerSulongIntrinsics();
         registerAbortIntrinsics();
         registerRustIntrinsics();
@@ -303,6 +303,7 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
         registerExceptionIntrinsics();
         registerComplexNumberIntrinsics();
         registerCTypeIntrinsics();
+        registerManagedAllocationIntrinsics();
         return this;
     }
 
@@ -360,14 +361,6 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
             }
         });
 
-        factories.put("@truffle_virtual_malloc", new LLVMNativeIntrinsicFactory(true, true) {
-            @Override
-            protected RootCallTarget generate(FunctionType type) {
-                return wrap("@truffle_virtual_malloc",
-                                LLVMVirtualMallocNodeGen.create(LLVMArgNodeGen.create(1)));
-            }
-        });
-
         factories.put("@__sulong_print_stacktrace", new LLVMNativeIntrinsicFactory(true, true) {
             @Override
             protected RootCallTarget generate(FunctionType type) {
@@ -383,7 +376,7 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
         });
     }
 
-    protected void registerTruffleIntrinsics() {
+    protected void registerTruffleIntrinsics(NodeFactory nodeFactory) {
         factories.put("@truffle_write", new LLVMNativeIntrinsicFactory(true, true) {
             @Override
             protected RootCallTarget generate(FunctionType type) {
@@ -872,7 +865,7 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap("@truffle_string_to_cstr", LLVMTruffleStringAsCStringNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_string_to_cstr", LLVMTruffleStringAsCStringNodeGen.create(nodeFactory.createAllocateString(), LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -892,6 +885,32 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
             }
         });
 
+        factories.put("@truffle_sulong_function_to_native_pointer", new LLVMNativeIntrinsicFactory(true, true) {
+
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@truffle_sulong_function_to_native_pointer", LLVMSulongFunctionToNativePointerNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+            }
+        });
+
+        factories.put("@truffle_load_library", new LLVMNativeIntrinsicFactory(true, true) {
+
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@truffle_load_library", LLVMLoadLibraryNodeGen.create(LLVMArgNodeGen.create(1)));
+            }
+        });
+
+        factories.put("@truffle_polyglot_eval", new LLVMNativeIntrinsicFactory(true, true) {
+
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@truffle_polyglot_eval", LLVMPolyglotEvalNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+            }
+        });
+    }
+
+    protected void registerManagedAllocationIntrinsics() {
         factories.put("@truffle_managed_malloc", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
@@ -923,27 +942,12 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
                 return wrap("@truffle_managed_from_handle", LLVMTruffleHandleToManagedNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
-        factories.put("@truffle_sulong_function_to_native_pointer", new LLVMNativeIntrinsicFactory(true, true) {
 
+        factories.put("@truffle_virtual_malloc", new LLVMNativeIntrinsicFactory(true, true) {
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap("@truffle_sulong_function_to_native_pointer", LLVMSulongFunctionToNativePointerNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
-            }
-        });
-
-        factories.put("@truffle_load_library", new LLVMNativeIntrinsicFactory(true, true) {
-
-            @Override
-            protected RootCallTarget generate(FunctionType type) {
-                return wrap("@truffle_load_library", LLVMLoadLibraryNodeGen.create(LLVMArgNodeGen.create(1)));
-            }
-        });
-
-        factories.put("@truffle_polyglot_eval", new LLVMNativeIntrinsicFactory(true, true) {
-
-            @Override
-            protected RootCallTarget generate(FunctionType type) {
-                return wrap("@truffle_polyglot_eval", LLVMPolyglotEvalNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_virtual_malloc",
+                                LLVMVirtualMallocNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
     }

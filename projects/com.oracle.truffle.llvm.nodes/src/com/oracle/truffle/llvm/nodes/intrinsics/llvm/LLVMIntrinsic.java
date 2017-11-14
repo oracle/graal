@@ -29,20 +29,25 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleIntrinsicUtil;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMReadStringNode;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMReadStringNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMIntrinsic extends LLVMExpressionNode {
-    public static boolean constantPointer(LLVMAddress id, long cachedPointer) {
-        return id.getVal() == cachedPointer;
+
+    public LLVMReadStringNode createReadString() {
+        return LLVMReadStringNodeGen.create();
     }
 
-    public static String readString(LLVMAddress ptr) {
-        return LLVMTruffleIntrinsicUtil.readString(ptr);
+    protected ForeignToLLVM createToByteNode() {
+        return ForeignToLLVM.create(ForeignToLLVMType.I8);
     }
 
-    public static long pointerOf(LLVMAddress ptr) {
-        return ptr.getVal();
+    protected Node createForeignReadNode() {
+        return Message.READ.createNode();
     }
 }

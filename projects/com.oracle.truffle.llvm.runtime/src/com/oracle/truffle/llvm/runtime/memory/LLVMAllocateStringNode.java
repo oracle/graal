@@ -27,37 +27,13 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.interop;
+package com.oracle.truffle.llvm.runtime.memory;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStringNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.api.nodes.Node;
 
-@NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
-public abstract class LLVMTruffleStringAsCString extends LLVMIntrinsic {
+public abstract class LLVMAllocateStringNode extends Node {
 
-    @Child private LLVMAllocateStringNode allocString;
+    public abstract Object executeWithTarget(VirtualFrame frame, String string);
 
-    public LLVMTruffleStringAsCString(LLVMAllocateStringNode allocString) {
-        this.allocString = allocString;
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization(limit = "2", guards = "cachedId.equals(readStr.executeWithTarget(frame, id))")
-    public Object cached(VirtualFrame frame, Object id,
-                    @Cached("createReadString()") LLVMReadStringNode readStr,
-                    @Cached("readStr.executeWithTarget(frame, id)") String cachedId) {
-        return allocString.executeWithTarget(frame, cachedId);
-    }
-
-    @Specialization(replaces = "cached")
-    public Object uncached(VirtualFrame frame, Object id,
-                    @Cached("createReadString()") LLVMReadStringNode readStr) {
-        return allocString.executeWithTarget(frame, readStr.executeWithTarget(frame, id));
-    }
 }

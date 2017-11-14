@@ -37,7 +37,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -46,7 +45,6 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -97,14 +95,6 @@ public abstract class LLVMTruffleReadNString extends LLVMIntrinsic {
     public Object fallback(Object value, Object n) {
         System.err.println("Invalid arguments to \"read nstring\"-builtin.");
         throw new IllegalArgumentException();
-    }
-
-    protected ForeignToLLVM createToByteNode() {
-        return ForeignToLLVM.create(ForeignToLLVMType.I8);
-    }
-
-    protected Node createForeignReadNode() {
-        return Message.READ.createNode();
     }
 
 }

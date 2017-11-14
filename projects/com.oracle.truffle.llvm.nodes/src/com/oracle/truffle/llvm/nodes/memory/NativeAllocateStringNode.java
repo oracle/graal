@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,23 +27,25 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.interop;
+package com.oracle.truffle.llvm.nodes.memory;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStringNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
-public final class LLVMTruffleIntrinsicUtil {
+public abstract class NativeAllocateStringNode extends LLVMAllocateStringNode {
 
-    @TruffleBoundary
-    public static String readString(LLVMAddress value) {
-        byte c;
-        long ptr = value.getVal();
-        StringBuilder sb = new StringBuilder();
-        while ((c = LLVMMemory.getI8(ptr)) != 0) {
-            sb.append((char) Byte.toUnsignedInt(c));
-            ptr += Byte.BYTES;
+    @Specialization
+    public Object alloc(String s) {
+        LLVMAddress allocatedMemory = LLVMMemory.allocateMemory(s.length() + 1);
+        long currentPtr = allocatedMemory.getVal();
+        for (byte b : s.getBytes()) {
+            LLVMMemory.putI8(currentPtr, b);
+            currentPtr += 1;
         }
-        return sb.toString();
+        LLVMMemory.putI8(currentPtr, (byte) 0);
+        return allocatedMemory;
     }
+
 }

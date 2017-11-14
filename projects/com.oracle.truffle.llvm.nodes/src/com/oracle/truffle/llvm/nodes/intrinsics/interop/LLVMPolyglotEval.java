@@ -30,57 +30,43 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
 
-    @Specialization
-    @TruffleBoundary
-    public Object executeIntrinsicString(String mimeType, String code,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context) {
+    protected static CallTarget getCallTarget(String mimeType, String code, ContextReference<LLVMContext> context) {
         Source sourceObject = Source.newBuilder(code).name("<eval>").mimeType(mimeType).build();
         CallTarget callTarget = context.get().getEnv().parse(sourceObject);
-        return callTarget.call();
+        return callTarget;
     }
 
     @SuppressWarnings("unused")
-    @Specialization(limit = "2", guards = {"constantPointer(mimePointer, cachedMimePtr)", "constantPointer(srcPointer, cachedSrcPtr)"})
-    public Object executeIntrinsicCached(LLVMAddress mimePointer, LLVMAddress srcPointer,
-                    @Cached("pointerOf(mimePointer)") long cachedMimePtr,
-                    @Cached("pointerOf(srcPointer)") long cachedSrcPtr,
-                    @Cached("readString(mimePointer)") String mime,
-                    @Cached("readString(srcPointer)") String src,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context) {
-        return executeIntrinsicString(mime, src, context);
+    @Specialization(limit = "2", guards = {"mime.equals(readMime.executeWithTarget(frame, mimePointer))", "src.equals(readSrc.executeWithTarget(frame, srcPointer))"})
+    public Object doCached(VirtualFrame frame, Object mimePointer, Object srcPointer,
+                    @Cached("createReadString()") LLVMReadStringNode readMime,
+                    @Cached("createReadString()") LLVMReadStringNode readSrc,
+                    @Cached("readMime.executeWithTarget(frame, mimePointer)") String mime,
+                    @Cached("readSrc.executeWithTarget(frame, srcPointer)") String src,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> context,
+                    @Cached("getCallTarget(mime, src, context)") CallTarget callTarget) {
+        return callTarget.call();
     }
 
-    @Specialization
-    public Object executeIntrinsicUncached(LLVMAddress mimePointer, LLVMAddress srcPointer,
+    @Specialization(replaces = "doCached")
+    public Object uncached(VirtualFrame frame, Object mimePointer, Object srcPointer,
+                    @Cached("createReadString()") LLVMReadStringNode readMime,
+                    @Cached("createReadString()") LLVMReadStringNode readSrc,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context) {
-        return executeIntrinsicString(LLVMTruffleIntrinsicUtil.readString(mimePointer), LLVMTruffleIntrinsicUtil.readString(srcPointer), context);
+        return getCallTarget(readMime.executeWithTarget(frame, mimePointer), readSrc.executeWithTarget(frame, srcPointer), context).call();
     }
-
-    @Specialization
-    public Object executeIntrinsicUncached(String mime, LLVMAddress srcPointer,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context) {
-        return executeIntrinsicString(mime, LLVMTruffleIntrinsicUtil.readString(srcPointer), context);
-    }
-
-    @Specialization
-    public Object executeIntrinsicUncached(LLVMAddress mimePointer, String src,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context) {
-        return executeIntrinsicString(LLVMTruffleIntrinsicUtil.readString(mimePointer), src, context);
-    }
-
 }
