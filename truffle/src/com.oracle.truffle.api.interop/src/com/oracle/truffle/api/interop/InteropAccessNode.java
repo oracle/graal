@@ -34,7 +34,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.source.SourceSection;
 
 abstract class InteropAccessNode extends Node {
 
@@ -81,12 +80,6 @@ abstract class InteropAccessNode extends Node {
     @SuppressWarnings("unused")
     public final Object execute(TruffleObject receiver, Object arg0, Object[] arguments) throws InteropException {
         return checkInteropType(executeImpl(receiver, insertArg2(arguments, receiver, arg0)));
-    }
-
-    @SuppressWarnings("unused")
-    final SourceSection executeGetSourceSection(TruffleObject receiver, Object arg0) throws InteropException {
-        Object ret = executeImpl(receiver, new Object[]{receiver, checkInteropType(arg0)});
-        return (SourceSection) ret;
     }
 
     @Deprecated

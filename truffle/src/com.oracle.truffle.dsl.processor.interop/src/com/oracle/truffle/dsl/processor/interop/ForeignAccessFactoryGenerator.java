@@ -105,7 +105,6 @@ final class ForeignAccessFactoryGenerator {
         appendFactoryAccessNew(w);
         appendFactoryAccessKeyInfo(w);
         appendFactoryAccessKeys(w);
-        appendFactoryAccessKeyDeclaredLocation(w);
         appendFactoryAccessIsPointer(w);
         appendFactoryAccessAsPointer(w);
         appendFactoryAccessToNative(w);
@@ -272,13 +271,6 @@ final class ForeignAccessFactoryGenerator {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessKeys() {").append("\n");
         appendOptionalHandlerBody(w, Message.KEYS);
-        w.append("    }").append("\n");
-    }
-
-    private void appendFactoryAccessKeyDeclaredLocation(Writer w) throws IOException {
-        w.append("    @Override").append("\n");
-        w.append("    public CallTarget accessKeyDeclaredLocation() {").append("\n");
-        appendOptionalHandlerBody(w, Message.KEY_DECLARED_LOCATION);
         w.append("    }").append("\n");
     }
 

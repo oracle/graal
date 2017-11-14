@@ -512,7 +512,6 @@ public class ProxyTest {
             assertHostError(Message.KEY_INFO, proxyInner, "");
             assertHostError(Message.KEY_INFO, proxyInner, 42);
             assertUnsupported(Message.TO_NATIVE, proxyInner);
-            assertUnsupported(Message.KEY_DECLARED_LOCATION, proxyInner);
             assertEquals(true, Message.IS_BOXED, proxyInner);
             assertEquals(true, Message.IS_EXECUTABLE, proxyInner);
             assertEquals(true, Message.IS_INSTANTIABLE, proxyInner);

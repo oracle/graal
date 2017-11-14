@@ -156,10 +156,5 @@ public class ForeignAccessToStringTest {
         public CallTarget accessHasKeys() {
             return null;
         }
-
-        @Override
-        public CallTarget accessKeyDeclaredLocation() {
-            return null;
-        }
     }
 }

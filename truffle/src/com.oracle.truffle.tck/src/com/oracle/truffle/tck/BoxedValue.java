@@ -147,9 +147,4 @@ final class BoxedValue implements TruffleObject, ForeignAccess.StandardFactory {
         return null;
     }
 
-    @Override
-    public CallTarget accessKeyDeclaredLocation() {
-        return null;
-    }
-
 }

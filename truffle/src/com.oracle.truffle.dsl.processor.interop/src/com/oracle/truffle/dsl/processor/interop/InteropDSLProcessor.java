@@ -60,7 +60,7 @@ public final class InteropDSLProcessor extends AbstractProcessor {
 
     static final List<Message> KNOWN_MESSAGES = Arrays.asList(new Message[]{Message.READ, Message.WRITE, Message.IS_NULL, Message.IS_EXECUTABLE,
                     Message.IS_INSTANTIABLE, Message.IS_BOXED, Message.UNBOX, Message.HAS_SIZE, Message.GET_SIZE, Message.KEY_INFO, Message.HAS_KEYS, Message.KEYS,
-                    Message.KEY_DECLARED_LOCATION, Message.IS_POINTER, Message.AS_POINTER, Message.TO_NATIVE,
+                    Message.IS_POINTER, Message.AS_POINTER, Message.TO_NATIVE,
                     Message.createExecute(0), Message.createInvoke(0), Message.createNew(0)});
 
     @Override

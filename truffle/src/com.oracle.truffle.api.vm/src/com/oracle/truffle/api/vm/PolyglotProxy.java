@@ -473,11 +473,6 @@ final class PolyglotProxy {
             return Truffle.getRuntime().createCallTarget(new ProxyKeyInfoNode());
         }
 
-        @Override
-        public CallTarget accessKeyDeclaredLocation() {
-            return null;
-        }
-
         public CallTarget accessIsNull() {
             return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
         }

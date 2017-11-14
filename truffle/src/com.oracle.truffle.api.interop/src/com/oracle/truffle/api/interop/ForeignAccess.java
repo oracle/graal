@@ -35,7 +35,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.impl.ReadOnlyArrayList;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Encapsulates types of access to {@link TruffleObject}. If you want to expose your own objects to
@@ -735,36 +734,6 @@ public final class ForeignAccess {
     }
 
     /**
-     * Sends a {@link Message#KEY_DECLARED_LOCATION KEY_DECLARED_LOCATION message} to the foreign
-     * receiver object by executing the <code>keyDeclaredLocationNode</code>.
-     *
-     * @param keyDeclaredLocationNode the createNode created by {@link Message#createNode()}
-     * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
-     *            method
-     * @param identifier name of the property to find the declared location of
-     * @return the {@link SourceSection}, or <code>null</code> when no declared location was found.
-     * @throws ClassCastException if the createNode has not been created by
-     *             {@link Message#createNode()} method.
-     * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
-     *             {@link Message#createNode() message represented} by
-     *             <code>keyDeclaredLocationNode</code>
-     * @throws UnknownIdentifierException if the <code>receiver</code> does not allow reading a
-     *             property for the given <code>identifier</code>
-     * @since 0.30
-     */
-    public static SourceSection sendKeyDeclaredLocation(Node keyDeclaredLocationNode, TruffleObject receiver, Object identifier) throws UnknownIdentifierException, UnsupportedMessageException {
-        try {
-            return ((InteropAccessNode) keyDeclaredLocationNode).executeGetSourceSection(receiver, identifier);
-        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw e;
-        } catch (InteropException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("Unexpected exception caught.", e);
-        }
-    }
-
-    /**
      * Read only access to foreign call arguments inside of a frame.
      *
      * @param frame the frame that was called via
@@ -1072,17 +1041,6 @@ public final class ForeignAccess {
         }
 
         /**
-         * Handles {@link Message#KEY_DECLARED_LOCATION} message.
-         *
-         * @return call target to handle the message or <code>null</code> if this message is not
-         *         supported
-         * @since 0.30
-         */
-        default CallTarget accessKeyDeclaredLocation() {
-            return null;
-        }
-
-        /**
          * Handles request for access to a non-standard (unknown) message.
          *
          * @param unknown the message
@@ -1334,8 +1292,6 @@ public final class ForeignAccess {
                         return factory.accessAsPointer();
                     case ToNative.HASH:
                         return factory.accessToNative();
-                    case KeyDeclaredLocation.HASH:
-                        return factory.accessKeyDeclaredLocation();
                 }
             }
             return factory.accessMessage(msg);

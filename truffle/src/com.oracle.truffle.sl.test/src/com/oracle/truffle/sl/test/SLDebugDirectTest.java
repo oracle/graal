@@ -569,11 +569,6 @@ public class SLDebugDirectTest {
             throw new UnsupportedOperationException("Not supported yet.");
         }
 
-        @Override
-        public CallTarget accessKeyDeclaredLocation() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
     }
 
     private static class ExecNotifyReadNode extends RootNode {

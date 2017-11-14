@@ -33,7 +33,6 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.ForeignAccess.Factory;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Inter-operability is based on sending messages. Standard messages are defined as as constants
@@ -605,32 +604,6 @@ public abstract class Message {
     public static final Message TO_NATIVE = ToNative.INSTANCE;
 
     /**
-     * Message to retrieve {@link SourceSection} of declared location of a particular key (a
-     * property name). The returned value is not an "interop value", but a {@link SourceSection}
-     * representing the code location of the property declaration.
-     * <p>
-     * If the object does not support the {@link #KEY_DECLARED_LOCATION} message, an
-     * {@link UnsupportedMessageException} has to be thrown.
-     * <p>
-     * The code that wants to send this message should use:
-     *
-     * <pre>
-     * {@link ForeignAccess}.{@link ForeignAccess#sendKeyDeclaredLocation(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object) sendKeyDeclaredLocation}(
-     *   {@link Message#KEY_DECLARED_LOCATION}.{@link Message#createNode() createNode()},  receiver, nameOfTheProperty
-     * );
-     * </pre>
-     *
-     * Where <code>receiver</code> is the {@link TruffleObject foreign object} to access and
-     * <code>nameOfTheProperty</code> is the name (or index) of its property.
-     * <p>
-     * To achieve good performance it is essential to cache/keep reference to the
-     * {@link Message#createNode() created node}.
-     *
-     * @since 0.30
-     */
-    public static final Message KEY_DECLARED_LOCATION = KeyDeclaredLocation.INSTANCE;
-
-    /**
      * Compares types of two messages. Messages are encouraged to implement this method. All
      * standard ones ({@link #IS_NULL}, {@link #READ}, etc.) do so. Messages obtained via the same
      * {@link #createExecute(int) method} are equal, messages obtained by different methods or
@@ -722,9 +695,6 @@ public abstract class Message {
         if (Message.TO_NATIVE == message) {
             return "TO_NATIVE"; // NOI18N
         }
-        if (Message.KEY_DECLARED_LOCATION == message) {
-            return "KEY_DECLARED_LOCATION"; // NOI18N
-        }
         if (message instanceof Execute) {
             return ((Execute) message).name();
         }
@@ -773,8 +743,6 @@ public abstract class Message {
                 return Message.AS_POINTER;
             case "TO_NATIVE":
                 return Message.TO_NATIVE;
-            case "KEY_DECLARED_LOCATION":
-                return Message.KEY_DECLARED_LOCATION;
             case "EXECUTE":
                 return Message.createExecute(0);
             case "NEW":

@@ -163,11 +163,6 @@ public class BoxedStringTest implements TruffleObject, ForeignAccess.StandardFac
     }
 
     @Override
-    public CallTarget accessKeyDeclaredLocation() {
-        return null;
-    }
-
-    @Override
     public CallTarget accessIsPointer() {
         return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
     }

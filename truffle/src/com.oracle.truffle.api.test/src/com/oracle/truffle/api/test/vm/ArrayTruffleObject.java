@@ -136,11 +136,6 @@ final class ArrayTruffleObject implements TruffleObject, ForeignAccess.StandardF
     }
 
     @Override
-    public CallTarget accessKeyDeclaredLocation() {
-        return null;
-    }
-
-    @Override
     public CallTarget accessMessage(Message unknown) {
         return null;
     }
