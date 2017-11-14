@@ -166,11 +166,12 @@ public abstract class Type {
         return FrameSlotKind.Object;
     }
 
-    public static int getPadding(int offset, int alignment) {
-        return alignment == 0 ? 0 : (alignment - (offset % alignment)) % alignment;
+    public static int getPadding(long offset, int alignment) {
+        assert (alignment == 0 ? 0 : (alignment - (offset % alignment)) % alignment) == (int) (alignment == 0 ? 0 : (alignment - (offset % alignment)) % alignment);
+        return (int) (alignment == 0 ? 0 : (alignment - (offset % alignment)) % alignment);
     }
 
-    public static int getPadding(int offset, Type type, DataSpecConverter targetDataLayout) {
+    public static int getPadding(long offset, Type type, DataSpecConverter targetDataLayout) {
         final int alignment = type.getAlignment(targetDataLayout);
         return getPadding(offset, alignment);
     }

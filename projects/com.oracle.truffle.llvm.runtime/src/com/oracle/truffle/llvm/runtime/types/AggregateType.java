@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.runtime.types;
 public abstract class AggregateType extends Type {
     public abstract int getNumberOfElements();
 
-    public abstract Type getElementType(int index);
+    public abstract Type getElementType(long index);
 
-    public abstract int getOffsetOf(int index, DataSpecConverter targetDataLayout);
+    public abstract long getOffsetOf(long index, DataSpecConverter targetDataLayout);
 }

@@ -1115,7 +1115,7 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createTypedElementPointer(LLVMParserRuntime runtime, LLVMExpressionNode aggregateAddress, LLVMExpressionNode index, int indexedTypeLength,
+    public LLVMExpressionNode createTypedElementPointer(LLVMParserRuntime runtime, LLVMExpressionNode aggregateAddress, LLVMExpressionNode index, long indexedTypeLength,
                     Type targetType) {
         return LLVMAddressGetElementPtrNodeGen.create(aggregateAddress, index, indexedTypeLength, targetType);
     }
@@ -1356,7 +1356,7 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createInsertValue(LLVMParserRuntime runtime, LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, int offset,
+    public LLVMExpressionNode createInsertValue(LLVMParserRuntime runtime, LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, long offset,
                     LLVMExpressionNode valueToInsert, Type llvmType) {
         LLVMStoreNode store;
         if (llvmType instanceof PrimitiveType) {
@@ -1809,7 +1809,7 @@ public class BasicNodeFactory implements NodeFactory {
         }
     }
 
-    private static int getOverflowFieldOffset(LLVMParserRuntime runtime, FunctionDeclaration declaration) {
+    private static long getOverflowFieldOffset(LLVMParserRuntime runtime, FunctionDeclaration declaration) {
         return runtime.getContext().getIndexOffset(1, (AggregateType) declaration.getType().getReturnType());
     }
 

@@ -69,8 +69,8 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
     static final class PanicLocType {
 
         private final StrSliceType strslice;
-        private final int offsetFilename;
-        private final int offsetLineNr;
+        private final long offsetFilename;
+        private final long offsetLineNr;
 
         private PanicLocType(DataSpecConverter dataLayout, Type type, StrSliceType strslice) {
             this.strslice = strslice;
@@ -97,7 +97,7 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
 
     private static final class StrSliceType {
 
-        private final int lengthOffset;
+        private final long lengthOffset;
         private final Type type;
 
         private StrSliceType(DataSpecConverter dataLayout, Type type) {

@@ -83,12 +83,12 @@ public final class PointerType extends AggregateType {
     }
 
     @Override
-    public int getOffsetOf(int index, DataSpecConverter targetDataLayout) {
+    public long getOffsetOf(long index, DataSpecConverter targetDataLayout) {
         return getPointeeType().getSize(targetDataLayout) * index;
     }
 
     @Override
-    public Type getElementType(int index) {
+    public Type getElementType(long index) {
         return getPointeeType();
     }
 
