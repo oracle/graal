@@ -210,7 +210,7 @@ def _unittest_config_participant_tck(config):
         seenSuites.add(suite.name)
         suite.visit_imports(import_visitor, predicate=predicate, collector=collector, javaProperties=javaProperties, seenSuites=seenSuites)
         for dist in suite.dists:
-            if dist.isJARDistribution() and predicate(dist.path):
+            if dist.isJARDistribution() and exists(dist.path) and predicate(dist.path):
                 for distCpEntry in mx.classpath_entries(dist):
                     if hasattr(distCpEntry, "getJavaProperties"):
                         for key, value in dist.getJavaProperties().items():
