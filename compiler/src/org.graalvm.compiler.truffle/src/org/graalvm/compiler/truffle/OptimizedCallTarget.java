@@ -109,6 +109,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private volatile Assumption nodeRewritingAssumption;
     private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, Assumption> NODE_REWRITING_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,
                     Assumption.class, "nodeRewritingAssumption");
+    private OptimizedDirectCallNode callSiteForSplit;
 
     public OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         super(rootNode.toString());
@@ -589,6 +590,17 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         // Furthermore, no other thread will reinstall the call target until the current thread
         // completes.
         UnsafeAccess.UNSAFE.compareAndSwapLong(this, ENTRY_POINT_OFFSET, seenEntryPoint, seenEntryPoint | 1);
+    }
+
+    public void setCallSiteForSplit(OptimizedDirectCallNode callSiteForSplit) {
+        if (sourceCallTarget == null) {
+            throw new IllegalStateException("Attempting to set a split call site on a target that is not a split!");
+        }
+        this.callSiteForSplit = callSiteForSplit;
+    }
+
+    public OptimizedDirectCallNode getCallSiteForSplit() {
+        return callSiteForSplit;
     }
 
     private static final class NonTrivialNodeCountVisitor implements NodeVisitor {

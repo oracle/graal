@@ -92,11 +92,29 @@ public final class DefaultTruffleSplittingStrategy implements TruffleSplittingSt
             return false;
         }
 
+        // Disable splitting if it will cause a split-only recursion
+        if (splittingWillCauseSplitOnlyRecursion(call)) {
+            return false;
+        }
+
         // max one child call and callCount > 2 and kind of small number of nodes
         if (isMaxSingleCall(call)) {
             return true;
         }
         return countPolymorphic(call) >= 1;
+    }
+
+    private static boolean splittingWillCauseSplitOnlyRecursion(OptimizedDirectCallNode call) {
+        final OptimizedCallTarget splitCandidateTarget = call.getCallTarget();
+
+        OptimizedCallTarget rootTarget = (OptimizedCallTarget) call.getRootNode().getCallTarget();
+        while (rootTarget.getSourceCallTarget() != null) {
+            if (rootTarget.getSourceCallTarget() == splitCandidateTarget) {
+                return true;
+            }
+            rootTarget = (OptimizedCallTarget) rootTarget.getCallSiteForSplit().getRootNode().getCallTarget();
+        }
+        return false;
     }
 
     private static boolean isMaxSingleCall(OptimizedDirectCallNode call) {
