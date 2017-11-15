@@ -84,6 +84,7 @@ public class LLVMAMD64Syscall {
     public static final int SYS_geteuid = 107;
     public static final int SYS_getegid = 108;
     public static final int SYS_getppid = 110;
+    public static final int SYS_getgroups = 115;
     public static final int SYS_arch_prctl = 158;
     public static final int SYS_gettid = 186;
     public static final int SYS_futex = 202;

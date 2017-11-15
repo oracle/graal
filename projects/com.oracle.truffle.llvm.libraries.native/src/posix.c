@@ -301,6 +301,11 @@ int __sulong_posix_getdents64(unsigned int fd, void* dirp, unsigned int count)
 #endif
 }
 
+int __sulong_posix_getgroups(int gidsetsize, gid_t grouplist[])
+{
+	CALL(int, getgroups, gidsetsize, grouplist);
+}
+
 
 #else
 
@@ -517,6 +522,11 @@ int __sulong_posix_renameat(int oldfd, const char* old, int newfd, const char* n
 }
 
 int __sulong_posix_getdents64(unsigned int fd, void* dirp, unsigned int count)
+{
+	ERROR();
+}
+
+int __sulong_posix_getgroups(int gidsetsize, gid_t grouplist[])
 {
 	ERROR();
 }
