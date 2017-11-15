@@ -47,8 +47,6 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStringNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
@@ -196,18 +194,13 @@ public interface NodeFactory {
 
     LLVMExpressionNode createVarArgCompoundValue(LLVMParserRuntime runtime, int length, int alignment, LLVMExpressionNode parameterNode);
 
-    LLVMDebugValueProvider.Builder createDebugDeclarationBuilder();
+    LLVMExpressionNode createDebugWrite(boolean isDeclaration, LLVMExpressionNode valueRead, FrameSlot targetSlot);
 
-    LLVMDebugValueProvider.Builder createDebugValueBuilder();
+    LLVMExpressionNode createDebugFragmentWrite(boolean isDeclaration, LLVMExpressionNode valueRead, FrameSlot targetSlot, LLVMExpressionNode aggregateRead, int partIndex, int[] clearParts);
 
-    LLVMExpressionNode createDebugWrite(LLVMSourceSymbol variable, LLVMExpressionNode valueRead, FrameSlot targetSlot, LLVMDebugValueProvider.Builder valueBuilder);
+    LLVMExpressionNode createDebugFragmentInit(FrameSlot targetSlot, int[] offsets, int[] lengths);
 
-    LLVMExpressionNode createDebugFragmentWrite(LLVMSourceSymbol variable, LLVMExpressionNode valueRead, FrameSlot targetSlot, LLVMDebugValueProvider.Builder valueBuilder,
-                    LLVMExpressionNode aggregateRead, int partIndex, int[] clearParts);
-
-    LLVMExpressionNode createDebugFragmentInit(FrameSlot targetSlot, LLVMSourceSymbol variable, int[] offsets, int[] lengths);
-
-    LLVMDebugValue createGlobalVariableDebug(LLVMSourceSymbol variable, LLVMExpressionNode globalSymbol);
+    LLVMDebugValue createGlobalVariableDebug(LLVMExpressionNode globalSymbol);
 
     LLVMExpressionNode registerSourceType(FrameSlot valueSlot, LLVMSourceType type);
 

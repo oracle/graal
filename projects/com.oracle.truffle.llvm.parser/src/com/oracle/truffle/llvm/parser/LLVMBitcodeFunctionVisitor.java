@@ -120,6 +120,6 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
             offsets[i] = fragment.getOffset();
             lengths[i] = fragment.getLength();
         }
-        visitor.addInstructionUnchecked(nodeFactory.createDebugFragmentInit(targetSlot, variable.getSymbol(), offsets, lengths));
+        visitor.addInstructionUnchecked(nodeFactory.createDebugFragmentInit(targetSlot, offsets, lengths));
     }
 }

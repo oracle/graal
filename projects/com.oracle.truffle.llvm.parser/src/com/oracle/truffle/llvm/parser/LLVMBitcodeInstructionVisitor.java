@@ -90,7 +90,6 @@ import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMException;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
@@ -334,7 +333,6 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         }
 
         LLVMExpressionNode valueRead = null;
-        final LLVMDebugValueProvider.Builder builder;
         int exprIndex;
         if (isDeclaration) {
             if (valueSymbol instanceof UndefinedConstant || valueSymbol instanceof NullConstant) {
@@ -344,7 +342,6 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             }
 
             exprIndex = SourceModel.LLVM_DBG_DECLARE_EXPR_ARGINDEX;
-            builder = nodeFactory.createDebugDeclarationBuilder();
 
         } else {
             final Symbol valueOffsetSymbol = call.getArgument(LLVM_DBG_VALUE_OFFSET_INDEX);
@@ -353,10 +350,10 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             exprIndex = SourceModel.LLVM_DBG_VALUE_EXPR_ARGINDEX;
 
             if (valueOffset != null && valueOffset != 0) {
-                // TODO
+                // this is unsupported, it doesn't appear in LLVM 3.8+
+                handleNullerInfo();
+                return;
             }
-
-            builder = nodeFactory.createDebugValueBuilder();
         }
 
         if (valueRead == null) {
@@ -402,11 +399,11 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final FrameSlot targetSlot = getDebugValueSlot(var.getSymbol());
         final LLVMExpressionNode dbgWrite;
         if (partIndex < 0) {
-            dbgWrite = nodeFactory.createDebugWrite(var.getSymbol(), valueRead, targetSlot, builder);
+            dbgWrite = nodeFactory.createDebugWrite(isDeclaration, valueRead, targetSlot);
 
         } else {
             final LLVMExpressionNode aggregateRead = nodeFactory.createFrameRead(runtime, MetaType.DEBUG, targetSlot);
-            dbgWrite = nodeFactory.createDebugFragmentWrite(var.getSymbol(), valueRead, targetSlot, builder, aggregateRead, partIndex, clearParts);
+            dbgWrite = nodeFactory.createDebugFragmentWrite(isDeclaration, valueRead, targetSlot, aggregateRead, partIndex, clearParts);
         }
 
         addInstructionUnchecked(dbgWrite);

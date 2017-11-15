@@ -29,33 +29,94 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChild(value = "valueRead", type = LLVMExpressionNode.class)
 public abstract class LLVMDebugFrameWriteNode extends LLVMExpressionNode {
 
     private final FrameSlot frameSlot;
 
-    private final LLVMSourceSymbol variable;
-    private final LLVMDebugValueProvider.Builder valueProcessor;
-
-    protected LLVMDebugFrameWriteNode(FrameSlot frameSlot, LLVMSourceSymbol variable, LLVMDebugValueProvider.Builder valueProcessor) {
+    protected LLVMDebugFrameWriteNode(FrameSlot frameSlot) {
         this.frameSlot = frameSlot;
-        this.variable = variable;
-        this.valueProcessor = valueProcessor;
     }
 
-    @Specialization
-    public Object write(VirtualFrame frame, Object llvmValue) {
-        final LLVMDebugValue value = LLVMDebugValue.createValue(variable, valueProcessor, llvmValue);
-        frame.setObject(frameSlot, value);
-        return null;
+    public FrameSlot getFrameSlot() {
+        return frameSlot;
+    }
+
+    @NodeChild(value = "valueRead", type = LLVMExpressionNode.class)
+    public abstract static class WriteNode extends LLVMDebugFrameWriteNode {
+
+        private final LLVMDebugValueProvider.Builder valueProcessor;
+
+        protected WriteNode(FrameSlot frameSlot, LLVMDebugValueProvider.Builder valueProcessor) {
+            super(frameSlot);
+            this.valueProcessor = valueProcessor;
+        }
+
+        @Specialization
+        public Object write(VirtualFrame frame, Object llvmValue) {
+            final LLVMDebugValue value = LLVMDebugValue.create(valueProcessor, llvmValue);
+            frame.setObject(getFrameSlot(), value);
+            return null;
+        }
+    }
+
+    public abstract static class AggregateInitNode extends LLVMDebugFrameWriteNode {
+
+        @CompilerDirectives.CompilationFinal(dimensions = 1) private int[] offsets;
+        @CompilerDirectives.CompilationFinal(dimensions = 1) private int[] lengths;
+
+        protected AggregateInitNode(FrameSlot frameSlot, int[] offsets, int[] lengths) {
+            super(frameSlot);
+            this.offsets = offsets;
+            this.lengths = lengths;
+        }
+
+        @Specialization
+        public Object init(VirtualFrame frame) {
+            frame.setObject(getFrameSlot(), new LLVMDebugAggregateValue(offsets, lengths));
+            return null;
+        }
+    }
+
+    @NodeChildren({
+                    @NodeChild(value = "aggregateRead", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "llvmValueRead", type = LLVMExpressionNode.class)
+    })
+    public abstract static class AggregateWriteNode extends LLVMDebugFrameWriteNode {
+
+        private final int partIndex;
+        private final LLVMDebugValueProvider.Builder builder;
+        @CompilerDirectives.CompilationFinal(dimensions = 1) private final int[] clearIndices;
+
+        protected AggregateWriteNode(FrameSlot frameSlot, int partIndex, LLVMDebugValueProvider.Builder builder, int[] clearIndices) {
+            super(frameSlot);
+            this.partIndex = partIndex;
+            this.builder = builder;
+            this.clearIndices = clearIndices;
+        }
+
+        @Specialization
+        public Object setPart(LLVMDebugAggregateValue aggregate, Object partLLVMValue) {
+            aggregate.setPart(partIndex, builder, partLLVMValue);
+            clearIndices(aggregate);
+            return null;
+        }
+
+        @ExplodeLoop
+        private void clearIndices(LLVMDebugAggregateValue value) {
+            for (int i : clearIndices) {
+                value.clear(i);
+            }
+        }
     }
 }

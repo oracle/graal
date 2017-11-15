@@ -45,8 +45,8 @@ public final class LLVMDebugAggregateValue extends LLVMDebugValue {
     private final LLVMDebugValueProvider.Builder[] partBuilders;
     private final Object[] partValues;
 
-    public LLVMDebugAggregateValue(LLVMSourceSymbol variable, int[] offsets, int[] lengths) {
-        super(variable);
+    public LLVMDebugAggregateValue(int[] offsets, int[] lengths) {
+        super();
         this.offsets = offsets;
         this.lengths = lengths;
         this.partBuilders = new LLVMDebugValueProvider.Builder[offsets.length];
@@ -65,9 +65,9 @@ public final class LLVMDebugAggregateValue extends LLVMDebugValue {
 
     @Override
     @TruffleBoundary
-    public LLVMDebugObject getValue() {
+    public LLVMDebugObject getValue(LLVMSourceSymbol symbol) {
         final LLVMDebugValueProvider provider = new FragmentValueProvider(offsets, lengths, partBuilders, partValues);
-        return LLVMDebugObject.instantiate(getVariable().getType(), 0, provider, getVariable().getLocation());
+        return LLVMDebugObject.instantiate(symbol.getType(), 0, provider, symbol.getLocation());
     }
 
     private static final class FragmentValueProvider implements LLVMDebugValueProvider {
