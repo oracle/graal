@@ -24,6 +24,7 @@ package org.graalvm.compiler.nodes.memory.address;
 
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -31,6 +32,7 @@ import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
@@ -58,6 +60,10 @@ public class OffsetAddressNode extends AddressNode implements Canonicalizable {
                         offset != null && IntegerStamp.getBits(offset.stamp()) == 64 : "both values must have 64 bits";
     }
 
+    public static OffsetAddressNode create(ValueNode base) {
+        return new OffsetAddressNode(base, ConstantNode.forIntegerBits(PrimitiveStamp.getBits(base.stamp()), 0));
+    }
+
     @Override
     public ValueNode getBase() {
         return base;
@@ -81,10 +87,7 @@ public class OffsetAddressNode extends AddressNode implements Canonicalizable {
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (base instanceof RawAddressNode) {
-            // The RawAddressNode is redundant, just directly use its input as base.
-            return new OffsetAddressNode(((RawAddressNode) base).getAddress(), offset);
-        } else if (base instanceof OffsetAddressNode) {
+        if (base instanceof OffsetAddressNode) {
             // Rewrite (&base[offset1])[offset2] to base[offset1 + offset2].
             OffsetAddressNode b = (OffsetAddressNode) base;
             return new OffsetAddressNode(b.getBase(), BinaryArithmeticNode.add(b.getOffset(), this.getOffset()));

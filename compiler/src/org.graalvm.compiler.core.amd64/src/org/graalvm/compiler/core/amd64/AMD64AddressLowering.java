@@ -40,11 +40,6 @@ import jdk.vm.ci.meta.JavaConstant;
 
 public class AMD64AddressLowering extends AddressLowering {
     @Override
-    public AddressNode lower(ValueNode address) {
-        return lower(address, null);
-    }
-
-    @Override
     public AddressNode lower(ValueNode base, ValueNode offset) {
         AMD64AddressNode ret = new AMD64AddressNode(base, offset);
         StructuredGraph graph = base.graph();
