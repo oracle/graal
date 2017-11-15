@@ -65,7 +65,7 @@ matrix:
     jdk: oraclejdk8
   - env: TEST_COMMAND='mx gate --tags sulongBasic' COMPILE_COMMAND='mx build'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx gate --tags misc' COMPILE_COMMAND='mx build'
+  - env: TEST_COMMAND='mx gate --tags sulongMisc' COMPILE_COMMAND='mx build'
     jdk: oraclejdk8
   - env: TEST_COMMAND='mx gate --tags nwcc' COMPILE_COMMAND='mx build'
     jdk: oraclejdk8
