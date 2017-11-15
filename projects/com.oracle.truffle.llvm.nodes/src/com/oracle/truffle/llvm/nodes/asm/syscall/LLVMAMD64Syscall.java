@@ -37,6 +37,7 @@ public class LLVMAMD64Syscall {
     public static final int SYS_stat = 4;
     public static final int SYS_fstat = 5;
     public static final int SYS_lstat = 6;
+    public static final int SYS_poll = 7;
     public static final int SYS_lseek = 8;
     public static final int SYS_mmap = 9;
     public static final int SYS_munmap = 11;

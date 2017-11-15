@@ -33,6 +33,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <poll.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
@@ -338,7 +339,10 @@ int __sulong_posix_fstatfs(int fd, struct statfs* buf)
 #endif
 }
 
-
+int __sulong_posix_poll(struct pollfd* fds, nfds_t nfds, int timeout)
+{
+	CALL(int, poll, fds, nfds, timeout);
+}
 
 #else
 
@@ -575,6 +579,11 @@ int __sulong_posix_statfs(const char* path, struct statfs* buf)
 }
 
 int __sulong_posix_fstatfs(int fd, struct statfs* buf)
+{
+	ERROR();
+}
+
+int __sulong_posix_poll(struct pollfd* fds, nfds_t nfds, int timeout)
 {
 	ERROR();
 }

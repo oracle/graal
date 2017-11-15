@@ -66,6 +66,8 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                 return LLVMAMD64SyscallFstatNodeGen.create();
             case LLVMAMD64Syscall.SYS_lstat:
                 return LLVMAMD64SyscallLstatNodeGen.create();
+            case LLVMAMD64Syscall.SYS_poll:
+                return LLVMAMD64SyscallPollNodeGen.create();
             case LLVMAMD64Syscall.SYS_lseek:
                 return new LLVMAMD64SyscallLseekNode();
             case LLVMAMD64Syscall.SYS_mmap:
