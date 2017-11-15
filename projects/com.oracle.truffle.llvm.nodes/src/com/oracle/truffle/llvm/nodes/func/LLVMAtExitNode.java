@@ -35,12 +35,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext.DestructorStackElement;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 public final class LLVMAtExitNode extends LLVMExpressionNode {
 
@@ -48,13 +47,13 @@ public final class LLVMAtExitNode extends LLVMExpressionNode {
     @Child private LLVMExpressionNode destructor;
     @Child private LLVMExpressionNode thiz;
     @Child private LLVMExpressionNode dsoHandle;
-    @Child private LLVMForceLLVMAddressNode forceToAddress;
+    @Child private LLVMToNativeNode forceToAddress;
 
     public LLVMAtExitNode(LLVMExpressionNode destructor, LLVMExpressionNode thiz, LLVMExpressionNode dsoHandle) {
         this.destructor = destructor;
         this.thiz = thiz;
         this.dsoHandle = dsoHandle;
-        this.forceToAddress = LLVMForceLLVMAddressNodeGen.create();
+        this.forceToAddress = createToNativeNode();
     }
 
     public LinkedList<DestructorStackElement> getDestructorStack() {

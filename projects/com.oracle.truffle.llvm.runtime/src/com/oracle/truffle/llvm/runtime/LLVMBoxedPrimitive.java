@@ -80,7 +80,7 @@ public final class LLVMBoxedPrimitive implements LLVMObjectNativeLibrary.Provide
                 toLLVM = ForeignToLLVM.create(ForeignToLLVMType.I64);
             }
             LLVMBoxedPrimitive boxed = (LLVMBoxedPrimitive) obj;
-            return (long) toLLVM.executeWithTarget(boxed.getValue());
+            return (long) toLLVM.executeWithTarget(frame, boxed.getValue());
         }
 
         @Override

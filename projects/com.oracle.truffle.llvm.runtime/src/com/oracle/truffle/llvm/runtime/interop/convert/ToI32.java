@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
@@ -40,6 +41,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 abstract class ToI32 extends ForeignToLLVM {
 
@@ -86,13 +88,13 @@ abstract class ToI32 extends ForeignToLLVM {
     }
 
     @Specialization
-    public int fromForeignPrimitive(LLVMBoxedPrimitive boxed) {
-        return recursiveConvert(boxed.getValue());
+    public int fromForeignPrimitive(VirtualFrame frame, LLVMBoxedPrimitive boxed) {
+        return recursiveConvert(frame, boxed.getValue());
     }
 
     @Specialization(guards = "notLLVM(obj)")
-    public int fromTruffleObject(TruffleObject obj) {
-        return recursiveConvert(fromForeign(obj));
+    public int fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+        return recursiveConvert(frame, fromForeign(obj));
     }
 
     @Specialization
@@ -106,8 +108,8 @@ abstract class ToI32 extends ForeignToLLVM {
     }
 
     @Specialization
-    public int fromLLVMFunctionDescriptor(LLVMFunctionDescriptor fd) {
-        return (int) fd.getFunctionPointer();
+    public int fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+        return (int) toNative.executeWithTarget(frame, fd).getVal();
     }
 
     @Specialization
@@ -115,12 +117,12 @@ abstract class ToI32 extends ForeignToLLVM {
         return (int) access.getNativeLocation(shared.getDescriptor()).getVal();
     }
 
-    private int recursiveConvert(Object o) {
+    private int recursiveConvert(VirtualFrame frame, Object o) {
         if (toI32 == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toI32 = ToI32NodeGen.create();
         }
-        return (int) toI32.executeWithTarget(o);
+        return (int) toI32.executeWithTarget(frame, o);
     }
 
     @TruffleBoundary
@@ -134,7 +136,7 @@ abstract class ToI32 extends ForeignToLLVM {
         } else if (value instanceof String) {
             return thiz.getSingleStringCharacter((String) value);
         } else if (value instanceof LLVMFunctionDescriptor) {
-            return (int) ((LLVMFunctionDescriptor) value).getFunctionPointer();
+            return (int) ((LLVMFunctionDescriptor) value).toNative().asPointer();
         } else if (value instanceof LLVMBoxedPrimitive) {
             return slowPathPrimitiveConvert(thiz, ((LLVMBoxedPrimitive) value).getValue());
         } else if (value instanceof LLVMTruffleAddress) {

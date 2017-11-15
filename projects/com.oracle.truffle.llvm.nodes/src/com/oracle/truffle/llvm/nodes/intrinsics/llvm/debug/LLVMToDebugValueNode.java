@@ -33,7 +33,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
@@ -101,8 +101,8 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
     }
 
     @Specialization
-    public LLVMDebugValueProvider fromFunctionHandle(LLVMFunctionHandle value) {
-        return new LLVMConstantValueProvider.Function(value, getContextReference().get());
+    public LLVMDebugValueProvider fromFunctionHandle(LLVMFunctionDescriptor value) {
+        return new LLVMConstantValueProvider.Function(value);
     }
 
     @Specialization

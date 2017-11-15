@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
@@ -40,6 +41,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 abstract class ToI16 extends ForeignToLLVM {
 
@@ -86,13 +88,13 @@ abstract class ToI16 extends ForeignToLLVM {
     }
 
     @Specialization
-    public short fromForeignPrimitive(LLVMBoxedPrimitive boxed) {
-        return recursiveConvert(boxed.getValue());
+    public short fromForeignPrimitive(VirtualFrame frame, LLVMBoxedPrimitive boxed) {
+        return recursiveConvert(frame, boxed.getValue());
     }
 
     @Specialization(guards = "notLLVM(obj)")
-    public short fromTruffleObject(TruffleObject obj) {
-        return recursiveConvert(fromForeign(obj));
+    public short fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+        return recursiveConvert(frame, fromForeign(obj));
     }
 
     @Specialization
@@ -101,8 +103,8 @@ abstract class ToI16 extends ForeignToLLVM {
     }
 
     @Specialization
-    public short fromLLVMFunctionDescriptor(LLVMFunctionDescriptor fd) {
-        return (short) fd.getFunctionPointer();
+    public short fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+        return (short) toNative.executeWithTarget(frame, fd).getVal();
     }
 
     @Specialization
@@ -115,12 +117,12 @@ abstract class ToI16 extends ForeignToLLVM {
         return (short) access.getNativeLocation(shared.getDescriptor()).getVal();
     }
 
-    private short recursiveConvert(Object o) {
+    private short recursiveConvert(VirtualFrame frame, Object o) {
         if (toI16 == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toI16 = ToI16NodeGen.create();
         }
-        return (short) toI16.executeWithTarget(o);
+        return (short) toI16.executeWithTarget(frame, o);
     }
 
     @TruffleBoundary
@@ -134,7 +136,7 @@ abstract class ToI16 extends ForeignToLLVM {
         } else if (value instanceof String) {
             return (short) thiz.getSingleStringCharacter((String) value);
         } else if (value instanceof LLVMFunctionDescriptor) {
-            return (short) ((LLVMFunctionDescriptor) value).getFunctionPointer();
+            return (short) ((LLVMFunctionDescriptor) value).toNative().asPointer();
         } else if (value instanceof LLVMBoxedPrimitive) {
             return slowPathPrimitiveConvert(thiz, ((LLVMBoxedPrimitive) value).getValue());
         } else if (value instanceof LLVMTruffleAddress) {

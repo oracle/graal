@@ -171,7 +171,7 @@ public abstract class LLVMObjectAccessFactory {
         @Override
         public Object executeRead(VirtualFrame frame, Object obj, Object identifier, long offset) throws InteropException {
             Object foreign = ForeignAccess.sendRead(read, (TruffleObject) obj, identifier);
-            return toLLVM.executeWithTarget(foreign);
+            return toLLVM.executeWithTarget(frame, foreign);
         }
     }
 

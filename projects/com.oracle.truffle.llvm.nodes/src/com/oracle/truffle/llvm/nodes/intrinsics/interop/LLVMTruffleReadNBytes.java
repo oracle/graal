@@ -36,6 +36,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -67,7 +68,7 @@ public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
     }
 
     @Specialization
-    public Object interop(LLVMTruffleObject objectWithOffset, int n,
+    public Object interop(VirtualFrame frame, LLVMTruffleObject objectWithOffset, int n,
                     @Cached("createForeignReadNode()") Node foreignRead,
                     @Cached("createToByteNode()") ForeignToLLVM toLLVM) {
         long offset = objectWithOffset.getOffset();
@@ -81,7 +82,7 @@ public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(e);
             }
-            chars[i] = (byte) toLLVM.executeWithTarget(rawValue);
+            chars[i] = (byte) toLLVM.executeWithTarget(frame, rawValue);
         }
         return new LLVMTruffleObject(JavaInterop.asTruffleObject(chars), new PointerType(PrimitiveType.I8));
     }

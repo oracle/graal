@@ -95,13 +95,13 @@ public final class LLVMContext {
     private final ThreadLocal<LLVMAddress> clearChildTid = ThreadLocal.withInitial(LLVMAddress::nullPointer);
 
     // #define SIG_DFL ((__sighandler_t) 0) /* Default action. */
-    private final LLVMFunction sigDfl;
+    private final LLVMAddress sigDfl;
 
     // # define SIG_IGN ((__sighandler_t) 1) /* Ignore signal. */
-    private final LLVMFunction sigIgn;
+    private final LLVMAddress sigIgn;
 
     // #define SIG_ERR ((__sighandler_t) -1) /* Error return. */
-    private final LLVMFunction sigErr;
+    private final LLVMAddress sigErr;
 
     public static final class DestructorStackElement {
         private final LLVMFunctionDescriptor destructor;
@@ -125,8 +125,8 @@ public final class LLVMContext {
         private int currentFunctionIndex = 0;
         private final HashMap<LLVMAddress, LLVMFunctionDescriptor> functionDescriptors = new HashMap<>();
 
-        synchronized LLVMFunctionDescriptor getDescriptor(LLVMFunctionHandle handle) {
-            return functionDescriptors.get(LLVMAddress.fromLong(handle.getFunctionPointer()));
+        synchronized LLVMFunctionDescriptor getDescriptor(LLVMAddress pointer) {
+            return functionDescriptors.get(pointer);
         }
 
         synchronized void register(LLVMAddress pointer, LLVMFunctionDescriptor desc) {
@@ -150,9 +150,9 @@ public final class LLVMContext {
 
         this.nativeCallStatistics = SulongEngineOption.isTrue(env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new HashMap<>() : null;
         this.threadingStack = new LLVMThreadingStack(env.getOptions().get(SulongEngineOption.STACK_SIZE_KB));
-        this.sigDfl = LLVMFunctionHandle.createHandle(0);
-        this.sigIgn = LLVMFunctionHandle.createHandle(1);
-        this.sigErr = LLVMFunctionHandle.createHandle(-1);
+        this.sigDfl = LLVMAddress.fromLong(0);
+        this.sigIgn = LLVMAddress.fromLong(1);
+        this.sigErr = LLVMAddress.fromLong(-1);
         this.toNative = new IdentityHashMap<>();
         this.toManaged = new HashMap<>();
         this.handlesLock = new Object();
@@ -281,7 +281,7 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public LLVMFunctionDescriptor getFunctionDescriptor(LLVMFunctionHandle handle) {
+    public LLVMFunctionDescriptor getFunctionDescriptor(LLVMAddress handle) {
         return functionPointerRegistry.getDescriptor(handle);
     }
 
@@ -295,15 +295,15 @@ public final class LLVMContext {
         functionPointerRegistry.register(address, descriptor);
     }
 
-    public LLVMFunction getSigDfl() {
+    public LLVMAddress getSigDfl() {
         return sigDfl;
     }
 
-    public LLVMFunction getSigIgn() {
+    public LLVMAddress getSigIgn() {
         return sigIgn;
     }
 
-    public LLVMFunction getSigErr() {
+    public LLVMAddress getSigErr() {
         return sigErr;
     }
 

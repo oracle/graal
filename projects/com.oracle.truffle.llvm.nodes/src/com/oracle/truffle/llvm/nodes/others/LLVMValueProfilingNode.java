@@ -38,8 +38,6 @@ import com.oracle.truffle.api.profiles.FloatValueProfile;
 import com.oracle.truffle.api.profiles.IntValueProfile;
 import com.oracle.truffle.api.profiles.LongValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.profiling.BooleanValueProfile;
 import com.oracle.truffle.llvm.runtime.profiling.ShortValueProfile;
@@ -130,11 +128,6 @@ public abstract class LLVMValueProfilingNode extends LLVMExpressionNode {
         @Specialization
         public LLVMAddress executeAddress(LLVMAddress value, @Cached("createIdentityProfile()") LongValueProfile profile) {
             return LLVMAddress.fromLong(profile.profile(value.getVal()));
-        }
-
-        @Specialization
-        public LLVMFunction executeFunction(LLVMFunctionHandle value, @Cached("createIdentityProfile()") LongValueProfile profile) {
-            return LLVMFunctionHandle.createHandle(profile.profile(value.getFunctionPointer()));
         }
 
         @Specialization

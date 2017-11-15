@@ -37,7 +37,6 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @SuppressWarnings("unused")
@@ -56,7 +55,7 @@ public abstract class LLVMTruffleAddressToFunction extends LLVMIntrinsic {
     }
 
     protected static LLVMFunctionDescriptor getDescriptor(LLVMAddress value, ContextReference<LLVMContext> cachedContext) {
-        return cachedContext.get().getFunctionDescriptor(LLVMFunctionHandle.createHandle(value.getVal()));
+        return cachedContext.get().getFunctionDescriptor(value);
     }
 
 }

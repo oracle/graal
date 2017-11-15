@@ -34,6 +34,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -41,11 +42,11 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
@@ -80,13 +81,8 @@ public abstract class LLVMToAddressNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    public LLVMAddress executeI64(LLVMFunctionDescriptor from) {
-        return LLVMAddress.fromLong(from.getFunctionPointer());
-    }
-
-    @Specialization
-    public LLVMAddress executeI64(LLVMFunctionHandle from) {
-        return LLVMAddress.fromLong(from.getFunctionPointer());
+    public LLVMAddress executeI64(VirtualFrame frame, LLVMFunctionDescriptor from, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+        return toNative.executeWithTarget(frame, from);
     }
 
     @Specialization
@@ -97,8 +93,8 @@ public abstract class LLVMToAddressNode extends LLVMExpressionNode {
     @Child private ForeignToLLVM toLong = ForeignToLLVM.create(ForeignToLLVMType.I64);
 
     @Specialization
-    public LLVMAddress executeLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
-        return LLVMAddress.fromLong((long) toLong.executeWithTarget(from.getValue()));
+    public LLVMAddress executeLLVMBoxedPrimitive(VirtualFrame frame, LLVMBoxedPrimitive from) {
+        return LLVMAddress.fromLong((long) toLong.executeWithTarget(frame, from.getValue()));
     }
 
     protected static boolean checkIsPointer(Node isPointer, LLVMTruffleObject object) {

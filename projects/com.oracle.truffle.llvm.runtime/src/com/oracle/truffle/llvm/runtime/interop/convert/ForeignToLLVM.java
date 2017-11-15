@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.interop.convert;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
@@ -47,7 +48,7 @@ import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public abstract class ForeignToLLVM extends LLVMNode {
 
-    public abstract Object executeWithTarget(Object value);
+    public abstract Object executeWithTarget(VirtualFrame frame, Object value);
 
     @Child protected Node isPointer = Message.IS_POINTER.createNode();
     @Child protected Node asPointer = Message.AS_POINTER.createNode();
@@ -203,9 +204,10 @@ public abstract class ForeignToLLVM extends LLVMNode {
         }
 
         @Override
-        public Object executeWithTarget(Object value) {
+        public Object executeWithTarget(VirtualFrame frame, Object value) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Use convert method.");
         }
     }
+
 }

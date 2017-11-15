@@ -42,6 +42,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 @NodeChild(value = "address", type = LLVMExpressionNode.class)
 public abstract class LLVMFunctionArrayLiteralNode extends LLVMExpressionNode {
@@ -55,18 +56,19 @@ public abstract class LLVMFunctionArrayLiteralNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        return writeDouble(frame, globalAccess.getNativeLocation(global));
+    protected LLVMAddress handleGlobal(VirtualFrame frame, LLVMGlobalVariable global, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess,
+                    @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+        return handleAddress(frame, globalAccess.getNativeLocation(global), toNative);
     }
 
     @Specialization
     @ExplodeLoop
-    protected LLVMAddress writeDouble(VirtualFrame frame, LLVMAddress addr) {
+    protected LLVMAddress handleAddress(VirtualFrame frame, LLVMAddress addr, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
         long currentPtr = addr.getVal();
         for (int i = 0; i < values.length; i++) {
             try {
                 LLVMFunctionDescriptor currentValue = (LLVMFunctionDescriptor) values[i].executeTruffleObject(frame);
-                LLVMHeap.putFunctionPointer(currentPtr, currentValue.getFunctionPointer());
+                LLVMHeap.putFunctionPointer(currentPtr, toNative.executeWithTarget(frame, currentValue).getVal());
                 currentPtr += stride;
             } catch (UnexpectedResultException e) {
                 CompilerDirectives.transferToInterpreter();

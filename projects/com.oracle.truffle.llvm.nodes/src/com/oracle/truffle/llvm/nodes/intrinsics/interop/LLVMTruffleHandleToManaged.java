@@ -37,12 +37,11 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
@@ -51,13 +50,10 @@ public abstract class LLVMTruffleHandleToManaged extends LLVMIntrinsic {
 
     @Specialization
     public LLVMTruffleObject executeIntrinsic(VirtualFrame frame, Object rawHandle, @Cached("getContextReference()") ContextReference<LLVMContext> context,
-                    @Cached("getForceLLVMAddressNode()") LLVMForceLLVMAddressNode forceAddressNode) {
+                    @Cached("createToNativeNode()") LLVMToNativeNode forceAddressNode) {
         LLVMAddress handle = forceAddressNode.executeWithTarget(frame, rawHandle);
         TruffleObject object = context.get().getManagedObjectForHandle(handle);
         return new LLVMTruffleObject(object, new PointerType(VoidType.INSTANCE));
     }
 
-    protected static LLVMForceLLVMAddressNode getForceLLVMAddressNode() {
-        return LLVMForceLLVMAddressNodeGen.create();
-    }
 }

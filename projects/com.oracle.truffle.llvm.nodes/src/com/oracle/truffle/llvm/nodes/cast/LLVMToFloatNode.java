@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nodes.cast;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -56,8 +57,8 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
     @Child private ForeignToLLVM toFloat = ForeignToLLVM.create(ForeignToLLVMType.FLOAT);
 
     @Specialization
-    public float executeLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
-        return (float) toFloat.executeWithTarget(from.getValue());
+    public float executeLLVMBoxedPrimitive(VirtualFrame frame, LLVMBoxedPrimitive from) {
+        return (float) toFloat.executeWithTarget(frame, from.getValue());
     }
 
     @Child private Node isNull = Message.IS_NULL.createNode();
@@ -65,13 +66,13 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
     @Child private Node unbox = Message.UNBOX.createNode();
 
     @Specialization
-    public float executeTruffleObject(LLVMTruffleObject from) {
+    public float executeTruffleObject(VirtualFrame frame, LLVMTruffleObject from) {
         TruffleObject base = from.getObject();
         if (ForeignAccess.sendIsNull(isNull, base)) {
             return from.getOffset();
         } else if (ForeignAccess.sendIsBoxed(isBoxed, base)) {
             try {
-                float ptr = (float) toFloat.executeWithTarget(ForeignAccess.sendUnbox(unbox, base));
+                float ptr = (float) toFloat.executeWithTarget(frame, ForeignAccess.sendUnbox(unbox, base));
                 return ptr + from.getOffset();
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();

@@ -60,10 +60,8 @@ public final class LLVMScope implements TruffleObject {
 
     public static synchronized LLVMScope createGlobalScope(LLVMContext context) {
         LLVMScope scope = new LLVMScope(null);
-        LLVMFunctionDescriptor zeroFunction = scope.lookupOrCreateFunction(context, "<zero function>", true,
-                        idx -> LLVMFunctionDescriptor.createDescriptor(context, "<zero function>", new FunctionType(MetaType.UNKNOWN, new Type[0], false), idx));
-        long ptr = zeroFunction.getFunctionPointer();
-        assert ptr == 0;
+        scope.lookupOrCreateFunction(context, "<zero function>", true,
+                        idx -> LLVMFunctionDescriptor.createDescriptor(context, "default", "<zero function>", new FunctionType(MetaType.UNKNOWN, new Type[0], false), idx));
         return scope;
     }
 

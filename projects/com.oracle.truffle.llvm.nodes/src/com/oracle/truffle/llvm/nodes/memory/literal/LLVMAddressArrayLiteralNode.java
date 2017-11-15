@@ -34,8 +34,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -44,6 +42,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
@@ -51,7 +50,7 @@ import com.oracle.truffle.llvm.runtime.types.VoidType;
 public abstract class LLVMAddressArrayLiteralNode extends LLVMExpressionNode {
 
     @Children private final LLVMExpressionNode[] values;
-    @Children private final LLVMForceLLVMAddressNode[] toLLVM;
+    @Children private final LLVMToNativeNode[] toLLVM;
     private final int stride;
 
     public LLVMAddressArrayLiteralNode(LLVMExpressionNode[] values, int stride) {
@@ -60,16 +59,12 @@ public abstract class LLVMAddressArrayLiteralNode extends LLVMExpressionNode {
         this.toLLVM = getForceLLVMAddressNodes(values.length);
     }
 
-    private static LLVMForceLLVMAddressNode[] getForceLLVMAddressNodes(int size) {
-        LLVMForceLLVMAddressNode[] forceToLLVM = new LLVMForceLLVMAddressNode[size];
+    private static LLVMToNativeNode[] getForceLLVMAddressNodes(int size) {
+        LLVMToNativeNode[] forceToLLVM = new LLVMToNativeNode[size];
         for (int i = 0; i < size; i++) {
-            forceToLLVM[i] = getForceLLVMAddressNode();
+            forceToLLVM[i] = LLVMToNativeNode.toNative();
         }
         return forceToLLVM;
-    }
-
-    private static LLVMForceLLVMAddressNode getForceLLVMAddressNode() {
-        return LLVMForceLLVMAddressNodeGen.create();
     }
 
     public LLVMExpressionNode[] getValues() {
