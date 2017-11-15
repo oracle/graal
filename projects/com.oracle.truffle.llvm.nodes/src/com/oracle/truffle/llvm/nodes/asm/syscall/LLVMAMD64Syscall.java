@@ -78,6 +78,7 @@ public class LLVMAMD64Syscall {
     public static final int SYS_rename = 82;
     public static final int SYS_unlink = 87;
     public static final int SYS_getuid = 102;
+    public static final int SYS_syslog = 103;
     public static final int SYS_getgid = 104;
     public static final int SYS_setuid = 105;
     public static final int SYS_setgid = 106;

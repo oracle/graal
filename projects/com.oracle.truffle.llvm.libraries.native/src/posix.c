@@ -41,6 +41,7 @@
 #include <sys/socket.h>
 
 #ifdef __linux__
+#include <sys/klog.h>
 #include <sys/syscall.h>
 #endif
 
@@ -306,6 +307,16 @@ int __sulong_posix_getgroups(int gidsetsize, gid_t grouplist[])
 	CALL(int, getgroups, gidsetsize, grouplist);
 }
 
+int __sulong_posix_syslog(int type, char* bufp, int len)
+{
+#ifdef __linux__
+	CALL(int, klogctl, type, bufp, len);
+#else
+	fprintf(stderr, "klogctl is not supported on this OS.\n");
+	return -ENOSYS;
+#endif
+}
+
 
 #else
 
@@ -527,6 +538,11 @@ int __sulong_posix_getdents64(unsigned int fd, void* dirp, unsigned int count)
 }
 
 int __sulong_posix_getgroups(int gidsetsize, gid_t grouplist[])
+{
+	ERROR();
+}
+
+int __sulong_posix_syslog(int type, char* bufp, int len)
 {
 	ERROR();
 }
