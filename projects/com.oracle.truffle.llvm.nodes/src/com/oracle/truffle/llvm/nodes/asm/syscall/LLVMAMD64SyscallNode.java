@@ -153,6 +153,8 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                 return new LLVMAMD64SyscallGetPpidNode();
             case LLVMAMD64Syscall.SYS_getgroups:
                 return LLVMAMD64SyscallGetgroupsNodeGen.create();
+            case LLVMAMD64Syscall.SYS_getpgid:
+                return new LLVMAMD64SyscallGetpgidNode();
             case LLVMAMD64Syscall.SYS_statfs:
                 return LLVMAMD64SyscallStatfsNodeGen.create();
             case LLVMAMD64Syscall.SYS_fstatfs:

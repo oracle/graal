@@ -87,6 +87,7 @@ public class LLVMAMD64Syscall {
     public static final int SYS_getegid = 108;
     public static final int SYS_getppid = 110;
     public static final int SYS_getgroups = 115;
+    public static final int SYS_getpgid = 121;
     public static final int SYS_statfs = 137;
     public static final int SYS_fstatfs = 138;
     public static final int SYS_arch_prctl = 158;

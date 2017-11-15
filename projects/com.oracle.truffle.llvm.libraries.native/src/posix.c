@@ -344,6 +344,11 @@ int __sulong_posix_poll(struct pollfd* fds, nfds_t nfds, int timeout)
 	CALL(int, poll, fds, nfds, timeout);
 }
 
+pid_t __sulong_posix_getpgid(pid_t pid)
+{
+	CALL(pid_t, getpgid, pid);
+}
+
 #else
 
 #include <stdio.h>
@@ -584,6 +589,11 @@ int __sulong_posix_fstatfs(int fd, struct statfs* buf)
 }
 
 int __sulong_posix_poll(struct pollfd* fds, nfds_t nfds, int timeout)
+{
+	ERROR();
+}
+
+pid_t __sulong_posix_getpgid(pid_t pid)
 {
 	ERROR();
 }
