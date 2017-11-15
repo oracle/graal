@@ -119,10 +119,6 @@ Sulong also uses DragonEgg for the C/C++ test cases besides Clang to get
 additional "free" test cases for a given C/C++ file. DragonEgg requires
 a GCC in the aforementioned versions.
 
-`mx pulldragonegg` downloads both DragonEgg and Clang 3.2 to the `cache/tools`
-directory. If you want to supply your own binaries you need to set certain
-environment variables to tell Sulong where to find them:
-
 - Sulong expects to find Clang 3.2 in `$DRAGONEGG_LLVM/bin`
 - Sulong expects to find GCC 4.5, 4.6 or 4.7 in `$DRAGONEGG_GCC/bin`
 - Sulong expects to find `dragonegg.so` under `$DRAGONEGG` or in `$DRAGONEGG_GCC/lib`
