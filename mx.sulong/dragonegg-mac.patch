@@ -1,7 +1,0 @@
---- projects/com.oracle.truffle.llvm.tools/tools/dragonegg/dragonegg-3.2.src/Makefile.a	2016-03-27 17:38:21.000000000 +0100
-+++ projects/com.oracle.truffle.llvm.tools/tools/dragonegg/dragonegg-3.2.src/Makefile	2016-03-27 17:38:24.000000000 +0100
-@@ -84,3 +84,3 @@
- 	     -DGCC_MICRO=$(GCC_MICRO) \
--	     -I$(INCLUDE_DIR) -isystem$(GCC_PLUGIN_DIR)/include
-+	     -I$(INCLUDE_DIR) -isystem$(GCC_PLUGIN_DIR)/include -I../../gcc/gcc-4.6.4/include
- ifdef DISABLE_VERSION_CHECK
