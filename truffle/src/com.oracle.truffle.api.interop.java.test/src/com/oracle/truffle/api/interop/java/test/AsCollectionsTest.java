@@ -40,6 +40,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -95,6 +96,15 @@ public class AsCollectionsTest {
         old = interopMap.put("new", "news");
         assertNull(old);
         assertEquals("news", interopMap.get("new"));
+
+        TruffleObject badMapObject = new JavaInteropTest.HasKeysObject(false);
+        interopMap = JavaInterop.asJavaObject(Map.class, badMapObject);
+        try {
+            interopMap.get("isn't a map");
+            fail();
+        } catch (Exception ex) {
+            assertFalse(ForeignAccess.sendHasKeys(Message.HAS_KEYS.createNode(), badMapObject));
+        }
     }
 
     static final class ListBasedTO implements TruffleObject {
@@ -182,6 +192,15 @@ public class AsCollectionsTest {
 
         @MessageResolution(receiverType = MapBasedTO.class)
         static class MapBasedMessageResolution {
+
+            @Resolve(message = "HAS_KEYS")
+            abstract static class MapBasedHasKeysNode extends Node {
+
+                @SuppressWarnings("unused")
+                public Object access(MapBasedTO mbto) {
+                    return true;
+                }
+            }
 
             @Resolve(message = "KEYS")
             abstract static class MapBasedKeysNode extends Node {

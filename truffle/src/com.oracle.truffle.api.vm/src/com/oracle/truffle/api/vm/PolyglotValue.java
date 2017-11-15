@@ -707,12 +707,15 @@ abstract class PolyglotValue extends AbstractValueImpl {
         final CallTarget getArrayElement;
         final CallTarget setArrayElement;
         final CallTarget getArraySize;
+        final CallTarget hasMembers;
         final CallTarget hasMember;
         final CallTarget getMember;
         final CallTarget putMember;
         final CallTarget isNull;
         final CallTarget canExecute;
         final CallTarget execute;
+        final CallTarget canInstantiate;
+        final CallTarget newInstance;
         final CallTarget asPrimitive;
 
         final Class<?> receiverType;
@@ -728,12 +731,15 @@ abstract class PolyglotValue extends AbstractValueImpl {
             this.getArrayElement = Truffle.getRuntime().createCallTarget(new GetArrayElementNode(this));
             this.setArrayElement = Truffle.getRuntime().createCallTarget(new SetArrayElementNode(this));
             this.getArraySize = Truffle.getRuntime().createCallTarget(new GetArraySizeNode(this));
+            this.hasMembers = Truffle.getRuntime().createCallTarget(new HasMembersNode(this));
             this.hasMember = Truffle.getRuntime().createCallTarget(new HasMemberNode(this));
             this.getMember = Truffle.getRuntime().createCallTarget(new GetMemberNode(this));
             this.putMember = Truffle.getRuntime().createCallTarget(new PutMemberNode(this));
             this.isNull = Truffle.getRuntime().createCallTarget(new IsNullNode(this));
             this.execute = Truffle.getRuntime().createCallTarget(new ExecuteNode(this));
             this.canExecute = Truffle.getRuntime().createCallTarget(new CanExecuteNode(this));
+            this.newInstance = Truffle.getRuntime().createCallTarget(new NewInstanceNode(this));
+            this.canInstantiate = Truffle.getRuntime().createCallTarget(new CanInstantiateNode(this));
             this.asPrimitive = Truffle.getRuntime().createCallTarget(new AsPrimitiveNode(this));
             this.isProxy = PolyglotProxy.isProxyGuestObject(receiver);
             this.isJava = JavaInterop.isJavaObject(receiver);
@@ -766,8 +772,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         @Override
         public boolean hasMembers(Object receiver) {
-            // TODO we need a dedicated interop message for that!
-            return true;
+            return (boolean) hasMembers.call(receiver);
         }
 
         @Override
@@ -840,6 +845,16 @@ abstract class PolyglotValue extends AbstractValueImpl {
         @Override
         public Value execute(Object receiver, Object[] arguments) {
             return (Value) execute.call(receiver, arguments);
+        }
+
+        @Override
+        public boolean canInstantiate(Object receiver) {
+            return (boolean) canInstantiate.call(receiver);
+        }
+
+        @Override
+        public Value newInstance(Object receiver, Object[] arguments) {
+            return (Value) newInstance.call(receiver, arguments);
         }
 
         private String formatSuppliedValues(UnsupportedTypeException e) {
@@ -1251,6 +1266,26 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         }
 
+        private static class HasMembersNode extends InteropNode {
+
+            @Child private Node hasKeysNode = Message.HAS_KEYS.createNode();
+
+            protected HasMembersNode(Interop interop) {
+                super(interop);
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "hasMembers";
+            }
+
+            @Override
+            protected Object executeImpl(Object receiver, Object[] args) {
+                return ForeignAccess.sendHasKeys(hasKeysNode, (TruffleObject) receiver);
+            }
+
+        }
+
         private static class HasMemberNode extends InteropNode {
 
             final Node keyInfoNode = Message.KEY_INFO.createNode();
@@ -1289,6 +1324,26 @@ abstract class PolyglotValue extends AbstractValueImpl {
             @Override
             protected Object executeImpl(Object receiver, Object[] args) {
                 return ForeignAccess.sendIsExecutable(isExecutableNode, (TruffleObject) receiver);
+            }
+
+        }
+
+        private static class CanInstantiateNode extends InteropNode {
+
+            @Child private Node isInstantiableNode = Message.IS_INSTANTIABLE.createNode();
+
+            protected CanInstantiateNode(Interop interop) {
+                super(interop);
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "canInstantiate";
+            }
+
+            @Override
+            protected Object executeImpl(Object receiver, Object[] args) {
+                return ForeignAccess.sendIsInstantiable(isInstantiableNode, (TruffleObject) receiver);
             }
 
         }
@@ -1363,6 +1418,51 @@ abstract class PolyglotValue extends AbstractValueImpl {
             @Override
             protected String getOperationName() {
                 return "execute";
+            }
+
+        }
+
+        private static class NewInstanceNode extends InteropNode {
+
+            @Child private Node newInstanceNode = Message.createNew(0).createNode();
+            private final ToGuestValuesNode toGuestValues = interop.languageContext.createToGuestValues();
+            private final ToHostValueNode toHostValue = interop.languageContext.createToHostValue();
+
+            protected NewInstanceNode(Interop interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Object executeImpl(Object receiver, Object[] args) {
+                try {
+                    Object[] newInstanceArgs = (Object[]) args[1];
+                    return toHostValue.execute(ForeignAccess.sendExecute(newInstanceNode, (TruffleObject) receiver, toGuestValues.execute(newInstanceArgs)));
+                } catch (UnsupportedTypeException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw handleUnsupportedType(e);
+                } catch (ArityException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw handleInvalidArity(e);
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    return interop.executeUnsupported(receiver);
+                }
+            }
+
+            private PolyglotException handleInvalidArity(ArityException e) {
+                int actual = e.getActualArity();
+                int expected = e.getExpectedArity();
+                return error(String.format("Expected %s number of arguments but got %s when creating a new instance of %s.", expected, actual, toString()), e);
+            }
+
+            private PolyglotException handleUnsupportedType(UnsupportedTypeException e) {
+                String arguments = interop.formatSuppliedValues(e);
+                return error(String.format("Invalid arguments provided %s when creating a new instance of %s.", arguments, toString()), e);
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "newInstance";
             }
 
         }

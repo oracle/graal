@@ -128,6 +128,15 @@ public class SLObjectMessageResolution {
         }
     }
 
+    @Resolve(message = "HAS_KEYS")
+    public abstract static class SLForeignHasPropertiesNode extends Node {
+
+        @SuppressWarnings("unused")
+        public Object access(DynamicObject receiver) {
+            return true;
+        }
+    }
+
     @Resolve(message = "KEY_INFO")
     public abstract static class SLForeignPropertyInfoNode extends Node {
 

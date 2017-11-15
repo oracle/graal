@@ -270,7 +270,7 @@ public final class SLLexicalScope {
         // Variables are slot-based.
         // To collect declared variables, traverse the block's AST and find slots associated
         // with SLWriteLocalVariableNode. The traversal stops when we hit the current node.
-        Map<String, FrameSlot> slots = new LinkedHashMap<>(1 << 2);
+        Map<String, FrameSlot> slots = new LinkedHashMap<>(4);
         NodeUtil.forEachChild(varsBlock, new NodeVisitor() {
             @Override
             public boolean visit(Node node) {
@@ -302,7 +302,7 @@ public final class SLLexicalScope {
         // Arguments are pushed to frame slots at the beginning of the function block.
         // To collect argument slots, search for SLReadArgumentNode inside of
         // SLWriteLocalVariableNode.
-        Map<String, FrameSlot> args = new LinkedHashMap<>(1 << 2);
+        Map<String, FrameSlot> args = new LinkedHashMap<>(4);
         NodeUtil.forEachChild(block, new NodeVisitor() {
 
             private SLWriteLocalVariableNode wn; // The current write node containing a slot
@@ -355,6 +355,15 @@ public final class SLLexicalScope {
 
         @MessageResolution(receiverType = VariablesMapObject.class)
         static final class VariablesMapMessageResolution {
+
+            @Resolve(message = "HAS_KEYS")
+            abstract static class VarsMapHasKeysNode extends Node {
+
+                public Object access(VariablesMapObject varMap) {
+                    assert varMap != null;
+                    return true;
+                }
+            }
 
             @Resolve(message = "KEYS")
             abstract static class VarsMapKeysNode extends Node {
@@ -411,7 +420,6 @@ public final class SLLexicalScope {
                     }
                 }
             }
-
         }
     }
 
