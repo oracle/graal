@@ -47,7 +47,6 @@ def run(vmArgs, unittest, extraOption=None, extraLibs=None):
 
 def runShootoutSuite(vmArgs):
     """runs the Sulong test suite"""
-    mx_sulong.ensureDragonEggExists()
     compileSuite(['shootout'])
     return run(vmArgs, "com.oracle.truffle.llvm.test.ShootoutsSuite", extraLibs=["libgmp.so.10"])
 
@@ -73,7 +72,6 @@ def runGCCSuite_cpp(vmArgs):
 
 def runGCCSuite_fortran(vmArgs):
     """runs the LLVM test suite"""
-    mx_sulong.ensureDragonEggExists()
     compileSuite(['gcc_fortran'])
     return run(vmArgs + ['-Dsulongtest.fileExtensionFilter=.f90:.f:.f03'], "com.oracle.truffle.llvm.test.GCCSuite", extraLibs=["libgfortran.so.3"])
 
@@ -103,7 +101,6 @@ def runInlineAssemblySuite(vmArgs):
 
 def runParserTortureSuite(vmArgs):
     """runs the ParserTorture test suite"""
-    mx_sulong.ensureDragonEggExists()
     compileSuite(['parserTorture'])
     return run(vmArgs + ['-Dpolyglot.llvm.parseOnly=true'], "com.oracle.truffle.llvm.test.ParserTortureSuite")
 
@@ -269,7 +266,7 @@ class SulongTestSuite(mx.NativeProject):
     @staticmethod
     def haveDragonegg():
         if not hasattr(SulongTestSuite, '_haveDragonegg'):
-            SulongTestSuite._haveDragonegg = os.path.exists(mx_sulong.dragonEggPath()) and mx_sulong.getGCC(optional=True) is not None
+            SulongTestSuite._haveDragonegg = mx_sulong.dragonEggPath() is not None and os.path.exists(mx_sulong.dragonEggPath()) and mx_sulong.getGCC(optional=True) is not None
         return SulongTestSuite._haveDragonegg
 
     def getTests(self):
