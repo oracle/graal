@@ -1151,23 +1151,6 @@ suite = {
       "jacoco" : "exclude",
     },
 
-    "org.graalvm.compiler.truffle.bench" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "mx:JMH_1_18",
-        "truffle:TRUFFLE_API",
-        "truffle:TRUFFLE_INSTRUMENT_TEST",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "1.8",
-      "annotationProcessors" : [
-        "mx:JMH_1_18",
-      ],
-      "findbugsIgnoresGenerated" : True,
-      "workingSets" : "Graal,Truffle,Bench",
-    },
-
     "org.graalvm.compiler.truffle.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1536,11 +1519,9 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.virtual.bench",
         "org.graalvm.compiler.microbenchmarks",
-        "org.graalvm.compiler.truffle.bench",
       ],
       "distDependencies" : [
         "GRAAL_TEST",
-        "truffle:TRUFFLE_INSTRUMENT_TEST",
       ],
     },
 
