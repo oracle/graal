@@ -427,6 +427,18 @@ public abstract class AbstractPolyglotImpl {
             throw unsupported(receiver, "execute(Object...)", "canExecute()");
         }
 
+        public boolean canInstantiate(Object receiver) {
+            return false;
+        }
+
+        public Value newInstance(Object receiver, Object[] arguments) {
+            return newInstanceUnsupported(receiver);
+        }
+
+        public final Value newInstanceUnsupported(Object receiver) {
+            throw unsupported(receiver, "newInstance(Object...)", "canInstantiate()");
+        }
+
         public boolean isString(Object receiver) {
             return false;
         }

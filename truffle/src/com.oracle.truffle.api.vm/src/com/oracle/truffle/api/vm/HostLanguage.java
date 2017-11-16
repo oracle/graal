@@ -258,6 +258,15 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         @MessageResolution(receiverType = TopScopeObject.class)
         static class TopScopeObjectMessageResolution {
 
+            @Resolve(message = "HAS_KEYS")
+            abstract static class VarsMapHasKeysNode extends Node {
+
+                @SuppressWarnings("unused")
+                public Object access(TopScopeObject ts) {
+                    return true;
+                }
+            }
+
             @Resolve(message = "KEYS")
             abstract static class VarsMapKeysNode extends Node {
 

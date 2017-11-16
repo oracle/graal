@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,20 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.memory;
+package org.graalvm.polyglot.proxy;
 
-import org.graalvm.compiler.nodes.extended.GuardedNode;
-import org.graalvm.compiler.nodes.memory.address.AddressNode;
-import org.graalvm.word.LocationIdentity;
+import org.graalvm.polyglot.Value;
 
-public interface Access extends GuardedNode, HeapAccess {
+/**
+ * Interface to be implemented to mimic guest language objects that are instantiable.
+ *
+ * @see Proxy
+ * @since 1.0
+ */
+@FunctionalInterface
+public interface ProxyInstantiable extends Proxy {
 
-    AddressNode getAddress();
-
-    void setAddress(AddressNode address);
-
-    LocationIdentity getLocationIdentity();
-
-    boolean canNullCheck();
+    /**
+     * Creates a new instance of the object with the given arguments.
+     *
+     * @throws UnsupportedOperationException if the proxy cannot be instantiated with the given
+     *             arguments.
+     * @since 1.0
+     */
+    Object newInstance(Value... arguments);
 
 }

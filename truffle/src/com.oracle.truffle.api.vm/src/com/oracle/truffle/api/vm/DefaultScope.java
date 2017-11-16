@@ -157,6 +157,15 @@ final class DefaultScope {
         @MessageResolution(receiverType = VariablesMapObject.class)
         static class VariablesMapMessageResolution {
 
+            @Resolve(message = "HAS_KEYS")
+            abstract static class VarsMapHasKeysNode extends Node {
+
+                @SuppressWarnings("unused")
+                public Object access(VariablesMapObject varMap) {
+                    return true;
+                }
+            }
+
             @Resolve(message = "KEYS")
             abstract static class VarsMapKeysNode extends Node {
 
@@ -292,6 +301,15 @@ final class DefaultScope {
         @MessageResolution(receiverType = ArgumentsArrayObject.class)
         static final class ArguentsArrayMessageResolution {
 
+            @Resolve(message = "HAS_KEYS")
+            abstract static class ArgsArrHasKeysNode extends Node {
+
+                @SuppressWarnings("unused")
+                public Object access(ArgumentsArrayObject argsArr) {
+                    return false;
+                }
+            }
+
             @Resolve(message = "HAS_SIZE")
             abstract static class ArgsArrHasSizeNode extends Node {
 
@@ -360,6 +378,15 @@ final class DefaultScope {
 
         @MessageResolution(receiverType = LookupSymbolGlobalObject.class)
         static class LookupSymbolMessageResolution {
+
+            @Resolve(message = "HAS_KEYS")
+            abstract static class SymbolsHasKeysNode extends Node {
+
+                @SuppressWarnings("unused")
+                public Object access(LookupSymbolGlobalObject obj) {
+                    return true;
+                }
+            }
 
             @Resolve(message = "KEYS")
             abstract static class SymbolsKeysNode extends Node {

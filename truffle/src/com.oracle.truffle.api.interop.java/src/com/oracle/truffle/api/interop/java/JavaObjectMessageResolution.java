@@ -129,6 +129,17 @@ class JavaObjectMessageResolution {
         }
     }
 
+    @Resolve(message = "IS_INSTANTIABLE")
+    abstract static class IsInstantiableObjectNode extends Node {
+
+        public Object access(JavaObject receiver) {
+            if (TruffleOptions.AOT) {
+                return false;
+            }
+            return receiver.isClass() && JavaClassDesc.forClass(receiver.clazz).lookupConstructor() != null;
+        }
+    }
+
     @Resolve(message = "NEW")
     abstract static class NewNode extends Node {
         @Child private ExecuteMethodNode doExecute;
@@ -263,6 +274,18 @@ class JavaObjectMessageResolution {
             return write.executeWithTarget(receiver, index, value);
         }
 
+    }
+
+    @Resolve(message = "HAS_KEYS")
+    abstract static class HasKeysNode extends Node {
+
+        public Object access(JavaObject receiver) {
+            if (receiver.obj instanceof Map) {
+                return true;
+            } else {
+                return !TruffleOptions.AOT;
+            }
+        }
     }
 
     @Resolve(message = "KEYS")

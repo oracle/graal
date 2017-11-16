@@ -487,8 +487,12 @@ public class EngineTest {
                                 return boxed;
                             } else if (tree == Message.IS_EXECUTABLE) {
                                 return true;
+                            } else if (tree == Message.IS_INSTANTIABLE) {
+                                return true;
                             } else if (tree == Message.IS_NULL) {
                                 return false;
+                            } else if (tree == Message.HAS_KEYS) {
+                                return true;
                             } else if (tree == Message.HAS_SIZE) {
                                 return true;
                             } else if (tree == Message.GET_SIZE) {

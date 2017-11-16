@@ -146,6 +146,14 @@ final class DefaultScopeVariables extends com.oracle.truffle.api.metadata.ScopeP
         @MessageResolution(receiverType = VariablesMapObject.class)
         static class VariablesMapMessageResolution {
 
+            @Resolve(message = "HAS_KEYS")
+            abstract static class VarsMapHasKeysNode extends Node {
+
+                public Object access(VariablesMapObject varMap) {
+                    return true;
+                }
+            }
+
             @Resolve(message = "KEYS")
             abstract static class VarsMapKeysNode extends Node {
 

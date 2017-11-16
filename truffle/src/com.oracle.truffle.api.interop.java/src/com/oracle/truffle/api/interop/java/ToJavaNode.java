@@ -91,9 +91,10 @@ abstract class ToJavaNode extends Node {
             if (languageContext != null && targetType.clazz == Object.class) {
                 convertedValue = JavaInterop.toHostValue(value, languageContext);
             } else {
+                boolean hasKeys = primitive.hasKeys((TruffleObject) value);
                 boolean hasSize = primitive.hasSize((TruffleObject) value);
                 boolean isNull = primitive.isNull((TruffleObject) value);
-                convertedValue = asJavaObject(targetType.clazz, targetType, (TruffleObject) value, hasSize, isNull);
+                convertedValue = asJavaObject(targetType.clazz, targetType, (TruffleObject) value, hasKeys, hasSize, isNull);
             }
         } else {
             assert targetType.clazz.isAssignableFrom(value.getClass()) : value.getClass().getName() + " is not assignable to " + targetType;
@@ -176,7 +177,7 @@ abstract class ToJavaNode extends Node {
     }
 
     @TruffleBoundary
-    private static <T> T asJavaObject(Class<T> clazz, TypeAndClass<?> type, TruffleObject foreignObject, boolean hasSize, boolean isNull) {
+    private static <T> T asJavaObject(Class<T> clazz, TypeAndClass<?> type, TruffleObject foreignObject, boolean hasKeys, boolean hasSize, boolean isNull) {
         Object obj;
         if (foreignObject == null) {
             return null;
@@ -193,7 +194,7 @@ abstract class ToJavaNode extends Node {
             if (clazz == List.class && hasSize) {
                 TypeAndClass<?> elementType = type.getParameterType(0);
                 obj = TruffleList.create(elementType, foreignObject);
-            } else if (clazz == Map.class) {
+            } else if (clazz == Map.class && hasKeys) {
                 TypeAndClass<?> keyType = type.getParameterType(0);
                 TypeAndClass<?> valueType = type.getParameterType(1);
                 obj = TruffleMap.create(keyType, valueType, foreignObject);
@@ -264,7 +265,7 @@ abstract class ToJavaNode extends Node {
         if (ret instanceof TruffleObject) {
             final TruffleObject truffleObject = (TruffleObject) ret;
             if (retType.isInterface()) {
-                return asJavaObject(retType, type, truffleObject, primitiveNode.hasSize(truffleObject), primitiveNode.isNull(truffleObject));
+                return asJavaObject(retType, type, truffleObject, primitiveNode.hasKeys(truffleObject), primitiveNode.hasSize(truffleObject), primitiveNode.isNull(truffleObject));
             }
         }
         return ret;
