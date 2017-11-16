@@ -35,7 +35,8 @@ import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 public final class LLVMDebugAggregateValue extends LLVMDebugValue {
 
@@ -65,9 +66,9 @@ public final class LLVMDebugAggregateValue extends LLVMDebugValue {
 
     @Override
     @TruffleBoundary
-    public LLVMDebugObject getValue(LLVMSourceSymbol symbol) {
+    public LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration) {
         final LLVMDebugValueProvider provider = new FragmentValueProvider(offsets, lengths, partBuilders, partValues);
-        return LLVMDebugObject.instantiate(symbol.getType(), 0, provider, symbol.getLocation());
+        return LLVMDebugObject.instantiate(type, 0, provider, declaration);
     }
 
     private static final class FragmentValueProvider implements LLVMDebugValueProvider {
@@ -109,7 +110,7 @@ public final class LLVMDebugAggregateValue extends LLVMDebugValue {
                 return new OffsetValueProvider(provider, offsets[bestFitIndex]);
             }
 
-            return LLVMUnavailableDebugValueProvider.INSTANCE;
+            return LLVMDebugValueProvider.UNAVAILABLE;
         }
 
         private int getSlack(int partIndex, int start, int end) {

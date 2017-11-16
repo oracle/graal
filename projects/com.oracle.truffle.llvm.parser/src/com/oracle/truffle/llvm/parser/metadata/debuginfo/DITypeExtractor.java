@@ -52,6 +52,7 @@ import com.oracle.truffle.llvm.runtime.debug.LLVMSourceDecoratorType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceEnumLikeType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceMemberType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourcePointerType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -207,8 +208,10 @@ final class DITypeExtractor implements MetadataVisitor {
                 getElements(mdType.getMembers(), members, false);
                 for (final LLVMSourceType member : members) {
                     if (member instanceof LLVMSourceMemberType) {
-                        type.addMember((LLVMSourceMemberType) member);
+                        type.addDynamicMember((LLVMSourceMemberType) member);
 
+                    } else if (member instanceof LLVMSourceStaticMemberType) {
+                        type.addStaticMember((LLVMSourceStaticMemberType) member);
                     }
                 }
                 break;
@@ -297,6 +300,15 @@ final class DITypeExtractor implements MetadataVisitor {
 
             case DW_TAG_MEMBER: {
                 final String name = MDNameExtractor.getName(mdType.getName());
+
+                if (Flags.STATIC_MEMBER.isSetIn(mdType.getFlags())) {
+                    final LLVMSourceStaticMemberType type = new LLVMSourceStaticMemberType(name, size, align, location);
+                    parsedTypes.put(mdType, type);
+                    final LLVMSourceType baseType = resolve(mdType.getBaseType());
+                    type.setElementType(baseType);
+                    break;
+                }
+
                 final LLVMSourceMemberType type = new LLVMSourceMemberType(name, size, align, offset, location);
                 parsedTypes.put(mdType, type);
 

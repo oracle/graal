@@ -33,7 +33,10 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDExpression;
+import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
+import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
+import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
@@ -54,6 +57,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruc
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFile;
@@ -234,12 +238,19 @@ public final class SourceModel {
 
     private SourceModel() {
         globals = new HashMap<>();
+        staticMembers = new HashMap<>();
     }
 
     private final Map<LLVMSourceSymbol, GlobalValueSymbol> globals;
 
+    private final Map<LLVMSourceStaticMemberType, GlobalValueSymbol> staticMembers;
+
     public Map<LLVMSourceSymbol, GlobalValueSymbol> getGlobals() {
         return Collections.unmodifiableMap(globals);
+    }
+
+    public Map<LLVMSourceStaticMemberType, GlobalValueSymbol> getStaticMembers() {
+        return Collections.unmodifiableMap(staticMembers);
     }
 
     private static final class Parser implements ModelVisitor, FunctionVisitor, InstructionVisitorAdapter {
@@ -269,14 +280,15 @@ public final class SourceModel {
             this.moduleMetadata = moduleMetadata;
             this.bitcodeSource = bitcodeSource;
             this.parsedVariables = new HashMap<>();
-            typeIdentifier = new DITypeIdentifier();
-            typeIdentifier.setMetadata(moduleMetadata);
-            scopeExtractor = new DIScopeExtractor(typeIdentifier);
-            typeExtractor = new DITypeExtractor(scopeExtractor, typeIdentifier);
-            sourceModel = new SourceModel();
+            this.sourceModel = new SourceModel();
+            this.typeIdentifier = new DITypeIdentifier();
+            this.scopeExtractor = new DIScopeExtractor(typeIdentifier);
+            this.typeExtractor = new DITypeExtractor(scopeExtractor, typeIdentifier);
+
+            this.typeIdentifier.setMetadata(moduleMetadata);
         }
 
-        private LLVMSourceSymbol getSourceVariable(MDBaseNode mdVariable, boolean isGlobal) {
+        private LLVMSourceSymbol getSourceSymbol(MDBaseNode mdVariable, boolean isGlobal) {
             if (parsedVariables.containsKey(mdVariable)) {
                 return parsedVariables.get(mdVariable);
             }
@@ -285,20 +297,20 @@ public final class SourceModel {
             final LLVMSourceType type = typeExtractor.parseType(mdVariable);
             final String varName = MDNameExtractor.getName(mdVariable);
 
-            final LLVMSourceSymbol variable = new LLVMSourceSymbol(varName, location, type, isGlobal);
-            parsedVariables.put(mdVariable, variable);
+            final LLVMSourceSymbol symbol = new LLVMSourceSymbol(varName, location, type, isGlobal);
+            parsedVariables.put(mdVariable, symbol);
 
             if (location != null) {
-                // this is currently the line/column where the variable was declared, we want the
+                // this is currently the line/column where the symbol was declared, we want the
                 // scope
                 location = location.getParent();
             }
 
             if (location != null) {
-                location.addSymbol(variable);
+                location.addSymbol(symbol);
             }
 
-            return variable;
+            return symbol;
         }
 
         @Override
@@ -324,11 +336,25 @@ public final class SourceModel {
         }
 
         private void visitGlobal(GlobalValueSymbol global) {
-            final MDBaseNode mdGlobal = getDebugInfo(global);
+            MDBaseNode mdGlobal = getDebugInfo(global);
             if (mdGlobal != null) {
-                final LLVMSourceSymbol symbol = getSourceVariable(mdGlobal, true);
+                final LLVMSourceSymbol symbol = getSourceSymbol(mdGlobal, true);
                 if (symbol != null) {
                     sourceModel.globals.put(symbol, global);
+                }
+
+                if (mdGlobal instanceof MDGlobalVariableExpression) {
+                    mdGlobal = ((MDGlobalVariableExpression) mdGlobal).getGlobalVariable();
+                }
+
+                if (mdGlobal instanceof MDGlobalVariable) {
+                    final MDBaseNode declaration = ((MDGlobalVariable) mdGlobal).getStaticMemberDeclaration();
+                    if (declaration != MDVoidNode.INSTANCE) {
+                        final LLVMSourceType sourceType = typeExtractor.parseType(declaration);
+                        if (sourceType instanceof LLVMSourceStaticMemberType) {
+                            sourceModel.staticMembers.put((LLVMSourceStaticMemberType) sourceType, global);
+                        }
+                    }
                 }
             }
         }
@@ -422,7 +448,7 @@ public final class SourceModel {
                 final long mdIndex = ((MetadataConstant) mdLocalMDRef).getValue();
                 final MDBaseNode mdLocal = currentFunction.definition.getMetadata().getOrNull((int) mdIndex);
 
-                final LLVMSourceSymbol symbol = getSourceVariable(mdLocal, false);
+                final LLVMSourceSymbol symbol = getSourceSymbol(mdLocal, false);
                 variable = currentFunction.getLocal(symbol);
 
                 // ensure that lifetime analysis does not kill the variable before it is used in

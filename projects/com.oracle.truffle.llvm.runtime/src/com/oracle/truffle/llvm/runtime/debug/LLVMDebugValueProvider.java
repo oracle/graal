@@ -37,6 +37,83 @@ public interface LLVMDebugValueProvider {
 
     String UNAVAILABLE_VALUE = "<unavailable>";
 
+    LLVMDebugValueProvider UNAVAILABLE = new LLVMDebugValueProvider() {
+        @Override
+        public String describeValue(long bitOffset, int bitSize) {
+            return UNAVAILABLE_VALUE;
+        }
+
+        @Override
+        public Object cannotInterpret(String intendedType, long bitOffset, int bitSize) {
+            return UNAVAILABLE_VALUE;
+        }
+
+        @Override
+        public Object unavailable(long bitOffset, int bitSize) {
+            return UNAVAILABLE_VALUE;
+        }
+
+        @Override
+        public boolean canRead(long bitOffset, int bits) {
+            return false;
+        }
+
+        @Override
+        public Object readBoolean(long bitOffset) {
+            return UNAVAILABLE_VALUE;
+        }
+
+        @Override
+        public Object readFloat(long bitOffset) {
+            return UNAVAILABLE_VALUE;
+        }
+
+        @Override
+        public Object readDouble(long bitOffset) {
+            return UNAVAILABLE_VALUE;
+        }
+
+        @Override
+        public Object read80BitFloat(long bitOffset) {
+            return UNAVAILABLE_VALUE;
+        }
+
+        @Override
+        public Object readAddress(long bitOffset) {
+            return UNAVAILABLE_VALUE;
+        }
+
+        @Override
+        public Object readUnknown(long bitOffset, int bitSize) {
+            return UNAVAILABLE_VALUE;
+        }
+
+        @Override
+        public Object computeAddress(long bitOffset) {
+            return UNAVAILABLE_VALUE;
+        }
+
+        @Override
+        public Object readBigInteger(long bitOffset, int bitSize, boolean signed) {
+            return UNAVAILABLE_VALUE;
+        }
+
+        @Override
+        public LLVMDebugValueProvider dereferencePointer(long bitOffset) {
+            return null;
+        }
+
+        @Override
+        public boolean isInteropValue() {
+            return false;
+        }
+
+        @Override
+        public Object asInteropValue() {
+            return null;
+        }
+    };
+
     @TruffleBoundary
     static String toHexString(BigInteger value) {
         final byte[] bytes = value.toByteArray();

@@ -369,6 +369,34 @@ public abstract class LLVMDebugObject implements TruffleObject {
         }
     }
 
+    private static final class StaticMembers extends LLVMDebugObject {
+
+        StaticMembers(LLVMSourceStaticMemberType.CollectionType type) {
+            super(LLVMDebugValueProvider.UNAVAILABLE, 0L, type, null);
+        }
+
+        @Override
+        public Object[] getKeysSafe() {
+            return ((LLVMSourceStaticMemberType.CollectionType) getType()).getIdentifiers();
+        }
+
+        @Override
+        public Object getMemberSafe(Object key) {
+            if (key instanceof String) {
+                final LLVMSourceType elementType = getType().getElementType((String) key);
+                final LLVMSourceLocation declaration = getType().getElementDeclaration((String) key);
+                final LLVMDebugValue debugValue = ((LLVMSourceStaticMemberType.CollectionType) getType()).getMemberValue((String) key);
+                return debugValue.getValue(elementType, declaration);
+            }
+            return null;
+        }
+
+        @Override
+        public Object getValueSafe() {
+            return "";
+        }
+    }
+
     public static LLVMDebugObject instantiate(LLVMSourceType type, long baseOffset, LLVMDebugValueProvider value, LLVMSourceLocation declaration) {
         if (type.isAggregate()) {
             int elementCount = type.getElementCount();
@@ -387,6 +415,9 @@ public abstract class LLVMDebugObject implements TruffleObject {
 
         } else if (type.isEnum()) {
             return new Enum(value, baseOffset, type, declaration);
+
+        } else if (type instanceof LLVMSourceStaticMemberType.CollectionType) {
+            return new StaticMembers((LLVMSourceStaticMemberType.CollectionType) type);
 
         } else {
             return new Primitive(value, baseOffset, type, declaration);
