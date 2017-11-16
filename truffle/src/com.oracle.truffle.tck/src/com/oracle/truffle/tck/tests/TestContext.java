@@ -26,6 +26,7 @@ package com.oracle.truffle.tck.tests;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -95,7 +96,7 @@ final class TestContext implements Closeable {
     Context getContext() {
         checkState(State.NEW, State.INITIALIZING, State.INITIALIZED);
         if (context == null) {
-            this.context = Context.create();
+            this.context = Context.newBuilder().out(NullOutputStream.INSTANCE).err(NullOutputStream.INSTANCE).build();
         }
         return context;
     }
@@ -265,6 +266,17 @@ final class TestContext implements Closeable {
 
         static Predicate<Snippet> create(TypeDescriptor type, List<? extends TypeDescriptor> parameterTypes) {
             return new TypePredicate(type, parameterTypes);
+        }
+    }
+
+    private static final class NullOutputStream extends OutputStream {
+        static OutputStream INSTANCE = new NullOutputStream();
+
+        private NullOutputStream() {
+        }
+
+        @Override
+        public void write(int b) throws IOException {
         }
     }
 }
