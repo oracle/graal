@@ -159,7 +159,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                 // there should not be any overlaps -> engine creation should already fail
                 assert !engine.isEngineGroup(group);
             }
-            this.contexts[language.index].getOwnOptionValues().put(optionKey, options.get(optionKey));
+
+            this.contexts[language.index].getOptionValues().put(optionKey, options.get(optionKey));
         }
     }
 

@@ -274,12 +274,9 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
      */
     // The implementation must be in synch with #parseOptions()
     boolean isEngineGroup(String group) {
-        if (idToPublicInstrument.containsKey(group) ||
+        return idToPublicInstrument.containsKey(group) ||
                         group.equals(PolyglotImpl.OPTION_GROUP_ENGINE) ||
-                        group.equals(PolyglotImpl.OPTION_GROUP_COMPILER)) {
-            return true;
-        }
-        return false;
+                        group.equals(PolyglotImpl.OPTION_GROUP_COMPILER);
     }
 
     static String parseOptionGroup(String key) {
