@@ -113,7 +113,6 @@ import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
-import org.graalvm.compiler.nodes.memory.address.RawAddressNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -575,7 +574,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected AddressNode createUnsafeAddress(StructuredGraph graph, ValueNode object, ValueNode offset) {
         if (object.isConstant() && object.asConstant().isDefaultForKind()) {
-            return graph.unique(new RawAddressNode(offset));
+            return graph.addOrUniqueWithInputs(OffsetAddressNode.create(offset));
         } else {
             return graph.unique(new OffsetAddressNode(object, offset));
         }
@@ -604,7 +603,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         JavaKind readKind = load.getKind();
         assert readKind != JavaKind.Object;
         Stamp loadStamp = loadStamp(load.stamp(), readKind, false);
-        AddressNode address = graph.unique(new RawAddressNode(load.getAddress()));
+        AddressNode address = graph.addOrUniqueWithInputs(OffsetAddressNode.create(load.getAddress()));
         ReadNode memoryRead = graph.add(new ReadNode(address, load.getLocationIdentity(), loadStamp, BarrierType.NONE));
         // An unsafe read must not float otherwise it may float above
         // a test guaranteeing the read is safe.
@@ -639,7 +638,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         assert store.getValue().getStackKind() != JavaKind.Object;
         JavaKind valueKind = store.getKind();
         ValueNode value = implicitStoreConvert(graph, valueKind, store.getValue(), false);
-        AddressNode address = graph.unique(new RawAddressNode(store.getAddress()));
+        AddressNode address = graph.addOrUniqueWithInputs(OffsetAddressNode.create(store.getAddress()));
         WriteNode write = graph.add(new WriteNode(address, store.getLocationIdentity(), value, BarrierType.NONE));
         write.setStateAfter(store.stateAfter());
         graph.replaceFixedWithFixed(store, write);

@@ -64,15 +64,6 @@ public class ParameterSpec {
         return false;
     }
 
-    public ParameterSpec(ParameterSpec original, TypeMirror newType) {
-        this(original.name, newType);
-        this.local = original.local;
-        this.signature = original.signature;
-        this.execution = original.execution;
-        this.typeDefinition = original.typeDefinition;
-        this.allowSubclasses = original.allowSubclasses;
-    }
-
     public ParameterSpec(String name, TypeMirror type) {
         this(name, Arrays.asList(type));
     }

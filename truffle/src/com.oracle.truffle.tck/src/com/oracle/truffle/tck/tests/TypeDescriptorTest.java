@@ -228,4 +228,14 @@ public class TypeDescriptorTest {
         Assert.assertTrue(ue2.isAssignable(ue1));
         Assert.assertFalse(ue2.isAssignable(up));
     }
+
+    @Test
+    public void testAny() {
+        Assert.assertTrue(TypeDescriptor.ARRAY.isAssignable(TypeDescriptor.array(TypeDescriptor.ANY)));
+        Assert.assertTrue(TypeDescriptor.array(TypeDescriptor.ANY).isAssignable(TypeDescriptor.ARRAY));
+        Assert.assertTrue(TypeDescriptor.EXECUTABLE.isAssignable(TypeDescriptor.ANY));
+        Assert.assertTrue(TypeDescriptor.executable(TypeDescriptor.ANY).isAssignable(TypeDescriptor.ANY));
+        Assert.assertTrue(TypeDescriptor.EXECUTABLE.isAssignable(TypeDescriptor.executable(TypeDescriptor.ANY)));
+        Assert.assertTrue(TypeDescriptor.executable(TypeDescriptor.ANY).isAssignable(TypeDescriptor.EXECUTABLE));
+    }
 }

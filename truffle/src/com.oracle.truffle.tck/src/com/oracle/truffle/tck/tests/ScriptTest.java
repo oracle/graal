@@ -78,16 +78,18 @@ public class ScriptTest {
     @Test
     public void testScript() {
         Assume.assumeThat(testRun, TEST_RESULT_MATCHER);
-        Value result = null;
+        boolean success = false;
         try {
             try {
-                result = testRun.getSnippet().getExecutableValue().execute(testRun.getActualParameters().toArray());
+                final Value result = testRun.getSnippet().getExecutableValue().execute(testRun.getActualParameters().toArray());
                 TestUtil.validateResult(testRun, result, null);
+                success = true;
             } catch (PolyglotException pe) {
                 TestUtil.validateResult(testRun, null, pe);
+                success = true;
             }
         } finally {
-            TEST_RESULT_MATCHER.accept(new AbstractMap.SimpleImmutableEntry<>(testRun, result != null));
+            TEST_RESULT_MATCHER.accept(new AbstractMap.SimpleImmutableEntry<>(testRun, success));
         }
     }
 }

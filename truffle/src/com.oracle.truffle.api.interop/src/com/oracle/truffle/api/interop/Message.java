@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -492,6 +492,12 @@ public abstract class Message {
      * created for this message should yield value of {@link Boolean}. If the object responds with
      * {@link Boolean#TRUE}, the object can be accessed by {@link #AS_POINTER} message.
      *
+     * It is expected that objects should only return {@link Boolean#TRUE} here if the native
+     * pointer value corresponding to this object already exists, and obtaining it is a cheap
+     * operation. If an object can be transformed to a pointer representation, but this hasn't
+     * happened yet, the object is expected to return {@link Boolean#FALSE} to {@link #IS_POINTER},
+     * and wait for the {@link #TO_NATIVE} message to trigger the transformation.
+     *
      * @since 0.26 or earlier
      */
     public static final Message IS_POINTER = IsPointer.INSTANCE;
@@ -526,6 +532,10 @@ public abstract class Message {
      * value} that represents a raw native pointer. This resulting {@link TruffleObject truffle
      * native value} returns true for {@link #IS_POINTER} and can be unwrapped using the
      * {@link #AS_POINTER} message.
+     * <p>
+     * If an object returns true for {@link #IS_POINTER}, it is still expected that this object
+     * supports the {@link #TO_NATIVE} message. It can just return a reference to itself in that
+     * case.
      * <p>
      * If the object does not support the {@link #TO_NATIVE} message, an
      * {@link UnsupportedMessageException} has to be thrown.

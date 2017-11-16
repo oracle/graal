@@ -37,14 +37,12 @@ public class NodeExecutionData {
     private final String name;
     private final int index;
     private final int childIndex;
-    private final boolean shortCircuit;
     private final List<TypeMirror> typeRestrictions = new ArrayList<>();
 
-    public NodeExecutionData(NodeChildData child, int index, int childIndex, boolean shortCircuit) {
+    public NodeExecutionData(NodeChildData child, int index, int childIndex) {
         this.child = child;
         this.index = index;
         this.childIndex = childIndex;
-        this.shortCircuit = shortCircuit;
         this.name = createName();
     }
 
@@ -84,10 +82,6 @@ public class NodeExecutionData {
 
     public boolean isIndexed() {
         return childIndex > -1;
-    }
-
-    public boolean isShortCircuit() {
-        return shortCircuit;
     }
 
     public String getIndexedName() {

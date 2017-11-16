@@ -52,7 +52,6 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private ParameterSpec instanceParameterSpec;
 
     private final List<SpecializationData> specializations = new ArrayList<>();
-    private final List<ShortCircuitData> shortCircuits = new ArrayList<>();
     private final List<CreateCastData> casts = new ArrayList<>();
     private final List<ExecutableTypeData> executableTypes = new ArrayList<>();
 
@@ -70,7 +69,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
         this.fields = new ArrayList<>();
         this.children = new ArrayList<>();
         this.childExecutions = new ArrayList<>();
-        this.thisExecution = new NodeExecutionData(new NodeChildData(null, null, "this", getNodeType(), getNodeType(), null, Cardinality.ONE), -1, -1, false);
+        this.thisExecution = new NodeExecutionData(new NodeChildData(null, null, "this", getNodeType(), getNodeType(), null, Cardinality.ONE), -1, -1);
         this.thisExecution.getChild().setNode(this);
         this.generateFactory = generateFactory;
     }
@@ -154,14 +153,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
     }
 
     public int getSignatureSize() {
-        int count = 0;
-        for (NodeExecutionData execution : getChildExecutions()) {
-            if (execution.isShortCircuit()) {
-                count++;
-            }
-            count++;
-        }
-        return count;
+        return getChildExecutions().size();
     }
 
     public boolean isFrameUsedByAnyGuard() {
@@ -216,9 +208,6 @@ public class NodeData extends Template implements Comparable<NodeData> {
         }
         if (executableTypes != null) {
             containerChildren.addAll(getExecutableTypes());
-        }
-        if (shortCircuits != null) {
-            containerChildren.addAll(shortCircuits);
         }
         if (children != null) {
             containerChildren.addAll(children);
@@ -328,9 +317,6 @@ public class NodeData extends Template implements Comparable<NodeData> {
             if (execType.getMethod() != null) {
                 methods.add(execType.getMethod());
             }
-        }
-        for (ShortCircuitData shortcircuit : getShortCircuits()) {
-            methods.add(shortcircuit.getMethod());
         }
 
         if (getCasts() != null) {
@@ -546,10 +532,6 @@ public class NodeData extends Template implements Comparable<NodeData> {
 
     public List<ExecutableTypeData> getExecutableTypes() {
         return getExecutableTypes(-1);
-    }
-
-    public List<ShortCircuitData> getShortCircuits() {
-        return shortCircuits;
     }
 
     public int getMinimalEvaluatedParameters() {

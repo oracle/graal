@@ -22,22 +22,17 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import java.util.List;
-
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.dsl.test.UnsupportedSpecializationTestFactory.Unsupported1Factory;
-import com.oracle.truffle.api.dsl.test.UnsupportedSpecializationTestFactory.Unsupported2Factory;
 import com.oracle.truffle.api.dsl.test.UnsupportedSpecializationTestFactory.UnsupportedNoChildNodeGen;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeUtil;
 
 public class UnsupportedSpecializationTest {
 
@@ -61,44 +56,6 @@ public class UnsupportedSpecializationTest {
 
         @Specialization
         public int doInteger(@SuppressWarnings("unused") int a) {
-            throw new AssertionError();
-        }
-    }
-
-    @Test
-    public void testUnsupported2() {
-        TestRootNode<Unsupported2> root = TestHelper.createRoot(Unsupported2Factory.getInstance());
-        try {
-            TestHelper.executeWith(root, "", 1);
-            Assert.fail();
-        } catch (UnsupportedSpecializationException e) {
-            Assert.assertNotNull(e.getSuppliedValues());
-            Assert.assertNotNull(e.getSuppliedNodes());
-            Assert.assertEquals(3, e.getSuppliedValues().length);
-            Assert.assertEquals(3, e.getSuppliedNodes().length);
-            Assert.assertEquals("", e.getSuppliedValues()[0]);
-            Assert.assertEquals(false, e.getSuppliedValues()[1]);
-            Assert.assertEquals(null, e.getSuppliedValues()[2]);
-            List<Node> children = NodeUtil.findNodeChildren(root.getNode());
-            Assert.assertSame(children.get(0), e.getSuppliedNodes()[0]);
-            Assert.assertNull(e.getSuppliedNodes()[1]);
-            Assert.assertSame(children.get(1), e.getSuppliedNodes()[2]);
-            Assert.assertEquals(root.getNode(), e.getNode());
-        }
-    }
-
-    @SuppressWarnings("unused")
-    @NodeChildren({@NodeChild("a"), @NodeChild("b")})
-    abstract static class Unsupported2 extends ValueNode {
-
-        @SuppressWarnings("deprecation")
-        @com.oracle.truffle.api.dsl.ShortCircuit("b")
-        public boolean needsB(Object a) {
-            return false;
-        }
-
-        @Specialization
-        public int doInteger(int a, boolean hasB, int b) {
             throw new AssertionError();
         }
     }

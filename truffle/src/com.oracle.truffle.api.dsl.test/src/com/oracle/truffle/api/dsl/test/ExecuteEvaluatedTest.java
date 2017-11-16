@@ -291,55 +291,6 @@ public class ExecuteEvaluatedTest {
         }
     }
 
-    @SuppressWarnings("unused")
-    @NodeChildren({@NodeChild(value = "a", type = ValueNode.class), @NodeChild(value = "b", type = ValueNode.class)})
-    abstract static class TestEvaluatedShortCircuit1 extends Node {
-
-        public abstract Object execute1(VirtualFrame frame, Object value);
-
-        public abstract Object execute2(VirtualFrame frame, Object value, boolean hasB);
-
-        public abstract Object execute3(VirtualFrame frame, Object value, boolean hasB, Object b);
-
-        @SuppressWarnings("deprecation")
-        @com.oracle.truffle.api.dsl.ShortCircuit("b")
-        public boolean needsB(Object a) {
-            return true;
-        }
-
-        @Specialization
-        int call(Object a, boolean hasB, Object b) {
-            return 42;
-        }
-    }
-
-    @SuppressWarnings("unused")
-    @NodeChildren({@NodeChild(value = "a", type = ValueNode.class), @NodeChild(value = "b", type = ValueNode.class)})
-    abstract static class TestEvaluatedShortCircuit2 extends Node {
-
-        public abstract Object execute1(VirtualFrame frame, Object value);
-
-        public abstract Object execute2(VirtualFrame frame, Object value, boolean hasB);
-
-        public abstract Object execute3(VirtualFrame frame, Object value, boolean hasB, Object b);
-
-        @SuppressWarnings("deprecation")
-        @com.oracle.truffle.api.dsl.ShortCircuit("b")
-        public boolean needsB(Object a) {
-            return true;
-        }
-
-        @Specialization
-        int call(int a, boolean hasB, int b) {
-            return 42;
-        }
-
-        @Specialization
-        int call(Object a, boolean hasB, Object b) {
-            return 42;
-        }
-    }
-
     /*
      * Failed test where execute parameter Object[] was cased using (Object) which led to a compile
      * error.
