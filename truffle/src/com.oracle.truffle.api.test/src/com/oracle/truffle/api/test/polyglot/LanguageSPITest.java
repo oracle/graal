@@ -713,6 +713,50 @@ public class LanguageSPITest {
         c.close();
     }
 
+    @Test
+    public void testCreateContextDuringDispose() {
+        AtomicBoolean contextOnFinalize = new AtomicBoolean(true);
+        AtomicBoolean contextOnDispose = new AtomicBoolean(false);
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+
+            @Override
+            protected LanguageContext createContext(Env env) {
+                return new LanguageContext(env);
+            }
+
+            @Override
+            protected void finalizeContext(LanguageContext context) {
+                if (contextOnFinalize.get()) {
+                    context.env.newContextBuilder().build();
+                }
+            }
+
+            @Override
+            protected void disposeContext(LanguageContext context) {
+                if (contextOnDispose.get()) {
+                    context.env.newContextBuilder().build();
+                }
+            }
+        });
+
+        Context c = Context.create();
+        c.initialize(ProxyLanguage.ID);
+        // Fails on finalize
+        testFails(() -> {
+            c.close();
+        });
+        contextOnFinalize.set(false);
+        contextOnDispose.set(true);
+        // Fails on dispose
+        testFails(() -> {
+            c.close();
+        });
+
+        // clean up the context
+        contextOnDispose.set(false);
+        c.close();
+    }
+
     private static void testFails(Runnable consumer) {
         try {
             consumer.run();

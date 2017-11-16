@@ -132,13 +132,39 @@ public abstract class Instrumenter {
     public abstract <T extends OutputStream> EventBinding<T> attachErrConsumer(T stream);
 
     /**
-     * Attach an {@link AllocationListener listener} to be notified about allocations of guest
+     * Attach a {@link AllocationListener listener} to be notified about allocations of guest
      * language values. Be sure to {@link EventBinding#dispose() dispose} the binding when it's not
      * used any more.
      *
      * @since 0.27
      */
     public abstract <T extends AllocationListener> EventBinding<T> attachAllocationListener(AllocationEventFilter filter, T listener);
+
+    /**
+     * Attach a {@link ContextsListener listener} to be notified about changes in contexts in guest
+     * language application. This is supported in {@link TruffleInstrument.Env#getInstrumenter()}
+     * only.
+     *
+     * @param listener a listener to receive the context events
+     * @param includeActiveContexts whether or not this listener should be notified for present
+     *            active contexts
+     * @return a handle for unregistering the listener
+     * @since 0.30
+     */
+    public abstract <T extends ContextsListener> EventBinding<T> attachContextsListener(T listener, boolean includeActiveContexts);
+
+    /**
+     * Attach a {@link ThreadsListener listener} to be notified about changes in threads in guest
+     * language application. This is supported in {@link TruffleInstrument.Env#getInstrumenter()}
+     * only.
+     *
+     * @param listener a listener to receive the context events
+     * @param includeInitializedThreads whether or not this listener should be notified for present
+     *            initialized threads
+     * @return a handle for unregistering the listener
+     * @since 0.30
+     */
+    public abstract <T extends ThreadsListener> EventBinding<T> attachThreadsListener(T listener, boolean includeInitializedThreads);
 
     /**
      * Returns a filtered list of loaded {@link SourceSection} instances.

@@ -66,7 +66,11 @@ public final class TruffleContext implements AutoCloseable {
     final Object impl;
 
     TruffleContext(TruffleLanguage.Env env, Map<String, Object> config) {
-        this.impl = AccessAPI.engineAccess().createInternalContext(env.getVMObject(), config);
+        this.impl = AccessAPI.engineAccess().createInternalContext(env.getVMObject(), config, this);
+    }
+
+    TruffleContext(Object impl) {
+        this.impl = impl;
     }
 
     private TruffleContext() {
@@ -85,6 +89,17 @@ public final class TruffleContext implements AutoCloseable {
             }
         };
         return true;
+    }
+
+    /**
+     * Get a parent context of this context, if any. This provides the hierarchy of inner contexts.
+     *
+     * @return a parent context, or <code>null</code> if there is no parent
+     * @since 0.30
+     */
+    @TruffleBoundary
+    public TruffleContext getParent() {
+        return AccessAPI.engineAccess().getParentContext(impl);
     }
 
     /**

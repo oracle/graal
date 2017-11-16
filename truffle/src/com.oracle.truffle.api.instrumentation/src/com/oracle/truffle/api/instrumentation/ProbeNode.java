@@ -201,7 +201,7 @@ public final class ProbeNode extends Node {
         return null;
     }
 
-    ProbeNode.EventChainNode createEventChainCallback(EventBinding<?> binding) {
+    ProbeNode.EventChainNode createEventChainCallback(EventBinding.Source<?> binding) {
         ProbeNode.EventChainNode next;
         Object element = binding.getElement();
         if (element instanceof ExecutionEventListener) {
@@ -218,7 +218,7 @@ public final class ProbeNode extends Node {
         return next;
     }
 
-    private ExecutionEventNode createEventNode(EventBinding<?> binding, Object element) {
+    private ExecutionEventNode createEventNode(EventBinding.Source<?> binding, Object element) {
         ExecutionEventNode eventNode;
         try {
             eventNode = ((ExecutionEventNodeFactory) element).create(context);
@@ -246,7 +246,7 @@ public final class ProbeNode extends Node {
      * guest language execution semantics. Normal response is to log and continue.
      */
     @TruffleBoundary
-    static void exceptionEventForClientInstrument(EventBinding<?> b, String eventName, Throwable t) {
+    static void exceptionEventForClientInstrument(EventBinding.Source<?> b, String eventName, Throwable t) {
         assert !b.isLanguageBinding();
         if (t instanceof ThreadDeath) {
             // Terminates guest language execution immediately
@@ -273,10 +273,10 @@ public final class ProbeNode extends Node {
     abstract static class EventChainNode extends Node {
 
         @Child private ProbeNode.EventChainNode next;
-        private final EventBinding<?> binding;
+        private final EventBinding.Source<?> binding;
         @CompilationFinal private boolean seenException;
 
-        EventChainNode(EventBinding<?> binding) {
+        EventChainNode(EventBinding.Source<?> binding) {
             this.binding = binding;
         }
 
@@ -391,7 +391,7 @@ public final class ProbeNode extends Node {
 
         private final ExecutionEventListener listener;
 
-        EventFilterChainNode(EventBinding<?> binding, ExecutionEventListener listener) {
+        EventFilterChainNode(EventBinding.Source<?> binding, ExecutionEventListener listener) {
             super(binding);
             this.listener = listener;
         }
@@ -421,7 +421,7 @@ public final class ProbeNode extends Node {
 
         @Child private ExecutionEventNode eventNode;
 
-        EventProviderChainNode(EventBinding<?> binding, ExecutionEventNode eventNode) {
+        EventProviderChainNode(EventBinding.Source<?> binding, ExecutionEventNode eventNode) {
             super(binding);
             this.eventNode = eventNode;
         }

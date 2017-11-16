@@ -43,6 +43,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -191,13 +192,19 @@ public abstract class Accessor {
 
         public abstract boolean isHostAccessAllowed(Object vmObject, Env env);
 
-        public abstract Object createInternalContext(Object vmObject, Map<String, Object> config);
+        public abstract Object createInternalContext(Object vmObject, Map<String, Object> config, TruffleContext spiContext);
 
         public abstract Object enterInternalContext(Object impl);
 
         public abstract void leaveInternalContext(Object impl, Object prev);
 
         public abstract void closeInternalContext(Object impl);
+
+        public abstract void reportAllLanguageContexts(Object vmObject, Object contextsListener);
+
+        public abstract void reportAllContextThreads(Object vmObject, Object threadsListener);
+
+        public abstract TruffleContext getParentContext(Object impl);
 
         public abstract boolean isCreateThreadAllowed(Object vmObject);
 
@@ -217,6 +224,8 @@ public abstract class Accessor {
                         String[] applicationArguments);
 
         public abstract Object createEnvContext(Env localEnv);
+
+        public abstract TruffleContext createTruffleContext(Object impl);
 
         public abstract void postInitEnv(Env env);
 
@@ -321,6 +330,22 @@ public abstract class Accessor {
         public abstract Object getEngineInstrumenter(Object instrumentationHandler);
 
         public abstract void onNodeInserted(RootNode rootNode, Node tree);
+
+        public abstract void notifyContextCreated(Object engine, TruffleContext context);
+
+        public abstract void notifyContextClosed(Object engine, TruffleContext context);
+
+        public abstract void notifyLanguageContextCreated(Object engine, TruffleContext context, LanguageInfo info);
+
+        public abstract void notifyLanguageContextInitialized(Object engine, TruffleContext context, LanguageInfo info);
+
+        public abstract void notifyLanguageContextFinalized(Object engine, TruffleContext context, LanguageInfo info);
+
+        public abstract void notifyLanguageContextDisposed(Object engine, TruffleContext context, LanguageInfo info);
+
+        public abstract void notifyThreadStarted(Object engine, TruffleContext context, Thread thread);
+
+        public abstract void notifyThreadFinished(Object engine, TruffleContext context, Thread thread);
 
     }
 

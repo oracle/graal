@@ -1716,6 +1716,11 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
+        public TruffleContext createTruffleContext(Object impl) {
+            return new TruffleContext(impl);
+        }
+
+        @Override
         public void postInitEnv(Env env) {
             env.postInit();
         }
