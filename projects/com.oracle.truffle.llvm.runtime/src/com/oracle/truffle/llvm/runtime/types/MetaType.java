@@ -32,14 +32,14 @@ package com.oracle.truffle.llvm.runtime.types;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class MetaType extends Type {
-    public static MetaType UNKNOWN = new MetaType();
-    public static MetaType LABEL = new MetaType();
-    public static MetaType TOKEN = new MetaType();
-    public static MetaType METADATA = new MetaType();
-    public static MetaType X86MMX = new MetaType();
+    public static final MetaType UNKNOWN = new MetaType();
+    public static final MetaType LABEL = new MetaType();
+    public static final MetaType TOKEN = new MetaType();
+    public static final MetaType METADATA = new MetaType();
+    public static final MetaType X86MMX = new MetaType();
 
     // this type is only used to enter debug information into the truffle ast
-    public static MetaType DEBUG = new MetaType();
+    public static final MetaType DEBUG = new MetaType();
 
     private final Object identity;
 
