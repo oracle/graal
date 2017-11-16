@@ -68,7 +68,9 @@ public interface LanguageProvider {
     /**
      * Creates a collection of functions creating language data types. For each language data type
      * create a function returning a value of given type and assign a correct {@link TypeDescriptor}
-     * to it.
+     * to it. The {@link TypeDescriptor} can be one of the predefined {@link TypeDescriptor}s, an
+     * array with component type, an executable with required parameter types or an intersection
+     * type.
      *
      * <p>
      * The JavaScript sample implementation creating a boolean type:
@@ -86,7 +88,9 @@ public interface LanguageProvider {
     /**
      * Creates a collection of functions representing language expressions to test. For each
      * language operator create a function performing given operator and assign a correct
-     * {@link TypeDescriptor}s to its parameters and return type.
+     * {@link TypeDescriptor}s to its parameters and return type. The parameter types and return
+     * type can be one of the predefined {@link TypeDescriptor}s, an array with component type, an
+     * executable with required parameter types or an union type.
      *
      * <p>
      * The JavaScript sample implementation creating a plus operator:
@@ -104,7 +108,9 @@ public interface LanguageProvider {
     /**
      * Creates a collection of functions representing language statements to test. For each control
      * flow statement create a function performing given statement and assign a correct
-     * {@link TypeDescriptor}s to its parameters and return type.
+     * {@link TypeDescriptor}s to its parameters and return type. The parameter types and return
+     * type can be one of the predefined {@link TypeDescriptor}s, an array with component type, an
+     * executable with required parameter types or an union type.
      *
      * <p>
      * The JavaScript sample implementation creating the {@code if} statement:
