@@ -111,14 +111,14 @@ public final class LLVMParserRuntime {
             final LLVMSourceContext sourceContext = context.getSourceContext();
 
             sourceModel.getGlobals().forEach((symbol, global) -> {
-                final LLVMExpressionNode node = runtime.getGlobalVariable(symbolResolver, global);
-                final LLVMDebugValue value = nodeFactory.createGlobalVariableDebug(node);
+                final LLVMExpressionNode node = symbolResolver.resolve(global);
+                final LLVMDebugValue value = nodeFactory.createDebugConstantValue(node);
                 sourceContext.registerGlobal(symbol, value);
             });
 
-            sourceModel.getStaticMembers().forEach(((type, global) -> {
-                final LLVMExpressionNode node = runtime.getGlobalVariable(symbolResolver, global);
-                final LLVMDebugValue value = nodeFactory.createGlobalVariableDebug(node);
+            sourceModel.getStaticMembers().forEach(((type, symbol) -> {
+                final LLVMExpressionNode node = symbolResolver.resolve(symbol);
+                final LLVMDebugValue value = nodeFactory.createDebugConstantValue(node);
                 type.setValue(value);
             }));
         }

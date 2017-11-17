@@ -243,13 +243,13 @@ public final class SourceModel {
 
     private final Map<LLVMSourceSymbol, GlobalValueSymbol> globals;
 
-    private final Map<LLVMSourceStaticMemberType, GlobalValueSymbol> staticMembers;
+    private final Map<LLVMSourceStaticMemberType, Symbol> staticMembers;
 
     public Map<LLVMSourceSymbol, GlobalValueSymbol> getGlobals() {
         return Collections.unmodifiableMap(globals);
     }
 
-    public Map<LLVMSourceStaticMemberType, GlobalValueSymbol> getStaticMembers() {
+    public Map<LLVMSourceStaticMemberType, Symbol> getStaticMembers() {
         return Collections.unmodifiableMap(staticMembers);
     }
 
@@ -283,7 +283,7 @@ public final class SourceModel {
             this.sourceModel = new SourceModel();
             this.typeIdentifier = new DITypeIdentifier();
             this.scopeExtractor = new DIScopeExtractor(typeIdentifier);
-            this.typeExtractor = new DITypeExtractor(scopeExtractor, typeIdentifier);
+            this.typeExtractor = new DITypeExtractor(scopeExtractor, typeIdentifier, sourceModel.staticMembers);
 
             this.typeIdentifier.setMetadata(moduleMetadata);
         }

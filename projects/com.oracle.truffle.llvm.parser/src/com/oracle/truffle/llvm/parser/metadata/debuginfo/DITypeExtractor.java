@@ -44,6 +44,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDNode;
 import com.oracle.truffle.llvm.parser.metadata.MDString;
 import com.oracle.truffle.llvm.parser.metadata.MDSubrange;
 import com.oracle.truffle.llvm.parser.metadata.MDSubroutine;
+import com.oracle.truffle.llvm.parser.metadata.MDValue;
 import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceArrayLikeType;
@@ -56,6 +57,7 @@ import com.oracle.truffle.llvm.runtime.debug.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -80,13 +82,15 @@ final class DITypeExtractor implements MetadataVisitor {
     }
 
     private final Map<MDBaseNode, LLVMSourceType> parsedTypes = new HashMap<>();
+    private final Map<LLVMSourceStaticMemberType, Symbol> staticMembers;
 
     private final DIScopeExtractor scopeExtractor;
     private final DITypeIdentifier typeIdentifier;
 
-    DITypeExtractor(DIScopeExtractor scopeExtractor, DITypeIdentifier typeIdentifier) {
+    DITypeExtractor(DIScopeExtractor scopeExtractor, DITypeIdentifier typeIdentifier, Map<LLVMSourceStaticMemberType, Symbol> staticMembers) {
         this.scopeExtractor = scopeExtractor;
         this.typeIdentifier = typeIdentifier;
+        this.staticMembers = staticMembers;
     }
 
     @Override
@@ -306,6 +310,11 @@ final class DITypeExtractor implements MetadataVisitor {
                     parsedTypes.put(mdType, type);
                     final LLVMSourceType baseType = resolve(mdType.getBaseType());
                     type.setElementType(baseType);
+
+                    if (mdType.getExtraData() instanceof MDValue) {
+                        staticMembers.put(type, ((MDValue) mdType.getExtraData()).getValue());
+                    }
+
                     break;
                 }
 

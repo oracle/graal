@@ -41,8 +41,11 @@ public abstract class LLVMDebugValue {
     }
 
     public LLVMDebugObject getValue(LLVMSourceSymbol symbol) {
-        // TODO null-check
-        return getValue(symbol.getType(), symbol.getLocation());
+        if (symbol != null) {
+            return getValue(symbol.getType(), symbol.getLocation());
+        } else {
+            return getValue(LLVMSourceType.UNKNOWN_TYPE, null);
+        }
     }
 
     public abstract LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration);
