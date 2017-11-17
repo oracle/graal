@@ -109,7 +109,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private volatile Assumption nodeRewritingAssumption;
     private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, Assumption> NODE_REWRITING_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,
                     Assumption.class, "nodeRewritingAssumption");
-    private OptimizedDirectCallNode callSiteForSplit;
+    private volatile OptimizedDirectCallNode callSiteForSplit;
 
     public OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         super(rootNode.toString());
