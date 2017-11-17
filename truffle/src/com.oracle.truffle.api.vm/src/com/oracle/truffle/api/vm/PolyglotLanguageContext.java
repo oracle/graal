@@ -218,6 +218,7 @@ final class PolyglotLanguageContext implements VMObject {
 
                     creating = true;
                     try {
+                        initializeCaches();
                         try {
                             env = LANGUAGE.createEnv(this, language.info,
                                             context.out,
@@ -227,7 +228,6 @@ final class PolyglotLanguageContext implements VMObject {
                         } finally {
                             creating = false;
                         }
-                        initializeCaches();
                         LANGUAGE.initializeThread(env, Thread.currentThread());
 
                         LANGUAGE.postInitEnv(env);
