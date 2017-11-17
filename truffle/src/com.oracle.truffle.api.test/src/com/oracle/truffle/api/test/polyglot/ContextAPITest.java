@@ -45,7 +45,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.ForeignAccess.Factory26;
+import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -288,7 +288,7 @@ public class ContextAPITest {
 
     }
 
-    private static class MyTruffleObjectFactory implements Factory26 {
+    private static class MyTruffleObjectFactory implements StandardFactory {
 
         private static final ForeignAccess INSTANCE = ForeignAccess.create(MyTruffleObject.class, new MyTruffleObjectFactory());
 
