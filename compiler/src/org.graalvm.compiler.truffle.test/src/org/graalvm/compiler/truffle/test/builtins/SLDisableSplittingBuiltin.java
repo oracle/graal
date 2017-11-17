@@ -43,9 +43,7 @@ public abstract class SLDisableSplittingBuiltin extends SLGraalRuntimeBuiltin {
     @TruffleBoundary
     public SLFunction disableSplitting(SLFunction function) {
         OptimizedCallTarget target = (OptimizedCallTarget) function.getCallTarget();
-        for (OptimizedCallTarget oct : findDuplicateCallTargets(target)) {
-            ((SLRootNode) oct.getRootNode()).setCloningAllowed(false);
-        }
+        ((SLRootNode) target.getRootNode()).setCloningAllowed(false);
         return function;
     }
 
