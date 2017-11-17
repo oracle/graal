@@ -61,6 +61,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -693,6 +694,22 @@ public class LanguageSPITest {
         assertEquals(1, getOptionDescriptors.get());
         assertEquals(1, get.get());
 
+        c.close();
+    }
+
+    @Test
+    public void testExportSymbolInCreate() {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected LanguageContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
+                env.exportSymbol("symbol", JavaInterop.asTruffleObject(env));
+                return super.createContext(env);
+            }
+
+        });
+        Context c = Context.create();
+        c.initialize(ProxyLanguage.ID);
+        assertTrue(c.importSymbol("symbol").isHostObject());
         c.close();
     }
 
