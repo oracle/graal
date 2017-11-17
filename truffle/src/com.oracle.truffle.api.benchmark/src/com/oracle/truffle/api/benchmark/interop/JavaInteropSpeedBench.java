@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.bench.interop;
+package com.oracle.truffle.api.benchmark.interop;
 
 import java.util.Random;
 import java.util.function.IntBinaryOperator;
