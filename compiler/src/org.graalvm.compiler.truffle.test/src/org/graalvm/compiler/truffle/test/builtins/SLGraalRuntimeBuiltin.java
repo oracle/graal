@@ -27,9 +27,9 @@ import java.util.Set;
 
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -44,26 +44,6 @@ public abstract class SLGraalRuntimeBuiltin extends SLBuiltinNode {
         if (!(Truffle.getRuntime() instanceof GraalTruffleRuntime)) {
             throw new AssertionError("Graal runtime builtins can only be used inside of a Graal runtime.");
         }
-    }
-
-    /**
-     * Finds all call targets available for the same original call target. This might be useful if a
-     * {@link CallTarget} got duplicated due to splitting.
-     */
-    @SuppressWarnings("deprecation")
-    @TruffleBoundary
-    protected static final Set<OptimizedCallTarget> findDuplicateCallTargets(OptimizedCallTarget originalCallTarget) {
-        final Set<OptimizedCallTarget> allCallTargets = new HashSet<>();
-        allCallTargets.add(originalCallTarget);
-        for (RootCallTarget target : Truffle.getRuntime().getCallTargets()) {
-            if (target instanceof OptimizedCallTarget) {
-                OptimizedCallTarget oct = (OptimizedCallTarget) target;
-                if (oct.getSourceCallTarget() == originalCallTarget) {
-                    allCallTargets.add(oct);
-                }
-            }
-        }
-        return allCallTargets;
     }
 
     /**
