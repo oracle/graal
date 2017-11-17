@@ -61,11 +61,11 @@ final class PolyglotLanguageContext implements VMObject {
     final PolyglotContextImpl context;
     final PolyglotLanguage language;
     final Map<Object, CallTarget> sourceCache = new ConcurrentHashMap<>();
-    final Map<Class<?>, PolyglotValue> valueCache = new ConcurrentHashMap<>();
     final Map<String, Object> config;
-    final PolyglotValue defaultValueCache;
-    final OptionValuesImpl optionValues;
-    final Value nullValue;
+    volatile Map<Class<?>, PolyglotValue> valueCache;
+    volatile PolyglotValue defaultValueCache;
+    volatile OptionValuesImpl optionValues;
+    volatile Value nullValue;
     final String[] applicationArguments;
     final Set<PolyglotThread> activePolyglotThreads = new HashSet<>();
     volatile boolean creating; // true when context is currently being created.
@@ -80,6 +80,14 @@ final class PolyglotLanguageContext implements VMObject {
         this.optionValues = optionValues;
         this.applicationArguments = applicationArguments == null ? EMPTY_STRING_ARRAY : applicationArguments;
         this.config = config;
+    }
+
+    /**
+     * Initialized with the context.
+     */
+    private void initializeCaches() {
+        assert Thread.holdsLock(context);
+        valueCache = new ConcurrentHashMap<>();
         PolyglotValue.createDefaultValueCaches(this);
         nullValue = toHostValue(toGuestValue(null));
         defaultValueCache = new PolyglotValue.Default(this);
@@ -210,27 +218,35 @@ final class PolyglotLanguageContext implements VMObject {
 
                     creating = true;
                     try {
-                        env = LANGUAGE.createEnv(this, language.info,
-                                        context.out,
-                                        context.err,
-                                        context.in, config, getOptionValues(), applicationArguments);
-                        LANGUAGE.createEnvContext(env);
-                    } finally {
-                        creating = false;
-                    }
-                    LANGUAGE.initializeThread(env, Thread.currentThread());
-
-                    LANGUAGE.postInitEnv(env);
-
-                    if (!singleThreaded) {
-                        LANGUAGE.initializeMultiThreading(env);
-                    }
-
-                    for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
-                        if (threadInfo.thread == Thread.currentThread()) {
-                            continue;
+                        try {
+                            env = LANGUAGE.createEnv(this, language.info,
+                                            context.out,
+                                            context.err,
+                                            context.in, config, getOptionValues(), applicationArguments);
+                            LANGUAGE.createEnvContext(env);
+                        } finally {
+                            creating = false;
                         }
-                        LANGUAGE.initializeThread(env, threadInfo.thread);
+                        initializeCaches();
+                        LANGUAGE.initializeThread(env, Thread.currentThread());
+
+                        LANGUAGE.postInitEnv(env);
+
+                        if (!singleThreaded) {
+                            LANGUAGE.initializeMultiThreading(env);
+                        }
+
+                        for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
+                            if (threadInfo.thread == Thread.currentThread()) {
+                                continue;
+                            }
+                            LANGUAGE.initializeThread(env, threadInfo.thread);
+                        }
+                    } catch (Throwable e) {
+                        // language not successfully initialized reset to avoid inconsistent
+                        // language contexts
+                        env = null;
+                        throw e;
                     }
 
                     return true;
@@ -241,6 +257,10 @@ final class PolyglotLanguageContext implements VMObject {
     }
 
     OptionValuesImpl getOptionValues() {
+        if (optionValues == null) {
+            // we need to create a copy. languages might want to modify the options
+            optionValues = language.getOptionValues().copy();
+        }
         return optionValues;
     }
 

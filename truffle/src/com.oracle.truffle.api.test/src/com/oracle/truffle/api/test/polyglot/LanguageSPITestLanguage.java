@@ -25,6 +25,7 @@ package com.oracle.truffle.api.test.polyglot;
 import static org.junit.Assert.assertSame;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CallTarget;
@@ -41,12 +42,18 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
 
     static Function<Env, Object> runinside;
 
+    static final AtomicInteger instanceCount = new AtomicInteger();
+
     static class LanguageContext {
 
         int disposeCalled;
         Env env;
         Map<String, Object> config;
 
+    }
+
+    public LanguageSPITestLanguage() {
+        instanceCount.incrementAndGet();
     }
 
     public static LanguageContext getContext() {
