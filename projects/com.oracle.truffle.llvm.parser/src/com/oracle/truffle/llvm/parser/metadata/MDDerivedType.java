@@ -32,20 +32,15 @@ package com.oracle.truffle.llvm.parser.metadata;
 import com.oracle.truffle.llvm.parser.listeners.Metadata;
 import com.oracle.truffle.llvm.parser.records.DwTagRecord;
 
-import java.util.Arrays;
-
 public final class MDDerivedType extends MDType implements MDBaseNode {
 
     // TODO extend with objective c property names
-
-    private final Tag tag;
 
     private MDBaseNode baseType;
     private MDBaseNode scope;
 
     private MDDerivedType(long tag, long line, long size, long align, long offset, long flags) {
-        super(size, align, offset, line, flags);
-        this.tag = Tag.decode(tag);
+        super(tag, size, align, offset, line, flags);
 
         this.scope = MDVoidNode.INSTANCE;
         this.baseType = MDVoidNode.INSTANCE;
@@ -60,10 +55,6 @@ public final class MDDerivedType extends MDType implements MDBaseNode {
         return baseType;
     }
 
-    public Tag getTag() {
-        return tag;
-    }
-
     public MDBaseNode getScope() {
         return scope;
     }
@@ -76,30 +67,6 @@ public final class MDDerivedType extends MDType implements MDBaseNode {
         }
         if (scope == oldValue) {
             scope = newValue;
-        }
-    }
-
-    public enum Tag {
-        UNKNOWN(-1),
-        DW_TAG_FORMAL_PARAMETER(5),
-        DW_TAG_MEMBER(13),
-        DW_TAG_POINTER_TYPE(15),
-        DW_TAG_REFERENCE_TYPE(16),
-        DW_TAG_TYPEDEF(22),
-        DW_TAG_INHERITANCE(28),
-        DW_TAG_CONST_TYPE(38),
-        DW_TAG_VOLATILE_TYPE(53),
-        DW_TAG_RESTRICT_TYPE(55),
-        DW_TAG_FRIEND(42);
-
-        private final int id;
-
-        Tag(int id) {
-            this.id = id;
-        }
-
-        private static Tag decode(long val) {
-            return Arrays.stream(values()).filter(e -> e.id == val).findAny().orElse(UNKNOWN);
         }
     }
 

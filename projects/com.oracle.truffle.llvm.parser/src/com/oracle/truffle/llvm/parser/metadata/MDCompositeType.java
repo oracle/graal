@@ -32,11 +32,8 @@ package com.oracle.truffle.llvm.parser.metadata;
 import com.oracle.truffle.llvm.parser.listeners.Metadata;
 import com.oracle.truffle.llvm.parser.records.DwTagRecord;
 
-import java.util.Arrays;
-
 public final class MDCompositeType extends MDType implements MDBaseNode {
 
-    private final Tag tag;
     private final long runtimeLanguage;
 
     private MDBaseNode scope;
@@ -46,8 +43,7 @@ public final class MDCompositeType extends MDType implements MDBaseNode {
     private MDBaseNode identifier;
 
     private MDCompositeType(long tag, long line, long size, long align, long offset, long flags, long runtimeLanguage) {
-        super(size, align, offset, line, flags);
-        this.tag = Tag.decode(tag);
+        super(tag, size, align, offset, line, flags);
         this.runtimeLanguage = runtimeLanguage;
 
         this.scope = MDVoidNode.INSTANCE;
@@ -78,10 +74,6 @@ public final class MDCompositeType extends MDType implements MDBaseNode {
         return runtimeLanguage;
     }
 
-    public Tag getTag() {
-        return tag;
-    }
-
     public MDBaseNode getTemplateParams() {
         return templateParams;
     }
@@ -107,27 +99,6 @@ public final class MDCompositeType extends MDType implements MDBaseNode {
         }
         if (identifier == oldValue) {
             identifier = newValue;
-        }
-    }
-
-    public enum Tag {
-        UNKNOWN(-1),
-        DW_TAG_ARRAY_TYPE(1),
-        DW_TAG_CLASS_TYPE(2),
-        DW_TAG_ENUMERATION_TYPE(4),
-        DW_TAG_STRUCTURE_TYPE(19),
-        DW_TAG_UNION_TYPE(23),
-        DW_TAG_VECTOR_TYPE(259),
-        DW_TAG_SUBROUTINE_TYPE(21);
-
-        private final int id;
-
-        Tag(int id) {
-            this.id = id;
-        }
-
-        static Tag decode(long val) {
-            return Arrays.stream(values()).filter(e -> e.id == val).findAny().orElse(UNKNOWN);
         }
     }
 
