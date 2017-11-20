@@ -51,7 +51,6 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.AbstractAnnotationValueVisitor7;
 import javax.lang.model.util.ElementFilter;
 
-import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeElementScanner;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;

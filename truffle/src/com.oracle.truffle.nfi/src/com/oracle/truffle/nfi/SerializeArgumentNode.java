@@ -232,7 +232,7 @@ abstract class SerializeArgumentNode extends Node {
             this.argType = argType;
         }
 
-        @Specialization(guards = "checkNull(isNull, arg)")
+        @Specialization(guards = "checkNull(isNull, arg)", limit = "1")
         @SuppressWarnings("unused")
         protected boolean serializeNull(NativeArgumentBuffer buffer, TruffleObject arg,
                         @Cached("createIsNull()") Node isNull) {
@@ -240,7 +240,7 @@ abstract class SerializeArgumentNode extends Node {
             return true;
         }
 
-        @Specialization(guards = "isJavaObject(arrayType, object)")
+        @Specialization(guards = "isJavaObject(arrayType, object)", limit = "1")
         protected boolean serializeArray(NativeArgumentBuffer buffer, TruffleObject object, @Cached("argType.getArrayType(object)") Class<?> arrayType) {
             argType.serialize(buffer, JavaInterop.asJavaObject(arrayType, object));
             return true;

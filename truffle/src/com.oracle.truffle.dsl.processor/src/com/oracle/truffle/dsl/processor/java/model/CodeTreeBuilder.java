@@ -685,6 +685,10 @@ public class CodeTreeBuilder {
         return tree(var).string(" instanceof ").type(type);
     }
 
+    public CodeTreeBuilder instanceOf(TypeMirror type) {
+        return string(" instanceof ").type(type);
+    }
+
     public CodeTreeBuilder defaultValue(TypeMirror mirror) {
         switch (mirror.getKind()) {
             case VOID:

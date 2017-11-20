@@ -54,6 +54,7 @@ import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenAdoption4Factor
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenAdoption5Factory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenAdoption6Factory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenAdoption7Factory;
+import com.oracle.truffle.api.dsl.test.CachedTestFactory.NullChildAdoptionNodeGen;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestBoundCacheOverflowContainsFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheFieldFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheMethodFactory;
@@ -520,6 +521,32 @@ public class CachedTest {
         Field cachedField = node.getClass().getDeclaredField("do1_cachedValue_");
         cachedField.setAccessible(true);
         assertEquals(1, cachedField.getAnnotation(CompilationFinal.class).dimensions());
+    }
+
+    static abstract class NullChildAdoption extends Node {
+
+        abstract Object execute(Object value);
+
+        @Specialization
+        static int do1(int value, //
+                        @Cached("createNode()") Node cachedValue) {
+            return value;
+        }
+
+        static Node createNode() {
+            return null;
+        }
+
+    }
+
+    @Test
+    public void testNullChildAdoption() throws NoSuchFieldException, SecurityException {
+        NullChildAdoption node;
+
+        node = NullChildAdoptionNodeGen.create();
+
+        // we should be able to return null from nodes.
+        node.execute(42);
     }
 
     @NodeChild

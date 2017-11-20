@@ -36,6 +36,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
@@ -263,10 +264,14 @@ public class NodeParser extends AbstractParser<NodeData> {
                 assert lastReachable != search;
                 if (!lastReachable.isReachableAfter(search)) {
                     lastReachable = search;
+                } else if (search.getReplaces().contains(specialization)) {
+                    lastReachable = search;
                 }
             }
+
             specialization.setReachesFallback(lastReachable == specialization);
 
+            List<SpecializationData> failedSpecializations = null;
             if (specialization.isReachesFallback() && !specialization.getCaches().isEmpty() && !specialization.getGuards().isEmpty()) {
                 boolean guardBoundByCache = false;
                 for (GuardExpression guard : specialization.getGuards()) {
@@ -277,12 +282,24 @@ public class NodeParser extends AbstractParser<NodeData> {
                 }
 
                 if (guardBoundByCache && specialization.getMaximumNumberOfInstances() > 1) {
-                    specialization.addError(
-                                    "A guard cannot be negated for the @%s because it binds @%s parameters. " +
-                                                    "To fix this introduce a strictly more generic specialization declared between this specialization and the fallback. " +
-                                                    "Alternatively the use of @%s can be avoided by declaring a @%s with manually specified negated guards.",
-                                    Fallback.class.getSimpleName(), Cached.class.getSimpleName(), Fallback.class.getSimpleName(), Specialization.class.getSimpleName());
+                    if (failedSpecializations == null) {
+                        failedSpecializations = new ArrayList<>();
+                    }
+                    failedSpecializations.add(specialization);
                 }
+            }
+
+            if (failedSpecializations != null) {
+                List<String> specializationIds = failedSpecializations.stream().map((e) -> e.getId()).collect(Collectors.toList());
+
+                fallback.addError(
+                                "Some guards for the following specializations could not be negated for the @%s specialization: %s. " +
+                                                "Guards cannot be negated for the @%s when they bind @%s parameters and the specialization may consist of multiple instances. " +
+                                                "To fix this limit the number of instances to '1' or " +
+                                                "introduce a more generic specialization declared between this specialization and the fallback. " +
+                                                "Alternatively the use of @%s can be avoided by declaring a @%s with manually specified negated guards.",
+                                Fallback.class.getSimpleName(), specializationIds, Fallback.class.getSimpleName(), Cached.class.getSimpleName(), Fallback.class.getSimpleName(),
+                                Specialization.class.getSimpleName());
             }
 
         }
@@ -944,8 +961,8 @@ public class NodeParser extends AbstractParser<NodeData> {
         initializeOrder(node);
         initializePolymorphism(node); // requires specializations
         initializeReachability(node);
-        initializeFallbackReachability(node);
         initializeReplaces(node);
+        initializeFallbackReachability(node);
         resolveReplaces(node);
 
         List<SpecializationData> specializations = node.getSpecializations();

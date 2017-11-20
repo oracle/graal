@@ -27,10 +27,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.CachedReachableFallbackTestFactory.CacheDuplicatesNodeGen;
+import com.oracle.truffle.api.dsl.test.CachedReachableFallbackTestFactory.GuardKindsNodeGen;
 import com.oracle.truffle.api.dsl.test.CachedReachableFallbackTestFactory.ManyCachesNodeGen;
 import com.oracle.truffle.api.dsl.test.CachedReachableFallbackTestFactory.ValidWithGenericNodeGen;
 import com.oracle.truffle.api.dsl.test.CachedReachableFallbackTestFactory.ValidWithoutGenericNodeGen;
@@ -40,10 +43,10 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
 
 public class CachedReachableFallbackTest {
 
-    static final String CACHED_GUARD_FALLBACK_ERROR = "A guard cannot be negated for the @Fallback because it binds @Cached parameters. " +
-                    "To fix this introduce a strictly more generic specialization declared between " +
-                    "this specialization and the fallback. Alternatively the use of @Fallback can be " +
-                    "avoided by declaring a @Specialization with manually specified negated guards.";
+    static final String CACHED_GUARD_FALLBACK_ERROR = "Some guards for the following specializations could not be negated for the @Fallback specialization: [s1]. " +
+                    "Guards cannot be negated for the @Fallback when they bind @Cached parameters and the specialization may consist of multiple instances. " +
+                    "To fix this limit the number of instances to '1' or introduce a more generic specialization declared between this specialization and the fallback. " +
+                    "Alternatively the use of @Fallback can be avoided by declaring a @Specialization with manually specified negated guards.";
 
     @SuppressWarnings("unused")
     static abstract class ValidWithGenericNode extends Node {
@@ -125,7 +128,7 @@ public class CachedReachableFallbackTest {
 
         abstract Object execute(Object other);
 
-        @Specialization(guards = {"guardNode.execute(obj)"})
+        @Specialization(guards = {"guardNode.execute(obj)"}, limit = "1")
         protected Object s1(int obj,
                         @Cached("createGuard()") GuardNode guardNode) {
             return "s1";
@@ -173,7 +176,7 @@ public class CachedReachableFallbackTest {
 
         abstract Object execute(Object other);
 
-        @Specialization(guards = {"obj == cachedObj"})
+        @Specialization(guards = {"obj == cachedObj"}, limit = "1")
         protected Object s1(int obj,
                         @Cached("obj") int cachedObj) {
             return cachedObj;
@@ -216,7 +219,7 @@ public class CachedReachableFallbackTest {
 
         abstract Object execute(Object other);
 
-        @Specialization(guards = {"guardNode1.execute(obj)", "guardNode2.execute(obj)", "guardNode3.execute(obj)"})
+        @Specialization(guards = {"guardNode1.execute(obj)", "guardNode2.execute(obj)", "guardNode3.execute(obj)"}, limit = "1")
         protected Object s1(int obj,
                         @Cached("createGuard()") GuardNode guardNode1,
                         @Cached("createGuard()") GuardNode guardNode2,
@@ -277,6 +280,85 @@ public class CachedReachableFallbackTest {
         Assert.assertEquals("s1", node.execute(42));
     }
 
+    @SuppressWarnings("unused")
+    static abstract class GuardKindsNode extends Node {
+
+        abstract Object execute(Object other);
+
+        @Specialization(guards = {"guardNode1.execute(obj)", "notTwo(obj)"}, rewriteOn = RuntimeException.class, assumptions = "createAssumption()", limit = "1")
+        protected Object s1(int obj,
+                        @Cached("create(1)") NotGuardNode guardNode1) {
+            assertAdopted(guardNode1);
+            if (obj == 3) {
+                throw new RuntimeException();
+            }
+            return "s1";
+        }
+
+        boolean notTwo(int obj) {
+            // checked by a prior guard
+            Assert.assertNotEquals(1, obj);
+            return obj != 2;
+        }
+
+        @Fallback
+        protected Object fallback(Object x) {
+            return "fallback";
+        }
+
+        Assumption assumption;
+
+        Assumption createAssumption() {
+            if (assumption == null) {
+                assumption = Truffle.getRuntime().createAssumption();
+            }
+            return assumption;
+        }
+    }
+
+    @Test
+    public void testGuardKinds() {
+        GuardKindsNode node;
+
+        // test s1 first
+        node = GuardKindsNodeGen.create();
+        Assert.assertEquals("s1", node.execute(0));
+        Assert.assertEquals("fallback", node.execute(1));
+        Assert.assertEquals("fallback", node.execute(2));
+        Assert.assertEquals("s1", node.execute(0));
+        Assert.assertEquals("fallback", node.execute(3));
+        Assert.assertEquals("fallback", node.execute(0));
+
+        node = GuardKindsNodeGen.create();
+        Assert.assertEquals("fallback", node.execute(1));
+        Assert.assertEquals("s1", node.execute(0));
+        Assert.assertEquals("fallback", node.execute(2));
+        Assert.assertEquals("s1", node.execute(0));
+
+        node = GuardKindsNodeGen.create();
+        Assert.assertEquals("fallback", node.execute(2));
+        Assert.assertEquals("fallback", node.execute(1));
+        Assert.assertEquals("s1", node.execute(0));
+
+    }
+
+    static class NotGuardNode extends Node {
+
+        private final int value;
+
+        NotGuardNode(int value) {
+            this.value = value;
+        }
+
+        boolean execute(int object) {
+            return object != this.value;
+        }
+
+        public static NotGuardNode create(int value) {
+            return new NotGuardNode(value);
+        }
+    }
+
     static class GuardNode extends Node {
 
         private final int value;
@@ -299,13 +381,13 @@ public class CachedReachableFallbackTest {
 
         abstract Object execute(Object other);
 
-// @ExpectError(CACHED_GUARD_FALLBACK_ERROR)
-        @Specialization(guards = {"guardNode.execute(obj)"}, limit = "1")
+        @Specialization(guards = {"guardNode.execute(obj)"}, limit = "2")
         protected Object s1(int obj,
                         @Cached("createGuard()") GuardNode guardNode) {
             return "s1";
         }
 
+        @ExpectError(CACHED_GUARD_FALLBACK_ERROR)
         @Fallback
         protected Object fallback(Object x) {
             return "fallback";
@@ -321,13 +403,13 @@ public class CachedReachableFallbackTest {
 
         abstract Object execute(Object other);
 
-// @ExpectError(CACHED_GUARD_FALLBACK_ERROR)
-        @Specialization(guards = {"guardNode.execute(obj)"})
+        @Specialization(guards = {"guardNode.execute(obj)"}, limit = "2")
         protected Object s1(int obj,
                         @Cached("createGuard()") GuardNode guardNode) {
             return "s1";
         }
 
+        @ExpectError(CACHED_GUARD_FALLBACK_ERROR)
         @Fallback
         protected Object fallback(Object x) {
             return "fallback";
@@ -344,8 +426,7 @@ public class CachedReachableFallbackTest {
         abstract Object execute(Object other);
 
         // we don't know if fallback is reachable directly from s1 because s2 has a custom guard.
-// @ExpectError(CACHED_GUARD_FALLBACK_ERROR)
-        @Specialization(guards = {"guardNode.execute(obj)"})
+        @Specialization(guards = {"guardNode.execute(obj)"}, limit = "2")
         protected Object s1(int obj,
                         @Cached("createGuard()") GuardNode guardNode) {
             return "s1";
@@ -356,6 +437,7 @@ public class CachedReachableFallbackTest {
             return "s2";
         }
 
+        @ExpectError(CACHED_GUARD_FALLBACK_ERROR)
         @Fallback
         protected Object fallback(Object x) {
             return "fallback";

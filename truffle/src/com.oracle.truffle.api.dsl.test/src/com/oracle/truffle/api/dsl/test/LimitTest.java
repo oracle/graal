@@ -43,11 +43,13 @@ import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 public class LimitTest {
 
     @Test
-    public void testDefaultLimit1() {
+    public void testDefaultLimit3() {
         CallTarget root = TestHelper.createCallTarget(DefaultLimit3TestFactory.getInstance());
         assertEquals(42, root.call(42));
+        assertEquals(43, root.call(43));
+        assertEquals(44, root.call(44));
         try {
-            root.call(43);
+            root.call(45);
             fail();
         } catch (UnsupportedSpecializationException e) {
         }
