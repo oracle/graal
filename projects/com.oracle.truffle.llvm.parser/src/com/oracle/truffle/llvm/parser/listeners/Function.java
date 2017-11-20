@@ -145,7 +145,6 @@ public final class Function implements ParserListener {
 
     @Override
     public void exit() {
-        function.exitLocalScope();
         if (function.hasAttachedMetadata()) {
             MDBaseNode md = function.getMetadataAttachment(MDKind.DBG_NAME);
             if (md instanceof MDSubprogram) {
@@ -161,6 +160,7 @@ public final class Function implements ParserListener {
                 }
             }
         }
+        scope.exitLocalScope();
     }
 
     @Override

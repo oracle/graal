@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.model;
 
+import com.oracle.truffle.llvm.parser.ValueList;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
@@ -41,17 +42,23 @@ import java.util.List;
 
 public final class IRScope {
 
+    private static final int GLOBAL_SCOPE_START = -1;
+
     private final Symbols symbols;
     private final List<Type> valueTypes;
     private final MetadataValueList metadata;
 
     private FunctionDefinition currentFunction;
+    private int valueTypesScopeStart;
+    private int symbolsScopeStart;
 
     public IRScope() {
         symbols = new Symbols();
         valueTypes = new ArrayList<>();
         metadata = new MetadataValueList();
         currentFunction = null;
+        valueTypesScopeStart = GLOBAL_SCOPE_START;
+        symbolsScopeStart = GLOBAL_SCOPE_START;
     }
 
     public void addSymbol(Symbol symbol, Type type) {
@@ -91,11 +98,23 @@ public final class IRScope {
 
     public void startLocalScope(FunctionDefinition function) {
         this.currentFunction = function;
-        // TODO initialize
+        metadata.startScope();
+        valueTypesScopeStart = valueTypes.size();
+        symbolsScopeStart = symbols.getSize();
     }
 
     public void exitLocalScope() {
-        // TODO finalize
+        if (currentFunction != null) {
+            currentFunction.exitLocalScope();
+        }
+
+        metadata.endScope();
+
+        ValueList.dropLocalScope(valueTypesScopeStart, valueTypes);
+        valueTypesScopeStart = GLOBAL_SCOPE_START;
+
+        symbols.reduceToSize(symbolsScopeStart);
+        symbolsScopeStart = GLOBAL_SCOPE_START;
     }
 
     public MetadataValueList getMetadata() {

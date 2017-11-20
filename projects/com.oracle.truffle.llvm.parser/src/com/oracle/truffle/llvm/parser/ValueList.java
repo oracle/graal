@@ -33,9 +33,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.ListIterator;
 
 public class ValueList<V extends ValueList.Value<V, C>, C extends ValueList.ValueVisitor<V>> {
+
+    public static void dropLocalScope(int localScopeStart, List<?> valueList) {
+        if (localScopeStart >= 0 && valueList.size() - localScopeStart > 0) {
+            valueList.subList(localScopeStart, valueList.size()).clear();
+        }
+    }
 
     public interface ValueVisitor<V> {
 
@@ -63,8 +70,7 @@ public class ValueList<V extends ValueList.Value<V, C>, C extends ValueList.Valu
     }
 
     private static final int NO_UNRESOLVED_VALUES = -1;
-
-    private final ValueList<V, C> parent;
+    private static final int GLOBAL_SCOPE_START = -1;
 
     // forward references are generally rare except for metadata in some older ir versions, we try
     // to optimize handling them by always remembering which forward reference will be resolved next
@@ -73,19 +79,17 @@ public class ValueList<V extends ValueList.Value<V, C>, C extends ValueList.Valu
     private final LinkedList<Integer> unresolvedIndices;
     private int nextUnresolved;
 
+    private int scopeStart;
+
     private final ArrayList<V> valueList;
 
     public ValueList(PlaceholderFactory<V, C> placeholderFactory) {
-        this(null, placeholderFactory);
-    }
-
-    public ValueList(ValueList<V, C> parent, PlaceholderFactory<V, C> placeholderFactory) {
-        this.parent = parent;
         this.placeholderFactory = placeholderFactory;
         this.valueList = new ArrayList<>();
         this.forwardReferences = new HashMap<>();
         this.nextUnresolved = NO_UNRESOLVED_VALUES;
         this.unresolvedIndices = new LinkedList<>();
+        this.scopeStart = GLOBAL_SCOPE_START;
     }
 
     private void resolveForwardReference(int valueIndex, V newValue) {
@@ -150,56 +154,35 @@ public class ValueList<V extends ValueList.Value<V, C>, C extends ValueList.Valu
     }
 
     public V getForwardReferenced(int index, V dependent) {
-        int actualIndex = index;
-        if (parent != null) {
-            final int parentSize = parent.size();
-            if (index < parentSize) {
-                return parent.getForwardReferenced(index, dependent);
-
-            } else {
-                actualIndex -= parentSize;
-            }
+        if (index >= 0 && index < valueList.size()) {
+            return valueList.get(index);
+        } else {
+            return getReference(index, dependent);
         }
-
-        if (actualIndex >= 0 && actualIndex < valueList.size()) {
-            return valueList.get(actualIndex);
-        }
-
-        return getReference(actualIndex, dependent);
     }
 
     public V getOrNull(int index) {
-        int actualIndex = index;
-        if (parent != null) {
-            final int parentSize = parent.size();
-            if (index < parentSize) {
-                return parent.getOrNull(index);
-
-            } else {
-                actualIndex -= parentSize;
-            }
+        if (index >= 0 && index < valueList.size()) {
+            return valueList.get(index);
+        } else {
+            return null;
         }
+    }
 
-        if (actualIndex >= 0 && actualIndex < valueList.size()) {
-            return valueList.get(actualIndex);
-        }
+    public void startScope() {
+        scopeStart = valueList.size();
+    }
 
-        return null;
+    public void endScope() {
+        dropLocalScope(scopeStart, valueList);
+        scopeStart = GLOBAL_SCOPE_START;
     }
 
     public int size() {
-        int size = valueList.size();
-        if (parent != null) {
-            size += parent.size();
-        }
-        return size;
+        return valueList.size();
     }
 
     public void accept(C visitor) {
-        if (parent != null) {
-            parent.accept(visitor);
-        }
-
         for (V value : valueList) {
             value.accept(visitor);
         }

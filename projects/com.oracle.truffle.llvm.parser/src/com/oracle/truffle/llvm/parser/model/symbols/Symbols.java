@@ -152,6 +152,15 @@ public final class Symbols {
         }
     }
 
+    public void reduceToSize(int newSize) {
+        if (newSize <= 0 || newSize >= symbols.length) {
+            return;
+        }
+
+        symbols = Arrays.copyOfRange(symbols, 0, newSize);
+        size = symbols.length;
+    }
+
     private void ensureIndexExists(int index) {
         if (index < symbols.length) {
             return;
