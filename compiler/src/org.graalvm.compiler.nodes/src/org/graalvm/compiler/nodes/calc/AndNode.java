@@ -34,6 +34,7 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -52,8 +53,8 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
     }
 
     public static ValueNode create(ValueNode x, ValueNode y) {
-        BinaryOp<And> op = ArithmeticOpTable.forStamp(x.stamp()).getAnd();
-        Stamp stamp = op.foldStamp(x.stamp(), y.stamp());
+        BinaryOp<And> op = ArithmeticOpTable.forStamp(x.stamp(NodeView.DEFAULT)).getAnd();
+        Stamp stamp = op.foldStamp(x.stamp(NodeView.DEFAULT), y.stamp(NodeView.DEFAULT));
         ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp);
         if (tryConstantFold != null) {
             return tryConstantFold;
@@ -68,7 +69,7 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
             return ret;
         }
 
-        return canonical(this, getOp(forX, forY), stamp(), forX, forY);
+        return canonical(this, getOp(forX, forY), stamp(NodeView.DEFAULT), forX, forY);
     }
 
     private static ValueNode canonical(AndNode self, BinaryOp<And> op, Stamp stamp, ValueNode forX, ValueNode forY) {
@@ -96,7 +97,7 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
                         return new ZeroExtendNode(ext.getValue(), ext.getResultBits());
                     }
                 }
-                IntegerStamp xStamp = (IntegerStamp) forX.stamp();
+                IntegerStamp xStamp = (IntegerStamp) forX.stamp(NodeView.DEFAULT);
                 if (((xStamp.upMask() | xStamp.downMask()) & ~rawY) == 0) {
                     // No bits are set which are outside the mask, so the mask will have no effect.
                     return forX;

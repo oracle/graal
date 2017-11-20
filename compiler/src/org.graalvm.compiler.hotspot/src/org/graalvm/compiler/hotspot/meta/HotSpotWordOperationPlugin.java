@@ -40,6 +40,7 @@ import org.graalvm.compiler.hotspot.word.HotSpotOperation;
 import org.graalvm.compiler.hotspot.word.HotSpotOperation.HotspotOpcode;
 import org.graalvm.compiler.hotspot.word.PointerCastNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
@@ -102,8 +103,8 @@ class HotSpotWordOperationPlugin extends WordOperationPlugin {
                 HotspotOpcode opcode = operation.opcode();
                 ValueNode left = args[0];
                 ValueNode right = args[1];
-                assert left.stamp() instanceof MetaspacePointerStamp : left + " " + left.stamp();
-                assert right.stamp() instanceof MetaspacePointerStamp : right + " " + right.stamp();
+                assert left.stamp(NodeView.DEFAULT) instanceof MetaspacePointerStamp : left + " " + left.stamp(NodeView.DEFAULT);
+                assert right.stamp(NodeView.DEFAULT) instanceof MetaspacePointerStamp : right + " " + right.stamp(NodeView.DEFAULT);
                 assert opcode == POINTER_EQ || opcode == POINTER_NE;
 
                 PointerEqualsNode comparison = b.add(new PointerEqualsNode(left, right));
@@ -115,7 +116,7 @@ class HotSpotWordOperationPlugin extends WordOperationPlugin {
             case IS_NULL:
                 assert args.length == 1;
                 ValueNode pointer = args[0];
-                assert pointer.stamp() instanceof MetaspacePointerStamp;
+                assert pointer.stamp(NodeView.DEFAULT) instanceof MetaspacePointerStamp;
 
                 LogicNode isNull = b.addWithInputs(IsNullNode.create(pointer));
                 b.addPush(returnKind, ConditionalNode.create(isNull, b.add(forBoolean(true)), b.add(forBoolean(false))));

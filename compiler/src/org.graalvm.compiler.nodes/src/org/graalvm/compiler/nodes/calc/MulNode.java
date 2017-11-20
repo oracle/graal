@@ -35,6 +35,7 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
@@ -57,8 +58,8 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
     }
 
     public static ValueNode create(ValueNode x, ValueNode y) {
-        BinaryOp<Mul> op = ArithmeticOpTable.forStamp(x.stamp()).getMul();
-        Stamp stamp = op.foldStamp(x.stamp(), y.stamp());
+        BinaryOp<Mul> op = ArithmeticOpTable.forStamp(x.stamp(NodeView.DEFAULT)).getMul();
+        Stamp stamp = op.foldStamp(x.stamp(NodeView.DEFAULT), y.stamp(NodeView.DEFAULT));
         ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp);
         if (tryConstantFold != null) {
             return tryConstantFold;
@@ -83,7 +84,7 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
             return new MulNode(forY, forX);
         }
         BinaryOp<Mul> op = getOp(forX, forY);
-        return canonical(this, op, stamp(), forX, forY);
+        return canonical(this, op, stamp(NodeView.DEFAULT), forX, forY);
     }
 
     private static ValueNode canonical(MulNode self, BinaryOp<Mul> op, Stamp stamp, ValueNode forX, ValueNode forY) {

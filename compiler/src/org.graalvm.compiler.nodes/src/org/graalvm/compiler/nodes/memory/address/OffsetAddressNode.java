@@ -33,6 +33,7 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
@@ -56,12 +57,12 @@ public class OffsetAddressNode extends AddressNode implements Canonicalizable {
         this.base = base;
         this.offset = offset;
 
-        assert base != null && (base.stamp() instanceof AbstractPointerStamp || IntegerStamp.getBits(base.stamp()) == 64) &&
-                        offset != null && IntegerStamp.getBits(offset.stamp()) == 64 : "both values must have 64 bits";
+        assert base != null && (base.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp || IntegerStamp.getBits(base.stamp(NodeView.DEFAULT)) == 64) &&
+                        offset != null && IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)) == 64 : "both values must have 64 bits";
     }
 
     public static OffsetAddressNode create(ValueNode base) {
-        return new OffsetAddressNode(base, ConstantNode.forIntegerBits(PrimitiveStamp.getBits(base.stamp()), 0));
+        return new OffsetAddressNode(base, ConstantNode.forIntegerBits(PrimitiveStamp.getBits(base.stamp(NodeView.DEFAULT)), 0));
     }
 
     @Override
@@ -72,7 +73,7 @@ public class OffsetAddressNode extends AddressNode implements Canonicalizable {
     public void setBase(ValueNode base) {
         updateUsages(this.base, base);
         this.base = base;
-        assert base != null && (base.stamp() instanceof AbstractPointerStamp || IntegerStamp.getBits(base.stamp()) == 64);
+        assert base != null && (base.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp || IntegerStamp.getBits(base.stamp(NodeView.DEFAULT)) == 64);
     }
 
     public ValueNode getOffset() {
@@ -82,7 +83,7 @@ public class OffsetAddressNode extends AddressNode implements Canonicalizable {
     public void setOffset(ValueNode offset) {
         updateUsages(this.offset, offset);
         this.offset = offset;
-        assert offset != null && IntegerStamp.getBits(offset.stamp()) == 64;
+        assert offset != null && IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)) == 64;
     }
 
     @Override
@@ -105,7 +106,7 @@ public class OffsetAddressNode extends AddressNode implements Canonicalizable {
 
     @Override
     public long getMaxConstantDisplacement() {
-        Stamp curStamp = offset.stamp();
+        Stamp curStamp = offset.stamp(NodeView.DEFAULT);
         if (curStamp instanceof IntegerStamp) {
             IntegerStamp integerStamp = (IntegerStamp) curStamp;
             if (integerStamp.lowerBound() >= 0) {

@@ -38,6 +38,7 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -61,7 +62,7 @@ public final class ReinterpretNode extends UnaryNode implements ArithmeticLIRLow
     }
 
     public ReinterpretNode(Stamp to, ValueNode value) {
-        super(TYPE, getReinterpretStamp(to, value.stamp()), value);
+        super(TYPE, getReinterpretStamp(to, value.stamp(NodeView.DEFAULT)), value);
         assert to instanceof ArithmeticStamp;
     }
 
@@ -73,7 +74,7 @@ public final class ReinterpretNode extends UnaryNode implements ArithmeticLIRLow
         c.serialize(buffer);
 
         buffer.rewind();
-        SerializableConstant ret = ((ArithmeticStamp) stamp()).deserialize(buffer);
+        SerializableConstant ret = ((ArithmeticStamp) stamp(NodeView.DEFAULT)).deserialize(buffer);
 
         assert !buffer.hasRemaining();
         return ret;
@@ -82,14 +83,14 @@ public final class ReinterpretNode extends UnaryNode implements ArithmeticLIRLow
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
-            return ConstantNode.forConstant(stamp(), evalConst((SerializableConstant) forValue.asConstant()), null);
+            return ConstantNode.forConstant(stamp(NodeView.DEFAULT), evalConst((SerializableConstant) forValue.asConstant()), null);
         }
-        if (stamp().isCompatible(forValue.stamp())) {
+        if (stamp(NodeView.DEFAULT).isCompatible(forValue.stamp(NodeView.DEFAULT))) {
             return forValue;
         }
         if (forValue instanceof ReinterpretNode) {
             ReinterpretNode reinterpret = (ReinterpretNode) forValue;
-            return new ReinterpretNode(stamp(), reinterpret.getValue());
+            return new ReinterpretNode(stamp(NodeView.DEFAULT), reinterpret.getValue());
         }
         return this;
     }
@@ -269,12 +270,12 @@ public final class ReinterpretNode extends UnaryNode implements ArithmeticLIRLow
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(getReinterpretStamp(stamp(), getValue().stamp()));
+        return updateStamp(getReinterpretStamp(stamp(NodeView.DEFAULT), getValue().stamp(NodeView.DEFAULT)));
     }
 
     @Override
     public void generate(NodeLIRBuilderTool builder, ArithmeticLIRGeneratorTool gen) {
-        LIRKind kind = builder.getLIRGeneratorTool().getLIRKind(stamp());
+        LIRKind kind = builder.getLIRGeneratorTool().getLIRKind(stamp(NodeView.DEFAULT));
         builder.setResult(this, gen.emitReinterpret(kind, builder.operand(getValue())));
     }
 

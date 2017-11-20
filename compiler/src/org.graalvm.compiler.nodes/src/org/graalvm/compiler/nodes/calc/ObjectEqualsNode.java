@@ -34,6 +34,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
@@ -58,8 +59,8 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
 
     public ObjectEqualsNode(ValueNode x, ValueNode y) {
         super(TYPE, x, y);
-        assert x.stamp() instanceof AbstractObjectStamp;
-        assert y.stamp() instanceof AbstractObjectStamp;
+        assert x.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp;
+        assert y.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp;
     }
 
     public static LogicNode create(ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection) {
@@ -101,7 +102,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
             if (type != null && nonConstant instanceof GetClassNode) {
                 GetClassNode getClassNode = (GetClassNode) nonConstant;
                 ValueNode object = getClassNode.getObject();
-                assert ((ObjectStamp) object.stamp()).nonNull();
+                assert ((ObjectStamp) object.stamp(NodeView.DEFAULT)).nonNull();
                 if (!type.isPrimitive() && (type.isConcrete() || type.isArray())) {
                     return InstanceOfNode.create(TypeReference.createExactTrusted(type), object);
                 }
@@ -112,9 +113,9 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
 
         @Override
         protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue) {
-            if (newX.stamp() instanceof ObjectStamp && newY.stamp() instanceof ObjectStamp) {
+            if (newX.stamp(NodeView.DEFAULT) instanceof ObjectStamp && newY.stamp(NodeView.DEFAULT) instanceof ObjectStamp) {
                 return new ObjectEqualsNode(newX, newY);
-            } else if (newX.stamp() instanceof AbstractPointerStamp && newY.stamp() instanceof AbstractPointerStamp) {
+            } else if (newX.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp && newY.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp) {
                 return new PointerEqualsNode(newX, newY);
             }
             throw GraalError.shouldNotReachHere();

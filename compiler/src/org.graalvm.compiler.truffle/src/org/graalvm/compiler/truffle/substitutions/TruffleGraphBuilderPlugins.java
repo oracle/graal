@@ -55,6 +55,7 @@ import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiArrayNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -393,7 +394,7 @@ public class TruffleGraphBuilderPlugins {
         r.register2("castArrayFixedLength", Object[].class, int.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode args, ValueNode length) {
-                b.addPush(JavaKind.Object, new PiArrayNode(args, length, args.stamp()));
+                b.addPush(JavaKind.Object, new PiArrayNode(args, length, args.stamp(NodeView.DEFAULT)));
                 return true;
             }
         });

@@ -278,7 +278,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         } else if (x instanceof LoadFieldNode) {
             LoadFieldNode load = (LoadFieldNode) x;
             ResolvedJavaType integerType = meta.lookupJavaType(Integer.class);
-            if (load.getValue().stamp().javaType(meta).equals(integerType)) {
+            if (load.getValue().stamp(NodeView.DEFAULT).javaType(meta).equals(integerType)) {
                 return isUnboxedFrom(meta, load.getValue(), src);
             } else {
                 return false;
@@ -321,7 +321,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         ResolvedJavaType integerType = meta.lookupJavaType(Integer.class);
 
         // At least one argument for reference equal must be a boxed primitive.
-        if (!x.stamp().javaType(meta).equals(integerType) && !y.stamp().javaType(meta).equals(integerType)) {
+        if (!x.stamp(NodeView.DEFAULT).javaType(meta).equals(integerType) && !y.stamp(NodeView.DEFAULT).javaType(meta).equals(integerType)) {
             return false;
         }
 
@@ -406,7 +406,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             ValueNode falseValue = phi.valueAt(falseEnd);
             ValueNode trueValue = phi.valueAt(trueEnd);
 
-            ValueNode result = ConditionalNode.canonicalizeConditional(condition, trueValue, falseValue, phi.stamp());
+            ValueNode result = ConditionalNode.canonicalizeConditional(condition, trueValue, falseValue, phi.stamp(NodeView.DEFAULT));
             if (result != null) {
                 /*
                  * canonicalizeConditional returns possibly new nodes so add them to the graph.
@@ -478,7 +478,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         assert trueSuccessor().hasNoUsages() && falseSuccessor().hasNoUsages();
         if (condition() instanceof IntegerLessThanNode) {
             IntegerLessThanNode lessThan = (IntegerLessThanNode) condition();
-            Constant y = lessThan.getY().stamp().asConstant();
+            Constant y = lessThan.getY().stamp(NodeView.DEFAULT).asConstant();
             if (y instanceof PrimitiveConstant && ((PrimitiveConstant) y).asLong() == 0 && falseSuccessor().next() instanceof IfNode) {
                 IfNode ifNode2 = (IfNode) falseSuccessor().next();
                 if (ifNode2.condition() instanceof IntegerLessThanNode) {
@@ -490,7 +490,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                      * Convert x >= 0 && x < positive which is represented as !(x < 0) && x <
                      * <positive> into an unsigned compare.
                      */
-                    if (lessThan2.getX() == lessThan.getX() && lessThan2.getY().stamp() instanceof IntegerStamp && ((IntegerStamp) lessThan2.getY().stamp()).isPositive() &&
+                    if (lessThan2.getX() == lessThan.getX() && lessThan2.getY().stamp(NodeView.DEFAULT) instanceof IntegerStamp && ((IntegerStamp) lessThan2.getY().stamp(NodeView.DEFAULT)).isPositive() &&
                                     sameDestination(trueSuccessor(), ifNode2.falseSuccessor)) {
                         below = graph().unique(new IntegerBelowNode(lessThan2.getX(), lessThan2.getY()));
                         // swap direction
@@ -506,7 +506,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                          */
                         JavaConstant positive = lessThan2.getX().asJavaConstant();
                         if (positive != null && positive.asLong() > 0 && positive.asLong() < positive.getJavaKind().getMaxValue()) {
-                            ConstantNode newLimit = ConstantNode.forIntegerStamp(lessThan2.getX().stamp(), positive.asLong() + 1, graph());
+                            ConstantNode newLimit = ConstantNode.forIntegerStamp(lessThan2.getX().stamp(NodeView.DEFAULT), positive.asLong() + 1, graph());
                             below = graph().unique(new IntegerBelowNode(lessThan.getX(), newLimit));
                         }
                     }
@@ -654,8 +654,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             }
         }
 
-        Stamp stampA = a.stamp();
-        Stamp stampB = b.stamp();
+        Stamp stampA = a.stamp(NodeView.DEFAULT);
+        Stamp stampB = b.stamp(NodeView.DEFAULT);
         return stampA.alwaysDistinct(stampB);
     }
 
@@ -797,7 +797,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 if (lessThan != null) {
                     assert equals != null;
                     if ((lessThan.getX() == equals.getX() && lessThan.getY() == equals.getY()) || (lessThan.getX() == equals.getY() && lessThan.getY() == equals.getX())) {
-                        return graph().unique(new NormalizeCompareNode(lessThan.getX(), lessThan.getY(), conditional.trueValue().stamp().getStackKind(), false));
+                        return graph().unique(new NormalizeCompareNode(lessThan.getX(), lessThan.getY(), conditional.trueValue().stamp(NodeView.DEFAULT).getStackKind(), false));
                     }
                 }
             }
@@ -1290,7 +1290,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 // removed
                 AbstractMergeNode newMerge = graph().add(new MergeNode());
                 PhiNode oldPhi = (PhiNode) oldMerge.usages().first();
-                PhiNode newPhi = graph().addWithoutUnique(new ValuePhiNode(oldPhi.stamp(), newMerge));
+                PhiNode newPhi = graph().addWithoutUnique(new ValuePhiNode(oldPhi.stamp(NodeView.DEFAULT), newMerge));
 
                 for (EndNode end : ends) {
                     newPhi.addInput(phiValues.get(end));

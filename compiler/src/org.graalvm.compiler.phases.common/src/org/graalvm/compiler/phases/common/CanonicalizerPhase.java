@@ -44,6 +44,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -260,9 +261,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             if (node instanceof ValueNode) {
                 ValueNode valueNode = (ValueNode) node;
                 boolean improvedStamp = tryInferStamp(valueNode);
-                Constant constant = valueNode.stamp().asConstant();
+                Constant constant = valueNode.stamp(NodeView.DEFAULT).asConstant();
                 if (constant != null && !(node instanceof ConstantNode)) {
-                    ConstantNode stampConstant = ConstantNode.forConstant(valueNode.stamp(), constant, context.getMetaAccess(), graph);
+                    ConstantNode stampConstant = ConstantNode.forConstant(valueNode.stamp(NodeView.DEFAULT), constant, context.getMetaAccess(), graph);
                     debug.log("Canonicalizer: constant stamp replaces %1s with %1s", valueNode, stampConstant);
                     valueNode.replaceAtUsages(InputType.Value, stampConstant);
                     GraphUtil.tryKillUnused(valueNode);

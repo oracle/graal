@@ -24,6 +24,7 @@ package org.graalvm.compiler.loop;
 
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
@@ -34,11 +35,11 @@ import org.graalvm.compiler.nodes.calc.SignedDivNode;
  */
 public class MathUtil {
     private static boolean isConstantOne(ValueNode v1) {
-        return v1.isConstant() && v1.stamp() instanceof IntegerStamp && v1.asJavaConstant().asLong() == 1;
+        return v1.isConstant() && v1.stamp(NodeView.DEFAULT) instanceof IntegerStamp && v1.asJavaConstant().asLong() == 1;
     }
 
     private static boolean isConstantZero(ValueNode v1) {
-        return v1.isConstant() && v1.stamp() instanceof IntegerStamp && v1.asJavaConstant().asLong() == 0;
+        return v1.isConstant() && v1.stamp(NodeView.DEFAULT) instanceof IntegerStamp && v1.asJavaConstant().asLong() == 0;
     }
 
     public static ValueNode add(StructuredGraph graph, ValueNode v1, ValueNode v2) {

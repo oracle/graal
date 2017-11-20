@@ -29,6 +29,7 @@ import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
@@ -44,7 +45,7 @@ public final class AllowMaterializeNode extends FixedWithNextNode implements Ite
     @Input ValueNode frame;
 
     public AllowMaterializeNode(ValueNode frame) {
-        super(TYPE, frame.stamp());
+        super(TYPE, frame.stamp(NodeView.DEFAULT));
         this.frame = frame;
     }
 

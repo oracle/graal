@@ -33,6 +33,7 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -54,8 +55,8 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
     }
 
     public static ValueNode create(ValueNode x, ValueNode y) {
-        BinaryOp<Sub> op = ArithmeticOpTable.forStamp(x.stamp()).getSub();
-        Stamp stamp = op.foldStamp(x.stamp(), y.stamp());
+        BinaryOp<Sub> op = ArithmeticOpTable.forStamp(x.stamp(NodeView.DEFAULT)).getSub();
+        Stamp stamp = op.foldStamp(x.stamp(NodeView.DEFAULT), y.stamp(NodeView.DEFAULT));
         ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp);
         if (tryConstantFold != null) {
             return tryConstantFold;
@@ -66,7 +67,7 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
     private static ValueNode canonical(SubNode subNode, BinaryOp<Sub> op, Stamp stamp, ValueNode forX, ValueNode forY) {
         SubNode self = subNode;
         if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
-            Constant zero = op.getZero(forX.stamp());
+            Constant zero = op.getZero(forX.stamp(NodeView.DEFAULT));
             if (zero != null) {
                 return ConstantNode.forPrimitive(stamp, zero);
             }

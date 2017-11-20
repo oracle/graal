@@ -39,6 +39,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNegationNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 
@@ -127,10 +128,10 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             } else if (forX instanceof ConvertNode && forY instanceof ConvertNode) {
                 ConvertNode convertX = (ConvertNode) forX;
                 ConvertNode convertY = (ConvertNode) forY;
-                if (convertX.preservesOrder(condition) && convertY.preservesOrder(condition) && convertX.getValue().stamp().isCompatible(convertY.getValue().stamp())) {
+                if (convertX.preservesOrder(condition) && convertY.preservesOrder(condition) && convertX.getValue().stamp(NodeView.DEFAULT).isCompatible(convertY.getValue().stamp(NodeView.DEFAULT))) {
                     boolean supported = true;
-                    if (convertX.getValue().stamp() instanceof IntegerStamp) {
-                        IntegerStamp intStamp = (IntegerStamp) convertX.getValue().stamp();
+                    if (convertX.getValue().stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
+                        IntegerStamp intStamp = (IntegerStamp) convertX.getValue().stamp(NodeView.DEFAULT);
                         supported = smallestCompareWidth != null && intStamp.getBits() >= smallestCompareWidth;
                     }
 
@@ -164,8 +165,8 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                 }
 
                 boolean supported = true;
-                if (convert.getValue().stamp() instanceof IntegerStamp) {
-                    IntegerStamp intStamp = (IntegerStamp) convert.getValue().stamp();
+                if (convert.getValue().stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
+                    IntegerStamp intStamp = (IntegerStamp) convert.getValue().stamp(NodeView.DEFAULT);
                     supported = smallestCompareWidth != null && intStamp.getBits() > smallestCompareWidth;
                 }
 
@@ -193,7 +194,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                         // We always want uncompressed constants
                         return null;
                     }
-                    return ConstantNode.forConstant(convert.getValue().stamp(), reverseConverted, metaAccess);
+                    return ConstantNode.forConstant(convert.getValue().stamp(NodeView.DEFAULT), reverseConverted, metaAccess);
                 }
             }
             return null;
@@ -245,9 +246,9 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
 
         LogicNode comparison;
         if (condition == Condition.EQ) {
-            if (x.stamp() instanceof AbstractObjectStamp) {
+            if (x.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp) {
                 comparison = ObjectEqualsNode.create(x, y, constantReflection);
-            } else if (x.stamp() instanceof AbstractPointerStamp) {
+            } else if (x.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp) {
                 comparison = PointerEqualsNode.create(x, y);
             } else {
                 assert x.getStackKind().isNumericInteger();
@@ -279,10 +280,10 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
 
         LogicNode comparison;
         if (condition == Condition.EQ) {
-            if (x.stamp() instanceof AbstractObjectStamp) {
+            if (x.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp) {
                 assert smallestCompareWidth == null;
                 comparison = ObjectEqualsNode.create(constantReflection, metaAccess, options, x, y);
-            } else if (x.stamp() instanceof AbstractPointerStamp) {
+            } else if (x.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp) {
                 comparison = PointerEqualsNode.create(x, y);
             } else {
                 assert x.getStackKind().isNumericInteger();

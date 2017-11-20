@@ -37,6 +37,7 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
@@ -50,8 +51,8 @@ public final class FloatEqualsNode extends CompareNode implements BinaryCommutat
 
     public FloatEqualsNode(ValueNode x, ValueNode y) {
         super(TYPE, Condition.EQ, false, x, y);
-        assert x.stamp() instanceof FloatStamp && y.stamp() instanceof FloatStamp : x.stamp() + " " + y.stamp();
-        assert x.stamp().isCompatible(y.stamp());
+        assert x.stamp(NodeView.DEFAULT) instanceof FloatStamp && y.stamp(NodeView.DEFAULT) instanceof FloatStamp : x.stamp(NodeView.DEFAULT) + " " + y.stamp(NodeView.DEFAULT);
+        assert x.stamp(NodeView.DEFAULT).isCompatible(y.stamp(NodeView.DEFAULT));
     }
 
     public static LogicNode create(ValueNode x, ValueNode y) {
@@ -74,8 +75,8 @@ public final class FloatEqualsNode extends CompareNode implements BinaryCommutat
 
     @Override
     public boolean isIdentityComparison() {
-        FloatStamp xStamp = (FloatStamp) x.stamp();
-        FloatStamp yStamp = (FloatStamp) y.stamp();
+        FloatStamp xStamp = (FloatStamp) x.stamp(NodeView.DEFAULT);
+        FloatStamp yStamp = (FloatStamp) y.stamp(NodeView.DEFAULT);
         /*
          * If both stamps have at most one 0.0 and it's the same 0.0 then this is an identity
          * comparison. FloatStamp isn't careful about tracking the presence of -0.0 so assume that
@@ -103,8 +104,8 @@ public final class FloatEqualsNode extends CompareNode implements BinaryCommutat
             if (result != null) {
                 return result;
             }
-            Stamp xStampGeneric = forX.stamp();
-            Stamp yStampGeneric = forY.stamp();
+            Stamp xStampGeneric = forX.stamp(NodeView.DEFAULT);
+            Stamp yStampGeneric = forY.stamp(NodeView.DEFAULT);
             if (xStampGeneric instanceof FloatStamp && yStampGeneric instanceof FloatStamp) {
                 FloatStamp xStamp = (FloatStamp) xStampGeneric;
                 FloatStamp yStamp = (FloatStamp) yStampGeneric;
@@ -119,9 +120,9 @@ public final class FloatEqualsNode extends CompareNode implements BinaryCommutat
 
         @Override
         protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue) {
-            if (newX.stamp() instanceof FloatStamp && newY.stamp() instanceof FloatStamp) {
+            if (newX.stamp(NodeView.DEFAULT) instanceof FloatStamp && newY.stamp(NodeView.DEFAULT) instanceof FloatStamp) {
                 return new FloatEqualsNode(newX, newY);
-            } else if (newX.stamp() instanceof IntegerStamp && newY.stamp() instanceof IntegerStamp) {
+            } else if (newX.stamp(NodeView.DEFAULT) instanceof IntegerStamp && newY.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
                 return new IntegerEqualsNode(newX, newY);
             }
             throw GraalError.shouldNotReachHere();

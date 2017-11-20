@@ -27,6 +27,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -43,24 +44,24 @@ public class UnsignedRemNode extends IntegerDivRemNode implements LIRLowerable {
     }
 
     protected UnsignedRemNode(NodeClass<? extends UnsignedRemNode> c, ValueNode x, ValueNode y) {
-        super(c, x.stamp().unrestricted(), Op.REM, Type.UNSIGNED, x, y);
+        super(c, x.stamp(NodeView.DEFAULT).unrestricted(), Op.REM, Type.UNSIGNED, x, y);
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        int bits = ((IntegerStamp) stamp()).getBits();
+        int bits = ((IntegerStamp) stamp(NodeView.DEFAULT)).getBits();
         if (forX.isConstant() && forY.isConstant()) {
             long yConst = CodeUtil.zeroExtend(forY.asJavaConstant().asLong(), bits);
             if (yConst == 0) {
                 return this; // this will trap, cannot canonicalize
             }
-            return ConstantNode.forIntegerStamp(stamp(), Long.remainderUnsigned(CodeUtil.zeroExtend(forX.asJavaConstant().asLong(), bits), yConst));
+            return ConstantNode.forIntegerStamp(stamp(NodeView.DEFAULT), Long.remainderUnsigned(CodeUtil.zeroExtend(forX.asJavaConstant().asLong(), bits), yConst));
         } else if (forY.isConstant()) {
             long c = CodeUtil.zeroExtend(forY.asJavaConstant().asLong(), bits);
             if (c == 1) {
-                return ConstantNode.forIntegerStamp(stamp(), 0);
+                return ConstantNode.forIntegerStamp(stamp(NodeView.DEFAULT), 0);
             } else if (CodeUtil.isPowerOf2(c)) {
-                return new AndNode(forX, ConstantNode.forIntegerStamp(stamp(), c - 1));
+                return new AndNode(forX, ConstantNode.forIntegerStamp(stamp(NodeView.DEFAULT), c - 1));
             }
         }
         return this;

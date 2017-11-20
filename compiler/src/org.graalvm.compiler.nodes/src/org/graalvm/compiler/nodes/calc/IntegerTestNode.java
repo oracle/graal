@@ -33,6 +33,7 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.BinaryOpLogicNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 
 import jdk.vm.ci.meta.TriState;
@@ -55,9 +56,9 @@ public final class IntegerTestNode extends BinaryOpLogicNode implements BinaryCo
         if (forX.isConstant() && forY.isConstant()) {
             return LogicConstantNode.forBoolean((forX.asJavaConstant().asLong() & forY.asJavaConstant().asLong()) == 0);
         }
-        if (forX.stamp() instanceof IntegerStamp && forY.stamp() instanceof IntegerStamp) {
-            IntegerStamp xStamp = (IntegerStamp) forX.stamp();
-            IntegerStamp yStamp = (IntegerStamp) forY.stamp();
+        if (forX.stamp(NodeView.DEFAULT) instanceof IntegerStamp && forY.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
+            IntegerStamp xStamp = (IntegerStamp) forX.stamp(NodeView.DEFAULT);
+            IntegerStamp yStamp = (IntegerStamp) forY.stamp(NodeView.DEFAULT);
             if ((xStamp.upMask() & yStamp.upMask()) == 0) {
                 return LogicConstantNode.tautology();
             } else if ((xStamp.downMask() & yStamp.downMask()) != 0) {

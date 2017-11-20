@@ -58,6 +58,7 @@ import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -246,7 +247,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                     indexOfSnippets.lower(node, tool);
                 }
             };
-            SnippetLowerableMemoryNode snippetLower = new SnippetLowerableMemoryNode(lowering, NamedLocationIdentity.getArrayLocation(JavaKind.Char), n.stamp(), n.toArgumentArray());
+            SnippetLowerableMemoryNode snippetLower = new SnippetLowerableMemoryNode(lowering, NamedLocationIdentity.getArrayLocation(JavaKind.Char), n.stamp(NodeView.DEFAULT), n.toArgumentArray());
             n.graph().add(snippetLower);
             n.graph().replaceFixedWithFixed(n, snippetLower);
         }
@@ -346,7 +347,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ResolvedJavaField field = loadField.field();
         ValueNode object = loadField.isStatic() ? staticFieldBase(graph, field) : loadField.object();
         object = createNullCheckedValue(object, loadField, tool);
-        Stamp loadStamp = loadStamp(loadField.stamp(), getStorageKind(field));
+        Stamp loadStamp = loadStamp(loadField.stamp(NodeView.DEFAULT), getStorageKind(field));
 
         AddressNode address = createFieldAddress(graph, object, field);
         assert address != null : "Field that is loaded must not be eliminated: " + field.getDeclaringClass().toJavaName(true) + "." + field.getName();
@@ -418,7 +419,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode array = loadIndexed.array();
         array = createNullCheckedValue(array, loadIndexed, tool);
         JavaKind elementKind = loadIndexed.elementKind();
-        Stamp loadStamp = loadStamp(loadIndexed.stamp(), elementKind);
+        Stamp loadStamp = loadStamp(loadIndexed.stamp(NodeView.DEFAULT), elementKind);
 
         GuardingNode boundsCheck = getBoundsCheck(loadIndexed, array, tool);
         AddressNode address = createArrayIndexAddress(graph, array, elementKind, loadIndexed.index(), boundsCheck);
@@ -583,7 +584,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected ReadNode createUnsafeRead(StructuredGraph graph, RawLoadNode load, GuardingNode guard) {
         boolean compressible = load.accessKind() == JavaKind.Object;
         JavaKind readKind = load.accessKind();
-        Stamp loadStamp = loadStamp(load.stamp(), readKind, compressible);
+        Stamp loadStamp = loadStamp(load.stamp(NodeView.DEFAULT), readKind, compressible);
         AddressNode address = createUnsafeAddress(graph, load.object(), load.offset());
         ReadNode memoryRead = graph.add(new ReadNode(address, load.getLocationIdentity(), loadStamp, BarrierType.NONE));
         if (guard == null) {
@@ -602,7 +603,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         StructuredGraph graph = load.graph();
         JavaKind readKind = load.getKind();
         assert readKind != JavaKind.Object;
-        Stamp loadStamp = loadStamp(load.stamp(), readKind, false);
+        Stamp loadStamp = loadStamp(load.stamp(NodeView.DEFAULT), readKind, false);
         AddressNode address = graph.addOrUniqueWithInputs(OffsetAddressNode.create(load.getAddress()));
         ReadNode memoryRead = graph.add(new ReadNode(address, load.getLocationIdentity(), loadStamp, BarrierType.NONE));
         // An unsafe read must not float otherwise it may float above
@@ -647,7 +648,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected void lowerJavaReadNode(JavaReadNode read) {
         StructuredGraph graph = read.graph();
         JavaKind valueKind = read.getReadKind();
-        Stamp loadStamp = loadStamp(read.stamp(), valueKind, read.isCompressible());
+        Stamp loadStamp = loadStamp(read.stamp(NodeView.DEFAULT), valueKind, read.isCompressible());
 
         ReadNode memoryRead = graph.add(new ReadNode(read.getAddress(), read.getLocationIdentity(), loadStamp, read.getBarrierType()));
         GuardingNode guard = read.getGuard();
@@ -1059,7 +1060,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         if (nullCheck == null) {
             return object;
         }
-        return before.graph().maybeAddOrUnique(PiNode.create(object, (object.stamp()).join(StampFactory.objectNonNull()), (ValueNode) nullCheck));
+        return before.graph().maybeAddOrUnique(PiNode.create(object, (object.stamp(NodeView.DEFAULT)).join(StampFactory.objectNonNull()), (ValueNode) nullCheck));
     }
 
     @Override
@@ -1068,7 +1069,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode offset = ((OffsetAddressNode) address).getOffset();
 
         int base = arrayBaseOffset(elementKind);
-        ValueNode scaledIndex = graph.unique(new SubNode(offset, ConstantNode.forIntegerStamp(offset.stamp(), base, graph)));
+        ValueNode scaledIndex = graph.unique(new SubNode(offset, ConstantNode.forIntegerStamp(offset.stamp(NodeView.DEFAULT), base, graph)));
 
         int shift = CodeUtil.log2(arrayScalingFactor(elementKind));
         ValueNode ret = graph.unique(new RightShiftNode(scaledIndex, ConstantNode.forInt(shift, graph)));

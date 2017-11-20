@@ -33,6 +33,7 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -51,8 +52,8 @@ public final class OrNode extends BinaryArithmeticNode<Or> implements BinaryComm
     }
 
     public static ValueNode create(ValueNode x, ValueNode y) {
-        BinaryOp<Or> op = ArithmeticOpTable.forStamp(x.stamp()).getOr();
-        Stamp stamp = op.foldStamp(x.stamp(), y.stamp());
+        BinaryOp<Or> op = ArithmeticOpTable.forStamp(x.stamp(NodeView.DEFAULT)).getOr();
+        Stamp stamp = op.foldStamp(x.stamp(NodeView.DEFAULT), y.stamp(NodeView.DEFAULT));
         ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp);
         if (tryConstantFold != null) {
             return tryConstantFold;
@@ -67,7 +68,7 @@ public final class OrNode extends BinaryArithmeticNode<Or> implements BinaryComm
             return ret;
         }
 
-        return canonical(this, getOp(forX, forY), stamp(), forX, forY);
+        return canonical(this, getOp(forX, forY), stamp(NodeView.DEFAULT), forX, forY);
     }
 
     private static ValueNode canonical(OrNode self, BinaryOp<Or> op, Stamp stamp, ValueNode forX, ValueNode forY) {

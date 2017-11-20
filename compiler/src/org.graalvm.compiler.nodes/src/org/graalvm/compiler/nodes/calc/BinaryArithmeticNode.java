@@ -41,6 +41,7 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ArithmeticOperation;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
@@ -60,13 +61,13 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
     protected final SerializableBinaryFunction<OP> getOp;
 
     protected BinaryArithmeticNode(NodeClass<? extends BinaryArithmeticNode<OP>> c, SerializableBinaryFunction<OP> getOp, ValueNode x, ValueNode y) {
-        super(c, getOp.apply(ArithmeticOpTable.forStamp(x.stamp())).foldStamp(x.stamp(), y.stamp()), x, y);
+        super(c, getOp.apply(ArithmeticOpTable.forStamp(x.stamp(NodeView.DEFAULT))).foldStamp(x.stamp(NodeView.DEFAULT), y.stamp(NodeView.DEFAULT)), x, y);
         this.getOp = getOp;
     }
 
     protected final BinaryOp<OP> getOp(ValueNode forX, ValueNode forY) {
-        ArithmeticOpTable table = ArithmeticOpTable.forStamp(forX.stamp());
-        assert table.equals(ArithmeticOpTable.forStamp(forY.stamp()));
+        ArithmeticOpTable table = ArithmeticOpTable.forStamp(forX.stamp(NodeView.DEFAULT));
+        assert table.equals(ArithmeticOpTable.forStamp(forY.stamp(NodeView.DEFAULT)));
         return getOp.apply(table);
     }
 
@@ -81,7 +82,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        ValueNode result = tryConstantFold(getOp(forX, forY), forX, forY, stamp());
+        ValueNode result = tryConstantFold(getOp(forX, forY), forX, forY, stamp(NodeView.DEFAULT));
         if (result != null) {
             return result;
         }
@@ -100,7 +101,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
 
     @Override
     public Stamp foldStamp(Stamp stampX, Stamp stampY) {
-        assert stampX.isCompatible(x.stamp()) && stampY.isCompatible(y.stamp());
+        assert stampX.isCompatible(x.stamp(NodeView.DEFAULT)) && stampY.isCompatible(y.stamp(NodeView.DEFAULT));
         return getArithmeticOp().foldStamp(stampX, stampY);
     }
 

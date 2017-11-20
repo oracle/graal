@@ -28,6 +28,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -44,12 +45,12 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
     }
 
     protected SignedDivNode(NodeClass<? extends SignedDivNode> c, ValueNode x, ValueNode y) {
-        super(c, IntegerStamp.OPS.getDiv().foldStamp(x.stamp(), y.stamp()), Op.DIV, Type.SIGNED, x, y);
+        super(c, IntegerStamp.OPS.getDiv().foldStamp(x.stamp(NodeView.DEFAULT), y.stamp(NodeView.DEFAULT)), Op.DIV, Type.SIGNED, x, y);
     }
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(IntegerStamp.OPS.getDiv().foldStamp(getX().stamp(), getY().stamp()));
+        return updateStamp(IntegerStamp.OPS.getDiv().foldStamp(getX().stamp(NodeView.DEFAULT), getY().stamp(NodeView.DEFAULT)));
     }
 
     @Override
@@ -60,7 +61,7 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
             if (y == 0) {
                 return this; // this will trap, can not canonicalize
             }
-            return ConstantNode.forIntegerStamp(stamp(), forX.asJavaConstant().asLong() / y);
+            return ConstantNode.forIntegerStamp(stamp(NodeView.DEFAULT), forX.asJavaConstant().asLong() / y);
         } else if (forY.isConstant()) {
             long c = forY.asJavaConstant().asLong();
             ValueNode v = canonical(forX, c);
@@ -74,7 +75,7 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
             SubNode integerSubNode = (SubNode) forX;
             if (integerSubNode.getY() instanceof SignedRemNode) {
                 SignedRemNode integerRemNode = (SignedRemNode) integerSubNode.getY();
-                if (integerSubNode.stamp().isCompatible(this.stamp()) && integerRemNode.stamp().isCompatible(this.stamp()) && integerSubNode.getX() == integerRemNode.getX() &&
+                if (integerSubNode.stamp(NodeView.DEFAULT).isCompatible(this.stamp(NodeView.DEFAULT)) && integerRemNode.stamp(NodeView.DEFAULT).isCompatible(this.stamp(NodeView.DEFAULT)) && integerSubNode.getX() == integerRemNode.getX() &&
                                 forY == integerRemNode.getY()) {
                     SignedDivNode sd = new SignedDivNode(integerSubNode.getX(), forY);
                     sd.stateBefore = this.stateBefore;
@@ -101,13 +102,13 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
             return NegateNode.create(forX);
         }
         long abs = Math.abs(c);
-        if (CodeUtil.isPowerOf2(abs) && forX.stamp() instanceof IntegerStamp) {
+        if (CodeUtil.isPowerOf2(abs) && forX.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
             ValueNode dividend = forX;
-            IntegerStamp stampX = (IntegerStamp) forX.stamp();
+            IntegerStamp stampX = (IntegerStamp) forX.stamp(NodeView.DEFAULT);
             int log2 = CodeUtil.log2(abs);
             // no rounding if dividend is positive or if its low bits are always 0
             if (stampX.canBeNegative() || (stampX.upMask() & (abs - 1)) != 0) {
-                int bits = PrimitiveStamp.getBits(forX.stamp());
+                int bits = PrimitiveStamp.getBits(forX.stamp(NodeView.DEFAULT));
                 RightShiftNode sign = new RightShiftNode(forX, ConstantNode.forInt(bits - 1));
                 UnsignedRightShiftNode round = new UnsignedRightShiftNode(sign, ConstantNode.forInt(bits - log2));
                 dividend = BinaryArithmeticNode.add(dividend, round);

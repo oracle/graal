@@ -33,6 +33,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNegationNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
@@ -76,12 +77,12 @@ public abstract class IntegerLowerThanNode extends CompareNode {
             IntegerStamp xStamp = (IntegerStamp) xStampGeneric;
             AddNode addNode = (AddNode) forY;
             IntegerStamp aStamp = null;
-            if (addNode.getX() == forX && addNode.getY().stamp() instanceof IntegerStamp) {
+            if (addNode.getX() == forX && addNode.getY().stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
                 // x < x + a
-                aStamp = (IntegerStamp) addNode.getY().stamp();
-            } else if (addNode.getY() == forX && addNode.getX().stamp() instanceof IntegerStamp) {
+                aStamp = (IntegerStamp) addNode.getY().stamp(NodeView.DEFAULT);
+            } else if (addNode.getY() == forX && addNode.getX().stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
                 // x < a + x
-                aStamp = (IntegerStamp) addNode.getX().stamp();
+                aStamp = (IntegerStamp) addNode.getX().stamp(NodeView.DEFAULT);
             }
             if (aStamp != null) {
                 IntegerStamp result = getOp().getSucceedingStampForXLowerXPlusA(mirror, strict, aStamp);
@@ -176,14 +177,14 @@ public abstract class IntegerLowerThanNode extends CompareNode {
             if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
                 return LogicConstantNode.contradiction();
             }
-            TriState fold = tryFold(forX.stamp(), forY.stamp());
+            TriState fold = tryFold(forX.stamp(NodeView.DEFAULT), forY.stamp(NodeView.DEFAULT));
             if (fold.isTrue()) {
                 return LogicConstantNode.tautology();
             } else if (fold.isFalse()) {
                 return LogicConstantNode.contradiction();
             }
-            if (forY.stamp() instanceof IntegerStamp) {
-                IntegerStamp yStamp = (IntegerStamp) forY.stamp();
+            if (forY.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
+                IntegerStamp yStamp = (IntegerStamp) forY.stamp(NodeView.DEFAULT);
                 int bits = yStamp.getBits();
                 if (forX.isJavaConstant() && !forY.isConstant()) {
                     // bring the constant on the right
@@ -225,18 +226,18 @@ public abstract class IntegerLowerThanNode extends CompareNode {
             // x < x + a
             IntegerStamp succeedingXStamp;
             boolean exact;
-            if (addNode.getX() == forX && addNode.getY().stamp() instanceof IntegerStamp) {
-                IntegerStamp aStamp = (IntegerStamp) addNode.getY().stamp();
+            if (addNode.getX() == forX && addNode.getY().stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
+                IntegerStamp aStamp = (IntegerStamp) addNode.getY().stamp(NodeView.DEFAULT);
                 succeedingXStamp = getSucceedingStampForXLowerXPlusA(mirrored, strict, aStamp);
                 exact = aStamp.lowerBound() == aStamp.upperBound();
-            } else if (addNode.getY() == forX && addNode.getX().stamp() instanceof IntegerStamp) {
-                IntegerStamp aStamp = (IntegerStamp) addNode.getX().stamp();
+            } else if (addNode.getY() == forX && addNode.getX().stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
+                IntegerStamp aStamp = (IntegerStamp) addNode.getX().stamp(NodeView.DEFAULT);
                 succeedingXStamp = getSucceedingStampForXLowerXPlusA(mirrored, strict, aStamp);
                 exact = aStamp.lowerBound() == aStamp.upperBound();
             } else {
                 return null;
             }
-            if (succeedingXStamp.join(forX.stamp()).isEmpty()) {
+            if (succeedingXStamp.join(forX.stamp(NodeView.DEFAULT)).isEmpty()) {
                 return LogicConstantNode.contradiction();
             } else if (exact && !succeedingXStamp.isEmpty()) {
                 int bits = succeedingXStamp.getBits();

@@ -330,6 +330,7 @@ import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.MergeNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ReturnNode;
@@ -1219,7 +1220,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
         ValueNode exception = frameState.pop(JavaKind.Object);
         FixedGuardNode nullCheck = append(new FixedGuardNode(graph.addOrUniqueWithInputs(IsNullNode.create(exception)), NullCheckException, InvalidateReprofile, true));
-        ValueNode nonNullException = graph.maybeAddOrUnique(PiNode.create(exception, exception.stamp().join(objectNonNull()), nullCheck));
+        ValueNode nonNullException = graph.maybeAddOrUnique(PiNode.create(exception, exception.stamp(NodeView.DEFAULT).join(objectNonNull()), nullCheck));
         lastInstr.setNext(handleException(nonNullException, bci(), false));
     }
 
@@ -1275,7 +1276,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode emitExplicitNullCheck(ValueNode receiver) {
-        if (StampTool.isPointerNonNull(receiver.stamp())) {
+        if (StampTool.isPointerNonNull(receiver.stamp(NodeView.DEFAULT))) {
             return receiver;
         }
         BytecodeExceptionNode exception = graph.add(new BytecodeExceptionNode(metaAccess, NullPointerException.class));
@@ -1803,7 +1804,7 @@ public class BytecodeParser implements GraphBuilderContext {
             this.args = args;
             this.resultType = resultType;
             this.beforeStackSize = frameState.stackSize();
-            this.needsNullCheck = !targetMethod.isStatic() && args[0].getStackKind() == JavaKind.Object && !StampTool.isPointerNonNull(args[0].stamp());
+            this.needsNullCheck = !targetMethod.isStatic() && args[0].getStackKind() == JavaKind.Object && !StampTool.isPointerNonNull(args[0].stamp(NodeView.DEFAULT));
             this.nodeCount = graph.getNodeCount();
             this.mark = graph.getMark();
         }
@@ -1817,7 +1818,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 int expectedStackSize = beforeStackSize + resultType.getSlotCount();
                 assert expectedStackSize == frameState.stackSize() : error("plugin manipulated the stack incorrectly: expected=%d, actual=%d", expectedStackSize, frameState.stackSize());
                 NodeIterable<Node> newNodes = graph.getNewNodes(mark);
-                assert !needsNullCheck || isPointerNonNull(args[0].stamp()) : error("plugin needs to null check the receiver of %s: receiver=%s", targetMethod.format("%H.%n(%p)"), args[0]);
+                assert !needsNullCheck || isPointerNonNull(args[0].stamp(NodeView.DEFAULT)) : error("plugin needs to null check the receiver of %s: receiver=%s", targetMethod.format("%H.%n(%p)"), args[0]);
                 for (Node n : newNodes) {
                     if (n instanceof StateSplit) {
                         StateSplit stateSplit = (StateSplit) n;
@@ -2394,7 +2395,7 @@ public class BytecodeParser implements GraphBuilderContext {
         if (kind != returnKind) {
             // sub-word integer
             assert returnKind.isNumericInteger() && returnKind.getStackKind() == JavaKind.Int;
-            IntegerStamp stamp = (IntegerStamp) value.stamp();
+            IntegerStamp stamp = (IntegerStamp) value.stamp(NodeView.DEFAULT);
 
             // the bytecode verifier doesn't check that the value is in the correct range
             if (stamp.lowerBound() < returnKind.getMinValue() || returnKind.getMaxValue() < stamp.upperBound()) {
@@ -3716,7 +3717,7 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
 
-        boolean nonNull = ((ObjectStamp) object.stamp()).nonNull();
+        boolean nonNull = ((ObjectStamp) object.stamp(NodeView.DEFAULT)).nonNull();
         if (castNode == null) {
             LogicNode condition = genUnique(createInstanceOfAllowNull(checkedType, object, null));
             if (condition.isTautology()) {

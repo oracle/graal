@@ -33,6 +33,7 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -48,12 +49,12 @@ public final class XorNode extends BinaryArithmeticNode<Xor> implements BinaryCo
 
     public XorNode(ValueNode x, ValueNode y) {
         super(TYPE, ArithmeticOpTable::getXor, x, y);
-        assert x.stamp().isCompatible(y.stamp());
+        assert x.stamp(NodeView.DEFAULT).isCompatible(y.stamp(NodeView.DEFAULT));
     }
 
     public static ValueNode create(ValueNode x, ValueNode y) {
-        BinaryOp<Xor> op = ArithmeticOpTable.forStamp(x.stamp()).getXor();
-        Stamp stamp = op.foldStamp(x.stamp(), y.stamp());
+        BinaryOp<Xor> op = ArithmeticOpTable.forStamp(x.stamp(NodeView.DEFAULT)).getXor();
+        Stamp stamp = op.foldStamp(x.stamp(NodeView.DEFAULT), y.stamp(NodeView.DEFAULT));
         ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp);
         if (tryConstantFold != null) {
             return tryConstantFold;
@@ -68,12 +69,12 @@ public final class XorNode extends BinaryArithmeticNode<Xor> implements BinaryCo
             return ret;
         }
 
-        return canonical(this, getOp(forX, forY), stamp(), forX, forY);
+        return canonical(this, getOp(forX, forY), stamp(NodeView.DEFAULT), forX, forY);
     }
 
     private static ValueNode canonical(XorNode self, BinaryOp<Xor> op, Stamp stamp, ValueNode forX, ValueNode forY) {
         if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
-            return ConstantNode.forPrimitive(stamp, op.getZero(forX.stamp()));
+            return ConstantNode.forPrimitive(stamp, op.getZero(forX.stamp(NodeView.DEFAULT)));
         }
         if (forX.isConstant() && !forY.isConstant()) {
             return new XorNode(forY, forX);

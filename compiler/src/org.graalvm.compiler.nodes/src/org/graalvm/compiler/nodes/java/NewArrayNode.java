@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
@@ -119,7 +120,7 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
     @Override
     public void simplify(SimplifierTool tool) {
         if (hasNoUsages()) {
-            Stamp lengthStamp = length().stamp();
+            Stamp lengthStamp = length().stamp(NodeView.DEFAULT);
             if (lengthStamp instanceof IntegerStamp) {
                 IntegerStamp lengthIntegerStamp = (IntegerStamp) lengthStamp;
                 if (lengthIntegerStamp.isPositive()) {

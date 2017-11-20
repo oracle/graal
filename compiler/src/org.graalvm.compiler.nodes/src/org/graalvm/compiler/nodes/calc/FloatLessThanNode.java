@@ -36,6 +36,7 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
@@ -49,8 +50,8 @@ public final class FloatLessThanNode extends CompareNode {
 
     public FloatLessThanNode(ValueNode x, ValueNode y, boolean unorderedIsTrue) {
         super(TYPE, Condition.LT, unorderedIsTrue, x, y);
-        assert x.stamp() instanceof FloatStamp && y.stamp() instanceof FloatStamp;
-        assert x.stamp().isCompatible(y.stamp());
+        assert x.stamp(NodeView.DEFAULT) instanceof FloatStamp && y.stamp(NodeView.DEFAULT) instanceof FloatStamp;
+        assert x.stamp(NodeView.DEFAULT).isCompatible(y.stamp(NodeView.DEFAULT));
     }
 
     public static LogicNode create(ValueNode x, ValueNode y, boolean unorderedIsTrue) {
@@ -96,9 +97,9 @@ public final class FloatLessThanNode extends CompareNode {
 
         @Override
         protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue) {
-            if (newX.stamp() instanceof FloatStamp && newY.stamp() instanceof FloatStamp) {
+            if (newX.stamp(NodeView.DEFAULT) instanceof FloatStamp && newY.stamp(NodeView.DEFAULT) instanceof FloatStamp) {
                 return new FloatLessThanNode(newX, newY, unorderedIsTrue);
-            } else if (newX.stamp() instanceof IntegerStamp && newY.stamp() instanceof IntegerStamp) {
+            } else if (newX.stamp(NodeView.DEFAULT) instanceof IntegerStamp && newY.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
                 return new IntegerLessThanNode(newX, newY);
             }
             throw GraalError.shouldNotReachHere();

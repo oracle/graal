@@ -33,6 +33,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -45,8 +46,8 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
 
     public IntegerBelowNode(ValueNode x, ValueNode y) {
         super(TYPE, x, y, OP);
-        assert x.stamp() instanceof IntegerStamp;
-        assert y.stamp() instanceof IntegerStamp;
+        assert x.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
+        assert y.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
     }
 
     public static LogicNode create(ValueNode x, ValueNode y) {
@@ -73,7 +74,7 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
     public static class BelowOp extends LowerOp {
         @Override
         protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue) {
-            assert newX.stamp() instanceof IntegerStamp && newY.stamp() instanceof IntegerStamp;
+            assert newX.stamp(NodeView.DEFAULT) instanceof IntegerStamp && newY.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
             return new IntegerBelowNode(newX, newY);
         }
 

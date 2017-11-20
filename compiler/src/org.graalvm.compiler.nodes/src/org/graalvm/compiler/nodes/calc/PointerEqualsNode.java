@@ -35,6 +35,7 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.LoadMethodNode;
@@ -66,8 +67,8 @@ public class PointerEqualsNode extends CompareNode implements BinaryCommutative<
 
     protected PointerEqualsNode(NodeClass<? extends PointerEqualsNode> c, ValueNode x, ValueNode y) {
         super(c, Condition.EQ, false, x, y);
-        assert x.stamp() instanceof AbstractPointerStamp;
-        assert y.stamp() instanceof AbstractPointerStamp;
+        assert x.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp;
+        assert y.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp;
     }
 
     @Override
@@ -131,11 +132,11 @@ public class PointerEqualsNode extends CompareNode implements BinaryCommutative<
     public static LogicNode findSynonym(ValueNode forX, ValueNode forY) {
         if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
             return LogicConstantNode.tautology();
-        } else if (forX.stamp().alwaysDistinct(forY.stamp())) {
+        } else if (forX.stamp(NodeView.DEFAULT).alwaysDistinct(forY.stamp(NodeView.DEFAULT))) {
             return LogicConstantNode.contradiction();
-        } else if (((AbstractPointerStamp) forX.stamp()).alwaysNull()) {
+        } else if (((AbstractPointerStamp) forX.stamp(NodeView.DEFAULT)).alwaysNull()) {
             return IsNullNode.create(forY);
-        } else if (((AbstractPointerStamp) forY.stamp()).alwaysNull()) {
+        } else if (((AbstractPointerStamp) forY.stamp(NodeView.DEFAULT)).alwaysNull()) {
             return IsNullNode.create(forX);
         } else {
             return null;

@@ -35,6 +35,7 @@ import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ShortCircuitOrNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -68,7 +69,7 @@ public class ExpandLogicPhase extends Phase {
         StructuredGraph graph = normalize.graph();
         ValueNode x = normalize.getX();
         ValueNode y = normalize.getY();
-        if (x.stamp() instanceof FloatStamp) {
+        if (x.stamp(NodeView.DEFAULT) instanceof FloatStamp) {
             equalComp = graph.addOrUniqueWithInputs(FloatEqualsNode.create(x, y));
             lessComp = graph.addOrUniqueWithInputs(FloatLessThanNode.create(x, y, normalize.isUnorderedLess()));
         } else {
@@ -76,7 +77,7 @@ public class ExpandLogicPhase extends Phase {
             lessComp = graph.addOrUniqueWithInputs(IntegerLessThanNode.create(x, y));
         }
 
-        Stamp stamp = normalize.stamp();
+        Stamp stamp = normalize.stamp(NodeView.DEFAULT);
         ConditionalNode equalValue = graph.unique(
                         new ConditionalNode(equalComp, ConstantNode.forIntegerStamp(stamp, 0, graph), ConstantNode.forIntegerStamp(stamp, 1, graph)));
         ConditionalNode value = graph.unique(new ConditionalNode(lessComp, ConstantNode.forIntegerStamp(stamp, -1, graph), equalValue));

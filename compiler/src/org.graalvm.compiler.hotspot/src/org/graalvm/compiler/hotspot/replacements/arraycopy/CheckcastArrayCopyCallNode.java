@@ -39,6 +39,7 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
@@ -117,7 +118,7 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
         int shift = CodeUtil.log2(getArrayIndexScale(JavaKind.Object));
         ValueNode extendedPos = IntegerConvertNode.convert(pos, StampFactory.forKind(runtime.getTarget().wordJavaKind), graph());
         ValueNode scaledIndex = graph().unique(new LeftShiftNode(extendedPos, ConstantNode.forInt(shift, graph())));
-        ValueNode offset = graph().unique(new AddNode(scaledIndex, ConstantNode.forIntegerBits(PrimitiveStamp.getBits(scaledIndex.stamp()), getArrayBaseOffset(JavaKind.Object), graph())));
+        ValueNode offset = graph().unique(new AddNode(scaledIndex, ConstantNode.forIntegerBits(PrimitiveStamp.getBits(scaledIndex.stamp(NodeView.DEFAULT)), getArrayBaseOffset(JavaKind.Object), graph())));
         return graph().unique(new OffsetAddressNode(basePtr, offset));
     }
 
@@ -129,7 +130,7 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
             ValueNode srcAddr = computeBase(getSource(), getSourcePosition());
             ValueNode destAddr = computeBase(getDestination(), getDestinationPosition());
             ValueNode len = getLength();
-            if (len.stamp().getStackKind() != runtime.getTarget().wordJavaKind) {
+            if (len.stamp(NodeView.DEFAULT).getStackKind() != runtime.getTarget().wordJavaKind) {
                 len = IntegerConvertNode.convert(len, StampFactory.forKind(runtime.getTarget().wordJavaKind), graph());
             }
             ForeignCallNode call = graph.add(new ForeignCallNode(runtime.getHostBackend().getForeignCalls(), desc, srcAddr, destAddr, len, superCheckOffset, destElemKlass));

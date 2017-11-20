@@ -31,6 +31,7 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
@@ -46,8 +47,8 @@ public final class RightShiftNode extends ShiftNode<Shr> {
     }
 
     public static ValueNode create(ValueNode x, ValueNode y) {
-        ArithmeticOpTable.ShiftOp<Shr> op = ArithmeticOpTable.forStamp(x.stamp()).getShr();
-        Stamp stamp = op.foldStamp(x.stamp(), (IntegerStamp) y.stamp());
+        ArithmeticOpTable.ShiftOp<Shr> op = ArithmeticOpTable.forStamp(x.stamp(NodeView.DEFAULT)).getShr();
+        Stamp stamp = op.foldStamp(x.stamp(NodeView.DEFAULT), (IntegerStamp) y.stamp(NodeView.DEFAULT));
         ValueNode value = ShiftNode.canonical(op, stamp, x, y);
         if (value != null) {
             return value;
@@ -63,12 +64,12 @@ public final class RightShiftNode extends ShiftNode<Shr> {
             return ret;
         }
 
-        return canonical(this, getArithmeticOp(), stamp(), forX, forY);
+        return canonical(this, getArithmeticOp(), stamp(NodeView.DEFAULT), forX, forY);
     }
 
     private static ValueNode canonical(RightShiftNode rightShiftNode, ArithmeticOpTable.ShiftOp<Shr> op, Stamp stamp, ValueNode forX, ValueNode forY) {
         RightShiftNode self = rightShiftNode;
-        if (forX.stamp() instanceof IntegerStamp && ((IntegerStamp) forX.stamp()).isPositive()) {
+        if (forX.stamp(NodeView.DEFAULT) instanceof IntegerStamp && ((IntegerStamp) forX.stamp(NodeView.DEFAULT)).isPositive()) {
             return new UnsignedRightShiftNode(forX, forY);
         }
 
@@ -87,8 +88,8 @@ public final class RightShiftNode extends ShiftNode<Shr> {
                     if (other instanceof RightShiftNode) {
                         int total = amount + otherAmount;
                         if (total != (total & mask)) {
-                            assert other.getX().stamp() instanceof IntegerStamp;
-                            IntegerStamp istamp = (IntegerStamp) other.getX().stamp();
+                            assert other.getX().stamp(NodeView.DEFAULT) instanceof IntegerStamp;
+                            IntegerStamp istamp = (IntegerStamp) other.getX().stamp(NodeView.DEFAULT);
 
                             if (istamp.isPositive()) {
                                 return ConstantNode.forIntegerKind(stamp.getStackKind(), 0);
@@ -131,7 +132,7 @@ public final class RightShiftNode extends ShiftNode<Shr> {
              * are all equal to the sign bit of the input. That's equivalent to the condition that
              * the input is in the signed range of the narrow type.
              */
-            IntegerStamp inputStamp = (IntegerStamp) getX().stamp();
+            IntegerStamp inputStamp = (IntegerStamp) getX().stamp(NodeView.DEFAULT);
             return CodeUtil.minValue(resultBits) <= inputStamp.lowerBound() && inputStamp.upperBound() <= CodeUtil.maxValue(resultBits);
         } else {
             return false;
