@@ -46,6 +46,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDSubrange;
 import com.oracle.truffle.llvm.parser.metadata.MDSubroutine;
 import com.oracle.truffle.llvm.parser.metadata.MDValue;
 import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
+import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceBasicType;
@@ -85,11 +86,11 @@ final class DITypeExtractor implements MetadataVisitor {
     private final Map<LLVMSourceStaticMemberType, Symbol> staticMembers;
 
     private final DIScopeExtractor scopeExtractor;
-    private final DITypeIdentifier typeIdentifier;
+    private final MetadataValueList metadata;
 
-    DITypeExtractor(DIScopeExtractor scopeExtractor, DITypeIdentifier typeIdentifier, Map<LLVMSourceStaticMemberType, Symbol> staticMembers) {
+    DITypeExtractor(DIScopeExtractor scopeExtractor, MetadataValueList metadata, Map<LLVMSourceStaticMemberType, Symbol> staticMembers) {
         this.scopeExtractor = scopeExtractor;
-        this.typeIdentifier = typeIdentifier;
+        this.metadata = metadata;
         this.staticMembers = staticMembers;
     }
 
@@ -415,7 +416,7 @@ final class DITypeExtractor implements MetadataVisitor {
             return;
         }
 
-        final MDCompositeType referencedType = typeIdentifier.identify(mdString.getString());
+        final MDCompositeType referencedType = metadata.identifyType(mdString.getString());
         if (referencedType != null) {
             final LLVMSourceType type = resolve(referencedType);
             parsedTypes.put(mdString, type);

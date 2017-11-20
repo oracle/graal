@@ -50,6 +50,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDString;
 import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
 import com.oracle.truffle.llvm.parser.metadata.MDSubroutine;
 import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
+import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFile;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -64,10 +65,10 @@ final class DIScopeExtractor {
     private final Map<MDBaseNode, LLVMSourceLocation> scopes = new HashMap<>();
 
     private final ScopeVisitor extractor = new ScopeVisitor();
-    private final DITypeIdentifier typeIdentifier;
+    private final MetadataValueList metadata;
 
-    DIScopeExtractor(DITypeIdentifier typeIdentifier) {
-        this.typeIdentifier = typeIdentifier;
+    DIScopeExtractor(MetadataValueList metadata) {
+        this.metadata = metadata;
     }
 
     LLVMSourceLocation resolve(MDBaseNode node) {
@@ -274,7 +275,7 @@ final class DIScopeExtractor {
             }
 
             scopes.put(md, null);
-            final MDCompositeType ref = typeIdentifier.identify(md.getString());
+            final MDCompositeType ref = metadata.identifyType(md.getString());
             final LLVMSourceLocation scope = resolve(ref);
             scopes.put(ref, scope);
             scopes.put(md, scope);

@@ -58,6 +58,7 @@ public final class MetadataValueList extends ValueList<MDBaseNode, MetadataVisit
     private final MetadataValueList parent;
 
     private final Map<String, MDNamedNode> namedNodes;
+    private final Map<String, MDCompositeType> mdTypeRegistry = new HashMap<>();
     private final List<MDKind> kinds;
 
     public MetadataValueList() {
@@ -142,5 +143,13 @@ public final class MetadataValueList extends ValueList<MDBaseNode, MetadataVisit
         final MDKind newKind = MDKind.create(nextArtificialKindId--, name);
         kinds.add(newKind);
         return newKind;
+    }
+
+    public MDCompositeType identifyType(String name) {
+        return mdTypeRegistry.get(name);
+    }
+
+    public void registerType(String identifier, MDCompositeType type) {
+        mdTypeRegistry.put(identifier, type);
     }
 }

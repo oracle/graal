@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.listeners;
 
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
@@ -49,6 +51,8 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
+import java.util.LinkedList;
+
 public final class Module implements ParserListener {
 
     private final ModelModule module;
@@ -61,9 +65,18 @@ public final class Module implements ParserListener {
 
     private final Types types;
 
-    public Module(ModelModule module) {
+    private final IRScope scope;
+
+    private final LinkedList<FunctionDefinition> functionQueue;
+
+    private final Source source;
+
+    public Module(ModelModule module, Source source) {
         this.module = module;
+        this.scope = new IRScope();
         types = new Types(module);
+        this.source = source;
+        functionQueue = new LinkedList<>();
     }
 
     private static final int STRTAB_RECORD_OFFSET = 2;
@@ -101,15 +114,18 @@ public final class Module implements ParserListener {
         if (isPrototype) {
             final FunctionDeclaration function = new FunctionDeclaration(functionType, linkage, paramAttr);
             module.addFunctionDeclaration(function);
+            scope.addSymbol(function, function.getType());
             if (useStrTab()) {
                 readNameFromStrTab(args, function);
             }
         } else {
-            final FunctionDefinition function = new FunctionDefinition(module, functionType, linkage, paramAttr);
+            final FunctionDefinition function = new FunctionDefinition(functionType, linkage, paramAttr);
             module.addFunctionDefinition(function);
+            scope.addSymbol(function, function.getType());
             if (useStrTab()) {
                 readNameFromStrTab(args, function);
             }
+            functionQueue.addLast(function);
         }
     }
 
@@ -152,6 +168,7 @@ public final class Module implements ParserListener {
             readNameFromStrTab(args, global);
         }
         module.addGlobalSymbol(global);
+        scope.addSymbol(global, global.getType());
     }
 
     private static final int GLOBALALIAS_TYPE = 0;
@@ -171,6 +188,7 @@ public final class Module implements ParserListener {
             readNameFromStrTab(args, global);
         }
         module.addGlobalSymbol(global);
+        scope.addSymbol(global, global.getType());
     }
 
     private static final int GLOBALALIAS_OLD_VALUE = 1;
@@ -187,6 +205,7 @@ public final class Module implements ParserListener {
             readNameFromStrTab(args, global);
         }
         module.addGlobalSymbol(global);
+        scope.addSymbol(global, global.getType());
     }
 
     @Override
@@ -202,26 +221,30 @@ public final class Module implements ParserListener {
                 return paramAttributes;
 
             case CONSTANTS:
-                return new Constants(types, module);
+                return new Constants(types, scope);
 
             case FUNCTION: {
-                final FunctionDefinition functionDefinition = module.generateFunction();
-                final FunctionType functionType = functionDefinition.getType();
-                for (Type arg : functionType.getArgumentTypes()) {
-                    functionDefinition.createParameter(arg);
+                if (functionQueue.isEmpty()) {
+                    throw new RuntimeException("Missing Function Prototype in Bitcode File!");
                 }
-                return new Function(types, functionDefinition, mode, paramAttributes);
+                final FunctionDefinition functionDefinition = functionQueue.removeFirst();
+                scope.startLocalScope(functionDefinition);
+                final FunctionType functionType = functionDefinition.getType();
+                for (Type argType : functionType.getArgumentTypes()) {
+                    scope.addSymbol(functionDefinition.createParameter(argType), argType);
+                }
+                return new Function(scope, types, functionDefinition, mode, paramAttributes);
             }
 
             case TYPE:
                 return types;
 
             case VALUE_SYMTAB:
-                return new ValueSymbolTable(module);
+                return new ValueSymbolTable(scope);
 
             case METADATA:
             case METADATA_KIND:
-                return new Metadata(types, module);
+                return new Metadata(types, scope);
 
             case STRTAB:
                 return stringTable;
@@ -233,7 +256,8 @@ public final class Module implements ParserListener {
 
     @Override
     public void exit() {
-        module.exitModule();
+        module.exitModule(scope);
+        module.getSourceModel().process(module, source, scope.getMetadata());
     }
 
     @Override

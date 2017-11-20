@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
@@ -97,14 +98,14 @@ public final class SwitchOldInstruction extends VoidInstruction implements Termi
         }
     }
 
-    public static SwitchOldInstruction generate(FunctionDefinition function, int condition, int defaultBlock, long[] cases, int[] targetBlocks) {
+    public static SwitchOldInstruction generate(FunctionDefinition function, Symbols symbols, int condition, int defaultBlock, long[] cases, int[] targetBlocks) {
         final InstructionBlock[] blocks = new InstructionBlock[targetBlocks.length];
         for (int i = 0; i < blocks.length; i++) {
             blocks[i] = function.getBlock(targetBlocks[i]);
         }
 
         final SwitchOldInstruction inst = new SwitchOldInstruction(function.getBlock(defaultBlock), cases, blocks);
-        inst.condition = function.getSymbols().getSymbol(condition, inst);
+        inst.condition = symbols.getSymbol(condition, inst);
         return inst;
     }
 }

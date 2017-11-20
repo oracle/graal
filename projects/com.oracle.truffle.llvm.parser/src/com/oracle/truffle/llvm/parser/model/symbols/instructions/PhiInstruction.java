@@ -33,7 +33,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -75,9 +74,8 @@ public final class PhiInstruction extends ValueInstruction {
         }
     }
 
-    public static PhiInstruction generate(FunctionDefinition function, Type type, int[] values, InstructionBlock[] blocks) {
+    public static PhiInstruction generate(Symbols symbols, Type type, int[] values, InstructionBlock[] blocks) {
         final PhiInstruction phi = new PhiInstruction(type);
-        final Symbols symbols = function.getSymbols();
         for (int i = 0; i < values.length; i++) {
             phi.values.add(symbols.getSymbol(values[i], phi));
             phi.blocks.add(blocks[i]);

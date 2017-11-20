@@ -88,14 +88,6 @@ public final class SourceModel {
     public static final int LLVM_DBG_VALUE_LOCALREF_ARGINDEX = 2;
     public static final int LLVM_DBG_VALUE_EXPR_ARGINDEX = 3;
 
-    public static SourceModel generate(ModelModule irModel, Source bitcodeSource) {
-        final MetadataValueList moduleMetadata = irModel.getMetadata();
-        final Parser parser = new Parser(moduleMetadata, bitcodeSource);
-        MDSymbolLinkUpgrade.perform(moduleMetadata);
-        irModel.accept(parser);
-        return parser.sourceModel;
-    }
-
     public static final class Function {
 
         private final Source bitcodeSource;
@@ -236,9 +228,15 @@ public final class SourceModel {
         }
     }
 
-    private SourceModel() {
+    public SourceModel() {
         globals = new HashMap<>();
         staticMembers = new HashMap<>();
+    }
+
+    public void process(ModelModule irModel, Source bitcodeSource, MetadataValueList metadata) {
+        final Parser parser = new Parser(this, metadata, bitcodeSource);
+        MDSymbolLinkUpgrade.perform(metadata);
+        irModel.accept(parser);
     }
 
     private final Map<LLVMSourceSymbol, GlobalValueSymbol> globals;
@@ -265,27 +263,19 @@ public final class SourceModel {
         }
 
         private final Map<MDBaseNode, LLVMSourceSymbol> parsedVariables;
-
-        private final DITypeIdentifier typeIdentifier;
         private final DIScopeExtractor scopeExtractor;
         private final DITypeExtractor typeExtractor;
         private final SourceModel sourceModel;
-
-        private final MetadataValueList moduleMetadata;
         private final Source bitcodeSource;
 
         private Function currentFunction = null;
 
-        private Parser(MetadataValueList moduleMetadata, Source bitcodeSource) {
-            this.moduleMetadata = moduleMetadata;
+        private Parser(SourceModel sourceModel, MetadataValueList metadata, Source bitcodeSource) {
             this.bitcodeSource = bitcodeSource;
+            this.sourceModel = sourceModel;
             this.parsedVariables = new HashMap<>();
-            this.sourceModel = new SourceModel();
-            this.typeIdentifier = new DITypeIdentifier();
-            this.scopeExtractor = new DIScopeExtractor(typeIdentifier);
-            this.typeExtractor = new DITypeExtractor(scopeExtractor, typeIdentifier, sourceModel.staticMembers);
-
-            this.typeIdentifier.setMetadata(moduleMetadata);
+            this.scopeExtractor = new DIScopeExtractor(metadata);
+            this.typeExtractor = new DITypeExtractor(scopeExtractor, metadata, sourceModel.staticMembers);
         }
 
         private LLVMSourceSymbol getSourceSymbol(MDBaseNode mdVariable, boolean isGlobal) {
@@ -316,7 +306,6 @@ public final class SourceModel {
         @Override
         public void visit(FunctionDefinition function) {
             currentFunction = new Function(bitcodeSource, function);
-            typeIdentifier.setMetadata(function.getMetadata());
 
             final MDBaseNode debugInfo = getDebugInfo(function);
             if (debugInfo != null) {
@@ -331,7 +320,6 @@ public final class SourceModel {
                 local.processFragments();
             }
 
-            typeIdentifier.setMetadata(moduleMetadata);
             currentFunction = null;
         }
 

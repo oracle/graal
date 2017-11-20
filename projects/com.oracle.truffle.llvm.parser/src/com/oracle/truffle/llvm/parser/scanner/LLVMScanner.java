@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.elf.ElfDynamicSection;
 import com.oracle.truffle.llvm.parser.elf.ElfFile;
 import com.oracle.truffle.llvm.parser.elf.ElfSectionHeaderTable.Entry;
@@ -85,7 +86,7 @@ public final class LLVMScanner {
         this.offset = 0;
     }
 
-    public static ModelModule parse(ByteBuffer bytes) {
+    public static ModelModule parse(Source source, ByteBuffer bytes) {
         final ModelModule model = new ModelModule();
 
         ByteBuffer b = bytes.duplicate();
@@ -127,7 +128,7 @@ public final class LLVMScanner {
         }
 
         final BitStream bitstream = BitStream.create(bitcode);
-        final LLVMScanner scanner = new LLVMScanner(bitstream, new Module(model));
+        final LLVMScanner scanner = new LLVMScanner(bitstream, new Module(model, source));
         parseBitcodeBlock(scanner);
         return model;
     }

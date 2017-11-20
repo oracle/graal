@@ -107,7 +107,7 @@ public final class LLVMParserRuntime {
         RootCallTarget destructorFunctions = runtime.getDestructors(module.getGlobals());
 
         if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
-            final SourceModel sourceModel = parserResult.getSourceModel();
+            final SourceModel sourceModel = model.getSourceModel();
             final LLVMSourceContext sourceContext = context.getSourceContext();
 
             sourceModel.getGlobals().forEach((symbol, global) -> {

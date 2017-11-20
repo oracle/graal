@@ -38,12 +38,12 @@ import java.util.stream.Collectors;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
+import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
-import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
@@ -55,7 +55,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
-public final class FunctionDefinition extends IRScope implements Constant, ValueSymbol {
+public final class FunctionDefinition implements Constant, ValueSymbol, MetadataAttachmentHolder {
 
     private final List<FunctionParameter> parameters = new ArrayList<>();
     private final FunctionType type;
@@ -69,16 +69,15 @@ public final class FunctionDefinition extends IRScope implements Constant, Value
     private int currentBlock = 0;
     private String name;
 
-    public FunctionDefinition(IRScope parent, FunctionType type, String name, Linkage linkage, AttributesCodeEntry paramAttr) {
-        super(parent);
+    public FunctionDefinition(FunctionType type, String name, Linkage linkage, AttributesCodeEntry paramAttr) {
         this.type = type;
         this.name = name;
         this.paramAttr = paramAttr;
         this.linkage = linkage;
     }
 
-    public FunctionDefinition(IRScope parent, FunctionType type, Linkage linkage, AttributesCodeEntry paramAttr) {
-        this(parent, type, LLVMIdentifier.UNKNOWN, linkage, paramAttr);
+    public FunctionDefinition(FunctionType type, Linkage linkage, AttributesCodeEntry paramAttr) {
+        this(type, LLVMIdentifier.UNKNOWN, linkage, paramAttr);
     }
 
     @Override
@@ -147,14 +146,14 @@ public final class FunctionDefinition extends IRScope implements Constant, Value
         return paramAttr.getParameterAttributesGroup(idx);
     }
 
-    public void createParameter(Type t) {
+    public FunctionParameter createParameter(Type t) {
         final AttributesGroup attrGroup = paramAttr.getParameterAttributesGroup(parameters.size());
         final FunctionParameter parameter = new FunctionParameter(t, attrGroup);
-        addSymbol(parameter, t);
         parameters.add(parameter);
+        return parameter;
     }
 
-    public void exitFunction() {
+    public void exitLocalScope() {
         int symbolIndex = 0;
 
         // in K&R style function declarations the parameters are not assigned names
@@ -203,7 +202,6 @@ public final class FunctionDefinition extends IRScope implements Constant, Value
         return parameters;
     }
 
-    @Override
     public void nameBlock(int index, String argName) {
         blocks[index].setName(argName);
     }

@@ -30,8 +30,8 @@
 package com.oracle.truffle.llvm.parser.model;
 
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
-import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
@@ -39,18 +39,19 @@ import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class IRScope implements MetadataAttachmentHolder {
+public final class IRScope {
 
-    private final Symbols symbols = new Symbols();
-    private final List<Type> valueTypes = new ArrayList<>();
+    private final Symbols symbols;
+    private final List<Type> valueTypes;
     private final MetadataValueList metadata;
 
-    protected IRScope() {
-        metadata = new MetadataValueList();
-    }
+    private FunctionDefinition currentFunction;
 
-    protected IRScope(IRScope parent) {
-        metadata = new MetadataValueList(parent.metadata);
+    public IRScope() {
+        symbols = new Symbols();
+        valueTypes = new ArrayList<>();
+        metadata = new MetadataValueList();
+        currentFunction = null;
     }
 
     public void addSymbol(Symbol symbol, Type type) {
@@ -82,12 +83,20 @@ public abstract class IRScope implements MetadataAttachmentHolder {
         return symbols;
     }
 
-    public void initialize(IRScope other) {
-        valueTypes.addAll(other.valueTypes);
-        symbols.addSymbols(other.symbols);
+    public void nameBlock(int index, String name) {
+        if (currentFunction != null) {
+            currentFunction.nameBlock(index, name);
+        }
     }
 
-    public abstract void nameBlock(int index, String name);
+    public void startLocalScope(FunctionDefinition function) {
+        this.currentFunction = function;
+        // TODO initialize
+    }
+
+    public void exitLocalScope() {
+        // TODO finalize
+    }
 
     public MetadataValueList getMetadata() {
         return metadata;
@@ -95,5 +104,11 @@ public abstract class IRScope implements MetadataAttachmentHolder {
 
     public void attachSymbolMetadata(int index, MDAttachment attachment) {
         symbols.attachMetadata(index, attachment);
+    }
+
+    public void attachMetadata(MDAttachment attachment) {
+        if (currentFunction != null) {
+            currentFunction.attachMetadata(attachment);
+        }
     }
 }

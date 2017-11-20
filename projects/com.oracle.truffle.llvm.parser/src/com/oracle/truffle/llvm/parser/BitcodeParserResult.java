@@ -33,7 +33,6 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 
@@ -42,14 +41,12 @@ public final class BitcodeParserResult {
     private final LLVMPhiManager phis;
     private final StackAllocation stackAllocation;
     private final LLVMLabelList labels;
-    private final SourceModel sourceModel;
 
-    private BitcodeParserResult(ModelModule model, LLVMPhiManager phis, StackAllocation stackAllocation, LLVMLabelList labels, SourceModel sourceModel) {
+    private BitcodeParserResult(ModelModule model, LLVMPhiManager phis, StackAllocation stackAllocation, LLVMLabelList labels) {
         this.model = model;
         this.phis = phis;
         this.stackAllocation = stackAllocation;
         this.labels = labels;
-        this.sourceModel = sourceModel;
     }
 
     public ModelModule getModel() {
@@ -76,20 +73,13 @@ public final class BitcodeParserResult {
         return model.getLibraryPaths();
     }
 
-    public SourceModel getSourceModel() {
-        return sourceModel;
-    }
-
     public static BitcodeParserResult getFromSource(Source source, ByteBuffer bytes) {
-        final ModelModule model = LLVMScanner.parse(bytes);
-
-        // extract SourceSection and LLVMSourceType objects from metadata
-        final SourceModel sourceModel = SourceModel.generate(model, source);
+        final ModelModule model = LLVMScanner.parse(source, bytes);
 
         final LLVMPhiManager phis = LLVMPhiManager.generate(model);
         final StackAllocation stackAllocation = StackAllocation.generate(model);
         final LLVMLabelList labels = LLVMLabelList.generate(model);
 
-        return new BitcodeParserResult(model, phis, stackAllocation, labels, sourceModel);
+        return new BitcodeParserResult(model, phis, stackAllocation, labels);
     }
 }

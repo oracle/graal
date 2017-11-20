@@ -84,7 +84,7 @@ public final class MDValue implements MDBaseNode, Symbol {
             return MDVoidNode.INSTANCE;
         }
         final MDValue value = new MDValue(type);
-        value.value = md.getContainer().getSymbols().getSymbol((int) args[VALUE_ARGINDEX_VALUE], value);
+        value.value = md.getScope().getSymbols().getSymbol((int) args[VALUE_ARGINDEX_VALUE], value);
         return value;
     }
 

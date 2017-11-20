@@ -103,10 +103,9 @@ public final class SwitchInstruction extends VoidInstruction implements Terminat
         }
     }
 
-    public static SwitchInstruction generate(FunctionDefinition function, int condition, int defaultBlock, int[] caseValues, int[] caseBlocks) {
+    public static SwitchInstruction generate(FunctionDefinition function, Symbols symbols, int condition, int defaultBlock, int[] caseValues, int[] caseBlocks) {
         final SwitchInstruction inst = new SwitchInstruction(function.getBlock(defaultBlock), caseBlocks.length);
 
-        final Symbols symbols = function.getSymbols();
         inst.condition = symbols.getSymbol(condition, inst);
         for (int i = 0; i < caseBlocks.length; i++) {
             inst.values[i] = symbols.getSymbol(caseValues[i], inst);
