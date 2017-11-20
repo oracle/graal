@@ -29,24 +29,33 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
-public final class LLVMDebugValue {
+public abstract class LLVMDebugValue {
 
-    private final LLVMSourceSymbol variable;
-    private final LLVMDebugValueProvider.Builder builder;
-    private final Object value;
-
-    public LLVMDebugValue(LLVMSourceSymbol variable, LLVMDebugValueProvider.Builder builder, Object value) {
-        this.variable = variable;
-        this.builder = builder;
-        this.value = value;
+    public static LLVMDebugValue create(LLVMDebugValueProvider.Builder builder, Object value) {
+        return new DefaultImpl(builder, value);
     }
 
-    public LLVMSourceSymbol getVariable() {
-        return variable;
+    protected LLVMDebugValue() {
     }
 
-    public LLVMDebugObject getValue() {
-        final LLVMDebugValueProvider valueProvider = builder.build(value);
-        return LLVMDebugObject.instantiate(variable.getType(), 0L, valueProvider, variable.getLocation());
+    public abstract LLVMDebugObject getValue(LLVMSourceSymbol symbol);
+
+    private static final class DefaultImpl extends LLVMDebugValue {
+
+        private final LLVMDebugValueProvider.Builder builder;
+        private final Object value;
+
+        private DefaultImpl(LLVMDebugValueProvider.Builder builder, Object value) {
+            super();
+            this.builder = builder;
+            this.value = value;
+        }
+
+        @Override
+        public LLVMDebugObject getValue(LLVMSourceSymbol symbol) {
+            final LLVMDebugValueProvider valueProvider = builder.build(value);
+            return LLVMDebugObject.instantiate(symbol.getType(), 0L, valueProvider, symbol.getLocation());
+        }
     }
+
 }

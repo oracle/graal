@@ -111,7 +111,7 @@ public final class LLVMParserRuntime {
             LLVMSourceContext sourceContext = context.getSourceContext();
             for (LLVMSourceSymbol symbol : sourceGlobals.keySet()) {
                 final LLVMExpressionNode symbolNode = runtime.getGlobalVariable(symbolResolver, sourceGlobals.get(symbol));
-                final LLVMDebugValue value = nodeFactory.createGlobalVariableDebug(symbol, symbolNode);
+                final LLVMDebugValue value = nodeFactory.createGlobalVariableDebug(symbolNode);
                 sourceContext.registerGlobal(symbol, value);
             }
         }

@@ -152,7 +152,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
     public abstract static class LLVMDebugReadNode extends LLVMReadNode {
         @Specialization
         protected Object readObject(VirtualFrame frame) {
-            return FrameUtil.getObjectSafe(frame, getSlot());
+            return frame.getValue(getSlot());
         }
     }
 
