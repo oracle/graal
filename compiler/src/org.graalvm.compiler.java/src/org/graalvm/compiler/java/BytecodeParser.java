@@ -4209,6 +4209,16 @@ public class BytecodeParser implements GraphBuilderContext {
                 keySuccessors[i] = info.actualIndex;
             }
         }
+        // Second iteration: patch successors with deoptSuccessorIndex if their targets are resolved
+        if (deoptSuccessorIndex >= 0) {
+            for (int i = 0; i < nofCases + 1; i++) {
+                int targetBci = i >= nofCases ? bs.defaultTarget() : bs.targetAt(i);
+                SuccessorInfo info = bciToBlockSuccessorIndex.get(targetBci);
+                if (keySuccessors[i] == deoptSuccessorIndex && info.actualIndex >= 0) {
+                    keySuccessors[i] = info.actualIndex;
+                }
+            }
+        }
 
         genIntegerSwitch(value, actualSuccessors, keys, keyProbabilities, keySuccessors);
 
