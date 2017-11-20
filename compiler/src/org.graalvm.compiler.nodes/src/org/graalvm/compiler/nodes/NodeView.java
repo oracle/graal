@@ -29,12 +29,29 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
  * Interface that overrides properties of a node,
  * such as the node's stamp.
  *
- * This interface allows richer canonicalizations when the
- * node's actual stamp is more specific than the default one.
+ * This interface allows richer canonicalizations when
+ * the current compilation context can provide a narrower stamp
+ * than the one stored in the node itself.
  * One such example is performing canonicalization
  * late in the compilation, when the nodes are already scheduled,
  * and benefit from additional stamp information
  * from conditional checks in branches.
+ *
+ * <pre>
+ * class SpecialNodeView implements NodeView {
+ *     ...
+ *     Stamp stamp(ValueNode node) {
+ *         Stamp narrowed = getNarrowerStamp(node)
+ *         return narrowed != null ? narrowed : node.stamp(NodeView.DEFAULT);
+ *     }
+ * }
+ *
+ * class SpecialCanonicalizerPhase extends CanonicalizerPhase {
+ *     NodeView getNodeView() {
+ *         return new SpecialNodeView();
+ *     }
+ * }
+ * </pre>
  */
 public interface NodeView {
 

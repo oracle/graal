@@ -23,6 +23,7 @@
 package org.graalvm.compiler.phases.common;
 
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
@@ -152,6 +153,10 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
     public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<? extends Node> workingSet, Mark newNodesMark, boolean dumpGraph) {
         new Instance(context, workingSet, newNodesMark).apply(graph, dumpGraph);
+    }
+
+    public NodeView getNodeView() {
+        return NodeView.DEFAULT;
     }
 
     private final class Instance extends Phase {
@@ -443,14 +448,16 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             return false;
         }
 
-        private final class Tool implements SimplifierTool {
+        private final class Tool implements SimplifierTool, NodeView {
 
             private final Assumptions assumptions;
             private final OptionValues options;
+            private NodeView nodeView;
 
             Tool(Assumptions assumptions, OptionValues options) {
                 this.assumptions = assumptions;
                 this.options = options;
+                this.nodeView = getNodeView();
             }
 
             @Override
@@ -513,6 +520,11 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             @Override
             public OptionValues getOptions() {
                 return options;
+            }
+
+            @Override
+            public Stamp stamp(ValueNode node) {
+                return nodeView.stamp(node);
             }
         }
     }
