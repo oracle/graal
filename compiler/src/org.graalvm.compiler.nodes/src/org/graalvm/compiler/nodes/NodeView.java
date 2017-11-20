@@ -25,6 +25,17 @@ package org.graalvm.compiler.nodes;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 
+/**
+ * Interface that overrides properties of a node,
+ * such as the node's stamp.
+ *
+ * This interface allows richer canonicalizations when the
+ * node's actual stamp is more specific than the default one.
+ * One such example is performing canonicalization
+ * late in the compilation, when the nodes are already scheduled,
+ * and benefit from additional stamp information
+ * from conditional checks in branches.
+ */
 public interface NodeView {
 
     NodeView DEFAULT = new Default();
@@ -36,6 +47,11 @@ public interface NodeView {
         }
     }
 
+    /**
+     * Return a view-specific stamp of the node.
+     *
+     * This stamp must be more specific than the default stamp.
+     */
     Stamp stamp(ValueNode node);
 
     static NodeView from(CanonicalizerTool tool) {
