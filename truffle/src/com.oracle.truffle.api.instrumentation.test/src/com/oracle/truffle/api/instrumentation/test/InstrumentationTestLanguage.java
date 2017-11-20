@@ -129,7 +129,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
     public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT};
     public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE", "ARGUMENT", "PRINT",
-                    "ALLOCATION", "SLEEP"};
+                    "ALLOCATION", "SLEEP", "INVALIDATE"};
 
     // used to test that no getSourceSection calls happen in certain situations
     private static int rootSourceSectionQueryCount;
@@ -336,6 +336,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                     return new AllocationNode(new BaseNode[0]);
                 case "SLEEP":
                     return new SleepNode(parseIdent(idents[0]), new BaseNode[0]);
+                case "INVALIDATE":
+                    return new InvalidateNode(childArray);
                 default:
                     throw new AssertionError();
             }
@@ -656,6 +658,21 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             return constant;
         }
 
+    }
+
+    private static class InvalidateNode extends InstrumentedNode {
+
+        InvalidateNode(BaseNode[] children) {
+            super(children);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            if (CompilerDirectives.inCompiledCode()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            return 1;
+        }
     }
 
     private static Object parseIdent(String identifier) {
