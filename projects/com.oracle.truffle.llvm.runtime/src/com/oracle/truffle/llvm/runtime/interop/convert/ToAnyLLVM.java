@@ -42,7 +42,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
@@ -109,7 +109,7 @@ abstract class ToAnyLLVM extends ForeignToLLVM {
     }
 
     @Specialization
-    protected LLVMGlobalVariable fromSharedDescriptor(LLVMSharedGlobalVariable shared) {
+    protected LLVMGlobal fromSharedDescriptor(LLVMSharedGlobalVariable shared) {
         return shared.getDescriptor();
     }
 

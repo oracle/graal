@@ -44,7 +44,7 @@ public final class LLVMTypeIdForExceptionNode extends LLVMExpressionNode {
     public LLVMTypeIdForExceptionNode(LLVMExpressionNode thrownTypeID, SourceSection sourceSection) {
         this.thrownTypeID = thrownTypeID;
         this.sourceSection = sourceSection;
-        this.thrownTypeIDToAddress = createToNativeNode();
+        this.thrownTypeIDToAddress = LLVMToNativeNode.toNative();
     }
 
     @Override

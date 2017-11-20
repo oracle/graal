@@ -44,11 +44,11 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
@@ -104,9 +104,9 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected short doLLVMAddress(LLVMGlobalVariable from,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return (short) globalAccess.getNativeLocation(from).getVal();
+        public short doGlobal(VirtualFrame frame, LLVMGlobal from,
+                        @Cached("toNative()") LLVMToNativeNode access) {
+            return (short) access.executeWithTarget(frame, from).getVal();
         }
 
         @Child private Node isNull = Message.IS_NULL.createNode();

@@ -29,10 +29,13 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
@@ -40,7 +43,7 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
@@ -121,13 +124,15 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromGlobal(LLVMGlobalVariable value) {
-        return new LLVMConstantGlobalValueProvider(value, LLVMToDebugValueNodeGen.create());
+    protected LLVMDebugValueProvider fromGlobal(LLVMGlobal value,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> context) {
+        return new LLVMConstantGlobalValueProvider(value, context.get(), LLVMToDebugValueNodeGen.create());
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromSharedGlobal(LLVMSharedGlobalVariable value) {
-        return fromGlobal(value.getDescriptor());
+    protected LLVMDebugValueProvider fromSharedGlobal(LLVMSharedGlobalVariable value,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> context) {
+        return fromGlobal(value.getDescriptor(), context);
     }
 
     @Specialization

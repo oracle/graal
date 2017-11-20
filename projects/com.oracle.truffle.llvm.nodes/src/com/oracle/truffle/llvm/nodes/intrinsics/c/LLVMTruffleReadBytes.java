@@ -32,21 +32,22 @@ package com.oracle.truffle.llvm.nodes.intrinsics.c;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleReadBytes extends LLVMIntrinsic {
 
     @Specialization
-    protected Object doIntrinsic(LLVMGlobalVariable value,
-                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        return doIntrinsic(globalAccess.getNativeLocation(value));
+    protected Object doIntrinsic(VirtualFrame frame, LLVMGlobal value,
+                    @Cached("toNative()") LLVMToNativeNode globalAccess) {
+        return doIntrinsic(globalAccess.executeWithTarget(frame, value));
     }
 
     @Specialization

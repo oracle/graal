@@ -34,9 +34,9 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
@@ -60,9 +60,9 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobalVariable address, LLVMDoubleVector value,
-                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        LLVMMemory.putVector(globalAccess.getNativeLocation(address), value);
+    protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMDoubleVector value,
+                    @Cached("toNative()") LLVMToNativeNode globalAccess) {
+        LLVMMemory.putVector(globalAccess.executeWithTarget(frame, address), value);
         return null;
     }
 
@@ -73,9 +73,9 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobalVariable address, LLVMFloatVector value,
-                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        LLVMMemory.putVector(globalAccess.getNativeLocation(address), value);
+    protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMFloatVector value,
+                    @Cached("toNative()") LLVMToNativeNode globalAccess) {
+        LLVMMemory.putVector(globalAccess.executeWithTarget(frame, address), value);
         return null;
     }
 
@@ -86,9 +86,9 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobalVariable address, LLVMI16Vector value,
-                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        LLVMMemory.putVector(globalAccess.getNativeLocation(address), value);
+    protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMI16Vector value,
+                    @Cached("toNative()") LLVMToNativeNode globalAccess) {
+        LLVMMemory.putVector(globalAccess.executeWithTarget(frame, address), value);
         return null;
     }
 
@@ -99,9 +99,9 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobalVariable address, LLVMI1Vector value,
-                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        LLVMMemory.putVector(globalAccess.getNativeLocation(address), value);
+    protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMI1Vector value,
+                    @Cached("toNative()") LLVMToNativeNode globalAccess) {
+        LLVMMemory.putVector(globalAccess.executeWithTarget(frame, address), value);
         return null;
     }
 
@@ -112,9 +112,9 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobalVariable address, LLVMI32Vector value,
-                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        LLVMMemory.putVector(globalAccess.getNativeLocation(address), value);
+    protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMI32Vector value,
+                    @Cached("toNative()") LLVMToNativeNode globalAccess) {
+        LLVMMemory.putVector(globalAccess.executeWithTarget(frame, address), value);
         return null;
     }
 
@@ -125,9 +125,9 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobalVariable address, LLVMI64Vector value,
-                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        LLVMMemory.putVector(globalAccess.getNativeLocation(address), value);
+    protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMI64Vector value,
+                    @Cached("toNative()") LLVMToNativeNode globalAccess) {
+        LLVMMemory.putVector(globalAccess.executeWithTarget(frame, address), value);
         return null;
     }
 
@@ -138,9 +138,9 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobalVariable address, LLVMI8Vector value,
-                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        LLVMMemory.putVector(globalAccess.getNativeLocation(address), value);
+    protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMI8Vector value,
+                    @Cached("toNative()") LLVMToNativeNode globalAccess) {
+        LLVMMemory.putVector(globalAccess.executeWithTarget(frame, address), value);
         return null;
     }
 
@@ -151,9 +151,9 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobalVariable address, LLVMAddressVector value,
-                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        LLVMMemory.putVector(globalAccess.getNativeLocation(address), value);
+    protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMAddressVector value,
+                    @Cached("toNative()") LLVMToNativeNode globalAccess) {
+        LLVMMemory.putVector(globalAccess.executeWithTarget(frame, address), value);
         return null;
     }
 

@@ -58,4 +58,7 @@ public abstract class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public abstract LLVMContext findLLVMContext();
 
+    public static ContextReference<LLVMContext> getLLVMContextReference() {
+        return getCurrentLanguage(LLVMLanguage.class).getContextReference();
+    }
 }

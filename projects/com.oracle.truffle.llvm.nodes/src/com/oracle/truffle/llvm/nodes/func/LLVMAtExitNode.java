@@ -53,7 +53,7 @@ public final class LLVMAtExitNode extends LLVMExpressionNode {
         this.destructor = destructor;
         this.thiz = thiz;
         this.dsoHandle = dsoHandle;
-        this.forceToAddress = createToNativeNode();
+        this.forceToAddress = LLVMToNativeNode.toNative();
     }
 
     public LinkedList<DestructorStackElement> getDestructorStack() {

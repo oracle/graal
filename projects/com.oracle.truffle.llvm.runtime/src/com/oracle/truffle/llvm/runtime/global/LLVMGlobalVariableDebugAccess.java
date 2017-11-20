@@ -31,30 +31,31 @@ package com.oracle.truffle.llvm.runtime.global;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 
 public final class LLVMGlobalVariableDebugAccess {
 
-    public static boolean isInitialized(LLVMGlobalVariable global) {
-        return !global.isUninitialized();
+    public static boolean isInitialized(LLVMContext context, LLVMGlobal global) {
+        return global.getFrame(context) != null;
     }
 
-    public static boolean isInNative(LLVMGlobalVariable global) {
-        return global.getContainer() instanceof Container.NativeContainer;
+    public static boolean isInNative(LLVMContext context, LLVMGlobal global) {
+        return global.isNative(context);
     }
 
-    public static LLVMAddress getNativeLocation(LLVMGlobalVariable global) {
-        if (!isInNative(global)) {
+    public static LLVMAddress getNativeLocation(LLVMContext context, LLVMGlobal global) {
+        if (!isInNative(context, global)) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Global is not in native memory!");
         }
-        return global.getContainer().getNativeLocation(global);
+        return global.getNative(context);
     }
 
-    public static Object getManagedValue(LLVMGlobalVariable global) {
-        if (isInNative(global)) {
+    public static Object getManagedValue(LLVMContext context, LLVMGlobal global) {
+        if (isInNative(context, global)) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Global is not managed!");
         }
-        return global.getContainer().get(global);
+        return global.getFrame(context);
     }
 }

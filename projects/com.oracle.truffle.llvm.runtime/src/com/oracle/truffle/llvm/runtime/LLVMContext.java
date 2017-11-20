@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
@@ -47,7 +48,12 @@ import java.util.stream.Collectors;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayoutConverter.DataSpecConverterImpl;
@@ -57,7 +63,10 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+
+import sun.misc.Unsafe;
 
 public final class LLVMContext {
 
@@ -84,6 +93,7 @@ public final class LLVMContext {
     private final IdentityHashMap<TruffleObject, LLVMAddress> toNative;
     private final HashMap<LLVMAddress, TruffleObject> toManaged;
     private final LLVMSourceContext sourceContext;
+    private final LLVMGlobalsStack globalStack;
 
     private final Env env;
     private final LLVMScope globalScope;
@@ -94,6 +104,9 @@ public final class LLVMContext {
     private final ThreadLocal<LLVMAddress> tls = ThreadLocal.withInitial(LLVMAddress::nullPointer);
     private final ThreadLocal<LLVMAddress> clearChildTid = ThreadLocal.withInitial(LLVMAddress::nullPointer);
 
+    private final MaterializedFrame globalFrame = Truffle.getRuntime().createMaterializedFrame(new Object[0]);
+    private final FrameDescriptor globalFrameDescriptor = globalFrame.getFrameDescriptor();
+
     // #define SIG_DFL ((__sighandler_t) 0) /* Default action. */
     private final LLVMAddress sigDfl;
 
@@ -102,6 +115,51 @@ public final class LLVMContext {
 
     // #define SIG_ERR ((__sighandler_t) -1) /* Error return. */
     private final LLVMAddress sigErr;
+
+    public static final class LLVMGlobalsStack {
+
+        static final Unsafe UNSAFE = getUnsafe();
+
+        private static Unsafe getUnsafe() {
+            CompilerAsserts.neverPartOfCompilation();
+            try {
+                Field singleoneInstanceField = Unsafe.class.getDeclaredField("theUnsafe");
+                singleoneInstanceField.setAccessible(true);
+                return (Unsafe) singleoneInstanceField.get(null);
+            } catch (Exception e) {
+                throw new AssertionError();
+            }
+        }
+
+        private final long lowerBounds;
+        private final long upperBounds;
+
+        private static final int ALIGNMENT = 8;
+        private static final int SIZE = 81920;
+
+        private long stackPointer;
+
+        public LLVMGlobalsStack() {
+            long stackAllocation = UNSAFE.allocateMemory(SIZE * 1024);
+            this.lowerBounds = stackAllocation;
+            this.upperBounds = stackAllocation + SIZE * 1024;
+            this.stackPointer = upperBounds;
+        }
+
+        @TruffleBoundary
+        public void free() {
+            UNSAFE.freeMemory(lowerBounds);
+        }
+
+        public long allocateStackMemory(final long size) {
+            assert size >= 0;
+            final long alignedAllocation = (stackPointer - size) & -ALIGNMENT;
+            assert alignedAllocation <= stackPointer;
+            stackPointer = alignedAllocation;
+            return alignedAllocation;
+        }
+
+    }
 
     public static final class DestructorStackElement {
         private final LLVMFunctionDescriptor destructor;
@@ -147,6 +205,7 @@ public final class LLVMContext {
         this.env = env;
         this.contextExtension = contextExtension;
 
+        this.globalStack = new LLVMGlobalsStack();
         this.nativeCallStatistics = SulongEngineOption.isTrue(env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new HashMap<>() : null;
         this.threadingStack = new LLVMThreadingStack(env.getOptions().get(SulongEngineOption.STACK_SIZE_KB));
         this.sigDfl = LLVMAddress.fromLong(0);
@@ -167,6 +226,10 @@ public final class LLVMContext {
         addExternalLibrary("libsulong.bc");
         List<String> external = SulongEngineOption.getPolyglotOptionExternalLibraries(env);
         addExternalLibraries(external);
+    }
+
+    public LLVMGlobalsStack getGlobalsStack() {
+        return globalStack;
     }
 
     public void addExternalLibraries(List<String> external) {
@@ -492,4 +555,44 @@ public final class LLVMContext {
     public LLVMSourceContext getSourceContext() {
         return sourceContext;
     }
+
+    public MaterializedFrame getGlobalFrame() {
+        return globalFrame;
+    }
+
+    public FrameSlot getGlobalFrameSlot(Object symbol, Type type) {
+        FrameSlotKind kind;
+        if (type instanceof PrimitiveType) {
+            switch (((PrimitiveType) type).getPrimitiveKind()) {
+                case DOUBLE:
+                    kind = FrameSlotKind.Double;
+                    break;
+                case FLOAT:
+                    kind = FrameSlotKind.Float;
+                    break;
+                case HALF:
+                case I16:
+                case I32:
+                    kind = FrameSlotKind.Int;
+                    break;
+                case I1:
+                    kind = FrameSlotKind.Boolean;
+                    break;
+                case I64:
+                    kind = FrameSlotKind.Long;
+                    break;
+                case I8:
+                    kind = FrameSlotKind.Byte;
+                    break;
+                default:
+                    kind = FrameSlotKind.Object;
+                    break;
+            }
+        } else {
+            kind = FrameSlotKind.Object;
+        }
+        FrameSlot frameSlot = globalFrameDescriptor.findOrAddFrameSlot(symbol, type, kind);
+        return frameSlot;
+    }
+
 }

@@ -41,11 +41,11 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
 public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
@@ -68,9 +68,9 @@ public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected LLVMAddress doGlobal(LLVMGlobalVariable from,
-                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
-        return LLVMAddress.fromLong(access.getNativeLocation(from).getVal());
+    protected LLVMAddress doGlobal(VirtualFrame frame, LLVMGlobal from,
+                    @Cached("toNative()") LLVMToNativeNode access) {
+        return access.executeWithTarget(frame, from);
     }
 
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();

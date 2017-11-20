@@ -118,10 +118,6 @@ public final class Sulong extends LLVMLanguage {
         return getContextReference().get();
     }
 
-    public static ContextReference<LLVMContext> getCurrentLanguage() {
-        return getCurrentLanguage(LLVMLanguage.class).getContextReference();
-    }
-
     public static void main(String[] args) throws Exception {
         if (args.length == 0) {
             throw new IllegalArgumentException("please provide a file to execute!");

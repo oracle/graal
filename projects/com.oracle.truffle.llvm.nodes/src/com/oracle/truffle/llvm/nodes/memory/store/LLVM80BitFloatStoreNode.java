@@ -31,11 +31,12 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
@@ -45,9 +46,9 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object doOp(LLVMGlobalVariable address, LLVM80BitFloat value,
-                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        LLVMMemory.put80BitFloat(globalAccess.getNativeLocation(address), value);
+    protected Object doOp(VirtualFrame frame, LLVMGlobal address, LLVM80BitFloat value,
+                    @Cached(value = "toNative()") LLVMToNativeNode globalAccess) {
+        LLVMMemory.put80BitFloat(globalAccess.executeWithTarget(frame, address), value);
         return null;
     }
 

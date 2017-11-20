@@ -258,6 +258,7 @@ public final class Runner {
             }
         }
         context.getThreadingStack().freeStacks();
+        context.getGlobalsStack().free();
     }
 
     private LLVMParserResult parseBitcodeFile(Source source, String libraryName, BitcodeParserResult bitcodeParserResult, LLVMLanguage language, LLVMContext context) {

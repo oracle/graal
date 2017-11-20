@@ -66,7 +66,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
     @Specialization
     protected LLVMAddress doSignal(VirtualFrame frame, int signal, Object handler,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
-                    @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+                    @Cached("toNative()") LLVMToNativeNode toNative) {
         return setSignalHandler(context.get(), signal, toNative.executeWithTarget(frame, handler));
     }
 

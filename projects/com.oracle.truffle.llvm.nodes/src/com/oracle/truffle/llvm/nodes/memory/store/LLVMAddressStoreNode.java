@@ -35,11 +35,10 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -51,28 +50,24 @@ public abstract class LLVMAddressStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object doAddress(LLVMAddress address, LLVMAddress value) {
-        LLVMMemory.putAddress(address, value);
-        return null;
-    }
-
-    @Specialization
-    protected Object doAddress(VirtualFrame frame, LLVMAddress address, LLVMFunctionDescriptor value,
-                    @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+    protected Object doAddress(VirtualFrame frame, LLVMAddress address, Object value,
+                    @Cached("toNative()") LLVMToNativeNode toNative) {
         LLVMMemory.putAddress(address, toNative.executeWithTarget(frame, value));
         return null;
     }
 
     @Specialization
-    protected Object doAddress(LLVMVirtualAllocationAddress address, LLVMAddress value) {
-        address.writeI64(value.getVal());
+    protected Object doAddress(VirtualFrame frame, LLVMVirtualAllocationAddress address, Object value,
+                    @Cached("toNative()") LLVMToNativeNode toNative) {
+        address.writeI64(toNative.executeWithTarget(frame, value).getVal());
         return null;
     }
 
     @Specialization
-    protected Object doOp(LLVMBoxedPrimitive address, LLVMAddress value) {
+    protected Object doBoxed(VirtualFrame frame, LLVMBoxedPrimitive address, Object value,
+                    @Cached("toNative()") LLVMToNativeNode toNative) {
         if (address.getValue() instanceof Long) {
-            LLVMMemory.putAddress((long) address.getValue(), value);
+            LLVMMemory.putAddress((long) address.getValue(), toNative.executeWithTarget(frame, value));
             return null;
         } else {
             CompilerDirectives.transferToInterpreter();
@@ -81,70 +76,15 @@ public abstract class LLVMAddressStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object doOp(LLVMBoxedPrimitive address, LLVMGlobalVariable value,
-                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        if (address.getValue() instanceof Long) {
-            LLVMMemory.putAddress(LLVMAddress.fromLong((long) address.getValue()), globalAccess.getNativeLocation(value));
-            return null;
-        } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalAccessError("Cannot access address: " + address.getValue());
-        }
-    }
-
-    @Specialization
-    protected Object doAddress(LLVMGlobalVariable address, LLVMAddress value,
-                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        globalAccess.putAddress(address, value);
+    protected Object doGlobal(VirtualFrame frame, LLVMGlobal address, Object value,
+                    @Cached(value = "createWrite()") LLVMGlobalWriteNode globalAccess,
+                    @Cached("toNative()") LLVMToNativeNode toNative) {
+        globalAccess.put(frame, address, value, toNative);
         return null;
     }
 
     @Specialization
-    protected Object doAddress(LLVMAddress address, LLVMGlobalVariable value,
-                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        LLVMMemory.putAddress(address, globalAccess.getNativeLocation(value));
-        return null;
-    }
-
-    @Specialization
-    protected Object doAddress(LLVMGlobalVariable address, LLVMGlobalVariable value,
-                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess1,
-                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess2) {
-        LLVMMemory.putAddress(globalAccess1.getNativeLocation(address), globalAccess2.getNativeLocation(value));
-        return null;
-    }
-
-    @Specialization
-    protected Object doAddress(LLVMGlobalVariable address, LLVMBoxedPrimitive value,
-                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        globalAccess.putBoxedPrimitive(address, value);
-        return null;
-    }
-
-    @Specialization
-    protected Object doAddress(LLVMGlobalVariable address, LLVMTruffleObject value,
-                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        globalAccess.putLLVMTruffleObject(address, value);
-        return null;
-    }
-
-    @Specialization
-    protected Object doOp(VirtualFrame frame, LLVMAddress address, LLVMTruffleObject value,
-                    @Cached(value = "createToNativeNode()") LLVMToNativeNode toLLVMAddress) {
-        LLVMMemory.putAddress(address, toLLVMAddress.executeWithTarget(frame, value));
-        return null;
-    }
-
-    @Specialization
-    protected Object doOp(VirtualFrame frame, LLVMBoxedPrimitive address, LLVMTruffleObject value,
-                    @Cached(value = "createToNativeNode()") LLVMToNativeNode convertAddress,
-                    @Cached(value = "createToNativeNode()") LLVMToNativeNode convertValue) {
-        LLVMMemory.putAddress(convertAddress.executeWithTarget(frame, address), convertValue.executeWithTarget(frame, value));
-        return null;
-    }
-
-    @Specialization
-    protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, Object value,
+    protected Object doTruffleObject(VirtualFrame frame, LLVMTruffleObject address, Object value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(frame, address, value);
         return null;

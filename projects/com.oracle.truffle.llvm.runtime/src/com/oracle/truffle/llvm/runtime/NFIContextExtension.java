@@ -83,7 +83,11 @@ public final class NFIContextExtension implements ContextExtension {
     public long getNativeHandle(LLVMContext context, String name) {
         CompilerAsserts.neverPartOfCompilation();
         try {
-            return ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), getNativeDataObject(context, name));
+            TruffleObject dataObject = getNativeDataObject(context, name);
+            if (dataObject == null) {
+                return 0;
+            }
+            return ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), dataObject);
         } catch (UnsupportedMessageException e) {
             throw new IllegalStateException(e);
         }
@@ -263,11 +267,7 @@ public final class NFIContextExtension implements ContextExtension {
             }
         }
         TruffleObject symbol = getNativeDataObject(defaultLibrary, realName);
-        if (symbol == null) {
-            throw new LinkageError(String.format("External variable %s cannot be found.", name));
-        } else {
-            return symbol;
-        }
+        return symbol;
     }
 
     private static TruffleObject getNativeDataObject(TruffleObject libraryHandle, String name) {

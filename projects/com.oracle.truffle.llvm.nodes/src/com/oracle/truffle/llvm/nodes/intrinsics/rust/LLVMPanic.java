@@ -35,12 +35,13 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -56,10 +57,10 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
     }
 
     @Specialization
-    protected Object doOp(LLVMGlobalVariable panicLocVar,
-                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess,
+    protected Object doOp(VirtualFrame frame, LLVMGlobal panicLocVar,
+                    @Cached("toNative()") LLVMToNativeNode globalAccess,
                     @Cached("createPanicLocation()") PanicLocType panicLoc) {
-        LLVMAddress addr = globalAccess.getNativeLocation(panicLocVar);
+        LLVMAddress addr = globalAccess.executeWithTarget(frame, panicLocVar);
         CompilerDirectives.transferToInterpreter();
         throw panicLoc.read(addr.getVal());
     }

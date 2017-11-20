@@ -30,14 +30,14 @@
 package com.oracle.truffle.llvm.nodes.others;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public final class LLVMAccessGlobalVariableStorageNode extends LLVMExpressionNode {
 
-    protected final LLVMGlobalVariable descriptor;
+    protected final LLVMGlobal descriptor;
 
-    public LLVMAccessGlobalVariableStorageNode(LLVMGlobalVariable descriptor) {
+    public LLVMAccessGlobalVariableStorageNode(LLVMGlobal descriptor) {
         this.descriptor = descriptor;
     }
 
@@ -46,7 +46,7 @@ public final class LLVMAccessGlobalVariableStorageNode extends LLVMExpressionNod
         return descriptor;
     }
 
-    public LLVMGlobalVariable getDescriptor() {
+    public LLVMGlobal getDescriptor() {
         return descriptor;
     }
 }

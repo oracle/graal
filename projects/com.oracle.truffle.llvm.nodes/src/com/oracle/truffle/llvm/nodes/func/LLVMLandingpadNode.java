@@ -80,7 +80,7 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
         return getExceptionType;
     }
 
-    @Child private LLVMToNativeNode toNative = createToNativeNode();
+    @Child private LLVMToNativeNode toNative = LLVMToNativeNode.toNative();
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
