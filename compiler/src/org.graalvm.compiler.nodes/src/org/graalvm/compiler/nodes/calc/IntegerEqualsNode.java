@@ -85,7 +85,8 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
         return new IntegerEqualsNode(x, y).maybeCommuteInputs();
     }
 
-    public static LogicNode create(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, ValueNode x, ValueNode y, NodeView view) {
+    public static LogicNode create(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, ValueNode x, ValueNode y,
+                    NodeView view) {
         LogicNode value = OP.canonical(constantReflection, metaAccess, options, smallestCompareWidth, Condition.EQ, false, x, y, view);
         if (value != null) {
             return value;
@@ -196,7 +197,8 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                     // execution
                     // on specific platforms.
                     return LogicNegationNode.create(
-                                    IntegerEqualsNode.create(constantReflection, metaAccess, options, smallestCompareWidth, nonConstant, ConstantNode.forIntegerKind(nonConstant.getStackKind(), 0), view));
+                                    IntegerEqualsNode.create(constantReflection, metaAccess, options, smallestCompareWidth, nonConstant, ConstantNode.forIntegerKind(nonConstant.getStackKind(), 0),
+                                                    view));
                 } else if (primitiveConstant.asLong() == 0) {
                     if (nonConstant instanceof AndNode) {
                         AndNode andNode = (AndNode) nonConstant;

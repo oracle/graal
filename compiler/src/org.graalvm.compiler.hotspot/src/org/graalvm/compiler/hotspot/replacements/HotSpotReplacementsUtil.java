@@ -449,7 +449,8 @@ public class HotSpotReplacementsUtil {
         public ValueNode canonicalizeRead(ValueNode read, AddressNode location, ValueNode object, CanonicalizerTool tool) {
             TypeReference constantType = StampTool.typeReferenceOrNull(object);
             if (constantType != null && constantType.isExact()) {
-                return ConstantNode.forConstant(read.stamp(NodeView.DEFAULT), ((HotSpotMetaspaceConstant) tool.getConstantReflection().asObjectHub(constantType.getType())).compress(), tool.getMetaAccess());
+                return ConstantNode.forConstant(read.stamp(NodeView.DEFAULT), ((HotSpotMetaspaceConstant) tool.getConstantReflection().asObjectHub(constantType.getType())).compress(),
+                                tool.getMetaAccess());
             }
             return read;
         }

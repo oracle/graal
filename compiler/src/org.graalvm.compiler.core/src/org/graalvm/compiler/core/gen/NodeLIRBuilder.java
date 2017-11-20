@@ -478,7 +478,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
         for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
             Value paramValue = params[param.index()];
-            assert paramValue.getValueKind().equals(getLIRGeneratorTool().getLIRKind(param.stamp(NodeView.DEFAULT))) : paramValue + " " + getLIRGeneratorTool().getLIRKind(param.stamp(NodeView.DEFAULT));
+            assert paramValue.getValueKind().equals(getLIRGeneratorTool().getLIRKind(param.stamp(NodeView.DEFAULT))) : paramValue + " " +
+                            getLIRGeneratorTool().getLIRKind(param.stamp(NodeView.DEFAULT));
             setResult(param, gen.emitMove(paramValue));
         }
     }
@@ -580,7 +581,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     public void emitInvoke(Invoke x) {
         LoweredCallTargetNode callTarget = (LoweredCallTargetNode) x.callTarget();
         FrameMapBuilder frameMapBuilder = gen.getResult().getFrameMapBuilder();
-        CallingConvention invokeCc = frameMapBuilder.getRegisterConfig().getCallingConvention(callTarget.callType(), x.asNode().stamp(NodeView.DEFAULT).javaType(gen.getMetaAccess()), callTarget.signature(), gen);
+        CallingConvention invokeCc = frameMapBuilder.getRegisterConfig().getCallingConvention(callTarget.callType(), x.asNode().stamp(NodeView.DEFAULT).javaType(gen.getMetaAccess()),
+                        callTarget.signature(), gen);
         frameMapBuilder.callsMethod(invokeCc);
 
         Value[] parameters = visitInvokeArguments(invokeCc, callTarget.arguments());

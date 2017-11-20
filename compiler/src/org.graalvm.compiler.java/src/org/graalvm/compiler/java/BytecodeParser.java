@@ -1818,7 +1818,8 @@ public class BytecodeParser implements GraphBuilderContext {
                 int expectedStackSize = beforeStackSize + resultType.getSlotCount();
                 assert expectedStackSize == frameState.stackSize() : error("plugin manipulated the stack incorrectly: expected=%d, actual=%d", expectedStackSize, frameState.stackSize());
                 NodeIterable<Node> newNodes = graph.getNewNodes(mark);
-                assert !needsNullCheck || isPointerNonNull(args[0].stamp(NodeView.DEFAULT)) : error("plugin needs to null check the receiver of %s: receiver=%s", targetMethod.format("%H.%n(%p)"), args[0]);
+                assert !needsNullCheck || isPointerNonNull(args[0].stamp(NodeView.DEFAULT)) : error("plugin needs to null check the receiver of %s: receiver=%s", targetMethod.format("%H.%n(%p)"),
+                                args[0]);
                 for (Node n : newNodes) {
                     if (n instanceof StateSplit) {
                         StateSplit stateSplit = (StateSplit) n;

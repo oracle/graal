@@ -423,8 +423,9 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         StructuredGraph graph = n.graph();
         assert !hub.isConstant() || GraalOptions.ImmutableCode.getValue(graph.getOptions());
         AddressNode mirrorAddress = createOffsetAddress(graph, hub, vmConfig.classMirrorOffset);
-        FloatingReadNode read = graph.unique(new FloatingReadNode(mirrorAddress, CLASS_MIRROR_LOCATION, null, vmConfig.classMirrorIsHandle ? StampFactory.forKind(target.wordJavaKind) : n.stamp(NodeView.DEFAULT),
-                        null, BarrierType.NONE));
+        FloatingReadNode read = graph.unique(
+                        new FloatingReadNode(mirrorAddress, CLASS_MIRROR_LOCATION, null, vmConfig.classMirrorIsHandle ? StampFactory.forKind(target.wordJavaKind) : n.stamp(NodeView.DEFAULT),
+                                        null, BarrierType.NONE));
         if (vmConfig.classMirrorIsHandle) {
             AddressNode address = createOffsetAddress(graph, read, 0);
             read = graph.unique(new FloatingReadNode(address, CLASS_MIRROR_HANDLE_LOCATION, null, n.stamp(NodeView.DEFAULT), null, BarrierType.NONE));

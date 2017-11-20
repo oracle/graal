@@ -124,7 +124,8 @@ public abstract class CompressionNode extends UnaryNode implements ConvertNode, 
             }
 
             ConstantNode constant = (ConstantNode) forValue;
-            return ConstantNode.forConstant(stamp(NodeView.DEFAULT), convert(constant.getValue(), tool.getConstantReflection()), constant.getStableDimension(), constant.isDefaultStable(), tool.getMetaAccess());
+            return ConstantNode.forConstant(stamp(NodeView.DEFAULT), convert(constant.getValue(), tool.getConstantReflection()), constant.getStableDimension(), constant.isDefaultStable(),
+                            tool.getMetaAccess());
         } else if (forValue instanceof CompressionNode) {
             CompressionNode other = (CompressionNode) forValue;
             if (op != other.op && encoding.equals(other.encoding)) {

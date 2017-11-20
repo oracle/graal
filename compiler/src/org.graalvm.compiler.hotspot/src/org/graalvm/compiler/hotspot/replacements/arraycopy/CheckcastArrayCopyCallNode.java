@@ -118,7 +118,8 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
         int shift = CodeUtil.log2(getArrayIndexScale(JavaKind.Object));
         ValueNode extendedPos = IntegerConvertNode.convert(pos, StampFactory.forKind(runtime.getTarget().wordJavaKind), graph());
         ValueNode scaledIndex = graph().unique(new LeftShiftNode(extendedPos, ConstantNode.forInt(shift, graph())));
-        ValueNode offset = graph().unique(new AddNode(scaledIndex, ConstantNode.forIntegerBits(PrimitiveStamp.getBits(scaledIndex.stamp(NodeView.DEFAULT)), getArrayBaseOffset(JavaKind.Object), graph())));
+        ValueNode offset = graph().unique(
+                        new AddNode(scaledIndex, ConstantNode.forIntegerBits(PrimitiveStamp.getBits(scaledIndex.stamp(NodeView.DEFAULT)), getArrayBaseOffset(JavaKind.Object), graph())));
         return graph().unique(new OffsetAddressNode(basePtr, offset));
     }
 

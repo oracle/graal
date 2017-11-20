@@ -490,7 +490,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                      * Convert x >= 0 && x < positive which is represented as !(x < 0) && x <
                      * <positive> into an unsigned compare.
                      */
-                    if (lessThan2.getX() == lessThan.getX() && lessThan2.getY().stamp(NodeView.DEFAULT) instanceof IntegerStamp && ((IntegerStamp) lessThan2.getY().stamp(NodeView.DEFAULT)).isPositive() &&
+                    if (lessThan2.getX() == lessThan.getX() && lessThan2.getY().stamp(NodeView.DEFAULT) instanceof IntegerStamp &&
+                                    ((IntegerStamp) lessThan2.getY().stamp(NodeView.DEFAULT)).isPositive() &&
                                     sameDestination(trueSuccessor(), ifNode2.falseSuccessor)) {
                         below = graph().unique(new IntegerBelowNode(lessThan2.getX(), lessThan2.getY()));
                         // swap direction

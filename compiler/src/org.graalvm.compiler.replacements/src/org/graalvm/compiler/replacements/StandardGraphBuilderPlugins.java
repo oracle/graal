@@ -893,7 +893,8 @@ public class StandardGraphBuilderPlugins {
                         } else if (falseCount == 0 || trueCount == 0) {
                             boolean expected = falseCount == 0;
                             LogicNode condition = b.addWithInputs(
-                                            IntegerEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), null, result, b.add(ConstantNode.forBoolean(!expected)), NodeView.DEFAULT));
+                                            IntegerEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), null, result, b.add(ConstantNode.forBoolean(!expected)),
+                                                            NodeView.DEFAULT));
                             b.append(new FixedGuardNode(condition, DeoptimizationReason.UnreachedCode, DeoptimizationAction.InvalidateReprofile, true));
                             newResult = b.add(ConstantNode.forBoolean(expected));
                         } else {

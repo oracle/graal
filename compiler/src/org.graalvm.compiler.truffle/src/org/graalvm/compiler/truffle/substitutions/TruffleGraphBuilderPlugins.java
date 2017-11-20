@@ -565,7 +565,8 @@ public class TruffleGraphBuilderPlugins {
                             // Nothing to do.
                         } else {
                             boolean skipAnchor = false;
-                            LogicNode compareNode = CompareNode.createCompareNode(object.graph(), Condition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), constantReflection, NodeView.DEFAULT);
+                            LogicNode compareNode = CompareNode.createCompareNode(object.graph(), Condition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), constantReflection,
+                                            NodeView.DEFAULT);
 
                             if (compareNode instanceof LogicConstantNode) {
                                 LogicConstantNode logicConstantNode = (LogicConstantNode) compareNode;

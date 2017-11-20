@@ -786,7 +786,8 @@ public class SnippetTemplate {
                             if (usage instanceof LoadIndexedNode) {
                                 LoadIndexedNode loadIndexed = (LoadIndexedNode) usage;
                                 debug.dump(DebugContext.INFO_LEVEL, snippetCopy, "Before replacing %s", loadIndexed);
-                                LoadSnippetVarargParameterNode loadSnippetParameter = snippetCopy.add(new LoadSnippetVarargParameterNode(params, loadIndexed.index(), loadIndexed.stamp(NodeView.DEFAULT)));
+                                LoadSnippetVarargParameterNode loadSnippetParameter = snippetCopy.add(
+                                                new LoadSnippetVarargParameterNode(params, loadIndexed.index(), loadIndexed.stamp(NodeView.DEFAULT)));
                                 snippetCopy.replaceFixedWithFixed(loadIndexed, loadSnippetParameter);
                                 debug.dump(DebugContext.INFO_LEVEL, snippetCopy, "After replacing %s", loadIndexed);
                             } else if (usage instanceof StoreIndexedNode) {

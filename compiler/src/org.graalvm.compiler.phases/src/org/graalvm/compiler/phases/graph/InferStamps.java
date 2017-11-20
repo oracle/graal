@@ -91,7 +91,8 @@ public class InferStamps {
         for (Node n : graph.getNodes()) {
             if (n instanceof ValuePhiNode) {
                 ValueNode node = (ValueNode) n;
-                assert node.stamp(NodeView.DEFAULT).hasValues() : "Stamp is empty after analysis. This is not necessarily an error, but a condition that we want to investigate (and then maybe relax or remove the assertion).";
+                assert node.stamp(
+                                NodeView.DEFAULT).hasValues() : "Stamp is empty after analysis. This is not necessarily an error, but a condition that we want to investigate (and then maybe relax or remove the assertion).";
             }
         }
         return true;

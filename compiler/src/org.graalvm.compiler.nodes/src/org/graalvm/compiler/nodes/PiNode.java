@@ -93,7 +93,8 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     }
 
     public PiNode(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
-        this(object, StampFactory.object(exactType ? TypeReference.createExactTrusted(toType) : TypeReference.createWithoutAssumptions(toType), nonNull || StampTool.isPointerNonNull(object.stamp(NodeView.DEFAULT))));
+        this(object, StampFactory.object(exactType ? TypeReference.createExactTrusted(toType) : TypeReference.createWithoutAssumptions(toType),
+                        nonNull || StampTool.isPointerNonNull(object.stamp(NodeView.DEFAULT))));
     }
 
     public static ValueNode create(ValueNode object, Stamp stamp) {
@@ -134,7 +135,8 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
 
     @SuppressWarnings("unused")
     public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
-        Stamp stamp = StampFactory.object(exactType ? TypeReference.createExactTrusted(toType) : TypeReference.createWithoutAssumptions(toType), nonNull || StampTool.isPointerNonNull(object.stamp(NodeView.DEFAULT)));
+        Stamp stamp = StampFactory.object(exactType ? TypeReference.createExactTrusted(toType) : TypeReference.createWithoutAssumptions(toType),
+                        nonNull || StampTool.isPointerNonNull(object.stamp(NodeView.DEFAULT)));
         ValueNode value = canonical(object, stamp, null);
         if (value == null) {
             value = new PiNode(object, stamp);
