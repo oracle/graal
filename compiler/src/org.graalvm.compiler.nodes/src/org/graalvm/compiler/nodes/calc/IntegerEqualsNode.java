@@ -61,7 +61,7 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
     }
 
     public static LogicNode create(ValueNode x, ValueNode y, NodeView view) {
-        LogicNode result = CompareNode.tryConstantFoldPrimitive(Condition.EQ, x, y, false);
+        LogicNode result = CompareNode.tryConstantFoldPrimitive(Condition.EQ, x, y, false, view);
         if (result != null) {
             return result;
         }
@@ -121,13 +121,13 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                 }
             } else if (cst == 1) {
                 if (normalizeNode.getX().getStackKind() == JavaKind.Double || normalizeNode.getX().getStackKind() == JavaKind.Float) {
-                    return FloatLessThanNode.create(b, a, !normalizeNode.isUnorderedLess);
+                    return FloatLessThanNode.create(b, a, !normalizeNode.isUnorderedLess, view);
                 } else {
                     return IntegerLessThanNode.create(constantReflection, metaAccess, options, smallestCompareWidth, b, a, view);
                 }
             } else if (cst == -1) {
                 if (normalizeNode.getX().getStackKind() == JavaKind.Double || normalizeNode.getX().getStackKind() == JavaKind.Float) {
-                    return FloatLessThanNode.create(a, b, normalizeNode.isUnorderedLess);
+                    return FloatLessThanNode.create(a, b, normalizeNode.isUnorderedLess, view);
                 } else {
                     return IntegerLessThanNode.create(constantReflection, metaAccess, options, smallestCompareWidth, a, b, view);
                 }

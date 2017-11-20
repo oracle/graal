@@ -71,7 +71,7 @@ public class ExpandLogicPhase extends Phase {
         ValueNode y = normalize.getY();
         if (x.stamp(NodeView.DEFAULT) instanceof FloatStamp) {
             equalComp = graph.addOrUniqueWithInputs(FloatEqualsNode.create(x, y, NodeView.DEFAULT));
-            lessComp = graph.addOrUniqueWithInputs(FloatLessThanNode.create(x, y, normalize.isUnorderedLess()));
+            lessComp = graph.addOrUniqueWithInputs(FloatLessThanNode.create(x, y, normalize.isUnorderedLess(), NodeView.DEFAULT));
         } else {
             equalComp = graph.addOrUniqueWithInputs(IntegerEqualsNode.create(x, y, NodeView.DEFAULT));
             lessComp = graph.addOrUniqueWithInputs(IntegerLessThanNode.create(x, y, NodeView.DEFAULT));

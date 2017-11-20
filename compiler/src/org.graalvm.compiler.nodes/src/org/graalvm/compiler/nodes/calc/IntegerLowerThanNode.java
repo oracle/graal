@@ -161,7 +161,7 @@ public abstract class IntegerLowerThanNode extends CompareNode {
         protected abstract IntegerLowerThanNode createNode(ValueNode x, ValueNode y);
 
         public LogicNode create(ValueNode x, ValueNode y, NodeView view) {
-            LogicNode result = CompareNode.tryConstantFoldPrimitive(getCondition(), x, y, false);
+            LogicNode result = CompareNode.tryConstantFoldPrimitive(getCondition(), x, y, false, view);
             if (result != null) {
                 return result;
             } else {

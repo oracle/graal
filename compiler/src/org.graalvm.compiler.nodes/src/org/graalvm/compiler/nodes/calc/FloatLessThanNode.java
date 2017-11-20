@@ -54,8 +54,8 @@ public final class FloatLessThanNode extends CompareNode {
         assert x.stamp(NodeView.DEFAULT).isCompatible(y.stamp(NodeView.DEFAULT));
     }
 
-    public static LogicNode create(ValueNode x, ValueNode y, boolean unorderedIsTrue) {
-        LogicNode result = CompareNode.tryConstantFoldPrimitive(Condition.LT, x, y, unorderedIsTrue);
+    public static LogicNode create(ValueNode x, ValueNode y, boolean unorderedIsTrue, NodeView view) {
+        LogicNode result = CompareNode.tryConstantFoldPrimitive(Condition.LT, x, y, unorderedIsTrue, view);
         if (result != null) {
             return result;
         }
@@ -68,7 +68,7 @@ public final class FloatLessThanNode extends CompareNode {
         if (result != null) {
             return result;
         }
-        return create(x, y, unorderedIsTrue);
+        return create(x, y, unorderedIsTrue, view);
     }
 
     @Override
