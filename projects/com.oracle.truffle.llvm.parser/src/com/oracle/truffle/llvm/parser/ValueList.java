@@ -35,6 +35,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.function.Consumer;
 
 public class ValueList<V extends ValueList.Value<V, C>, C extends ValueList.ValueVisitor<V>> {
 
@@ -104,19 +105,16 @@ public class ValueList<V extends ValueList.Value<V, C>, C extends ValueList.Valu
         }
     }
 
-    private V getReference(int valueIndex, V dependent) {
-        final ForwardReference fwdRef;
+    private ForwardReference getReference(int valueIndex) {
         if (forwardReferences.containsKey(valueIndex)) {
-            fwdRef = forwardReferences.get(valueIndex);
+            return forwardReferences.get(valueIndex);
 
         } else {
-            fwdRef = new ForwardReference(placeholderFactory.newValue());
+            final ForwardReference fwdRef = new ForwardReference(placeholderFactory.newValue());
             forwardReferences.put(valueIndex, fwdRef);
             addUnresolvedIndex(valueIndex);
+            return fwdRef;
         }
-
-        fwdRef.addDependent(dependent);
-        return fwdRef.getPlaceholder();
     }
 
     private void addUnresolvedIndex(int valueIndex) {
@@ -157,7 +155,9 @@ public class ValueList<V extends ValueList.Value<V, C>, C extends ValueList.Valu
         if (index >= 0 && index < valueList.size()) {
             return valueList.get(index);
         } else {
-            return getReference(index, dependent);
+            final ForwardReference ref = getReference(index);
+            ref.addDependent(dependent);
+            return ref.getPlaceholder();
         }
     }
 
@@ -166,6 +166,14 @@ public class ValueList<V extends ValueList.Value<V, C>, C extends ValueList.Valu
             return valueList.get(index);
         } else {
             return null;
+        }
+    }
+
+    public void onParse(int index, Consumer<V> action) {
+        if (index < valueList.size()) {
+            action.accept(valueList.get(index));
+        } else {
+            getReference(index).addCallBack(action);
         }
     }
 
@@ -194,9 +202,12 @@ public class ValueList<V extends ValueList.Value<V, C>, C extends ValueList.Valu
 
         private final HashSet<V> dependents;
 
+        private final HashSet<Consumer<V>> callBacks;
+
         ForwardReference(V placeholder) {
             this.placeholder = placeholder;
             this.dependents = new HashSet<>();
+            this.callBacks = new HashSet<>();
         }
 
         V getPlaceholder() {
@@ -207,9 +218,16 @@ public class ValueList<V extends ValueList.Value<V, C>, C extends ValueList.Valu
             dependents.add(dependent);
         }
 
+        void addCallBack(Consumer<V> callBack) {
+            callBacks.add(callBack);
+        }
+
         void resolve(V value) {
             for (V dependent : dependents) {
                 dependent.replace(placeholder, value);
+            }
+            for (Consumer<V> callBack : callBacks) {
+                callBack.accept(value);
             }
         }
     }
