@@ -427,6 +427,14 @@ final class DITypeExtractor implements MetadataVisitor {
         if (!parsedTypes.containsKey(mdGlobal)) {
             final LLVMSourceType type = resolve(mdGlobal.getType());
             parsedTypes.put(mdGlobal, type);
+
+            if (mdGlobal.getStaticMemberDeclaration() != MDVoidNode.INSTANCE && mdGlobal.getVariable() instanceof MDValue) {
+                final LLVMSourceType declType = resolve(mdGlobal.getStaticMemberDeclaration());
+                final Symbol symbol = ((MDValue) mdGlobal.getVariable()).getValue();
+                if (declType instanceof LLVMSourceStaticMemberType) {
+                    staticMembers.put((LLVMSourceStaticMemberType) declType, symbol);
+                }
+            }
         }
     }
 
