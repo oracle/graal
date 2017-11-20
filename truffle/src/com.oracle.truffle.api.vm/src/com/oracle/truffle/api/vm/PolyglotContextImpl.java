@@ -100,6 +100,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
     Set<String> allowedPublicLanguages;     // effectively final
     Map<String, String[]> applicationArguments;  // effectively final
     private final Set<PolyglotContextImpl> childContexts = new LinkedHashSet<>();
+    boolean inContextPreInitialization; // effectively final
 
     /*
      * Constructor for outer contexts.
@@ -923,7 +924,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         this.in = in == null ? engine.in : in;
         this.allowedPublicLanguages = allowedPublicLanguages;
 
-        for (int i = this.contexts.length - 1; i >= 0; i--) {
+        for (int i = 1; i < this.contexts.length; i++) {
             final PolyglotLanguageContext context = this.contexts[i];
             if (context.isInitialized()) {
                 OptionValuesImpl values = context.language.getOptionValues().copy();
@@ -954,6 +955,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
             Collections.addAll(languagesToPreinitialize, optionValue.split(","));
             Object prev = context.enter();
             try {
+                context.inContextPreInitialization = true;
                 for (String languageId : engine.getLanguages().keySet()) {
                     if (languagesToPreinitialize.contains(languageId)) {
                         final PolyglotLanguageContext languageContext = context.findLanguageContext(languageId, null, false);
@@ -963,6 +965,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                     }
                 }
             } finally {
+                context.inContextPreInitialization = false;
                 context.leave(prev);
             }
         }

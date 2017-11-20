@@ -193,10 +193,6 @@ final class PolyglotLanguageContext implements VMObject {
     }
 
     boolean ensureInitialized(PolyglotLanguage accessingLanguage) {
-        return ensureInitialized(accessingLanguage, false);
-    }
-
-    private boolean ensureInitialized(PolyglotLanguage accessingLanguage, boolean preInitialization) {
         language.ensureInitialized();
 
         if (creating) {
@@ -232,12 +228,12 @@ final class PolyglotLanguageContext implements VMObject {
                         } finally {
                             creating = false;
                         }
-                        if (!preInitialization) {
+                        if (!context.inContextPreInitialization) {
                             LANGUAGE.initializeThread(env, Thread.currentThread());
                         }
                         LANGUAGE.postInitEnv(env);
 
-                        if (!preInitialization) {
+                        if (!context.inContextPreInitialization) {
                             if (!singleThreaded) {
                                 LANGUAGE.initializeMultiThreading(env);
                             }
@@ -315,7 +311,7 @@ final class PolyglotLanguageContext implements VMObject {
     }
 
     void preInitialize() {
-        ensureInitialized(null, true);
+        ensureInitialized(null);
     }
 
     boolean patch(OptionValuesImpl values, String[] applicationArguments) {
