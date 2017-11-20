@@ -33,12 +33,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.GetElementPointerConstant;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
-import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 
 public final class GetElementPointerInstruction extends ValueInstruction {
 
@@ -55,7 +55,7 @@ public final class GetElementPointerInstruction extends ValueInstruction {
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -94,11 +94,11 @@ public final class GetElementPointerInstruction extends ValueInstruction {
         }
     }
 
-    public static GetElementPointerInstruction fromSymbols(Symbols symbols, Type type, int pointer, List<Integer> indices, boolean isInbounds) {
+    public static GetElementPointerInstruction fromSymbols(SymbolTable symbols, Type type, int pointer, List<Integer> indices, boolean isInbounds) {
         final GetElementPointerInstruction inst = new GetElementPointerInstruction(type, isInbounds);
-        inst.base = symbols.getSymbol(pointer, inst);
+        inst.base = symbols.getForwardReferenced(pointer, inst);
         for (int index : indices) {
-            inst.indices.add(symbols.getSymbol(index, inst));
+            inst.indices.add(symbols.getForwardReferenced(index, inst));
         }
         return inst;
     }

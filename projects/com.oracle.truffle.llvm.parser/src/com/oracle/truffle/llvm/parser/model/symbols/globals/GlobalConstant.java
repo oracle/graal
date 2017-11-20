@@ -29,15 +29,17 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.globals;
 
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class GlobalConstant extends GlobalValueSymbol {
 
-    private GlobalConstant(Type type, int initialiser, int align, Linkage linkage, Visibility visibility) {
-        super(type, initialiser, align, linkage, visibility);
+    private GlobalConstant(Type type, int align, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value) {
+        super(type, align, linkage, visibility, symbolTable, value);
     }
 
     @Override
@@ -45,7 +47,12 @@ public final class GlobalConstant extends GlobalValueSymbol {
         visitor.visit(this);
     }
 
-    public static GlobalConstant create(Type type, int initialiser, int align, long linkage, long visibility) {
-        return new GlobalConstant(type, initialiser, align, Linkage.decode(linkage), Visibility.decode(visibility));
+    @Override
+    public void accept(SymbolVisitor visitor) {
+        visitor.visit(this);
+    }
+
+    public static GlobalConstant create(Type type, int align, long linkage, long visibility, SymbolTable symbolTable, int value) {
+        return new GlobalConstant(type, align, Linkage.decode(linkage), Visibility.decode(visibility), symbolTable, value);
     }
 }

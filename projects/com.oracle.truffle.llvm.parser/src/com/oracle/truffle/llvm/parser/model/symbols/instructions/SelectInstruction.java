@@ -29,10 +29,10 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
 
 public final class SelectInstruction extends ValueInstruction {
 
@@ -47,7 +47,7 @@ public final class SelectInstruction extends ValueInstruction {
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -76,11 +76,11 @@ public final class SelectInstruction extends ValueInstruction {
         }
     }
 
-    public static SelectInstruction fromSymbols(Symbols symbols, Type type, int condition, int trueValue, int falseValue) {
+    public static SelectInstruction fromSymbols(SymbolTable symbols, Type type, int condition, int trueValue, int falseValue) {
         final SelectInstruction inst = new SelectInstruction(type);
-        inst.condition = symbols.getSymbol(condition, inst);
-        inst.trueValue = symbols.getSymbol(trueValue, inst);
-        inst.falseValue = symbols.getSymbol(falseValue, inst);
+        inst.condition = symbols.getForwardReferenced(condition, inst);
+        inst.trueValue = symbols.getForwardReferenced(trueValue, inst);
+        inst.falseValue = symbols.getForwardReferenced(falseValue, inst);
         return inst;
     }
 }

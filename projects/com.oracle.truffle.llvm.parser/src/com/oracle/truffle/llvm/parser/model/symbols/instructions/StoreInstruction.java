@@ -29,11 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.enums.AtomicOrdering;
 import com.oracle.truffle.llvm.parser.model.enums.SynchronizationScope;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
 public final class StoreInstruction extends VoidInstruction {
 
@@ -52,23 +52,24 @@ public final class StoreInstruction extends VoidInstruction {
         this.synchronizationScope = scope;
     }
 
-    private static StoreInstruction fromSymbols(Symbols symbols, int destination, int source, int align, boolean isVolatile, AtomicOrdering atomicOrdering, SynchronizationScope synchronizationScope) {
+    private static StoreInstruction fromSymbols(SymbolTable symbols, int destination, int source, int align, boolean isVolatile, AtomicOrdering atomicOrdering,
+                    SynchronizationScope synchronizationScope) {
         final StoreInstruction inst = new StoreInstruction(align, isVolatile, atomicOrdering, synchronizationScope);
-        inst.destination = symbols.getSymbol(destination, inst);
-        inst.source = symbols.getSymbol(source, inst);
+        inst.destination = symbols.getForwardReferenced(destination, inst);
+        inst.source = symbols.getForwardReferenced(source, inst);
         return inst;
     }
 
-    public static StoreInstruction fromSymbols(Symbols symbols, int destination, int source, int align, boolean isVolatile, long atomicOrdering, long synchronizationScope) {
+    public static StoreInstruction fromSymbols(SymbolTable symbols, int destination, int source, int align, boolean isVolatile, long atomicOrdering, long synchronizationScope) {
         return fromSymbols(symbols, destination, source, align, isVolatile, AtomicOrdering.decode(atomicOrdering), SynchronizationScope.decode(synchronizationScope));
     }
 
-    public static StoreInstruction fromSymbols(Symbols symbols, int destination, int source, int align, boolean isVolatile) {
+    public static StoreInstruction fromSymbols(SymbolTable symbols, int destination, int source, int align, boolean isVolatile) {
         return fromSymbols(symbols, destination, source, align, isVolatile, AtomicOrdering.NOT_ATOMIC, SynchronizationScope.CROSS_THREAD);
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 

@@ -32,14 +32,14 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
 
 public final class InvokeInstruction extends ValueInstruction implements Invoke {
 
@@ -61,7 +61,7 @@ public final class InvokeInstruction extends ValueInstruction implements Invoke 
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -107,12 +107,12 @@ public final class InvokeInstruction extends ValueInstruction implements Invoke 
         }
     }
 
-    public static InvokeInstruction fromSymbols(Symbols symbols, Type type, int targetIndex, int[] arguments, InstructionBlock normalSuccessor,
+    public static InvokeInstruction fromSymbols(SymbolTable symbols, Type type, int targetIndex, int[] arguments, InstructionBlock normalSuccessor,
                     InstructionBlock unwindSuccessor, AttributesCodeEntry paramAttr) {
         final InvokeInstruction inst = new InvokeInstruction(type, normalSuccessor, unwindSuccessor, paramAttr);
-        inst.target = symbols.getSymbol(targetIndex, inst);
+        inst.target = symbols.getForwardReferenced(targetIndex, inst);
         for (int argument : arguments) {
-            inst.arguments.add(symbols.getSymbol(argument, inst));
+            inst.arguments.add(symbols.getForwardReferenced(argument, inst));
         }
         return inst;
     }

@@ -29,10 +29,10 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
 public final class ConditionalBranchInstruction extends VoidInstruction implements TerminatingInstruction {
 
@@ -48,7 +48,7 @@ public final class ConditionalBranchInstruction extends VoidInstruction implemen
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -86,9 +86,9 @@ public final class ConditionalBranchInstruction extends VoidInstruction implemen
         }
     }
 
-    public static ConditionalBranchInstruction fromSymbols(Symbols symbols, int conditionIndex, InstructionBlock trueSuccessor, InstructionBlock falseSuccessor) {
+    public static ConditionalBranchInstruction fromSymbols(SymbolTable symbols, int conditionIndex, InstructionBlock trueSuccessor, InstructionBlock falseSuccessor) {
         final ConditionalBranchInstruction inst = new ConditionalBranchInstruction(trueSuccessor, falseSuccessor);
-        inst.condition = symbols.getSymbol(conditionIndex, inst);
+        inst.condition = symbols.getForwardReferenced(conditionIndex, inst);
         return inst;
     }
 }

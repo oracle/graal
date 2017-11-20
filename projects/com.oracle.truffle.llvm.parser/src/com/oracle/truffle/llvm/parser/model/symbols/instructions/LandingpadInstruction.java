@@ -29,11 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
-import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 
 public final class LandingpadInstruction extends ValueInstruction {
 
@@ -49,7 +49,7 @@ public final class LandingpadInstruction extends ValueInstruction {
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -81,11 +81,11 @@ public final class LandingpadInstruction extends ValueInstruction {
         return clauseSymbols;
     }
 
-    public static LandingpadInstruction generate(Symbols symbols, Type type, boolean isCleanup, long[] clauseTypes, long[] clauseTODO) {
+    public static LandingpadInstruction generate(SymbolTable symbols, Type type, boolean isCleanup, long[] clauseTypes, long[] clauseTODO) {
         LandingpadInstruction l = new LandingpadInstruction(type, isCleanup, clauseTypes);
         Symbol[] s = new Symbol[clauseTODO.length];
         for (int i = 0; i < clauseTODO.length; i++) {
-            s[i] = symbols.getSymbol((int) clauseTODO[i], l);
+            s[i] = symbols.getForwardReferenced((int) clauseTODO[i], l);
         }
         l.clauseSymbols = s;
         return l;

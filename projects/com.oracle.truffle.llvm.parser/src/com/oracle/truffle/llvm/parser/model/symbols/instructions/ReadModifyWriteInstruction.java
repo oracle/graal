@@ -29,13 +29,13 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.enums.AtomicOrdering;
 import com.oracle.truffle.llvm.parser.model.enums.ReadModifyWriteOperator;
 import com.oracle.truffle.llvm.parser.model.enums.SynchronizationScope;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
 
 public final class ReadModifyWriteInstruction extends ValueInstruction {
 
@@ -57,7 +57,7 @@ public final class ReadModifyWriteInstruction extends ValueInstruction {
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -85,11 +85,21 @@ public final class ReadModifyWriteInstruction extends ValueInstruction {
         return synchronizationScope;
     }
 
-    public static ReadModifyWriteInstruction fromSymbols(Symbols symbols, Type type, int ptr, int value, int opcode, boolean isVolatile, long atomicOrdering, long synchronizationScope) {
+    @Override
+    public void replace(Symbol oldValue, Symbol newValue) {
+        if (ptr == oldValue) {
+            ptr = newValue;
+        }
+        if (value == oldValue) {
+            value = newValue;
+        }
+    }
+
+    public static ReadModifyWriteInstruction fromSymbols(SymbolTable symbols, Type type, int ptr, int value, int opcode, boolean isVolatile, long atomicOrdering, long synchronizationScope) {
         final ReadModifyWriteOperator operator = ReadModifyWriteOperator.decode(opcode);
         final ReadModifyWriteInstruction inst = new ReadModifyWriteInstruction(type, operator, isVolatile, AtomicOrdering.decode(atomicOrdering), SynchronizationScope.decode(synchronizationScope));
-        inst.ptr = symbols.getSymbol(ptr, inst);
-        inst.value = symbols.getSymbol(value, inst);
+        inst.ptr = symbols.getForwardReferenced(ptr, inst);
+        inst.value = symbols.getForwardReferenced(value, inst);
         return inst;
     }
 }

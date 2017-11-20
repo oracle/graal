@@ -32,11 +32,11 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
 
 public final class PhiInstruction extends ValueInstruction {
 
@@ -49,7 +49,7 @@ public final class PhiInstruction extends ValueInstruction {
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -74,10 +74,10 @@ public final class PhiInstruction extends ValueInstruction {
         }
     }
 
-    public static PhiInstruction generate(Symbols symbols, Type type, int[] values, InstructionBlock[] blocks) {
+    public static PhiInstruction generate(SymbolTable symbols, Type type, int[] values, InstructionBlock[] blocks) {
         final PhiInstruction phi = new PhiInstruction(type);
         for (int i = 0; i < values.length; i++) {
-            phi.values.add(symbols.getSymbol(values[i], phi));
+            phi.values.add(symbols.getForwardReferenced(values[i], phi));
             phi.blocks.add(blocks[i]);
         }
         return phi;

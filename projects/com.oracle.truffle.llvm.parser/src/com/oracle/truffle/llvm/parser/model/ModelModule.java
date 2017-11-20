@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
@@ -105,14 +106,14 @@ public final class ModelModule {
         return sourceModel;
     }
 
-    public void exitModule(IRScope scope) {
+    public void exitModule(IRScope scope, Source source) {
         int globalIndex = 0;
         for (GlobalValueSymbol variable : globals) {
             if (variable.getName().equals(LLVMIdentifier.UNKNOWN)) {
                 variable.setName(String.valueOf(globalIndex++));
             }
-            variable.initialise(scope.getSymbols());
         }
+        sourceModel.process(this, source, scope.getMetadata());
     }
 
     @Override

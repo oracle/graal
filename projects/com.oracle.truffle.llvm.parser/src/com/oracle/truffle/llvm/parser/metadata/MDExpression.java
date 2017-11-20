@@ -29,15 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.runtime.types.MetaType;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
-
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.ListIterator;
 
-public final class MDExpression implements MDBaseNode, Symbol {
+public final class MDExpression implements MDBaseNode {
 
     public static final MDExpression EMPTY = new MDExpression(new long[0]);
 
@@ -146,15 +142,6 @@ public final class MDExpression implements MDBaseNode, Symbol {
         }
 
         return ops;
-    }
-
-    @Override
-    public Type getType() {
-        return MetaType.METADATA;
-    }
-
-    @Override
-    public void replace(Symbol original, Symbol replacement) {
     }
 
     @Override

@@ -46,7 +46,6 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.BinaryOperationCon
 import com.oracle.truffle.llvm.parser.model.symbols.constants.BlockAddressConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.CastConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.CompareConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.GetElementPointerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.InlineAsmConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
@@ -62,12 +61,8 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigInteger
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
-import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -109,7 +104,7 @@ public final class LLVMSymbolReadResolver {
         throw new UnsupportedOperationException("Cannot resolve symbol: " + obj);
     }
 
-    private final class InternalVisitor extends ValueInstructionVisitor implements ConstantVisitor, ModelVisitor {
+    private final class InternalVisitor extends ValueInstructionVisitor {
 
         private final TypeVisitor nullValueVisitor = new TypeVisitor() {
 
@@ -215,13 +210,8 @@ public final class LLVMSymbolReadResolver {
         };
 
         @Override
-        public void defaultAction(Object obj) {
-            unsupported(obj);
-        }
-
-        @Override
-        public void defaultAction(Instruction inst) {
-            unsupported(inst);
+        public void defaultAction(Symbol symbol) {
+            unsupported(symbol);
         }
 
         @Override
@@ -431,6 +421,12 @@ public final class LLVMSymbolReadResolver {
         }
 
         @Override
+        public void visit(FunctionParameter param) {
+            final FrameSlot slot = frame.findFrameSlot(param.getName());
+            resolvedNode = runtime.getNodeFactory().createFrameRead(runtime, param.getType(), slot);
+        }
+
+        @Override
         public void visitValueInstruction(ValueInstruction value) {
             final FrameSlot slot = frame.findFrameSlot(value.getName());
             resolvedNode = runtime.getNodeFactory().createFrameRead(runtime, value.getType(), slot);
@@ -512,23 +508,7 @@ public final class LLVMSymbolReadResolver {
 
     public LLVMExpressionNode resolve(Symbol symbol) {
         resolvedNode = null;
-        if (symbol instanceof ValueInstruction) {
-            ((ValueInstruction) symbol).accept(visitor);
-
-        } else if (symbol instanceof Constant) {
-            ((Constant) symbol).accept(visitor);
-
-        } else if (symbol instanceof GlobalValueSymbol) {
-            ((GlobalValueSymbol) symbol).accept(visitor);
-
-        } else if (symbol instanceof FunctionParameter) {
-            final FrameSlot slot = frame.findFrameSlot(((FunctionParameter) symbol).getName());
-            resolvedNode = runtime.getNodeFactory().createFrameRead(runtime, symbol.getType(), slot);
-
-        } else {
-            unsupported(symbol);
-        }
-
+        symbol.accept(visitor);
         return resolvedNode;
     }
 }

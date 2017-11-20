@@ -76,11 +76,11 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.TerminatingInst
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
-import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 
 public final class LLVMLivenessAnalysis {
 
@@ -520,7 +520,7 @@ public final class LLVMLivenessAnalysis {
         }
     }
 
-    private abstract static class LLVMLocalReadVisitor implements InstructionVisitor {
+    private abstract static class LLVMLocalReadVisitor implements SymbolVisitor {
 
         @Override
         public void visit(AllocateInstruction allocate) {

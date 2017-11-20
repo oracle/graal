@@ -29,7 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants;
 
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
+import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class StringConstant extends AbstractConstant {
@@ -45,7 +46,7 @@ public final class StringConstant extends AbstractConstant {
     }
 
     @Override
-    public void accept(ConstantVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -73,5 +74,9 @@ public final class StringConstant extends AbstractConstant {
         sb.append("\"");
 
         return sb.toString();
+    }
+
+    @Override
+    public void replace(Symbol oldValue, Symbol newValue) {
     }
 }

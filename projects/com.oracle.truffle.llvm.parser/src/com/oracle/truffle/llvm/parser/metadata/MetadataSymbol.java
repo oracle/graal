@@ -70,5 +70,4 @@ public final class MetadataSymbol implements Constant {
         return symbol;
     }
 
-
 }

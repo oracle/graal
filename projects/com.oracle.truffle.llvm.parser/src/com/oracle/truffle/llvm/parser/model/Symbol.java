@@ -27,16 +27,14 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.types.symbols;
+package com.oracle.truffle.llvm.parser.model;
 
+import com.oracle.truffle.llvm.parser.ValueList;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public interface Symbol {
+public interface Symbol extends ValueList.Value<Symbol, SymbolVisitor> {
 
     Type getType();
 
-    @SuppressWarnings("unused")
-    default void replace(Symbol original, Symbol replacement) {
-        throw new IllegalStateException("Fordward reference used with unsuspecting type " + getClass().getSimpleName());
-    }
 }

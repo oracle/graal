@@ -29,11 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants;
 
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.enums.CastOperator;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
 
 public final class CastConstant extends AbstractConstant {
 
@@ -47,7 +47,7 @@ public final class CastConstant extends AbstractConstant {
     }
 
     @Override
-    public void accept(ConstantVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -66,9 +66,9 @@ public final class CastConstant extends AbstractConstant {
         }
     }
 
-    public static CastConstant fromSymbols(Symbols symbols, Type type, int opcode, int value) {
+    public static CastConstant fromSymbols(SymbolTable symbols, Type type, int opcode, int value) {
         final CastConstant constant = new CastConstant(type, CastOperator.decode(opcode));
-        constant.value = symbols.getSymbol(value, constant);
+        constant.value = symbols.getForwardReferenced(value, constant);
         return constant;
     }
 }

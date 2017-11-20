@@ -48,8 +48,8 @@ import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
-import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 
 public final class LLVMPhiManager implements ModelVisitor {
 
@@ -95,7 +95,7 @@ public final class LLVMPhiManager implements ModelVisitor {
     public void visit(FunctionDefinition method) {
         LLVMPhiManagerFunctionVisitor visitor = new LLVMPhiManagerFunctionVisitor();
 
-        method.accept(visitor);
+        method.accept((FunctionVisitor) visitor);
 
         edges.put(method.getName(), visitor.getEdges());
     }

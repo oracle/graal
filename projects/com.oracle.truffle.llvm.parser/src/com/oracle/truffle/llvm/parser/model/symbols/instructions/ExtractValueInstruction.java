@@ -29,10 +29,10 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
 
 public final class ExtractValueInstruction extends ValueInstruction {
 
@@ -46,7 +46,7 @@ public final class ExtractValueInstruction extends ValueInstruction {
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -65,9 +65,9 @@ public final class ExtractValueInstruction extends ValueInstruction {
         }
     }
 
-    public static ExtractValueInstruction fromSymbols(Symbols symbols, Type type, int aggregate, int index) {
+    public static ExtractValueInstruction fromSymbols(SymbolTable symbols, Type type, int aggregate, int index) {
         final ExtractValueInstruction inst = new ExtractValueInstruction(type, index);
-        inst.aggregate = symbols.getSymbol(aggregate, inst);
+        inst.aggregate = symbols.getForwardReferenced(aggregate, inst);
         return inst;
     }
 }

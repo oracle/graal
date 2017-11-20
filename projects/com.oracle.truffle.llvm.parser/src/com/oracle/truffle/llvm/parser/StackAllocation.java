@@ -95,7 +95,7 @@ public final class StackAllocation {
             }
 
             final StackAllocationFunctionVisitor functionVisitor = new StackAllocationFunctionVisitor(frame);
-            functionDefinition.accept(functionVisitor);
+            functionDefinition.accept((FunctionVisitor) functionVisitor);
 
             frames.put(functionDefinition.getName(), frame);
         }

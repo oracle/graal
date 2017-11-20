@@ -33,9 +33,7 @@ import com.oracle.truffle.llvm.parser.ValueList;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,25 +42,23 @@ public final class IRScope {
 
     private static final int GLOBAL_SCOPE_START = -1;
 
-    private final Symbols symbols;
+    private final SymbolTable symbols;
     private final List<Type> valueTypes;
     private final MetadataValueList metadata;
 
     private FunctionDefinition currentFunction;
     private int valueTypesScopeStart;
-    private int symbolsScopeStart;
 
     public IRScope() {
-        symbols = new Symbols();
+        symbols = new SymbolTable();
         valueTypes = new ArrayList<>();
         metadata = new MetadataValueList();
         currentFunction = null;
         valueTypesScopeStart = GLOBAL_SCOPE_START;
-        symbolsScopeStart = GLOBAL_SCOPE_START;
     }
 
     public void addSymbol(Symbol symbol, Type type) {
-        symbols.addSymbol(symbol);
+        symbols.add(symbol);
         valueTypes.add(type);
     }
 
@@ -83,10 +79,10 @@ public final class IRScope {
     }
 
     public void nameSymbol(int index, String argName) {
-        symbols.setSymbolName(index, argName);
+        symbols.nameSymbol(index, argName);
     }
 
-    public Symbols getSymbols() {
+    public SymbolTable getSymbols() {
         return symbols;
     }
 
@@ -99,8 +95,8 @@ public final class IRScope {
     public void startLocalScope(FunctionDefinition function) {
         this.currentFunction = function;
         metadata.startScope();
+        symbols.startScope();
         valueTypesScopeStart = valueTypes.size();
-        symbolsScopeStart = symbols.getSize();
     }
 
     public void exitLocalScope() {
@@ -109,12 +105,10 @@ public final class IRScope {
         }
 
         metadata.endScope();
+        symbols.endScope();
 
         ValueList.dropLocalScope(valueTypesScopeStart, valueTypes);
         valueTypesScopeStart = GLOBAL_SCOPE_START;
-
-        symbols.reduceToSize(symbolsScopeStart);
-        symbolsScopeStart = GLOBAL_SCOPE_START;
     }
 
     public MetadataValueList getMetadata() {

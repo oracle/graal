@@ -57,6 +57,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruc
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
@@ -64,7 +65,7 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFile;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -226,6 +227,15 @@ public final class SourceModel {
         private void addFullDefinition() {
             hasFullDefinition = true;
         }
+
+        @Override
+        public void replace(Symbol oldValue, Symbol newValue) {
+        }
+
+        @Override
+        public void accept(SymbolVisitor visitor) {
+            visitor.visit(this);
+        }
     }
 
     public SourceModel() {
@@ -251,7 +261,7 @@ public final class SourceModel {
         return Collections.unmodifiableMap(staticMembers);
     }
 
-    private static final class Parser implements ModelVisitor, FunctionVisitor, InstructionVisitorAdapter {
+    private static final class Parser implements FunctionVisitor, InstructionVisitorAdapter, ModelVisitor {
 
         private static MDBaseNode getDebugInfo(MetadataAttachmentHolder holder) {
             if (holder.hasAttachedMetadata()) {
@@ -304,6 +314,10 @@ public final class SourceModel {
         }
 
         @Override
+        public void visit(FunctionDeclaration function) {
+        }
+
+        @Override
         public void visit(FunctionDefinition function) {
             currentFunction = new Function(bitcodeSource, function);
 
@@ -313,7 +327,7 @@ public final class SourceModel {
                 currentFunction.setLexicalScope(scope);
             }
 
-            function.accept(this);
+            function.accept((FunctionVisitor) this);
             function.setSourceFunction(currentFunction);
 
             for (Variable local : currentFunction.locals.values()) {
@@ -368,7 +382,7 @@ public final class SourceModel {
         }
 
         @Override
-        public void defaultAction(Instruction instruction) {
+        public void visitInstruction(Instruction instruction) {
             final MDLocation loc = instruction.getDebugLocation();
             if (loc != null) {
                 final LLVMSourceLocation scope = scopeExtractor.resolve(loc);
@@ -405,7 +419,7 @@ public final class SourceModel {
                 }
             }
 
-            defaultAction(call);
+            visitInstruction(call);
         }
 
         private void handleDebugIntrinsic(VoidCallInstruction call, int mdlocalArgIndex, int mdExprArgIndex) {
@@ -451,8 +465,6 @@ public final class SourceModel {
                 final MDBaseNode exprNode = ((MetadataSymbol) expr).getNode();
                 if (exprNode instanceof MDExpression) {
                     final MDExpression expression = (MDExpression) exprNode;
-                    call.replace(expr, expression);
-
                     if (variable != null) {
                         if (ValueFragment.describesFragment(expression)) {
                             variable.addFragment(ValueFragment.parse(expression));

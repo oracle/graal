@@ -29,11 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
 public final class SwitchInstruction extends VoidInstruction implements TerminatingInstruction {
 
@@ -52,7 +52,7 @@ public final class SwitchInstruction extends VoidInstruction implements Terminat
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -103,12 +103,12 @@ public final class SwitchInstruction extends VoidInstruction implements Terminat
         }
     }
 
-    public static SwitchInstruction generate(FunctionDefinition function, Symbols symbols, int condition, int defaultBlock, int[] caseValues, int[] caseBlocks) {
+    public static SwitchInstruction generate(FunctionDefinition function, SymbolTable symbols, int condition, int defaultBlock, int[] caseValues, int[] caseBlocks) {
         final SwitchInstruction inst = new SwitchInstruction(function.getBlock(defaultBlock), caseBlocks.length);
 
-        inst.condition = symbols.getSymbol(condition, inst);
+        inst.condition = symbols.getForwardReferenced(condition, inst);
         for (int i = 0; i < caseBlocks.length; i++) {
-            inst.values[i] = symbols.getSymbol(caseValues[i], inst);
+            inst.values[i] = symbols.getForwardReferenced(caseValues[i], inst);
             inst.blocks[i] = function.getBlock(caseBlocks[i]);
         }
 

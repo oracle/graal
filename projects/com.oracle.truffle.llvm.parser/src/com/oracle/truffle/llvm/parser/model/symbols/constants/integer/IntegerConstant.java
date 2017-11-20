@@ -29,8 +29,9 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants.integer;
 
+import com.oracle.truffle.llvm.parser.model.Symbol;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.AbstractConstant;
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class IntegerConstant extends AbstractConstant {
@@ -43,7 +44,11 @@ public final class IntegerConstant extends AbstractConstant {
     }
 
     @Override
-    public void accept(ConstantVisitor visitor) {
+    public void replace(Symbol oldValue, Symbol newValue) {
+    }
+
+    @Override
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 

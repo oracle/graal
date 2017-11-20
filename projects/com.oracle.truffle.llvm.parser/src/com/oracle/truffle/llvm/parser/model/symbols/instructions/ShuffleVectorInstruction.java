@@ -29,10 +29,10 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
 
 public final class ShuffleVectorInstruction extends ValueInstruction {
 
@@ -47,7 +47,7 @@ public final class ShuffleVectorInstruction extends ValueInstruction {
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -76,11 +76,11 @@ public final class ShuffleVectorInstruction extends ValueInstruction {
         }
     }
 
-    public static ShuffleVectorInstruction fromSymbols(Symbols symbols, Type type, int vector1, int vector2, int mask) {
+    public static ShuffleVectorInstruction fromSymbols(SymbolTable symbols, Type type, int vector1, int vector2, int mask) {
         final ShuffleVectorInstruction inst = new ShuffleVectorInstruction(type);
-        inst.vector1 = symbols.getSymbol(vector1, inst);
-        inst.vector2 = symbols.getSymbol(vector2, inst);
-        inst.mask = symbols.getSymbol(mask, inst);
+        inst.vector1 = symbols.getForwardReferenced(vector1, inst);
+        inst.vector2 = symbols.getForwardReferenced(vector2, inst);
+        inst.mask = symbols.getForwardReferenced(mask, inst);
         return inst;
     }
 }

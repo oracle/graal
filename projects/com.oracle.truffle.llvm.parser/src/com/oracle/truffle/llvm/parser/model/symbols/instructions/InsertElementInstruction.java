@@ -29,10 +29,10 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
 
 public final class InsertElementInstruction extends ValueInstruction {
 
@@ -47,7 +47,7 @@ public final class InsertElementInstruction extends ValueInstruction {
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -76,11 +76,11 @@ public final class InsertElementInstruction extends ValueInstruction {
         }
     }
 
-    public static InsertElementInstruction fromSymbols(Symbols symbols, Type type, int vector, int index, int value) {
+    public static InsertElementInstruction fromSymbols(SymbolTable symbols, Type type, int vector, int index, int value) {
         final InsertElementInstruction inst = new InsertElementInstruction(type);
-        inst.vector = symbols.getSymbol(vector, inst);
-        inst.index = symbols.getSymbol(index, inst);
-        inst.value = symbols.getSymbol(value, inst);
+        inst.vector = symbols.getForwardReferenced(vector, inst);
+        inst.index = symbols.getForwardReferenced(index, inst);
+        inst.value = symbols.getForwardReferenced(value, inst);
         return inst;
     }
 }

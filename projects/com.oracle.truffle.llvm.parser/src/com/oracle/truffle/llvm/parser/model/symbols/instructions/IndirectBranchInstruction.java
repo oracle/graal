@@ -29,11 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
 public final class IndirectBranchInstruction extends VoidInstruction implements TerminatingInstruction {
 
@@ -46,7 +46,7 @@ public final class IndirectBranchInstruction extends VoidInstruction implements 
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -71,13 +71,13 @@ public final class IndirectBranchInstruction extends VoidInstruction implements 
         }
     }
 
-    public static IndirectBranchInstruction generate(FunctionDefinition function, Symbols symbols, int address, int[] successors) {
+    public static IndirectBranchInstruction generate(FunctionDefinition function, SymbolTable symbols, int address, int[] successors) {
         final InstructionBlock[] blocks = new InstructionBlock[successors.length];
         for (int i = 0; i < successors.length; i++) {
             blocks[i] = function.getBlock(successors[i]);
         }
         final IndirectBranchInstruction inst = new IndirectBranchInstruction(blocks);
-        inst.address = symbols.getSymbol(address, inst);
+        inst.address = symbols.getForwardReferenced(address, inst);
         return inst;
     }
 }

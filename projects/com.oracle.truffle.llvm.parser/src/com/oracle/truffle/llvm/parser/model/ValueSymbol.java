@@ -27,7 +27,9 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.types.symbols;
+package com.oracle.truffle.llvm.parser.model;
+
+import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
 public interface ValueSymbol extends Symbol {
 

@@ -87,7 +87,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInst
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMException;
@@ -107,7 +107,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.parser.model.Symbol;
 
-final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
+final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     private final FrameDescriptor frame;
     private final Map<String, Integer> labels;
@@ -151,6 +151,11 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     public void setInstructionIndex(int instructionIndex) {
         this.instructionIndex = instructionIndex;
+    }
+
+    @Override
+    public void defaultAction(Symbol symbol) {
+        throw new IllegalStateException("Unimplemented Instruction: " + symbol.getClass().getSimpleName());
     }
 
     @Override

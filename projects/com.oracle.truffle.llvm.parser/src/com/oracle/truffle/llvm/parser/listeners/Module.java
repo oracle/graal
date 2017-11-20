@@ -49,7 +49,7 @@ import com.oracle.truffle.llvm.parser.scanner.Block;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
+import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 
 import java.util.LinkedList;
 
@@ -160,9 +160,9 @@ public final class Module implements ParserListener {
 
         final GlobalValueSymbol global;
         if (isConstant) {
-            global = GlobalConstant.create(type, initialiser, align, linkage, visibility);
+            global = GlobalConstant.create(type, align, linkage, visibility, scope.getSymbols(), initialiser);
         } else {
-            global = GlobalVariable.create(type, initialiser, align, linkage, visibility);
+            global = GlobalVariable.create(type, align, linkage, visibility, scope.getSymbols(), initialiser);
         }
         if (useStrTab()) {
             readNameFromStrTab(args, global);
@@ -183,7 +183,7 @@ public final class Module implements ParserListener {
         final int value = (int) args[GLOBALALIAS_NEW_VALUE + recordOffset];
         final long linkage = args[GLOBALALIAS_NEW_LINKAGE + recordOffset];
 
-        final GlobalAlias global = GlobalAlias.create(type, value, linkage, Visibility.DEFAULT.ordinal());
+        final GlobalAlias global = GlobalAlias.create(type, linkage, Visibility.DEFAULT.ordinal(), scope.getSymbols(), value);
         if (useStrTab()) {
             readNameFromStrTab(args, global);
         }
@@ -200,7 +200,7 @@ public final class Module implements ParserListener {
         int value = (int) args[GLOBALALIAS_OLD_VALUE + recordOffset];
         long linkage = args[GLOBALALIAS_OLD_LINKAGE + recordOffset];
 
-        final GlobalAlias global = GlobalAlias.create(type, value, linkage, Visibility.DEFAULT.ordinal());
+        final GlobalAlias global = GlobalAlias.create(type, linkage, Visibility.DEFAULT.ordinal(), scope.getSymbols(), value);
         if (useStrTab()) {
             readNameFromStrTab(args, global);
         }
@@ -256,8 +256,7 @@ public final class Module implements ParserListener {
 
     @Override
     public void exit() {
-        module.exitModule(scope);
-        module.getSourceModel().process(module, source, scope.getMetadata());
+        module.exitModule(scope, source);
     }
 
     @Override

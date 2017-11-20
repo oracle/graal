@@ -29,12 +29,12 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.enums.CastOperator;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
-import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 
 public final class CastInstruction extends ValueInstruction {
 
@@ -48,7 +48,7 @@ public final class CastInstruction extends ValueInstruction {
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -72,9 +72,9 @@ public final class CastInstruction extends ValueInstruction {
         }
     }
 
-    public static CastInstruction fromSymbols(Symbols symbols, Type type, int opcode, int value) {
+    public static CastInstruction fromSymbols(SymbolTable symbols, Type type, int opcode, int value) {
         final CastInstruction inst = new CastInstruction(type, CastOperator.decode(opcode));
-        inst.value = symbols.getSymbol(value, inst);
+        inst.value = symbols.getForwardReferenced(value, inst);
         return inst;
     }
 

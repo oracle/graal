@@ -109,7 +109,7 @@ public final class Metadata implements ParserListener {
                 break;
 
             case VALUE:
-                metadata.add(MDValue.create(args, this));
+                metadata.add(MDValue.create(args, scope));
                 break;
 
             case DISTINCT_NODE:
@@ -136,7 +136,7 @@ public final class Metadata implements ParserListener {
                 break;
 
             case OLD_FN_NODE:
-                metadata.add(MDValue.create(args, this));
+                metadata.add(MDValue.create(args, scope));
                 break;
 
             case NAMED_NODE:

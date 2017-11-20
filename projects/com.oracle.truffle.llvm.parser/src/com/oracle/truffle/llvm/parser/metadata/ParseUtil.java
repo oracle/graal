@@ -37,7 +37,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerCon
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
 
 public final class ParseUtil {
 
@@ -106,7 +106,7 @@ public final class ParseUtil {
             return md.getScope().getMetadata().getNonNullable(value, dependent);
 
         } else if (type != VoidType.INSTANCE) {
-            return MDValue.create(type, value, md.getScope());
+            return MDValue.create(value, md.getScope());
 
         } else {
             return MDVoidNode.INSTANCE;
@@ -123,7 +123,7 @@ public final class ParseUtil {
         final Type type = md.getTypeById(args[typeIndex]);
         final long value = (int) args[valueIndex];
         if (type != MetaType.METADATA && !VoidType.INSTANCE.equals(type)) {
-            return MDValue.create(type, value, md.getScope());
+            return MDValue.create(value, md.getScope());
         } else {
             return MDVoidNode.INSTANCE;
         }

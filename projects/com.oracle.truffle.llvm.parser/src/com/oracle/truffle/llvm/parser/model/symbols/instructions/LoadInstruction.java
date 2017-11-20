@@ -29,12 +29,12 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.enums.AtomicOrdering;
 import com.oracle.truffle.llvm.parser.model.enums.SynchronizationScope;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
 
 public final class LoadInstruction extends ValueInstruction {
 
@@ -52,22 +52,22 @@ public final class LoadInstruction extends ValueInstruction {
         this.synchronizationScope = scope;
     }
 
-    private static LoadInstruction fromSymbols(Symbols symbols, Type type, int source, int align, boolean isVolatile, AtomicOrdering atomicOrdering, SynchronizationScope synchronizationScope) {
+    private static LoadInstruction fromSymbols(SymbolTable symbols, Type type, int source, int align, boolean isVolatile, AtomicOrdering atomicOrdering, SynchronizationScope synchronizationScope) {
         final LoadInstruction inst = new LoadInstruction(type, align, isVolatile, atomicOrdering, synchronizationScope);
-        inst.source = symbols.getSymbol(source, inst);
+        inst.source = symbols.getForwardReferenced(source, inst);
         return inst;
     }
 
-    public static LoadInstruction fromSymbols(Symbols symbols, Type type, int source, int align, boolean isVolatile) {
+    public static LoadInstruction fromSymbols(SymbolTable symbols, Type type, int source, int align, boolean isVolatile) {
         return fromSymbols(symbols, type, source, align, isVolatile, AtomicOrdering.NOT_ATOMIC, SynchronizationScope.CROSS_THREAD);
     }
 
-    public static LoadInstruction fromSymbols(Symbols symbols, Type type, int source, int align, boolean isVolatile, long atomicOrdering, long synchronizationScope) {
+    public static LoadInstruction fromSymbols(SymbolTable symbols, Type type, int source, int align, boolean isVolatile, long atomicOrdering, long synchronizationScope) {
         return fromSymbols(symbols, type, source, align, isVolatile, AtomicOrdering.decode(atomicOrdering), SynchronizationScope.decode(synchronizationScope));
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 

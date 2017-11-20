@@ -33,10 +33,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
 
 public final class GetElementPointerConstant extends AbstractConstant {
 
@@ -52,7 +52,7 @@ public final class GetElementPointerConstant extends AbstractConstant {
     }
 
     @Override
-    public void accept(ConstantVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -80,12 +80,12 @@ public final class GetElementPointerConstant extends AbstractConstant {
         }
     }
 
-    public static GetElementPointerConstant fromSymbols(Symbols symbols, Type type, int pointer, int[] indices, boolean isInbounds) {
+    public static GetElementPointerConstant fromSymbols(SymbolTable symbols, Type type, int pointer, int[] indices, boolean isInbounds) {
         final GetElementPointerConstant constant = new GetElementPointerConstant(type, isInbounds);
 
-        constant.base = symbols.getSymbol(pointer, constant);
+        constant.base = symbols.getForwardReferenced(pointer, constant);
         for (int index : indices) {
-            constant.indices.add(symbols.getSymbol(index, constant));
+            constant.indices.add(symbols.getForwardReferenced(index, constant));
         }
         return constant;
     }
