@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,22 +27,26 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.instructions;
+package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
-public interface Call extends Symbol {
+public final class MetadataSymbol implements Symbol {
 
-    Symbol getArgument(int index);
+    private final MDBaseNode node;
 
-    int getArgumentCount();
+    public MetadataSymbol(MDBaseNode symbol) {
+        this.node = symbol;
+    }
 
-    Symbol getCallTarget();
+    @Override
+    public Type getType() {
+        return MetaType.METADATA;
+    }
 
-    AttributesGroup getFunctionAttributesGroup();
-
-    AttributesGroup getReturnAttributesGroup();
-
-    AttributesGroup getParameterAttributesGroup(int idx);
+    public MDBaseNode getNode() {
+        return node;
+    }
 }

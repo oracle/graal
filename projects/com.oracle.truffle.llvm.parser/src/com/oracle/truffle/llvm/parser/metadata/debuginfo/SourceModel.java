@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
 import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
+import com.oracle.truffle.llvm.parser.metadata.MetadataSymbol;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
@@ -45,7 +46,6 @@ import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.MetadataConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
@@ -422,10 +422,9 @@ public final class SourceModel {
 
         private void handleDebugIntrinsic(VoidCallInstruction call, int mdlocalArgIndex, int mdExprArgIndex) {
             Symbol value = call.getArgument(LLVM_DBG_INTRINSICS_VALUE_ARGINDEX);
-            if (value instanceof MetadataConstant) {
+            if (value instanceof MetadataSymbol) {
                 // the first argument should reference the allocation site of the variable
-                final long mdIndex = ((MetadataConstant) value).getValue();
-                value = MDSymbolExtractor.getSymbol(currentFunction.definition.getMetadata().getOrNull((int) mdIndex));
+                value = MDSymbolExtractor.getSymbol(((MetadataSymbol) value).getNode());
 
             } else {
                 return;
@@ -444,9 +443,8 @@ public final class SourceModel {
 
             final Symbol mdLocalMDRef = call.getArgument(mdlocalArgIndex);
             final Variable variable;
-            if (mdLocalMDRef instanceof MetadataConstant) {
-                final long mdIndex = ((MetadataConstant) mdLocalMDRef).getValue();
-                final MDBaseNode mdLocal = currentFunction.definition.getMetadata().getOrNull((int) mdIndex);
+            if (mdLocalMDRef instanceof MetadataSymbol) {
+                final MDBaseNode mdLocal = ((MetadataSymbol) mdLocalMDRef).getNode();
 
                 final LLVMSourceSymbol symbol = getSourceSymbol(mdLocal, false);
                 variable = currentFunction.getLocal(symbol);
@@ -461,9 +459,8 @@ public final class SourceModel {
             }
 
             final Symbol expr = call.getArgument(mdExprArgIndex);
-            if (expr instanceof MetadataConstant) {
-                final int exprIndex = (int) ((MetadataConstant) expr).getValue();
-                final MDBaseNode exprNode = currentFunction.definition.getMetadata().getOrNull(exprIndex);
+            if (expr instanceof MetadataSymbol) {
+                final MDBaseNode exprNode = ((MetadataSymbol) expr).getNode();
                 if (exprNode instanceof MDExpression) {
                     final MDExpression expression = (MDExpression) exprNode;
                     call.replace(expr, expression);
