@@ -115,8 +115,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     /**
      * Used only to reset state for native image compilation.
      */
-    protected void clearCallTargets() {
+    protected void clearState() {
         assert TruffleOptions.AOT : "Must be called only in AOT mode.";
+        callMethods = null;
+        truffleCompiler = null;
     }
 
     protected static class BackgroundCompileQueue {
