@@ -44,25 +44,16 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNode;
-import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNodeGen;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 public abstract class SLReadPropertyCacheNode extends SLPropertyCacheNode {
 
-    public abstract Object executeRead(Object receiver, Object name);
+    public abstract Object executeRead(DynamicObject receiver, Object name);
 
     /**
      * Polymorphic inline cache for a limited number of distinct property names and shapes.
@@ -101,7 +92,7 @@ public abstract class SLReadPropertyCacheNode extends SLPropertyCacheNode {
      * polymorphic inline cache.
      */
     @TruffleBoundary
-    @Specialization(replaces = {"readCached"}, guards = "isValidSLObject(receiver)")
+    @Specialization(replaces = {"readCached"}, guards = "receiver.getShape().isValid()")
     protected static Object readUncached(DynamicObject receiver, Object name) {
         Object result = receiver.get(name);
         if (result == null) {
@@ -111,51 +102,15 @@ public abstract class SLReadPropertyCacheNode extends SLPropertyCacheNode {
         return result;
     }
 
-    @Specialization(guards = "!isValidSLObject(receiver)")
+    @Specialization(guards = "!receiver.getShape().isValid()")
     protected static Object updateShape(DynamicObject receiver, Object name) {
         CompilerDirectives.transferToInterpreter();
         receiver.updateShape();
         return readUncached(receiver, name);
     }
 
-    /**
-     * Language interoperability: if the receiver object is a foreign value we use Truffle's interop
-     * API to access the foreign data.
-     */
-    @Specialization(guards = "isForeignObject(receiver)")
-    protected static Object readForeign(TruffleObject receiver, Object name,
-                    // The child node to access the foreign object
-                    @Cached("createForeignReadNode()") Node foreignReadNode,
-                    // The child node to convert the result of the foreign read to a SL value
-                    @Cached("createToSLTypeNode()") SLForeignToSLTypeNode toSLTypeNode) {
-
-        try {
-            /* Perform the foreign object access. */
-            Object result = ForeignAccess.sendRead(foreignReadNode, receiver, name);
-            /* Convert the result to a SL value. */
-            return toSLTypeNode.executeConvert(result);
-
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-            /* Foreign access was not successful. */
-            throw SLUndefinedNameException.undefinedProperty(name);
-        }
+    public static SLReadPropertyCacheNode create() {
+        return SLReadPropertyCacheNodeGen.create();
     }
 
-    /**
-     * When no specialization fits, the receiver is either not an object (which is a type error), or
-     * the object has a shape that has been invalidated.
-     */
-    @Fallback
-    protected static Object typeError(@SuppressWarnings("unused") Object r, Object name) {
-        /* Non-object types do not have properties. */
-        throw SLUndefinedNameException.undefinedProperty(name);
-    }
-
-    protected static Node createForeignReadNode() {
-        return Message.READ.createNode();
-    }
-
-    protected static SLForeignToSLTypeNode createToSLTypeNode() {
-        return SLForeignToSLTypeNodeGen.create();
-    }
 }

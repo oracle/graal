@@ -45,7 +45,6 @@ import java.math.BigInteger;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -65,24 +64,8 @@ public abstract class SLPropertyCacheNode extends Node {
 
     protected static Shape lookupShape(DynamicObject receiver) {
         CompilerAsserts.neverPartOfCompilation();
-
-        if (!SLContext.isSLObject(receiver)) {
-            /* The specialization doForeignObject handles this case. */
-            return null;
-        }
+        assert SLContext.isSLObject(receiver);
         return receiver.getShape();
-    }
-
-    protected static boolean isValidSLObject(DynamicObject receiver) {
-        if (!SLContext.isSLObject(receiver)) {
-            /* The specialization doForeignObject handles this case. */
-            return false;
-        }
-        return receiver.getShape().isValid();
-    }
-
-    protected static boolean isForeignObject(TruffleObject receiver) {
-        return !SLContext.isSLObject(receiver);
     }
 
     /**

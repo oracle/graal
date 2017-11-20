@@ -40,11 +40,24 @@
  */
 package com.oracle.truffle.sl.nodes.access;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
+import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNode;
+import com.oracle.truffle.sl.runtime.SLContext;
+import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 /**
  * The node for reading a property of an object. When executed, this node:
@@ -56,17 +69,51 @@ import com.oracle.truffle.sl.nodes.SLExpressionNode;
  */
 @NodeInfo(shortName = ".")
 @NodeChildren({@NodeChild("receiverNode"), @NodeChild("nameNode")})
+@ImportStatic({SLContext.class, Message.class})
 public abstract class SLReadPropertyNode extends SLExpressionNode {
 
-    /**
-     * The polymorphic cache node that performs the actual read. This is a separate node so that it
-     * can be re-used in cases where the receiver and name are not nodes but already evaluated
-     * values.
-     */
-    @Child private SLReadPropertyCacheNode readNode = SLReadPropertyCacheNodeGen.create();
-
-    @Specialization
-    protected Object read(Object receiver, Object name) {
+    @Specialization(guards = "isSLObject(receiver)")
+    protected Object read(DynamicObject receiver, Object name,
+                    @Cached("create()") SLReadPropertyCacheNode readNode) {
+        /**
+         * The polymorphic cache node that performs the actual read. This is a separate node so that
+         * it can be re-used in cases where the receiver and name are not nodes but already
+         * evaluated values.
+         */
         return readNode.executeRead(receiver, name);
     }
+
+    /**
+     * Language interoperability: if the receiver object is a foreign value we use Truffle's interop
+     * API to access the foreign data.
+     */
+    @Specialization(guards = "!isSLObject(receiver)")
+    protected static Object readForeign(TruffleObject receiver, Object name,
+                    // The child node to access the foreign object
+                    @Cached("READ.createNode()") Node foreignReadNode,
+                    // The child node to convert the result of the foreign read to a SL value
+                    @Cached("create()") SLForeignToSLTypeNode toSLTypeNode) {
+
+        try {
+            /* Perform the foreign object access. */
+            Object result = ForeignAccess.sendRead(foreignReadNode, receiver, name);
+            /* Convert the result to a SL value. */
+            return toSLTypeNode.executeConvert(result);
+
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            /* Foreign access was not successful. */
+            throw SLUndefinedNameException.undefinedProperty(name);
+        }
+    }
+
+    /**
+     * When no specialization fits, the receiver is either not an object (which is a type error), or
+     * the object has a shape that has been invalidated.
+     */
+    @Fallback
+    protected static Object typeError(@SuppressWarnings("unused") Object r, Object name) {
+        /* Non-object types do not have properties. */
+        throw SLUndefinedNameException.undefinedProperty(name);
+    }
+
 }
