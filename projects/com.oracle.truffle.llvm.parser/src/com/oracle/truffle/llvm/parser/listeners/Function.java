@@ -39,17 +39,13 @@ import com.oracle.truffle.llvm.parser.metadata.MDKind;
 import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
 import com.oracle.truffle.llvm.parser.metadata.MDValue;
-import com.oracle.truffle.llvm.parser.metadata.MetadataSymbol;
 import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.MetadataConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.AllocateInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.BinaryOperationInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.BranchInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.Call;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CastInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareExchangeInstruction;
@@ -92,7 +88,7 @@ import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
 
 public final class Function implements ParserListener {
 
@@ -109,8 +105,6 @@ public final class Function implements ParserListener {
     private MDLocation lastLocation = null;
 
     private final List<Integer> implicitIndices = new ArrayList<>();
-
-    private final List<Call> callsWithMDArgs = new ArrayList<>();
 
     private final ParameterAttributes paramAttributes;
 
@@ -149,15 +143,6 @@ public final class Function implements ParserListener {
             MDBaseNode md = function.getMetadataAttachment(MDKind.DBG_NAME);
             if (md instanceof MDSubprogram) {
                 ((MDSubprogram) md).setFunction(MDValue.create(function));
-            }
-        }
-        for (Call call : callsWithMDArgs) {
-            for (int i = 0; i < call.getArgumentCount(); i++) {
-                final Symbol arg = call.getArgument(i);
-                if (arg instanceof MetadataConstant) {
-                    final MDBaseNode target = scope.getMetadata().getOrNull((int) ((MetadataConstant) arg).getValue());
-                    call.replace(arg, new MetadataSymbol(target));
-                }
             }
         }
         scope.exitLocalScope();
@@ -378,7 +363,7 @@ public final class Function implements ParserListener {
         }
         final Type returnType = functionType.getReturnType();
         if (returnType == VoidType.INSTANCE) {
-            emit(VoidInvokeInstruction.fromSymbols(scope.getSymbols(), target, arguments, normalSuccessor, unwindSuccessor, paramAttr));
+            emit(VoidInvokeInstruction.fromSymbols(scope, target, arguments, normalSuccessor, unwindSuccessor, paramAttr));
         } else {
             emit(InvokeInstruction.fromSymbols(scope.getSymbols(), returnType, target, arguments, normalSuccessor, unwindSuccessor, paramAttr));
         }
@@ -433,15 +418,6 @@ public final class Function implements ParserListener {
         emit(LandingpadInstruction.generate(scope.getSymbols(), type, isCleanup, clauseKinds, clauseTypes));
     }
 
-    private static boolean hasMetadataArgs(Call call) {
-        for (int i = 0; i < call.getArgumentCount(); i++) {
-            if (call.getArgument(i) instanceof MetadataConstant) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private static final int CALL_HAS_FMF_SHIFT = 17;
     private static final int CALL_HAS_EXPLICITTYPE_SHIFT = 15;
 
@@ -494,22 +470,11 @@ public final class Function implements ParserListener {
         }
 
         final Type returnType = functionType.getReturnType();
-        final Symbols symbols = scope.getSymbols();
 
-        Call call;
         if (returnType == VoidType.INSTANCE) {
-            final VoidCallInstruction voidCall = VoidCallInstruction.fromSymbols(symbols, callee, arguments, paramAttr);
-            emit(voidCall);
-            call = voidCall;
-
+            emit(VoidCallInstruction.fromSymbols(scope, callee, arguments, paramAttr));
         } else {
-            final CallInstruction valueCall = CallInstruction.fromSymbols(scope.getSymbols(), returnType, callee, arguments, paramAttr);
-            emit(valueCall);
-            call = valueCall;
-        }
-
-        if (hasMetadataArgs(call)) {
-            callsWithMDArgs.add(call);
+            emit(CallInstruction.fromSymbols(scope.getSymbols(), returnType, callee, arguments, paramAttr));
         }
     }
 

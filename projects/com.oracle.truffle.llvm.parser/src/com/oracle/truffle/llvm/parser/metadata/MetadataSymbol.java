@@ -29,16 +29,18 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
 
-public final class MetadataSymbol implements Symbol {
+public final class MetadataSymbol implements Constant {
 
-    private final MDBaseNode node;
+    private MDBaseNode node;
 
-    public MetadataSymbol(MDBaseNode symbol) {
-        this.node = symbol;
+    private MetadataSymbol() {
+        this.node = MDVoidNode.INSTANCE;
     }
 
     @Override
@@ -49,4 +51,24 @@ public final class MetadataSymbol implements Symbol {
     public MDBaseNode getNode() {
         return node;
     }
+
+    @Override
+    public void replace(Symbol oldValue, Symbol newValue) {
+
+    }
+
+    @Override
+    public void accept(SymbolVisitor visitor) {
+        visitor.visit(this);
+    }
+
+    public static MetadataSymbol create(MetadataValueList md, int index) {
+        final MetadataSymbol symbol = new MetadataSymbol();
+        md.onParse(index, mdNode -> {
+            symbol.node = mdNode;
+        });
+        return symbol;
+    }
+
+
 }

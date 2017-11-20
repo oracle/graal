@@ -32,16 +32,17 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.metadata.MetadataSymbol;
+import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.MetadataConstant;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
 
 public final class VoidInvokeInstruction extends VoidInstruction implements Invoke {
 
@@ -108,8 +109,9 @@ public final class VoidInvokeInstruction extends VoidInstruction implements Invo
         }
     }
 
-    public static VoidInvokeInstruction fromSymbols(Symbols symbols, int targetIndex, int[] arguments, InstructionBlock normalSuccessor,
-                    InstructionBlock unwindSuccessor, AttributesCodeEntry paramAttr) {
+    public static VoidInvokeInstruction fromSymbols(IRScope scope, int targetIndex, int[] arguments, InstructionBlock normalSuccessor,
+                                                    InstructionBlock unwindSuccessor, AttributesCodeEntry paramAttr) {
+        final Symbols symbols = scope.getSymbols();
         final VoidInvokeInstruction inst = new VoidInvokeInstruction(normalSuccessor, unwindSuccessor, paramAttr);
         inst.target = symbols.getSymbol(targetIndex, inst);
         if (inst.target instanceof FunctionDefinition) {
@@ -117,7 +119,7 @@ public final class VoidInvokeInstruction extends VoidInstruction implements Invo
             for (int i = 0; i < arguments.length; i++) {
                 // TODO: why it's possible to have more arguments than argument types?
                 if (types.length > i && types[i] instanceof MetaType) {
-                    inst.arguments.add(new MetadataConstant(arguments[i]));
+                    inst.arguments.add(MetadataSymbol.create(scope.getMetadata(), arguments[i]));
                 } else {
                     inst.arguments.add(symbols.getSymbol(arguments[i], inst));
                 }

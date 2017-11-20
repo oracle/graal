@@ -49,7 +49,6 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.CompareConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.GetElementPointerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.InlineAsmConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.MetadataConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.StringConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.UndefinedConstant;
@@ -87,7 +86,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 import java.math.BigInteger;
@@ -396,12 +395,6 @@ public final class LLVMSymbolReadResolver {
         @Override
         public void visit(UndefinedConstant undefinedConstant) {
             undefinedConstant.getType().accept(nullValueVisitor);
-        }
-
-        @Override
-        public void visit(MetadataConstant constant) {
-            // TODO: point to Metadata
-            resolvedNode = runtime.getNodeFactory().createLiteral(runtime, constant.getValue(), PrimitiveType.I64);
         }
 
         @Override

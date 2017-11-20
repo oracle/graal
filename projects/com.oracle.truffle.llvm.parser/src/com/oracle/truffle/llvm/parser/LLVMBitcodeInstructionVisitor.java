@@ -42,6 +42,7 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
 import com.oracle.truffle.llvm.parser.metadata.MDExpression;
+import com.oracle.truffle.llvm.parser.metadata.MetadataSymbol;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.ValueFragment;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
@@ -104,7 +105,7 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.Symbol;
 
 final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
@@ -365,8 +366,8 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         int[] clearParts = null;
 
         final Symbol exprSymbol = call.getArgument(exprIndex);
-        if (exprSymbol instanceof MDExpression) {
-            final MDExpression expression = (MDExpression) exprSymbol;
+        if (exprSymbol instanceof MetadataSymbol && ((MetadataSymbol) exprSymbol).getNode() instanceof MDExpression) {
+            final MDExpression expression = (MDExpression) ((MetadataSymbol) exprSymbol).getNode();
             if (ValueFragment.describesFragment(expression)) {
                 final ValueFragment fragment = ValueFragment.parse(expression);
                 final List<ValueFragment> siblings = var.getFragments();
