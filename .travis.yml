@@ -45,20 +45,12 @@ install:
   - wget https://github.com/dougxc/openjdk8-jvmci-builder/releases/download/jvmci-0.34/openjdk1.8.0_141-jvmci-0.34-linux-amd64.tar.gz
   - tar -xzf openjdk1.8.0_141-jvmci-0.34-linux-amd64.tar.gz
   - export JAVA_HOME=`pwd`/openjdk1.8.0_141-jvmci-0.34
-  - mx pulldragonegg
-  - export DRAGONEGG_LLVM=`pwd`/cache/tools/llvm
-  - export DRAGONEGG=`pwd`/cache/tools/dragonegg/dragonegg-3.2.src
   - mkdir llvmDir
   - cd llvmDir
   - ln -s /usr/bin/clang-3.8 clang
   - ln -s /usr/bin/clang++-3.8 clang++
   - ln -s /usr/bin/opt-3.8 opt
   - ln -s /usr/bin/llvm-link-3.8 llvm-link
-  - ln -s $DRAGONEGG_LLVM/bin/clang clang-3.2
-  - ln -s $DRAGONEGG_LLVM/bin/clang++ clang++-3.2
-  - ln -s $DRAGONEGG_LLVM/bin/llvm-as llvm-as-3.2
-  - ln -s $DRAGONEGG_LLVM/bin/opt opt-3.2
-  - ln -s $DRAGONEGG_LLVM/bin/llvm-config llvm-config-3.2
   - export PATH=`pwd`:$PATH
   - cd ..
   - export CPPFLAGS=-g
@@ -73,7 +65,7 @@ matrix:
     jdk: oraclejdk8
   - env: TEST_COMMAND='mx gate --tags sulongBasic' COMPILE_COMMAND='mx build'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx gate --tags misc' COMPILE_COMMAND='mx build'
+  - env: TEST_COMMAND='mx gate --tags sulongMisc' COMPILE_COMMAND='mx build'
     jdk: oraclejdk8
   - env: TEST_COMMAND='mx gate --tags nwcc' COMPILE_COMMAND='mx build'
     jdk: oraclejdk8
@@ -84,8 +76,6 @@ matrix:
   - env: TEST_COMMAND='mx gate --tags gcc_c' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
     jdk: oraclejdk8
   - env: TEST_COMMAND='mx gate --tags gcc_cpp' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
-    jdk: oraclejdk8
-  - env: TEST_COMMAND='mx gate --tags gcc_fortran' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
     jdk: oraclejdk8
 after_failure:
   - find . -iname "*.log" -print0 | xargs -0 cat
