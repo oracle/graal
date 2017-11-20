@@ -242,6 +242,7 @@ final class ObjectStructures {
 
     static class MessageNodes {
 
+        final Node keyInfo;
         final Node keys;
         final Node hasSize;
         final Node getSize;
@@ -249,6 +250,7 @@ final class ObjectStructures {
         final Node write;
 
         MessageNodes() {
+            keyInfo = Message.KEY_INFO.createNode();
             keys = Message.KEYS.createNode();
             hasSize = Message.HAS_SIZE.createNode();
             getSize = Message.GET_SIZE.createNode();

@@ -38,6 +38,7 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
@@ -225,7 +226,14 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
     }
 
     DebugValue wrapHeapValue(Object result) {
-        return new HeapValue(event.getSession().getDebugger(), findCurrentRoot(), result);
+        LanguageInfo language;
+        RootNode root = findCurrentRoot();
+        if (root != null) {
+            language = root.getLanguageInfo();
+        } else {
+            language = null;
+        }
+        return new HeapValue(event.getSession().getDebugger(), language, null, result);
     }
 
     /**

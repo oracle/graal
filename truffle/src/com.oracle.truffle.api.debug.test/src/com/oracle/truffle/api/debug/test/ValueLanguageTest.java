@@ -151,8 +151,8 @@ public class ValueLanguageTest extends AbstractDebugTest {
                 // info from original lang1:
                 value = value.asInLanguage(lang1);
                 assertEquals("{a={}, j=100, k=200, c={}}", value.as(String.class));
-                assertEquals("L2:Map", value.getMetaObject().as(String.class));
-                assertEquals("L1:Map", value.getMetaObject().asInLanguage(lang1).as(String.class));
+                assertEquals("L1:Map", value.getMetaObject().as(String.class));
+                assertEquals("L2:Map", value.getMetaObject().asInLanguage(lang2).as(String.class));
 
                 // Properties are always in the original language:
                 value = frame.getScope().getDeclaredValue("b");

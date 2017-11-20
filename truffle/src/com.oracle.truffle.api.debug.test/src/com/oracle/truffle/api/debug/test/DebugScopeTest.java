@@ -33,6 +33,7 @@ import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import org.graalvm.polyglot.Source;
+import static org.junit.Assert.assertEquals;
 
 public class DebugScopeTest extends AbstractDebugTest {
 
@@ -58,6 +59,9 @@ public class DebugScopeTest extends AbstractDebugTest {
                 DebugValue function1 = topScope.getDeclaredValue("function1");
                 assertNotNull(function1);
                 assertTrue(function1.as(String.class).contains("Function"));
+                DebugValue functionType = function1.getMetaObject();
+                assertEquals("Function", functionType.as(String.class));
+                assertEquals(function1.getOriginalLanguage(), functionType.getOriginalLanguage());
                 DebugValue g = topScope.getDeclaredValue("g");
                 assertNotNull(g);
                 assertTrue(g.as(String.class).contains("Function"));

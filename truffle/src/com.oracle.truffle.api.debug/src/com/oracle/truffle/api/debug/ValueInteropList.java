@@ -24,9 +24,10 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.nodes.RootNode;
 import java.util.AbstractList;
 import java.util.List;
+
+import com.oracle.truffle.api.nodes.LanguageInfo;
 
 /**
  * Translation of a list of array elements to list of debugger values. The implementation is not
@@ -35,19 +36,19 @@ import java.util.List;
 final class ValueInteropList extends AbstractList<DebugValue> {
 
     private final Debugger debugger;
-    private final RootNode rootNode;
+    private final LanguageInfo language;
     private final List<Object> list;
 
-    ValueInteropList(Debugger debugger, RootNode rootNode, List<Object> list) {
+    ValueInteropList(Debugger debugger, LanguageInfo language, List<Object> list) {
         this.debugger = debugger;
-        this.rootNode = rootNode;
+        this.language = language;
         this.list = list;
     }
 
     @Override
     public DebugValue get(int index) {
         Object obj = list.get(index);
-        DebugValue dv = new DebugValue.HeapValue(debugger, rootNode, obj);
+        DebugValue dv = new DebugValue.HeapValue(debugger, language, null, obj);
         return dv;
     }
 
