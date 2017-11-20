@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -44,6 +45,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
 
+    @TruffleBoundary
     protected static CallTarget getCallTarget(String mimeType, String code, ContextReference<LLVMContext> context) {
         Source sourceObject = Source.newBuilder(code).name("<eval>").mimeType(mimeType).build();
         CallTarget callTarget = context.get().getEnv().parse(sourceObject);
