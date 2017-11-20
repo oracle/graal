@@ -23,6 +23,7 @@
 package org.graalvm.compiler.nodes;
 
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 
 public interface NodeView {
 
@@ -37,4 +38,10 @@ public interface NodeView {
 
     Stamp stamp(ValueNode node);
 
+    static NodeView from(CanonicalizerTool tool) {
+        if (tool instanceof NodeView) {
+            return (NodeView) tool;
+        }
+        return DEFAULT;
+    }
 }

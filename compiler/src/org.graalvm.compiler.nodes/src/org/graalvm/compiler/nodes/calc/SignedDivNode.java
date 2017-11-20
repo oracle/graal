@@ -55,16 +55,17 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        NodeView view = NodeView.from(tool);
         if (forX.isConstant() && forY.isConstant()) {
             @SuppressWarnings("hiding")
             long y = forY.asJavaConstant().asLong();
             if (y == 0) {
                 return this; // this will trap, can not canonicalize
             }
-            return ConstantNode.forIntegerStamp(stamp(NodeView.DEFAULT), forX.asJavaConstant().asLong() / y);
+            return ConstantNode.forIntegerStamp(stamp(view), forX.asJavaConstant().asLong() / y);
         } else if (forY.isConstant()) {
             long c = forY.asJavaConstant().asLong();
-            ValueNode v = canonical(forX, c);
+            ValueNode v = canonical(forX, c, view);
             if (v != null) {
                 return v;
             }
@@ -75,7 +76,7 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
             SubNode integerSubNode = (SubNode) forX;
             if (integerSubNode.getY() instanceof SignedRemNode) {
                 SignedRemNode integerRemNode = (SignedRemNode) integerSubNode.getY();
-                if (integerSubNode.stamp(NodeView.DEFAULT).isCompatible(this.stamp(NodeView.DEFAULT)) && integerRemNode.stamp(NodeView.DEFAULT).isCompatible(this.stamp(NodeView.DEFAULT)) && integerSubNode.getX() == integerRemNode.getX() &&
+                if (integerSubNode.stamp(view).isCompatible(this.stamp(view)) && integerRemNode.stamp(view).isCompatible(this.stamp(view)) && integerSubNode.getX() == integerRemNode.getX() &&
                                 forY == integerRemNode.getY()) {
                     SignedDivNode sd = new SignedDivNode(integerSubNode.getX(), forY);
                     sd.stateBefore = this.stateBefore;
@@ -94,28 +95,28 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
         return this;
     }
 
-    public static ValueNode canonical(ValueNode forX, long c) {
+    public static ValueNode canonical(ValueNode forX, long c, NodeView view) {
         if (c == 1) {
             return forX;
         }
         if (c == -1) {
-            return NegateNode.create(forX);
+            return NegateNode.create(forX, view);
         }
         long abs = Math.abs(c);
-        if (CodeUtil.isPowerOf2(abs) && forX.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
+        if (CodeUtil.isPowerOf2(abs) && forX.stamp(view) instanceof IntegerStamp) {
             ValueNode dividend = forX;
-            IntegerStamp stampX = (IntegerStamp) forX.stamp(NodeView.DEFAULT);
+            IntegerStamp stampX = (IntegerStamp) forX.stamp(view);
             int log2 = CodeUtil.log2(abs);
             // no rounding if dividend is positive or if its low bits are always 0
             if (stampX.canBeNegative() || (stampX.upMask() & (abs - 1)) != 0) {
-                int bits = PrimitiveStamp.getBits(forX.stamp(NodeView.DEFAULT));
+                int bits = PrimitiveStamp.getBits(forX.stamp(view));
                 RightShiftNode sign = new RightShiftNode(forX, ConstantNode.forInt(bits - 1));
                 UnsignedRightShiftNode round = new UnsignedRightShiftNode(sign, ConstantNode.forInt(bits - log2));
-                dividend = BinaryArithmeticNode.add(dividend, round);
+                dividend = BinaryArithmeticNode.add(dividend, round, view);
             }
             RightShiftNode shift = new RightShiftNode(dividend, ConstantNode.forInt(log2));
             if (c < 0) {
-                return NegateNode.create(shift);
+                return NegateNode.create(shift, view);
             }
             return shift;
         }

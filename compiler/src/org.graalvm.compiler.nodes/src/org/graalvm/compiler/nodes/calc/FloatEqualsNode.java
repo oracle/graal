@@ -55,7 +55,7 @@ public final class FloatEqualsNode extends CompareNode implements BinaryCommutat
         assert x.stamp(NodeView.DEFAULT).isCompatible(y.stamp(NodeView.DEFAULT));
     }
 
-    public static LogicNode create(ValueNode x, ValueNode y) {
+    public static LogicNode create(ValueNode x, ValueNode y, NodeView view) {
         LogicNode result = CompareNode.tryConstantFoldPrimitive(Condition.EQ, x, y, false);
         if (result != null) {
             return result;
@@ -65,12 +65,12 @@ public final class FloatEqualsNode extends CompareNode implements BinaryCommutat
     }
 
     public static LogicNode create(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth,
-                    ValueNode x, ValueNode y) {
-        LogicNode value = OP.canonical(constantReflection, metaAccess, options, smallestCompareWidth, Condition.EQ, false, x, y);
+                    ValueNode x, ValueNode y, NodeView view) {
+        LogicNode value = OP.canonical(constantReflection, metaAccess, options, smallestCompareWidth, Condition.EQ, false, x, y, view);
         if (value != null) {
             return value;
         }
-        return create(x, y);
+        return create(x, y, view);
     }
 
     @Override
@@ -88,7 +88,8 @@ public final class FloatEqualsNode extends CompareNode implements BinaryCommutat
 
     @Override
     public Node canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        ValueNode value = OP.canonical(tool.getConstantReflection(), tool.getMetaAccess(), tool.getOptions(), tool.smallestCompareWidth(), Condition.EQ, unorderedIsTrue, forX, forY);
+        NodeView view = NodeView.from(tool);
+        ValueNode value = OP.canonical(tool.getConstantReflection(), tool.getMetaAccess(), tool.getOptions(), tool.smallestCompareWidth(), Condition.EQ, unorderedIsTrue, forX, forY, view);
         if (value != null) {
             return value;
         }
@@ -99,13 +100,13 @@ public final class FloatEqualsNode extends CompareNode implements BinaryCommutat
 
         @Override
         public LogicNode canonical(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, Condition condition,
-                        boolean unorderedIsTrue, ValueNode forX, ValueNode forY) {
-            LogicNode result = super.canonical(constantReflection, metaAccess, options, smallestCompareWidth, condition, unorderedIsTrue, forX, forY);
+                        boolean unorderedIsTrue, ValueNode forX, ValueNode forY, NodeView view) {
+            LogicNode result = super.canonical(constantReflection, metaAccess, options, smallestCompareWidth, condition, unorderedIsTrue, forX, forY, view);
             if (result != null) {
                 return result;
             }
-            Stamp xStampGeneric = forX.stamp(NodeView.DEFAULT);
-            Stamp yStampGeneric = forY.stamp(NodeView.DEFAULT);
+            Stamp xStampGeneric = forX.stamp(view);
+            Stamp yStampGeneric = forY.stamp(view);
             if (xStampGeneric instanceof FloatStamp && yStampGeneric instanceof FloatStamp) {
                 FloatStamp xStamp = (FloatStamp) xStampGeneric;
                 FloatStamp yStamp = (FloatStamp) yStampGeneric;
@@ -119,10 +120,10 @@ public final class FloatEqualsNode extends CompareNode implements BinaryCommutat
         }
 
         @Override
-        protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue) {
-            if (newX.stamp(NodeView.DEFAULT) instanceof FloatStamp && newY.stamp(NodeView.DEFAULT) instanceof FloatStamp) {
+        protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue, NodeView view) {
+            if (newX.stamp(view) instanceof FloatStamp && newY.stamp(view) instanceof FloatStamp) {
                 return new FloatEqualsNode(newX, newY);
-            } else if (newX.stamp(NodeView.DEFAULT) instanceof IntegerStamp && newY.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
+            } else if (newX.stamp(view) instanceof IntegerStamp && newY.stamp(view) instanceof IntegerStamp) {
                 return new IntegerEqualsNode(newX, newY);
             }
             throw GraalError.shouldNotReachHere();

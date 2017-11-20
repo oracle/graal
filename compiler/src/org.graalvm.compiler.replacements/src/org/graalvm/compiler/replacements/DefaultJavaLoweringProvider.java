@@ -1041,7 +1041,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             arrayLength = arrayLength.isAlive() ? arrayLength : graph.addOrUniqueWithInputs(arrayLength);
         }
 
-        LogicNode boundsCheck = IntegerBelowNode.create(n.index(), arrayLength);
+        LogicNode boundsCheck = IntegerBelowNode.create(n.index(), arrayLength, NodeView.DEFAULT);
         if (boundsCheck.isTautology()) {
             return null;
         }

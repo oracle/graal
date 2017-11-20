@@ -49,7 +49,7 @@ public class MathUtil {
         if (isConstantZero(v2)) {
             return v1;
         }
-        return BinaryArithmeticNode.add(graph, v1, v2);
+        return BinaryArithmeticNode.add(graph, v1, v2, NodeView.DEFAULT);
     }
 
     public static ValueNode mul(StructuredGraph graph, ValueNode v1, ValueNode v2) {
@@ -59,14 +59,14 @@ public class MathUtil {
         if (isConstantOne(v2)) {
             return v1;
         }
-        return BinaryArithmeticNode.mul(graph, v1, v2);
+        return BinaryArithmeticNode.mul(graph, v1, v2, NodeView.DEFAULT);
     }
 
     public static ValueNode sub(StructuredGraph graph, ValueNode v1, ValueNode v2) {
         if (isConstantZero(v2)) {
             return v1;
         }
-        return BinaryArithmeticNode.sub(graph, v1, v2);
+        return BinaryArithmeticNode.sub(graph, v1, v2, NodeView.DEFAULT);
     }
 
     public static ValueNode divBefore(StructuredGraph graph, FixedNode before, ValueNode dividend, ValueNode divisor) {

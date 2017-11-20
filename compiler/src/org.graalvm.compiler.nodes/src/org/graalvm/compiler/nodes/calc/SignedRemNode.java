@@ -80,7 +80,8 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
                     return new NegateNode(new AndNode(new NegateNode(forX), ConstantNode.forIntegerStamp(stamp(NodeView.DEFAULT), constY - 1)));
                 } else {
                     // x - ((x / y) << log2(y))
-                    return SubNode.create(forX, LeftShiftNode.create(SignedDivNode.canonical(forX, constY), ConstantNode.forInt(CodeUtil.log2(constY))));
+                    NodeView view = NodeView.from(tool);
+                    return SubNode.create(forX, LeftShiftNode.create(SignedDivNode.canonical(forX, constY, view), ConstantNode.forInt(CodeUtil.log2(constY))), view);
                 }
             }
         }

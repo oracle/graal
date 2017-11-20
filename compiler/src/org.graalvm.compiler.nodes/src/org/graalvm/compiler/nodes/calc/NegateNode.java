@@ -50,8 +50,8 @@ public final class NegateNode extends UnaryArithmeticNode<Neg> implements Narrow
         super(TYPE, ArithmeticOpTable::getNeg, value);
     }
 
-    public static ValueNode create(ValueNode value) {
-        ValueNode synonym = findSynonym(value);
+    public static ValueNode create(ValueNode value, NodeView view) {
+        ValueNode synonym = findSynonym(value, view);
         if (synonym != null) {
             return synonym;
         }
@@ -67,8 +67,8 @@ public final class NegateNode extends UnaryArithmeticNode<Neg> implements Narrow
         return this;
     }
 
-    protected static ValueNode findSynonym(ValueNode forValue) {
-        ArithmeticOpTable.UnaryOp<Neg> negOp = ArithmeticOpTable.forStamp(forValue.stamp(NodeView.DEFAULT)).getNeg();
+    protected static ValueNode findSynonym(ValueNode forValue, NodeView view) {
+        ArithmeticOpTable.UnaryOp<Neg> negOp = ArithmeticOpTable.forStamp(forValue.stamp(view)).getNeg();
         ValueNode synonym = UnaryArithmeticNode.findSynonym(forValue, negOp);
         if (synonym != null) {
             return synonym;
@@ -76,9 +76,9 @@ public final class NegateNode extends UnaryArithmeticNode<Neg> implements Narrow
         if (forValue instanceof NegateNode) {
             return ((NegateNode) forValue).getValue();
         }
-        if (forValue instanceof SubNode && !(forValue.stamp(NodeView.DEFAULT) instanceof FloatStamp)) {
+        if (forValue instanceof SubNode && !(forValue.stamp(view) instanceof FloatStamp)) {
             SubNode sub = (SubNode) forValue;
-            return SubNode.create(sub.getY(), sub.getX());
+            return SubNode.create(sub.getY(), sub.getX(), view);
         }
         return null;
     }

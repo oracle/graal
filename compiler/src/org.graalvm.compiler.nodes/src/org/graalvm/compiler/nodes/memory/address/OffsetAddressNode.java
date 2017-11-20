@@ -89,9 +89,10 @@ public class OffsetAddressNode extends AddressNode implements Canonicalizable {
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (base instanceof OffsetAddressNode) {
+            NodeView view = NodeView.from(tool);
             // Rewrite (&base[offset1])[offset2] to base[offset1 + offset2].
             OffsetAddressNode b = (OffsetAddressNode) base;
-            return new OffsetAddressNode(b.getBase(), BinaryArithmeticNode.add(b.getOffset(), this.getOffset()));
+            return new OffsetAddressNode(b.getBase(), BinaryArithmeticNode.add(b.getOffset(), this.getOffset(), view));
         } else if (base instanceof AddNode) {
             AddNode add = (AddNode) base;
             if (add.getY().isConstant()) {

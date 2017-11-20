@@ -406,7 +406,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             ValueNode falseValue = phi.valueAt(falseEnd);
             ValueNode trueValue = phi.valueAt(trueEnd);
 
-            ValueNode result = ConditionalNode.canonicalizeConditional(condition, trueValue, falseValue, phi.stamp(NodeView.DEFAULT));
+            ValueNode result = ConditionalNode.canonicalizeConditional(condition, trueValue, falseValue, phi.stamp(NodeView.DEFAULT), NodeView.DEFAULT);
             if (result != null) {
                 /*
                  * canonicalizeConditional returns possibly new nodes so add them to the graph.

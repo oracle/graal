@@ -565,7 +565,7 @@ public class TruffleGraphBuilderPlugins {
                             // Nothing to do.
                         } else {
                             boolean skipAnchor = false;
-                            LogicNode compareNode = CompareNode.createCompareNode(object.graph(), Condition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), constantReflection);
+                            LogicNode compareNode = CompareNode.createCompareNode(object.graph(), Condition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), constantReflection, NodeView.DEFAULT);
 
                             if (compareNode instanceof LogicConstantNode) {
                                 LogicConstantNode logicConstantNode = (LogicConstantNode) compareNode;
@@ -627,7 +627,7 @@ public class TruffleGraphBuilderPlugins {
                     locationIdentity = ObjectLocationIdentity.create(location.asJavaConstant());
                 }
                 LogicNode compare = b.addWithInputs(CompareNode.createCompareNode(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), null, Condition.EQ, condition,
-                                ConstantNode.forBoolean(true, object.graph())));
+                                ConstantNode.forBoolean(true, object.graph()), NodeView.DEFAULT));
                 ConditionAnchorNode anchor = b.add(new ConditionAnchorNode(compare));
                 b.addPush(returnKind, b.add(new GuardedUnsafeLoadNode(b.addNonNullCast(object), offset, returnKind, locationIdentity, anchor)));
                 return true;

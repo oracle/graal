@@ -50,21 +50,22 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
         assert y.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
     }
 
-    public static LogicNode create(ValueNode x, ValueNode y) {
-        return OP.create(x, y);
+    public static LogicNode create(ValueNode x, ValueNode y, NodeView view) {
+        return OP.create(x, y, view);
     }
 
-    public static LogicNode create(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, ValueNode x, ValueNode y) {
-        LogicNode value = OP.canonical(constantReflection, metaAccess, options, smallestCompareWidth, OP.getCondition(), false, x, y);
+    public static LogicNode create(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, ValueNode x, ValueNode y, NodeView view) {
+        LogicNode value = OP.canonical(constantReflection, metaAccess, options, smallestCompareWidth, OP.getCondition(), false, x, y, view);
         if (value != null) {
             return value;
         }
-        return create(x, y);
+        return create(x, y, view);
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        ValueNode value = OP.canonical(tool.getConstantReflection(), tool.getMetaAccess(), tool.getOptions(), tool.smallestCompareWidth(), OP.getCondition(), false, forX, forY);
+        NodeView view = NodeView.from(tool);
+        ValueNode value = OP.canonical(tool.getConstantReflection(), tool.getMetaAccess(), tool.getOptions(), tool.smallestCompareWidth(), OP.getCondition(), false, forX, forY, view);
         if (value != null) {
             return value;
         }
@@ -73,7 +74,7 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
 
     public static class BelowOp extends LowerOp {
         @Override
-        protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue) {
+        protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue, NodeView view) {
             assert newX.stamp(NodeView.DEFAULT) instanceof IntegerStamp && newY.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
             return new IntegerBelowNode(newX, newY);
         }
