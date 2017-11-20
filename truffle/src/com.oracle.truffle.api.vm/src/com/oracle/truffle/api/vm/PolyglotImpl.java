@@ -316,6 +316,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             return (C) LANGUAGE.getContext(env);
         }
 
+        @Override
+        public TruffleContext getPolyglotContext(Object vmObject) {
+            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) vmObject;
+            return languageContext.context.truffleContext;
+        }
+
         @SuppressWarnings("unchecked")
         @Override
         public <T extends TruffleLanguage<?>> T getCurrentLanguage(Class<T> languageClass) {

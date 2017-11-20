@@ -384,10 +384,14 @@ public class LanguageSPITest {
                     boolean assertions = false;
                     assert (assertions = true) == true;
                     if (assertions) {
+                        boolean leaveFailed = false;
                         try {
                             innerContext.leave("foo");
-                            fail("no assertion error for leaving with the wrong object");
                         } catch (AssertionError e) {
+                            leaveFailed = true;
+                        }
+                        if (!leaveFailed) {
+                            fail("no assertion error for leaving with the wrong object");
                         }
                     }
                 } finally {
@@ -411,6 +415,73 @@ public class LanguageSPITest {
         eval(context, f);
 
         // ensure we are not yet closed
+        eval(context, f);
+        context.close();
+    }
+
+    @Test
+    public void testTruffleContext() {
+        Context context = Context.create();
+        Function<Env, Object> f = new Function<Env, Object>() {
+            public Object apply(Env env) {
+                boolean assertions = false;
+                assert (assertions = true) == true;
+                if (!assertions) {
+                    fail("Tests must be run with assertions on");
+                }
+                LanguageSPITestLanguage.runinside = null; // No more recursive runs inside
+                Throwable[] error = new Throwable[1];
+                Thread thread = new Thread(() -> {
+                    try {
+                        Source source = Source.newBuilder("").language(LanguageSPITestLanguage.ID).name("s").build();
+                        boolean parsingFailed = false;
+                        try {
+                            // execute Truffle code in a fresh thread fails
+                            env.parse(source).call();
+                        } catch (AssertionError e) {
+                            // No current context available.
+                            parsingFailed = true;
+                        }
+                        if (!parsingFailed) {
+                            fail("no assertion error \"No current context available.\"");
+                        }
+
+                        TruffleContext truffleContext = env.getContext();
+                        // attach the Thread
+                        Object prev = truffleContext.enter();
+                        try {
+                            // execute Truffle code
+                            env.parse(source).call();
+                        } finally {
+                            // detach the Thread
+                            truffleContext.leave(prev);
+                        }
+                    } catch (Throwable t) {
+                        error[0] = t;
+                    }
+                });
+                thread.start();
+                try {
+                    thread.join();
+                } catch (InterruptedException ex) {
+                    throw new RuntimeException(ex);
+                }
+                if (error[0] != null) {
+                    throw new AssertionError(error[0]);
+                }
+                boolean leaveFailed = false;
+                try {
+                    TruffleContext truffleContext = env.getContext();
+                    truffleContext.leave(null);
+                } catch (AssertionError e) {
+                    leaveFailed = true;
+                }
+                if (!leaveFailed) {
+                    fail("no assertion error for leaving without enter");
+                }
+                return null;
+            }
+        };
         eval(context, f);
         context.close();
     }

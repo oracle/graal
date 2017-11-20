@@ -1468,6 +1468,16 @@ public abstract class TruffleLanguage<C> {
             return config;
         }
 
+        /**
+         * Returns the polyglot context associated with this environment.
+         *
+         * @return the polyglot context
+         * @since 0.30
+         */
+        public TruffleContext getContext() {
+            return AccessAPI.engineAccess().getPolyglotContext(vmObject);
+        }
+
         @SuppressWarnings("rawtypes")
         @TruffleBoundary
         <E extends TruffleLanguage> E getLanguage(Class<E> languageClass) {
@@ -1479,7 +1489,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         Object findExportedSymbol(String globalName, boolean onlyExplicit) {
-            Object c = getContext();
+            Object c = getLanguageContext();
             if (c != UNSET_CONTEXT) {
                 return spi.findExportedSymbol(c, globalName, onlyExplicit);
             } else {
@@ -1488,7 +1498,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         Object getLanguageGlobal() {
-            Object c = getContext();
+            Object c = getLanguageContext();
             if (c != UNSET_CONTEXT) {
                 return spi.getLanguageGlobal(c);
             } else {
@@ -1497,7 +1507,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         Object findMetaObject(Object obj) {
-            Object c = getContext();
+            Object c = getLanguageContext();
             if (c != UNSET_CONTEXT) {
                 final Object rawValue = AccessAPI.engineAccess().findOriginalObject(obj);
                 return spi.findMetaObject(c, rawValue);
@@ -1507,7 +1517,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         SourceSection findSourceLocation(Object obj) {
-            Object c = getContext();
+            Object c = getLanguageContext();
             if (c != UNSET_CONTEXT) {
                 final Object rawValue = AccessAPI.engineAccess().findOriginalObject(obj);
                 return spi.findSourceLocation(c, rawValue);
@@ -1531,7 +1541,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         void dispose() {
-            Object c = getContext();
+            Object c = getLanguageContext();
             if (c != UNSET_CONTEXT) {
                 spi.disposeContext(c);
             } else {
@@ -1564,7 +1574,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         String toStringIfVisible(Object value, boolean checkVisibility) {
-            Object c = getContext();
+            Object c = getLanguageContext();
             if (c != UNSET_CONTEXT) {
                 if (checkVisibility) {
                     if (!spi.isVisible(c, value)) {
@@ -1577,7 +1587,7 @@ public abstract class TruffleLanguage<C> {
             }
         }
 
-        private Object getContext() {
+        private Object getLanguageContext() {
             if (contextUnchangedAssumption.isValid()) {
                 return context;
             } else {
@@ -1682,7 +1692,7 @@ public abstract class TruffleLanguage<C> {
 
         @Override
         public Object getContext(Env env) {
-            Object c = env.getContext();
+            Object c = env.getLanguageContext();
             if (c != Env.UNSET_CONTEXT) {
                 return c;
             } else {

@@ -1588,6 +1588,11 @@ public class PolyglotEngine {
         }
 
         @Override
+        public TruffleContext getPolyglotContext(Object vmObject) {
+            throw new UnsupportedOperationException("Polyglot contexts are not supported within PolygotEngine.");
+        }
+
+        @Override
         public <T extends TruffleLanguage<?>> T getCurrentLanguage(Class<T> languageClass) {
             PolyglotEngine engine = PolyglotEngine.GLOBAL_PROFILE.get();
             if (engine == null) {

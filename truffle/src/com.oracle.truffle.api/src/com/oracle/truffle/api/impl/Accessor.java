@@ -180,6 +180,8 @@ public abstract class Accessor {
 
         public abstract <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass);
 
+        public abstract TruffleContext getPolyglotContext(Object vmObject);
+
         public abstract Value toHostValue(Object obj, Object languageContext);
 
         public abstract Object toGuestValue(Object obj, Object languageContext);
