@@ -49,6 +49,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Formatter;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
@@ -127,6 +128,55 @@ public final class DebugContext implements AutoCloseable {
             parentOutput = output;
             return output;
         }
+    }
+
+    public static Map<Object, Object> fillVersions(Map<Object, Object> properties) {
+        if (properties == null) {
+            return VERSIONS;
+        } else {
+            properties.putAll(VERSIONS);
+            return properties;
+        }
+    }
+
+    private static final Map<Object, Object> VERSIONS;
+    static {
+        Map<Object, Object> map = new HashMap<>();
+        ASSIGN: try {
+            File info = findReleaseInfo();
+            if (info == null) {
+                break ASSIGN;
+            }
+            for (String line : Files.readAllLines(info.toPath())) {
+                if (line.startsWith("SOURCE=")) {
+                    for (String versionInfo : line.substring(8).replace('"', ' ').split(" ")) {
+                        String[] idVersion = versionInfo.split(":");
+                        if (idVersion != null && idVersion.length == 2) {
+                            map.put("version." + idVersion[0], idVersion[1]);
+                        }
+                    }
+                    break ASSIGN;
+                }
+            }
+        } catch (IOException ex) {
+            // no versions file found
+        }
+        VERSIONS = Collections.unmodifiableMap(map);
+    }
+
+    private static File findReleaseInfo() {
+        String home = System.getProperty("java.home");
+        if (home == null) {
+            return null;
+        }
+        File jreDir = new File(home);
+        File releaseInJre = new File(jreDir, "release");
+        if (releaseInJre.exists()) {
+            return releaseInJre;
+        }
+        File jdkDir = jreDir.getParentFile();
+        File releaseInJdk = new File(jdkDir, "release");
+        return releaseInJdk.exists() ? releaseInJdk : null;
     }
 
     /**

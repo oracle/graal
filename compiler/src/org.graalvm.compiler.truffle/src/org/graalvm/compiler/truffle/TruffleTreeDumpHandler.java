@@ -78,7 +78,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
             if (callTarget instanceof OptimizedCallTarget) {
                 TruffleInlining inlining = new TruffleInlining((OptimizedCallTarget) callTarget, new DefaultInliningPolicy());
                 if (inlining.countInlinedCalls() > 0) {
-                    dumpInlinedTrees(printer, (OptimizedCallTarget) callTarget, inlining);
+                    dumpInlinedTrees(debug, printer, (OptimizedCallTarget) callTarget, inlining);
                     dumpInlinedCallGraph(printer, (OptimizedCallTarget) callTarget, inlining);
                 }
             }
@@ -86,7 +86,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         }
     }
 
-    private static void dumpInlinedTrees(final GraphPrintVisitor printer, final OptimizedCallTarget callTarget, TruffleInlining inlining) throws IOException {
+    private static void dumpInlinedTrees(DebugContext debug, GraphPrintVisitor printer, final OptimizedCallTarget callTarget, TruffleInlining inlining) throws IOException {
         for (DirectCallNode callNode : NodeUtil.findAllNodeInstances(callTarget.getRootNode(), DirectCallNode.class)) {
             CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
             if (inlinedCallTarget instanceof OptimizedCallTarget && callNode instanceof OptimizedDirectCallNode) {
@@ -94,7 +94,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
                 if (decision != null && decision.isInline()) {
                     printer.beginGroup((RootCallTarget) inlinedCallTarget, inlinedCallTarget.toString(), null);
                     printer.beginGraph(inlinedCallTarget.toString()).visit(((RootCallTarget) inlinedCallTarget).getRootNode());
-                    dumpInlinedTrees(printer, (OptimizedCallTarget) inlinedCallTarget, decision);
+                    dumpInlinedTrees(debug, printer, (OptimizedCallTarget) inlinedCallTarget, decision);
                     printer.endGroup();
                 }
             }

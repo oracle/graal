@@ -215,7 +215,7 @@ public abstract class PartialEvaluator {
             try (Scope c = debug.scope("TruffleTree")) {
                 if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
                     output = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE));
-                    output.beginGroup(null, callTarget.toString(), callTarget.toString(), null, 0, null);
+                    output.beginGroup(null, callTarget.toString(), callTarget.toString(), null, 0, DebugContext.fillVersions(null));
                     debug.dump(DebugContext.BASIC_LEVEL, new TruffleTreeDumpHandler.TruffleTreeDump(callTarget), "TruffleTree");
                 }
             } catch (Throwable e) {
