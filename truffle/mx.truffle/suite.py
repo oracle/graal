@@ -149,6 +149,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "TRUFFLE_API",
+        "TRUFFLE_INSTRUMENT_TEST",
         "mx:JMH_1_18",
       ],
       "imports" : ["jdk.internal.loader"],

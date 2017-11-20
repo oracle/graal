@@ -23,22 +23,31 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
@@ -48,10 +57,13 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
 
@@ -438,6 +450,282 @@ public class LanguageSPITest {
             }
 
         });
+        context.close();
+    }
+
+    @Test
+    public void testLazyInit() {
+        LanguageSPITestLanguage.instanceCount.set(0);
+        Context context = Context.create();
+        assertEquals(0, LanguageSPITestLanguage.instanceCount.get());
+        context.initialize(LanguageSPITestLanguage.ID);
+        assertEquals(1, LanguageSPITestLanguage.instanceCount.get());
+        context.close();
+    }
+
+    @Test
+    public void testLazyInitSharedEngine() {
+        LanguageSPITestLanguage.instanceCount.set(0);
+        Engine engine = Engine.create();
+        Context context1 = Context.newBuilder().engine(engine).build();
+        Context context2 = Context.newBuilder().engine(engine).build();
+        assertEquals(0, LanguageSPITestLanguage.instanceCount.get());
+        context1.initialize(LanguageSPITestLanguage.ID);
+        context2.initialize(LanguageSPITestLanguage.ID);
+        assertEquals(1, LanguageSPITestLanguage.instanceCount.get());
+        context1.close();
+        context2.close();
+    }
+
+    @Test
+    public void testErrorInCreateContext() {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected LanguageContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
+                throw new RuntimeException();
+            }
+        });
+        testFails((c) -> c.initialize(ProxyLanguage.ID));
+    }
+
+    @Test
+    public void testErrorInInitializeContext() {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected void initializeContext(LanguageContext context) throws Exception {
+                throw new RuntimeException();
+            }
+        });
+        testFails((c) -> c.initialize(ProxyLanguage.ID));
+    }
+
+    @Test
+    public void testErrorInInitializeThread() {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected void initializeThread(LanguageContext context, Thread thread) {
+                throw new RuntimeException();
+            }
+        });
+        testFails((c) -> c.initialize(ProxyLanguage.ID));
+    }
+
+    @Test
+    public void testErrorInDisposeLanguage() {
+        AtomicBoolean fail = new AtomicBoolean(true);
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+
+            @Override
+            protected void disposeContext(LanguageContext context) {
+                if (fail.get()) {
+                    throw new RuntimeException();
+                }
+            }
+        });
+
+        Context c = Context.create();
+        c.initialize(ProxyLanguage.ID);
+        testFails(() -> {
+            c.close();
+        });
+        testFails(() -> {
+            c.close();
+        });
+
+        // clean up the context
+        fail.set(false);
+        c.close();
+    }
+
+    @Test
+    public void testErrorInParse() {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
+                throw new RuntimeException();
+            }
+        });
+        Context c = Context.create();
+        c.initialize(ProxyLanguage.ID);
+        testFails(() -> c.eval(ProxyLanguage.ID, "t0"));
+        testFails(() -> c.eval(ProxyLanguage.ID, "t1"));
+        c.close();
+    }
+
+    @Test
+    public void testErrorInFindMetaObject() {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+
+            @Override
+            protected Object findMetaObject(LanguageContext context, Object value) {
+                throw new RuntimeException();
+            }
+
+            @Override
+            protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+            }
+        });
+        Context c = Context.create();
+        Value v = c.eval(ProxyLanguage.ID, "");
+        testFails(() -> v.getMetaObject());
+        testFails(() -> v.getMetaObject());
+        c.close();
+    }
+
+    @Test
+    public void testErrorInLookup() {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+
+            @Override
+            protected Object lookupSymbol(LanguageContext context, String symbolName) {
+                throw new RuntimeException();
+            }
+        });
+        Context c = Context.create();
+        testFails(() -> c.lookup(ProxyLanguage.ID, "foobar"));
+        testFails(() -> c.lookup(ProxyLanguage.ID, "foobar"));
+        c.close();
+    }
+
+    @Test
+    public void testErrorInSymbolLookup() {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+
+            @Override
+            protected Object findExportedSymbol(LanguageContext context, String globalName, boolean onlyExplicit) {
+                throw new RuntimeException();
+            }
+        });
+        Context c = Context.create();
+        c.initialize(ProxyLanguage.ID);
+        testFails(() -> c.importSymbol("foobar"));
+        c.close();
+    }
+
+    @Test
+    @SuppressWarnings("all")
+    public void testLazyOptionInit() {
+        AtomicInteger getOptionDescriptors = new AtomicInteger(0);
+        AtomicInteger iterator = new AtomicInteger(0);
+        AtomicInteger get = new AtomicInteger(0);
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+
+            final OptionKey<String> option = new OptionKey<>("");
+            final List<OptionDescriptor> descriptors;
+            {
+                descriptors = new ArrayList<>();
+                descriptors.add(OptionDescriptor.newBuilder(option, ProxyLanguage.ID + ".option").build());
+            }
+
+            @Override
+            protected OptionDescriptors getOptionDescriptors() {
+                getOptionDescriptors.incrementAndGet();
+                return new OptionDescriptors() {
+
+                    public Iterator<OptionDescriptor> iterator() {
+                        iterator.incrementAndGet();
+                        return descriptors.iterator();
+                    }
+
+                    public OptionDescriptor get(String optionName) {
+                        get.incrementAndGet();
+                        for (OptionDescriptor optionDescriptor : descriptors) {
+                            if (optionDescriptor.getName().equals(optionName)) {
+                                return optionDescriptor;
+                            }
+                        }
+                        return null;
+                    }
+                };
+            }
+        });
+        Context c = Context.create();
+        c.close();
+        assertEquals(0, getOptionDescriptors.get());
+        assertEquals(0, iterator.get());
+        assertEquals(0, get.get());
+
+        c = Context.newBuilder(ProxyLanguage.ID).option(ProxyLanguage.ID + ".option", "foobar").build();
+        assertEquals(1, getOptionDescriptors.get());
+        assertEquals(1, get.get());
+        boolean assertionsEnabled = false;
+        assert assertionsEnabled = true;
+        if (assertionsEnabled) {
+            // with assertions enabled we assert the options.
+            assertEquals(1, iterator.get());
+        } else {
+            // for valid options we should not need the iterator
+            assertEquals(0, iterator.get());
+        }
+        c.close();
+
+        // test lazyness when using meta-data
+        getOptionDescriptors.set(0);
+        iterator.set(0);
+        get.set(0);
+
+        c = Context.create();
+        OptionDescriptors descriptors = c.getEngine().getLanguages().get(ProxyLanguage.ID).getOptions();
+        assertEquals(1, getOptionDescriptors.get());
+        if (assertionsEnabled) {
+            // with assertions enabled we assert the options.
+            assertEquals(1, iterator.get());
+        } else {
+            // for valid options we should not need the iterator
+            assertEquals(0, iterator.get());
+        }
+        assertEquals(0, get.get());
+
+        for (OptionDescriptor descriptor : descriptors) {
+        }
+        assertEquals(1, getOptionDescriptors.get());
+        if (assertionsEnabled) {
+            // with assertions enabled we assert the options.
+            assertEquals(2, iterator.get());
+        } else {
+            // for valid options we should not need the iterator
+            assertEquals(1, iterator.get());
+        }
+        assertEquals(0, get.get());
+
+        assertNotNull(descriptors.get(ProxyLanguage.ID + ".option"));
+
+        assertEquals(1, getOptionDescriptors.get());
+        assertEquals(1, get.get());
+
+        c.close();
+    }
+
+    @Test
+    public void testExportSymbolInCreate() {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected LanguageContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
+                env.exportSymbol("symbol", JavaInterop.asTruffleObject(env));
+                return super.createContext(env);
+            }
+
+        });
+        Context c = Context.create();
+        c.initialize(ProxyLanguage.ID);
+        assertTrue(c.importSymbol("symbol").isHostObject());
+        c.close();
+    }
+
+    private static void testFails(Runnable consumer) {
+        try {
+            consumer.run();
+            fail();
+        } catch (PolyglotException e) {
+            assertTrue(e.isInternalError());
+            assertFalse(e.isHostException()); // should not expose internal errors
+        }
+    }
+
+    private static void testFails(Consumer<Context> consumer) {
+        Context context = Context.create();
+        testFails(() -> consumer.accept(context));
         context.close();
     }
 

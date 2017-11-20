@@ -45,7 +45,10 @@ public interface ResultVerifier extends Consumer<ResultVerifier.SnippetRun> {
      * {@link AssertionError} in case of failed assertion. The custom {@link ResultVerifier} can
      * hide an expected execution exception. For example the division operator snippet may provide a
      * custom {@link ResultVerifier} hiding the execution exception for division by zero. To
-     * propagate the execution exception the {@link ResultVerifier} should re-throw it.
+     * propagate the execution exception the {@link ResultVerifier} should re-throw it. The
+     * {@link ResultVerifier} can be used to resolve problems in the {@code ErrorTypeTest} by making
+     * the {@link Snippet}'s parameter(s) more generic and restrict the required value in the
+     * verifier.
      *
      * @param snippetRun the snippet execution data. The {@link SnippetRun} provides the actual
      *            snippet parameters, the execution result or the {@link PolyglotException} thrown

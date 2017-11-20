@@ -80,6 +80,8 @@ public class SLSharedCodeSeparatedEnvTest {
         e1.exportSymbol("extra", 1);
         e2 = Context.newBuilder("sl").engine(engine).out(os2).build();
         e2.exportSymbol("extra", 2);
+        e1.initialize("sl");
+        e2.initialize("sl");
         assertEquals("One SLLanguage instance created", instances + 1, SLLanguage.counter);
     }
 

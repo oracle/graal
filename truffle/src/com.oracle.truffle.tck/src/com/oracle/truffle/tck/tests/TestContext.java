@@ -43,6 +43,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.tck.Snippet;
 import org.graalvm.polyglot.tck.TypeDescriptor;
 import org.graalvm.polyglot.tck.LanguageProvider;
+import org.junit.Assert;
 
 final class TestContext implements Closeable {
     private Map<String, LanguageProvider> providers;
@@ -109,7 +110,16 @@ final class TestContext implements Closeable {
                         new Function<LanguageProvider, Collection<? extends Snippet>>() {
                             @Override
                             public Collection<? extends Snippet> apply(LanguageProvider tli) {
-                                return tli.createValueConstructors(context);
+                                final Collection<? extends Snippet> result = tli.createValueConstructors(context);
+                                for (Snippet snippet : result) {
+                                    if (!snippet.getParameterTypes().isEmpty()) {
+                                        Assert.fail("Value constructors cannot have parameters, invalid Snippet: " + snippet);
+                                    }
+                                    if (snippet.getReturnType().isUnion()) {
+                                        Assert.fail("Value constructors cannot return union types (use intersection type), invalid Snippet: " + snippet);
+                                    }
+                                }
+                                return result;
                             }
                         });
     }

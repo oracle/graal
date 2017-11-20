@@ -146,6 +146,15 @@ public final class SLFunctionRegistry {
         @MessageResolution(receiverType = FunctionsObject.class)
         static final class FunctionsObjectMessageResolution {
 
+            @Resolve(message = "HAS_KEYS")
+            abstract static class FunctionsObjectHasKeysNode extends Node {
+
+                @SuppressWarnings("unused")
+                public Object access(FunctionsObject fo) {
+                    return true;
+                }
+            }
+
             @Resolve(message = "KEYS")
             abstract static class FunctionsObjectKeysNode extends Node {
 

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.bench.debugger;
+package com.oracle.truffle.api.benchmark.debug;
 
 import java.io.IOException;
 

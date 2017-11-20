@@ -28,6 +28,7 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyNativeObject;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.graalvm.polyglot.proxy.ProxyPrimitive;
@@ -39,7 +40,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.ForeignAccess.Factory26;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
 
 final class PolyglotProxy {
 
@@ -111,11 +112,19 @@ final class PolyglotProxy {
         @Override
         @TruffleBoundary
         Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
-            if (proxy instanceof ProxyExecutable) {
-                return context.toGuestValue(((ProxyExecutable) proxy).execute(context.toHostValues(arguments, 1)));
+            if (proxy instanceof ProxyInstantiable) {
+                return context.toGuestValue(((ProxyInstantiable) proxy).newInstance(context.toHostValues(arguments, 1)));
             } else {
                 throw UnsupportedMessageException.raise(Message.createNew(0));
             }
+        }
+    }
+
+    private static final class ProxyIsInstantiableNode extends ProxyRootNode {
+
+        @Override
+        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
+            return proxy instanceof ProxyInstantiable;
         }
     }
 
@@ -208,6 +217,14 @@ final class PolyglotProxy {
             } else {
                 throw UnsupportedMessageException.raise(Message.GET_SIZE);
             }
+        }
+    }
+
+    private static final class ProxyHasKeysNode extends ProxyRootNode {
+
+        @Override
+        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
+            return proxy instanceof ProxyObject;
         }
     }
 
@@ -414,7 +431,7 @@ final class PolyglotProxy {
 
     }
 
-    private static final class EngineProxyFactory implements Factory26 {
+    private static final class EngineProxyFactory implements StandardFactory {
 
         private static final ForeignAccess INSTANCE = ForeignAccess.create(EngineProxy.class, new EngineProxyFactory());
 
@@ -434,8 +451,18 @@ final class PolyglotProxy {
             return Truffle.getRuntime().createCallTarget(new ProxyReadNode());
         }
 
+        @Override
+        public CallTarget accessIsInstantiable() {
+            return Truffle.getRuntime().createCallTarget(new ProxyIsInstantiableNode());
+        }
+
         public CallTarget accessNew(int argumentsLength) {
             return Truffle.getRuntime().createCallTarget(new ProxyNewNode());
+        }
+
+        @Override
+        public CallTarget accessHasKeys() {
+            return Truffle.getRuntime().createCallTarget(new ProxyHasKeysNode());
         }
 
         public CallTarget accessKeys() {
@@ -476,6 +503,11 @@ final class PolyglotProxy {
 
         public CallTarget accessAsPointer() {
             return Truffle.getRuntime().createCallTarget(new ProxyAsPointerNode());
+        }
+
+        @Override
+        public CallTarget accessToNative() {
+            return null;
         }
 
         public CallTarget accessMessage(Message unknown) {

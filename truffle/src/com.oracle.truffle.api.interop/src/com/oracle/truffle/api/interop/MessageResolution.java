@@ -30,14 +30,21 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Annotation to put on your node to simplify handling of incoming inter-operability {@link Message
  * messages}.
  *
  * This class contains the node implementations for all messages that the receiver object should
- * resolve. Elements in the super class that are annotated with {@link Resolve} will be ignored. For
- * example:
+ * resolve. Use {@link Resolve} to annotate {@link Node} implementations of messages. Those messages
+ * for which no {@link Resolve} is provided are either left unsupported, or in case of
+ * <code>HAS/IS</code> messages they get a default boolean value depending on presence of
+ * corresponding messages. E.g. <code>HAS_SIZE</code> is true if and only if <code>GET_SIZE</code>
+ * is provided, <code>IS_EXECUTABLE</code> is true if and only if <code>EXECUTE</code> is provided,
+ * etc. If objects support some messages conditionally, they should provide their own implementation
+ * of <code>HAS/IS</code> messages. Elements in the super class that are annotated with
+ * {@link Resolve} will be ignored. For example:
  *
  * {@link com.oracle.truffle.api.dsl.test.interop.Snippets.ExampleTruffleObjectMR}
  *

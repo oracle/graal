@@ -1999,6 +1999,11 @@ public abstract class TruffleLanguage<C> {
             if (descriptors == null) {
                 return OptionDescriptors.EMPTY;
             }
+            assert verifyDescriptors(language, requiredGroup, descriptors);
+            return descriptors;
+        }
+
+        private static boolean verifyDescriptors(TruffleLanguage<?> language, String requiredGroup, OptionDescriptors descriptors) {
             String groupPlusDot = requiredGroup + ".";
             for (OptionDescriptor descriptor : descriptors) {
                 if (!descriptor.getName().equals(requiredGroup) && !descriptor.getName().startsWith(groupPlusDot)) {
@@ -2007,7 +2012,7 @@ public abstract class TruffleLanguage<C> {
                                     descriptor.getName(), language.getClass().getName(), requiredGroup));
                 }
             }
-            return descriptors;
+            return true;
         }
 
         @Override

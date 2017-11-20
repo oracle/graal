@@ -582,6 +582,15 @@ public class ValueLanguageTest extends AbstractDebugTest {
             @MessageResolution(receiverType = PropertiesMapObject.class)
             static class PropertiesMapMessageResolution {
 
+                @Resolve(message = "HAS_KEYS")
+                abstract static class PropsMapHasKeysNode extends Node {
+
+                    @SuppressWarnings("unused")
+                    public Object access(PropertiesMapObject varMap) {
+                        return true;
+                    }
+                }
+
                 @Resolve(message = "KEYS")
                 abstract static class PropsMapKeysNode extends Node {
 

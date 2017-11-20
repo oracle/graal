@@ -58,8 +58,8 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         Assert.assertTrue(sampler.isCollecting());
         Assert.assertFalse(sampler.hasData());
 
-        for (int i = 0; i < 1000; i++) {
-            execute(defaultSource);
+        for (int i = 0; i < executionCount; i++) {
+            execute(defaultSourceForSampling);
         }
 
         Assert.assertNotEquals(0, sampler.getSampleCount());
