@@ -122,12 +122,12 @@ public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements A
         return null;
     }
 
-    public static ValueNode convert(ValueNode input, Stamp stamp) {
-        return convert(input, stamp, false);
+    public static ValueNode convert(ValueNode input, Stamp stamp, NodeView view) {
+        return convert(input, stamp, false, view);
     }
 
-    public static ValueNode convert(ValueNode input, Stamp stamp, StructuredGraph graph) {
-        ValueNode convert = convert(input, stamp, false);
+    public static ValueNode convert(ValueNode input, Stamp stamp, StructuredGraph graph, NodeView view) {
+        ValueNode convert = convert(input, stamp, false, view);
         if (!convert.isAlive()) {
             assert !convert.isDeleted();
             convert = graph.addOrUniqueWithInputs(convert);
@@ -135,12 +135,12 @@ public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements A
         return convert;
     }
 
-    public static ValueNode convertUnsigned(ValueNode input, Stamp stamp) {
-        return convert(input, stamp, true);
+    public static ValueNode convertUnsigned(ValueNode input, Stamp stamp, NodeView view) {
+        return convert(input, stamp, true, view);
     }
 
-    public static ValueNode convert(ValueNode input, Stamp stamp, boolean zeroExtend) {
-        IntegerStamp fromStamp = (IntegerStamp) input.stamp(NodeView.DEFAULT);
+    public static ValueNode convert(ValueNode input, Stamp stamp, boolean zeroExtend, NodeView view) {
+        IntegerStamp fromStamp = (IntegerStamp) input.stamp(view);
         IntegerStamp toStamp = (IntegerStamp) stamp;
 
         ValueNode result;
@@ -150,13 +150,13 @@ public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements A
             result = new NarrowNode(input, fromStamp.getBits(), toStamp.getBits());
         } else if (zeroExtend) {
             // toStamp.getBits() > fromStamp.getBits()
-            result = ZeroExtendNode.create(input, toStamp.getBits());
+            result = ZeroExtendNode.create(input, toStamp.getBits(), view);
         } else {
             // toStamp.getBits() > fromStamp.getBits()
-            result = SignExtendNode.create(input, toStamp.getBits());
+            result = SignExtendNode.create(input, toStamp.getBits(), view);
         }
 
-        IntegerStamp resultStamp = (IntegerStamp) result.stamp(NodeView.DEFAULT);
+        IntegerStamp resultStamp = (IntegerStamp) result.stamp(view);
         assert toStamp.getBits() == resultStamp.getBits();
         return result;
     }

@@ -116,7 +116,7 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
         graph().addBeforeFixed(this, basePtr);
 
         int shift = CodeUtil.log2(getArrayIndexScale(JavaKind.Object));
-        ValueNode extendedPos = IntegerConvertNode.convert(pos, StampFactory.forKind(runtime.getTarget().wordJavaKind), graph());
+        ValueNode extendedPos = IntegerConvertNode.convert(pos, StampFactory.forKind(runtime.getTarget().wordJavaKind), graph(), NodeView.DEFAULT);
         ValueNode scaledIndex = graph().unique(new LeftShiftNode(extendedPos, ConstantNode.forInt(shift, graph())));
         ValueNode offset = graph().unique(
                         new AddNode(scaledIndex, ConstantNode.forIntegerBits(PrimitiveStamp.getBits(scaledIndex.stamp(NodeView.DEFAULT)), getArrayBaseOffset(JavaKind.Object), graph())));
@@ -132,7 +132,7 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
             ValueNode destAddr = computeBase(getDestination(), getDestinationPosition());
             ValueNode len = getLength();
             if (len.stamp(NodeView.DEFAULT).getStackKind() != runtime.getTarget().wordJavaKind) {
-                len = IntegerConvertNode.convert(len, StampFactory.forKind(runtime.getTarget().wordJavaKind), graph());
+                len = IntegerConvertNode.convert(len, StampFactory.forKind(runtime.getTarget().wordJavaKind), graph(), NodeView.DEFAULT);
             }
             ForeignCallNode call = graph.add(new ForeignCallNode(runtime.getHostBackend().getForeignCalls(), desc, srcAddr, destAddr, len, superCheckOffset, destElemKlass));
             call.setStateAfter(stateAfter());

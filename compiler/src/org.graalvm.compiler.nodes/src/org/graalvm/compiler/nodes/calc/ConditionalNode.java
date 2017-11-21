@@ -158,12 +158,12 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
             }
         }
 
-        if (trueValue.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
+        if (trueValue.stamp(view) instanceof IntegerStamp) {
             // check if the conditional is redundant
             if (condition instanceof IntegerLessThanNode) {
                 IntegerLessThanNode lessThan = (IntegerLessThanNode) condition;
-                IntegerStamp falseValueStamp = (IntegerStamp) falseValue.stamp(NodeView.DEFAULT);
-                IntegerStamp trueValueStamp = (IntegerStamp) trueValue.stamp(NodeView.DEFAULT);
+                IntegerStamp falseValueStamp = (IntegerStamp) falseValue.stamp(view);
+                IntegerStamp trueValueStamp = (IntegerStamp) trueValue.stamp(view);
                 if (lessThan.getX() == trueValue && lessThan.getY() == falseValue) {
                     // return "x" for "x < y ? x : y" in case that we know "x <= y"
                     if (trueValueStamp.upperBound() <= falseValueStamp.lowerBound()) {
@@ -184,25 +184,25 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
                 long constFalseValue = falseValue.asJavaConstant().asLong();
                 if (condition instanceof IntegerEqualsNode) {
                     IntegerEqualsNode equals = (IntegerEqualsNode) condition;
-                    if (equals.getY().isConstant() && equals.getX().stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
-                        IntegerStamp equalsXStamp = (IntegerStamp) equals.getX().stamp(NodeView.DEFAULT);
+                    if (equals.getY().isConstant() && equals.getX().stamp(view) instanceof IntegerStamp) {
+                        IntegerStamp equalsXStamp = (IntegerStamp) equals.getX().stamp(view);
                         if (equalsXStamp.upMask() == 1) {
                             long equalsY = equals.getY().asJavaConstant().asLong();
                             if (equalsY == 0) {
                                 if (constTrueValue == 0 && constFalseValue == 1) {
                                     // return x when: x == 0 ? 0 : 1;
-                                    return IntegerConvertNode.convertUnsigned(equals.getX(), stamp);
+                                    return IntegerConvertNode.convertUnsigned(equals.getX(), stamp, view);
                                 } else if (constTrueValue == 1 && constFalseValue == 0) {
                                     // negate a boolean value via xor
-                                    return IntegerConvertNode.convertUnsigned(XorNode.create(equals.getX(), ConstantNode.forIntegerStamp(equals.getX().stamp(NodeView.DEFAULT), 1), view), stamp);
+                                    return IntegerConvertNode.convertUnsigned(XorNode.create(equals.getX(), ConstantNode.forIntegerStamp(equals.getX().stamp(view), 1), view), stamp, view);
                                 }
                             } else if (equalsY == 1) {
                                 if (constTrueValue == 1 && constFalseValue == 0) {
                                     // return x when: x == 1 ? 1 : 0;
-                                    return IntegerConvertNode.convertUnsigned(equals.getX(), stamp);
+                                    return IntegerConvertNode.convertUnsigned(equals.getX(), stamp, view);
                                 } else if (constTrueValue == 0 && constFalseValue == 1) {
                                     // negate a boolean value via xor
-                                    return IntegerConvertNode.convertUnsigned(XorNode.create(equals.getX(), ConstantNode.forIntegerStamp(equals.getX().stamp(NodeView.DEFAULT), 1), view), stamp);
+                                    return IntegerConvertNode.convertUnsigned(XorNode.create(equals.getX(), ConstantNode.forIntegerStamp(equals.getX().stamp(view), 1), view), stamp, view);
                                 }
                             }
                         }
@@ -213,10 +213,10 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
                     // (value & 1) == 1 ? 1 : 0
                     IntegerTestNode integerTestNode = (IntegerTestNode) condition;
                     if (integerTestNode.getY().isConstant()) {
-                        assert integerTestNode.getX().stamp(NodeView.DEFAULT) instanceof IntegerStamp;
+                        assert integerTestNode.getX().stamp(view) instanceof IntegerStamp;
                         long testY = integerTestNode.getY().asJavaConstant().asLong();
                         if (testY == 1 && constTrueValue == 0 && constFalseValue == 1) {
-                            return IntegerConvertNode.convertUnsigned(AndNode.create(integerTestNode.getX(), integerTestNode.getY(), view), stamp);
+                            return IntegerConvertNode.convertUnsigned(AndNode.create(integerTestNode.getX(), integerTestNode.getY(), view), stamp, view);
                         }
                     }
                 }

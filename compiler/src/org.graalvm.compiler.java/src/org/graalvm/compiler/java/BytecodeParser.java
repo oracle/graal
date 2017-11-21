@@ -1169,15 +1169,15 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genNarrow(ValueNode input, int bitCount) {
-        return NarrowNode.create(input, bitCount);
+        return NarrowNode.create(input, bitCount, NodeView.DEFAULT);
     }
 
     protected ValueNode genSignExtend(ValueNode input, int bitCount) {
-        return SignExtendNode.create(input, bitCount);
+        return SignExtendNode.create(input, bitCount, NodeView.DEFAULT);
     }
 
     protected ValueNode genZeroExtend(ValueNode input, int bitCount) {
-        return ZeroExtendNode.create(input, bitCount);
+        return ZeroExtendNode.create(input, bitCount, NodeView.DEFAULT);
     }
 
     protected void genGoto() {
