@@ -168,6 +168,8 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
      * This method is not thread-safe and will throw an {@link IllegalStateException} if called on
      * another thread than it was created with.
      *
+     * @return the scope, or <code>null</code> when no language is associated with this frame
+     *         location, or when no local scope exists.
      * @since 0.26
      */
     public DebugScope getScope() {
@@ -182,6 +184,10 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
             node = context.getInstrumentedNode();
         } else {
             node = currentFrame.getCallNode();
+        }
+        if (node.getRootNode().getLanguageInfo() == null) {
+            // no language, no scopes
+            return null;
         }
         Debugger debugger = event.getSession().getDebugger();
         MaterializedFrame frame = findTruffleFrame();
