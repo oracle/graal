@@ -69,7 +69,7 @@ public final class OrNode extends BinaryArithmeticNode<Or> implements BinaryComm
             return ret;
         }
 
-        return canonical(this, getOp(forX, forY), stamp(NodeView.DEFAULT), forX, forY, view);
+        return canonical(this, getOp(forX, forY), stamp(view), forX, forY, view);
     }
 
     private static ValueNode canonical(OrNode self, BinaryOp<Or> op, Stamp stamp, ValueNode forX, ValueNode forY, NodeView view) {
