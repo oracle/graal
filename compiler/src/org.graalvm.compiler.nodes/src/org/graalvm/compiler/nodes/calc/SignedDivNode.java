@@ -24,6 +24,7 @@ package org.graalvm.compiler.nodes.calc;
 
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -40,12 +41,16 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
 
     public static final NodeClass<SignedDivNode> TYPE = NodeClass.create(SignedDivNode.class);
 
-    public SignedDivNode(ValueNode x, ValueNode y) {
+    protected SignedDivNode(ValueNode x, ValueNode y) {
         this(TYPE, x, y);
     }
 
     protected SignedDivNode(NodeClass<? extends SignedDivNode> c, ValueNode x, ValueNode y) {
         super(c, IntegerStamp.OPS.getDiv().foldStamp(x.stamp(NodeView.DEFAULT), y.stamp(NodeView.DEFAULT)), Op.DIV, Type.SIGNED, x, y);
+    }
+
+    public static ValueNode create(ValueNode x, ValueNode y, NodeView view) {
+        return canonical(null, x, y, view);
     }
 
     @Override
@@ -56,13 +61,19 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         NodeView view = NodeView.from(tool);
+        return canonical(this, forX, forY, view);
+    }
+
+    public static ValueNode canonical(SignedDivNode self, ValueNode forX, ValueNode forY, NodeView view) {
+        Stamp predictedStamp = IntegerStamp.OPS.getDiv().foldStamp(forX.stamp(NodeView.DEFAULT), forY.stamp(NodeView.DEFAULT));
+        Stamp stamp = self != null ? self.stamp(view) : predictedStamp;
         if (forX.isConstant() && forY.isConstant()) {
             @SuppressWarnings("hiding")
             long y = forY.asJavaConstant().asLong();
             if (y == 0) {
-                return this; // this will trap, can not canonicalize
+                return self != null ? self : new SignedDivNode(forX, forY); // this will trap, can not canonicalize
             }
-            return ConstantNode.forIntegerStamp(stamp(view), forX.asJavaConstant().asLong() / y);
+            return ConstantNode.forIntegerStamp(stamp, forX.asJavaConstant().asLong() / y);
         } else if (forY.isConstant()) {
             long c = forY.asJavaConstant().asLong();
             ValueNode v = canonical(forX, c, view);
@@ -76,23 +87,23 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
             SubNode integerSubNode = (SubNode) forX;
             if (integerSubNode.getY() instanceof SignedRemNode) {
                 SignedRemNode integerRemNode = (SignedRemNode) integerSubNode.getY();
-                if (integerSubNode.stamp(view).isCompatible(this.stamp(view)) && integerRemNode.stamp(view).isCompatible(this.stamp(view)) && integerSubNode.getX() == integerRemNode.getX() &&
+                if (integerSubNode.stamp(view).isCompatible(stamp) && integerRemNode.stamp(view).isCompatible(stamp) && integerSubNode.getX() == integerRemNode.getX() &&
                                 forY == integerRemNode.getY()) {
                     SignedDivNode sd = new SignedDivNode(integerSubNode.getX(), forY);
-                    sd.stateBefore = this.stateBefore;
+                    sd.stateBefore = self != null ? self.stateBefore : null;
                     return sd;
                 }
             }
         }
 
-        if (next() instanceof SignedDivNode) {
-            NodeClass<?> nodeClass = getNodeClass();
-            if (next().getClass() == this.getClass() && nodeClass.equalInputs(this, next()) && valueEquals(next())) {
-                return next();
+        if (self != null && self.next() instanceof SignedDivNode) {
+            NodeClass<?> nodeClass = self.getNodeClass();
+            if (self.next().getClass() == self.getClass() && nodeClass.equalInputs(self, self.next()) && self.valueEquals(self.next())) {
+                return self.next();
             }
         }
 
-        return this;
+        return self != null ? self : new SignedDivNode(forX, forY);
     }
 
     public static ValueNode canonical(ValueNode forX, long c, NodeView view) {

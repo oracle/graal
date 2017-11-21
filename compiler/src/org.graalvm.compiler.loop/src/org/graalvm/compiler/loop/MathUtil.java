@@ -28,6 +28,7 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
+import org.graalvm.compiler.nodes.calc.FixedBinaryNode;
 import org.graalvm.compiler.nodes.calc.SignedDivNode;
 
 /**
@@ -73,8 +74,10 @@ public class MathUtil {
         if (isConstantOne(divisor)) {
             return dividend;
         }
-        SignedDivNode div = graph.add(new SignedDivNode(dividend, divisor));
-        graph.addBeforeFixed(before, div);
+        ValueNode div = graph.add(SignedDivNode.create(dividend, divisor, NodeView.DEFAULT));
+        if (div instanceof FixedBinaryNode) {
+            graph.addBeforeFixed(before, (FixedBinaryNode) div);
+        }
         return div;
     }
 }
