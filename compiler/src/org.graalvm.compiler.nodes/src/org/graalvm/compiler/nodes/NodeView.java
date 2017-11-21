@@ -26,29 +26,20 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 
 /**
- * Interface that overrides properties of a node,
- * such as the node's stamp.
+ * Interface that overrides properties of a node, such as the node's stamp.
  *
- * This interface allows richer canonicalizations when
- * the current compilation context can provide a narrower stamp
- * than the one stored in the node itself.
- * One such example is performing canonicalization
- * late in the compilation, when the nodes are already scheduled,
- * and benefit from additional stamp information
- * from conditional checks in branches.
+ * This interface allows richer canonicalizations when the current compilation context can provide a
+ * narrower stamp than the one stored in the node itself. One such example is performing
+ * canonicalization late in the compilation, when the nodes are already scheduled, and benefit from
+ * additional stamp information from conditional checks in branches.
+ *
+ * For example, in the following code, <code>offset + i</code> can be canonicalized once it is
+ * scheduled into the branch:
  *
  * <pre>
- * class SpecialNodeView implements NodeView {
- *     ...
- *     Stamp stamp(ValueNode node) {
- *         Stamp narrowed = getNarrowerStamp(node)
- *         return narrowed != null ? narrowed : node.stamp(NodeView.DEFAULT);
- *     }
- * }
- *
- * class SpecialCanonicalizerPhase extends CanonicalizerPhase {
- *     NodeView getNodeView() {
- *         return new SpecialNodeView();
+ * public void update(int offset, int i) {
+ *     if (i == 0) {
+ *         array[offset + i];
  *     }
  * }
  * </pre>
