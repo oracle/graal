@@ -47,6 +47,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.llvm.runtime.interop.LLVMFunctionMessageResolutionForeign;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject, Comparable<LLVMFunctionDescriptor> {
@@ -213,7 +214,7 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
         }
 
         private static boolean isNFIAvailable(LLVMFunctionDescriptor descriptor) {
-            return descriptor.getContext().hasContextExtension(NFIContextExtension.class);
+            return descriptor.getContext().hasContextExtension(NFIContextExtension.class) && descriptor.getContext().getEnv().getOptions().get(SulongEngineOption.ENABLE_NFI);
         }
 
         private static boolean canIntrinsify(LLVMFunctionDescriptor descriptor) {

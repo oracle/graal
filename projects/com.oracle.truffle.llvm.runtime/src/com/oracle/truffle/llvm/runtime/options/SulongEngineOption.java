@@ -64,6 +64,10 @@ public final class SulongEngineOption {
     public static final String LIBRARIES_INFO = "List of libraries (precompiled libraires *.dylib/*.so as well as bitcode libraries *.bc). Files with a relative path will be looked up relative to llvm.libraryPath. Libraries are delimited by " +
                     OPTION_ARRAY_SEPARATOR + " .";
 
+    public static final OptionKey<Boolean> ENABLE_NFI = new OptionKey<>(true);
+    public static final String ENABLE_NFI_NAME = "llvm.enableExternalNativeAccess";
+    public static final String ENABLE_NFI_INFO = "Enable Sulongs native interface.";
+
     public static final OptionKey<String> DEBUG = new OptionKey<>(String.valueOf(false));
     public static final String DEBUG_NAME = "llvm.debug";
     public static final String DEBUG_INFO = "Turns debugging on/off. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.";
@@ -97,6 +101,8 @@ public final class SulongEngineOption {
         options.add(OptionDescriptor.newBuilder(SulongEngineOption.LIBRARIES, SulongEngineOption.LIBRARIES_NAME).help(SulongEngineOption.LIBRARIES_INFO).category(
                         OptionCategory.USER).build());
         options.add(OptionDescriptor.newBuilder(SulongEngineOption.LIBRARY_PATH, SulongEngineOption.LIBRARY_PATH_NAME).help(SulongEngineOption.LIBRARY_PATH_INFO).category(
+                        OptionCategory.USER).build());
+        options.add(OptionDescriptor.newBuilder(SulongEngineOption.ENABLE_NFI, SulongEngineOption.ENABLE_NFI_NAME).help(SulongEngineOption.ENABLE_NFI_INFO).category(
                         OptionCategory.USER).build());
         options.add(OptionDescriptor.newBuilder(SulongEngineOption.DEBUG, SulongEngineOption.DEBUG_NAME).help(SulongEngineOption.DEBUG_INFO).category(
                         OptionCategory.USER).build());
