@@ -52,9 +52,9 @@ public final class OrNode extends BinaryArithmeticNode<Or> implements BinaryComm
     }
 
     public static ValueNode create(ValueNode x, ValueNode y, NodeView view) {
-        BinaryOp<Or> op = ArithmeticOpTable.forStamp(x.stamp(NodeView.DEFAULT)).getOr();
-        Stamp stamp = op.foldStamp(x.stamp(NodeView.DEFAULT), y.stamp(NodeView.DEFAULT));
-        ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp);
+        BinaryOp<Or> op = ArithmeticOpTable.forStamp(x.stamp(view)).getOr();
+        Stamp stamp = op.foldStamp(x.stamp(view), y.stamp(view));
+        ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp, view);
         if (tryConstantFold != null) {
             return tryConstantFold;
         }

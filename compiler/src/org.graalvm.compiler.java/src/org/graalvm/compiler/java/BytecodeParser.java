@@ -1117,7 +1117,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genFloatDiv(ValueNode x, ValueNode y) {
-        return FloatDivNode.create(x, y);
+        return FloatDivNode.create(x, y, NodeView.DEFAULT);
     }
 
     protected ValueNode genFloatRem(ValueNode x, ValueNode y) {
@@ -1165,7 +1165,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genFloatConvert(FloatConvert op, ValueNode input) {
-        return FloatConvertNode.create(op, input);
+        return FloatConvertNode.create(op, input, NodeView.DEFAULT);
     }
 
     protected ValueNode genNarrow(ValueNode input, int bitCount) {
