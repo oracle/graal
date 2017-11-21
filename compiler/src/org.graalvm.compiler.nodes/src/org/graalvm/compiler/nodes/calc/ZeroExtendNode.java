@@ -36,6 +36,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
@@ -50,8 +51,8 @@ public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend, Narrow>
     public static final NodeClass<ZeroExtendNode> TYPE = NodeClass.create(ZeroExtendNode.class);
 
     public ZeroExtendNode(ValueNode input, int resultBits) {
-        this(input, PrimitiveStamp.getBits(input.stamp()), resultBits);
-        assert 0 < PrimitiveStamp.getBits(input.stamp()) && PrimitiveStamp.getBits(input.stamp()) <= resultBits;
+        this(input, PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)), resultBits);
+        assert 0 < PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)) && PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)) <= resultBits;
     }
 
     public ZeroExtendNode(ValueNode input, int inputBits, int resultBits) {
@@ -59,12 +60,12 @@ public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend, Narrow>
     }
 
     public static ValueNode create(ValueNode input, int resultBits) {
-        return create(input, PrimitiveStamp.getBits(input.stamp()), resultBits);
+        return create(input, PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)), resultBits);
     }
 
     public static ValueNode create(ValueNode input, int inputBits, int resultBits) {
-        IntegerConvertOp<ZeroExtend> signExtend = ArithmeticOpTable.forStamp(input.stamp()).getZeroExtend();
-        ValueNode synonym = findSynonym(signExtend, input, inputBits, resultBits, signExtend.foldStamp(inputBits, resultBits, input.stamp()));
+        IntegerConvertOp<ZeroExtend> signExtend = ArithmeticOpTable.forStamp(input.stamp(NodeView.DEFAULT)).getZeroExtend();
+        ValueNode synonym = findSynonym(signExtend, input, inputBits, resultBits, signExtend.foldStamp(inputBits, resultBits, input.stamp(NodeView.DEFAULT)));
         if (synonym != null) {
             return synonym;
         }
@@ -109,10 +110,10 @@ public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend, Narrow>
         }
         if (forValue instanceof NarrowNode) {
             NarrowNode narrow = (NarrowNode) forValue;
-            Stamp inputStamp = narrow.getValue().stamp();
+            Stamp inputStamp = narrow.getValue().stamp(NodeView.DEFAULT);
             if (inputStamp instanceof IntegerStamp) {
                 IntegerStamp istamp = (IntegerStamp) inputStamp;
-                long mask = CodeUtil.mask(PrimitiveStamp.getBits(narrow.stamp()));
+                long mask = CodeUtil.mask(PrimitiveStamp.getBits(narrow.stamp(NodeView.DEFAULT)));
 
                 if ((istamp.upMask() & ~mask) == 0) {
                     // The original value cannot change because of the narrow and zero extend.

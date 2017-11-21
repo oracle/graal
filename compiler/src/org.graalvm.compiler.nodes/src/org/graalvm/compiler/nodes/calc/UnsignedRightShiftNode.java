@@ -30,6 +30,7 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
@@ -98,7 +99,7 @@ public final class UnsignedRightShiftNode extends ShiftNode<UShr> {
              * For unsigned right shifts, the narrow can be done before the shift if the cut off
              * bits are all zero.
              */
-            IntegerStamp inputStamp = (IntegerStamp) getX().stamp();
+            IntegerStamp inputStamp = (IntegerStamp) getX().stamp(NodeView.DEFAULT);
             return (inputStamp.upMask() & ~(resultBits - 1)) == 0;
         } else {
             return false;

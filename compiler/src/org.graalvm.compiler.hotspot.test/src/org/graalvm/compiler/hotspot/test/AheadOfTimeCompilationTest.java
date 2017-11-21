@@ -30,6 +30,7 @@ import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -74,7 +75,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
     public void testStaticFinalObjectAOT() {
         StructuredGraph result = compile("getStaticFinalObject", true);
         assertDeepEquals(1, getConstantNodes(result).count());
-        Stamp constantStamp = getConstantNodes(result).first().stamp();
+        Stamp constantStamp = getConstantNodes(result).first().stamp(NodeView.DEFAULT);
         Assert.assertTrue(constantStamp.toString(), constantStamp instanceof KlassPointerStamp);
         assertDeepEquals(2, result.getNodes().filter(ReadNode.class).count());
     }
@@ -124,7 +125,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         StructuredGraph result = compile("getPrimitiveClassObject", true);
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
         assertDeepEquals(1, filter.count());
-        Stamp constantStamp = filter.first().stamp();
+        Stamp constantStamp = filter.first().stamp(NodeView.DEFAULT);
         Assert.assertTrue(constantStamp instanceof KlassPointerStamp);
 
         assertDeepEquals(2, result.getNodes().filter(ReadNode.class).count());

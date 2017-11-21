@@ -34,6 +34,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
@@ -48,8 +49,8 @@ public final class NarrowNode extends IntegerConvertNode<Narrow, SignExtend> {
     public static final NodeClass<NarrowNode> TYPE = NodeClass.create(NarrowNode.class);
 
     public NarrowNode(ValueNode input, int resultBits) {
-        this(input, PrimitiveStamp.getBits(input.stamp()), resultBits);
-        assert 0 < resultBits && resultBits <= PrimitiveStamp.getBits(input.stamp());
+        this(input, PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)), resultBits);
+        assert 0 < resultBits && resultBits <= PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT));
     }
 
     public NarrowNode(ValueNode input, int inputBits, int resultBits) {
@@ -57,12 +58,12 @@ public final class NarrowNode extends IntegerConvertNode<Narrow, SignExtend> {
     }
 
     public static ValueNode create(ValueNode input, int resultBits) {
-        return create(input, PrimitiveStamp.getBits(input.stamp()), resultBits);
+        return create(input, PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)), resultBits);
     }
 
     public static ValueNode create(ValueNode input, int inputBits, int resultBits) {
-        IntegerConvertOp<Narrow> signExtend = ArithmeticOpTable.forStamp(input.stamp()).getNarrow();
-        ValueNode synonym = findSynonym(signExtend, input, inputBits, resultBits, signExtend.foldStamp(inputBits, resultBits, input.stamp()));
+        IntegerConvertOp<Narrow> signExtend = ArithmeticOpTable.forStamp(input.stamp(NodeView.DEFAULT)).getNarrow();
+        ValueNode synonym = findSynonym(signExtend, input, inputBits, resultBits, signExtend.foldStamp(inputBits, resultBits, input.stamp(NodeView.DEFAULT)));
         if (synonym != null) {
             return synonym;
         } else {
@@ -117,8 +118,8 @@ public final class NarrowNode extends IntegerConvertNode<Narrow, SignExtend> {
             }
         } else if (forValue instanceof AndNode) {
             AndNode andNode = (AndNode) forValue;
-            IntegerStamp yStamp = (IntegerStamp) andNode.getY().stamp();
-            IntegerStamp xStamp = (IntegerStamp) andNode.getX().stamp();
+            IntegerStamp yStamp = (IntegerStamp) andNode.getY().stamp(NodeView.DEFAULT);
+            IntegerStamp xStamp = (IntegerStamp) andNode.getX().stamp(NodeView.DEFAULT);
             long relevantMask = CodeUtil.mask(this.getResultBits());
             if ((relevantMask & yStamp.downMask()) == relevantMask) {
                 return create(andNode.getX(), this.getResultBits());

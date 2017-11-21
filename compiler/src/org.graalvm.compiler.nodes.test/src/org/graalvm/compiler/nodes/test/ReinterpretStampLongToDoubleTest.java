@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.graalvm.compiler.nodes.NodeView;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -71,7 +72,7 @@ public class ReinterpretStampLongToDoubleTest extends ReinterpretStampTest {
         ReinterpretNode reinterpret = new ReinterpretNode(JavaKind.Double, param);
         reinterpret.inferStamp();
 
-        FloatStamp resultStamp = (FloatStamp) reinterpret.stamp();
+        FloatStamp resultStamp = (FloatStamp) reinterpret.stamp(NodeView.DEFAULT);
         Assert.assertEquals(Double.SIZE, resultStamp.getBits());
 
         for (long input : interestingLongs) {

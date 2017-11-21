@@ -54,6 +54,7 @@ import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -375,8 +376,8 @@ public class ArrayCopySnippets implements Snippets {
             SnippetInfo snippetInfo;
             ArrayCopyTypeCheck arrayTypeCheck;
 
-            ResolvedJavaType srcType = StampTool.typeOrNull(arraycopy.getSource().stamp());
-            ResolvedJavaType destType = StampTool.typeOrNull(arraycopy.getDestination().stamp());
+            ResolvedJavaType srcType = StampTool.typeOrNull(arraycopy.getSource().stamp(NodeView.DEFAULT));
+            ResolvedJavaType destType = StampTool.typeOrNull(arraycopy.getDestination().stamp(NodeView.DEFAULT));
             if (!canBeArray(srcType) || !canBeArray(destType)) {
                 // at least one of the objects is definitely not an array - use the native call
                 // right away as the copying will fail anyways
@@ -495,8 +496,8 @@ public class ArrayCopySnippets implements Snippets {
         }
 
         public static JavaKind selectComponentKind(BasicArrayCopyNode arraycopy) {
-            ResolvedJavaType srcType = StampTool.typeOrNull(arraycopy.getSource().stamp());
-            ResolvedJavaType destType = StampTool.typeOrNull(arraycopy.getDestination().stamp());
+            ResolvedJavaType srcType = StampTool.typeOrNull(arraycopy.getSource().stamp(NodeView.DEFAULT));
+            ResolvedJavaType destType = StampTool.typeOrNull(arraycopy.getDestination().stamp(NodeView.DEFAULT));
 
             if (srcType == null || !srcType.isArray() || destType == null || !destType.isArray()) {
                 return null;

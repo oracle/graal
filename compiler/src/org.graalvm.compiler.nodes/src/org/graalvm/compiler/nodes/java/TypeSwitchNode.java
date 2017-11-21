@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
@@ -64,7 +65,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
         assert successors.length <= keys.length + 1;
         assert keySuccessors.length == keyProbabilities.length;
         this.keys = keys;
-        assert value.stamp() instanceof AbstractPointerStamp;
+        assert value.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp;
         assert assertKeys();
 
         hubs = new Constant[keys.length];
@@ -139,8 +140,8 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
             }
             killOtherSuccessors(tool, survivingEdge);
         }
-        if (value() instanceof LoadHubNode && ((LoadHubNode) value()).getValue().stamp() instanceof ObjectStamp) {
-            ObjectStamp objectStamp = (ObjectStamp) ((LoadHubNode) value()).getValue().stamp();
+        if (value() instanceof LoadHubNode && ((LoadHubNode) value()).getValue().stamp(NodeView.DEFAULT) instanceof ObjectStamp) {
+            ObjectStamp objectStamp = (ObjectStamp) ((LoadHubNode) value()).getValue().stamp(NodeView.DEFAULT);
             if (objectStamp.type() != null) {
                 int validKeys = 0;
                 for (int i = 0; i < keyCount(); i++) {
