@@ -51,7 +51,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Formatter;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
@@ -130,12 +129,6 @@ public final class DebugContext implements AutoCloseable {
         }
     }
 
-    private static final Versions VERSIONS;
-    static {
-        String home = System.getProperty("java.home");
-        VERSIONS = new Versions(home == null ? null : new File(home).toPath());
-    }
-
     /** Adds version properties to the provided map. The version properties
      * are read at a start of the JVM from a JVM specific location. Each
      * property identifiers a commit of a certain component in the system.
@@ -146,7 +139,7 @@ public final class DebugContext implements AutoCloseable {
      * @return non-{@code null}, potentially non-modifiable map
      */
     public static Map<Object, Object> addVersionProperties(Map<Object, Object> properties) {
-        return VERSIONS.withVersions(properties);
+        return Versions.VERSIONS.withVersions(properties);
     }
 
     /**
