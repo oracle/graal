@@ -24,10 +24,15 @@
  */
 package org.graalvm.polyglot;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Reader;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.net.URI;
+import java.net.URL;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.HashMap;
@@ -35,6 +40,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
+import java.util.concurrent.TimeUnit;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -446,35 +452,30 @@ public final class Engine implements AutoCloseable {
                 AbstractPolyglotImpl engine = null;
                 Class<?> servicesClass = null;
 
-                // TODO remove temporary hack to load polyglot engine impl, until we can load it
-                // using the jvmci/truffle service loader
-
-                if (engine == null) {
-                    if (JDK8_OR_EARLIER) {
+                if (JDK8_OR_EARLIER) {
+                    try {
+                        servicesClass = Class.forName("jdk.vm.ci.services.Services");
+                    } catch (ClassNotFoundException e) {
+                    }
+                    if (servicesClass != null) {
                         try {
-                            servicesClass = Class.forName("jdk.vm.ci.services.Services");
-                        } catch (ClassNotFoundException e) {
+                            Method m = servicesClass.getDeclaredMethod("loadSingle", Class.class, boolean.class);
+                            engine = (AbstractPolyglotImpl) m.invoke(null, AbstractPolyglotImpl.class, false);
+                        } catch (Throwable e) {
+                            // Fail fast for other errors
+                            throw new InternalError(e);
                         }
-                        if (servicesClass != null) {
-                            try {
-                                Method m = servicesClass.getDeclaredMethod("loadSingle", Class.class, boolean.class);
-                                engine = (AbstractPolyglotImpl) m.invoke(null, AbstractPolyglotImpl.class, false);
-                            } catch (Throwable e) {
-                                // Fail fast for other errors
-                                throw new InternalError(e);
-                            }
-                        }
-                    } else {
-                        // As of JDK9, the JVMCI Services class should only be used for service
-                        // types
-                        // defined by JVMCI. Other services types should use ServiceLoader directly.
-                        Iterator<AbstractPolyglotImpl> providers = ServiceLoader.load(AbstractPolyglotImpl.class).iterator();
+                    }
+                } else {
+                    // As of JDK9, the JVMCI Services class should only be used for service
+                    // types
+                    // defined by JVMCI. Other services types should use ServiceLoader directly.
+                    Iterator<AbstractPolyglotImpl> providers = ServiceLoader.load(AbstractPolyglotImpl.class).iterator();
+                    if (providers.hasNext()) {
+                        engine = providers.next();
                         if (providers.hasNext()) {
-                            engine = providers.next();
-                            if (providers.hasNext()) {
 
-                                throw new InternalError(String.format("Multiple %s providers found", AbstractPolyglotImpl.class.getName()));
-                            }
+                            throw new InternalError(String.format("Multiple %s providers found", AbstractPolyglotImpl.class.getName()));
                         }
                     }
                 }
@@ -485,9 +486,14 @@ public final class Engine implements AutoCloseable {
                         Constructor<? extends AbstractPolyglotImpl> constructor = polyglotClass.getDeclaredConstructor();
                         constructor.setAccessible(true);
                         engine = constructor.newInstance();
+                    } catch (ClassNotFoundException e) {
                     } catch (Exception e1) {
                         throw new InternalError(e1);
                     }
+                }
+
+                if (engine == null) {
+                    engine = createInvalidPolyglotImpl();
                 }
 
                 if (engine != null) {
@@ -497,6 +503,184 @@ public final class Engine implements AutoCloseable {
                 return engine;
             }
         });
+    }
+
+    /*
+     * Use static factory method with AbstractPolyglotImpl.
+     */
+    static AbstractPolyglotImpl createInvalidPolyglotImpl() {
+        return new PolyglotInvalid();
+    }
+
+    private static class PolyglotInvalid extends AbstractPolyglotImpl {
+
+        private final EmptySource source = new EmptySource(this);
+
+        /**
+         * Forces ahead-of-time initialization.
+         *
+         * @since 0.8 or earlier
+         */
+        static boolean AOT;
+
+        static {
+            Boolean aot = AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
+                public Boolean run() {
+                    return Boolean.getBoolean("com.oracle.graalvm.isaot");
+                }
+            });
+            PolyglotInvalid.AOT = aot.booleanValue();
+        }
+
+        @Override
+        public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
+                        long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine) {
+            throw noPolyglotImplementationFound();
+        }
+
+        private static RuntimeException noPolyglotImplementationFound() {
+            String suggestion;
+            if (AOT) {
+                suggestion = "Make sure a language is added to the classpath (e.g., native-image --js).";
+            } else {
+                suggestion = "Make sure the truffle-api.jar is on the classpath.";
+            }
+            return new IllegalStateException("No language and polyglot implementation was found on the classpath. " + suggestion);
+        }
+
+        @Override
+        public AbstractSourceImpl getSourceImpl() {
+            return source;
+        }
+
+        @Override
+        public AbstractSourceSectionImpl getSourceSectionImpl() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Class<?> loadLanguageClass(String className) {
+            return null;
+        }
+
+        static class EmptySource extends AbstractSourceImpl {
+
+            protected EmptySource(AbstractPolyglotImpl engineImpl) {
+                super(engineImpl);
+            }
+
+            @Override
+            public Source build(String language, Object origin, URI uri, String name, CharSequence content, boolean interactive, boolean internal) throws IOException {
+                throw noPolyglotImplementationFound();
+            }
+
+            @Override
+            public String findLanguage(File file) throws IOException {
+                return null;
+            }
+
+            @Override
+            public String findLanguage(String mimeType) {
+                return null;
+            }
+
+            @Override
+            public String getName(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public String getPath(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public boolean isInteractive(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public URL getURL(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public URI getURI(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public Reader getReader(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public InputStream getInputStream(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public int getLength(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CharSequence getCode(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CharSequence getCode(Object impl, int lineNumber) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public int getLineCount(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public int getLineNumber(Object impl, int offset) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public int getColumnNumber(Object impl, int offset) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public int getLineStartOffset(Object impl, int lineNumber) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public int getLineLength(Object impl, int lineNumber) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public String toString(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public int hashCode(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public boolean equals(Object impl, Object otherImpl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public boolean isInternal(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+        }
+
     }
 
 }

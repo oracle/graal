@@ -13,11 +13,13 @@ addons:
 sudo: required
 dist: trusty
 
+jdk:
+    - oraclejdk9
+
 env:
   global:
     - JVMCI_VERSION="jvmci-0.36"
     - JVMCI_BASE_JDK8="openjdk1.8.0_141"
-    - JDK9_BUILD="181"
   matrix:
     - JDK="jdk8" GATE="style,fullbuild"
     - JDK="jdk8" GATE="build,test"
@@ -60,14 +62,6 @@ install:
         wget https://github.com/dougxc/openjdk8-jvmci-builder/releases/download/${JVMCI_VERSION}/${JVMCI_BASE_JDK8}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
         tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
         export JAVA_HOME=${TRAVIS_BUILD_DIR}/../${JVMCI_BASE_JDK8}-${JVMCI_VERSION}
-      fi
-  - |
-      if [ "${JDK}" == "jdk9" ]
-      then
-        JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
-        wget http://download.java.net/java/jdk9/archive/${JDK9_BUILD}/binaries/jdk-9+${JDK9_BUILD}_linux-x64_bin.tar.gz -O ${JDK_TAR}
-        tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
-        export JAVA_HOME=${TRAVIS_BUILD_DIR}/../jdk-9
       fi
 
 script:

@@ -25,6 +25,7 @@ package com.oracle.truffle.dsl.processor;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
@@ -83,6 +84,11 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
             String[] mimes = annotation.mimeType();
             for (int i = 0; i < mimes.length; i++) {
                 p.setProperty(prefix + "mimeType." + i, mimes[i]);
+            }
+            String[] dependencies = annotation.dependentLanguages();
+            Arrays.sort(dependencies);
+            for (int i = 0; i < dependencies.length; i++) {
+                p.setProperty(prefix + "dependentLanguage." + i, dependencies[i]);
             }
             p.setProperty(prefix + "interactive", Boolean.toString(annotation.interactive()));
             p.setProperty(prefix + "internal", Boolean.toString(annotation.internal()));

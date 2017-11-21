@@ -22,9 +22,6 @@
  */
 package org.graalvm.compiler.printer;
 
-import java.io.File;
-import java.nio.file.InvalidPathException;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -70,32 +67,6 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
         }
         handlers.add(new NoDeadCodeVerifyHandler());
         return handlers;
-    }
-
-    public static String sanitizedFileName(String n) {
-        /*
-         * First ensure that the name does not contain the directory separator (which would be
-         * considered a valid path).
-         */
-        String name = n.replace(File.separatorChar, '_');
-
-        try {
-            Paths.get(name);
-            return name;
-        } catch (InvalidPathException e) {
-            // fall through
-        }
-        StringBuilder buf = new StringBuilder(name.length());
-        for (int i = 0; i < name.length(); i++) {
-            char c = name.charAt(i);
-            try {
-                Paths.get(String.valueOf(c));
-            } catch (InvalidPathException e) {
-                buf.append('_');
-            }
-            buf.append(c);
-        }
-        return buf.toString();
     }
 
     private static class NodeDumper implements DebugDumpHandler {

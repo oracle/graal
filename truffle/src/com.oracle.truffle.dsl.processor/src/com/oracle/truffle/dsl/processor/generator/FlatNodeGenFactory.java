@@ -104,15 +104,13 @@ import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.NodeFieldData;
 import com.oracle.truffle.dsl.processor.model.Parameter;
-import com.oracle.truffle.dsl.processor.model.ShortCircuitData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.parser.SpecializationGroup;
 import com.oracle.truffle.dsl.processor.parser.SpecializationGroup.TypeGuard;
 
-@SuppressWarnings("deprecation")
-public class FlatNodeGenFactory {
+class FlatNodeGenFactory {
 
     private static final String METHOD_FALLBACK_GUARD = "fallbackGuard_";
     private static final String FRAME_VALUE = TemplateMethod.FRAME_NAME;
@@ -126,7 +124,6 @@ public class FlatNodeGenFactory {
     private final NodeData node;
     private final TypeSystemData typeSystem;
     private final TypeMirror genericType;
-    private final com.oracle.truffle.api.dsl.internal.DSLOptions options;
     private final Set<TypeMirror> expectedTypes = new HashSet<>();
     private List<SpecializationData> reachableSpecializations;
 
@@ -141,13 +138,12 @@ public class FlatNodeGenFactory {
     private final ExecutableTypeData executeAndSpecializeType;
     private boolean fallbackNeedsState = false;
 
-    public FlatNodeGenFactory(ProcessorContext context, NodeData node) {
+    FlatNodeGenFactory(ProcessorContext context, NodeData node) {
         this.context = context;
         this.node = node;
         this.typeSystem = node.getTypeSystem();
         this.genericType = context.getType(Object.class);
-        this.options = typeSystem.getOptions();
-        this.boxingEliminationEnabled = options.flatLayoutBoxingElimination();
+        this.boxingEliminationEnabled = true;
         this.reachableSpecializations = calculateReachableSpecializations();
 
         List<Object> objects = new ArrayList<>();
@@ -180,7 +176,7 @@ public class FlatNodeGenFactory {
         return ElementUtils.firstLetterLowerCase(s.getId()) + "_cache";
     }
 
-    private static String createFieldName(SpecializationData specialization, Parameter cacheParameter) {
+    private String createFieldName(SpecializationData specialization, Parameter cacheParameter) {
         if (useSpecializationClass(specialization)) {
             return cacheParameter.getLocalName() + "_";
         } else {
@@ -188,7 +184,7 @@ public class FlatNodeGenFactory {
         }
     }
 
-    private static String createAssumptionFieldName(SpecializationData specialization, AssumptionExpression assumption) {
+    private String createAssumptionFieldName(SpecializationData specialization, AssumptionExpression assumption) {
         if (useSpecializationClass(specialization)) {
             return assumption.getId() + "_";
         } else {
@@ -209,7 +205,17 @@ public class FlatNodeGenFactory {
     }
 
     /* Whether a new class should be generated for specialization instance fields. */
-    private static boolean useSpecializationClass(SpecializationData specialization) {
+    private boolean useSpecializationClass(SpecializationData specialization) {
+        /*
+         * Children with node array require a final field. Therefore we need to always use a
+         * specialization class in this case.
+         */
+        for (CacheExpression expression : specialization.getCaches()) {
+            if (isNodeArray(expression.getExpression().getResolvedType())) {
+                return true;
+            }
+        }
+
         int size = 0;
         for (CacheExpression expression : specialization.getCaches()) {
             TypeMirror type = expression.getParameter().getType();
@@ -492,7 +498,7 @@ public class FlatNodeGenFactory {
                 CodeVariableElement cachedField;
                 if (ElementUtils.isAssignable(type, context.getType(NodeInterface.class))) {
                     cachedField = createNodeField(visibility, type, fieldName, Child.class);
-                } else if (type.getKind() == TypeKind.ARRAY && ElementUtils.isAssignable(((ArrayType) type).getComponentType(), context.getType(NodeInterface.class))) {
+                } else if (isNodeArray(type)) {
                     cachedField = createNodeField(visibility, type, fieldName, Children.class, Modifier.FINAL);
                 } else {
                     if (useSpecializationClass) {
@@ -573,6 +579,13 @@ public class FlatNodeGenFactory {
         }
     }
 
+    private boolean isNodeArray(TypeMirror type) {
+        if (type == null) {
+            return false;
+        }
+        return type.getKind() == TypeKind.ARRAY && ElementUtils.isAssignable(((ArrayType) type).getComponentType(), context.getType(NodeInterface.class));
+    }
+
     private static void setFieldCompilationFinal(CodeVariableElement field, int compilationFinalDimensions) {
         if (field.getModifiers().contains(Modifier.FINAL) && compilationFinalDimensions <= 0) {
             // no need for the compilation final annotation.
@@ -593,7 +606,7 @@ public class FlatNodeGenFactory {
                 TypeMirror type = cache.getParameter().getType();
                 if (ElementUtils.isAssignable(type, context.getType(NodeInterface.class))) {
                     return true;
-                } else if (type.getKind() == TypeKind.ARRAY && ElementUtils.isAssignable(((ArrayType) type).getComponentType(), context.getType(NodeInterface.class))) {
+                } else if (isNodeArray(type)) {
                     return true;
                 }
             }
@@ -641,7 +654,7 @@ public class FlatNodeGenFactory {
         List<SpecializationData> specializations = new ArrayList<>(reachableSpecializations);
         specializations.remove(fallback);
 
-        SpecializationGroup group = SpecializationGroup.createFlat(specializations);
+        SpecializationGroup group = SpecializationGroup.create(specializations);
 
         ExecutableTypeData executableType = node.findAnyGenericExecutableType(context, -1);
 
@@ -839,7 +852,7 @@ public class FlatNodeGenFactory {
             builder.tree(createTransferToInterpreterAndInvalidate());
             builder.startThrow().startNew(getType(AssertionError.class)).doubleQuote("Delegation failed.").end().end();
         } else {
-            SpecializationGroup group = SpecializationGroup.createFlat(implementedSpecializations);
+            SpecializationGroup group = SpecializationGroup.create(implementedSpecializations);
             builder.tree(createFastPath(builder, implementedSpecializations, group, type, frameState));
         }
         return method;
@@ -1003,11 +1016,6 @@ public class FlatNodeGenFactory {
         for (NodeExecutionData execution : node.getChildExecutions()) {
             NodeChildData child = execution.getChild();
             LocalVariable var = frameState.getValue(execution);
-            LocalVariable shortCircuit = frameState.getShortCircuit(execution);
-            if (shortCircuit != null) {
-                builder.string("null");
-                values.add(shortCircuit.createReference());
-            }
             if (child != null) {
                 builder.string("this.", nodeFieldName(execution));
             } else {
@@ -1210,7 +1218,7 @@ public class FlatNodeGenFactory {
                 index++;
             }
 
-            groups.add(new BoxingSplit(SpecializationGroup.createFlat(groupedSpecialization), signatureMirrors));
+            groups.add(new BoxingSplit(SpecializationGroup.create(groupedSpecialization), signatureMirrors));
         }
 
         Collections.sort(groups, new Comparator<BoxingSplit>() {
@@ -1254,7 +1262,6 @@ public class FlatNodeGenFactory {
             } else {
                 targetType = execution.getChild().findAnyGenericExecutableType(context).getReturnType();
             }
-            LocalVariable shortCircuit = resolveShortCircuit(null, execution, frameState);
             var = frameState.createValue(execution, targetType).nextName();
 
             LocalVariable fallbackVar;
@@ -1299,7 +1306,7 @@ public class FlatNodeGenFactory {
                 fallbackVar = var;
             }
 
-            builder.tree(createAssignExecuteChild(originalFrameState, frameState, builder, execution, currentType, var, shortCircuit));
+            builder.tree(createAssignExecuteChild(originalFrameState, frameState, builder, execution, currentType, var));
             frameState.setValue(execution, var);
             originalFrameState.setValue(execution, fallbackVar);
         }
@@ -1307,17 +1314,11 @@ public class FlatNodeGenFactory {
     }
 
     private CodeTree createAssignExecuteChild(FrameState originalFrameState, FrameState frameState, CodeTreeBuilder parent, NodeExecutionData execution, ExecutableTypeData forType,
-                    LocalVariable targetValue,
-                    LocalVariable shortCircuit) {
+                    LocalVariable targetValue) {
         CodeTreeBuilder builder = parent.create();
 
         ChildExecutionResult executeChild = createExecuteChild(builder, originalFrameState, frameState, execution, targetValue);
-        builder.tree(createTryExecuteChild(targetValue, executeChild.code, shortCircuit == null, executeChild.throwsUnexpectedResult));
-
-        if (shortCircuit != null) {
-            frameState.setShortCircuitValue(execution, shortCircuit.accessWith(null));
-            originalFrameState.setShortCircuitValue(execution, shortCircuit.accessWith(null));
-        }
+        builder.tree(createTryExecuteChild(targetValue, executeChild.code, true, executeChild.throwsUnexpectedResult));
 
         builder.end();
         if (executeChild.throwsUnexpectedResult) {
@@ -1330,8 +1331,7 @@ public class FlatNodeGenFactory {
             for (NodeExecutionData otherExecution : node.getChildExecutions()) {
                 if (found) {
                     LocalVariable childEvaluatedValue = slowPathFrameState.createValue(otherExecution, genericType);
-                    LocalVariable genericShortCircuit = resolveShortCircuit(null, otherExecution, slowPathFrameState);
-                    builder.tree(createAssignExecuteChild(slowPathFrameState.copy(), slowPathFrameState, builder, otherExecution, delegateType, childEvaluatedValue, genericShortCircuit));
+                    builder.tree(createAssignExecuteChild(slowPathFrameState.copy(), slowPathFrameState, builder, otherExecution, delegateType, childEvaluatedValue));
                     slowPathFrameState.setValue(otherExecution, childEvaluatedValue);
                 } else {
                     // skip forward already evaluated
@@ -1342,7 +1342,7 @@ public class FlatNodeGenFactory {
             builder.end();
         }
 
-        return createShortCircuit(targetValue, shortCircuit, builder.build());
+        return builder.build();
     }
 
     private static String createSourceTypeLocalName(LocalVariable targetValue, TypeMirror sType) {
@@ -1640,18 +1640,6 @@ public class FlatNodeGenFactory {
             } else {
                 parameterExecution = node.getChildExecutions().get(executionIndex);
             }
-            if (parameterExecution.isShortCircuit()) {
-                if (evaluatedIndex < method.getEvaluatedCount()) {
-                    TypeMirror targetType = method.getEvaluatedParameters().get(evaluatedIndex);
-                    LocalVariable shortCircuit = frameState.getShortCircuit(parameterExecution);
-                    if (shortCircuit != null) {
-                        values.add(createTypeSafeReference(shortCircuit, targetType));
-                    } else {
-                        values.add(CodeTreeBuilder.createBuilder().defaultValue(targetType).build());
-                    }
-                    evaluatedIndex++;
-                }
-            }
             if (evaluatedIndex < method.getEvaluatedCount()) {
                 TypeMirror targetType = method.getEvaluatedParameters().get(evaluatedIndex);
                 LocalVariable value = frameState.getValue(parameterExecution);
@@ -1710,7 +1698,7 @@ public class FlatNodeGenFactory {
     }
 
     private SpecializationGroup createSpecializationGroups() {
-        return SpecializationGroup.createFlat(reachableSpecializations);
+        return SpecializationGroup.create(reachableSpecializations);
     }
 
     private CodeTree expectOrCast(TypeMirror sourceType, ExecutableTypeData targetType, CodeTree content) {
@@ -1785,16 +1773,6 @@ public class FlatNodeGenFactory {
         int evaluatedIndex = 0;
         for (int executionIndex = 0; executionIndex < node.getExecutionCount(); executionIndex++) {
             NodeExecutionData execution = node.getChildExecutions().get(executionIndex);
-            if (execution.isShortCircuit()) {
-                if (evaluatedIndex < executedType.getEvaluatedCount()) {
-                    TypeMirror evaluatedType = executedType.getEvaluatedParameters().get(evaluatedIndex);
-                    LocalVariable shortCircuit = frameState.getShortCircuit(execution);
-                    if (shortCircuit != null) {
-                        frameState.setShortCircuitValue(execution, renameExecutableTypeParameter(executable, executedType, evaluatedIndex, evaluatedType, shortCircuit));
-                    }
-                    evaluatedIndex++;
-                }
-            }
             if (evaluatedIndex < executedType.getEvaluatedCount()) {
                 TypeMirror evaluatedType = executedType.getEvaluatedParameters().get(evaluatedIndex);
                 LocalVariable value = frameState.getValue(execution);
@@ -1831,40 +1809,6 @@ public class FlatNodeGenFactory {
         } else {
             return true;
         }
-    }
-
-    private LocalVariable resolveShortCircuit(SpecializationData specialization, NodeExecutionData execution, FrameState frameState) {
-        LocalVariable shortCircuit = null;
-        if (execution.isShortCircuit()) {
-            shortCircuit = frameState.getShortCircuit(execution);
-
-            if (shortCircuit == null) {
-                SpecializationData resolvedSpecialization = specialization;
-                if (specialization == null) {
-                    resolvedSpecialization = node.getGenericSpecialization();
-                }
-                ShortCircuitData shortCircuitData = resolvedSpecialization.getShortCircuits().get(calculateShortCircuitIndex(execution));
-                CodeTree access = callTemplateMethod(null, shortCircuitData, frameState);
-                shortCircuit = frameState.createShortCircuitValue(execution).accessWith(access);
-            } else {
-                CodeTree access = shortCircuit.createReference();
-                shortCircuit = shortCircuit.nextName().accessWith(access);
-            }
-        }
-        return shortCircuit;
-    }
-
-    private int calculateShortCircuitIndex(NodeExecutionData execution) {
-        int shortCircuitIndex = 0;
-        for (NodeExecutionData otherExectuion : node.getChildExecutions()) {
-            if (otherExectuion.isShortCircuit()) {
-                if (otherExectuion == execution) {
-                    break;
-                }
-                shortCircuitIndex++;
-            }
-        }
-        return shortCircuitIndex;
     }
 
     private CodeTree createFastPathExecute(CodeTreeBuilder parent, final ExecutableTypeData forType, SpecializationData specialization, FrameState frameState) {
@@ -2439,6 +2383,15 @@ public class FlatNodeGenFactory {
                 Parameter parameter = cache.getParameter();
                 if (ElementUtils.isAssignable(parameter.getType(), context.getType(Node.class)) || ElementUtils.isAssignable(parameter.getType(), context.getType(Node[].class))) {
                     cacheValue = builder.create().startCall("super", "insert").tree(cacheValue).end().build();
+                } else if (ElementUtils.isAssignable(parameter.getType(), context.getType(NodeInterface.class)) || isNodeArray(parameter.getType())) {
+                    if (evaluatedVar == null) {
+                        String fieldName = createFieldName(specialization, cache.getParameter()) + "_";
+                        builder.declaration(cache.getExpression().getResolvedType(), fieldName, cacheValue);
+                        cacheValue = CodeTreeBuilder.singleString(fieldName);
+                    }
+                    builder.startIf().instanceOf(cacheValue, context.getType(Node.class)).end().startBlock();
+                    builder.startStatement().startCall("super", "insert").startGroup().cast(context.getType(Node.class)).tree(cacheValue).end().end().end();
+                    builder.end();
                 }
                 String name = createFieldName(specialization, cache.getParameter());
                 builder.startStatement().string("this.").string(name).string(" = ").tree(cacheValue).end();
@@ -2551,23 +2504,6 @@ public class FlatNodeGenFactory {
         builder.tree(createTransferToInterpreterAndInvalidate());
         builder.tree(createRemoveThis(builder, frameState, forType, specialization));
         builder.end();
-        return builder.build();
-    }
-
-    private static CodeTree createShortCircuit(LocalVariable targetValue, LocalVariable shortCircuitValue, CodeTree tryExecute) {
-        if (shortCircuitValue == null) {
-            return tryExecute;
-        }
-
-        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-
-        builder.tree(shortCircuitValue.createDeclaration(shortCircuitValue.createReference()));
-        builder.tree(targetValue.createDeclaration(builder.create().defaultValue(targetValue.getTypeMirror()).build()));
-
-        builder.startIf().string(shortCircuitValue.getName()).end().startBlock();
-        builder.tree(tryExecute);
-        builder.end();
-
         return builder.build();
     }
 
@@ -2837,7 +2773,7 @@ public class FlatNodeGenFactory {
         return triples;
     }
 
-    private static IfTriple createCacheInitializer(FrameState frameState, SpecializationData specialization, CacheExpression cache) {
+    private IfTriple createCacheInitializer(FrameState frameState, SpecializationData specialization, CacheExpression cache) {
         String name = createFieldName(specialization, cache.getParameter());
         // already initialized
         if (frameState.get(name) != null) {
@@ -2887,7 +2823,7 @@ public class FlatNodeGenFactory {
         return resolvedBindings;
     }
 
-    private static Map<Variable, LocalVariable> bindExpressionValues(FrameState frameState, DSLExpression expression, SpecializationData specialization) throws AssertionError {
+    private Map<Variable, LocalVariable> bindExpressionValues(FrameState frameState, DSLExpression expression, SpecializationData specialization) throws AssertionError {
         Map<Variable, LocalVariable> bindings = new HashMap<>();
         Set<Variable> boundVariables = expression.findBoundVariables();
         if (specialization == null && !boundVariables.isEmpty()) {
@@ -2926,17 +2862,17 @@ public class FlatNodeGenFactory {
         return bindings;
     }
 
-    private static CodeTree createCacheReference(SpecializationData s, Parameter p) {
+    private CodeTree createCacheReference(SpecializationData s, Parameter p) {
         String cacheFieldName = createFieldName(s, p);
         return accessInSpecializationClass(s, cacheFieldName);
     }
 
-    private static CodeTree createAssumptionReference(SpecializationData s, AssumptionExpression a) {
+    private CodeTree createAssumptionReference(SpecializationData s, AssumptionExpression a) {
         String assumptionFieldName = createAssumptionFieldName(s, a);
         return accessInSpecializationClass(s, assumptionFieldName);
     }
 
-    private static CodeTree accessInSpecializationClass(SpecializationData s, String cacheFieldName) {
+    private CodeTree accessInSpecializationClass(SpecializationData s, String cacheFieldName) {
         if (!useSpecializationClass(s)) {
             return CodeTreeBuilder.singleString(cacheFieldName);
         } else {
@@ -2971,19 +2907,6 @@ public class FlatNodeGenFactory {
         NodeExecutionData execution = node.getChildExecutions().get(signatureIndex);
         CodeTreeBuilder castBuilder = prepareBuilder.create();
 
-        LocalVariable shortCircuit = frameState.getShortCircuit(execution);
-        if (shortCircuit != null) {
-            checkBuilder.string("(");
-            CodeTreeBuilder referenceBuilder = checkBuilder.create();
-            if (!ElementUtils.isPrimitive(shortCircuit.getTypeMirror())) {
-                referenceBuilder.string("(boolean) ");
-            }
-            referenceBuilder.tree(shortCircuit.createReference());
-            checkBuilder.string("!").tree(referenceBuilder.build());
-            checkBuilder.string(" || ");
-            castBuilder.tree(referenceBuilder.build()).string(" ? ");
-        }
-
         List<ImplicitCastData> sourceTypes = typeSystem.lookupByTargetType(targetType);
         CodeTree valueReference = value.createReference();
         if (sourceTypes.isEmpty()) {
@@ -3009,9 +2932,6 @@ public class FlatNodeGenFactory {
                 Parameter parameter = parameters.get(0);
                 String implicitStateName = createImplicitTypeStateLocalName(parameter);
                 CodeTree defaultValue = null;
-                if (parameter.getSpecification().getExecution().isShortCircuit()) {
-                    defaultValue = CodeTreeBuilder.singleString("0");
-                }
                 prepareBuilder.declaration(context.getType(int.class), implicitStateName, defaultValue);
                 CodeTree specializeCall = TypeSystemCodeGenerator.implicitSpecializeFlat(typeSystem, targetType, valueReference);
                 checkBuilder.startParantheses();
@@ -3020,11 +2940,6 @@ public class FlatNodeGenFactory {
                 checkBuilder.string(" != 0");
                 castBuilder.tree(TypeSystemCodeGenerator.implicitCastFlat(typeSystem, targetType, valueReference, CodeTreeBuilder.singleString(implicitStateName)));
             }
-        }
-
-        if (shortCircuit != null) {
-            checkBuilder.string(")");
-            castBuilder.string(" : ").defaultValue(targetType);
         }
 
         if (castOnly) {
@@ -3076,15 +2991,10 @@ public class FlatNodeGenFactory {
     private ExecutableTypeData createExecuteAndSpecializeType() {
         SpecializationData polymorphicSpecialization = node.getPolymorphicSpecialization();
         TypeMirror polymorphicType = polymorphicSpecialization.getReturnType().getType();
-
         List<TypeMirror> parameters = new ArrayList<>();
         for (Parameter param : polymorphicSpecialization.getSignatureParameters()) {
-            if (param.getSpecification().getExecution().isShortCircuit()) {
-                parameters.add(context.getType(boolean.class));
-            }
             parameters.add(param.getType());
         }
-
         return new ExecutableTypeData(node, polymorphicType, "executeAndSpecialize", node.getFrameType(), parameters);
     }
 
@@ -3149,7 +3059,7 @@ public class FlatNodeGenFactory {
             builder.startElseBlock();
         }
         LocalVariable genericValue = target.makeGeneric(context).nextName();
-        builder.tree(createAssignExecuteChild(originalFrameState, frameState, builder, execution, node.getGenericExecutableType(null), genericValue, null));
+        builder.tree(createAssignExecuteChild(originalFrameState, frameState, builder, execution, node.getGenericExecutableType(null), genericValue));
         builder.startStatement().string(target.getName()).string(" = ");
         CodeTree implicitState = state.createExtractInteger(frameState, typeGuard);
         builder.tree(TypeSystemCodeGenerator.implicitExpectFlat(typeSystem, target.getTypeMirror(), genericValue.createReference(), implicitState));
@@ -3562,17 +3472,6 @@ public class FlatNodeGenFactory {
             int evaluatedIndex = 0;
             for (int executionIndex = 0; executionIndex < factory.node.getExecutionCount(); executionIndex++) {
                 NodeExecutionData execution = factory.node.getChildExecutions().get(executionIndex);
-                if (execution.isShortCircuit()) {
-                    if (evaluatedIndex < executedType.getEvaluatedCount()) {
-                        TypeMirror evaluatedType = evaluatedParameter.get(evaluatedIndex);
-                        LocalVariable shortCircuit = createShortCircuitValue(execution).newType(evaluatedType);
-                        if (varargs) {
-                            shortCircuit = shortCircuit.accessWith(createReadVarargs(evaluatedIndex));
-                        }
-                        values.put(shortCircuit.getName(), shortCircuit.makeOriginal());
-                        evaluatedIndex++;
-                    }
-                }
                 if (evaluatedIndex < executedType.getEvaluatedCount()) {
                     TypeMirror evaluatedType = evaluatedParameter.get(evaluatedIndex);
                     LocalVariable value = createValue(execution, evaluatedType);
@@ -3604,16 +3503,8 @@ public class FlatNodeGenFactory {
             return new LocalVariable(type, valueName(execution), null);
         }
 
-        public LocalVariable createShortCircuitValue(NodeExecutionData execution) {
-            return new LocalVariable(factory.getType(boolean.class), shortCircuitName(execution), null);
-        }
-
         private static String valueName(NodeExecutionData execution) {
             return execution.getName() + "Value";
-        }
-
-        private static String shortCircuitName(NodeExecutionData execution) {
-            return "has" + ElementUtils.firstLetterUpperCase(valueName(execution));
         }
 
         public void set(String id, LocalVariable var) {
@@ -3657,24 +3548,13 @@ public class FlatNodeGenFactory {
             values.put(valueName(execution), var);
         }
 
-        public void setShortCircuitValue(NodeExecutionData execution, LocalVariable var) {
-            if (var == null) {
-                return;
-            }
-            values.put(shortCircuitName(execution), var);
-        }
-
         private boolean needsVarargs(boolean requireLoaded, int varArgsThreshold) {
             int size = 0;
             for (NodeExecutionData execution : factory.node.getChildExecutions()) {
                 if (requireLoaded && getValue(execution) == null) {
                     continue;
                 }
-                if (execution.isShortCircuit()) {
-                    size += 2;
-                } else {
-                    size++;
-                }
+                size++;
             }
             return size >= varArgsThreshold;
         }
@@ -3693,12 +3573,6 @@ public class FlatNodeGenFactory {
 
             List<NodeExecutionData> executions = factory.node.getChildExecutions();
             for (NodeExecutionData execution : executions) {
-                if (execution.isShortCircuit()) {
-                    LocalVariable shortCircuitVar = getShortCircuit(execution);
-                    if (shortCircuitVar != null) {
-                        builder.tree(shortCircuitVar.createReference());
-                    }
-                }
                 LocalVariable var = getValue(execution);
                 if (var != null) {
                     builder.startGroup().tree(var.createReference()).end();
@@ -3718,23 +3592,12 @@ public class FlatNodeGenFactory {
                 method.setVarArgs(true);
             } else {
                 for (NodeExecutionData execution : factory.node.getChildExecutions()) {
-                    if (execution.isShortCircuit()) {
-                        LocalVariable shortCircuitVar = getShortCircuit(execution);
-                        if (shortCircuitVar != null) {
-                            method.addParameter(shortCircuitVar.createParameter());
-                        }
-                    }
-
                     LocalVariable var = getValue(execution);
                     if (var != null) {
                         method.addParameter(var.createParameter());
                     }
                 }
             }
-        }
-
-        private LocalVariable getShortCircuit(NodeExecutionData execution) {
-            return values.get(shortCircuitName(execution));
         }
 
         @Override

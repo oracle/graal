@@ -52,6 +52,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private static volatile Map<String, LanguageCache> runtimeCache;
     private final String className;
     private final Set<String> mimeTypes;
+    private final Set<String> dependentLanguages;
     private final String id;
     private final String name;
     private final String implementationName;
@@ -75,16 +76,8 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.implementationName = info.getProperty(prefix + "implementationName");
         this.version = info.getProperty(prefix + "version");
         String resolvedId = info.getProperty(prefix + "id");
-
-        TreeSet<String> mimeTypesSet = new TreeSet<>();
-        for (int i = 0;; i++) {
-            String mt = info.getProperty(prefix + "mimeType." + i);
-            if (mt == null) {
-                break;
-            }
-            mimeTypesSet.add(mt);
-        }
-        this.mimeTypes = Collections.unmodifiableSet(mimeTypesSet);
+        this.mimeTypes = parseList(info, prefix + "mimeType");
+        this.dependentLanguages = parseList(info, prefix + "dependentLanguage");
         this.id = resolvedId == null ? defaultId() : resolvedId;
         this.interactive = Boolean.valueOf(info.getProperty(prefix + "interactive"));
         this.internal = Boolean.valueOf(info.getProperty(prefix + "internal"));
@@ -98,6 +91,18 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
     }
 
+    private static TreeSet<String> parseList(Properties info, String prefix) {
+        TreeSet<String> mimeTypesSet = new TreeSet<>();
+        for (int i = 0;; i++) {
+            String mt = info.getProperty(prefix + "." + i);
+            if (mt == null) {
+                break;
+            }
+            mimeTypesSet.add(mt);
+        }
+        return mimeTypesSet;
+    }
+
     @SuppressWarnings("unchecked")
     LanguageCache(String id, Set<String> mimeTypes, String name, String implementationName, String version, boolean interactive, boolean internal,
                     TruffleLanguage<?> instance) {
@@ -109,6 +114,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.version = version;
         this.interactive = interactive;
         this.internal = internal;
+        this.dependentLanguages = Collections.emptySet();
         this.loader = instance.getClass().getClassLoader();
         this.singletonLanguage = instance;
         this.languageClass = (Class<? extends TruffleLanguage<?>>) instance.getClass();
@@ -200,7 +206,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     public int compareTo(LanguageCache o) {
-        return className.compareTo(o.className);
+        return id.compareTo(o.id);
     }
 
     String getId() {
@@ -217,6 +223,10 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     String getImplementationName() {
         return implementationName;
+    }
+
+    Set<String> getDependentLanguages() {
+        return dependentLanguages;
     }
 
     String getVersion() {
@@ -273,6 +283,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
             }
         }
         return languageClass;
+    }
+
+    @Override
+    public String toString() {
+        return "LanguageCache [id=" + id + ", name=" + name + ", implementationName=" + implementationName + ", version=" + version + ", className=" + className + "]";
     }
 
     private static TruffleLanguage<?> readSingleton(Class<?> languageClass) {

@@ -80,10 +80,10 @@ import jdk.vm.ci.meta.Value;
  */
 public class CompilationResultBuilder {
 
-    // @formatter:off
-    @Option(help = "Include the LIR as comments with the final assembly.", type = OptionType.Debug)
-    public static final OptionKey<Boolean> PrintLIRWithAssembly = new OptionKey<>(false);
-    // @formatter:on
+    public static class Options {
+        @Option(help = "Include the LIR as comments with the final assembly.", type = OptionType.Debug) //
+        public static final OptionKey<Boolean> PrintLIRWithAssembly = new OptionKey<>(false);
+    }
 
     private static class ExceptionInfo {
 
@@ -483,7 +483,7 @@ public class CompilationResultBuilder {
         if (block == null) {
             return;
         }
-        boolean emitComment = debug.isDumpEnabled(DebugContext.BASIC_LEVEL) || PrintLIRWithAssembly.getValue(getOptions());
+        boolean emitComment = debug.isDumpEnabled(DebugContext.BASIC_LEVEL) || Options.PrintLIRWithAssembly.getValue(getOptions());
         if (emitComment) {
             blockComment(String.format("block B%d %s", block.getId(), block.getLoop()));
         }

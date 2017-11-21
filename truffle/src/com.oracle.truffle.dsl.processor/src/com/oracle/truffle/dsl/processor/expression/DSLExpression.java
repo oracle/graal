@@ -27,7 +27,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -77,19 +76,6 @@ public abstract class DSLExpression {
 
     public Object resolveConstant() {
         return null;
-    }
-
-    public boolean containsComparisons() {
-        final AtomicBoolean found = new AtomicBoolean();
-        this.accept(new AbstractDSLExpressionVisitor() {
-            @Override
-            public void visitBinary(Binary binary) {
-                if (binary.isComparison()) {
-                    found.set(true);
-                }
-            }
-        });
-        return found.get();
     }
 
     public void setResolvedTargetType(TypeMirror resolvedTargetType) {

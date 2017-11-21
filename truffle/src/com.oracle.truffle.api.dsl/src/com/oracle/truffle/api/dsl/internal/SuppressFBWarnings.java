@@ -29,8 +29,11 @@ import java.lang.annotation.RetentionPolicy;
 
 /**
  * Used to suppress <a href="http://findbugs.sourceforge.net">FindBugs</a> warnings.
+ *
+ * @deprecated in 0.30 without replacement
  */
 @Retention(RetentionPolicy.CLASS)
+@Deprecated
 public @interface SuppressFBWarnings {
     /**
      * The set of FindBugs

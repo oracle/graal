@@ -23,13 +23,11 @@
  * questions.
  */
 /**
- * The Graal SDK proxy interfaces allow to mimic guest language objects in Graal languages. For
- * example, one can implement the {@link org.graalvm.polyglot.proxy.ProxyObject} interface and then
- * pass the object to a guest language. The guest language will then treat this instance as an
- * object. For instance if the language tries to write into a field it will call
- * {@link org.graalvm.polyglot.proxy.ProxyObject#putMember(String, org.graalvm.polyglot.Value)}. The
- * API is designed to be language agnostic, therefore they it can be used with any Graal guest
- * language.
+ * The Graal SDK proxy interfaces allow to mimic guest language objects, arrays, executables,
+ * primitives and native objects in Graal languages. Every Graal language will treat instances of
+ * proxies like an object of that particular language. Multiple proxy interfaces can be implemented
+ * at the same time. For example, it is useful to provide proxy values that are objects with members
+ * and arrays at the same time.
  * <p>
  * See <link <a href="http://www.graalvm.org/docs/embed">graalvm.org</a> for more examples on how to
  * use this API.

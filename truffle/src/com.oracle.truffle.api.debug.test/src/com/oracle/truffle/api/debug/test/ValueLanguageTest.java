@@ -151,8 +151,8 @@ public class ValueLanguageTest extends AbstractDebugTest {
                 // info from original lang1:
                 value = value.asInLanguage(lang1);
                 assertEquals("{a={}, j=100, k=200, c={}}", value.as(String.class));
-                assertEquals("L2:Map", value.getMetaObject().as(String.class));
-                assertEquals("L1:Map", value.getMetaObject().asInLanguage(lang1).as(String.class));
+                assertEquals("L1:Map", value.getMetaObject().as(String.class));
+                assertEquals("L2:Map", value.getMetaObject().asInLanguage(lang2).as(String.class));
 
                 // Properties are always in the original language:
                 value = frame.getScope().getDeclaredValue("b");
@@ -581,6 +581,15 @@ public class ValueLanguageTest extends AbstractDebugTest {
 
             @MessageResolution(receiverType = PropertiesMapObject.class)
             static class PropertiesMapMessageResolution {
+
+                @Resolve(message = "HAS_KEYS")
+                abstract static class PropsMapHasKeysNode extends Node {
+
+                    @SuppressWarnings("unused")
+                    public Object access(PropertiesMapObject varMap) {
+                        return true;
+                    }
+                }
 
                 @Resolve(message = "KEYS")
                 abstract static class PropsMapKeysNode extends Node {

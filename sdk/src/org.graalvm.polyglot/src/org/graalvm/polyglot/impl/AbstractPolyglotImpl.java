@@ -54,7 +54,7 @@ import org.graalvm.polyglot.Value;
 public abstract class AbstractPolyglotImpl {
 
     protected AbstractPolyglotImpl() {
-        if (!getClass().getName().equals("com.oracle.truffle.api.vm.PolyglotImpl")) {
+        if (!getClass().getName().equals("com.oracle.truffle.api.vm.PolyglotImpl") && !getClass().getName().equals("org.graalvm.polyglot.Engine$PolyglotInvalid")) {
             throw new AssertionError("Only one implementation Engine.Impl allowed.");
         }
     }
@@ -425,6 +425,18 @@ public abstract class AbstractPolyglotImpl {
 
         public final Value executeUnsupported(Object receiver) {
             throw unsupported(receiver, "execute(Object...)", "canExecute()");
+        }
+
+        public boolean canInstantiate(Object receiver) {
+            return false;
+        }
+
+        public Value newInstance(Object receiver, Object[] arguments) {
+            return newInstanceUnsupported(receiver);
+        }
+
+        public final Value newInstanceUnsupported(Object receiver) {
+            throw unsupported(receiver, "newInstance(Object...)", "canInstantiate()");
         }
 
         public boolean isString(Object receiver) {

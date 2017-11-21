@@ -37,6 +37,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.LibFFIFunctionMessageResolution.CachedExecuteNode;
 import com.oracle.truffle.nfi.LibFFIFunctionMessageResolutionFactory.CachedExecuteNodeGen;
 import com.oracle.truffle.nfi.LibFFILibraryMessageResolutionFactory.CachedLookupSymbolNodeGen;
+import com.oracle.truffle.nfi.TypeConversion.AsStringNode;
+import com.oracle.truffle.nfi.TypeConversionFactory.AsStringNodeGen;
 
 @MessageResolution(receiverType = LibFFILibrary.class)
 class LibFFILibraryMessageResolution {
@@ -74,9 +76,10 @@ class LibFFILibraryMessageResolution {
     abstract static class LookupSymbolNode extends Node {
 
         @Child private CachedLookupSymbolNode cached = CachedLookupSymbolNodeGen.create();
+        @Child private AsStringNode asString = AsStringNodeGen.create(true);
 
-        public TruffleObject access(LibFFILibrary receiver, String symbol) {
-            return cached.executeLookup(receiver, symbol);
+        public TruffleObject access(LibFFILibrary receiver, Object symbol) {
+            return cached.executeLookup(receiver, asString.execute(symbol));
         }
     }
 
@@ -98,18 +101,23 @@ class LibFFILibraryMessageResolution {
         private final ContextReference<NFIContext> ctxRef = NFILanguage.getCurrentContextReference();
 
         private static final int READABLE = KeyInfo.newBuilder().setReadable(true).build();
+        private static final int READ_AND_INVOCABLE = KeyInfo.newBuilder().setReadable(true).setInvocable(true).build();
         private static final int NOT_EXISTING = 0;
 
-        public int access(LibFFILibrary receiver, String symbol) {
+        @Child private AsStringNode asString = AsStringNodeGen.create(true);
+
+        public int access(LibFFILibrary receiver, Object arg) {
+            String symbol = asString.execute(arg);
             if (receiver.findSymbol(symbol) == null) {
                 try {
                     ctxRef.get().lookupSymbol(receiver, symbol);
+                    return READABLE;
                 } catch (UnsatisfiedLinkError ex) {
                     return NOT_EXISTING;
                 }
+            } else {
+                return READ_AND_INVOCABLE;
             }
-
-            return READABLE;
         }
     }
 

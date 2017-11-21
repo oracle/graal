@@ -43,6 +43,15 @@ class TestCallbackMessageResolution {
         }
     }
 
+    @Resolve(message = "IS_EXECUTABLE")
+    abstract static class IsExecutable extends Node {
+
+        @SuppressWarnings("unused")
+        boolean access(TestCallback receiver) {
+            return true;
+        }
+    }
+
     @CanResolve
     abstract static class CanResolveTestCallback extends Node {
 

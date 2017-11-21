@@ -213,7 +213,7 @@ public class SuspendedEventTest extends AbstractDebugTest {
                             value.set(null);
                             return null;
                         });
-                        runExpectIllegalState(() -> value.getName());
+                        value.getName(); // Name is known
                         runExpectIllegalState(() -> value.isReadable());
                         runExpectIllegalState(() -> value.isWritable());
                     }

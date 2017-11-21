@@ -22,33 +22,6 @@
  */
 package org.graalvm.compiler.truffle;
 
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleAssumptions;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleBackgroundCompilation;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCallTargetProfiling;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreFatal;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsArePrinted;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
-
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.lang.reflect.Method;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.function.UnaryOperator;
-
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.truffle.GraalTruffleRuntime.LazyFrameBoxingQuery;
-import org.graalvm.compiler.truffle.debug.AbstractDebugCompilationListener;
-import org.graalvm.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
-import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionValues;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -66,10 +39,34 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
-
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.truffle.GraalTruffleRuntime.LazyFrameBoxingQuery;
+import org.graalvm.compiler.truffle.debug.AbstractDebugCompilationListener;
+import org.graalvm.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionValues;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.lang.reflect.Method;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.UnaryOperator;
+
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleAssumptions;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleBackgroundCompilation;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreFatal;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsArePrinted;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
 
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold.
@@ -112,6 +109,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private volatile Assumption nodeRewritingAssumption;
     private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, Assumption> NODE_REWRITING_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,
                     Assumption.class, "nodeRewritingAssumption");
+    private volatile OptimizedDirectCallNode callSiteForSplit;
 
     public OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         super(rootNode.toString());
@@ -288,12 +286,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     private OptimizedCompilationProfile createCompilationProfile() {
-        OptionValues optionValues = PolyglotCompilerOptions.getPolyglotValues(rootNode);
-        if (TruffleCompilerOptions.getValue(TruffleCallTargetProfiling)) {
-            return TraceCompilationProfile.create(optionValues);
-        } else {
-            return OptimizedCompilationProfile.create(optionValues);
-        }
+        return OptimizedCompilationProfile.create(PolyglotCompilerOptions.getPolyglotValues(rootNode));
     }
 
     public final void compile() {
@@ -597,6 +590,17 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         // Furthermore, no other thread will reinstall the call target until the current thread
         // completes.
         UnsafeAccess.UNSAFE.compareAndSwapLong(this, ENTRY_POINT_OFFSET, seenEntryPoint, seenEntryPoint | 1);
+    }
+
+    public void setCallSiteForSplit(OptimizedDirectCallNode callSiteForSplit) {
+        if (sourceCallTarget == null) {
+            throw new IllegalStateException("Attempting to set a split call site on a target that is not a split!");
+        }
+        this.callSiteForSplit = callSiteForSplit;
+    }
+
+    public OptimizedDirectCallNode getCallSiteForSplit() {
+        return callSiteForSplit;
     }
 
     private static final class NonTrivialNodeCountVisitor implements NodeVisitor {

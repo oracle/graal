@@ -79,6 +79,7 @@ final class InstrumentCache {
     @SuppressWarnings("unused")
     private static void resetNativeImageState() {
         nativeImageCache.clear();
+        runtimeCache = null;
     }
 
     private InstrumentCache(String prefix, Properties info, ClassLoader loader) {

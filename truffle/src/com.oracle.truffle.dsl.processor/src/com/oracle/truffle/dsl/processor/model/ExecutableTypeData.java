@@ -137,13 +137,11 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
         return evaluatedParameters;
     }
 
+    @SuppressWarnings("unused")
     public List<TypeMirror> getSignatureParameters() {
         List<TypeMirror> signaturetypes = new ArrayList<>();
         int index = 0;
         for (NodeExecutionData execution : node.getChildExecutions()) {
-            if (execution.isShortCircuit()) {
-                index++;
-            }
             if (index < getEvaluatedCount()) {
                 signaturetypes.add(getEvaluatedParameters().get(index));
             }

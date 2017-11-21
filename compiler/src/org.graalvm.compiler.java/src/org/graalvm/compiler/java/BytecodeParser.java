@@ -342,7 +342,7 @@ import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
-import org.graalvm.compiler.nodes.calc.DivNode;
+import org.graalvm.compiler.nodes.calc.FloatDivNode;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
@@ -435,6 +435,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.TriState;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
 
 /**
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
@@ -1115,7 +1116,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genFloatDiv(ValueNode x, ValueNode y) {
-        return DivNode.create(x, y);
+        return FloatDivNode.create(x, y);
     }
 
     protected ValueNode genFloatRem(ValueNode x, ValueNode y) {
@@ -1900,7 +1901,7 @@ public class BytecodeParser implements GraphBuilderContext {
                     if (newProfile != profile) {
                         if (newProfile.getTypes().length == 0) {
                             // All profiled types select the intrinsic so
-                            // emit a fixed guard instead of a if-then-else.
+                            // emit a fixed guard instead of an if-then-else.
                             lastInstr = append(new FixedGuardNode(compare, TypeCheckedInliningViolated, InvalidateReprofile, false));
                             return new IntrinsicGuard(currentLastInstr, intrinsicReceiver, mark, null, null);
                         }
@@ -2372,18 +2373,41 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
 
+        ValueNode realReturnVal = processReturnValue(returnVal, returnKind);
+
         frameState.setRethrowException(false);
         frameState.clearStack();
-        beforeReturn(returnVal, returnKind);
+        beforeReturn(realReturnVal, returnKind);
         if (parent == null) {
-            append(new ReturnNode(returnVal));
+            append(new ReturnNode(realReturnVal));
         } else {
             if (returnDataList == null) {
                 returnDataList = new ArrayList<>();
             }
-            returnDataList.add(new ReturnToCallerData(returnVal, lastInstr));
+            returnDataList.add(new ReturnToCallerData(realReturnVal, lastInstr));
             lastInstr = null;
         }
+    }
+
+    private ValueNode processReturnValue(ValueNode value, JavaKind kind) {
+        JavaKind returnKind = method.getSignature().getReturnKind();
+        if (kind != returnKind) {
+            // sub-word integer
+            assert returnKind.isNumericInteger() && returnKind.getStackKind() == JavaKind.Int;
+            IntegerStamp stamp = (IntegerStamp) value.stamp();
+
+            // the bytecode verifier doesn't check that the value is in the correct range
+            if (stamp.lowerBound() < returnKind.getMinValue() || returnKind.getMaxValue() < stamp.upperBound()) {
+                ValueNode narrow = append(genNarrow(value, returnKind.getBitCount()));
+                if (returnKind.isUnsigned()) {
+                    return append(genZeroExtend(narrow, 32));
+                } else {
+                    return append(genSignExtend(narrow, 32));
+                }
+            }
+        }
+
+        return value;
     }
 
     private void beforeReturn(ValueNode x, JavaKind kind) {

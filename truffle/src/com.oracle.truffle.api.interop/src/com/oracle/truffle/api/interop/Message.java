@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -223,7 +223,7 @@ public abstract class Message {
      * {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame) no arguments} and a
      * single non-null {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame)
      * receiver}. The call should yield value of {@link Boolean}. Either {@link Boolean#TRUE} if the
-     * receiver can be executed (e.g. accepts {@link #createExecute(int)} message, or
+     * receiver can be executed (i.e. accepts {@link #createExecute(int)} message, or
      * {@link Boolean#FALSE} otherwise. This is the way to send the <code>IS_EXECUTABLE</code>
      * message:
      *
@@ -239,6 +239,32 @@ public abstract class Message {
      * @since 0.8 or earlier
      */
     public static final Message IS_EXECUTABLE = IsExecutable.INSTANCE;
+
+    /**
+     * Message to check the ability to create new instances of a
+     * {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame) foreign object}.
+     * <p>
+     * Calling {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) the target}
+     * created for this message accepts
+     * {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame) no arguments} and a
+     * single non-null {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame)
+     * receiver}. The call should yield value of {@link Boolean}. Either {@link Boolean#TRUE} if the
+     * receiver can be instantiated (i.e. accepts {@link #createNew(int)} message, or
+     * {@link Boolean#FALSE} otherwise. This is the way to send the <code>IS_INSTANTIABLE</code>
+     * message:
+     *
+     * <pre>
+     * {@link Boolean} canBeinstantiated = ({@link Boolean}) {@link ForeignAccess}.sendIsInstantiable(
+     *   {@link Message#IS_INSTANTIABLE}.{@link Message#createNode()},  receiver
+     * );
+     * </pre>
+     * <p>
+     * To achieve good performance it is essential to cache/keep reference to the
+     * {@link Message#createNode() created node}.
+     *
+     * @since 0.30
+     */
+    public static final Message IS_INSTANTIABLE = IsInstantiable.INSTANCE;
 
     /**
      * Creates an object oriented execute message. Unlike {@link #createExecute(int)} the receiver
@@ -327,7 +353,8 @@ public abstract class Message {
      * {@link Object#equals(java.lang.Object) equal} to each other regardless of the value of
      * <code>argumentsLength</code>. The expected behavior of this message is to allocate a new
      * instance of the {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame)
-     * receiver} and then perform its constructor with appropriate number of arguments.
+     * receiver} and then perform its constructor with appropriate number of arguments. To check if
+     * an object supports allocation of new instances, use the {@link #IS_INSTANTIABLE} message.
      * <p>
      * If the object does not support the <code>NEW</code> message, an
      * {@link UnsupportedMessageException} has to be thrown.
@@ -373,7 +400,8 @@ public abstract class Message {
     /**
      * Message to check for having a size. If a {@link TruffleObject} indicates it <em>has a
      * size</em>, it is expected it represents array-like structure and it also properly responds to
-     * {@link #GET_SIZE} message
+     * {@link #GET_SIZE} message. When <code>HAS_SIZE</code> returns <code>false</code>, it
+     * indicates that {@link #GET_SIZE} message is not supported.
      * <p>
      * Calling {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) the target}
      * created for this message should yield value of {@link Boolean}.
@@ -459,9 +487,28 @@ public abstract class Message {
     public static final Message KEY_INFO = KeyInfoMsg.INSTANCE;
 
     /**
+     * Message to check for having properties. If a {@link TruffleObject} indicates it <em>has
+     * keys</em>, it is expected it represents an object structure with properties and it also
+     * properly responds to {@link #KEYS} message. When <code>HAS_KEYS</code> returns
+     * <code>false</code>, it indicates that {@link #KEYS} message is not supported.
+     * <p>
+     * The default implementation requests {@link #KEYS} and returns <code>true</code> if the
+     * request was successful and <code>false</code> otherwise.
+     * <p>
+     * Calling {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) the target}
+     * created for this message should yield value of type {@link Boolean}.
+     *
+     * @since 0.30
+     * @see ForeignAccess#sendHasKeys(com.oracle.truffle.api.nodes.Node,
+     *      com.oracle.truffle.api.interop.TruffleObject)
+     */
+    public static final Message HAS_KEYS = HasKeys.INSTANCE;
+
+    /**
      * Obtains list of property names. Checks the properties of a {@link TruffleObject foreign
      * objects} and obtains list of its property names. Those names can then be used in
-     * {@link #READ} and {@link #WRITE} messages to obtain/assign real values.
+     * {@link #READ} and {@link #WRITE} messages to obtain/assign real values. To check if an object
+     * supports properties, use the {@link #HAS_KEYS} message.
      * <p>
      * Since version 0.26 the {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message)
      * target} created for this message accepts a boolean argument specifying whether internal keys
@@ -491,6 +538,12 @@ public abstract class Message {
      * Calling {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) the target}
      * created for this message should yield value of {@link Boolean}. If the object responds with
      * {@link Boolean#TRUE}, the object can be accessed by {@link #AS_POINTER} message.
+     *
+     * It is expected that objects should only return {@link Boolean#TRUE} here if the native
+     * pointer value corresponding to this object already exists, and obtaining it is a cheap
+     * operation. If an object can be transformed to a pointer representation, but this hasn't
+     * happened yet, the object is expected to return {@link Boolean#FALSE} to {@link #IS_POINTER},
+     * and wait for the {@link #TO_NATIVE} message to trigger the transformation.
      *
      * @since 0.26 or earlier
      */
@@ -526,6 +579,10 @@ public abstract class Message {
      * value} that represents a raw native pointer. This resulting {@link TruffleObject truffle
      * native value} returns true for {@link #IS_POINTER} and can be unwrapped using the
      * {@link #AS_POINTER} message.
+     * <p>
+     * If an object returns true for {@link #IS_POINTER}, it is still expected that this object
+     * supports the {@link #TO_NATIVE} message. It can just return a reference to itself in that
+     * case.
      * <p>
      * If the object does not support the {@link #TO_NATIVE} message, an
      * {@link UnsupportedMessageException} has to be thrown.
@@ -617,6 +674,12 @@ public abstract class Message {
         if (Message.IS_EXECUTABLE == message) {
             return "IS_EXECUTABLE"; // NOI18N
         }
+        if (Message.IS_INSTANTIABLE == message) {
+            return "IS_INSTANTIABLE"; // NOI18N
+        }
+        if (Message.HAS_KEYS == message) {
+            return "HAS_KEYS"; // NOI18N
+        }
         if (Message.KEYS == message) {
             return "KEYS"; // NOI18N
         }
@@ -666,6 +729,10 @@ public abstract class Message {
                 return Message.IS_BOXED;
             case "IS_EXECUTABLE":
                 return Message.IS_EXECUTABLE;
+            case "IS_INSTANTIABLE":
+                return Message.IS_INSTANTIABLE;
+            case "HAS_KEYS":
+                return Message.HAS_KEYS;
             case "KEYS":
                 return Message.KEYS;
             case "KEY_INFO":

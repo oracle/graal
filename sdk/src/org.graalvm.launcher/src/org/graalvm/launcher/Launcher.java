@@ -135,7 +135,7 @@ public abstract class Launcher {
         }
 
         AbortException(Throwable cause, int exitCode) {
-            super(cause);
+            super(null, cause);
             this.exitCode = exitCode;
         }
 
@@ -734,6 +734,7 @@ public abstract class Launcher {
             indent.append(' ');
         }
         String desc = description != null ? description : "";
+        desc = wrap(desc);
         String[] descLines = desc.split(System.lineSeparator());
         if (option.length() >= 45 && description != null) {
             System.out.println(String.format("%s%s%n%s%-45s%s", indent, option, indent, "", descLines[0]));
@@ -743,6 +744,16 @@ public abstract class Launcher {
         for (int i = 1; i < descLines.length; i++) {
             System.out.println(String.format("%s%-45s%s", indent, "", descLines[i]));
         }
+    }
+
+    private static String wrap(String s) {
+        final int width = 120;
+        StringBuilder sb = new StringBuilder(s);
+        int i = 0;
+        while (i + width < sb.length() && (i = sb.lastIndexOf(" ", i + width)) != -1) {
+            sb.replace(i, i + 1, System.lineSeparator());
+        }
+        return sb.toString();
     }
 
     private static void printOption(PrintableOption option) {

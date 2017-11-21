@@ -27,18 +27,21 @@ package org.graalvm.polyglot.proxy;
 import org.graalvm.polyglot.Value;
 
 /**
+ * Interface to be implemented to mimic guest language objects that are executable.
  *
- *
+ * @see Proxy
  * @since 1.0
  */
 @FunctionalInterface
 public interface ProxyExecutable extends Proxy {
 
     /**
+     * Executes the object with the given arguments and returns its result.
      *
-     *
+     * @throws UnsupportedOperationException if the proxy cannot be executed with the given
+     *             arguments.
      * @since 1.0
      */
-    Object execute(Value... t);
+    Object execute(Value... arguments);
 
 }

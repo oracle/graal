@@ -24,6 +24,8 @@ package org.graalvm.compiler.truffle.nodes;
 
 import java.util.Objects;
 
+import org.graalvm.compiler.nodes.util.JavaConstantFormattable;
+import org.graalvm.compiler.nodes.util.JavaConstantFormatter;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -32,7 +34,7 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * A {@link LocationIdentity} wrapping an object.
  */
-public final class ObjectLocationIdentity extends LocationIdentity {
+public final class ObjectLocationIdentity extends LocationIdentity implements JavaConstantFormattable {
 
     private final JavaConstant object;
 
@@ -67,5 +69,10 @@ public final class ObjectLocationIdentity extends LocationIdentity {
     @Override
     public String toString() {
         return "Identity(" + object + ")";
+    }
+
+    @Override
+    public String format(JavaConstantFormatter formatter) {
+        return "Identity(" + formatter.format(object) + ")";
     }
 }

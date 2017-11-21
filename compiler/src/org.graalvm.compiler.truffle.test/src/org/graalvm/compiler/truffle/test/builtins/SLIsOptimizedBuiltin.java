@@ -38,10 +38,8 @@ public abstract class SLIsOptimizedBuiltin extends SLGraalRuntimeBuiltin {
     @TruffleBoundary
     public boolean isOptimized(SLFunction function) {
         OptimizedCallTarget target = (OptimizedCallTarget) function.getCallTarget();
-        for (OptimizedCallTarget foundTarget : findDuplicateCallTargets(target)) {
-            if (foundTarget.isValid()) {
-                return true;
-            }
+        if (target.isValid()) {
+            return true;
         }
         return false;
     }

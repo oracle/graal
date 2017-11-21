@@ -42,14 +42,14 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.metadata.ScopeProvider.AbstractScope;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * A default frame slot based implementation of variables contained in the (default) frame scope.
  */
-final class DefaultScopeVariables extends AbstractScope {
+@SuppressWarnings("deprecation")
+final class DefaultScopeVariables extends com.oracle.truffle.api.metadata.ScopeProvider.AbstractScope {
 
     private final RootNode root;
 
@@ -120,7 +120,7 @@ final class DefaultScopeVariables extends AbstractScope {
     }
 
     @Override
-    protected AbstractScope findParent() {
+    protected com.oracle.truffle.api.metadata.ScopeProvider.AbstractScope findParent() {
         return null;
     }
 
@@ -145,6 +145,14 @@ final class DefaultScopeVariables extends AbstractScope {
 
         @MessageResolution(receiverType = VariablesMapObject.class)
         static class VariablesMapMessageResolution {
+
+            @Resolve(message = "HAS_KEYS")
+            abstract static class VarsMapHasKeysNode extends Node {
+
+                public Object access(VariablesMapObject varMap) {
+                    return true;
+                }
+            }
 
             @Resolve(message = "KEYS")
             abstract static class VarsMapKeysNode extends Node {
@@ -216,7 +224,6 @@ final class DefaultScopeVariables extends AbstractScope {
             @Resolve(message = "HAS_SIZE")
             abstract static class VarNamesHasSizeNode extends Node {
 
-                @SuppressWarnings("unused")
                 public Object access(VariableNamesObject varNames) {
                     return true;
                 }
@@ -269,7 +276,6 @@ final class DefaultScopeVariables extends AbstractScope {
             @Resolve(message = "HAS_SIZE")
             abstract static class ArgsArrHasSizeNode extends Node {
 
-                @SuppressWarnings("unused")
                 public Object access(ArguentsArrayObject argsArr) {
                     return true;
                 }

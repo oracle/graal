@@ -241,8 +241,8 @@ public final class Introspection {
 
     private void checkVersion() {
         int version = -1;
-        Object objectVersion = data[0];
-        if (data.length > 0 && objectVersion instanceof Integer) {
+        if (data.length > 0 && data[0] instanceof Integer) {
+            Object objectVersion = data[0];
             version = (int) objectVersion;
         }
         if (version != 0) {

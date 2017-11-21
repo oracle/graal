@@ -31,4 +31,8 @@ class PolyglotIllegalStateException extends IllegalStateException {
         super(message);
     }
 
+    PolyglotIllegalStateException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
 }

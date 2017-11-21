@@ -92,19 +92,16 @@ import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.NodeFieldData;
 import com.oracle.truffle.dsl.processor.model.Parameter;
 import com.oracle.truffle.dsl.processor.model.ParameterSpec;
-import com.oracle.truffle.dsl.processor.model.ShortCircuitData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData.SpecializationKind;
 import com.oracle.truffle.dsl.processor.model.SpecializationThrowsData;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 
-@SuppressWarnings("deprecation")
-@com.oracle.truffle.api.dsl.internal.DSLOptions
 public class NodeParser extends AbstractParser<NodeData> {
 
     public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(Fallback.class, TypeSystemReference.class,
-                    com.oracle.truffle.api.dsl.ShortCircuit.class, Specialization.class,
+                    Specialization.class,
                     NodeChild.class,
                     NodeChildren.class);
 
@@ -205,9 +202,6 @@ public class NodeParser extends AbstractParser<NodeData> {
         AnnotationMirror reflectable = findFirstAnnotation(lookupTypes, Introspectable.class);
         if (reflectable != null) {
             node.setReflectable(true);
-            if (node.getTypeSystem().getOptions().defaultGenerator() != com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator.FLAT) {
-                node.addError(reflectable, null, "Reflection is not supported by the used DSL layout. Only the flat DSL layout supports reflection.");
-            }
         }
 
         node.getFields().addAll(parseFields(lookupTypes, members));
@@ -226,7 +220,6 @@ public class NodeParser extends AbstractParser<NodeData> {
         node.getSpecializations().addAll(new SpecializationMethodParser(context, node).parse(members));
         node.getSpecializations().addAll(new FallbackParser(context, node).parse(members));
         node.getCasts().addAll(new CreateCastParser(context, node).parse(members));
-        node.getShortCircuits().addAll(new ShortCircuitParser(context, node).parse(members));
 
         if (node.hasErrors()) {
             return node;  // error sync point
@@ -235,12 +228,9 @@ public class NodeParser extends AbstractParser<NodeData> {
         initializeExecutableTypeHierarchy(node);
 
         verifySpecializationSameLength(node);
-        initializeShortCircuits(node); // requires specializations and polymorphic specializations
-
         verifyVisibilities(node);
         verifyMissingAbstractMethods(node, members);
         verifyConstructors(node);
-        verifyNamingConvention(node.getShortCircuits(), "needs");
         verifySpecializationThrows(node);
         return node;
     }
@@ -438,7 +428,7 @@ public class NodeParser extends AbstractParser<NodeData> {
             }
         } else {
             // default dummy type system
-            typeSystem = new TypeSystemData(context, templateType, null, NodeParser.class.getAnnotation(com.oracle.truffle.api.dsl.internal.DSLOptions.class), true);
+            typeSystem = new TypeSystemData(context, templateType, null, true);
         }
         AnnotationMirror nodeInfoMirror = findFirstAnnotation(typeHierarchy, NodeInfo.class);
         String shortName = null;
@@ -501,13 +491,6 @@ public class NodeParser extends AbstractParser<NodeData> {
     }
 
     private List<NodeChildData> parseChildren(final List<TypeElement> typeHierarchy, List<? extends Element> elements) {
-        Set<String> shortCircuits = new HashSet<>();
-        for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
-            AnnotationMirror mirror = ElementUtils.findAnnotationMirror(processingEnv, method, com.oracle.truffle.api.dsl.ShortCircuit.class);
-            if (mirror != null) {
-                shortCircuits.add(ElementUtils.getAnnotationValue(String.class, mirror, "value"));
-            }
-        }
         Map<String, TypeMirror> castNodeTypes = new HashMap<>();
         for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
             AnnotationMirror mirror = ElementUtils.findAnnotationMirror(processingEnv, method, CreateCast.class);
@@ -583,16 +566,7 @@ public class NodeParser extends AbstractParser<NodeData> {
     }
 
     private List<NodeExecutionData> parseExecutions(List<NodeFieldData> fields, List<NodeChildData> children, List<? extends Element> elements) {
-        // pre-parse short circuits
-        Set<String> shortCircuits = new HashSet<>();
         List<ExecutableElement> methods = ElementFilter.methodsIn(elements);
-        for (ExecutableElement method : methods) {
-            AnnotationMirror mirror = ElementUtils.findAnnotationMirror(processingEnv, method, com.oracle.truffle.api.dsl.ShortCircuit.class);
-            if (mirror != null) {
-                shortCircuits.add(ElementUtils.getAnnotationValue(String.class, mirror, "value"));
-            }
-        }
-
         boolean hasVarArgs = false;
         int maxSignatureSize = 0;
         if (!children.isEmpty()) {
@@ -621,13 +595,7 @@ public class NodeParser extends AbstractParser<NodeData> {
                 continue;
             }
             int currentArgumentIndex = 0;
-            boolean skipShortCircuit = false;
             parameter: for (VariableElement var : method.getParameters()) {
-                if (skipShortCircuit) {
-                    skipShortCircuit = false;
-                    continue parameter;
-                }
-
                 TypeMirror type = var.asType();
                 if (currentArgumentIndex == 0) {
                     // skip optionals
@@ -650,14 +618,6 @@ public class NodeParser extends AbstractParser<NodeData> {
                     continue parameter;
                 }
 
-                int childIndex = currentArgumentIndex < children.size() ? currentArgumentIndex : children.size() - 1;
-                if (childIndex != -1) {
-                    NodeChildData child = children.get(childIndex);
-                    if (shortCircuits.contains(NodeExecutionData.createIndexedName(child, currentArgumentIndex - childIndex))) {
-                        skipShortCircuit = true;
-                    }
-                }
-
                 currentArgumentIndex++;
             }
             maxSignatureSize = Math.max(maxSignatureSize, currentArgumentIndex);
@@ -676,14 +636,12 @@ public class NodeParser extends AbstractParser<NodeData> {
                 }
             }
             int varArgsIndex = -1;
-            boolean shortCircuit = false;
             NodeChildData child = null;
             if (childIndex != -1) {
                 varArgsIndex = varArgParameter ? Math.abs(childIndex - i) : -1;
                 child = children.get(childIndex);
-                shortCircuit = shortCircuits.contains(NodeExecutionData.createIndexedName(child, varArgsIndex));
             }
-            executions.add(new NodeExecutionData(child, i, varArgsIndex, shortCircuit));
+            executions.add(new NodeExecutionData(child, i, varArgsIndex));
         }
         return executions;
     }
@@ -1527,127 +1485,6 @@ public class NodeParser extends AbstractParser<NodeData> {
         node.getSpecializations().add(polymorphic);
     }
 
-    private void initializeShortCircuits(NodeData node) {
-        Map<String, List<ShortCircuitData>> groupedShortCircuits = groupShortCircuits(node.getShortCircuits());
-
-        boolean valid = true;
-        List<NodeExecutionData> shortCircuitExecutions = new ArrayList<>();
-        for (NodeExecutionData execution : node.getChildExecutions()) {
-            if (!execution.isShortCircuit()) {
-                continue;
-            }
-            shortCircuitExecutions.add(execution);
-            String valueName = execution.getIndexedName();
-            List<ShortCircuitData> availableCircuits = groupedShortCircuits.get(valueName);
-
-            if (availableCircuits == null || availableCircuits.isEmpty()) {
-                node.addError("@%s method for short cut value '%s' required.", com.oracle.truffle.api.dsl.ShortCircuit.class.getSimpleName(), valueName);
-                valid = false;
-                continue;
-            }
-
-            boolean sameMethodName = true;
-            String methodName = availableCircuits.get(0).getMethodName();
-            for (ShortCircuitData circuit : availableCircuits) {
-                if (!circuit.getMethodName().equals(methodName)) {
-                    sameMethodName = false;
-                }
-            }
-
-            if (!sameMethodName) {
-                for (ShortCircuitData circuit : availableCircuits) {
-                    circuit.addError("All short circuits for short cut value '%s' must have the same method name.", valueName);
-                }
-                valid = false;
-                continue;
-            }
-
-            ShortCircuitData genericCircuit = null;
-            for (ShortCircuitData circuit : availableCircuits) {
-                if (isGenericShortCutMethod(circuit)) {
-                    genericCircuit = circuit;
-                    break;
-                }
-            }
-
-            if (genericCircuit == null) {
-                node.addError("No generic @%s method available for short cut value '%s'.", com.oracle.truffle.api.dsl.ShortCircuit.class.getSimpleName(), valueName);
-                valid = false;
-                continue;
-            }
-
-            for (ShortCircuitData circuit : availableCircuits) {
-                if (circuit != genericCircuit) {
-                    circuit.setGenericShortCircuitMethod(genericCircuit);
-                }
-            }
-        }
-
-        if (!valid) {
-            return;
-        }
-
-        List<SpecializationData> specializations = new ArrayList<>();
-        specializations.addAll(node.getSpecializations());
-        for (SpecializationData specialization : specializations) {
-            List<ShortCircuitData> assignedShortCuts = new ArrayList<>(shortCircuitExecutions.size());
-
-            for (NodeExecutionData shortCircuit : shortCircuitExecutions) {
-                List<ShortCircuitData> availableShortCuts = groupedShortCircuits.get(shortCircuit.getIndexedName());
-
-                ShortCircuitData genericShortCircuit = null;
-                ShortCircuitData compatibleShortCircuit = null;
-                for (ShortCircuitData circuit : availableShortCuts) {
-                    if (circuit.isGeneric()) {
-                        genericShortCircuit = circuit;
-                    } else if (circuit.isCompatibleTo(specialization)) {
-                        compatibleShortCircuit = circuit;
-                    }
-                }
-
-                if (compatibleShortCircuit == null) {
-                    compatibleShortCircuit = genericShortCircuit;
-                }
-                assignedShortCuts.add(compatibleShortCircuit);
-            }
-            specialization.setShortCircuits(assignedShortCuts);
-        }
-    }
-
-    private boolean isGenericShortCutMethod(ShortCircuitData method) {
-        for (Parameter parameter : method.getParameters()) {
-            NodeExecutionData execution = parameter.getSpecification().getExecution();
-            if (execution == null) {
-                continue;
-            }
-            ExecutableTypeData found = null;
-            List<ExecutableTypeData> executableElements = execution.getChild().findGenericExecutableTypes(context);
-            for (ExecutableTypeData executable : executableElements) {
-                if (ElementUtils.typeEquals(executable.getReturnType(), parameter.getType())) {
-                    found = executable;
-                    break;
-                }
-            }
-            if (found == null) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static Map<String, List<ShortCircuitData>> groupShortCircuits(List<ShortCircuitData> shortCircuits) {
-        Map<String, List<ShortCircuitData>> group = new HashMap<>();
-        for (ShortCircuitData shortCircuit : shortCircuits) {
-            List<ShortCircuitData> circuits = group.get(shortCircuit.getValueName());
-            if (circuits == null) {
-                circuits = new ArrayList<>();
-                group.put(shortCircuit.getValueName(), circuits);
-            }
-            circuits.add(shortCircuit);
-        }
-        return group;
-    }
-
     private static boolean verifySpecializationSameLength(NodeData nodeData) {
         int lastArgs = -1;
         for (SpecializationData specializationData : nodeData.getSpecializations()) {
@@ -1739,15 +1576,6 @@ public class NodeParser extends AbstractParser<NodeData> {
 
                 nodeData.addError("The type %s must implement the inherited abstract method %s.", ElementUtils.getSimpleName(nodeData.getTemplateType()),
                                 ElementUtils.getReadableSignature(unusedMethod));
-            }
-        }
-    }
-
-    private static void verifyNamingConvention(List<? extends TemplateMethod> methods, String prefix) {
-        for (int i = 0; i < methods.size(); i++) {
-            TemplateMethod m1 = methods.get(i);
-            if (m1.getMethodName().length() < 3 || !m1.getMethodName().startsWith(prefix)) {
-                m1.addError("Naming convention: method name must start with '%s'.", prefix);
             }
         }
     }

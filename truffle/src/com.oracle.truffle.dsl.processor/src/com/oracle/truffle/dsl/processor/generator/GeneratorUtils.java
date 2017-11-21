@@ -47,7 +47,6 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
-import com.oracle.truffle.dsl.processor.java.model.CodeNames;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
@@ -57,14 +56,14 @@ import com.oracle.truffle.dsl.processor.model.TemplateMethod;
 
 public class GeneratorUtils {
 
-    public static CodeTree createTransferToInterpreterAndInvalidate() {
+    static CodeTree createTransferToInterpreterAndInvalidate() {
         ProcessorContext context = ProcessorContext.getInstance();
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.startStatement().startStaticCall(context.getType(CompilerDirectives.class), "transferToInterpreterAndInvalidate").end().end();
         return builder.build();
     }
 
-    public static CodeExecutableElement createConstructorUsingFields(Set<Modifier> modifiers, CodeTypeElement clazz) {
+    static CodeExecutableElement createConstructorUsingFields(Set<Modifier> modifiers, CodeTypeElement clazz) {
         TypeElement superClass = fromTypeMirror(clazz.getSuperclass());
         ExecutableElement constructor = findConstructor(superClass);
         return createConstructorUsingFields(modifiers, clazz, constructor);
@@ -101,20 +100,6 @@ public class GeneratorUtils {
         return method;
     }
 
-    @SuppressWarnings("deprecation")
-    public static boolean isTypeBoxingOptimized(com.oracle.truffle.api.dsl.internal.DSLOptions.TypeBoxingOptimization boxing, TypeMirror type) {
-        switch (boxing) {
-            case NONE:
-                return false;
-            case ALWAYS:
-                return !ElementUtils.isObject(type) && !ElementUtils.isVoid(type);
-            case PRIMITIVE:
-                return ElementUtils.isPrimitive(type);
-            default:
-                throw new AssertionError();
-        }
-    }
-
     private static ExecutableElement findConstructor(TypeElement clazz) {
         List<ExecutableElement> constructors = ElementFilter.constructorsIn(clazz.getEnclosedElements());
         if (constructors.isEmpty()) {
@@ -124,26 +109,7 @@ public class GeneratorUtils {
         }
     }
 
-    public static CodeExecutableElement createSuperConstructor(ProcessorContext context, TypeElement type, ExecutableElement element) {
-        if (element.getModifiers().contains(Modifier.PRIVATE)) {
-            return null;
-        }
-        CodeExecutableElement executable = CodeExecutableElement.clone(context.getEnvironment(), element);
-        executable.setReturnType(null);
-        executable.setSimpleName(CodeNames.of(type.getSimpleName().toString()));
-        CodeTreeBuilder b = executable.createBuilder();
-        b.startStatement();
-        b.startSuperCall();
-        for (VariableElement v : element.getParameters()) {
-            b.string(v.getSimpleName().toString());
-        }
-        b.end();
-        b.end();
-
-        return executable;
-    }
-
-    public static CodeTypeElement createClass(Template sourceModel, TemplateMethod sourceMethod, Set<Modifier> modifiers, String simpleName, TypeMirror superType) {
+    static CodeTypeElement createClass(Template sourceModel, TemplateMethod sourceMethod, Set<Modifier> modifiers, String simpleName, TypeMirror superType) {
         TypeElement templateType = sourceModel.getTemplateType();
 
         ProcessorContext context = ProcessorContext.getInstance();
@@ -166,7 +132,7 @@ public class GeneratorUtils {
         return clazz;
     }
 
-    public static List<ExecutableElement> findUserConstructors(TypeMirror nodeType) {
+    static List<ExecutableElement> findUserConstructors(TypeMirror nodeType) {
         List<ExecutableElement> constructors = new ArrayList<>();
         for (ExecutableElement constructor : ElementFilter.constructorsIn(ElementUtils.fromTypeMirror(nodeType).getEnclosedElements())) {
             if (constructor.getModifiers().contains(PRIVATE)) {
@@ -185,7 +151,7 @@ public class GeneratorUtils {
         return constructors;
     }
 
-    public static boolean isCopyConstructor(ExecutableElement element) {
+    static boolean isCopyConstructor(ExecutableElement element) {
         if (element.getParameters().size() != 1) {
             return false;
         }

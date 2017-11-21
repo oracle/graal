@@ -29,42 +29,50 @@ import java.util.Map;
 import org.graalvm.polyglot.Value;
 
 /**
+ * Interface to be implemented to mimic guest language objects that contain members.
  *
- *
+ * @see Proxy
  * @since 1.0
  */
 public interface ProxyObject extends Proxy {
 
     /**
+     * Returns the value of the member.
      *
-     *
+     * @throws UnsupportedOperationException if the operation is unsupported
      * @since 1.0
      */
     Object getMember(String key);
 
     /**
-     *
+     * Returns array of member keys. Returns <code>null</code> or an empty {@link ProxyArray} to
+     * indicate no members.
      *
      * @since 1.0
      */
     ProxyArray getMemberKeys();
 
     /**
-     *
+     * Returns <code>true</code> if the proxy object contains a member with the given key, or else
+     * <code>false</code>.
      *
      * @since 1.0
      */
     boolean hasMember(String key);
 
     /**
+     * Sets the value associated with a member. If the member does not {@link #hasMember(String)
+     * exist} then a new member is defined. If the definition of new members is not supported then
+     * an {@link UnsupportedOperationException} is thrown.
      *
-     *
+     * @throws UnsupportedOperationException if the operation is unsupported
      * @since 1.0
      */
     void putMember(String key, Value value);
 
     /**
-     *
+     * Creates a proxy backed by a {@link Map}. If the set values of the map are host values then
+     * the they will be {@link Value#asHostObject() unboxed}.
      *
      * @since 1.0
      */

@@ -26,6 +26,8 @@ package com.oracle.truffle.api.vm;
 
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 
+import java.util.Set;
+
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
@@ -45,18 +47,34 @@ class PolyglotLanguage extends AbstractLanguageImpl implements VMObject {
     LanguageInfo info;
     final int index;
     private final boolean host;
+    final RuntimeException initError;
 
     private OptionDescriptors options;
     private volatile OptionValuesImpl optionValues;
 
     volatile boolean initialized;
 
-    PolyglotLanguage(PolyglotEngineImpl engine, LanguageCache cache, int index, boolean host) {
+    PolyglotLanguage(PolyglotEngineImpl engine, LanguageCache cache, int index, boolean host, RuntimeException initError) {
         super(engine.impl);
         this.engine = engine;
         this.cache = cache;
+        this.initError = initError;
         this.index = index;
         this.host = host;
+    }
+
+    boolean dependsOn(PolyglotLanguage otherLanguage) {
+        Set<String> dependentLanguages = cache.getDependentLanguages();
+        if (dependentLanguages.contains(otherLanguage.getId())) {
+            return true;
+        }
+        for (String dependentLanguage : dependentLanguages) {
+            PolyglotLanguage dependentLanguageObj = engine.idToLanguage.get(dependentLanguage);
+            if (dependentLanguageObj != null && dependsOn(dependentLanguageObj)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     Object getCurrentContext() {
@@ -147,6 +165,11 @@ class PolyglotLanguage extends AbstractLanguageImpl implements VMObject {
     @Override
     public String getId() {
         return cache.getId();
+    }
+
+    @Override
+    public String toString() {
+        return "PolyglotLanguage [id=" + getId() + ", name=" + getName() + ", host=" + isHost() + "]";
     }
 
 }

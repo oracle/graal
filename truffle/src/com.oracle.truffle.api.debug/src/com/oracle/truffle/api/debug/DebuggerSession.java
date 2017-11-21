@@ -26,11 +26,15 @@ package com.oracle.truffle.api.debug;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
@@ -41,6 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.debug.Breakpoint.BreakpointConditionFailure;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
@@ -55,6 +60,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter.Builder;
 import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
@@ -210,6 +216,57 @@ public final class DebuggerSession implements Closeable {
      */
     public Debugger getDebugger() {
         return debugger;
+    }
+
+    /**
+     * Returns a language top scope. The top scopes have global validity and unlike
+     * {@link DebugStackFrame#getScope()} have no relation to the suspended location.
+     *
+     * @since 0.30
+     */
+    public DebugScope getTopScope(String languageId) {
+        LanguageInfo info = debugger.getEnv().getLanguages().get(languageId);
+        if (info == null) {
+            return null;
+        }
+        Iterable<Scope> scopes = debugger.getEnv().findTopScopes(languageId);
+        Iterator<Scope> it = scopes.iterator();
+        if (!it.hasNext()) {
+            return null;
+        }
+        return new DebugScope(it.next(), it, debugger, info);
+    }
+
+    /**
+     * Returns a polyglot scope - symbols explicitly exported by languages.
+     *
+     * @since 0.30
+     */
+    public Map<String, ? extends DebugValue> getExportedSymbols() {
+        return new AbstractMap<String, DebugValue>() {
+            @Override
+            public Set<Map.Entry<String, DebugValue>> entrySet() {
+                Set<Map.Entry<String, DebugValue>> entries = new LinkedHashSet<>();
+                for (Map.Entry<String, ? extends Object> symbol : debugger.getEnv().getExportedSymbols().entrySet()) {
+                    DebugValue value = new DebugValue.HeapValue(debugger, symbol.getKey(), symbol.getValue());
+                    entries.add(new SimpleImmutableEntry<>(symbol.getKey(), value));
+                }
+                return Collections.unmodifiableSet(entries);
+            }
+
+            @Override
+            public DebugValue get(Object key) {
+                if (!(key instanceof String)) {
+                    return null;
+                }
+                String name = (String) key;
+                Object value = debugger.getEnv().getExportedSymbols().get(name);
+                if (value == null) {
+                    return null;
+                }
+                return new DebugValue.HeapValue(debugger, name, value);
+            }
+        };
     }
 
     /**
