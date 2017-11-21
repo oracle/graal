@@ -109,7 +109,7 @@ public class VersionsTest {
 
         Versions v = new Versions(dir.toPath());
 
-        Map<Object,Object> prepared = new HashMap<>();
+        Map<Object, Object> prepared = new HashMap<>();
         prepared.put("test", "best");
 
         Map<Object, Object> map = v.withVersions(prepared);
@@ -138,7 +138,7 @@ public class VersionsTest {
 
         Versions v = new Versions(dir.toPath());
 
-        Map<Object,Object> prepared = new HashMap<>();
+        Map<Object, Object> prepared = new HashMap<>();
         prepared.put("test", "best");
 
         Map<Object, Object> map = v.withVersions(prepared);
@@ -155,13 +155,22 @@ public class VersionsTest {
             temporaryDirectory.delete();
             assumeTrue(temporaryDirectory.mkdirs());
             try (FileWriter w = new FileWriter(new File(temporaryDirectory, "release"))) {
+// @formatter:off
                 w.write(
-                        "OS_NAME=linux\n" +
-                                "OS_ARCH=amd64\n" +
-                                "SOURCE=\" truffle:16055f1ffaf736b7b86dcfaea53971983cd9ae0a sdk:16055f1ffaf736b7b86dcfaea53971983cd9ae0a tools-enterprise:fcc1292a05e807a63589e24ce6073aafdef45bb9 graal-js:d374a8fd2733487a9f7518be6a55eb6163a779d1 graal-nodejs:3fcaf6874c9059d5ca5f0615edaa405d66cc1b02 truffleruby:7930979c3b0af09a910accaaf3e73b2a55d2bade fastr:079c6513b46f36abc24bce8aa6022c90576b3eaf graalpython:4cbee7853d460930c4d693970a21b73f811a4703 sulong:2c425f92caa004b12f60428a3e7e6e2715b51f87 substratevm:fcc1292a05e807a63589e24ce6073aafdef45bb9 compiler:16055f1ffaf736b7b86dcfaea53971983cd9ae0a substratevm-enterprise:fcc1292a05e807a63589e24ce6073aafdef45bb9 vm-enterprise:fcc1292a05e807a63589e24ce6073aafdef45bb9 graal-enterprise:fcc1292a05e807a63589e24ce6073aafdef45bb9 \"\n" +
-                                "COMMIT_INFO={\"vm-enterprise\":{\"commit.rev\":\"fcc1292a05e807a63589e24ce6073aafdef45bb9\",\"commit.committer\":\"Vojin Jovanovic <vojin.jovanovic@oracle.com>\",\"commit.committer-ts\":1508370783},\"graal-nodejs\":{\"commit.rev\":\"3fcaf6874c9059d5ca5f0615edaa405d66cc1b02\",\"commit.committer\":\"Peter Hofer <peter.hofer@oracle.com>\",\"commit.committer-ts\":1508338550},\"graal-js\":{\"commit.rev\":\"d374a8fd2733487a9f7518be6a55eb6163a779d1\",\"commit.committer\":\"Andreas Woess <andreas.woess@oracle.com>\",\"commit.committer-ts\":1508240812},\"fastr\":{\"commit.rev\":\"079c6513b46f36abc24bce8aa6022c90576b3eaf\",\"commit.committer\":\"Florian Angerer <florian.angerer@oracle.com>\",\"commit.committer-ts\":1508246582},\"truffleruby\":{\"commit.rev\":\"7930979c3b0af09a910accaaf3e73b2a55d2bade\",\"commit.committer\":\"Benoit Daloze <eregontp@gmail.com>\",\"commit.committer-ts\":1507740062},\"graalpython\":{\"commit.rev\":\"4cbee7853d460930c4d693970a21b73f811a4703\",\"commit.committer\":\"Tim Felgentreff <tim.felgentreff@oracle.com>\",\"commit.committer-ts\":1508144819},\"sulong\":{\"commit.rev\":\"2c425f92caa004b12f60428a3e7e6e2715b51f87\",\"commit.committer\":\"Manuel Rigger <manuel.rigger@jku.at>\",\"commit.committer-ts\":1507897876}}\n" +
-                                "GRAALVM_VERSION=\"0.29-dev\""
+"OS_NAME=linux\n" +
+"OS_ARCH=amd64\n" +
+"SOURCE=\" truffle:16055f1ffaf736b7b86dcfaea53971983cd9ae0a sdk:16055f1ffaf736b7b86dcfaea53971983cd9ae0a " +
+"tools-enterprise:fcc1292a05e807a63589e24ce6073aafdef45bb9 graal-js:d374a8fd2733487a9f7518be6a55eb6163a779d1 " +
+"graal-nodejs:3fcaf6874c9059d5ca5f0615edaa405d66cc1b02 truffleruby:7930979c3b0af09a910accaaf3e73b2a55d2bade " +
+"fastr:079c6513b46f36abc24bce8aa6022c90576b3eaf graalpython:4cbee7853d460930c4d693970a21b73f811a4703 " +
+"sulong:2c425f92caa004b12f60428a3e7e6e2715b51f87 substratevm:fcc1292a05e807a63589e24ce6073aafdef45bb9 " +
+"compiler:16055f1ffaf736b7b86dcfaea53971983cd9ae0a substratevm-enterprise:fcc1292a05e807a63589e24ce6073aafdef45bb9 " +
+"vm-enterprise:fcc1292a05e807a63589e24ce6073aafdef45bb9 graal-enterprise:fcc1292a05e807a63589e24ce6073aafdef45bb9 \"\n" +
+"COMMIT_INFO={\"vm-enterprise\":{\"commit.rev\":\"fcc1292a05e807a63589e24ce6073aafdef45bb9\"," +
+"\"commit.committer\":\"Vojin Jovanovic <vojin.jovanovic@oracle.com>\",}}\n" +
+"GRAALVM_VERSION=\"0.29-dev\""
                 );
+// @formatter:on
             }
         }
         return temporaryDirectory;
@@ -173,7 +182,7 @@ public class VersionsTest {
         return subdir;
     }
 
-    private static void assertEmpty(Map<?,?> map) {
+    private static void assertEmpty(Map<?, ?> map) {
         assertNotNull(map);
         assertTrue(map.isEmpty());
         assertNonModifiable(map);

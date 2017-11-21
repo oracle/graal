@@ -129,14 +129,15 @@ public final class DebugContext implements AutoCloseable {
         }
     }
 
-    /** Adds version properties to the provided map. The version properties
-     * are read at a start of the JVM from a JVM specific location. Each
-     * property identifiers a commit of a certain component in the system.
-     * The properties added to the {@code properties} map are prefixed
-     * with {@code "version."} prefix.
+    /**
+     * Adds version properties to the provided map. The version properties are read at a start of
+     * the JVM from a JVM specific location. Each property identifiers a commit of a certain
+     * component in the system. The properties added to the {@code properties} map are prefixed with
+     * {@code "version."} prefix.
      *
      * @param properties map to add the version properties to or {@code null}
-     * @return non-{@code null}, potentially non-modifiable map
+     * @return {@code properties} with version properties added or an unmodifiable map containing
+     *         the version properties if {@code properties == null}
      */
     public static Map<Object, Object> addVersionProperties(Map<Object, Object> properties) {
         return Versions.VERSIONS.withVersions(properties);
