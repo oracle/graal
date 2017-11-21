@@ -44,6 +44,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class ContextsEventsTest {
 
@@ -227,6 +228,26 @@ public class ContextsEventsTest {
             context.eval(Source.create(InstrumentationTestLanguage.ID, "ROOT(CONTEXT(EXPRESSION()), CONTEXT(STATEMENT))"));
         } finally {
             TestContextsInstrument.includeActiveContexts = false;
+        }
+    }
+
+    @Test
+    public void testContextsNotCloseable() {
+        try (Engine engine = Engine.create()) {
+            Instrument testContexsInstrument = engine.getInstruments().get("testContexsInstrument");
+            TestContextsInstrument test = testContexsInstrument.lookup(TestContextsInstrument.class);
+            final List<ContextEvent> events = test.events;
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                context.eval(Source.create(InstrumentationTestLanguage.ID, "CONTEXT(STATEMENT())"));
+                for (ContextEvent event : events) {
+                    try {
+                        event.context.close();
+                        fail("Context close should fail.");
+                    } catch (UnsupportedOperationException ex) {
+                        // O.K.
+                    }
+                }
+            }
         }
     }
 

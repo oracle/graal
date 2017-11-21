@@ -196,6 +196,8 @@ public abstract class Accessor {
 
         public abstract Object createInternalContext(Object vmObject, Map<String, Object> config, TruffleContext spiContext);
 
+        public abstract void initializeInternalContext(Object vmObject, Object contextImpl);
+
         public abstract Object enterInternalContext(Object impl);
 
         public abstract void leaveInternalContext(Object impl, Object prev);

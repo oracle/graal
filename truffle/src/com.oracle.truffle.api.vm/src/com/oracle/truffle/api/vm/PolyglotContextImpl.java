@@ -208,7 +208,11 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         }
         this.parent.addChildContext(this);
         this.truffleContext = spiContext;
-        VMAccessor.INSTRUMENT.notifyContextCreated(engine, spiContext);
+        // notifyContextCreated() is called after spiContext.impl is set to this.
+    }
+
+    void notifyContextCreated() {
+        VMAccessor.INSTRUMENT.notifyContextCreated(engine, truffleContext);
     }
 
     private synchronized void addChildContext(PolyglotContextImpl child) {

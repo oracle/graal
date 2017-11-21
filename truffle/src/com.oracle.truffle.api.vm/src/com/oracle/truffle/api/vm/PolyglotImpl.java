@@ -675,8 +675,15 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                 impl = new PolyglotContextImpl(creator, config, spiContext);
                 impl.api = impl.getAPIAccess().newContext(impl);
             }
-            impl.initializeLanguage(creator.language.getId());
             return impl;
+        }
+
+        @Override
+        public void initializeInternalContext(Object vmObject, Object contextImpl) {
+            PolyglotLanguageContext creator = ((PolyglotLanguageContext) vmObject);
+            PolyglotContextImpl impl = (PolyglotContextImpl) contextImpl;
+            impl.notifyContextCreated();
+            impl.initializeLanguage(creator.language.getId());
         }
 
         @Override

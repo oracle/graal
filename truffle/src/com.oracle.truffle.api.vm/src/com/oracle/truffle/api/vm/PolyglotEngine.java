@@ -1849,6 +1849,11 @@ public class PolyglotEngine {
         }
 
         @Override
+        public void initializeInternalContext(Object vmObject, Object contextImpl) {
+            throw new UnsupportedOperationException("Internal contexts are not supported within PolygotEngine.");
+        }
+
+        @Override
         public Object enterInternalContext(Object impl) {
             throw new UnsupportedOperationException("Internal contexts are not supported within PolygotEngine.");
         }
