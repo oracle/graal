@@ -33,7 +33,9 @@ import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.Constant;
@@ -66,9 +68,33 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
         }
     }
 
+    private static boolean isLoopIncrement(AddNode self) {
+        assert self != null;
+        if (self.getX() instanceof PhiNode && ((PhiNode) self.getX()).isLoopPhi()) {
+            return true;
+        }
+        if (self.getY() instanceof PhiNode && ((PhiNode) self.getY()).isLoopPhi()) {
+            return true;
+        }
+        return false;
+    }
+
     private static ValueNode canonical(AddNode addNode, BinaryOp<Add> op, ValueNode forX, ValueNode forY, NodeView view) {
         AddNode self = addNode;
         boolean associative = op.isAssociative();
+        if (forY.isConstant()) {
+            Constant c = forY.asConstant();
+            if (op.isNeutral(c)) {
+                return forX;
+            }
+            if (associative && self != null) {
+                // canonicalize expressions like "(a + 1) + 2"
+                ValueNode reassociated = reassociate(self, ValueNode.isConstantPredicate(), forX, forY, view);
+                if (reassociated != self) {
+                    return reassociated;
+                }
+            }
+        }
         if (associative) {
             if (forX instanceof SubNode) {
                 SubNode sub = (SubNode) forX;
@@ -84,17 +110,29 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
                     return sub.getX();
                 }
             }
-        }
-        if (forY.isConstant()) {
-            Constant c = forY.asConstant();
-            if (op.isNeutral(c)) {
-                return forX;
+            /* Attempt to reassociate to push down constants.
+             * We must check that self != null because
+             * 1. If this add has not yet been created and as of the form (x + C1) + C2,
+             * the constant reassociate() call has not yet happened and so we would infinitely recurse.
+             * 2. If this node is created as part of a reassociate() call, aggressively reassociating here might
+             * undo the intended results.
+             * Additionally, we must check this add isn't a loop induction variable,
+             * since reassociation can break loop analysis
+             */
+            if (self != null && forX instanceof AddNode && !isLoopIncrement(self)) {
+                AddNode add = (AddNode) forX;
+                if (add.getY().isConstant() && !forY.isConstant()) {
+                    // (x + C) + y -> (x + y) + C
+                    ValueNode left = BinaryArithmeticNode.add(add.getX(), forY, view);
+                    return BinaryArithmeticNode.add(left, add.getY(), view);
+                }
             }
-            if (associative && self != null) {
-                // canonicalize expressions like "(a + 1) + 2"
-                ValueNode reassociated = reassociate(self, ValueNode.isConstantPredicate(), forX, forY, view);
-                if (reassociated != self) {
-                    return reassociated;
+            if (self != null && forY instanceof AddNode && !isLoopIncrement(self)) {
+                AddNode add = (AddNode) forY;
+                if (add.getY().isConstant()) {
+                    // x + (y + C) -> (x + y) + C
+                    ValueNode left = BinaryArithmeticNode.add(forX, add.getX(), view);
+                    return BinaryArithmeticNode.add(left, add.getY(), view);
                 }
             }
         }
