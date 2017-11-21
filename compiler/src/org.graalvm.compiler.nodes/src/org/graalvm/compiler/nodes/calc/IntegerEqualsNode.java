@@ -153,7 +153,7 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                         boolean unorderedIsTrue, ValueNode forX, ValueNode forY, NodeView view) {
             if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
                 return LogicConstantNode.tautology();
-            } else if (forX.stamp(NodeView.DEFAULT).alwaysDistinct(forY.stamp(NodeView.DEFAULT))) {
+            } else if (forX.stamp(view).alwaysDistinct(forY.stamp(view))) {
                 return LogicConstantNode.contradiction();
             }
 
@@ -189,7 +189,7 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                         Condition condition, Constant constant, ValueNode nonConstant, boolean mirrored, boolean unorderedIsTrue, NodeView view) {
             if (constant instanceof PrimitiveConstant) {
                 PrimitiveConstant primitiveConstant = (PrimitiveConstant) constant;
-                IntegerStamp nonConstantStamp = ((IntegerStamp) nonConstant.stamp(NodeView.DEFAULT));
+                IntegerStamp nonConstantStamp = ((IntegerStamp) nonConstant.stamp(view));
                 if ((primitiveConstant.asLong() == 1 && nonConstantStamp.upperBound() == 1 && nonConstantStamp.lowerBound() == 0) ||
                                 (primitiveConstant.asLong() == -1 && nonConstantStamp.upperBound() == 0 && nonConstantStamp.lowerBound() == -1)) {
                     // nonConstant can only be 0 or 1 (respective -1), test against 0 instead of 1
@@ -206,7 +206,7 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                     } else if (nonConstant instanceof SubNode) {
                         SubNode subNode = (SubNode) nonConstant;
                         return IntegerEqualsNode.create(constantReflection, metaAccess, options, smallestCompareWidth, subNode.getX(), subNode.getY(), view);
-                    } else if (nonConstant instanceof ShiftNode && nonConstant.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
+                    } else if (nonConstant instanceof ShiftNode && nonConstant.stamp(view) instanceof IntegerStamp) {
                         if (nonConstant instanceof LeftShiftNode) {
                             LeftShiftNode shift = (LeftShiftNode) nonConstant;
                             if (shift.getY().isConstant()) {
@@ -221,7 +221,7 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                             }
                         } else if (nonConstant instanceof RightShiftNode) {
                             RightShiftNode shift = (RightShiftNode) nonConstant;
-                            if (shift.getY().isConstant() && ((IntegerStamp) shift.getX().stamp(NodeView.DEFAULT)).isPositive()) {
+                            if (shift.getY().isConstant() && ((IntegerStamp) shift.getX().stamp(view)).isPositive()) {
                                 int mask = shift.getShiftAmountMask();
                                 int amount = shift.getY().asJavaConstant().asInt() & mask;
                                 if (shift.getX().getStackKind() == JavaKind.Int) {
@@ -262,12 +262,12 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                     }
                 }
 
-                if (nonConstant instanceof XorNode && nonConstant.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
+                if (nonConstant instanceof XorNode && nonConstant.stamp(view) instanceof IntegerStamp) {
                     XorNode xorNode = (XorNode) nonConstant;
-                    if (xorNode.getY().isJavaConstant() && xorNode.getY().asJavaConstant().asLong() == 1 && ((IntegerStamp) xorNode.getX().stamp(NodeView.DEFAULT)).upMask() == 1) {
+                    if (xorNode.getY().isJavaConstant() && xorNode.getY().asJavaConstant().asLong() == 1 && ((IntegerStamp) xorNode.getX().stamp(view)).upMask() == 1) {
                         // x ^ 1 == 0 is the same as x == 1 if x in [0, 1]
                         // x ^ 1 == 1 is the same as x == 0 if x in [0, 1]
-                        return new IntegerEqualsNode(xorNode.getX(), ConstantNode.forIntegerStamp(xorNode.getX().stamp(NodeView.DEFAULT), primitiveConstant.asLong() ^ 1));
+                        return new IntegerEqualsNode(xorNode.getX(), ConstantNode.forIntegerStamp(xorNode.getX().stamp(view), primitiveConstant.asLong() ^ 1));
                     }
                 }
             }

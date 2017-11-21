@@ -1137,11 +1137,11 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genLeftShift(ValueNode x, ValueNode y) {
-        return LeftShiftNode.create(x, y);
+        return LeftShiftNode.create(x, y, NodeView.DEFAULT);
     }
 
     protected ValueNode genRightShift(ValueNode x, ValueNode y) {
-        return RightShiftNode.create(x, y);
+        return RightShiftNode.create(x, y, NodeView.DEFAULT);
     }
 
     protected ValueNode genUnsignedRightShift(ValueNode x, ValueNode y) {

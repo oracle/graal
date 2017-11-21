@@ -46,10 +46,10 @@ public final class RightShiftNode extends ShiftNode<Shr> {
         super(TYPE, ArithmeticOpTable::getShr, x, y);
     }
 
-    public static ValueNode create(ValueNode x, ValueNode y) {
-        ArithmeticOpTable.ShiftOp<Shr> op = ArithmeticOpTable.forStamp(x.stamp(NodeView.DEFAULT)).getShr();
-        Stamp stamp = op.foldStamp(x.stamp(NodeView.DEFAULT), (IntegerStamp) y.stamp(NodeView.DEFAULT));
-        ValueNode value = ShiftNode.canonical(op, stamp, x, y);
+    public static ValueNode create(ValueNode x, ValueNode y, NodeView view) {
+        ArithmeticOpTable.ShiftOp<Shr> op = ArithmeticOpTable.forStamp(x.stamp(view)).getShr();
+        Stamp stamp = op.foldStamp(x.stamp(view), (IntegerStamp) y.stamp(view));
+        ValueNode value = ShiftNode.canonical(op, stamp, x, y, view);
         if (value != null) {
             return value;
         }

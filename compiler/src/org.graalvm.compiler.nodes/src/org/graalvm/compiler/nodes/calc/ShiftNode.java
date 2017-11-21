@@ -86,14 +86,15 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticOper
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        ValueNode valueNode = canonical(getOp(forX), stamp(NodeView.DEFAULT), forX, forY);
+        NodeView view = NodeView.from(tool);
+        ValueNode valueNode = canonical(getOp(forX), stamp(NodeView.DEFAULT), forX, forY, view);
         if (valueNode != null) {
             return valueNode;
         }
         return this;
     }
 
-    public static <OP> ValueNode canonical(ShiftOp<OP> op, Stamp stamp, ValueNode forX, ValueNode forY) {
+    public static <OP> ValueNode canonical(ShiftOp<OP> op, Stamp stamp, ValueNode forX, ValueNode forY, NodeView view) {
         if (forX.isConstant() && forY.isConstant()) {
             JavaConstant amount = forY.asJavaConstant();
             assert amount.getJavaKind() == JavaKind.Int;

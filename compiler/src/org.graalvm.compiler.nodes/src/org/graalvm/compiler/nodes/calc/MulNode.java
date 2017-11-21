@@ -149,7 +149,7 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
             }
         } else if (i < 0) {
             if (CodeUtil.isPowerOf2(-i)) {
-                return NegateNode.create(LeftShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(-i))), view);
+                return NegateNode.create(LeftShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(-i)), view), view);
             }
         }
         return null;
