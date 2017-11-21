@@ -57,16 +57,24 @@ public final class ReinterpretNode extends UnaryNode implements ArithmeticLIRLow
 
     public static final NodeClass<ReinterpretNode> TYPE = NodeClass.create(ReinterpretNode.class);
 
-    public ReinterpretNode(JavaKind to, ValueNode value) {
+    protected ReinterpretNode(JavaKind to, ValueNode value) {
         this(StampFactory.forKind(to), value);
     }
 
-    public ReinterpretNode(Stamp to, ValueNode value) {
+    protected ReinterpretNode(Stamp to, ValueNode value) {
         super(TYPE, getReinterpretStamp(to, value.stamp(NodeView.DEFAULT)), value);
         assert to instanceof ArithmeticStamp;
     }
 
-    private SerializableConstant evalConst(SerializableConstant c) {
+    public static ValueNode create(JavaKind to, ValueNode value, NodeView view) {
+        return create(StampFactory.forKind(to), value, view);
+    }
+
+    public static ValueNode create(Stamp to, ValueNode value, NodeView view) {
+        return canonical(null, to, value, view);
+    }
+
+    private static SerializableConstant evalConst(Stamp stamp, SerializableConstant c) {
         /*
          * We don't care about byte order here. Either would produce the correct result.
          */
@@ -74,7 +82,7 @@ public final class ReinterpretNode extends UnaryNode implements ArithmeticLIRLow
         c.serialize(buffer);
 
         buffer.rewind();
-        SerializableConstant ret = ((ArithmeticStamp) stamp(NodeView.DEFAULT)).deserialize(buffer);
+        SerializableConstant ret = ((ArithmeticStamp) stamp).deserialize(buffer);
 
         assert !buffer.hasRemaining();
         return ret;
@@ -82,17 +90,22 @@ public final class ReinterpretNode extends UnaryNode implements ArithmeticLIRLow
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        NodeView view = NodeView.from(tool);
+        return canonical(this, this.stamp(view), forValue, view);
+    }
+
+    public static ValueNode canonical(ReinterpretNode node, Stamp forStamp, ValueNode forValue, NodeView view) {
         if (forValue.isConstant()) {
-            return ConstantNode.forConstant(stamp(NodeView.DEFAULT), evalConst((SerializableConstant) forValue.asConstant()), null);
+            return ConstantNode.forConstant(forStamp, evalConst(forStamp, (SerializableConstant) forValue.asConstant()), null);
         }
-        if (stamp(NodeView.DEFAULT).isCompatible(forValue.stamp(NodeView.DEFAULT))) {
+        if (forStamp.isCompatible(forValue.stamp(view))) {
             return forValue;
         }
         if (forValue instanceof ReinterpretNode) {
             ReinterpretNode reinterpret = (ReinterpretNode) forValue;
-            return new ReinterpretNode(stamp(NodeView.DEFAULT), reinterpret.getValue());
+            return new ReinterpretNode(forStamp, reinterpret.getValue());
         }
-        return this;
+        return node != null ? node : new ReinterpretNode(forStamp, forValue);
     }
 
     /**
