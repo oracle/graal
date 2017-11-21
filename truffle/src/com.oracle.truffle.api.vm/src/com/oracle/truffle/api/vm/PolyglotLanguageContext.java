@@ -77,9 +77,8 @@ final class PolyglotLanguageContext implements VMObject {
     PolyglotLanguageContext(PolyglotContextImpl context, PolyglotLanguage language, OptionValuesImpl optionValues, String[] applicationArguments, Map<String, Object> config) {
         this.context = context;
         this.language = language;
-        this.optionValues = optionValues;
-        this.applicationArguments = applicationArguments == null ? EMPTY_STRING_ARRAY : applicationArguments;
         this.config = config;
+        patchInstance(optionValues, applicationArguments);
     }
 
     /**
@@ -314,15 +313,19 @@ final class PolyglotLanguageContext implements VMObject {
         ensureInitialized(null);
     }
 
-    boolean patch(OptionValuesImpl values, String[] applicationArguments) {
-        this.optionValues = values;
-        this.applicationArguments = applicationArguments;
-        final Env newEnv = LANGUAGE.patchEnvContext(env, context.out, context.err, context.in, config, getOptionValues(), applicationArguments);
+    boolean patch(OptionValuesImpl newOptionValues, String[] newApplicationArguments) {
+        patchInstance(newOptionValues, newApplicationArguments);
+        final Env newEnv = LANGUAGE.patchEnvContext(env, context.out, context.err, context.in, config, getOptionValues(), newApplicationArguments);
         if (newEnv != null) {
             env = newEnv;
             return true;
         }
         return false;
+    }
+
+    private void patchInstance(OptionValuesImpl newOptionValues, String[] newApplicationArguments) {
+        this.optionValues = newOptionValues;
+        this.applicationArguments = newApplicationArguments == null ? EMPTY_STRING_ARRAY : newApplicationArguments;
     }
 
     final class ToGuestValuesNode {

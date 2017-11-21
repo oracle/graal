@@ -157,6 +157,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         return engine;
     }
 
+    /**
+     * Pre-initializes a polyglot engine instance.
+     *
+     * @since 0.30
+     */
     @Override
     public void preInitializeEngine() {
         ensureInitialized();

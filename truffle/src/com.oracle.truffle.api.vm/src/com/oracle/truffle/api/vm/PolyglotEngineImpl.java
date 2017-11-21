@@ -127,11 +127,11 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options, long timeout, TimeUnit timeoutUnit,
                     boolean sandbox, boolean useSystemProperties, ClassLoader contextClassLoader, boolean boundEngine) {
-        this(impl, out, err, in, options, timeout, timeoutUnit, sandbox, useSystemProperties, contextClassLoader, boundEngine, true);
+        this(impl, out, err, in, options, timeout, timeoutUnit, sandbox, useSystemProperties, contextClassLoader, boundEngine, false);
     }
 
     private PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options, long timeout, TimeUnit timeoutUnit,
-                    boolean sandbox, boolean useSystemProperties, ClassLoader contextClassLoader, boolean boundEngine, boolean createInstruments) {
+                    boolean sandbox, boolean useSystemProperties, ClassLoader contextClassLoader, boolean boundEngine, boolean preInitialization) {
         super(impl);
         this.instrumentationHandler = INSTRUMENT.createInstrumentationHandler(this, out, err, in);
         this.impl = impl;
@@ -198,38 +198,35 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         }
         idToPublicInstrument = Collections.unmodifiableMap(publicInstruments);
 
-        if (createInstruments) {
-            createInstruments(instrumentsOptions);
-        }
-
         ENGINES.put(this, null);
-        if (createInstruments) {
+        if (!preInitialization) {
+            createInstruments(instrumentsOptions);
             registerShutDownHook();
         }
     }
 
-    boolean patch(DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options, long timeout, TimeUnit timeoutUnit,
-                    boolean sandbox, boolean useSystemProperties, ClassLoader contextClassLoader, boolean boundEngine) {
+    boolean patch(DispatchOutputStream newOut, DispatchOutputStream newErr, InputStream newIn, Map<String, String> newOptions, long newTimeout, TimeUnit newTimeoutUnit,
+                    boolean newSandbox, boolean newUseSystemProperties, ClassLoader newContextClassLoader, boolean newBoundEngine) {
         CompilerAsserts.neverPartOfCompilation();
-        if (this.boundEngine != boundEngine) {
+        if (this.boundEngine != newBoundEngine) {
             return false;
         }
-        this.out = out;
-        this.err = err;
-        this.in = in;
-        this.timeout = timeout;
-        this.timeoutUnit = timeoutUnit;
-        this.contextClassLoader = contextClassLoader;
-        this.sandbox = sandbox;
-        this.boundEngine = boundEngine;
-        INSTRUMENT.patchInstrumentationHandler(instrumentationHandler, out, err, in);
+        this.out = newOut;
+        this.err = newErr;
+        this.in = newIn;
+        this.timeout = newTimeout;
+        this.timeoutUnit = newTimeoutUnit;
+        this.contextClassLoader = newContextClassLoader;
+        this.sandbox = newSandbox;
+        this.boundEngine = newBoundEngine;
+        INSTRUMENT.patchInstrumentationHandler(instrumentationHandler, newOut, newErr, newIn);
 
         Map<String, String> originalEngineOptions = new HashMap<>();
         Map<String, String> originalCompilerOptions = new HashMap<>();
         Map<PolyglotLanguage, Map<String, String>> languagesOptions = new HashMap<>();
         Map<PolyglotInstrument, Map<String, String>> instrumentsOptions = new HashMap<>();
 
-        parseOptions(options, useSystemProperties, originalEngineOptions, originalCompilerOptions, languagesOptions, instrumentsOptions);
+        parseOptions(newOptions, newUseSystemProperties, originalEngineOptions, originalCompilerOptions, languagesOptions, instrumentsOptions);
 
         this.engineOptionValues.putAll(originalEngineOptions);
         this.compilerOptionValues.putAll(originalCompilerOptions);
@@ -251,7 +248,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         return descriptors;
     }
 
-    private void createInstruments(final Map<PolyglotInstrument, Map<String, String>> instrumentsOptions) {
+    private static void createInstruments(final Map<PolyglotInstrument, Map<String, String>> instrumentsOptions) {
         for (PolyglotInstrument instrument : instrumentsOptions.keySet()) {
             instrument.getOptionValues().putAll(instrumentsOptions.get(instrument));
         }
@@ -262,7 +259,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         }
     }
 
-    private void registerShutDownHook() {
+    private static void registerShutDownHook() {
         if (!shutdownHookInitialized) {
             synchronized (ENGINES) {
                 if (!shutdownHookInitialized) {
@@ -641,7 +638,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     }
 
     static PolyglotEngineImpl preInitialize(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, ClassLoader contextClassLoader) {
-        final PolyglotEngineImpl engine = new PolyglotEngineImpl(impl, out, err, in, new HashMap<>(), 0, null, false, true, contextClassLoader, true, false);
+        final PolyglotEngineImpl engine = new PolyglotEngineImpl(impl, out, err, in, new HashMap<>(), 0, null, false, true, contextClassLoader, true, true);
         synchronized (engine) {
             engine.preInitializedContext = PolyglotContextImpl.preInitialize(engine);
             engine.addContext(engine.preInitializedContext);

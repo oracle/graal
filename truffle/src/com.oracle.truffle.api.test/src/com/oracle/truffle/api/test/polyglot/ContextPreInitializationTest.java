@@ -602,7 +602,7 @@ public class ContextPreInitializationTest {
         polyglot.preInitializeEngine();
     }
 
-    private Collection<? extends CountingContext> findContexts(
+    private static Collection<? extends CountingContext> findContexts(
                     final String languageId,
                     Collection<? extends CountingContext> contexts) {
         final Set<CountingContext> result = new HashSet<>();
@@ -614,7 +614,7 @@ public class ContextPreInitializationTest {
         return result;
     }
 
-    private CountingContext findContext(
+    private static CountingContext findContext(
                     final String languageId,
                     Collection<? extends CountingContext> contexts) {
         final Collection<? extends CountingContext> found = findContexts(languageId, contexts);

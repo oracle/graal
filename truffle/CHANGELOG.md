@@ -3,7 +3,7 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 0.30
-
+* Added a support for the TruffleLanguage context pre-initialization in a time of native compilation. To use the context pre-initialization a language has to implement the [patchContext](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage##patchContext-C-com.oracle.truffle.api.TruffleLanguage.Env-) method.
 * Truffle languages are being [finalized](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage##finalizeContext-C-) before disposal. This allows languages to run code with all languages still in a valid state. It is no longer allowed to access other languages during language disposal.
 * Truffle languages can now declare dependent languages. This allows to take influence on the disposal order.
 * All classes of the [com.oracle.truffle.api.metadata](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/metadata/package-summary.html) package were deprecated. As a replacement use [Scope](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/Scope.html), [TruffleLanguage.findLocalScopes](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#findLocalScopes-C-com.oracle.truffle.api.nodes.Node-com.oracle.truffle.api.frame.Frame-) and [TruffleInstrument.Env.findLocalScopes](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#findLocalScopes-com.oracle.truffle.api.nodes.Node-com.oracle.truffle.api.frame.Frame-) instead.

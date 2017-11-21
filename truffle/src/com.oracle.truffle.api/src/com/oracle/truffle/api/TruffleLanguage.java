@@ -483,15 +483,17 @@ public abstract class TruffleLanguage<C> {
      * Notifies the language with pre-initialized context about {@link Env} change. The language
      * context pre-initialization can be used to perform expensive builtin creation in the time of
      * native compilation. The context pre-initialization is enabled by setting the system property
-     * {polyglot.engine.PreinitializeContexts} to a comma separated list of language ids which
+     * {@code polyglot.engine.PreinitializeContexts} to a comma separated list of language ids which
      * should be pre-initialized.
-     * 
+     *
      * @param context the context created by
      *            {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)} during
      *            pre-initialization
      * @param newEnv the new environment replacing the environment used in pre-initialization phase
      * @return true in case of successful environment update. When the context cannot be updated to
-     *         a new environment return false to create a new context.
+     *         a new environment return false to create a new context. By default it returns
+     *         {@code false} to prevent an usage of pre-initialized context by a language which is
+     *         not aware of context pre-initialization.
      * @since 0.30
      */
     protected boolean patchContext(C context, Env newEnv) {
