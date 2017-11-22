@@ -84,21 +84,21 @@ final class ShadowStack {
         private final ThreadLocalStack cachedStack;
 
         @CompilationFinal private boolean seenOtherThreads;
-        @CompilationFinal final boolean isAttachedToRootNode;
+        @CompilationFinal final boolean isAttachedToRootTag;
         @CompilationFinal final boolean ignoreInlinedRoots;
 
-        StackPushPopNode(ShadowStack profilerStack, SourceLocation location, boolean ignoreInlinedRoots, boolean isAttachedToRootNode) {
+        StackPushPopNode(ShadowStack profilerStack, SourceLocation location, boolean ignoreInlinedRoots, boolean isAttachedToRootTag) {
             this.profilerStack = profilerStack;
             this.cachedThread = Thread.currentThread();
             this.location = location;
             this.cachedStack = getStack();
-            this.isAttachedToRootNode = isAttachedToRootNode;
+            this.isAttachedToRootTag = isAttachedToRootTag;
             this.ignoreInlinedRoots = ignoreInlinedRoots;
         }
 
         @Override
         protected void onEnter(VirtualFrame frame) {
-            if (CompilerDirectives.inCompiledCode() && ignoreInlinedRoots && isAttachedToRootNode && !CompilerDirectives.inCompilationRoot()) {
+            if (CompilerDirectives.inCompiledCode() && ignoreInlinedRoots && isAttachedToRootTag && !CompilerDirectives.inCompilationRoot()) {
                 return;
             }
             doOnEnter();
@@ -130,7 +130,7 @@ final class ShadowStack {
         protected void onReturnValue(VirtualFrame frame, Object result) {
             if (ignoreInlinedRoots) {
                 if (CompilerDirectives.inCompiledCode()) {
-                    if (isAttachedToRootNode && !CompilerDirectives.inCompilationRoot()) {
+                    if (isAttachedToRootTag && !CompilerDirectives.inCompilationRoot()) {
                         return;
                     }
                 } else {
