@@ -92,7 +92,7 @@ public final class DefaultTruffleSplittingStrategy implements TruffleSplittingSt
             return false;
         }
 
-        // Disable splitting if it will cause a split-only recursion
+        // Disable splitting if it will cause a deep split-only recursion
         if (isRecursiveSplit(call)) {
             return false;
         }
@@ -109,9 +109,13 @@ public final class DefaultTruffleSplittingStrategy implements TruffleSplittingSt
 
         OptimizedCallTarget callRootTarget = (OptimizedCallTarget) call.getRootNode().getCallTarget();
         OptimizedCallTarget callSourceTarget = callRootTarget.getSourceCallTarget();
+        int depth = 0;
         while (callSourceTarget != null) {
             if (callSourceTarget == splitCandidateTarget) {
-                return true;
+                depth++;
+                if (depth == 2) {
+                    return true;
+                }
             }
             final OptimizedDirectCallNode splitCallSite = callRootTarget.getCallSiteForSplit();
             if (splitCallSite == null) {
