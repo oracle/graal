@@ -31,8 +31,10 @@ package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 
@@ -74,6 +76,19 @@ public class LLVMFunctionMessageResolution {
             }
 
             return executeNode;
+        }
+    }
+
+    @Resolve(message = "INVOKE")
+    public abstract static class ForeignBindNode extends Node {
+
+        protected Object access(LLVMFunctionDescriptor object, String name, Object[] arguments) {
+            if ("bind".compareToIgnoreCase(name) == 0) {
+                return object;
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                return UnsupportedMessageException.raise(Message.createInvoke(arguments.length));
+            }
         }
 
     }

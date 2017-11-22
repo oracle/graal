@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.CanResolve;
@@ -62,39 +63,70 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.nfi.types.NativeLibraryDescriptor;
+import com.oracle.truffle.nfi.types.Parser;
 
 public final class Runner {
 
     private final NodeFactory nodeFactory;
 
-    static final class NoMain implements TruffleObject {
+    static final class SulongLibrary implements TruffleObject {
 
-        private NoMain() {
+        private final LLVMContext context;
+        private final String libraryName;
+
+        private SulongLibrary(LLVMContext context, String libraryName) {
+            this.context = context;
+            this.libraryName = libraryName;
         }
 
         @Override
         public ForeignAccess getForeignAccess() {
-            return NoMainMessageResolutionForeign.ACCESS;
+            return SulongLibraryMessageResolutionForeign.ACCESS;
         }
     }
 
-    @MessageResolution(receiverType = NoMain.class)
-    abstract static class NoMainMessageResolution {
+    @MessageResolution(receiverType = SulongLibrary.class)
+    abstract static class SulongLibraryMessageResolution {
 
         @Resolve(message = "IS_NULL")
         abstract static class IsNullNode extends Node {
 
-            @SuppressWarnings("unused")
-            Object access(NoMain boxed) {
-                return true;
+            Object access(SulongLibrary boxed) {
+                return boxed.context == null;
             }
         }
 
+        @Resolve(message = "READ")
+        abstract static class ReadNode extends Node {
+
+            @TruffleBoundary
+            Object access(SulongLibrary boxed, String name) {
+                String atname = "@" + name;
+                LLVMFunctionDescriptor d = lookup(boxed, atname);
+                if (d != null) {
+                    return d;
+                }
+                return lookup(boxed, name);
+            }
+        }
+
+        private static final LLVMFunctionDescriptor lookup(SulongLibrary boxed, String name) {
+            LLVMContext context = boxed.context;
+            if (context.getGlobalScope().functionExists(name)) {
+                LLVMFunctionDescriptor d = context.getGlobalScope().getFunctionDescriptor(name);
+                if (d.getLibraryName().equals(boxed.libraryName)) {
+                    return d;
+                }
+            }
+            return null;
+        }
+
         @CanResolve
-        abstract static class CanResolvNoMain extends Node {
+        abstract static class CanResolveNoMain extends Node {
 
             boolean test(TruffleObject object) {
-                return object instanceof NoMain;
+                return object instanceof SulongLibrary;
             }
         }
     }
