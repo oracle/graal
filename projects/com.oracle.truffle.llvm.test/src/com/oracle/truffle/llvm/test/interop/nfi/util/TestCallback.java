@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,27 +27,40 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.test.interop.nfi.util;
 
-public interface LLVMFunction {
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 
-    long SULONG_FUNCTION_POINTER_TAG = 0xDEAD_FACE_0000_0000L;
-    long UPPER_MASK = 0xFFFF_FFFF_0000_0000L;
+public class TestCallback implements TruffleObject {
 
-    static long tagSulongFunctionPointer(int id) {
-        return id | SULONG_FUNCTION_POINTER_TAG;
+    public interface Function {
+
+        Object call(Object... args);
     }
 
-    static boolean isTaggedSulongFunctionPointer(long functionPointer) {
-        return (functionPointer & UPPER_MASK) == SULONG_FUNCTION_POINTER_TAG;
+    private final int arity;
+    private final Function function;
+
+    public TestCallback(int arity, Function function) {
+        this.arity = arity;
+        this.function = function;
     }
 
-    static boolean isExternNativeFunctionPointer(long functionPointer) {
-        return !isTaggedSulongFunctionPointer(functionPointer);
+    @TruffleBoundary
+    Object call(Object... args) {
+        if (args.length == arity) {
+            Object ret = function.call(args);
+            return ret;
+        } else {
+            throw ArityException.raise(arity, args.length);
+        }
     }
 
-    long getFunctionPointer();
-
-    boolean isNullFunction();
-
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return TestCallbackMessageResolutionForeign.ACCESS;
+    }
 }

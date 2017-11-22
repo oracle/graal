@@ -44,8 +44,8 @@ public abstract class LLVMTruffleImportCached extends LLVMIntrinsic {
 
     @Child protected ForeignToLLVM toLLVM = ForeignToLLVM.create(ForeignToLLVMType.POINTER);
 
-    protected Object resolve(String name) {
-        return toLLVM.executeWithTarget(importSymbol(name));
+    protected Object resolve(VirtualFrame frame, String name) {
+        return toLLVM.executeWithTarget(frame, importSymbol(name));
     }
 
     @TruffleBoundary
@@ -58,14 +58,14 @@ public abstract class LLVMTruffleImportCached extends LLVMIntrinsic {
     public Object cached(VirtualFrame frame, Object value,
                     @Cached("createReadString()") LLVMReadStringNode readStr,
                     @Cached("readStr.executeWithTarget(frame, value)") String src,
-                    @Cached("resolve(src)") Object symbol) {
+                    @Cached("resolve(frame, src)") Object symbol) {
         return symbol;
     }
 
     @Specialization(replaces = "cached")
     public Object uncached(VirtualFrame frame, Object value,
                     @Cached("createReadString()") LLVMReadStringNode readStr) {
-        return resolve(readStr.executeWithTarget(frame, value));
+        return resolve(frame, readStr.executeWithTarget(frame, value));
     }
 
 }

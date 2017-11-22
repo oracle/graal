@@ -33,16 +33,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI64Node.LLVMToI64BitNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -51,6 +46,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
@@ -58,13 +54,8 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 public abstract class LLVMToI8Node extends LLVMExpressionNode {
 
     @Specialization
-    public byte executeI8(LLVMFunctionDescriptor from) {
-        return (byte) from.getFunctionPointer();
-    }
-
-    @Specialization
-    public byte executeI8(LLVMFunctionHandle from) {
-        return (byte) from.getFunctionPointer();
+    public byte executeI8(VirtualFrame frame, LLVMFunctionDescriptor from, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+        return (byte) toNative.executeWithTarget(frame, from).getVal();
     }
 
     @Specialization
@@ -72,32 +63,16 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
         return (byte) globalAccess.getNativeLocation(from).getVal();
     }
 
-    @Child private Node isNull = Message.IS_NULL.createNode();
-    @Child private Node isBoxed = Message.IS_BOXED.createNode();
-    @Child private Node unbox = Message.UNBOX.createNode();
     @Child private ForeignToLLVM convert = ForeignToLLVM.create(ForeignToLLVMType.I8);
 
     @Specialization
-    public byte executeLLVMTruffleObject(LLVMTruffleObject from) {
-        TruffleObject base = from.getObject();
-        if (ForeignAccess.sendIsNull(isNull, base)) {
-            return (byte) from.getOffset();
-        } else if (ForeignAccess.sendIsBoxed(isBoxed, base)) {
-            try {
-                byte ptr = (byte) convert.executeWithTarget(ForeignAccess.sendUnbox(unbox, base));
-                return (byte) (ptr + from.getOffset());
-            } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
-            }
-        }
-        CompilerDirectives.transferToInterpreter();
-        throw new IllegalStateException("Not convertable");
+    public byte executeLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject from, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+        return (byte) toNative.executeWithTarget(frame, from).getVal();
     }
 
     @Specialization
-    public byte executeLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
-        return (byte) convert.executeWithTarget(from.getValue());
+    public byte executeLLVMBoxedPrimitive(VirtualFrame frame, LLVMBoxedPrimitive from) {
+        return (byte) convert.executeWithTarget(frame, from.getValue());
     }
 
     public abstract static class LLVMToI8NoZeroExtNode extends LLVMToI8Node {

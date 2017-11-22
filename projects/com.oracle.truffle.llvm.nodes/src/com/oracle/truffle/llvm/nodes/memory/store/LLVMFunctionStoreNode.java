@@ -33,11 +33,12 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class LLVMFunctionStoreNode extends LLVMStoreNode {
@@ -47,19 +48,25 @@ public abstract class LLVMFunctionStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    public Object execute(LLVMAddress address, LLVMFunction function) {
-        LLVMHeap.putFunctionPointer(address, function.getFunctionPointer());
+    public Object execute(VirtualFrame frame, LLVMAddress address, Object function, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+        LLVMHeap.putFunctionPointer(address, toNative.executeWithTarget(frame, function).getVal());
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMGlobalVariable address, LLVMFunction function, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    public Object execute(LLVMGlobalVariable address, LLVMAddress function, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        globalAccess.putAddress(address, function);
+        return null;
+    }
+
+    @Specialization
+    public Object execute(LLVMGlobalVariable address, LLVMFunctionDescriptor function, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         globalAccess.putFunction(address, function);
         return null;
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMTruffleObject address, LLVMFunction value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    public Object execute(VirtualFrame frame, LLVMTruffleObject address, Object value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(frame, address, value);
         return null;
     }

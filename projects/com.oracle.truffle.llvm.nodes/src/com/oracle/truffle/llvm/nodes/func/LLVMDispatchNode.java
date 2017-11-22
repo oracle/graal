@@ -87,13 +87,6 @@ public abstract class LLVMDispatchNode extends LLVMNode {
      */
 
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function == cachedFunction", "cachedFunction.isLLVMIRFunction()"})
-    protected static Object doDirectReferenceCache(LLVMFunctionDescriptor function, Object[] arguments,
-                    @Cached("function") LLVMFunctionDescriptor cachedFunction,
-                    @Cached("create(cachedFunction.getLLVMIRFunction())") DirectCallNode callNode) {
-        return callNode.call(arguments);
-    }
-
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function.getFunctionId() == cachedFunction.getFunctionId()", "cachedFunction.isLLVMIRFunction()"}, replaces = "doDirectReferenceCache")
     protected static Object doDirect(LLVMFunctionDescriptor function, Object[] arguments,
                     @Cached("function") LLVMFunctionDescriptor cachedFunction,
                     @Cached("create(cachedFunction.getLLVMIRFunction())") DirectCallNode callNode) {
@@ -120,7 +113,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return directCallNode;
     }
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function.getFunctionPointer() == cachedFunction.getFunctionPointer()", "cachedFunction.isNativeIntrinsicFunction()"})
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function == cachedFunction", "cachedFunction.isNativeIntrinsicFunction()"})
     protected Object doDirectIntrinsic(LLVMFunctionDescriptor function, Object[] arguments,
                     @Cached("function") LLVMFunctionDescriptor cachedFunction,
                     @Cached("getIntrinsificationCallNode(cachedFunction.getNativeIntrinsic())") DirectCallNode callNode) {
@@ -148,7 +141,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return threadingStack;
     }
 
-    @Specialization(limit = "10", guards = {"descriptor.getFunctionPointer() == cachedDescriptor.getFunctionPointer()", "descriptor.isNativeFunction()"})
+    @Specialization(limit = "10", guards = {"descriptor == cachedDescriptor", "descriptor.isNativeFunction()"})
     protected Object doCachedNative(VirtualFrame frame, LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached("descriptor") LLVMFunctionDescriptor cachedDescriptor,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,

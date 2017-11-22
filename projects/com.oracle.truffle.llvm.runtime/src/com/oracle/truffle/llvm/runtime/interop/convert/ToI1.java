@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
@@ -41,6 +42,7 @@ import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 abstract class ToI1 extends ForeignToLLVM {
 
@@ -87,8 +89,8 @@ abstract class ToI1 extends ForeignToLLVM {
     }
 
     @Specialization
-    public boolean fromForeignPrimitive(LLVMBoxedPrimitive boxed) {
-        return recursiveConvert(boxed.getValue());
+    public boolean fromForeignPrimitive(VirtualFrame frame, LLVMBoxedPrimitive boxed) {
+        return recursiveConvert(frame, boxed.getValue());
     }
 
     @Specialization
@@ -102,8 +104,8 @@ abstract class ToI1 extends ForeignToLLVM {
     }
 
     @Specialization
-    public boolean fromLLVMFunctionDescriptor(LLVMFunctionDescriptor fd) {
-        return fd.getFunctionPointer() != 0;
+    public boolean fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+        return toNative.executeWithTarget(frame, fd).getVal() != 0;
     }
 
     @Specialization
@@ -112,45 +114,20 @@ abstract class ToI1 extends ForeignToLLVM {
     }
 
     @Specialization(guards = "notLLVM(obj)")
-    public boolean fromTruffleObject(TruffleObject obj) {
-        return recursiveConvert(fromForeign(obj));
+    public boolean fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+        return recursiveConvert(frame, fromForeign(obj));
     }
 
-    private boolean recursiveConvert(Object o) {
+    private boolean recursiveConvert(VirtualFrame frame, Object o) {
         if (toI1 == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toI1 = ToI1NodeGen.create();
         }
-        return (boolean) toI1.executeWithTarget(o);
+        return (boolean) toI1.executeWithTarget(frame, o);
     }
 
     protected static boolean notLLVM(TruffleObject value) {
         return LLVMExpressionNode.notLLVM(value);
-    }
-
-    @TruffleBoundary
-    Object slowPathPrimitiveConvert(Object value) {
-        if (value instanceof Number) {
-            return ((Number) value).longValue() != 0;
-        } else if (value instanceof Boolean) {
-            return (boolean) value;
-        } else if (value instanceof Character) {
-            return (char) value != 0;
-        } else if (value instanceof String) {
-            return getSingleStringCharacter((String) value);
-        } else if (value instanceof LLVMFunctionDescriptor) {
-            return fromLLVMFunctionDescriptor((LLVMFunctionDescriptor) value);
-        } else if (value instanceof LLVMBoxedPrimitive) {
-            return fromForeignPrimitive((LLVMBoxedPrimitive) value);
-        } else if (value instanceof LLVMTruffleAddress) {
-            return fromLLVMTruffleAddress((LLVMTruffleAddress) value);
-        } else if (value instanceof LLVMSharedGlobalVariable) {
-            return fromSharedDescriptor((LLVMSharedGlobalVariable) value, createGlobalAccess());
-        } else if (value instanceof TruffleObject && notLLVM((TruffleObject) value)) {
-            return fromTruffleObject((TruffleObject) value);
-        } else {
-            throw UnsupportedTypeException.raise(new Object[]{value});
-        }
     }
 
     @TruffleBoundary
@@ -164,7 +141,7 @@ abstract class ToI1 extends ForeignToLLVM {
         } else if (value instanceof String) {
             return thiz.getSingleStringCharacter((String) value) != 0;
         } else if (value instanceof LLVMFunctionDescriptor) {
-            return ((LLVMFunctionDescriptor) value).getFunctionPointer() != 0;
+            return ((LLVMFunctionDescriptor) value).toNative().asPointer() != 0;
         } else if (value instanceof LLVMBoxedPrimitive) {
             return slowPathPrimitiveConvert(thiz, ((LLVMBoxedPrimitive) value).getValue());
         } else if (value instanceof LLVMTruffleAddress) {

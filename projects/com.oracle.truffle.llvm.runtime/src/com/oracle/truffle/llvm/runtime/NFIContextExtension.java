@@ -132,7 +132,7 @@ public final class NFIContextExtension implements ContextExtension {
         }
     }
 
-    private static String getNativeLibrarySuffix() {
+    public static String getNativeLibrarySuffix() {
         if (System.getProperty("os.name").toLowerCase().contains("mac")) {
             return "dylib";
         } else {

@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.CanResolve;
@@ -62,39 +63,70 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.nfi.types.NativeLibraryDescriptor;
+import com.oracle.truffle.nfi.types.Parser;
 
 public final class Runner {
 
     private final NodeFactory nodeFactory;
 
-    static final class NoMain implements TruffleObject {
+    static final class SulongLibrary implements TruffleObject {
 
-        private NoMain() {
+        private final LLVMContext context;
+        private final String libraryName;
+
+        private SulongLibrary(LLVMContext context, String libraryName) {
+            this.context = context;
+            this.libraryName = libraryName;
         }
 
         @Override
         public ForeignAccess getForeignAccess() {
-            return NoMainMessageResolutionForeign.ACCESS;
+            return SulongLibraryMessageResolutionForeign.ACCESS;
         }
     }
 
-    @MessageResolution(receiverType = NoMain.class)
-    abstract static class NoMainMessageResolution {
+    @MessageResolution(receiverType = SulongLibrary.class)
+    abstract static class SulongLibraryMessageResolution {
 
         @Resolve(message = "IS_NULL")
         abstract static class IsNullNode extends Node {
 
-            @SuppressWarnings("unused")
-            Object access(NoMain boxed) {
-                return true;
+            Object access(SulongLibrary boxed) {
+                return boxed.context == null;
             }
         }
 
+        @Resolve(message = "READ")
+        abstract static class ReadNode extends Node {
+
+            @TruffleBoundary
+            Object access(SulongLibrary boxed, String name) {
+                String atname = "@" + name;
+                LLVMFunctionDescriptor d = lookup(boxed, atname);
+                if (d != null) {
+                    return d;
+                }
+                return lookup(boxed, name);
+            }
+        }
+
+        private static LLVMFunctionDescriptor lookup(SulongLibrary boxed, String name) {
+            LLVMContext context = boxed.context;
+            if (context.getGlobalScope().functionExists(name)) {
+                LLVMFunctionDescriptor d = context.getGlobalScope().getFunctionDescriptor(name);
+                if (d.getLibraryName().equals(boxed.libraryName)) {
+                    return d;
+                }
+            }
+            return null;
+        }
+
         @CanResolve
-        abstract static class CanResolvNoMain extends Node {
+        abstract static class CanResolveNoMain extends Node {
 
             boolean test(TruffleObject object) {
-                return object instanceof NoMain;
+                return object instanceof SulongLibrary;
             }
         }
     }
@@ -108,30 +140,40 @@ public final class Runner {
 
             CallTarget mainFunction = null;
             ByteBuffer bytes;
+            String libraryName = null;
 
             if (code.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE)) {
                 ByteBuffer buffer = Charset.forName("ascii").newEncoder().encode(CharBuffer.wrap(code.getCharacters()));
                 bytes = Base64.getDecoder().decode(buffer);
-                assert LLVMScanner.isSupportedFile(bytes);
+                libraryName = "<STREAM>";
+            } else if (code.getMimeType().equals(LLVMLanguage.LLVM_SULONG_TYPE)) {
+                NativeLibraryDescriptor descriptor = Parser.parseLibraryDescriptor(code.getCharacters());
+                String filename = descriptor.getFilename();
+                libraryName = filename;
+                bytes = read(filename);
             } else if (code.getPath() != null) {
+                libraryName = code.getPath();
                 bytes = read(code.getPath());
-                assert LLVMScanner.isSupportedFile(bytes);
             } else {
                 throw new IllegalStateException();
             }
 
+            assert libraryName != null;
             assert bytes != null;
+            if (!LLVMScanner.isSupportedFile(bytes)) {
+                throw new IOException("Unsupported file: " + code.toString());
+            }
 
             BitcodeParserResult bitcodeParserResult = BitcodeParserResult.getFromSource(code, bytes);
             context.addLibraryPaths(bitcodeParserResult.getLibraryPaths());
             context.addExternalLibraries(bitcodeParserResult.getLibraries());
             parseDynamicBitcodeLibraries(language, context);
-            LLVMParserResult parserResult = parseBitcodeFile(code, bitcodeParserResult, language, context);
+            LLVMParserResult parserResult = parseBitcodeFile(code, libraryName, bitcodeParserResult, language, context);
             mainFunction = parserResult.getMainCallTarget();
             if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
                 mainFunction = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
             } else if (mainFunction == null) {
-                mainFunction = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(new NoMain()));
+                mainFunction = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(new SulongLibrary(context, libraryName)));
             }
             handleParserResult(context, parserResult);
             return mainFunction;
@@ -218,7 +260,7 @@ public final class Runner {
         context.getThreadingStack().freeStacks();
     }
 
-    private LLVMParserResult parseBitcodeFile(Source source, BitcodeParserResult bitcodeParserResult, LLVMLanguage language, LLVMContext context) {
-        return LLVMParserRuntime.parse(source, bitcodeParserResult, language, context, nodeFactory);
+    private LLVMParserResult parseBitcodeFile(Source source, String libraryName, BitcodeParserResult bitcodeParserResult, LLVMLanguage language, LLVMContext context) {
+        return LLVMParserRuntime.parse(source, libraryName, bitcodeParserResult, language, context, nodeFactory);
     }
 }

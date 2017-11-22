@@ -407,7 +407,8 @@ public final class LLVMSymbolReadResolver {
         @Override
         public void visit(FunctionDeclaration toResolve) {
             final boolean global = !Linkage.isFileLocal(toResolve.getLinkage());
-            final LLVMContext.FunctionFactory generator = i -> LLVMFunctionDescriptor.createDescriptor(runtime.getContext(), toResolve.getName(), toResolve.getType(), i);
+            final LLVMContext.FunctionFactory generator = i -> LLVMFunctionDescriptor.createDescriptor(runtime.getContext(), runtime.getLibraryName(), toResolve.getName(), toResolve.getType(),
+                            i);
             final Object value = runtime.getScope().lookupOrCreateFunction(runtime.getContext(), toResolve.getName(), global, generator);
             resolvedNode = runtime.getNodeFactory().createLiteral(runtime, value, toResolve.getType());
         }
@@ -415,7 +416,8 @@ public final class LLVMSymbolReadResolver {
         @Override
         public void visit(FunctionDefinition toResolve) {
             final boolean global = !Linkage.isFileLocal(toResolve.getLinkage());
-            final LLVMContext.FunctionFactory generator = i -> LLVMFunctionDescriptor.createDescriptor(runtime.getContext(), toResolve.getName(), toResolve.getType(), i);
+            final LLVMContext.FunctionFactory generator = i -> LLVMFunctionDescriptor.createDescriptor(runtime.getContext(), runtime.getLibraryName(), toResolve.getName(), toResolve.getType(),
+                            i);
             final Object value = runtime.getScope().lookupOrCreateFunction(runtime.getContext(), toResolve.getName(), global, generator);
             resolvedNode = runtime.getNodeFactory().createLiteral(runtime, value, toResolve.getType());
         }

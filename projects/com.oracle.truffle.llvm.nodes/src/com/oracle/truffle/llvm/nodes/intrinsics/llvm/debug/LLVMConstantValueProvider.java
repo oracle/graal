@@ -29,16 +29,15 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
+import java.math.BigInteger;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-
-import java.math.BigInteger;
 
 abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
 
@@ -342,21 +341,15 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
 
     static final class Function extends LLVMConstantValueProvider {
 
-        private final LLVMFunctionHandle value;
-        private final LLVMContext context;
+        private final LLVMFunctionDescriptor value;
 
-        Function(LLVMFunctionHandle value, LLVMContext context) {
+        Function(LLVMFunctionDescriptor value) {
             this.value = value;
-            this.context = context;
         }
 
         @Override
         Object getBaseValue() {
-            if (value.isNullFunction()) {
-                return "NULL";
-            } else {
-                return context.getFunctionDescriptor(value);
-            }
+            return value;
         }
 
         @Override

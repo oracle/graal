@@ -94,4 +94,8 @@ public abstract class LLVMNode extends Node {
         // should have one
         return tag == StandardTags.StatementTag.class || super.isTaggedWith(tag);
     }
+
+    protected LLVMToNativeNode createToNativeNode() {
+        return LLVMToNativeNodeGen.create();
+    }
 }

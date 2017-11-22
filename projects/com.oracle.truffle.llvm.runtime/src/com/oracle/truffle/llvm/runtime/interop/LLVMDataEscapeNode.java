@@ -36,15 +36,14 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress.LLVMVirtualAllocationAddressTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
+import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress.LLVMVirtualAllocationAddressTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -129,11 +128,6 @@ public abstract class LLVMDataEscapeNode extends Node {
         }
         assert typeForExport != null;
         return new LLVMTruffleAddress(escapingValue, typeForExport, context);
-    }
-
-    @Specialization
-    public TruffleObject escapingFunction(LLVMFunctionHandle escapingValue, LLVMContext context) {
-        return context.getFunctionDescriptor(escapingValue);
     }
 
     @Specialization
@@ -227,8 +221,6 @@ public abstract class LLVMDataEscapeNode extends Node {
             return new LLVMTruffleAddress(LLVMAddress.nullPointer(), new PointerType(null), context);
         } else if (value instanceof LLVMAddress) {
             return new LLVMTruffleAddress((LLVMAddress) value, type, context);
-        } else if (value instanceof LLVMFunctionHandle) {
-            return context.getFunctionDescriptor((LLVMFunctionHandle) value);
         } else if (value instanceof LLVMTruffleObject && ((LLVMTruffleObject) value).getOffset() == 0) {
             return ((LLVMTruffleObject) value).getObject();
         } else if (value instanceof LLVMTruffleObject) {

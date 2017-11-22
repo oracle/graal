@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,34 +27,41 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.test.interop.nfi.util;
 
-import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.api.interop.CanResolve;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.nodes.Node;
 
-@ValueType
-public final class LLVMFunctionHandle implements LLVMFunction {
+@MessageResolution(receiverType = TestCallback.class)
+class TestCallbackMessageResolution {
 
-    private final long functionPointer;
+    @Resolve(message = "EXECUTE")
+    abstract static class ExecuteNode extends Node {
 
-    private LLVMFunctionHandle(long functionPointer) {
-        this.functionPointer = functionPointer;
+        Object access(TestCallback callback, Object[] arguments) {
+            Object res = callback.call(arguments);
+            return res == null ? JavaInterop.asTruffleObject(null) : res;
+        }
     }
 
-    public static LLVMFunctionHandle createHandle(long value) {
-        return new LLVMFunctionHandle(value);
+    @Resolve(message = "IS_EXECUTABLE")
+    abstract static class IsExecutable extends Node {
+
+        @SuppressWarnings("unused")
+        boolean access(TestCallback receiver) {
+            return true;
+        }
     }
 
-    public static LLVMFunctionHandle nullPointer() {
-        return new LLVMFunctionHandle(0);
-    }
+    @CanResolve
+    abstract static class CanResolveTestCallback extends Node {
 
-    @Override
-    public long getFunctionPointer() {
-        return functionPointer;
-    }
-
-    @Override
-    public boolean isNullFunction() {
-        return functionPointer == 0;
+        boolean test(TruffleObject object) {
+            return object instanceof TestCallback;
+        }
     }
 }

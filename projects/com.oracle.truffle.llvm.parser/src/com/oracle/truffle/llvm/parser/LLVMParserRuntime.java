@@ -78,7 +78,7 @@ public final class LLVMParserRuntime {
     private static final Comparator<Pair<Integer, ?>> ASCENDING_PRIORITY = (p1, p2) -> p1.getFirst() >= p2.getFirst() ? 1 : -1;
     private static final Comparator<Pair<Integer, ?>> DESCENDING_PRIORITY = (p1, p2) -> p1.getFirst() < p2.getFirst() ? 1 : -1;
 
-    public static LLVMParserResult parse(Source source, BitcodeParserResult parserResult, LLVMLanguage language, LLVMContext context, NodeFactory nodeFactory) {
+    public static LLVMParserResult parse(Source source, String libraryName, BitcodeParserResult parserResult, LLVMLanguage language, LLVMContext context, NodeFactory nodeFactory) {
         ModelModule model = parserResult.getModel();
         StackAllocation stack = parserResult.getStackAllocation();
         LLVMPhiManager phiManager = parserResult.getPhis();
@@ -91,7 +91,7 @@ public final class LLVMParserRuntime {
 
         DataLayoutConverter.DataSpecConverterImpl targetDataLayout = DataLayoutConverter.getConverter(layout.getDataLayout());
         context.setDataLayoutConverter(targetDataLayout);
-        LLVMParserRuntime runtime = new LLVMParserRuntime(source, language, context, stack, nodeFactory, module.getAliases());
+        LLVMParserRuntime runtime = new LLVMParserRuntime(source, libraryName, language, context, stack, nodeFactory, module.getAliases());
 
         runtime.initializeFunctions(phiManager, labels, module.getFunctions());
 
@@ -132,6 +132,7 @@ public final class LLVMParserRuntime {
     }
 
     private final Source source;
+    private final String libraryName;
     private final LLVMLanguage language;
     private final LLVMContext context;
     private final StackAllocation stack;
@@ -140,9 +141,10 @@ public final class LLVMParserRuntime {
     private final List<LLVMExpressionNode> deallocations;
     private final LLVMScope scope;
 
-    private LLVMParserRuntime(Source source, LLVMLanguage language, LLVMContext context, StackAllocation stack, NodeFactory nodeFactory,
+    private LLVMParserRuntime(Source source, String libraryName, LLVMLanguage language, LLVMContext context, StackAllocation stack, NodeFactory nodeFactory,
                     Map<GlobalAlias, Symbol> aliases) {
         this.source = source;
+        this.libraryName = libraryName;
         this.context = context;
         this.stack = stack;
         this.nodeFactory = nodeFactory;
@@ -152,11 +154,15 @@ public final class LLVMParserRuntime {
         this.scope = LLVMScope.createFileScope(context);
     }
 
+    public String getLibraryName() {
+        return libraryName;
+    }
+
     private void initializeFunctions(LLVMPhiManager phiManager, LLVMLabelList labels, List<FunctionDefinition> functions) {
         for (FunctionDefinition function : functions) {
             String functionName = function.getName();
             LLVMFunctionDescriptor functionDescriptor = scope.lookupOrCreateFunction(context, functionName, !Linkage.isFileLocal(function.getLinkage()),
-                            index -> LLVMFunctionDescriptor.createDescriptor(context, functionName, function.getType(), index));
+                            index -> LLVMFunctionDescriptor.createDescriptor(context, libraryName, functionName, function.getType(), index));
             LazyToTruffleConverterImpl lazyConverter = new LazyToTruffleConverterImpl(this, context, nodeFactory, function, source, stack.getFrame(functionName), phiManager.getPhiMap(functionName),
                             labels.labels(functionName));
             functionDescriptor.declareInSulong(lazyConverter, Linkage.isWeak(function.getLinkage()));
@@ -312,5 +318,9 @@ public final class LLVMParserRuntime {
 
     public LLVMScope getScope() {
         return scope;
+    }
+
+    public Source getSource() {
+        return source;
     }
 }

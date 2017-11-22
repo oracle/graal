@@ -34,14 +34,9 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -50,6 +45,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -62,13 +58,8 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 public abstract class LLVMToI64Node extends LLVMExpressionNode {
 
     @Specialization
-    public long executeI64(LLVMFunctionDescriptor from) {
-        return from.getFunctionPointer();
-    }
-
-    @Specialization
-    public long executeI64(LLVMFunctionHandle from) {
-        return from.getFunctionPointer();
+    public long executeI64(VirtualFrame frame, LLVMFunctionDescriptor from, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+        return toNative.executeWithTarget(frame, from).getVal();
     }
 
     @Specialization
@@ -76,25 +67,16 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
         return globalAccess.getNativeLocation(from).getVal();
     }
 
-    @Child private Node isNull = Message.IS_NULL.createNode();
-    @Child private Node isBoxed = Message.IS_BOXED.createNode();
-    @Child private Node asPointer = Message.AS_POINTER.createNode();
-    @Child private Node toNative = Message.TO_NATIVE.createNode();
-    @Child private Node unbox = Message.UNBOX.createNode();
     @Child private ForeignToLLVM convert = ForeignToLLVM.create(ForeignToLLVMType.I64);
 
-    protected LLVMForceLLVMAddressNode createToAddress() {
-        return LLVMForceLLVMAddressNodeGen.create();
-    }
-
     @Specialization
-    public long executeTruffleObject(VirtualFrame frame, LLVMTruffleObject from, @Cached("createToAddress()") LLVMForceLLVMAddressNode toAddress) {
+    public long executeTruffleObject(VirtualFrame frame, LLVMTruffleObject from, @Cached("createToNativeNode()") LLVMToNativeNode toAddress) {
         return toAddress.executeWithTarget(frame, from).getVal();
     }
 
     @Specialization
-    public long executeLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
-        return (long) convert.executeWithTarget(from.getValue());
+    public long executeLLVMBoxedPrimitive(VirtualFrame frame, LLVMBoxedPrimitive from) {
+        return (long) convert.executeWithTarget(frame, from.getValue());
     }
 
     public abstract static class LLVMToI64NoZeroExtNode extends LLVMToI64Node {

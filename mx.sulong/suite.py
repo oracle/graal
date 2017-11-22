@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.115.0",
+  "mxversion" : "5.130.1",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -79,6 +79,7 @@ suite = {
         "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.test",
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
@@ -278,6 +279,15 @@ suite = {
         "CPPFLAGS" : "-I<sulong_include>",
       },
     },
+    "com.oracle.truffle.llvm.tests.nfi" : {
+      "subDir" : "tests",
+      "class" : "SulongTestSuite",
+      "variants" : ['O0_MEM2REG'],
+      "buildRef" : False,
+      "buildEnv" : {
+        "CPPFLAGS" : "-I<sulong_include>",
+      },
+    },
     "com.oracle.truffle.llvm.tests.sulong" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
@@ -375,6 +385,7 @@ suite = {
       "output" : "mxbuild/sulong-test-suites",
       "dependencies" : [
         "com.oracle.truffle.llvm.tests.interop",
+        "com.oracle.truffle.llvm.tests.nfi",
         "com.oracle.truffle.llvm.tests.sulong",
         "com.oracle.truffle.llvm.tests.sulongcpp",
         "com.oracle.truffle.llvm.tests.libc",

@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
@@ -40,6 +41,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 abstract class ToDouble extends ForeignToLLVM {
 
@@ -96,8 +98,8 @@ abstract class ToDouble extends ForeignToLLVM {
     }
 
     @Specialization
-    public double fromLLVMFunctionDescriptor(LLVMFunctionDescriptor fd) {
-        return fd.getFunctionPointer();
+    public double fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+        return toNative.executeWithTarget(frame, fd).getVal();
     }
 
     @Specialization
@@ -106,21 +108,21 @@ abstract class ToDouble extends ForeignToLLVM {
     }
 
     @Specialization
-    public double fromForeignPrimitive(LLVMBoxedPrimitive boxed) {
-        return recursiveConvert(boxed.getValue());
+    public double fromForeignPrimitive(VirtualFrame frame, LLVMBoxedPrimitive boxed) {
+        return recursiveConvert(frame, boxed.getValue());
     }
 
     @Specialization(guards = "notLLVM(obj)")
-    public double fromTruffleObject(TruffleObject obj) {
-        return recursiveConvert(fromForeign(obj));
+    public double fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+        return recursiveConvert(frame, fromForeign(obj));
     }
 
-    private double recursiveConvert(Object o) {
+    private double recursiveConvert(VirtualFrame frame, Object o) {
         if (toDouble == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toDouble = ToDoubleNodeGen.create();
         }
-        return (double) toDouble.executeWithTarget(o);
+        return (double) toDouble.executeWithTarget(frame, o);
     }
 
     @TruffleBoundary
@@ -134,7 +136,7 @@ abstract class ToDouble extends ForeignToLLVM {
         } else if (value instanceof String) {
             return thiz.getSingleStringCharacter((String) value);
         } else if (value instanceof LLVMFunctionDescriptor) {
-            return ((LLVMFunctionDescriptor) value).getFunctionPointer();
+            return ((LLVMFunctionDescriptor) value).toNative().asPointer();
         } else if (value instanceof LLVMBoxedPrimitive) {
             return slowPathPrimitiveConvert(thiz, ((LLVMBoxedPrimitive) value).getValue());
         } else if (value instanceof LLVMTruffleAddress) {

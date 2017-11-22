@@ -57,20 +57,20 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
         }
     }
 
-    private static Object doRead(TruffleObject value, String name, Node foreignRead, ForeignToLLVM toLLVM) {
+    private static Object doRead(VirtualFrame frame, TruffleObject value, String name, Node foreignRead, ForeignToLLVM toLLVM) {
         try {
             Object rawValue = ForeignAccess.sendRead(foreignRead, value, name);
-            return toLLVM.executeWithTarget(rawValue);
+            return toLLVM.executeWithTarget(frame, rawValue);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);
         }
     }
 
-    private static Object doReadIdx(TruffleObject value, int id, Node foreignRead, ForeignToLLVM toLLVM) {
+    private static Object doReadIdx(VirtualFrame frame, TruffleObject value, int id, Node foreignRead, ForeignToLLVM toLLVM) {
         try {
             Object rawValue = ForeignAccess.sendRead(foreignRead, value, id);
-            return toLLVM.executeWithTarget(rawValue);
+            return toLLVM.executeWithTarget(frame, rawValue);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);
@@ -93,14 +93,14 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
                         @Cached("createReadString()") LLVMReadStringNode readStr,
                         @Cached("readStr.executeWithTarget(frame, id)") String cachedId) {
             checkLLVMTruffleObject(value);
-            return doRead(value.getObject(), cachedId, foreignRead, toLLVM);
+            return doRead(frame, value.getObject(), cachedId, foreignRead, toLLVM);
         }
 
         @Specialization(replaces = "cached")
         public Object uncached(VirtualFrame frame, LLVMTruffleObject value, Object id,
                         @Cached("createReadString()") LLVMReadStringNode readStr) {
             checkLLVMTruffleObject(value);
-            return doRead(value.getObject(), readStr.executeWithTarget(frame, id), foreignRead, toLLVM);
+            return doRead(frame, value.getObject(), readStr.executeWithTarget(frame, id), foreignRead, toLLVM);
         }
 
         @Fallback
@@ -123,9 +123,9 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
         }
 
         @Specialization
-        public Object executeIntrinsic(LLVMTruffleObject value, int id) {
+        public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id) {
             checkLLVMTruffleObject(value);
-            return doReadIdx(value.getObject(), id, foreignRead, toLLVM);
+            return doReadIdx(frame, value.getObject(), id, foreignRead, toLLVM);
         }
 
         @Fallback

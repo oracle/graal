@@ -41,9 +41,9 @@ import com.oracle.truffle.api.profiles.IntValueProfile;
 import com.oracle.truffle.api.profiles.LongValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.Container.CachedLLVMAddressContainer;
 import com.oracle.truffle.llvm.runtime.global.Container.CachedManagedContainer;
 import com.oracle.truffle.llvm.runtime.global.Container.GenericLLVMAddressContainer;
@@ -261,7 +261,7 @@ public final class LLVMGlobalVariableAccess extends Node {
         container.putLLVMTruffleObject(global, value);
     }
 
-    public void putFunction(LLVMGlobalVariable global, LLVMFunction value) {
+    public void putFunction(LLVMGlobalVariable global, LLVMFunctionDescriptor value) {
         Container container = getContainer.executeWithTarget(global.getContainer());
         CompilerAsserts.partialEvaluationConstant(container.getClass());
         container.putFunction(global, value);

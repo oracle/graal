@@ -37,7 +37,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMNativeFunctions;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -142,8 +141,7 @@ public final class LLVMEndCatchNode extends LLVMExpressionNode {
             getDecHandlerCount().dec(ptr);
             LLVMAddress destructorAddress = getGetDestructor().get(ptr);
             if (getGetHandlerCount().get(ptr) <= 0 && destructorAddress.getVal() != 0) {
-                LLVMFunctionHandle destructor = LLVMFunctionHandle.createHandle(destructorAddress.getVal());
-                dispatch.executeDispatch(frame, destructor, new Object[]{stackPointer.executeI64(frame), getGetThrownObject().getThrownObject(ptr)});
+                dispatch.executeDispatch(frame, destructorAddress, new Object[]{stackPointer.executeI64(frame), getGetThrownObject().getThrownObject(ptr)});
             }
             return null;
         } catch (Throwable e) {

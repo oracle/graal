@@ -258,10 +258,11 @@ mx_subst.path_substitutions.register_no_arg('sulong_include', lambda: os.path.jo
 
 
 class SulongTestSuite(mx.NativeProject):
-    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True, **args):
         d = os.path.join(suite.dir, subDir) # use common Makefile for all test suites
-        mx.NativeProject.__init__(self, suite, name, subDir, [], deps, workingSets, results, output, d)
+        mx.NativeProject.__init__(self, suite, name, subDir, [], deps, workingSets, results, output, d, **args)
         self.vpath = True
+        self.buildRef = buildRef
 
     @staticmethod
     def haveDragonegg():
@@ -292,11 +293,6 @@ class SulongTestSuite(mx.NativeProject):
                 self._variants.append(v)
         return self._variants
 
-    def getBuildRef(self):
-        if hasattr(self, 'buildRef'):
-            return self.buildRef
-        else:
-            return True
 
     def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
         env = super(SulongTestSuite, self).getBuildEnv(replaceVar=replaceVar)
@@ -304,7 +300,7 @@ class SulongTestSuite(mx.NativeProject):
         env['PROJECT'] = self.name
         env['TESTS'] = ' '.join(self.getTests())
         env['VARIANTS'] = ' '.join(self.getVariants())
-        env['BUILD_REF'] = '1' if self.getBuildRef() else '0'
+        env['BUILD_REF'] = '1' if self.buildRef else '0'
         env['SULONG_MAKE_CLANG_IMPLICIT_ARGS'] = mx_sulong.getClangImplicitArgs()
         if SulongTestSuite.haveDragonegg():
             env['DRAGONEGG'] = mx_sulong.dragonEggPath()
@@ -316,7 +312,7 @@ class SulongTestSuite(mx.NativeProject):
         if not self.results:
             self.results = []
             for t in self.getTests():
-                if self.getBuildRef():
+                if self.buildRef:
                     self.results.append(os.path.join(t, 'ref.out'))
                 for v in self.getVariants():
                     self.results.append(os.path.join(t, v + '.bc'))
