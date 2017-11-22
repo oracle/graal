@@ -214,15 +214,21 @@ public class SplittingStrategyTest extends TestWithSynchronousCompiling {
         runtime.addCompilationListener(listener);
         outside.call(1);
 
-        // Expected 7
-        // OUTSIDE -> MID
-        // MID <split> -> INNER
-        // INNER <split> -> OUTSIDE
-        // OUTSIDE <split> -> MID
-        // INNER -> OUTSIDE
-        // OUTSIDE <> -> MID
-        // MID <> -> INNER
-        Assert.assertEquals("Not the right number of splits.", 7, splitCounter[0]);
+        // Expected 13
+        // OUTSIDE MID
+        // MID <split> INNER
+        // INNER <split> OUTSIDE
+        // OUTSIDE <split> MID
+        // INNER OUTSIDE
+        // OUTSIDE <split> MID
+        // MID <split> INNER
+        // MID <split> INNER
+        // INNER <split> OUTSIDE
+        // OUTSIDE <split> MID
+        // INNER <split> OUTSIDE
+        // OUTSIDE <split> MID
+        // MID <split> INNER
+        Assert.assertEquals("Not the right number of splits.", 13, splitCounter[0]);
         runtime.removeCompilationListener(listener);
     }
 }
