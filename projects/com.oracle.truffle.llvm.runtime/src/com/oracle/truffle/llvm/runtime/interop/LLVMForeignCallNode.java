@@ -167,7 +167,14 @@ abstract class LLVMForeignCallNode extends Node {
     }
 
     protected CallTarget getCallTarget(LLVMFunctionDescriptor function) {
-        return function.getLLVMIRFunction();
+        if (function.isLLVMIRFunction()) {
+            return function.getLLVMIRFunction();
+        } else if (function.isNativeIntrinsicFunction()) {
+            return function.getNativeIntrinsic().cachedCallTarget(function.getType());
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("native function not supported at this point");
+        }
     }
 
     private static void checkArgLength(int minLength, int actualLength) {
