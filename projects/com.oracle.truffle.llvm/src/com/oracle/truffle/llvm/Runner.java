@@ -111,7 +111,7 @@ public final class Runner {
             }
         }
 
-        private static final LLVMFunctionDescriptor lookup(SulongLibrary boxed, String name) {
+        private static LLVMFunctionDescriptor lookup(SulongLibrary boxed, String name) {
             LLVMContext context = boxed.context;
             if (context.getGlobalScope().functionExists(name)) {
                 LLVMFunctionDescriptor d = context.getGlobalScope().getFunctionDescriptor(name);
