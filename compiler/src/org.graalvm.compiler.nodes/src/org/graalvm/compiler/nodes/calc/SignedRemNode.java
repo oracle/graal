@@ -66,10 +66,10 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
 
     private static ValueNode canonical(SignedRemNode self, ValueNode forX, ValueNode forY, Stamp stamp, NodeView view) {
         if (forX.isConstant() && forY.isConstant()) {
-            @SuppressWarnings("hiding")
             long y = forY.asJavaConstant().asLong();
             if (y == 0) {
-                return self != null ? self : new SignedRemNode(forX, forY); // this will trap, can not canonicalize
+                return self != null ? self : new SignedRemNode(forX, forY); // this will trap, can
+                                                                            // not canonicalize
             }
             return ConstantNode.forIntegerStamp(stamp, forX.asJavaConstant().asLong() % y);
         } else if (forY.isConstant() && forX.stamp(view) instanceof IntegerStamp && forY.stamp(view) instanceof IntegerStamp) {

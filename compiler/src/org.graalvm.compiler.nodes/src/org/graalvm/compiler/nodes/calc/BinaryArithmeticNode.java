@@ -90,6 +90,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         return this;
     }
 
+    @SuppressWarnings("unused")
     public static <OP> ConstantNode tryConstantFold(BinaryOp<OP> op, ValueNode forX, ValueNode forY, Stamp stamp, NodeView view) {
         if (forX.isConstant() && forY.isConstant()) {
             Constant ret = op.foldConstant(forX.asConstant(), forY.asConstant());

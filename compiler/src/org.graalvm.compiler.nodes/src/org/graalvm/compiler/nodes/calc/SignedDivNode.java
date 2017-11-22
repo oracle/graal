@@ -68,10 +68,10 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
         Stamp predictedStamp = IntegerStamp.OPS.getDiv().foldStamp(forX.stamp(NodeView.DEFAULT), forY.stamp(NodeView.DEFAULT));
         Stamp stamp = self != null ? self.stamp(view) : predictedStamp;
         if (forX.isConstant() && forY.isConstant()) {
-            @SuppressWarnings("hiding")
             long y = forY.asJavaConstant().asLong();
             if (y == 0) {
-                return self != null ? self : new SignedDivNode(forX, forY); // this will trap, can not canonicalize
+                return self != null ? self : new SignedDivNode(forX, forY); // this will trap, can
+                                                                            // not canonicalize
             }
             return ConstantNode.forIntegerStamp(stamp, forX.asJavaConstant().asLong() / y);
         } else if (forY.isConstant()) {

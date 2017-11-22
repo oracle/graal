@@ -59,12 +59,14 @@ public class UnsignedDivNode extends IntegerDivRemNode implements LIRLowerable {
         return canonical(this, forX, forY, stamp(view), view);
     }
 
+    @SuppressWarnings("unused")
     private static ValueNode canonical(UnsignedDivNode self, ValueNode forX, ValueNode forY, Stamp stamp, NodeView view) {
         int bits = ((IntegerStamp) stamp).getBits();
         if (forX.isConstant() && forY.isConstant()) {
             long yConst = CodeUtil.zeroExtend(forY.asJavaConstant().asLong(), bits);
             if (yConst == 0) {
-                return self != null ? self : new UnsignedDivNode(forX, forY); // this will trap, cannot canonicalize
+                return self != null ? self : new UnsignedDivNode(forX, forY); // this will trap,
+                                                                              // cannot canonicalize
             }
             return ConstantNode.forIntegerStamp(stamp, Long.divideUnsigned(CodeUtil.zeroExtend(forX.asJavaConstant().asLong(), bits), yConst));
         } else if (forY.isConstant()) {

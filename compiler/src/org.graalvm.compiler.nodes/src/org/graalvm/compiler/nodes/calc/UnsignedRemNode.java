@@ -65,7 +65,8 @@ public class UnsignedRemNode extends IntegerDivRemNode implements LIRLowerable {
         if (forX.isConstant() && forY.isConstant()) {
             long yConst = CodeUtil.zeroExtend(forY.asJavaConstant().asLong(), bits);
             if (yConst == 0) {
-                return self != null ? self : new UnsignedRemNode(forX, forY); // this will trap, cannot canonicalize
+                return self != null ? self : new UnsignedRemNode(forX, forY); // this will trap,
+                                                                              // cannot canonicalize
             }
             return ConstantNode.forIntegerStamp(stamp, Long.remainderUnsigned(CodeUtil.zeroExtend(forX.asJavaConstant().asLong(), bits), yConst));
         } else if (forY.isConstant()) {

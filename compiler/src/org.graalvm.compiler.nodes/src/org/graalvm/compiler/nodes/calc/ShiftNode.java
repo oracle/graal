@@ -94,6 +94,7 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticOper
         return this;
     }
 
+    @SuppressWarnings("unused")
     public static <OP> ValueNode canonical(ShiftOp<OP> op, Stamp stamp, ValueNode forX, ValueNode forY, NodeView view) {
         if (forX.isConstant() && forY.isConstant()) {
             JavaConstant amount = forY.asJavaConstant();
