@@ -70,5 +70,4 @@ public final class LLVMTruffleAddress implements TruffleObject {
     public String toString() {
         return Long.toString(address);
     }
-
 }

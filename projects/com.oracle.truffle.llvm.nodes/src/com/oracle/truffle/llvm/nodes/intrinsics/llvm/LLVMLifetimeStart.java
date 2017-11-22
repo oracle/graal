@@ -38,8 +38,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMLifetimeStart extends LLVMBuiltin {
 
     @Specialization
-    public Object executeI1(@SuppressWarnings("unused") long size, @SuppressWarnings("unused") Object ptr) {
+    protected Object doI1(@SuppressWarnings("unused") long size, @SuppressWarnings("unused") Object ptr) {
         return null;
     }
-
 }

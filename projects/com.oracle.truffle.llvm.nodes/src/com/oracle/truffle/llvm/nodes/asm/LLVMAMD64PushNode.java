@@ -51,7 +51,8 @@ public abstract class LLVMAMD64PushNode extends LLVMExpressionNode {
 
     public abstract static class LLVMAMD64PushwNode extends LLVMAMD64PushNode {
         @Specialization
-        protected Object executeVoid(VirtualFrame frame, short value, @Cached("getStackPointerSlot()") FrameSlot slot) {
+        protected Object doVoid(VirtualFrame frame, short value,
+                        @Cached("getStackPointerSlot()") FrameSlot slot) {
             long sp = FrameUtil.getLongSafe(frame, slot);
             sp -= LLVMExpressionNode.I16_SIZE_IN_BYTES;
             frame.setLong(slot, sp);
@@ -62,7 +63,8 @@ public abstract class LLVMAMD64PushNode extends LLVMExpressionNode {
 
     public abstract static class LLVMAMD64PushlNode extends LLVMAMD64PushNode {
         @Specialization
-        protected Object executeVoid(VirtualFrame frame, int value, @Cached("getStackPointerSlot()") FrameSlot slot) {
+        protected Object doVoid(VirtualFrame frame, int value,
+                        @Cached("getStackPointerSlot()") FrameSlot slot) {
             long sp = FrameUtil.getLongSafe(frame, slot);
             sp -= LLVMExpressionNode.I32_SIZE_IN_BYTES;
             frame.setLong(slot, sp);
@@ -73,7 +75,8 @@ public abstract class LLVMAMD64PushNode extends LLVMExpressionNode {
 
     public abstract static class LLVMAMD64PushqNode extends LLVMAMD64PushNode {
         @Specialization
-        protected Object executeVoid(VirtualFrame frame, long value, @Cached("getStackPointerSlot()") FrameSlot slot) {
+        protected Object doVoid(VirtualFrame frame, long value,
+                        @Cached("getStackPointerSlot()") FrameSlot slot) {
             long sp = FrameUtil.getLongSafe(frame, slot);
             sp -= LLVMExpressionNode.I64_SIZE_IN_BYTES;
             frame.setLong(slot, sp);

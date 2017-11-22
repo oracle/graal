@@ -48,14 +48,13 @@ public abstract class LLVMExpect {
         }
 
         @Specialization
-        public boolean executeI1(boolean val) {
+        protected boolean doI1(boolean val) {
             if (expectProfile.profile(val == expected)) {
                 return expected;
             } else {
                 return val;
             }
         }
-
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "val")
@@ -70,14 +69,13 @@ public abstract class LLVMExpect {
         }
 
         @Specialization
-        public int executeI32(int val) {
+        protected int doI32(int val) {
             if (expectProfile.profile(val == expected)) {
                 return expected;
             } else {
                 return val;
             }
         }
-
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "val")
@@ -92,7 +90,7 @@ public abstract class LLVMExpect {
         }
 
         @Specialization
-        public long executeI64(long val) {
+        protected long doI64(long val) {
             if (expectProfile.profile(val == expected)) {
                 return expected;
             } else {
@@ -104,5 +102,4 @@ public abstract class LLVMExpect {
     static ConditionProfile getExpectConditionProfile() {
         return ConditionProfile.createBinaryProfile();
     }
-
 }

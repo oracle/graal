@@ -101,7 +101,7 @@ public final class NameBasedInteropTest {
     public static class SulongTestNode extends RootNode {
 
         private final TruffleObject function;
-        @Child Node execute;
+        @Child private Node execute;
 
         protected SulongTestNode(String fnName, int argCount) {
             super(null);

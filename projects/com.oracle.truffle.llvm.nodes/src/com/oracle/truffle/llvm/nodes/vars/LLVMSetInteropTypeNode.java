@@ -52,5 +52,4 @@ public final class LLVMSetInteropTypeNode extends LLVMExpressionNode {
         type.setSourceType(sourceType);
         return null;
     }
-
 }

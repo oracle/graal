@@ -174,5 +174,4 @@ public abstract class Type {
         final int alignment = type.getAlignment(targetDataLayout);
         return getPadding(offset, alignment);
     }
-
 }

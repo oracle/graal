@@ -69,5 +69,4 @@ public final class InlineAssemblyTest extends BaseSuiteHarness {
     protected String getTestName() {
         return testName;
     }
-
 }

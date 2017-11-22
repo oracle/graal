@@ -92,7 +92,7 @@ abstract class LLVMForeignCallNode extends LLVMNode {
     }
 
     protected static class SlowPackForeignArgumentsNode extends Node {
-        @Child SlowPathForeignToLLVM slowConvert = ForeignToLLVM.createSlowPathNode();
+        @Child private SlowPathForeignToLLVM slowConvert = ForeignToLLVM.createSlowPathNode();
 
         Object[] pack(LLVMFunctionDescriptor function, Object[] arguments, long stackPointer) {
             int actualArgumentsLength = Math.max(arguments.length, function.getType().getArgumentTypes().length);
@@ -126,7 +126,7 @@ abstract class LLVMForeignCallNode extends LLVMNode {
 
     @SuppressWarnings("unused")
     @Specialization(limit = "3", guards = {"function == cachedFunction", "cachedLength == arguments.length"})
-    public Object callDirectCached(VirtualFrame frame, LLVMFunctionDescriptor function, Object[] arguments,
+    protected Object callDirectCached(VirtualFrame frame, LLVMFunctionDescriptor function, Object[] arguments,
                     @Cached("function") LLVMFunctionDescriptor cachedFunction,
                     @Cached("create(getCallTarget(cachedFunction))") DirectCallNode callNode,
                     @Cached("createFastPackArguments(cachedFunction, arguments.length)") PackForeignArgumentsNode packNode,
@@ -154,8 +154,10 @@ abstract class LLVMForeignCallNode extends LLVMNode {
     }
 
     @Specialization(replaces = "callDirectCached")
-    public Object callIndirect(LLVMFunctionDescriptor function, Object[] arguments,
-                    @Cached("create()") IndirectCallNode callNode, @Cached("createSlowPackArguments()") SlowPackForeignArgumentsNode slowPack, @Cached("create()") LLVMGetStackNode getStack) {
+    protected Object callIndirect(LLVMFunctionDescriptor function, Object[] arguments,
+                    @Cached("create()") IndirectCallNode callNode,
+                    @Cached("createSlowPackArguments()") SlowPackForeignArgumentsNode slowPack,
+                    @Cached("create()") LLVMGetStackNode getStack) {
         assert !(function.getType().getReturnType() instanceof StructureType);
         assert function.getContext().getThreadingStack().checkThread();
         LLVMStack stack = getStack.executeWithTarget(function.getContext().getThreadingStack(), Thread.currentThread());

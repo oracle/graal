@@ -127,5 +127,4 @@ public final class VariableBitWidthType extends Type {
         copy.setSourceType(getSourceType());
         return copy;
     }
-
 }

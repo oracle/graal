@@ -49,72 +49,74 @@ abstract class ToI8 extends ForeignToLLVM {
     @Child private ToI8 toI8;
 
     @Specialization
-    public byte fromInt(int value) {
+    protected byte fromInt(int value) {
         return (byte) value;
     }
 
     @Specialization
-    public byte fromChar(char value) {
+    protected byte fromChar(char value) {
         return (byte) value;
     }
 
     @Specialization
-    public byte fromLong(long value) {
+    protected byte fromLong(long value) {
         return (byte) value;
     }
 
     @Specialization
-    public byte fromShort(short value) {
+    protected byte fromShort(short value) {
         return (byte) value;
     }
 
     @Specialization
-    public byte fromByte(byte value) {
+    protected byte fromByte(byte value) {
         return value;
     }
 
     @Specialization
-    public byte fromFloat(float value) {
+    protected byte fromFloat(float value) {
         return (byte) value;
     }
 
     @Specialization
-    public byte fromDouble(double value) {
+    protected byte fromDouble(double value) {
         return (byte) value;
     }
 
     @Specialization
-    public byte fromBoolean(boolean value) {
+    protected byte fromBoolean(boolean value) {
         return (byte) (value ? 1 : 0);
     }
 
     @Specialization
-    public byte fromForeignPrimitive(VirtualFrame frame, LLVMBoxedPrimitive boxed) {
+    protected byte fromForeignPrimitive(VirtualFrame frame, LLVMBoxedPrimitive boxed) {
         return recursiveConvert(frame, boxed.getValue());
     }
 
     @Specialization(guards = "notLLVM(obj)")
-    public byte fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+    protected byte fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
         return recursiveConvert(frame, fromForeign(obj));
     }
 
     @Specialization
-    public byte fromString(String value) {
+    protected byte fromString(String value) {
         return (byte) getSingleStringCharacter(value);
     }
 
     @Specialization
-    public byte fromLLVMTruffleAddress(LLVMTruffleAddress obj) {
+    protected byte fromLLVMTruffleAddress(LLVMTruffleAddress obj) {
         return (byte) obj.getAddress().getVal();
     }
 
     @Specialization
-    public byte fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+    protected byte fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd,
+                    @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
         return (byte) toNative.executeWithTarget(frame, fd).getVal();
     }
 
     @Specialization
-    public byte fromSharedDescriptor(LLVMSharedGlobalVariable shared, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
+    protected byte fromSharedDescriptor(LLVMSharedGlobalVariable shared,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
         return (byte) access.getNativeLocation(shared.getDescriptor()).getVal();
     }
 

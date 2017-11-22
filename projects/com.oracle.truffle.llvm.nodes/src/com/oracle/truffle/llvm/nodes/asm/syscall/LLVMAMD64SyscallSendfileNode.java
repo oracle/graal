@@ -43,12 +43,12 @@ public abstract class LLVMAMD64SyscallSendfileNode extends LLVMAMD64SyscallOpera
     }
 
     @Specialization
-    protected long executeI64(long outFd, long inFd, LLVMAddress offset, long count) {
+    protected long doI64(long outFd, long inFd, LLVMAddress offset, long count) {
         return (long) sendfile.execute((int) outFd, (int) inFd, offset.getVal(), count);
     }
 
     @Specialization
-    protected long executeI64(long outFd, long inFd, long offset, long count) {
-        return executeI64(outFd, inFd, LLVMAddress.fromLong(offset), count);
+    protected long doI64(long outFd, long inFd, long offset, long count) {
+        return doI64(outFd, inFd, LLVMAddress.fromLong(offset), count);
     }
 }

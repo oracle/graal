@@ -70,17 +70,17 @@ public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLV
     }
 
     @Specialization
-    public LLVMDebugValueProvider fromAddress(LLVMAddress address) {
+    protected LLVMDebugValueProvider fromAddress(LLVMAddress address) {
         return new LLVMAllocationValueProvider(address);
     }
 
     @Specialization
-    public LLVMDebugValueProvider fromTruffleAddress(LLVMTruffleAddress truffleAddress) {
+    protected LLVMDebugValueProvider fromTruffleAddress(LLVMTruffleAddress truffleAddress) {
         return new LLVMAllocationValueProvider(truffleAddress.getAddress());
     }
 
     @Specialization
-    public LLVMDebugValueProvider fromBoxedPrimitive(LLVMBoxedPrimitive boxedPrimitive) {
+    protected LLVMDebugValueProvider fromBoxedPrimitive(LLVMBoxedPrimitive boxedPrimitive) {
         if (boxedPrimitive.getValue() instanceof Long) {
             return fromAddress(LLVMAddress.fromLong((long) boxedPrimitive.getValue()));
         } else {
@@ -89,17 +89,17 @@ public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLV
     }
 
     @Specialization
-    public LLVMDebugValueProvider fromGlobal(LLVMGlobalVariable value) {
+    protected LLVMDebugValueProvider fromGlobal(LLVMGlobalVariable value) {
         return new LLVMConstantGlobalValueProvider(value, LLVMToDebugValueNodeGen.create());
     }
 
     @Specialization
-    public LLVMDebugValueProvider fromSharedGlobal(LLVMSharedGlobalVariable value) {
+    protected LLVMDebugValueProvider fromSharedGlobal(LLVMSharedGlobalVariable value) {
         return fromGlobal(value.getDescriptor());
     }
 
     @Specialization(guards = "notLLVM(obj)")
-    public LLVMDebugValueProvider fromTruffleObject(TruffleObject obj) {
+    protected LLVMDebugValueProvider fromTruffleObject(TruffleObject obj) {
         try {
             if (ForeignAccess.sendIsPointer(isPointer, obj)) {
                 final long rawAddress = ForeignAccess.sendAsPointer(asPointer, obj);
@@ -112,12 +112,12 @@ public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLV
     }
 
     @Specialization(guards = {"obj.getOffset() == 0", "notLLVM(obj.getObject())"})
-    public LLVMDebugValueProvider fromLLVMTruffleObject(LLVMTruffleObject obj) {
+    protected LLVMDebugValueProvider fromLLVMTruffleObject(LLVMTruffleObject obj) {
         return fromTruffleObject(obj.getObject());
     }
 
     @Specialization
-    public LLVMDebugValueProvider fromGenericObject(@SuppressWarnings("unused") Object object) {
+    protected LLVMDebugValueProvider fromGenericObject(@SuppressWarnings("unused") Object object) {
         return unavailable();
     }
 }

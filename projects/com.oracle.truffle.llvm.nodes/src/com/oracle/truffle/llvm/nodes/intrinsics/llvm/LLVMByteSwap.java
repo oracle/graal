@@ -42,17 +42,16 @@ public abstract class LLVMByteSwap {
     public abstract static class LLVMByteSwapI16 extends LLVMBuiltin {
 
         @Specialization
-        public short executeI16(short value) {
+        protected short doI16(short value) {
             return Short.reverseBytes(value);
         }
-
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMByteSwapI32 extends LLVMBuiltin {
 
         @Specialization
-        public int executeI32(int value) {
+        protected int doI32(int value) {
             return Integer.reverseBytes(value);
         }
     }
@@ -61,7 +60,7 @@ public abstract class LLVMByteSwap {
     public abstract static class LLVMByteSwapI64 extends LLVMBuiltin {
 
         @Specialization
-        public long executeI64(long value) {
+        protected long doI64(long value) {
             return Long.reverseBytes(value);
         }
     }
@@ -69,7 +68,7 @@ public abstract class LLVMByteSwap {
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMByteSwapV8I16 extends LLVMBuiltin {
         @Specialization
-        public LLVMI16Vector executeI16Vector(LLVMI16Vector vector) {
+        protected LLVMI16Vector doI16Vector(LLVMI16Vector vector) {
             short[] result = new short[8];
             for (int i = 0; i < 8; i++) {
                 result[i] = Short.reverseBytes(vector.getValue(i));
@@ -81,7 +80,7 @@ public abstract class LLVMByteSwap {
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMByteSwapV4I32 extends LLVMBuiltin {
         @Specialization
-        public LLVMI32Vector executeI32Vector(LLVMI32Vector vector) {
+        protected LLVMI32Vector doI32Vector(LLVMI32Vector vector) {
             int[] result = new int[4];
             for (int i = 0; i < 4; i++) {
                 result[i] = Integer.reverseBytes(vector.getValue(i));
@@ -93,7 +92,7 @@ public abstract class LLVMByteSwap {
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMByteSwapV2I64 extends LLVMBuiltin {
         @Specialization
-        public LLVMI64Vector executeI32Vector(LLVMI64Vector vector) {
+        protected LLVMI64Vector doI32Vector(LLVMI64Vector vector) {
             long[] result = new long[2];
             for (int i = 0; i < 2; i++) {
                 result[i] = Long.reverseBytes(vector.getValue(i));

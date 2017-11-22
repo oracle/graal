@@ -43,12 +43,12 @@ public abstract class LLVMAMD64SyscallGetsocknameNode extends LLVMAMD64SyscallOp
     }
 
     @Specialization
-    protected long execute(long sockfd, LLVMAddress addr, LLVMAddress addrlen) {
+    protected long doOp(long sockfd, LLVMAddress addr, LLVMAddress addrlen) {
         return (int) getsockname.execute((int) sockfd, addr.getVal(), addrlen.getVal());
     }
 
     @Specialization
-    protected long execute(long sockfd, long addr, long addrlen) {
-        return execute(sockfd, LLVMAddress.fromLong(addr), LLVMAddress.fromLong(addrlen));
+    protected long doOp(long sockfd, long addr, long addrlen) {
+        return doOp(sockfd, LLVMAddress.fromLong(addr), LLVMAddress.fromLong(addrlen));
     }
 }

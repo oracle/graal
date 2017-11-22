@@ -42,8 +42,8 @@ import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactory;
 
 public class LLVMForeignReadNode extends Node {
 
-    @Child LLVMOffsetToNameNode offsetToName;
-    @Child LLVMObjectReadNode read;
+    @Child private LLVMOffsetToNameNode offsetToName;
+    @Child private LLVMObjectReadNode read;
 
     protected LLVMForeignReadNode(ForeignToLLVMType type, int elementAccessSize) {
         this.offsetToName = LLVMOffsetToNameNodeGen.create(elementAccessSize);

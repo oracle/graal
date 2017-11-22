@@ -39,8 +39,7 @@ public abstract class LLVMPrefetch extends LLVMBuiltin {
 
     @SuppressWarnings("unused")
     @Specialization
-    public Object executeVoid(Object address, int rw, int locality, int cacheType) {
+    protected Object doVoid(Object address, int rw, int locality, int cacheType) {
         return null;
     }
-
 }

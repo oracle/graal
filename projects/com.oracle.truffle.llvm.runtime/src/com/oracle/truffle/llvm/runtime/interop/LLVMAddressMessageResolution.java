@@ -74,7 +74,6 @@ public class LLVMAddressMessageResolution {
         protected boolean access(VirtualFrame frame, LLVMTruffleAddress receiver) {
             return isNull(receiver);
         }
-
     }
 
     private static boolean isNull(LLVMTruffleAddress receiver) {
@@ -136,6 +135,5 @@ public class LLVMAddressMessageResolution {
             CompilerDirectives.transferToInterpreter();
             throw UnknownIdentifierException.raise(String.format("Identifier %s is currently unsupported. Please use a numeric index to access a C pointer.", name));
         }
-
     }
 }

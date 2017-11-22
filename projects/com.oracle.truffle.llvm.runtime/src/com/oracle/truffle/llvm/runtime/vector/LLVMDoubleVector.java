@@ -150,5 +150,4 @@ public final class LLVMDoubleVector {
     public int getLength() {
         return vector.length;
     }
-
 }

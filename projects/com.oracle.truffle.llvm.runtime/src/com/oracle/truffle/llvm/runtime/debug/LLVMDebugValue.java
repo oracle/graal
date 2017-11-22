@@ -57,5 +57,4 @@ public abstract class LLVMDebugValue {
             return LLVMDebugObject.instantiate(symbol.getType(), 0L, valueProvider, symbol.getLocation());
         }
     }
-
 }

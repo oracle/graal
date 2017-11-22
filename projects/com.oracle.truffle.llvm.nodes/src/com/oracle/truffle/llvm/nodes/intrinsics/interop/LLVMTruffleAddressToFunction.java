@@ -44,18 +44,20 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMTruffleAddressToFunction extends LLVMIntrinsic {
 
     @Specialization(guards = "value.getVal() == cachedValue.getVal()")
-    public Object executeIntrinsicCached(LLVMAddress value, @Cached("value") LLVMAddress cachedValue, @Cached("getContextReference()") ContextReference<LLVMContext> cachedContext,
+    protected Object doIntrinsicCached(LLVMAddress value,
+                    @Cached("value") LLVMAddress cachedValue,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> cachedContext,
                     @Cached("getDescriptor(cachedValue, cachedContext)") LLVMFunctionDescriptor handle) {
         return handle;
     }
 
-    @Specialization(replaces = "executeIntrinsicCached")
-    public Object executeIntrinsic(LLVMAddress value, @Cached("getContextReference()") ContextReference<LLVMContext> cachedContext) {
+    @Specialization(replaces = "doIntrinsicCached")
+    protected Object doIntrinsic(LLVMAddress value,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> cachedContext) {
         return getDescriptor(value, cachedContext);
     }
 
     protected static LLVMFunctionDescriptor getDescriptor(LLVMAddress value, ContextReference<LLVMContext> cachedContext) {
         return cachedContext.get().getFunctionDescriptor(value);
     }
-
 }

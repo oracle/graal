@@ -57,14 +57,13 @@ public class LLVMVectorLiteralNode {
 
         @ExplodeLoop
         @Specialization
-        public LLVMI1Vector executeI1Vector(VirtualFrame frame) {
+        protected LLVMI1Vector doI1Vector(VirtualFrame frame) {
             boolean[] vals = new boolean[values.length];
             for (int i = 0; i < values.length; i++) {
                 vals[i] = values[i].executeI1(frame);
             }
             return LLVMI1Vector.create(vals);
         }
-
     }
 
     public abstract static class LLVMVectorI8LiteralNode extends LLVMExpressionNode {
@@ -77,14 +76,13 @@ public class LLVMVectorLiteralNode {
 
         @ExplodeLoop
         @Specialization
-        public LLVMI8Vector executeI8Vector(VirtualFrame frame) {
+        protected LLVMI8Vector doI8Vector(VirtualFrame frame) {
             byte[] vals = new byte[values.length];
             for (int i = 0; i < values.length; i++) {
                 vals[i] = values[i].executeI8(frame);
             }
             return LLVMI8Vector.create(vals);
         }
-
     }
 
     public abstract static class LLVMVectorI16LiteralNode extends LLVMExpressionNode {
@@ -97,7 +95,7 @@ public class LLVMVectorLiteralNode {
 
         @ExplodeLoop
         @Specialization
-        public LLVMI16Vector executeI16Vector(VirtualFrame frame) {
+        protected LLVMI16Vector doI16Vector(VirtualFrame frame) {
             short[] vals = new short[values.length];
             for (int i = 0; i < values.length; i++) {
                 vals[i] = values[i].executeI16(frame);
@@ -116,7 +114,7 @@ public class LLVMVectorLiteralNode {
 
         @ExplodeLoop
         @Specialization
-        public LLVMI32Vector executeI32Vector(VirtualFrame frame) {
+        protected LLVMI32Vector doI32Vector(VirtualFrame frame) {
             int[] vals = new int[values.length];
             for (int i = 0; i < values.length; i++) {
                 vals[i] = values[i].executeI32(frame);
@@ -135,7 +133,7 @@ public class LLVMVectorLiteralNode {
 
         @ExplodeLoop
         @Specialization
-        public LLVMI64Vector executeI64Vector(VirtualFrame frame) {
+        protected LLVMI64Vector doI64Vector(VirtualFrame frame) {
             long[] vals = new long[values.length];
             for (int i = 0; i < values.length; i++) {
                 vals[i] = values[i].executeI64(frame);
@@ -154,14 +152,13 @@ public class LLVMVectorLiteralNode {
 
         @ExplodeLoop
         @Specialization
-        public LLVMFloatVector executeFloatVector(VirtualFrame frame) {
+        protected LLVMFloatVector doFloatVector(VirtualFrame frame) {
             float[] vals = new float[values.length];
             for (int i = 0; i < values.length; i++) {
                 vals[i] = values[i].executeFloat(frame);
             }
             return LLVMFloatVector.create(vals);
         }
-
     }
 
     public abstract static class LLVMVectorDoubleLiteralNode extends LLVMExpressionNode {
@@ -174,14 +171,13 @@ public class LLVMVectorLiteralNode {
 
         @ExplodeLoop
         @Specialization
-        public LLVMDoubleVector executeDoubleVector(VirtualFrame frame) {
+        protected LLVMDoubleVector doDoubleVector(VirtualFrame frame) {
             double[] vals = new double[values.length];
             for (int i = 0; i < values.length; i++) {
                 vals[i] = values[i].executeDouble(frame);
             }
             return LLVMDoubleVector.create(vals);
         }
-
     }
 
     public abstract static class LLVMVectorAddressLiteralNode extends LLVMExpressionNode {
@@ -194,7 +190,7 @@ public class LLVMVectorLiteralNode {
 
         @ExplodeLoop
         @Specialization
-        public LLVMAddressVector executeAddressVector(VirtualFrame frame) {
+        protected LLVMAddressVector doAddressVector(VirtualFrame frame) {
             LLVMAddress[] vals = new LLVMAddress[values.length];
             for (int i = 0; i < values.length; i++) {
                 try {
@@ -207,5 +203,4 @@ public class LLVMVectorLiteralNode {
             return LLVMAddressVector.create(vals);
         }
     }
-
 }

@@ -413,7 +413,7 @@ public abstract class LLVMMemory {
         private final int value;
         private final boolean swap;
 
-        public CMPXCHGI32(int value, boolean swap) {
+        private CMPXCHGI32(int value, boolean swap) {
             this.value = value;
             this.swap = swap;
         }
@@ -448,7 +448,7 @@ public abstract class LLVMMemory {
         private final long value;
         private final boolean swap;
 
-        public CMPXCHGI64(long value, boolean swap) {
+        private CMPXCHGI64(long value, boolean swap) {
             this.value = value;
             this.swap = swap;
         }
@@ -483,7 +483,7 @@ public abstract class LLVMMemory {
         private final byte value;
         private final boolean swap;
 
-        public CMPXCHGI8(byte value, boolean swap) {
+        private CMPXCHGI8(byte value, boolean swap) {
             this.value = value;
             this.swap = swap;
         }
@@ -666,5 +666,4 @@ public abstract class LLVMMemory {
     public static void fullFence() {
         UNSAFE.fullFence();
     }
-
 }

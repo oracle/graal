@@ -76,5 +76,4 @@ public abstract class BaseSulongOnlyHarness {
             this.args = args;
         }
     }
-
 }

@@ -42,7 +42,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMTruffleFreeCString extends LLVMIntrinsic {
 
     @Specialization
-    public Object executeIntrinsic(LLVMAddress value) {
+    protected Object doIntrinsic(LLVMAddress value) {
         LLVMMemory.free(value);
         return null;
     }

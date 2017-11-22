@@ -209,5 +209,4 @@ public abstract class ForeignToLLVM extends LLVMNode {
             throw new IllegalStateException("Use convert method.");
         }
     }
-
 }

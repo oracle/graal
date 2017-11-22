@@ -143,5 +143,4 @@ public final class ParseUtil {
     static long unrotateSign(long u) {
         return (u & 1) == 1 ? ~(u >> 1) : u >> 1;
     }
-
 }

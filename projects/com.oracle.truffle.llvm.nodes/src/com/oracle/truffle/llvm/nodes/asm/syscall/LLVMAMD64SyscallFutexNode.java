@@ -39,12 +39,12 @@ public abstract class LLVMAMD64SyscallFutexNode extends LLVMAMD64SyscallOperatio
 
     @SuppressWarnings("unused")
     @Specialization
-    protected long executeI64(LLVMAddress uaddr, long futexOp, long val, LLVMAddress timeout, LLVMAddress uaddr2, long val3) {
+    protected long doI64(LLVMAddress uaddr, long futexOp, long val, LLVMAddress timeout, LLVMAddress uaddr2, long val3) {
         return -LLVMAMD64Error.ENOSYS;
     }
 
     @Specialization
-    protected long executeI64(long uaddr, long futexOp, long val, long timeout, long uaddr2, long val3) {
-        return executeI64(LLVMAddress.fromLong(uaddr), futexOp, val, LLVMAddress.fromLong(timeout), LLVMAddress.fromLong(uaddr2), val3);
+    protected long doI64(long uaddr, long futexOp, long val, long timeout, long uaddr2, long val3) {
+        return doI64(LLVMAddress.fromLong(uaddr), futexOp, val, LLVMAddress.fromLong(timeout), LLVMAddress.fromLong(uaddr2), val3);
     }
 }

@@ -87,5 +87,4 @@ public class LLVM80BitGetByteTest extends LLVM80BitTest {
             assertEquals(nextByte, LLVM80BitFloat.fromByte(nextByte).getByteValue());
         }
     }
-
 }

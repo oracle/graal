@@ -85,5 +85,4 @@ public final class CallbackTest extends BaseSulongOnlyHarness {
     public RunConfiguration getConfiguration() {
         return configuration;
     }
-
 }

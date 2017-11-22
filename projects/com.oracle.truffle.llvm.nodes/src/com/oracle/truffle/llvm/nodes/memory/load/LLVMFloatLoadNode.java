@@ -48,17 +48,18 @@ public abstract class LLVMFloatLoadNode extends LLVMLoadNode {
     private final FloatValueProfile profile = FloatValueProfile.createRawIdentityProfile();
 
     @Specialization
-    public float executeFloat(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected float doFloat(LLVMGlobalVariable addr,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         return profile.profile(globalAccess.getFloat(addr));
     }
 
     @Specialization
-    public float executeFloat(LLVMVirtualAllocationAddress address) {
+    protected float doFloat(LLVMVirtualAllocationAddress address) {
         return address.getFloat();
     }
 
     @Specialization
-    public float executeFloat(LLVMAddress addr) {
+    protected float doFloat(LLVMAddress addr) {
         float val = LLVMMemory.getFloat(addr);
         return profile.profile(val);
     }
@@ -68,12 +69,13 @@ public abstract class LLVMFloatLoadNode extends LLVMLoadNode {
     }
 
     @Specialization
-    public float executeFloat(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+    protected float doFloat(VirtualFrame frame, LLVMTruffleObject addr,
+                    @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
         return (float) foreignRead.execute(frame, addr);
     }
 
     @Specialization
-    public float executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
+    protected float doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
         if (addr.getValue() instanceof Long) {
             return LLVMMemory.getFloat((long) addr.getValue());
         } else {

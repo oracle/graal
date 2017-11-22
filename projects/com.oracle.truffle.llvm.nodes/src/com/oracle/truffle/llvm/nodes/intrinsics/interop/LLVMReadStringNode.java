@@ -48,7 +48,7 @@ public abstract class LLVMReadStringNode extends Node {
     public abstract String executeWithTarget(VirtualFrame frame, Object address);
 
     @Specialization
-    public String readString(String address) {
+    protected String readString(String address) {
         return address;
     }
 

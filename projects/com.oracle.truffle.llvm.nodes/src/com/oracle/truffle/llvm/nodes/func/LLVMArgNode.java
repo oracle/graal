@@ -41,7 +41,7 @@ public abstract class LLVMArgNode extends LLVMExpressionNode {
     public abstract int getIndex();
 
     @Specialization(guards = "isAddress(frame)")
-    public Object executePointee(VirtualFrame frame) {
+    protected Object doPointee(VirtualFrame frame) {
         /*
          * Copying the address objects prevents that otherwise virtualized objects that are used in
          * a phi together with a materialized passed address object also have to be materialized.
@@ -54,8 +54,7 @@ public abstract class LLVMArgNode extends LLVMExpressionNode {
     }
 
     @Specialization(guards = "!isAddress(frame)")
-    public Object executeObject(VirtualFrame frame) {
+    protected Object doObject(VirtualFrame frame) {
         return frame.getArguments()[getIndex()];
     }
-
 }

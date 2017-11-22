@@ -95,10 +95,9 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
         }
 
         @Specialization
-        public Object execute(boolean retResult) {
+        protected Object doOp(boolean retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
@@ -109,10 +108,9 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
         }
 
         @Specialization
-        public Object execute(byte retResult) {
+        protected Object doOp(byte retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
@@ -123,10 +121,9 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
         }
 
         @Specialization
-        public Object execute(short retResult) {
+        protected Object doOp(short retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
@@ -137,10 +134,9 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
         }
 
         @Specialization
-        public Object execute(int retResult) {
+        protected Object doOp(int retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
@@ -151,10 +147,9 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
         }
 
         @Specialization
-        public Object execute(long retResult) {
+        protected Object doOp(long retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
@@ -165,10 +160,9 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
         }
 
         @Specialization
-        public Object execute(LLVMIVarBit retResult) {
+        protected Object doOp(LLVMIVarBit retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
@@ -179,10 +173,9 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
         }
 
         @Specialization
-        public Object execute(float retResult) {
+        protected Object doOp(float retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
@@ -193,10 +186,9 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
         }
 
         @Specialization
-        public Object execute(double retResult) {
+        protected Object doOp(double retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
@@ -207,10 +199,9 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
         }
 
         @Specialization
-        public Object execute(LLVM80BitFloat retResult) {
+        protected Object doOp(LLVM80BitFloat retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
@@ -221,10 +212,9 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
         }
 
         @Specialization
-        public Object execute(Object retResult) {
+        protected Object doOp(Object retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
@@ -235,17 +225,17 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
         }
 
         @Specialization
-        public Object execute(LLVMAddress retResult) {
+        protected Object doOp(LLVMAddress retResult) {
             return retResult;
         }
 
         @Specialization
-        public Object execute(LLVMFunctionDescriptor retResult) {
+        protected Object doOp(LLVMFunctionDescriptor retResult) {
             return retResult;
         }
 
         @Specialization
-        public Object execute(LLVMTruffleObject retResult) {
+        protected Object doOp(LLVMTruffleObject retResult) {
             return retResult;
         }
     }
@@ -258,40 +248,39 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
         }
 
         @Specialization
-        public Object execute(LLVMDoubleVector retResult) {
+        protected Object doOp(LLVMDoubleVector retResult) {
             return retResult;
         }
 
         @Specialization
-        public Object execute(LLVMFloatVector retResult) {
+        protected Object doOp(LLVMFloatVector retResult) {
             return retResult;
         }
 
         @Specialization
-        public Object execute(LLVMI16Vector retResult) {
+        protected Object doOp(LLVMI16Vector retResult) {
             return retResult;
         }
 
         @Specialization
-        public Object execute(LLVMI1Vector retResult) {
+        protected Object doOp(LLVMI1Vector retResult) {
             return retResult;
         }
 
         @Specialization
-        public Object execute(LLVMI32Vector retResult) {
+        protected Object doOp(LLVMI32Vector retResult) {
             return retResult;
         }
 
         @Specialization
-        public Object execute(LLVMI64Vector retResult) {
+        protected Object doOp(LLVMI64Vector retResult) {
             return retResult;
         }
 
         @Specialization
-        public Object execute(LLVMI8Vector retResult) {
+        protected Object doOp(LLVMI8Vector retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
@@ -309,7 +298,7 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
         }
 
         @Specialization
-        public Object execute(VirtualFrame frame, LLVMAddress retResult) {
+        protected Object doOp(VirtualFrame frame, LLVMAddress retResult) {
             return returnStruct(frame, retResult);
         }
 
@@ -325,10 +314,10 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
         }
 
         @Specialization
-        public Object execute(VirtualFrame frame, LLVMGlobalVariable retResult, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        protected Object doOp(VirtualFrame frame, LLVMGlobalVariable retResult,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             return returnStruct(frame, globalAccess.getNativeLocation(retResult));
         }
-
     }
 
     public abstract static class LLVMVoidReturnNode extends LLVMRetNode {
@@ -338,9 +327,8 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
         }
 
         @Specialization
-        public Object execute() {
+        protected Object doOp() {
             return null;
         }
     }
-
 }

@@ -72,5 +72,4 @@ public class LLVM80BitFromStringTest extends LLVM80BitTest {
         String test = "BFFF8000000000000000";
         assertEquals(LLVM80BitFloat.fromRawValues(true, 0x3fff, 0x8000000000000000L), LLVM80BitFloat.fromString(test));
     }
-
 }

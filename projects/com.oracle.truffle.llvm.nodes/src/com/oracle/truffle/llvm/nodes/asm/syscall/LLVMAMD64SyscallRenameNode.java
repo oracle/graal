@@ -43,12 +43,12 @@ public abstract class LLVMAMD64SyscallRenameNode extends LLVMAMD64SyscallOperati
     }
 
     @Specialization
-    protected long execute(LLVMAddress oldpath, LLVMAddress newpath) {
+    protected long doOp(LLVMAddress oldpath, LLVMAddress newpath) {
         return (int) rename.execute(oldpath.getVal(), newpath.getVal());
     }
 
     @Specialization
-    protected long execute(long oldpath, long newpath) {
-        return execute(LLVMAddress.fromLong(oldpath), LLVMAddress.fromLong(newpath));
+    protected long doOp(long oldpath, long newpath) {
+        return doOp(LLVMAddress.fromLong(oldpath), LLVMAddress.fromLong(newpath));
     }
 }

@@ -64,5 +64,4 @@ public final class BasicConfiguration implements Configuration {
     public List<ContextExtension> createContextExtensions(com.oracle.truffle.api.TruffleLanguage.Env env, TruffleLanguage<?> language) {
         return Arrays.asList(new ContextExtension[]{new NFIContextExtension(env), new NFIIntrinsicsProvider(language).collectIntrinsics(new BasicNodeFactory())});
     }
-
 }

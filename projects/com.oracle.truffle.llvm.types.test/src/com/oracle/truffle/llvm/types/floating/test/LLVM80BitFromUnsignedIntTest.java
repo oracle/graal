@@ -64,5 +64,4 @@ public class LLVM80BitFromUnsignedIntTest {
         LLVM80BitFloat expected = LLVM80BitFloat.fromRawValues(false, 0x401d, 0xfffffffe00000000L);
         assertEquals(expected, val);
     }
-
 }

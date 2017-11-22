@@ -44,5 +44,4 @@ public final class LLVMExitException extends ControlFlowException {
     public int getReturnCode() {
         return returnCode;
     }
-
 }

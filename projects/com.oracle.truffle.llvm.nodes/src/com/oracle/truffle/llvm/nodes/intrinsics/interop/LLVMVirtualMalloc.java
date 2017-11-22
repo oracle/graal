@@ -39,7 +39,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMVirtualMalloc extends LLVMIntrinsic {
 
     @Specialization
-    public Object executeIntrinsic(long size) {
+    protected Object doIntrinsic(long size) {
         return new LLVMVirtualAllocationAddress(size, 0);
     }
 }

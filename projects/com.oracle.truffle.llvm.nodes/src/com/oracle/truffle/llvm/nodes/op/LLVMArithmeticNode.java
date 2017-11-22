@@ -132,82 +132,82 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
     public abstract static class LLVMMulNode extends LLVMArithmeticNode {
 
         @Specialization
-        public short mul(short left, short right) {
+        protected short mul(short left, short right) {
             return (short) (left * right);
         }
 
         @Specialization
-        public boolean mul(boolean left, boolean right) {
+        protected boolean mul(boolean left, boolean right) {
             return left & right;
         }
 
         @Specialization
-        public int mul(int left, int right) {
+        protected int mul(int left, int right) {
             return left * right;
         }
 
         @Specialization
-        public long mul(long left, long right) {
+        protected long mul(long left, long right) {
             return left * right;
         }
 
         @Specialization
-        public byte mul(byte left, byte right) {
+        protected byte mul(byte left, byte right) {
             return (byte) (left * right);
         }
 
         @Specialization
-        public LLVMIVarBit mul(LLVMIVarBit left, LLVMIVarBit right) {
+        protected LLVMIVarBit mul(LLVMIVarBit left, LLVMIVarBit right) {
             return left.mul(right);
         }
 
         @Specialization
-        public float mul(float left, float right) {
+        protected float mul(float left, float right) {
             return left * right;
         }
 
         @Specialization
-        public double mul(double left, double right) {
+        protected double mul(double left, double right) {
             return left * right;
         }
 
         @Specialization
-        public LLVM80BitFloat mul(LLVM80BitFloat left, LLVM80BitFloat right) {
+        protected LLVM80BitFloat mul(LLVM80BitFloat left, LLVM80BitFloat right) {
             return left.mul(right);
         }
 
         @Specialization
-        public LLVMDoubleVector mul(LLVMDoubleVector left, LLVMDoubleVector right) {
+        protected LLVMDoubleVector mul(LLVMDoubleVector left, LLVMDoubleVector right) {
             return left.mul(right);
         }
 
         @Specialization
-        public LLVMFloatVector mul(LLVMFloatVector left, LLVMFloatVector right) {
+        protected LLVMFloatVector mul(LLVMFloatVector left, LLVMFloatVector right) {
             return left.mul(right);
         }
 
         @Specialization
-        public LLVMI16Vector mul(LLVMI16Vector left, LLVMI16Vector right) {
+        protected LLVMI16Vector mul(LLVMI16Vector left, LLVMI16Vector right) {
             return left.mul(right);
         }
 
         @Specialization
-        public LLVMI1Vector mul(LLVMI1Vector left, LLVMI1Vector right) {
+        protected LLVMI1Vector mul(LLVMI1Vector left, LLVMI1Vector right) {
             return left.mul(right);
         }
 
         @Specialization
-        public LLVMI32Vector mul(LLVMI32Vector left, LLVMI32Vector right) {
+        protected LLVMI32Vector mul(LLVMI32Vector left, LLVMI32Vector right) {
             return left.mul(right);
         }
 
         @Specialization
-        public LLVMI64Vector mul(LLVMI64Vector left, LLVMI64Vector right) {
+        protected LLVMI64Vector mul(LLVMI64Vector left, LLVMI64Vector right) {
             return left.mul(right);
         }
 
         @Specialization
-        public LLVMI8Vector mul(LLVMI8Vector left, LLVMI8Vector right) {
+        protected LLVMI8Vector mul(LLVMI8Vector left, LLVMI8Vector right) {
             return left.mul(right);
         }
     }
@@ -594,5 +594,4 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
             return left.remUnsigned(right);
         }
     }
-
 }

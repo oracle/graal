@@ -49,7 +49,7 @@ import com.oracle.truffle.llvm.runtime.SulongStackTrace.Element;
 public abstract class LLVMPrintStackTrace extends LLVMIntrinsic {
     @TruffleBoundary
     @Specialization
-    public Object execute() {
+    protected Object doOp() {
         SulongStackTrace trace = getStackTrace("__sulong_print_stacktrace");
         printCStackTrace(trace);
         return null;

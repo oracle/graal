@@ -276,7 +276,6 @@ abstract class Container {
         void destroy() {
             // nothing to do
         }
-
     }
 
     static final class NativeContainer extends Container {
@@ -539,7 +538,6 @@ abstract class Container {
             transferToNativeWithCopy(global);
             return global.getContainer().getDouble(global);
         }
-
     }
 
     static final class UninitializedManagedContainer extends AbstractManagedContainer {
@@ -712,7 +710,6 @@ abstract class Container {
         Object get(LLVMGlobalVariable global) {
             return LLVMAddress.fromLong(address);
         }
-
     }
 
     static final class CachedManagedContainer extends AbstractManagedContainer {
@@ -840,7 +837,6 @@ abstract class Container {
         Object get(LLVMGlobalVariable global) {
             return managedValue;
         }
-
     }
 
     static final class GenericLLVMAddressContainer extends AbstractManagedContainer {
@@ -907,7 +903,6 @@ abstract class Container {
         Object get(LLVMGlobalVariable global) {
             return LLVMAddress.fromLong(address);
         }
-
     }
 
     /**
@@ -985,5 +980,4 @@ abstract class Container {
             this.managedValue = value;
         }
     }
-
 }

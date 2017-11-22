@@ -51,25 +51,26 @@ public abstract class LLVMAddressStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    public Object doAddress(LLVMAddress address, LLVMAddress value) {
+    protected Object doAddress(LLVMAddress address, LLVMAddress value) {
         LLVMMemory.putAddress(address, value);
         return null;
     }
 
     @Specialization
-    public Object doAddress(VirtualFrame frame, LLVMAddress address, LLVMFunctionDescriptor value, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+    protected Object doAddress(VirtualFrame frame, LLVMAddress address, LLVMFunctionDescriptor value,
+                    @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
         LLVMMemory.putAddress(address, toNative.executeWithTarget(frame, value));
         return null;
     }
 
     @Specialization
-    public Object doAddress(LLVMVirtualAllocationAddress address, LLVMAddress value) {
+    protected Object doAddress(LLVMVirtualAllocationAddress address, LLVMAddress value) {
         address.writeI64(value.getVal());
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMBoxedPrimitive address, LLVMAddress value) {
+    protected Object doOp(LLVMBoxedPrimitive address, LLVMAddress value) {
         if (address.getValue() instanceof Long) {
             LLVMMemory.putAddress((long) address.getValue(), value);
             return null;
@@ -80,7 +81,8 @@ public abstract class LLVMAddressStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    public Object execute(LLVMBoxedPrimitive address, LLVMGlobalVariable value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doOp(LLVMBoxedPrimitive address, LLVMGlobalVariable value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         if (address.getValue() instanceof Long) {
             LLVMMemory.putAddress(LLVMAddress.fromLong((long) address.getValue()), globalAccess.getNativeLocation(value));
             return null;
@@ -91,53 +93,60 @@ public abstract class LLVMAddressStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    public Object doAddress(LLVMGlobalVariable address, LLVMAddress value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doAddress(LLVMGlobalVariable address, LLVMAddress value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         globalAccess.putAddress(address, value);
         return null;
     }
 
     @Specialization
-    public Object doAddress(LLVMAddress address, LLVMGlobalVariable value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doAddress(LLVMAddress address, LLVMGlobalVariable value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         LLVMMemory.putAddress(address, globalAccess.getNativeLocation(value));
         return null;
     }
 
     @Specialization
-    public Object doAddress(LLVMGlobalVariable address, LLVMGlobalVariable value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess1,
+    protected Object doAddress(LLVMGlobalVariable address, LLVMGlobalVariable value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess1,
                     @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess2) {
         LLVMMemory.putAddress(globalAccess1.getNativeLocation(address), globalAccess2.getNativeLocation(value));
         return null;
     }
 
     @Specialization
-    public Object doAddress(LLVMGlobalVariable address, LLVMBoxedPrimitive value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doAddress(LLVMGlobalVariable address, LLVMBoxedPrimitive value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         globalAccess.putBoxedPrimitive(address, value);
         return null;
     }
 
     @Specialization
-    public Object doAddress(LLVMGlobalVariable address, LLVMTruffleObject value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doAddress(LLVMGlobalVariable address, LLVMTruffleObject value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         globalAccess.putLLVMTruffleObject(address, value);
         return null;
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMAddress address, LLVMTruffleObject value, @Cached(value = "createToNativeNode()") LLVMToNativeNode toLLVMAddress) {
+    protected Object doOp(VirtualFrame frame, LLVMAddress address, LLVMTruffleObject value,
+                    @Cached(value = "createToNativeNode()") LLVMToNativeNode toLLVMAddress) {
         LLVMMemory.putAddress(address, toLLVMAddress.executeWithTarget(frame, value));
         return null;
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMBoxedPrimitive address, LLVMTruffleObject value, @Cached(value = "createToNativeNode()") LLVMToNativeNode convertAddress,
+    protected Object doOp(VirtualFrame frame, LLVMBoxedPrimitive address, LLVMTruffleObject value,
+                    @Cached(value = "createToNativeNode()") LLVMToNativeNode convertAddress,
                     @Cached(value = "createToNativeNode()") LLVMToNativeNode convertValue) {
         LLVMMemory.putAddress(convertAddress.executeWithTarget(frame, address), convertValue.executeWithTarget(frame, value));
         return null;
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMTruffleObject address, Object value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, Object value,
+                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(frame, address, value);
         return null;
     }
-
 }

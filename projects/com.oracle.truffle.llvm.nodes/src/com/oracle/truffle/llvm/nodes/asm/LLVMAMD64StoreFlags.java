@@ -62,7 +62,7 @@ public abstract class LLVMAMD64StoreFlags extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object executeObject(VirtualFrame frame, byte flags) {
+        protected Object doObject(VirtualFrame frame, byte flags) {
             cf.execute(frame, set(flags, LLVMAMD64Flags.CF));
             pf.execute(frame, set(flags, LLVMAMD64Flags.PF));
             af.execute(frame, set(flags, LLVMAMD64Flags.AF));
@@ -83,7 +83,7 @@ public abstract class LLVMAMD64StoreFlags extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object executeObject(VirtualFrame frame, short flags) {
+        protected Object doObject(VirtualFrame frame, short flags) {
             cf.execute(frame, set(flags, LLVMAMD64Flags.CF));
             pf.execute(frame, set(flags, LLVMAMD64Flags.PF));
             af.execute(frame, set(flags, LLVMAMD64Flags.AF));

@@ -40,20 +40,17 @@ public abstract class CountSetBitsNode {
     public abstract static class CountSetBitsI32Node extends LLVMBuiltin {
 
         @Specialization
-        public int executeI32(int val) {
+        protected int doI32(int val) {
             return Integer.bitCount(val);
         }
-
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class CountSetBitsI64Node extends LLVMBuiltin {
 
         @Specialization
-        public long execute(long val) {
+        protected long doOp(long val) {
             return Long.bitCount(val);
         }
-
     }
-
 }

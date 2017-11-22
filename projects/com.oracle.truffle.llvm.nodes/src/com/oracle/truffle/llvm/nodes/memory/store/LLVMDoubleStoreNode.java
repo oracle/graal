@@ -49,31 +49,33 @@ public abstract class LLVMDoubleStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    public Object execute(LLVMGlobalVariable address, double value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doOp(LLVMGlobalVariable address, double value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         globalAccess.putDouble(address, value);
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMAddress address, double value) {
+    protected Object doOp(LLVMAddress address, double value) {
         LLVMMemory.putDouble(address, value);
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMVirtualAllocationAddress address, double value) {
+    protected Object doOp(LLVMVirtualAllocationAddress address, double value) {
         address.writeDouble(value);
         return null;
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMTruffleObject address, double value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, double value,
+                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(frame, address, value);
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMBoxedPrimitive address, double value) {
+    protected Object doOp(LLVMBoxedPrimitive address, double value) {
         if (address.getValue() instanceof Long) {
             LLVMMemory.putDouble((long) address.getValue(), value);
             return null;

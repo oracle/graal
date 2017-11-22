@@ -49,31 +49,33 @@ public abstract class LLVMI32StoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    public Object execute(LLVMGlobalVariable address, int value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doOp(LLVMGlobalVariable address, int value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         globalAccess.putI32(address, value);
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMAddress address, int value) {
+    protected Object doOp(LLVMAddress address, int value) {
         LLVMMemory.putI32(address, value);
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMVirtualAllocationAddress address, int value) {
+    protected Object doOp(LLVMVirtualAllocationAddress address, int value) {
         address.writeI32(value);
         return null;
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMTruffleObject address, int value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, int value,
+                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(frame, address, value);
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMBoxedPrimitive address, int value) {
+    protected Object doOp(LLVMBoxedPrimitive address, int value) {
         if (address.getValue() instanceof Long) {
             LLVMMemory.putI32((long) address.getValue(), value);
             return null;

@@ -48,7 +48,7 @@ public abstract class LLVMInsertElementNode extends LLVMExpressionNode {
     public abstract static class LLVMI1InsertElementNode extends LLVMInsertElementNode {
 
         @Specialization
-        public LLVMI1Vector executeI1(LLVMI1Vector vector, boolean element, int index) {
+        protected LLVMI1Vector doI1(LLVMI1Vector vector, boolean element, int index) {
             return vector.insert(element, index);
         }
     }
@@ -56,7 +56,7 @@ public abstract class LLVMInsertElementNode extends LLVMExpressionNode {
     public abstract static class LLVMI8InsertElementNode extends LLVMInsertElementNode {
 
         @Specialization
-        public LLVMI8Vector executeI8(LLVMI8Vector vector, byte element, int index) {
+        protected LLVMI8Vector doI8(LLVMI8Vector vector, byte element, int index) {
             return vector.insert(element, index);
         }
     }
@@ -64,7 +64,7 @@ public abstract class LLVMInsertElementNode extends LLVMExpressionNode {
     public abstract static class LLVMI16InsertElementNode extends LLVMInsertElementNode {
 
         @Specialization
-        public LLVMI16Vector executeI16(LLVMI16Vector vector, short element, int index) {
+        protected LLVMI16Vector doI16(LLVMI16Vector vector, short element, int index) {
             return vector.insert(element, index);
         }
     }
@@ -72,7 +72,7 @@ public abstract class LLVMInsertElementNode extends LLVMExpressionNode {
     public abstract static class LLVMI32InsertElementNode extends LLVMInsertElementNode {
 
         @Specialization
-        public LLVMI32Vector executeI32(LLVMI32Vector vector, int element, int index) {
+        protected LLVMI32Vector doI32(LLVMI32Vector vector, int element, int index) {
             return vector.insert(element, index);
         }
     }
@@ -80,7 +80,7 @@ public abstract class LLVMInsertElementNode extends LLVMExpressionNode {
     public abstract static class LLVMI64InsertElementNode extends LLVMInsertElementNode {
 
         @Specialization
-        public LLVMI64Vector executeI64(LLVMI64Vector vector, long element, int index) {
+        protected LLVMI64Vector doI64(LLVMI64Vector vector, long element, int index) {
             return vector.insert(element, index);
         }
     }
@@ -88,7 +88,7 @@ public abstract class LLVMInsertElementNode extends LLVMExpressionNode {
     public abstract static class LLVMFloatInsertElementNode extends LLVMInsertElementNode {
 
         @Specialization
-        public LLVMFloatVector executeFloat(LLVMFloatVector vector, float element, int index) {
+        protected LLVMFloatVector doFloat(LLVMFloatVector vector, float element, int index) {
             return vector.insert(element, index);
         }
     }
@@ -96,9 +96,8 @@ public abstract class LLVMInsertElementNode extends LLVMExpressionNode {
     public abstract static class LLVMDoubleInsertElementNode extends LLVMInsertElementNode {
 
         @Specialization
-        public LLVMDoubleVector executeDouble(LLVMDoubleVector vector, double element, int index) {
+        protected LLVMDoubleVector doDouble(LLVMDoubleVector vector, double element, int index) {
             return vector.insert(element, index);
         }
     }
-
 }

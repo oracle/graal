@@ -236,5 +236,4 @@ public final class LLVMI16Vector {
 
         return LLVMI1Vector.create(values);
     }
-
 }

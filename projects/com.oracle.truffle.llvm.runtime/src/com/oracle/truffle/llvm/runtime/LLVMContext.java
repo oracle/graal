@@ -141,7 +141,6 @@ public final class LLVMContext {
             }
             return fn;
         }
-
     }
 
     public LLVMContext(Env env, List<ContextExtension> contextExtension) {
@@ -234,7 +233,7 @@ public final class LLVMContext {
         }
     }
 
-    public void addLibraryPath(String p) {
+    private void addLibraryPath(String p) {
         Path path = Paths.get(p);
         if (path.toFile().exists()) {
             if (!libraryPaths.contains(path)) {
@@ -493,5 +492,4 @@ public final class LLVMContext {
     public LLVMSourceContext getSourceContext() {
         return sourceContext;
     }
-
 }

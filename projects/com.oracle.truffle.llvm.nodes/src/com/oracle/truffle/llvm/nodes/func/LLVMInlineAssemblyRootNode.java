@@ -68,5 +68,4 @@ public class LLVMInlineAssemblyRootNode extends RootNode {
         block.executeGeneric(frame);
         return result == null ? 0 : result.executeGeneric(frame);
     }
-
 }

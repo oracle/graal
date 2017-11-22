@@ -71,57 +71,57 @@ public abstract class LLVMAMD64WriteNode extends Node {
     }
 
     @Specialization(guards = "!isFrameSlot(addr)")
-    protected void executeI8(VirtualFrame frame, Object addr, byte value) {
+    protected void doI8(VirtualFrame frame, Object addr, byte value) {
         storeI8.executeWithTarget(frame, addr, value);
     }
 
     @Specialization(guards = "!isFrameSlot(addr)")
-    protected void executeI16(VirtualFrame frame, Object addr, short value) {
+    protected void doI16(VirtualFrame frame, Object addr, short value) {
         storeI16.executeWithTarget(frame, addr, value);
     }
 
     @Specialization(guards = "!isFrameSlot(addr)")
-    protected void executeI32(VirtualFrame frame, Object addr, int value) {
+    protected void doI32(VirtualFrame frame, Object addr, int value) {
         storeI32.executeWithTarget(frame, addr, value);
     }
 
     @Specialization(guards = "!isFrameSlot(addr)")
-    protected void executeI64(VirtualFrame frame, Object addr, long value) {
+    protected void doI64(VirtualFrame frame, Object addr, long value) {
         storeI64.executeWithTarget(frame, addr, value);
     }
 
     @Specialization(guards = "!isFrameSlot(addr)")
-    protected void executeObject(VirtualFrame frame, Object addr, Object value) {
+    protected void doObject(VirtualFrame frame, Object addr, Object value) {
         storeAddress.executeWithTarget(frame, addr, value);
     }
 
     @Specialization
-    protected void executeI8(VirtualFrame frame, FrameSlot slot, byte value) {
+    protected void doI8(VirtualFrame frame, FrameSlot slot, byte value) {
         long reg = readRegister.execute(frame, slot);
         long val = (reg & mask) | (Byte.toUnsignedLong(value) << shift);
         frame.setLong(slot, val);
     }
 
     @Specialization
-    protected void executeI16(VirtualFrame frame, FrameSlot slot, short value) {
+    protected void doI16(VirtualFrame frame, FrameSlot slot, short value) {
         long reg = readRegister.execute(frame, slot);
         long val = (reg & MASK_16) | Short.toUnsignedLong(value);
         frame.setLong(slot, val);
     }
 
     @Specialization
-    protected void executeI32(VirtualFrame frame, FrameSlot slot, int value) {
+    protected void doI32(VirtualFrame frame, FrameSlot slot, int value) {
         long val = Integer.toUnsignedLong(value);
         frame.setLong(slot, val);
     }
 
     @Specialization
-    protected void executeI64(VirtualFrame frame, FrameSlot slot, long value) {
+    protected void doI64(VirtualFrame frame, FrameSlot slot, long value) {
         frame.setLong(slot, value);
     }
 
     @Specialization
-    protected void executeAddress(VirtualFrame frame, FrameSlot slot, LLVMAddress value) {
+    protected void doAddress(VirtualFrame frame, FrameSlot slot, LLVMAddress value) {
         frame.setLong(slot, value.getVal());
     }
 

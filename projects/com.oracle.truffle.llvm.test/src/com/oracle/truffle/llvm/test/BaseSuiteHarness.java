@@ -202,5 +202,4 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
             throw new AssertionError("Error creating whitelist.", e);
         }
     }
-
 }

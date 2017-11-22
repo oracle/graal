@@ -47,7 +47,7 @@ public abstract class LLVMAMD64LoadFlags extends LLVMExpressionNode {
                     @NodeChild(value = "zf", type = LLVMExpressionNode.class), @NodeChild(value = "sf", type = LLVMExpressionNode.class)})
     public abstract static class LLVMAMD64LahfNode extends LLVMAMD64LoadFlags {
         @Specialization
-        protected byte executeI8(boolean cf, boolean pf, boolean af, boolean zf, boolean sf) {
+        protected byte doI8(boolean cf, boolean pf, boolean af, boolean zf, boolean sf) {
             byte flags = 0;
             if (profileCF.profile(cf)) {
                 flags |= (byte) (1 << LLVMAMD64Flags.CF);
@@ -74,7 +74,7 @@ public abstract class LLVMAMD64LoadFlags extends LLVMExpressionNode {
         private final ConditionProfile profileOF = ConditionProfile.createCountingProfile();
 
         @Specialization
-        protected short executeI16(boolean cf, boolean pf, boolean af, boolean zf, boolean sf, boolean of) {
+        protected short doI16(boolean cf, boolean pf, boolean af, boolean zf, boolean sf, boolean of) {
             short flags = 0;
             if (profileCF.profile(cf)) {
                 flags |= (short) (1 << LLVMAMD64Flags.CF);

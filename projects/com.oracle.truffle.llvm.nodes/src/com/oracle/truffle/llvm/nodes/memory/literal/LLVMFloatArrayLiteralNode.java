@@ -56,7 +56,8 @@ public abstract class LLVMFloatArrayLiteralNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         return writeI64(frame, globalAccess.getNativeLocation(global));
     }
 
@@ -78,7 +79,8 @@ public abstract class LLVMFloatArrayLiteralNode extends LLVMExpressionNode {
 
     @Specialization
     @ExplodeLoop
-    protected LLVMTruffleObject foreignWriteFloat(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    protected LLVMTruffleObject foreignWriteFloat(VirtualFrame frame, LLVMTruffleObject addr,
+                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         LLVMTruffleObject currentPtr = addr;
         for (int i = 0; i < values.length; i++) {
             float currentValue = values[i].executeFloat(frame);
@@ -87,5 +89,4 @@ public abstract class LLVMFloatArrayLiteralNode extends LLVMExpressionNode {
         }
         return addr;
     }
-
 }

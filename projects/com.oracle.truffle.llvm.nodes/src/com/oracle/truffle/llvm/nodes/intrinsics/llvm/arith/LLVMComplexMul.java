@@ -77,5 +77,4 @@ public final class LLVMComplexMul extends LLVMExpressionNode {
             throw new IllegalStateException(e);
         }
     }
-
 }

@@ -38,7 +38,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public class LLVMSimpleLiteralNode {
 
-    public static class LLVMIVarBitLiteralNode extends LLVMExpressionNode {
+    public static final class LLVMIVarBitLiteralNode extends LLVMExpressionNode {
 
         private final LLVMIVarBit literal;
 
@@ -55,10 +55,9 @@ public class LLVMSimpleLiteralNode {
         public Object executeGeneric(VirtualFrame frame) {
             return executeLLVMIVarBit(frame);
         }
-
     }
 
-    public static class LLVMI1LiteralNode extends LLVMExpressionNode {
+    public static final class LLVMI1LiteralNode extends LLVMExpressionNode {
 
         private final boolean literal;
 
@@ -75,10 +74,9 @@ public class LLVMSimpleLiteralNode {
         public Object executeGeneric(VirtualFrame frame) {
             return executeI1(frame);
         }
-
     }
 
-    public static class LLVMI8LiteralNode extends LLVMExpressionNode {
+    public static final class LLVMI8LiteralNode extends LLVMExpressionNode {
 
         private final byte literal;
 
@@ -95,10 +93,9 @@ public class LLVMSimpleLiteralNode {
         public Object executeGeneric(VirtualFrame frame) {
             return executeI8(frame);
         }
-
     }
 
-    public static class LLVMI16LiteralNode extends LLVMExpressionNode {
+    public static final class LLVMI16LiteralNode extends LLVMExpressionNode {
 
         private final short literal;
 
@@ -115,10 +112,9 @@ public class LLVMSimpleLiteralNode {
         public Object executeGeneric(VirtualFrame frame) {
             return executeI16(frame);
         }
-
     }
 
-    public static class LLVMI32LiteralNode extends LLVMExpressionNode {
+    public static final class LLVMI32LiteralNode extends LLVMExpressionNode {
 
         private final int literal;
 
@@ -135,10 +131,9 @@ public class LLVMSimpleLiteralNode {
         public Object executeGeneric(VirtualFrame frame) {
             return executeI32(frame);
         }
-
     }
 
-    public static class LLVMI64LiteralNode extends LLVMExpressionNode {
+    public static final class LLVMI64LiteralNode extends LLVMExpressionNode {
 
         private final long literal;
 
@@ -155,10 +150,9 @@ public class LLVMSimpleLiteralNode {
         public Object executeGeneric(VirtualFrame frame) {
             return executeI64(frame);
         }
-
     }
 
-    public static class LLVMFloatLiteralNode extends LLVMExpressionNode {
+    public static final class LLVMFloatLiteralNode extends LLVMExpressionNode {
 
         private final float literal;
 
@@ -177,7 +171,7 @@ public class LLVMSimpleLiteralNode {
         }
     }
 
-    public static class LLVMDoubleLiteralNode extends LLVMExpressionNode {
+    public static final class LLVMDoubleLiteralNode extends LLVMExpressionNode {
 
         private final double literal;
 
@@ -194,10 +188,9 @@ public class LLVMSimpleLiteralNode {
         public Object executeGeneric(VirtualFrame frame) {
             return executeDouble(frame);
         }
-
     }
 
-    public static class LLVM80BitFloatLiteralNode extends LLVMExpressionNode {
+    public static final class LLVM80BitFloatLiteralNode extends LLVMExpressionNode {
 
         private final boolean sign;
         private final int exponent;
@@ -220,7 +213,7 @@ public class LLVMSimpleLiteralNode {
         }
     }
 
-    public static class LLVMTruffleObjectLiteralNode extends LLVMExpressionNode {
+    public static final class LLVMTruffleObjectLiteralNode extends LLVMExpressionNode {
 
         private final LLVMTruffleObject address;
 
@@ -232,10 +225,9 @@ public class LLVMSimpleLiteralNode {
         public Object executeGeneric(VirtualFrame frame) {
             return address;
         }
-
     }
 
-    public static class LLVMAddressLiteralNode extends LLVMExpressionNode {
+    public static final class LLVMAddressLiteralNode extends LLVMExpressionNode {
 
         private final long address;
 
@@ -252,6 +244,5 @@ public class LLVMSimpleLiteralNode {
         public Object executeGeneric(VirtualFrame frame) {
             return executeLLVMAddress(frame);
         }
-
     }
 }

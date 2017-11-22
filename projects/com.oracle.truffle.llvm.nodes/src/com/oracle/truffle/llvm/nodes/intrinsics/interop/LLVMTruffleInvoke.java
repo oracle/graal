@@ -119,7 +119,7 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
 
     @SuppressWarnings("unused")
     @Specialization(limit = "2", guards = "idStr.equals(readStr.executeWithTarget(frame, id))")
-    public Object cachedId(VirtualFrame frame, LLVMTruffleObject value, Object id,
+    protected Object cachedId(VirtualFrame frame, LLVMTruffleObject value, Object id,
                     @Cached("createReadString()") LLVMReadStringNode readStr,
                     @Cached("readStr.executeWithTarget(frame, id)") String idStr,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
@@ -129,7 +129,7 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
     }
 
     @Specialization(replaces = "cachedId")
-    public Object uncached(VirtualFrame frame, LLVMTruffleObject value, Object id,
+    protected Object uncached(VirtualFrame frame, LLVMTruffleObject value, Object id,
                     @Cached("createReadString()") LLVMReadStringNode readStr,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("create()") LLVMGetStackNode getStack) {

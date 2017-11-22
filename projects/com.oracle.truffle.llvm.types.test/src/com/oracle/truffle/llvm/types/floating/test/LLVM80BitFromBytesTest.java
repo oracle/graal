@@ -81,5 +81,4 @@ public class LLVM80BitFromBytesTest extends LLVM80BitTest {
     public void testNegativeValue() {
         assertEquals(LLVM80BitFloat.fromBytes(val(Long.MIN_VALUE).getBytes()), val(Long.MIN_VALUE));
     }
-
 }

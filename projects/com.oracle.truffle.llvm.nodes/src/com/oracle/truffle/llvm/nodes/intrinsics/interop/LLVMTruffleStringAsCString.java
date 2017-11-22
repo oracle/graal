@@ -49,14 +49,14 @@ public abstract class LLVMTruffleStringAsCString extends LLVMIntrinsic {
 
     @SuppressWarnings("unused")
     @Specialization(limit = "2", guards = "cachedId.equals(readStr.executeWithTarget(frame, id))")
-    public Object cached(VirtualFrame frame, Object id,
+    protected Object cached(VirtualFrame frame, Object id,
                     @Cached("createReadString()") LLVMReadStringNode readStr,
                     @Cached("readStr.executeWithTarget(frame, id)") String cachedId) {
         return allocString.executeWithTarget(frame, cachedId);
     }
 
     @Specialization(replaces = "cached")
-    public Object uncached(VirtualFrame frame, Object id,
+    protected Object uncached(VirtualFrame frame, Object id,
                     @Cached("createReadString()") LLVMReadStringNode readStr) {
         return allocString.executeWithTarget(frame, readStr.executeWithTarget(frame, id));
     }

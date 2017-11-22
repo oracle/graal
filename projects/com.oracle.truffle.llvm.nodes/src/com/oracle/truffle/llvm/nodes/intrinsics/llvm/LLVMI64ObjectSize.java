@@ -38,9 +38,8 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMI64ObjectSize extends LLVMBuiltin {
 
     @Specialization
-    public long executeI64(@SuppressWarnings("unused") Object addr, boolean min) {
+    protected long doI64(@SuppressWarnings("unused") Object addr, boolean min) {
         int objectSizeUnknown = min ? 0 : -1;
         return objectSizeUnknown;
     }
-
 }

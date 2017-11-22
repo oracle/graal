@@ -95,7 +95,7 @@ public abstract class LLVMAMD64CpuidNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, int level) {
+    protected Object doOp(VirtualFrame frame, int level) {
         int a;
         int b;
         int c;

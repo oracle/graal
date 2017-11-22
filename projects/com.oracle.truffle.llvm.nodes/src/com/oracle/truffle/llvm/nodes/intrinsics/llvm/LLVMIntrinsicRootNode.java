@@ -63,9 +63,8 @@ public abstract class LLVMIntrinsicRootNode extends RootNode {
         }
 
         @Specialization
-        public Object execute(Object val) {
+        protected Object doOp(Object val) {
             return val;
         }
     }
-
 }

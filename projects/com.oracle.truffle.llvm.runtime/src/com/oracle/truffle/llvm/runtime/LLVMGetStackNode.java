@@ -54,13 +54,15 @@ public abstract class LLVMGetStackNode extends Node {
 
     @SuppressWarnings("unused")
     @Specialization(limit = "3", guards = "currentThread == cachedThread")
-    public LLVMStack cached(LLVMThreadingStack stack, Thread currentThread, @Cached("currentThread") Thread cachedThread, @Cached("getStack(stack, cachedThread)") LLVMStack cachedStack) {
+    protected LLVMStack cached(LLVMThreadingStack stack, Thread currentThread,
+                    @Cached("currentThread") Thread cachedThread,
+                    @Cached("getStack(stack, cachedThread)") LLVMStack cachedStack) {
         return cachedStack;
     }
 
     @SuppressWarnings("unused")
     @Specialization(replaces = "cached")
-    public LLVMStack generic(LLVMThreadingStack stack, Thread currentThread) {
+    protected LLVMStack generic(LLVMThreadingStack stack, Thread currentThread) {
         return stack.getStack();
     }
 }

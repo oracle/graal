@@ -465,5 +465,4 @@ public final class LLVMIVarBit {
         LLVMIVarBit other = (LLVMIVarBit) obj;
         return compare(other) == 0;
     }
-
 }

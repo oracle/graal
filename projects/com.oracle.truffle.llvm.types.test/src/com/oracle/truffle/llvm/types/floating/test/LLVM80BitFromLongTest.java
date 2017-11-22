@@ -85,5 +85,4 @@ public class LLVM80BitFromLongTest {
         LLVM80BitFloat expected = LLVM80BitFloat.fromRawValues(true, 0x403e, 0x8000000000000000L);
         assertEquals(expected, val);
     }
-
 }

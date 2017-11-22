@@ -193,5 +193,4 @@ public abstract class LLVMWriteNode extends LLVMExpressionNode {
             return null;
         }
     }
-
 }

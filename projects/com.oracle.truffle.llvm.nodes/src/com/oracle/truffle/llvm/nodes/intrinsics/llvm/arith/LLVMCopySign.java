@@ -48,7 +48,7 @@ public abstract class LLVMCopySign {
         public abstract SourceSection getSourceSection();
 
         @Specialization
-        public float executeFloat(float magnitude, float sign) {
+        protected float doFloat(float magnitude, float sign) {
             return Math.copySign(magnitude, sign);
         }
     }
@@ -62,7 +62,7 @@ public abstract class LLVMCopySign {
         public abstract SourceSection getSourceSection();
 
         @Specialization
-        public double executeDouble(double magnitude, double sign) {
+        protected double doDouble(double magnitude, double sign) {
             return Math.copySign(magnitude, sign);
         }
     }

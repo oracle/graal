@@ -39,12 +39,12 @@ public abstract class LLVMAMD64SyscallRtSigactionNode extends LLVMAMD64SyscallOp
 
     @SuppressWarnings("unused")
     @Specialization
-    protected long executeI64(long signum, LLVMAddress act, LLVMAddress oldact) {
+    protected long doI64(long signum, LLVMAddress act, LLVMAddress oldact) {
         return -LLVMAMD64Error.ENOSYS;
     }
 
     @Specialization
-    protected long executeI64(long signum, long act, long oldact) {
-        return executeI64(signum, LLVMAddress.fromLong(act), LLVMAddress.fromLong(oldact));
+    protected long doI64(long signum, long act, long oldact) {
+        return doI64(signum, LLVMAddress.fromLong(act), LLVMAddress.fromLong(oldact));
     }
 }

@@ -56,7 +56,8 @@ public abstract class LLVMI1ArrayLiteralNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         return writeI8(frame, globalAccess.getNativeLocation(global));
     }
 
@@ -78,7 +79,8 @@ public abstract class LLVMI1ArrayLiteralNode extends LLVMExpressionNode {
 
     @Specialization
     @ExplodeLoop
-    protected LLVMTruffleObject foreignWriteI1(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    protected LLVMTruffleObject foreignWriteI1(VirtualFrame frame, LLVMTruffleObject addr,
+                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         LLVMTruffleObject currentPtr = addr;
         for (int i = 0; i < values.length; i++) {
             boolean currentValue = values[i].executeI1(frame);

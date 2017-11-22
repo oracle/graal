@@ -71,5 +71,4 @@ public class LLVM80BitGetDoubleTest extends LLVM80BitTest {
     public void testQNaN() {
         assertBitEquals(Double.NaN, nan().getDoubleValue());
     }
-
 }

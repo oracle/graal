@@ -78,5 +78,4 @@ public class LLVM80BitFromUnsignedLongTest extends LLVM80BitTest {
         LLVM80BitFloat expected = LLVM80BitFloat.fromRawValues(false, 0x403d, 0xfffffffffffffffeL);
         assertEquals(expected, val);
     }
-
 }

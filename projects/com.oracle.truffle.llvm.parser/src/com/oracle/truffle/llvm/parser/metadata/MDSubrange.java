@@ -76,5 +76,4 @@ public final class MDSubrange implements MDBaseNode {
         final long size = upperBound - lowerBound + 1;
         return new MDSubrange(lowerBound, size);
     }
-
 }

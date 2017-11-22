@@ -69,7 +69,7 @@ public class LLVMGlobalRootNode extends RootNode {
 
     @Child private LLVMDispatchNode executeDestructor = LLVMDispatchNodeGen.create(new FunctionType(VoidType.INSTANCE, new Type[]{null, new PointerType(null)}, false));
     private final DirectCallNode main;
-    @Child LLVMPrepareArgumentsNode prepareArguments;
+    @Child private LLVMPrepareArgumentsNode prepareArguments;
 
     public LLVMGlobalRootNode(LLVMLanguage language, FrameDescriptor descriptor, Source source, Type returnType, Type[] types, CallTarget main) {
         super(language, descriptor);
@@ -165,5 +165,4 @@ public class LLVMGlobalRootNode extends RootNode {
     public final LLVMContext getContext() {
         return getRootNode().getLanguage(LLVMLanguage.class).getContextReference().get();
     }
-
 }

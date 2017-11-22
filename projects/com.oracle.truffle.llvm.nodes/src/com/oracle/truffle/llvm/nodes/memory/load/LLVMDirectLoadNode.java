@@ -64,12 +64,13 @@ public abstract class LLVMDirectLoadNode {
         }
 
         @Specialization
-        public LLVMIVarBit executeI64(LLVMAddress addr) {
+        protected LLVMIVarBit doI64(LLVMAddress addr) {
             return LLVMMemory.getIVarBit(addr, getBitWidth());
         }
 
         @Specialization
-        public LLVMIVarBit executeI64(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        protected LLVMIVarBit doI64(LLVMGlobalVariable addr,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             return LLVMMemory.getIVarBit(globalAccess.getNativeLocation(addr), getBitWidth());
         }
 
@@ -78,7 +79,8 @@ public abstract class LLVMDirectLoadNode {
         }
 
         @Specialization
-        public Object executeForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+        protected Object doForeign(VirtualFrame frame, LLVMTruffleObject addr,
+                        @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
             return foreignRead.execute(frame, addr);
         }
     }
@@ -86,12 +88,13 @@ public abstract class LLVMDirectLoadNode {
     public abstract static class LLVM80BitFloatDirectLoadNode extends LLVMLoadNode {
 
         @Specialization
-        public LLVM80BitFloat executeDouble(LLVMAddress addr) {
+        protected LLVM80BitFloat doDouble(LLVMAddress addr) {
             return LLVMMemory.get80BitFloat(addr);
         }
 
         @Specialization
-        public LLVM80BitFloat executeDouble(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        protected LLVM80BitFloat doDouble(LLVMGlobalVariable addr,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             return LLVMMemory.get80BitFloat(globalAccess.getNativeLocation(addr));
         }
     }
@@ -99,12 +102,13 @@ public abstract class LLVMDirectLoadNode {
     public abstract static class LLVMFunctionDirectLoadNode extends LLVMLoadNode {
 
         @Specialization
-        public LLVMAddress executeAddress(LLVMAddress addr) {
+        protected LLVMAddress doAddress(LLVMAddress addr) {
             return LLVMAddress.fromLong(LLVMHeap.getFunctionPointer(addr));
         }
 
         @Specialization
-        public LLVMAddress executeAddress(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        protected LLVMAddress doAddress(LLVMGlobalVariable addr,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             return LLVMAddress.fromLong(LLVMHeap.getFunctionPointer(globalAccess.getNativeLocation(addr)));
         }
 
@@ -113,7 +117,8 @@ public abstract class LLVMDirectLoadNode {
         }
 
         @Specialization
-        public Object executeForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+        protected Object doForeign(VirtualFrame frame, LLVMTruffleObject addr,
+                        @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
             return foreignRead.execute(frame, addr);
         }
     }
@@ -123,22 +128,23 @@ public abstract class LLVMDirectLoadNode {
         @Child protected ForeignToLLVM toLLVM = ForeignToLLVM.create(ForeignToLLVMType.POINTER);
 
         @Specialization
-        public LLVMAddress executeAddress(LLVMAddress addr) {
+        protected LLVMAddress doAddress(LLVMAddress addr) {
             return LLVMMemory.getAddress(addr);
         }
 
         @Specialization
-        public LLVMAddress executeLLVMByteArrayAddress(LLVMVirtualAllocationAddress address) {
+        protected LLVMAddress doLLVMByteArrayAddress(LLVMVirtualAllocationAddress address) {
             return LLVMAddress.fromLong(address.getI64());
         }
 
         @Specialization
-        public Object executeAddress(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        protected Object doAddress(LLVMGlobalVariable addr,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             return globalAccess.get(addr);
         }
 
         @Specialization
-        public Object executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
+        protected Object doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
             if (addr.getValue() instanceof Long) {
                 return LLVMMemory.getAddress((long) addr.getValue());
             } else {
@@ -148,7 +154,8 @@ public abstract class LLVMDirectLoadNode {
         }
 
         @Specialization
-        public Object executeIndirectedForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignReadNode()") LLVMForeignReadNode foreignRead) {
+        protected Object doIndirectedForeign(VirtualFrame frame, LLVMTruffleObject addr,
+                        @Cached("createForeignReadNode()") LLVMForeignReadNode foreignRead) {
             return foreignRead.execute(frame, addr);
         }
 
@@ -170,20 +177,18 @@ public abstract class LLVMDirectLoadNode {
         public Object executeGeneric(VirtualFrame frame) {
             return access.get(descriptor);
         }
-
     }
 
     public abstract static class LLVMStructDirectLoadNode extends LLVMLoadNode {
 
         @Specialization
-        public LLVMAddress executeAddress(LLVMAddress addr) {
+        protected LLVMAddress doAddress(LLVMAddress addr) {
             return addr; // we do not actually load the struct into a virtual register
         }
 
         @Specialization
-        public LLVMTruffleObject executeTruffleObject(LLVMTruffleObject addr) {
+        protected LLVMTruffleObject doTruffleObject(LLVMTruffleObject addr) {
             return addr; // we do not actually load the struct into a virtual register
         }
     }
-
 }

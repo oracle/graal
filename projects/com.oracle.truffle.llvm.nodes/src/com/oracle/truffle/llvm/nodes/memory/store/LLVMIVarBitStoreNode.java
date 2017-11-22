@@ -55,19 +55,21 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    public Object execute(LLVMGlobalVariable address, LLVMIVarBit value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doOp(LLVMGlobalVariable address, LLVMIVarBit value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         LLVMMemory.putIVarBit(globalAccess.getNativeLocation(address), value);
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMAddress address, LLVMIVarBit value) {
+    protected Object doOp(LLVMAddress address, LLVMIVarBit value) {
         LLVMMemory.putIVarBit(address, value);
         return null;
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMTruffleObject address, LLVMIVarBit value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, LLVMIVarBit value,
+                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(frame, address, value);
         return null;
     }

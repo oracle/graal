@@ -38,8 +38,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMReturnAddress extends LLVMBuiltin {
 
     @Specialization
-    public LLVMAddress executePointee(@SuppressWarnings("unused") int frameLevel) {
+    protected LLVMAddress doPointee(@SuppressWarnings("unused") int frameLevel) {
         return LLVMAddress.nullPointer();
     }
-
 }

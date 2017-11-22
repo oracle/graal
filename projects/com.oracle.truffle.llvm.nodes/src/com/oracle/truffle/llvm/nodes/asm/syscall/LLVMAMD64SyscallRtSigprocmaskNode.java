@@ -39,12 +39,12 @@ public abstract class LLVMAMD64SyscallRtSigprocmaskNode extends LLVMAMD64Syscall
 
     @SuppressWarnings("unused")
     @Specialization
-    protected long executeI64(long how, LLVMAddress set, LLVMAddress oldset, long sigsetsize) {
+    protected long doI64(long how, LLVMAddress set, LLVMAddress oldset, long sigsetsize) {
         return -LLVMAMD64Error.ENOSYS;
     }
 
     @Specialization
-    protected long executeI64(long how, long set, long oldset, long sigsetsize) {
-        return executeI64(how, LLVMAddress.fromLong(set), LLVMAddress.fromLong(oldset), sigsetsize);
+    protected long doI64(long how, long set, long oldset, long sigsetsize) {
+        return doI64(how, LLVMAddress.fromLong(set), LLVMAddress.fromLong(oldset), sigsetsize);
     }
 }

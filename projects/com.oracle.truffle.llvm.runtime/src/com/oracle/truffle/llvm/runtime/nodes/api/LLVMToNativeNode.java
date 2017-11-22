@@ -55,17 +55,18 @@ public abstract class LLVMToNativeNode extends Node {
     }
 
     @Specialization
-    public LLVMAddress doAddressCase(LLVMAddress a) {
+    protected LLVMAddress doAddressCase(LLVMAddress a) {
         return a;
     }
 
     @Specialization
-    public LLVMAddress doAddressCase(LLVMGlobalVariable a, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected LLVMAddress doAddressCase(LLVMGlobalVariable a,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         return globalAccess.getNativeLocation(a);
     }
 
     @Specialization
-    public LLVMAddress executeLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
+    protected LLVMAddress doLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
         if (from.getValue() instanceof Long) {
             return LLVMAddress.fromLong((long) from.getValue());
         } else {
@@ -78,19 +79,21 @@ public abstract class LLVMToNativeNode extends Node {
     @Child private Node isNull = Message.IS_NULL.createNode();
 
     @Specialization(guards = "isNull(pointer.getObject())")
-    LLVMAddress handleIsNull(LLVMTruffleObject pointer) {
+    protected LLVMAddress handleIsNull(LLVMTruffleObject pointer) {
         LLVMAddress base = LLVMAddress.nullPointer();
         return base.increment(pointer.getOffset());
     }
 
     @Specialization(guards = "!isNull(pointer.getObject())")
-    LLVMAddress handleLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject pointer, @Cached("createToNative()") ObjectToNative toNative) {
+    protected LLVMAddress handleLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject pointer,
+                    @Cached("createToNative()") ObjectToNative toNative) {
         LLVMAddress nativeAddress = toNative.executeWithTarget(frame, pointer.getObject());
         return nativeAddress.increment(pointer.getOffset());
     }
 
     @Specialization
-    LLVMAddress handleLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor pointer, @Cached("createToNative()") ObjectToNative toNative) {
+    protected LLVMAddress handleLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor pointer,
+                    @Cached("createToNative()") ObjectToNative toNative) {
         return toNative.executeWithTarget(frame, pointer);
     }
 
@@ -105,13 +108,13 @@ public abstract class LLVMToNativeNode extends Node {
         abstract LLVMAddress executeWithTarget(VirtualFrame frame, Object pointer);
 
         @Specialization(guards = {"lib.guard(pointer)", "lib.isPointer(frame, pointer)"})
-        LLVMAddress handlePointerCached(VirtualFrame frame, Object pointer,
+        protected LLVMAddress handlePointerCached(VirtualFrame frame, Object pointer,
                         @Cached("createCached(pointer)") LLVMObjectNativeLibrary lib) {
             return handlePointer(frame, pointer, lib);
         }
 
         @Specialization(replaces = "handlePointerCached", guards = {"lib.guard(pointer)", "lib.isPointer(frame, pointer)"})
-        LLVMAddress handlePointer(VirtualFrame frame, Object pointer,
+        protected LLVMAddress handlePointer(VirtualFrame frame, Object pointer,
                         @Cached("createGeneric()") LLVMObjectNativeLibrary lib) {
             try {
                 return LLVMAddress.fromLong(lib.asPointer(frame, pointer));
@@ -122,7 +125,7 @@ public abstract class LLVMToNativeNode extends Node {
         }
 
         @Specialization(replaces = {"handlePointer", "handlePointerCached"}, guards = {"lib.guard(pointer)"})
-        LLVMAddress transitionToNative(VirtualFrame frame, Object pointer,
+        protected LLVMAddress transitionToNative(VirtualFrame frame, Object pointer,
                         @Cached("createGeneric()") LLVMObjectNativeLibrary lib) {
             try {
                 Object n = lib.toNative(frame, pointer);
@@ -141,5 +144,4 @@ public abstract class LLVMToNativeNode extends Node {
     protected static final LLVMGlobalVariableAccess createGlobalAccess() {
         return new LLVMGlobalVariableAccess();
     }
-
 }

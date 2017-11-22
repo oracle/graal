@@ -43,12 +43,12 @@ public abstract class LLVMAMD64SyscallUnlinkNode extends LLVMAMD64SyscallOperati
     }
 
     @Specialization
-    protected long execute(LLVMAddress path) {
+    protected long doOp(LLVMAddress path) {
         return (int) unlink.execute(path.getVal());
     }
 
     @Specialization
-    protected long execute(long path) {
-        return execute(LLVMAddress.fromLong(path));
+    protected long doOp(long path) {
+        return doOp(LLVMAddress.fromLong(path));
     }
 }

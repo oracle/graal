@@ -43,12 +43,12 @@ public abstract class LLVMAMD64SyscallPipeNode extends LLVMAMD64SyscallOperation
     }
 
     @Specialization
-    protected long execute(LLVMAddress pipefd) {
+    protected long doOp(LLVMAddress pipefd) {
         return (int) pipe.execute(pipefd.getVal());
     }
 
     @Specialization
-    protected long execute(long path) {
-        return execute(LLVMAddress.fromLong(path));
+    protected long doOp(long path) {
+        return doOp(LLVMAddress.fromLong(path));
     }
 }

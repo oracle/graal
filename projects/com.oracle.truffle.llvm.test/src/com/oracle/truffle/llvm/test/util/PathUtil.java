@@ -54,5 +54,4 @@ public class PathUtil {
         }
         return str.substring(0, pos);
     }
-
 }

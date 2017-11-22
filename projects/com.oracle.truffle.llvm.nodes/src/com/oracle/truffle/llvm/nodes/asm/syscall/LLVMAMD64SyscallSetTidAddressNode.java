@@ -40,14 +40,14 @@ public abstract class LLVMAMD64SyscallSetTidAddressNode extends LLVMAMD64Syscall
 
     @TruffleBoundary
     @Specialization
-    protected long execute(LLVMAddress tidptr) {
+    protected long doOp(LLVMAddress tidptr) {
         ThreadLocal<LLVMAddress> clearChildTid = getContextReference().get().getClearChildTid();
         clearChildTid.set(tidptr);
         return Thread.currentThread().getId();
     }
 
     @Specialization
-    protected long execute(long tidptr) {
-        return execute(LLVMAddress.fromLong(tidptr));
+    protected long doOp(long tidptr) {
+        return doOp(LLVMAddress.fromLong(tidptr));
     }
 }

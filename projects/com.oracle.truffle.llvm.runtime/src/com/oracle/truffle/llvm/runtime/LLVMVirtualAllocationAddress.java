@@ -161,5 +161,4 @@ public final class LLVMVirtualAllocationAddress {
             return null;
         }
     }
-
 }

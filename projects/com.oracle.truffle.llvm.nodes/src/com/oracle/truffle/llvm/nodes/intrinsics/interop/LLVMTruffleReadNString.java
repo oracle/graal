@@ -53,7 +53,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMTruffleReadNString extends LLVMIntrinsic {
 
     @Specialization
-    public Object executeIntrinsic(LLVMAddress value, int n) {
+    protected Object doIntrinsic(LLVMAddress value, int n) {
         return getString(value, n);
     }
 
@@ -70,7 +70,7 @@ public abstract class LLVMTruffleReadNString extends LLVMIntrinsic {
     }
 
     @Specialization
-    public Object interop(VirtualFrame frame, LLVMTruffleObject objectWithOffset, int n,
+    protected Object interop(VirtualFrame frame, LLVMTruffleObject objectWithOffset, int n,
                     @Cached("createForeignReadNode()") Node foreignRead,
                     @Cached("createToByteNode()") ForeignToLLVM toLLVM) {
         long offset = objectWithOffset.getOffset();
@@ -97,5 +97,4 @@ public abstract class LLVMTruffleReadNString extends LLVMIntrinsic {
         System.err.println("Invalid arguments to \"read nstring\"-builtin.");
         throw new IllegalArgumentException();
     }
-
 }

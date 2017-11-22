@@ -43,12 +43,12 @@ public abstract class LLVMAMD64SyscallIoctlNode extends LLVMAMD64SyscallOperatio
     }
 
     @Specialization
-    protected long executeI64(long fd, long request, LLVMAddress argp) {
+    protected long doI64(long fd, long request, LLVMAddress argp) {
         return (int) ioctl.execute((int) fd, request, argp.getVal());
     }
 
     @Specialization
-    protected long executeI64(long fd, long request, long argp) {
-        return executeI64(fd, request, LLVMAddress.fromLong(argp));
+    protected long doI64(long fd, long request, long argp) {
+        return doI64(fd, request, LLVMAddress.fromLong(argp));
     }
 }

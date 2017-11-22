@@ -43,12 +43,12 @@ public abstract class LLVMAMD64SyscallReadvNode extends LLVMAMD64SyscallOperatio
     }
 
     @Specialization
-    protected long execute(long fd, LLVMAddress ptr, long size) {
+    protected long doOp(long fd, LLVMAddress ptr, long size) {
         return (long) readv.execute((int) fd, ptr.getVal(), size);
     }
 
     @Specialization
-    protected long execute(long fd, long ptr, long size) {
-        return execute(fd, LLVMAddress.fromLong(ptr), size);
+    protected long doOp(long fd, long ptr, long size) {
+        return doOp(fd, LLVMAddress.fromLong(ptr), size);
     }
 }

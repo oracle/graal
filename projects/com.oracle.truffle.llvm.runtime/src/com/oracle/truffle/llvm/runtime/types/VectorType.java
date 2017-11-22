@@ -152,5 +152,4 @@ public final class VectorType extends AggregateType {
         }
         return true;
     }
-
 }

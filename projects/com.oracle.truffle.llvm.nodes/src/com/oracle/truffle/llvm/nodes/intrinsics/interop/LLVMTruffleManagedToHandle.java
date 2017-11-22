@@ -45,7 +45,8 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMTruffleManagedToHandle extends LLVMIntrinsic {
 
     @Specialization
-    public LLVMAddress executeIntrinsic(LLVMTruffleObject value, @Cached("getContextReference()") ContextReference<LLVMContext> context) {
+    protected LLVMAddress doIntrinsic(LLVMTruffleObject value,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> context) {
         if (value.getOffset() == 0) {
             LLVMAddress handle = context.get().getHandleForManagedObject(value.getObject());
             return handle;

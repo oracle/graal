@@ -72,7 +72,8 @@ public abstract class LLVMAddressArrayLiteralNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         return writeAddress(frame, globalAccess.getNativeLocation(global));
     }
 
@@ -100,8 +101,10 @@ public abstract class LLVMAddressArrayLiteralNode extends LLVMExpressionNode {
     @SuppressWarnings("unused")
     @Specialization
     @ExplodeLoop
-    protected LLVMTruffleObject foreignWriteRef(VirtualFrame frame, LLVMTruffleObject addr, @Cached("0") int a,
-                    @Cached("0") int b, @Cached("createForeignWrites()") LLVMForeignWriteNode[] foreignWrites) {
+    protected LLVMTruffleObject foreignWriteRef(VirtualFrame frame, LLVMTruffleObject addr,
+                    @Cached("0") int a,
+                    @Cached("0") int b,
+                    @Cached("createForeignWrites()") LLVMForeignWriteNode[] foreignWrites) {
         LLVMTruffleObject currentPtr = addr;
         for (int i = 0; i < values.length; i++) {
             Object currentValue = values[i].executeGeneric(frame);
@@ -110,5 +113,4 @@ public abstract class LLVMAddressArrayLiteralNode extends LLVMExpressionNode {
         }
         return addr;
     }
-
 }

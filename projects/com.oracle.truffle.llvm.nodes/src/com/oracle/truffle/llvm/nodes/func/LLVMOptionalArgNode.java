@@ -58,7 +58,7 @@ public abstract class LLVMOptionalArgNode extends LLVMExpressionNode {
     }
 
     @Specialization(guards = "isAddress(frame)")
-    public Object executePointee(VirtualFrame frame) {
+    protected Object doPointee(VirtualFrame frame) {
         return converter.convert(((LLVMAddress) get(frame)).copy());
     }
 
@@ -67,7 +67,7 @@ public abstract class LLVMOptionalArgNode extends LLVMExpressionNode {
     }
 
     @Specialization(guards = "!isAddress(frame)")
-    public Object executeObject(VirtualFrame frame) {
+    protected Object doObject(VirtualFrame frame) {
         return converter.convert(get(frame));
     }
 

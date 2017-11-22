@@ -34,47 +34,47 @@ import com.oracle.truffle.api.dsl.Specialization;
 abstract class ToVoidLLVM extends ForeignToLLVM {
 
     @Specialization
-    public int fromInt(int value) {
+    protected int fromInt(int value) {
         return value;
     }
 
     @Specialization
-    public char fromChar(char value) {
+    protected char fromChar(char value) {
         return value;
     }
 
     @Specialization
-    public long fromLong(long value) {
+    protected long fromLong(long value) {
         return value;
     }
 
     @Specialization
-    public byte fromByte(byte value) {
+    protected byte fromByte(byte value) {
         return value;
     }
 
     @Specialization
-    public short fromShort(short value) {
+    protected short fromShort(short value) {
         return value;
     }
 
     @Specialization
-    public float fromFloat(float value) {
+    protected float fromFloat(float value) {
         return value;
     }
 
     @Specialization
-    public double fromDouble(double value) {
+    protected double fromDouble(double value) {
         return value;
     }
 
     @Specialization
-    public boolean fromBoolean(boolean value) {
+    protected boolean fromBoolean(boolean value) {
         return value;
     }
 
     @Specialization
-    public Object fromString(Object obj) {
+    protected Object fromString(Object obj) {
         return obj;
     }
 }

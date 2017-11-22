@@ -56,12 +56,11 @@ public abstract class LLVMFrameAddress extends LLVMBuiltin {
     }
 
     @Specialization
-    public LLVMAddress executePointee(VirtualFrame frame, int frameLevel) {
+    protected LLVMAddress doPointee(VirtualFrame frame, int frameLevel) {
         if (frameLevel == 0) {
             return LLVMAddress.fromLong(FrameUtil.getLongSafe(frame, getStackPointerSlot()));
         } else {
             return LLVMAddress.nullPointer();
         }
     }
-
 }

@@ -50,49 +50,53 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    public Object execute(LLVMGlobalVariable address, long value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doOp(LLVMGlobalVariable address, long value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         globalAccess.putI64(address, value);
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMAddress address, long value) {
+    protected Object doOp(LLVMAddress address, long value) {
         LLVMMemory.putI64(address, value);
         return null;
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMAddress address, LLVMTruffleObject value, @Cached("toNative()") LLVMToNativeNode toAddress) {
+    protected Object doOp(VirtualFrame frame, LLVMAddress address, LLVMTruffleObject value,
+                    @Cached("toNative()") LLVMToNativeNode toAddress) {
         LLVMMemory.putI64(address, toAddress.executeWithTarget(frame, value).getVal());
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMAddress address, LLVMAddress value) {
+    protected Object doOp(LLVMAddress address, LLVMAddress value) {
         LLVMMemory.putI64(address, value.getVal());
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMAddress address, LLVMGlobalVariable value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doOp(LLVMAddress address, LLVMGlobalVariable value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         LLVMMemory.putI64(address, globalAccess.getNativeLocation(value).getVal());
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMVirtualAllocationAddress address, long value) {
+    protected Object doOp(LLVMVirtualAllocationAddress address, long value) {
         address.writeI64(value);
         return null;
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMTruffleObject address, Object value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, Object value,
+                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(frame, address, value);
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMBoxedPrimitive address, long value) {
+    protected Object doOp(LLVMBoxedPrimitive address, long value) {
         if (address.getValue() instanceof Long) {
             LLVMMemory.putI64((long) address.getValue(), value);
             return null;

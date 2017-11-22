@@ -41,7 +41,7 @@ public abstract class CountLeadingZeroesNode {
     public abstract static class CountLeadingZeroesI8Node extends LLVMBuiltin {
 
         @Specialization
-        public byte executeI8(byte val, @SuppressWarnings("unused") boolean isZeroUndefined) {
+        protected byte doI8(byte val, @SuppressWarnings("unused") boolean isZeroUndefined) {
             return (byte) (Integer.numberOfLeadingZeros(val & 0xFF) - Integer.SIZE + Byte.SIZE);
         }
     }
@@ -50,7 +50,7 @@ public abstract class CountLeadingZeroesNode {
     public abstract static class CountLeadingZeroesI16Node extends LLVMBuiltin {
 
         @Specialization
-        public short executeI16(short val, @SuppressWarnings("unused") boolean isZeroUndefined) {
+        protected short doI16(short val, @SuppressWarnings("unused") boolean isZeroUndefined) {
             return (byte) (Integer.numberOfLeadingZeros(val & 0xFFFF) - Integer.SIZE + Short.SIZE);
         }
     }
@@ -59,7 +59,7 @@ public abstract class CountLeadingZeroesNode {
     public abstract static class CountLeadingZeroesI32Node extends LLVMBuiltin {
 
         @Specialization
-        public int executeI32(int val, @SuppressWarnings("unused") boolean isZeroUndefined) {
+        protected int doI32(int val, @SuppressWarnings("unused") boolean isZeroUndefined) {
             return Integer.numberOfLeadingZeros(val);
         }
     }
@@ -68,9 +68,8 @@ public abstract class CountLeadingZeroesNode {
     public abstract static class CountLeadingZeroesI64Node extends LLVMBuiltin {
 
         @Specialization
-        public long executeI64(long val, @SuppressWarnings("unused") boolean isZeroUndefined) {
+        protected long doI64(long val, @SuppressWarnings("unused") boolean isZeroUndefined) {
             return Long.numberOfLeadingZeros(val);
         }
     }
-
 }

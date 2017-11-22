@@ -44,7 +44,7 @@ public abstract class LLVMX86_ConversionNode {
                                                                                         // cvtss2si
 
         @Specialization
-        public int executeIntrinsic(LLVMFloatVector vector) {
+        protected int doIntrinsic(LLVMFloatVector vector) {
             if (vector.getLength() != 4) {
                 throw new AssertionError("cvtss2si requires a float[4] as parameter");
             }
@@ -58,7 +58,7 @@ public abstract class LLVMX86_ConversionNode {
                                                                                          // cvtsd2si
 
         @Specialization
-        public int executeIntrinsic(LLVMDoubleVector vector) {
+        protected int doIntrinsic(LLVMDoubleVector vector) {
             if (vector.getLength() != 2) {
                 throw new AssertionError("cvtsd2si requires a double[2] as parameter");
             }
@@ -68,5 +68,4 @@ public abstract class LLVMX86_ConversionNode {
             return Math.toIntExact(Math.round(vector.getValues()[0]));
         }
     }
-
 }

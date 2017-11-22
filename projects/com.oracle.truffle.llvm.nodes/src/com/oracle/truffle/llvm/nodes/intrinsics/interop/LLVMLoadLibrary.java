@@ -42,16 +42,16 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMLoadLibrary extends LLVMIntrinsic {
 
     @Specialization
-    public Object executeIntrinsic(String value) {
+    protected Object doIntrinsic(String value) {
         return value;
     }
 
     @Specialization
-    public Object executeIntrinsic(VirtualFrame frame, Object value, @Cached("getContextReference()") ContextReference<LLVMContext> context,
+    protected Object doIntrinsic(VirtualFrame frame, Object value,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("createReadString()") LLVMReadStringNode readId) {
         String name = readId.executeWithTarget(frame, value);
         context.get().addExternalLibrary(name);
         return null;
     }
-
 }

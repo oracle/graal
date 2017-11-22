@@ -80,7 +80,7 @@ public final class LLVMCallNode extends LLVMExpressionNode {
         protected abstract Object executeWithTarget(Object value);
 
         @Specialization
-        LLVMAddress doAddress(LLVMAddress address) {
+        protected LLVMAddress doAddress(LLVMAddress address) {
             return address.copy();
         }
 
@@ -89,7 +89,7 @@ public final class LLVMCallNode extends LLVMExpressionNode {
         }
 
         @Specialization(guards = "notAddress(value)")
-        Object doOther(Object value) {
+        protected Object doOther(Object value) {
             return value;
         }
     }

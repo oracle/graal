@@ -246,7 +246,6 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
                 builder.delete(builder.length() - 2, builder.length());
                 return builder.toString();
             }
-
         }
 
         protected static class NameScanner {
@@ -289,7 +288,6 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
                     return -1;
                 }
             }
-
         }
     }
 

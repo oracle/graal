@@ -82,8 +82,8 @@ public class NFIAPITest {
 
     private static final class LookupAndBindNode extends RootNode {
 
-        @Child Node lookupSymbol = Message.READ.createNode();
-        @Child Node bind = Message.createInvoke(1).createNode();
+        @Child private Node lookupSymbol = Message.READ.createNode();
+        @Child private Node bind = Message.createInvoke(1).createNode();
 
         private LookupAndBindNode() {
             super(null);
@@ -133,7 +133,7 @@ public class NFIAPITest {
 
         private final TruffleObject receiver;
 
-        @Child Node execute;
+        @Child private Node execute;
 
         protected SendExecuteNode(TruffleObject library, String symbol, String signature, int argCount) {
             this(lookupAndBind(library, symbol, signature), argCount);

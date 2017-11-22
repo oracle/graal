@@ -49,31 +49,33 @@ public abstract class LLVMFloatStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    public Object execute(LLVMGlobalVariable address, float value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doOp(LLVMGlobalVariable address, float value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         globalAccess.putFloat(address, value);
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMAddress address, float value) {
+    protected Object doOp(LLVMAddress address, float value) {
         LLVMMemory.putFloat(address, value);
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMVirtualAllocationAddress address, float value) {
+    protected Object doOp(LLVMVirtualAllocationAddress address, float value) {
         address.writeFloat(value);
         return null;
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMTruffleObject address, float value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, float value,
+                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(frame, address, value);
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMBoxedPrimitive address, float value) {
+    protected Object doOp(LLVMBoxedPrimitive address, float value) {
         if (address.getValue() instanceof Long) {
             LLVMMemory.putFloat((long) address.getValue(), value);
             return null;

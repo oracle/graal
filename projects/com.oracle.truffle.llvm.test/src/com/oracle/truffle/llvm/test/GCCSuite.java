@@ -89,5 +89,4 @@ public final class GCCSuite extends BaseSuiteHarness {
     protected String getTestName() {
         return testName;
     }
-
 }

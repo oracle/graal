@@ -1613,7 +1613,6 @@ class AsmFactory {
         statements.add(write);
     }
 
-    @SuppressWarnings("unused")
     public void createTernaryOperation(String operation, AsmOperand a, AsmOperand b, AsmOperand c) {
         AsmOperand dst = c;
         LLVMExpressionNode srcA;
@@ -1625,6 +1624,7 @@ class AsmFactory {
         dstType = getPrimitiveTypeFromSuffix(suffix);
         srcB = getOperandLoad(dstType, b);
         srcA = getOperandLoad(dstType, a);
+        @SuppressWarnings("unused")
         PrimitiveType.PrimitiveKind dstPrimitiveType = (dstType instanceof PrimitiveType) ? ((PrimitiveType) dstType).getPrimitiveKind() : null;
         switch (operation) {
             case "imulw":

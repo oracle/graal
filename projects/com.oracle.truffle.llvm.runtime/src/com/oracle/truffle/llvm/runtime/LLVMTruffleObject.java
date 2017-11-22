@@ -117,8 +117,8 @@ public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider
     private static LLVMObjectNativeLibrary wrapLibrary(final LLVMObjectNativeLibrary lib) {
         return new LLVMObjectNativeLibrary() {
 
-            @Child Node isNull;
-            @Child BaseToPointerNode baseToPointer;
+            @Child private Node isNull;
+            @Child private BaseToPointerNode baseToPointer;
 
             @Override
             public boolean guard(Object obj) {
@@ -168,7 +168,7 @@ public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider
         protected abstract long executeToPointer(VirtualFrame frame, Object object, LLVMObjectNativeLibrary lib);
 
         @Specialization(guards = "lib.isPointer(frame, object)")
-        long doPointer(VirtualFrame frame, Object object, LLVMObjectNativeLibrary lib) {
+        protected long doPointer(VirtualFrame frame, Object object, LLVMObjectNativeLibrary lib) {
             try {
                 return lib.asPointer(frame, object);
             } catch (InteropException ex) {
@@ -178,7 +178,8 @@ public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider
 
         @Specialization(guards = "checkNull(isNull, object)")
         @SuppressWarnings("unused")
-        long doNull(TruffleObject object, LLVMObjectNativeLibrary lib, @Cached("createIsNull()") Node isNull) {
+        protected long doNull(TruffleObject object, LLVMObjectNativeLibrary lib,
+                        @Cached("createIsNull()") Node isNull) {
             return 0;
         }
 

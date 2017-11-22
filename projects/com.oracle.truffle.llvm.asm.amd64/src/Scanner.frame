@@ -433,5 +433,4 @@ public class Scanner {
 
 	// make sure that peeking starts at current scan position
 	public void ResetPeek () { pt = tokens; }
-
 } // end Scanner

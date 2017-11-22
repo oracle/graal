@@ -126,7 +126,6 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
             overloadingMap.put(type, newTarget);
             return newTarget;
         }
-
     }
 
     abstract static class Function {
@@ -525,5 +524,4 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
         }
         return this;
     }
-
 }

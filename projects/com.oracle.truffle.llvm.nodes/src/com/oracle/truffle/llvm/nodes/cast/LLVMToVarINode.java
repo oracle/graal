@@ -45,32 +45,32 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
         public abstract int getBits();
 
         @Specialization
-        public LLVMIVarBit executeI8(byte from) {
+        protected LLVMIVarBit doI8(byte from) {
             return LLVMIVarBit.fromByte(getBits(), from);
         }
 
         @Specialization
-        public LLVMIVarBit executeI16(short from) {
+        protected LLVMIVarBit doI16(short from) {
             return LLVMIVarBit.fromShort(getBits(), from);
         }
 
         @Specialization
-        public LLVMIVarBit executeI32(int from) {
+        protected LLVMIVarBit doI32(int from) {
             return LLVMIVarBit.fromInt(getBits(), from);
         }
 
         @Specialization
-        public LLVMIVarBit executeI32(long from) {
+        protected LLVMIVarBit doI32(long from) {
             return LLVMIVarBit.fromLong(getBits(), from);
         }
 
         @Specialization
-        public LLVMIVarBit executeVarI(LLVMIVarBit from) {
+        protected LLVMIVarBit doVarI(LLVMIVarBit from) {
             return LLVMIVarBit.create(getBits(), from.getSignExtendedBytes(), from.getBitSize(), true);
         }
 
         @Specialization
-        public LLVMIVarBit execute80BitFloat(LLVM80BitFloat from) {
+        protected LLVMIVarBit do80BitFloat(LLVM80BitFloat from) {
             return LLVMIVarBit.create(getBits(), from.getBytesBigEndian(), LLVM80BitFloat.BIT_WIDTH, true);
         }
     }
@@ -82,27 +82,27 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
         public abstract int getBits();
 
         @Specialization
-        public LLVMIVarBit executeI8(byte from) {
+        protected LLVMIVarBit doI8(byte from) {
             return LLVMIVarBit.createZeroExt(getBits(), from);
         }
 
         @Specialization
-        public LLVMIVarBit executeI16(short from) {
+        protected LLVMIVarBit doI16(short from) {
             return LLVMIVarBit.createZeroExt(getBits(), from);
         }
 
         @Specialization
-        public LLVMIVarBit executeI32(int from) {
+        protected LLVMIVarBit doI32(int from) {
             return LLVMIVarBit.createZeroExt(getBits(), from);
         }
 
         @Specialization
-        public LLVMIVarBit executeI64(long from) {
+        protected LLVMIVarBit doI64(long from) {
             return LLVMIVarBit.createZeroExt(getBits(), from);
         }
 
         @Specialization
-        public LLVMIVarBit executeVarI(LLVMIVarBit from) {
+        protected LLVMIVarBit doVarI(LLVMIVarBit from) {
             return LLVMIVarBit.create(getBits(), from.getBytes(), from.getBitSize(), false);
         }
     }
@@ -111,9 +111,8 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
     public abstract static class LLVM80BitFloatToIVarBitwidthNode extends LLVMToVarINode {
 
         @Specialization
-        public LLVMIVarBit execute80BitFloat(LLVM80BitFloat from) {
+        protected LLVMIVarBit do80BitFloat(LLVM80BitFloat from) {
             return LLVMIVarBit.create(LLVM80BitFloat.BIT_WIDTH, from.getBytesBigEndian(), LLVM80BitFloat.BIT_WIDTH, false);
         }
     }
-
 }

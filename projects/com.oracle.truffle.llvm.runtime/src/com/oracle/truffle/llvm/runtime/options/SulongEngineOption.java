@@ -153,5 +153,4 @@ public final class SulongEngineOption {
         String[] userLibraries = librariesOption.equals("") ? new String[0] : librariesOption.split(OPTION_ARRAY_SEPARATOR);
         return Arrays.asList(userLibraries);
     }
-
 }

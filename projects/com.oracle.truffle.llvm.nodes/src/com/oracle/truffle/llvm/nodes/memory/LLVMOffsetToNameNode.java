@@ -52,14 +52,14 @@ public abstract class LLVMOffsetToNameNode extends Node {
     public abstract Object execute(LLVMSourceType type, long offset);
 
     @Specialization(guards = "type == cachedType")
-    Object doCached(@SuppressWarnings("unused") LLVMSourceType type, long offset,
+    protected Object doCached(@SuppressWarnings("unused") LLVMSourceType type, long offset,
                     @Cached("type") LLVMSourceType cachedType,
                     @Cached("createFindMember()") FindMemberNode findMember) {
         return findMember.execute(cachedType, offset, elementAccessSize);
     }
 
     @Specialization(replaces = "doCached")
-    Object doGeneric(LLVMSourceType type, long offset,
+    protected Object doGeneric(LLVMSourceType type, long offset,
                     @Cached("createFindMember()") FindMemberNode findMember) {
         return findMember.execute(type, offset, elementAccessSize);
     }
@@ -92,43 +92,43 @@ public abstract class LLVMOffsetToNameNode extends Node {
         }
 
         @Specialization(guards = "noTypeInfo(type)")
-        int doNull(@SuppressWarnings("unused") LLVMSourceType type, long offset, int elementSize) {
+        protected int doNull(@SuppressWarnings("unused") LLVMSourceType type, long offset, int elementSize) {
             // if we have no type info, the best we can do is assume it's an indexed access
             return doArray(null, offset, elementSize);
         }
 
         @Specialization(guards = "!dereferencedPointer")
-        Object doPointer(LLVMSourcePointerType type, long offset, int elementSize,
+        protected Object doPointer(LLVMSourcePointerType type, long offset, int elementSize,
                         @Cached("createDereferencedPointer()") FindMemberNode findMember) {
             return findMember.execute(type.getBaseType(), offset, elementSize);
         }
 
         @Specialization
-        Object doDecorator(LLVMSourceDecoratorType type, long offset, int elementSize,
+        protected Object doDecorator(LLVMSourceDecoratorType type, long offset, int elementSize,
                         @Cached("create()") FindMemberNode findMember) {
             return findMember.execute(type.getBaseType(), offset, elementSize);
         }
 
         @Specialization(guards = "!dereferencedPointer")
-        int doArray(@SuppressWarnings("unused") LLVMSourceArrayLikeType type, long offset, int elementSize) {
+        protected int doArray(@SuppressWarnings("unused") LLVMSourceArrayLikeType type, long offset, int elementSize) {
             return (int) (offset / elementSize);
         }
 
         @Specialization(guards = "dereferencedPointer || offset == 0")
-        int doBasic(@SuppressWarnings("unused") LLVMSourceBasicType type, long offset, int elementSize) {
+        protected int doBasic(@SuppressWarnings("unused") LLVMSourceBasicType type, long offset, int elementSize) {
             // pointer to basic type: this is the same as an array access
             return doArray(null, offset, elementSize);
         }
 
         @Specialization(guards = "dereferencedPointer")
-        int doPointerToPointer(@SuppressWarnings("unused") LLVMSourcePointerType type, long offset, int elementSize) {
+        protected int doPointerToPointer(@SuppressWarnings("unused") LLVMSourcePointerType type, long offset, int elementSize) {
             // pointer to pointer is same as array of pointer
             return doArray(null, offset, elementSize);
         }
 
         @Specialization(guards = {"type == cachedType", "offset == cachedOffset"})
         @SuppressWarnings("unused")
-        String doStructCached(LLVMSourceStructLikeType type, long offset, int elementSize,
+        protected String doStructCached(LLVMSourceStructLikeType type, long offset, int elementSize,
                         @Cached("type") LLVMSourceStructLikeType cachedType,
                         @Cached("offset") long cachedOffset,
                         @Cached("doStruct(cachedType, cachedOffset, elementSize)") String cachedResult) {
@@ -136,7 +136,7 @@ public abstract class LLVMOffsetToNameNode extends Node {
         }
 
         @Specialization(replaces = "doStructCached")
-        String doStruct(LLVMSourceStructLikeType type, long offset, @SuppressWarnings("unused") int elementSize) {
+        protected String doStruct(LLVMSourceStructLikeType type, long offset, @SuppressWarnings("unused") int elementSize) {
             return type.getElementNameByOffset(offset * Byte.SIZE);
         }
 

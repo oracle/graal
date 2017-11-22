@@ -53,40 +53,42 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMGlobalVariable address, LLVMGlobalVariable value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess1,
+    protected Object doOp(VirtualFrame frame, LLVMGlobalVariable address, LLVMGlobalVariable value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess1,
                     @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess2) {
         memMove.executeWithTarget(frame, globalAccess1.getNativeLocation(address), globalAccess2.getNativeLocation(value), getStructSize());
         return null;
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMAddress address, LLVMGlobalVariable value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doOp(VirtualFrame frame, LLVMAddress address, LLVMGlobalVariable value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         memMove.executeWithTarget(frame, address, globalAccess.getNativeLocation(value), getStructSize());
         return null;
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMGlobalVariable address, LLVMAddress value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doOp(VirtualFrame frame, LLVMGlobalVariable address, LLVMAddress value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         memMove.executeWithTarget(frame, globalAccess.getNativeLocation(address), value, getStructSize());
         return null;
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMAddress address, LLVMAddress value) {
+    protected Object doOp(VirtualFrame frame, LLVMAddress address, LLVMAddress value) {
         memMove.executeWithTarget(frame, address, value, getStructSize());
         return null;
     }
 
     @SuppressWarnings("unused")
     @Specialization(guards = "getStructSize() == 0")
-    public Object noCopy(LLVMAddress address, Object value) {
+    protected Object noCopy(LLVMAddress address, Object value) {
         return null;
     }
 
     @Specialization
-    public Object doTruffleObject(VirtualFrame frame, LLVMTruffleObject address, LLVMTruffleObject value) {
+    protected Object doTruffleObject(VirtualFrame frame, LLVMTruffleObject address, LLVMTruffleObject value) {
         memMove.executeWithTarget(frame, address, value, getStructSize());
         return null;
     }
-
 }

@@ -58,17 +58,16 @@ public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    public LLVMAddress executeLLVMAddress(VirtualFrame frame, LLVMAddress sourceAggr, LLVMAddress targetAggr, Object element) {
+    protected LLVMAddress doLLVMAddress(VirtualFrame frame, LLVMAddress sourceAggr, LLVMAddress targetAggr, Object element) {
         memMove.executeWithTarget(frame, targetAggr, sourceAggr, sourceAggregateSize);
         store.executeWithTarget(frame, targetAggr.increment(offset), element);
         return targetAggr;
     }
 
     @Specialization
-    public Object executeVoid(VirtualFrame frame, LLVMTruffleObject sourceAggr, LLVMTruffleObject targetAggr, Object element) {
+    protected Object doVoid(VirtualFrame frame, LLVMTruffleObject sourceAggr, LLVMTruffleObject targetAggr, Object element) {
         memMove.executeWithTarget(frame, targetAggr, sourceAggr, sourceAggregateSize);
         store.executeWithTarget(frame, targetAggr.increment(offset, type), element);
         return targetAggr;
     }
-
 }

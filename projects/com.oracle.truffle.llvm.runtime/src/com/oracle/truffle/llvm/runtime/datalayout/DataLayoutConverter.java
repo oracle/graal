@@ -132,12 +132,10 @@ public final class DataLayoutConverter {
             }
             throw new AssertionError(dataLayoutType + " size: " + size);
         }
-
     }
 
     public static DataSpecConverterImpl getConverter(String layout) {
         final List<DataTypeSpecification> dataLayout = DataLayoutParser.parseDataLayout(layout);
         return new DataSpecConverterImpl(dataLayout);
     }
-
 }

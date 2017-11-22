@@ -49,31 +49,33 @@ public abstract class LLVMI16StoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    public Object execute(LLVMGlobalVariable address, short value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doOp(LLVMGlobalVariable address, short value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         globalAccess.putI16(address, value);
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMVirtualAllocationAddress address, short value) {
+    protected Object doOp(LLVMVirtualAllocationAddress address, short value) {
         address.writeI16(value);
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMAddress address, short value) {
+    protected Object doOp(LLVMAddress address, short value) {
         LLVMMemory.putI16(address, value);
         return null;
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMTruffleObject address, short value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, short value,
+                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(frame, address, value);
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMBoxedPrimitive address, short value) {
+    protected Object doOp(LLVMBoxedPrimitive address, short value) {
         if (address.getValue() instanceof Long) {
             LLVMMemory.putI16((long) address.getValue(), value);
             return null;

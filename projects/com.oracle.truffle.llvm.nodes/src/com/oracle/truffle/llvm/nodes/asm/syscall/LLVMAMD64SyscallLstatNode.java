@@ -43,12 +43,12 @@ public abstract class LLVMAMD64SyscallLstatNode extends LLVMAMD64SyscallOperatio
     }
 
     @Specialization
-    protected long executeI64(LLVMAddress path, LLVMAddress buf) {
+    protected long doI64(LLVMAddress path, LLVMAddress buf) {
         return (int) lstat.execute(path.getVal(), buf.getVal());
     }
 
     @Specialization
-    protected long executeI64(long path, long buf) {
-        return executeI64(LLVMAddress.fromLong(path), LLVMAddress.fromLong(buf));
+    protected long doI64(long path, long buf) {
+        return doI64(LLVMAddress.fromLong(path), LLVMAddress.fromLong(buf));
     }
 }

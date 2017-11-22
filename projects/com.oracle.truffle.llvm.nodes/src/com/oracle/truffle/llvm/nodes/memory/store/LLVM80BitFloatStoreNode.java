@@ -45,15 +45,15 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    public Object execute(LLVMGlobalVariable address, LLVM80BitFloat value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doOp(LLVMGlobalVariable address, LLVM80BitFloat value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         LLVMMemory.put80BitFloat(globalAccess.getNativeLocation(address), value);
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMAddress address, LLVM80BitFloat value) {
+    protected Object doOp(LLVMAddress address, LLVM80BitFloat value) {
         LLVMMemory.put80BitFloat(address, value);
         return null;
     }
-
 }
