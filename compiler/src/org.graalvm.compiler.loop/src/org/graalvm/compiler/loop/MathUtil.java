@@ -74,7 +74,7 @@ public class MathUtil {
         if (isConstantOne(divisor)) {
             return dividend;
         }
-        ValueNode div = graph.add(SignedDivNode.create(dividend, divisor, NodeView.DEFAULT));
+        ValueNode div = graph.addOrUniqueWithInputs(SignedDivNode.create(dividend, divisor, NodeView.DEFAULT));
         if (div instanceof FixedBinaryNode) {
             graph.addBeforeFixed(before, (FixedBinaryNode) div);
         }
