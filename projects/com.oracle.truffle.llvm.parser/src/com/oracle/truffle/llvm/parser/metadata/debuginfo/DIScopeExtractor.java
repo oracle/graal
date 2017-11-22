@@ -64,6 +64,10 @@ final class DIScopeExtractor {
 
     private final Map<MDBaseNode, LLVMSourceLocation> scopes = new HashMap<>();
 
+    // linescopes cannot have locals and are usually specific to a function, this can be cleared
+    // after the function has been parsed
+    private final Map<MDBaseNode, LLVMSourceLocation> lineScopes = new HashMap<>();
+
     private final ScopeVisitor extractor = new ScopeVisitor();
     private final MetadataValueList metadata;
 
@@ -74,10 +78,25 @@ final class DIScopeExtractor {
     LLVMSourceLocation resolve(MDBaseNode node) {
         if (node == null || node == MDVoidNode.INSTANCE) {
             return null;
-        } else if (!scopes.containsKey(node)) {
-            node.accept(extractor);
         }
-        return scopes.get(node);
+
+        if (scopes.containsKey(node)) {
+            return scopes.get(node);
+        } else if (lineScopes.containsKey(node)) {
+            return lineScopes.get(node);
+        }
+
+        node.accept(extractor);
+
+        if (scopes.containsKey(node)) {
+            return scopes.get(node);
+        } else {
+            return lineScopes.get(node);
+        }
+    }
+
+    void clearLineScopes() {
+        lineScopes.clear();
     }
 
     private final class ScopeVisitor implements MetadataVisitor {
@@ -127,17 +146,17 @@ final class DIScopeExtractor {
 
         @Override
         public void visit(MDLocation md) {
-            if (scopes.containsKey(md)) {
+            if (lineScopes.containsKey(md)) {
                 return;
 
             } else if (md.getInlinedAt() != MDVoidNode.INSTANCE) {
                 final LLVMSourceLocation actualLoc = resolve(md.getInlinedAt());
-                scopes.put(md, actualLoc);
+                lineScopes.put(md, actualLoc);
                 return;
             }
 
             final LLVMSourceLocation scope = new LLVMSourceLocation(Kind.LOCATION, md.getLine(), md.getColumn());
-            scopes.put(md, scope);
+            lineScopes.put(md, scope);
             linkToParent(scope, md.getScope());
         }
 

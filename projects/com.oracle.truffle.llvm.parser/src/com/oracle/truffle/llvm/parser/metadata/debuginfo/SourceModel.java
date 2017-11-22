@@ -334,6 +334,7 @@ public final class SourceModel {
                 local.processFragments();
             }
 
+            scopeExtractor.clearLineScopes();
             currentFunction = null;
         }
 
