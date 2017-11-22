@@ -1140,7 +1140,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Creates a new thread that has access to given inner context. A thread is
+         * Creates a new thread that has access to the given context. A thread is
          * {@link TruffleLanguage#initializeThread(Object, Thread) initialized} when it is
          * {@link Thread#start() started} and {@link TruffleLanguage#disposeThread(Object, Thread)
          * disposed} as soon as the thread finished the execution.
@@ -1154,11 +1154,17 @@ public abstract class TruffleLanguage<C> {
          * The language that created and started the thread is responsible to complete all running
          * or waiting threads when the context is {@link TruffleLanguage#disposeContext(Object)
          * disposed}.
+         * <p>
+         * The {@link TruffleContext} can be either an inner context created by
+         * {@link #newContextBuilder()}.{@link TruffleContext.Builder#build() build()}, or the
+         * context associated with this environment obtained from {@link #getContext()}.
          *
          * @param runnable the runnable to run on this thread
          * @param context the context to enter and leave when the thread is started.
          * @throws IllegalStateException if thread creation is not {@link #isCreateThreadAllowed()
          *             allowed}.
+         * @see #getContext()
+         * @see #newContextBuilder()
          * @since 0.28
          */
         @TruffleBoundary

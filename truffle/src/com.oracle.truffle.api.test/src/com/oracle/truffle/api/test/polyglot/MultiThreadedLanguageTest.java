@@ -460,6 +460,7 @@ public class MultiThreadedLanguageTest {
                     thread.setUncaughtExceptionHandler(uncaughtHandler);
                     thread.start();
                     threads.add(thread);
+                    contexts.add(context);
                 }
                 for (Thread thread : threads) {
                     try {
@@ -481,13 +482,65 @@ public class MultiThreadedLanguageTest {
                 return languageContext;
             }
         });
+        Assert.assertEquals(221, initializeCount.get());
+        Assert.assertEquals(initializeCount.get() - 1, disposeCount.get());
+        Assert.assertEquals(0, initializeMultiThreadingCount.get());
+        // Test that the same context is available in threads when created with Env.getContext()
+        MultiThreadedLanguage.isThreadAccessAllowed = (req) -> {
+            return true;
+        };
+        eval(polyglotContext, new Function<Env, Object>() {
+            @SuppressWarnings("hiding")
+            public Object apply(Env env) {
+                List<Thread> threads = new ArrayList<>();
+                LanguageContext languageContext = MultiThreadedLanguage.getContext();
+                for (int i = 0; i < iterations; i++) {
+                    Thread thread = env.createThread(() -> {
+                        LanguageContext threadContext = MultiThreadedLanguage.getContext();
+                        assertSame(languageContext, threadContext);
+                        List<Thread> innerThreads = new ArrayList<>();
+                        List<TruffleContext> innerContexts = new ArrayList<>();
+                        for (int j = 0; j < innerIterations; j++) {
+                            Thread innerThread = env.createThread(() -> {
+                                LanguageContext innerThreadContext = MultiThreadedLanguage.getContext();
+                                assertSame(languageContext, innerThreadContext);
+                            }, env.getContext());
+                            innerThread.setUncaughtExceptionHandler(uncaughtHandler);
+                            innerThread.start();
+
+                            innerThreads.add(innerThread);
+                        }
+                        for (Thread innerThread : innerThreads) {
+                            try {
+                                innerThread.join();
+                            } catch (InterruptedException e) {
+                            }
+                        }
+                        for (TruffleContext innerContext : innerContexts) {
+                            innerContext.close();
+                        }
+
+                    }, env.getContext());
+                    thread.setUncaughtExceptionHandler(uncaughtHandler);
+                    thread.start();
+                    threads.add(thread);
+                }
+                for (Thread thread : threads) {
+                    try {
+                        thread.join();
+                    } catch (InterruptedException e) {
+                    }
+                }
+                return null;
+            }
+        });
         if (lastError.get() != null) {
             throw lastError.get();
         }
         polyglotContext.close();
-        Assert.assertEquals(221, initializeCount.get());
+        Assert.assertEquals(331, initializeCount.get());
         Assert.assertEquals(initializeCount.get(), disposeCount.get());
-        Assert.assertEquals(0, initializeMultiThreadingCount.get());
+        Assert.assertEquals(1, initializeMultiThreadingCount.get());
     }
 
     @Test
