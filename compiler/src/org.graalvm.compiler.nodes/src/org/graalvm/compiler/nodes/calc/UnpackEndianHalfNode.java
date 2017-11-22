@@ -53,7 +53,8 @@ public final class UnpackEndianHalfNode extends UnaryNode implements Lowerable {
         this.firstHalf = firstHalf;
     }
 
-    public static ValueNode create(ValueNode value, boolean firstHalf) {
+    @SuppressWarnings("unused")
+    public static ValueNode create(ValueNode value, boolean firstHalf, NodeView view) {
         if (value.isConstant() && value.asConstant().isDefaultForKind()) {
             return ConstantNode.defaultForKind(JavaKind.Int);
         }

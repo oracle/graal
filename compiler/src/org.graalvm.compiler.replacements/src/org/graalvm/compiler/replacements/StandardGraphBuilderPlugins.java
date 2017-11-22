@@ -297,7 +297,7 @@ public class StandardGraphBuilderPlugins {
         r.register2("divideUnsigned", type, type, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode dividend, ValueNode divisor) {
-                b.push(kind, b.append(new UnsignedDivNode(dividend, divisor).canonical(null)));
+                b.push(kind, b.append(UnsignedDivNode.create(dividend, divisor, NodeView.DEFAULT)));
                 return true;
             }
         });
