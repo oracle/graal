@@ -1129,7 +1129,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genIntegerRem(ValueNode x, ValueNode y) {
-        return new SignedRemNode(x, y);
+        return SignedRemNode.create(x, y, NodeView.DEFAULT);
     }
 
     protected ValueNode genNegateOp(ValueNode x) {

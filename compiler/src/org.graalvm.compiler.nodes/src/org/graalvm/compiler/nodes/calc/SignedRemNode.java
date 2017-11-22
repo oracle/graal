@@ -23,6 +23,7 @@
 package org.graalvm.compiler.nodes.calc;
 
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -39,12 +40,17 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
 
     public static final NodeClass<SignedRemNode> TYPE = NodeClass.create(SignedRemNode.class);
 
-    public SignedRemNode(ValueNode x, ValueNode y) {
+    protected SignedRemNode(ValueNode x, ValueNode y) {
         this(TYPE, x, y);
     }
 
     protected SignedRemNode(NodeClass<? extends SignedRemNode> c, ValueNode x, ValueNode y) {
         super(c, IntegerStamp.OPS.getRem().foldStamp(x.stamp(NodeView.DEFAULT), y.stamp(NodeView.DEFAULT)), Op.REM, Type.SIGNED, x, y);
+    }
+
+    public static ValueNode create(ValueNode x, ValueNode y, NodeView view) {
+        Stamp stamp = IntegerStamp.OPS.getRem().foldStamp(x.stamp(view), y.stamp(view));
+        return canonical(null, x, y, stamp, view);
     }
 
     @Override
@@ -54,38 +60,43 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        NodeView view = NodeView.from(tool);
+        return canonical(this, forX, forY, stamp(view), view);
+    }
+
+    private static ValueNode canonical(SignedRemNode self, ValueNode forX, ValueNode forY, Stamp stamp, NodeView view) {
         if (forX.isConstant() && forY.isConstant()) {
             @SuppressWarnings("hiding")
             long y = forY.asJavaConstant().asLong();
             if (y == 0) {
-                return this; // this will trap, can not canonicalize
+                return self != null ? self : new SignedRemNode(forX, forY); // this will trap, can not canonicalize
             }
-            return ConstantNode.forIntegerStamp(stamp(NodeView.DEFAULT), forX.asJavaConstant().asLong() % y);
-        } else if (forY.isConstant() && forX.stamp(NodeView.DEFAULT) instanceof IntegerStamp && forY.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
+            return ConstantNode.forIntegerStamp(stamp, forX.asJavaConstant().asLong() % y);
+        } else if (forY.isConstant() && forX.stamp(view) instanceof IntegerStamp && forY.stamp(view) instanceof IntegerStamp) {
             long constY = forY.asJavaConstant().asLong();
-            IntegerStamp xStamp = (IntegerStamp) forX.stamp(NodeView.DEFAULT);
-            IntegerStamp yStamp = (IntegerStamp) forY.stamp(NodeView.DEFAULT);
+            IntegerStamp xStamp = (IntegerStamp) forX.stamp(view);
+            IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
             if (constY < 0 && constY != CodeUtil.minValue(yStamp.getBits())) {
-                return new SignedRemNode(forX, ConstantNode.forIntegerStamp(yStamp, -constY)).canonical(tool);
+                Stamp newStamp = IntegerStamp.OPS.getRem().foldStamp(forX.stamp(view), forY.stamp(view));
+                return canonical(null, forX, ConstantNode.forIntegerStamp(yStamp, -constY), newStamp, view);
             }
 
             if (constY == 1) {
-                return ConstantNode.forIntegerStamp(stamp(NodeView.DEFAULT), 0);
+                return ConstantNode.forIntegerStamp(stamp, 0);
             } else if (CodeUtil.isPowerOf2(constY)) {
                 if (xStamp.isPositive()) {
                     // x & (y - 1)
-                    return new AndNode(forX, ConstantNode.forIntegerStamp(stamp(NodeView.DEFAULT), constY - 1));
+                    return new AndNode(forX, ConstantNode.forIntegerStamp(stamp, constY - 1));
                 } else if (xStamp.isNegative()) {
                     // -((-x) & (y - 1))
-                    return new NegateNode(new AndNode(new NegateNode(forX), ConstantNode.forIntegerStamp(stamp(NodeView.DEFAULT), constY - 1)));
+                    return new NegateNode(new AndNode(new NegateNode(forX), ConstantNode.forIntegerStamp(stamp, constY - 1)));
                 } else {
                     // x - ((x / y) << log2(y))
-                    NodeView view = NodeView.from(tool);
                     return SubNode.create(forX, LeftShiftNode.create(SignedDivNode.canonical(forX, constY, view), ConstantNode.forInt(CodeUtil.log2(constY)), view), view);
                 }
             }
         }
-        return this;
+        return self != null ? self : new SignedRemNode(forX, forY);
     }
 
     @Override
