@@ -91,6 +91,15 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
     }
 
     @Override
+    protected void finalizeContext(LanguageContext context) {
+        if (wrapper) {
+            delegate.finalizeContext(context);
+        } else {
+            super.finalizeContext(context);
+        }
+    }
+
+    @Override
     protected void disposeContext(LanguageContext context) {
         if (wrapper) {
             delegate.disposeContext(context);

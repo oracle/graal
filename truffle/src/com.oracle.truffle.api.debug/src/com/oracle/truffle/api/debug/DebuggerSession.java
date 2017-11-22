@@ -179,6 +179,7 @@ public final class DebuggerSession implements Closeable {
     private boolean includeInternal = false;
     private Predicate<Source> sourceFilter;
     private final StableBoolean breakpointsActive = new StableBoolean(true);
+    private final DebuggerExecutionLifecycle executionLifecycle;
 
     private final int sessionId;
 
@@ -192,6 +193,7 @@ public final class DebuggerSession implements Closeable {
             trace("open with callback %s", callback);
         }
         addBindings(includeInternal, sourceFilter);
+        executionLifecycle = new DebuggerExecutionLifecycle(debugger);
     }
 
     private void trace(String msg, Object... parameters) {
@@ -595,6 +597,34 @@ public final class DebuggerSession implements Closeable {
         if (Debugger.TRACE) {
             trace("disposed session breakpoint %s", breakpoint);
         }
+    }
+
+    /**
+     * Set a {@link DebugContextsListener listener} to be notified about changes in contexts in
+     * guest language application. One listener can be set at a time, call with <code>null</code> to
+     * remove the current listener.
+     *
+     * @param listener a listener to receive the context events, or <code>null</code> to reset it
+     * @param includeActiveContexts whether or not this listener should be notified for present
+     *            active contexts
+     * @since 0.30
+     */
+    public void setContextsListener(DebugContextsListener listener, boolean includeActiveContexts) {
+        executionLifecycle.setContextsListener(listener, includeActiveContexts);
+    }
+
+    /**
+     * Set a {@link DebugThreadsListener listener} to be notified about changes in threads in guest
+     * language application. One listener can be set at a time, call with <code>null</code> to
+     * remove the current listener.
+     *
+     * @param listener a listener to receive the context events
+     * @param includeInitializedThreads whether or not this listener should be notified for present
+     *            initialized threads
+     * @since 0.30
+     */
+    public void setThreadsListener(DebugThreadsListener listener, boolean includeInitializedThreads) {
+        executionLifecycle.setThreadsListener(listener, includeInitializedThreads);
     }
 
     @TruffleBoundary

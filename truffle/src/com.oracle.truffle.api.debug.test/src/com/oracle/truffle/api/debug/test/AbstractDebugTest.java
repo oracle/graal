@@ -165,4 +165,7 @@ public abstract class AbstractDebugTest {
         tester.expectKilled();
     }
 
+    protected final void closeEngine() {
+        tester.closeEngine();
+    }
 }

@@ -69,6 +69,7 @@ final class PolyglotLanguageContext implements VMObject {
     final String[] applicationArguments;
     final Set<PolyglotThread> activePolyglotThreads = new HashSet<>();
     volatile boolean creating; // true when context is currently being created.
+    volatile boolean initialized;
     volatile boolean finalized;
     volatile Env env;
     private final Node keyInfoNode = Message.KEY_INFO.createNode();
@@ -94,7 +95,7 @@ final class PolyglotLanguageContext implements VMObject {
     }
 
     boolean isInitialized() {
-        return env != null;
+        return env != null && initialized;
     }
 
     CallTarget parseCached(com.oracle.truffle.api.source.Source source) throws AssertionError {
@@ -129,17 +130,17 @@ final class PolyglotLanguageContext implements VMObject {
     }
 
     boolean finalizeContext() {
-        assert Thread.holdsLock(context);
         Env localEnv = this.env;
         if (localEnv != null && !finalized) {
             finalized = true;
             LANGUAGE.finalizeContext(localEnv);
+            VMAccessor.INSTRUMENT.notifyLanguageContextFinalized(context.engine, context.truffleContext, language.info);
             return true;
         }
         return false;
     }
 
-    void dispose() {
+    boolean dispose() {
         assert Thread.holdsLock(context);
         Env localEnv = this.env;
         if (localEnv != null) {
@@ -161,7 +162,13 @@ final class PolyglotLanguageContext implements VMObject {
             // }
 
             env = null;
+            return true;
         }
+        return false;
+    }
+
+    void notifyDisposed() {
+        VMAccessor.INSTRUMENT.notifyLanguageContextDisposed(context.engine, context.truffleContext, language.info);
     }
 
     Object enterThread(PolyglotThread thread) {
@@ -190,15 +197,17 @@ final class PolyglotLanguageContext implements VMObject {
             context.leave(prev);
             seenThreads.remove(thread);
         }
+        VMAccessor.INSTRUMENT.notifyThreadFinished(context.engine, context.truffleContext, thread);
     }
 
-    boolean ensureInitialized(PolyglotLanguage accessingLanguage) {
+    void ensureCreated(PolyglotLanguage accessingLanguage) {
         language.ensureInitialized();
 
         if (creating) {
             throw new PolyglotIllegalStateException(String.format("Cyclic access to language context for language %s. " +
                             "The context is currently being created.", language.getId()));
         }
+        boolean created = false;
         if (env == null) {
             synchronized (context) {
                 if (env == null) {
@@ -228,11 +237,34 @@ final class PolyglotLanguageContext implements VMObject {
                         } finally {
                             creating = false;
                         }
+                        created = true;
+                    } catch (Throwable e) {
+                        // language not successfully created, reset to avoid inconsistent
+                        // language contexts
+                        env = null;
+                        throw e;
+                    }
+                }
+            }
+        }
+        if (created) {
+            VMAccessor.INSTRUMENT.notifyLanguageContextCreated(context.engine, context.truffleContext, language.info);
+        }
+    }
+
+    boolean ensureInitialized(PolyglotLanguage accessingLanguage) {
+        boolean wasInitialized = false;
+        if (!initialized) {
+            ensureCreated(accessingLanguage);
+            synchronized (context) {
+                if (!initialized) {
+                    initialized = true; // Allow language use during initialization
+                    try {
                         LANGUAGE.initializeThread(env, Thread.currentThread());
 
                         LANGUAGE.postInitEnv(env);
 
-                        if (!singleThreaded) {
+                        if (!context.isSingleThreaded()) {
                             LANGUAGE.initializeMultiThreading(env);
                         }
 
@@ -242,18 +274,20 @@ final class PolyglotLanguageContext implements VMObject {
                             }
                             LANGUAGE.initializeThread(env, threadInfo.thread);
                         }
+                        wasInitialized = true;
                     } catch (Throwable e) {
-                        // language not successfully initialized reset to avoid inconsistent
+                        // language not successfully initialized, reset to avoid inconsistent
                         // language contexts
-                        env = null;
+                        initialized = false;
                         throw e;
                     }
-
-                    return true;
                 }
             }
         }
-        return false;
+        if (wasInitialized) {
+            VMAccessor.INSTRUMENT.notifyLanguageContextInitialized(context.engine, context.truffleContext, language.info);
+        }
+        return wasInitialized;
     }
 
     OptionValuesImpl getOptionValues() {

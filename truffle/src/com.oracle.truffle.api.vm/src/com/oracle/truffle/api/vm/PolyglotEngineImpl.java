@@ -34,6 +34,7 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -59,11 +60,13 @@ import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
+import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
@@ -448,6 +451,50 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         contexts.remove(context);
     }
 
+    void reportAllLanguageContexts(ContextsListener listener) {
+        PolyglotContextImpl[] allContexts;
+        synchronized (this) {
+            if (contexts.isEmpty()) {
+                return;
+            }
+            allContexts = contexts.toArray(new PolyglotContextImpl[contexts.size()]);
+        }
+        for (PolyglotContextImpl context : allContexts) {
+            listener.onContextCreated(context.truffleContext);
+            for (PolyglotLanguageContext lc : context.contexts) {
+                LanguageInfo language = lc.language.info;
+                if (lc.env != null) {
+                    listener.onLanguageContextCreated(context.truffleContext, language);
+                    if (lc.isInitialized()) {
+                        listener.onLanguageContextInitialized(context.truffleContext, language);
+                        if (lc.finalized) {
+                            listener.onLanguageContextFinalized(context.truffleContext, language);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    void reportAllContextThreads(ThreadsListener listener) {
+        PolyglotContextImpl[] allContexts;
+        synchronized (this) {
+            if (contexts.isEmpty()) {
+                return;
+            }
+            allContexts = contexts.toArray(new PolyglotContextImpl[contexts.size()]);
+        }
+        for (PolyglotContextImpl context : allContexts) {
+            Thread[] threads;
+            synchronized (context) {
+                threads = context.getSeenThreads().keySet().toArray(new Thread[0]);
+            }
+            for (Thread thread : threads) {
+                listener.onThreadInitialized(context.truffleContext, thread);
+            }
+        }
+    }
+
     @Override
     public Language requirePublicLanguage(String id) {
         checkState();
@@ -589,6 +636,12 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             }
         }
         return allOptions;
+    }
+
+    Collection<Thread> getAllThreads(PolyglotContextImpl context) {
+        synchronized (context) {
+            return new ArrayList<>(context.getSeenThreads().keySet());
+        }
     }
 
     private static final class PolyglotShutDownHook implements Runnable {
