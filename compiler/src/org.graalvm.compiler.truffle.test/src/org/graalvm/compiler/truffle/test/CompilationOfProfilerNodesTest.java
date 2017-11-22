@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.tools.profiler.CPUSampler;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
@@ -49,10 +48,10 @@ public class CompilationOfProfilerNodesTest extends TestWithSynchronousCompiling
     }
 
     String defaultSourceForSampling = "ROOT(" +
-            "DEFINE(foo,ROOT(BLOCK(SLEEP(1),INVALIDATE)))," +
-            "DEFINE(bar,ROOT(BLOCK(STATEMENT,CALL(foo))))," +
-            "LOOP(20, CALL(bar))" +
-            ")";
+                    "DEFINE(foo,ROOT(BLOCK(SLEEP(1),INVALIDATE)))," +
+                    "DEFINE(bar,ROOT(BLOCK(STATEMENT,CALL(foo))))," +
+                    "LOOP(20, CALL(bar))" +
+                    ")";
 
     @Test
     @SuppressWarnings("try")
