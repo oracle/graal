@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.listeners;
 
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
@@ -59,7 +58,7 @@ public final class Module implements ParserListener {
 
     private final ParameterAttributes paramAttributes = new ParameterAttributes();
 
-    private final StringTable stringTable = new StringTable();
+    private final StringTable stringTable;
 
     private int mode = 1;
 
@@ -69,13 +68,11 @@ public final class Module implements ParserListener {
 
     private final LinkedList<FunctionDefinition> functionQueue;
 
-    private final Source source;
-
-    public Module(ModelModule module, Source source) {
+    public Module(ModelModule module, StringTable stringTable, IRScope scope) {
         this.module = module;
-        this.scope = new IRScope();
+        this.stringTable = stringTable;
         types = new Types(module);
-        this.source = source;
+        this.scope = scope;
         functionQueue = new LinkedList<>();
     }
 
@@ -211,9 +208,6 @@ public final class Module implements ParserListener {
     @Override
     public ParserListener enter(Block block) {
         switch (block) {
-            case MODULE:
-                return this; // Entering from root
-
             case PARAMATTR:
                 return paramAttributes;
 
@@ -252,11 +246,6 @@ public final class Module implements ParserListener {
             default:
                 return ParserListener.DEFAULT;
         }
-    }
-
-    @Override
-    public void exit() {
-        module.exitModule(scope, source);
     }
 
     @Override
