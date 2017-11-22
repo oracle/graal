@@ -304,7 +304,7 @@ public class StandardGraphBuilderPlugins {
         r.register2("remainderUnsigned", type, type, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode dividend, ValueNode divisor) {
-                b.push(kind, b.append(new UnsignedRemNode(dividend, divisor).canonical(null)));
+                b.push(kind, b.append(UnsignedRemNode.create(dividend, divisor, NodeView.DEFAULT)));
                 return true;
             }
         });
