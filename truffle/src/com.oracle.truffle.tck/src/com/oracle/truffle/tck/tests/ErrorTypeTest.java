@@ -91,6 +91,9 @@ public class ErrorTypeTest {
         final Set<? extends String> requiredValueLanguages = TestUtil.getRequiredValueLanguages(context);
         for (Snippet snippet : snippets) {
             for (String parLanguage : requiredValueLanguages) {
+                if (snippetLanguage.equals(parLanguage)) {
+                    continue;
+                }
                 final Collection<Map.Entry<String, ? extends Snippet>> valueConstructors = new HashSet<>();
                 for (Snippet valueConstructor : context.getValueConstructors(null, parLanguage)) {
                     valueConstructors.add(new AbstractMap.SimpleImmutableEntry<>(parLanguage, valueConstructor));
