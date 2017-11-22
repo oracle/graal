@@ -422,7 +422,7 @@ public class StandardGraphBuilderPlugins {
         r.register1("sqrt", Double.TYPE, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Double, b.append(new SqrtNode(value).canonical(null)));
+                b.push(JavaKind.Double, b.append(SqrtNode.create(value, NodeView.DEFAULT)));
                 return true;
             }
         });

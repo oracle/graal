@@ -30,9 +30,13 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Sqrt;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+
+import java.util.function.Function;
 
 /**
  * Square root.
@@ -42,8 +46,17 @@ public final class SqrtNode extends UnaryArithmeticNode<Sqrt> implements Arithme
 
     public static final NodeClass<SqrtNode> TYPE = NodeClass.create(SqrtNode.class);
 
-    public SqrtNode(ValueNode x) {
+    protected SqrtNode(ValueNode x) {
         super(TYPE, ArithmeticOpTable::getSqrt, x);
+    }
+
+    @SuppressWarnings("unused")
+    public static ValueNode create(ValueNode x, NodeView view) {
+        if (x.isConstant()) {
+            ArithmeticOpTable.UnaryOp<Sqrt> op = ArithmeticOpTable.forStamp(x.stamp(view)).getSqrt();
+            return ConstantNode.forPrimitive(op.foldStamp(x.stamp(NodeView.DEFAULT)), op.foldConstant(x.asConstant()));
+        }
+        return new SqrtNode(x);
     }
 
     @Override
