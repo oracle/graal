@@ -119,11 +119,11 @@ public final class TypeDescriptor {
     };
 
     /**
-     * Represents a union of all predefined types.
+     * Represents all predefined types.
      *
      * @since 0.30
      */
-    public static final TypeDescriptor ANY = union(PREDEFINED_TYPES);
+    public static final TypeDescriptor ANY = new TypeDescriptor(new IntersectionImpl(Collections.emptySet()));
 
     private final TypeDescriptorImpl impl;
 
@@ -274,7 +274,11 @@ public final class TypeDescriptor {
     }
 
     /**
-     * Creates a new intersection type. The intersection type is all of the given types.
+     * Creates a new intersection type. The intersection type is all of the given types. The
+     * intersection can be also used to create a no type. The no type is a type which has no other
+     * specialized type. The no type can be assigned to {@link TypeDescriptor#ANY} and itself. Any
+     * type can be assigned to no type. The no type is created as an empty intersection,
+     * {@code TypeDescriptor.intersection()}.
      *
      * @param types the types to include in the intersection
      * @return the intersection type containing the given types
@@ -286,7 +290,7 @@ public final class TypeDescriptor {
         Collections.addAll(typesSet, types);
         switch (typesSet.size()) {
             case 0:
-                throw new IllegalArgumentException("No types.");
+                return ANY;
             case 1:
                 return types[0];
             default:
@@ -460,7 +464,7 @@ public final class TypeDescriptor {
             }
             switch (contentTypes.size()) {
                 case 0:
-                    descs.add(ARRAY);
+                    descs.add(intersection(PREDEFINED_TYPES));
                     break;
                 case 1:
                     descs.add(array(contentTypes.iterator().next()));
@@ -480,8 +484,6 @@ public final class TypeDescriptor {
             descs.add(EXECUTABLE);
         }
         switch (descs.size()) {
-            case 0:
-                throw new IllegalArgumentException("Unknown type of: " + value);
             case 1:
                 return descs.get(0);
             default:
@@ -730,8 +732,15 @@ public final class TypeDescriptor {
                             return true;
                         }
                     }
+                    return false;
+                } else {
+                    for (TypeDescriptorImpl type : types) {
+                        if (!type.isAssignable(type, other)) {
+                            return false;
+                        }
+                    }
+                    return true;
                 }
-                return false;
             } else if (otherClz == IntersectionImpl.class) {
                 final IntersectionImpl origIntersection = (IntersectionImpl) origType;
                 final IntersectionImpl byIntersection = (IntersectionImpl) byType;
@@ -792,7 +801,7 @@ public final class TypeDescriptor {
 
         @Override
         public String toString() {
-            return types.stream().map(Object::toString).collect(Collectors.joining(" & ", "[", "]"));
+            return types.isEmpty() ? "<any>" : types.stream().map(Object::toString).collect(Collectors.joining(" & ", "[", "]"));
         }
     }
 
@@ -819,19 +828,21 @@ public final class TypeDescriptor {
             } else if (otherClz == IntersectionImpl.class) {
                 if (other == byType) {
                     final UnionImpl origUnion = (UnionImpl) origType;
-                    final IntersectionImpl byIntersection = (IntersectionImpl) byType;
-                    for (TypeDescriptorImpl intersectionSubType : byIntersection.types) {
-                        if (origUnion.types.contains(intersectionSubType)) {
+                    for (TypeDescriptorImpl unionSubType : origUnion.types) {
+                        if (unionSubType.isAssignable(unionSubType, byType)) {
                             return true;
                         }
-                        for (TypeDescriptorImpl unionSubType : origUnion.types) {
-                            if (unionSubType.isAssignable(unionSubType, intersectionSubType)) {
-                                return true;
-                            }
+                    }
+                    return false;
+                } else {
+                    final UnionImpl byUnion = (UnionImpl) byType;
+                    for (TypeDescriptorImpl unionSubType : byUnion.types) {
+                        if (!origType.isAssignable(origType, unionSubType)) {
+                            return false;
                         }
                     }
+                    return true;
                 }
-                return false;
             } else if (otherClz == UnionImpl.class) {
                 final UnionImpl origUnion = (UnionImpl) origType;
                 final UnionImpl byUnion = (UnionImpl) byType;
