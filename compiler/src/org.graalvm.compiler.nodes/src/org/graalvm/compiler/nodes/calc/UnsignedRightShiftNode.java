@@ -42,7 +42,7 @@ public final class UnsignedRightShiftNode extends ShiftNode<UShr> {
 
     public static final NodeClass<UnsignedRightShiftNode> TYPE = NodeClass.create(UnsignedRightShiftNode.class);
 
-    protected UnsignedRightShiftNode(ValueNode x, ValueNode y) {
+    public UnsignedRightShiftNode(ValueNode x, ValueNode y) {
         super(TYPE, ArithmeticOpTable::getUShr, x, y);
     }
 

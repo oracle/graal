@@ -145,7 +145,7 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
         if (forY instanceof NegateNode) {
             return BinaryArithmeticNode.add(forX, ((NegateNode) forY).getValue(), view);
         }
-        return self != null ? self : SubNode.create(forX, forY, view);
+        return self != null ? self : new SubNode(forX, forY);
     }
 
     @Override
