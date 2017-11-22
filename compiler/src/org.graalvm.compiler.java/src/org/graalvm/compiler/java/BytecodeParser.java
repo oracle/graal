@@ -1117,19 +1117,19 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genFloatDiv(ValueNode x, ValueNode y) {
-        return FloatDivNode.create(x, y);
+        return FloatDivNode.create(x, y, NodeView.DEFAULT);
     }
 
     protected ValueNode genFloatRem(ValueNode x, ValueNode y) {
-        return new RemNode(x, y);
+        return RemNode.create(x, y, NodeView.DEFAULT);
     }
 
     protected ValueNode genIntegerDiv(ValueNode x, ValueNode y) {
-        return new SignedDivNode(x, y);
+        return SignedDivNode.create(x, y, NodeView.DEFAULT);
     }
 
     protected ValueNode genIntegerRem(ValueNode x, ValueNode y) {
-        return new SignedRemNode(x, y);
+        return SignedRemNode.create(x, y, NodeView.DEFAULT);
     }
 
     protected ValueNode genNegateOp(ValueNode x) {
@@ -1137,15 +1137,15 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genLeftShift(ValueNode x, ValueNode y) {
-        return LeftShiftNode.create(x, y);
+        return LeftShiftNode.create(x, y, NodeView.DEFAULT);
     }
 
     protected ValueNode genRightShift(ValueNode x, ValueNode y) {
-        return RightShiftNode.create(x, y);
+        return RightShiftNode.create(x, y, NodeView.DEFAULT);
     }
 
     protected ValueNode genUnsignedRightShift(ValueNode x, ValueNode y) {
-        return new UnsignedRightShiftNode(x, y);
+        return UnsignedRightShiftNode.create(x, y, NodeView.DEFAULT);
     }
 
     protected ValueNode genAnd(ValueNode x, ValueNode y) {
@@ -1165,19 +1165,19 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genFloatConvert(FloatConvert op, ValueNode input) {
-        return FloatConvertNode.create(op, input);
+        return FloatConvertNode.create(op, input, NodeView.DEFAULT);
     }
 
     protected ValueNode genNarrow(ValueNode input, int bitCount) {
-        return NarrowNode.create(input, bitCount);
+        return NarrowNode.create(input, bitCount, NodeView.DEFAULT);
     }
 
     protected ValueNode genSignExtend(ValueNode input, int bitCount) {
-        return SignExtendNode.create(input, bitCount);
+        return SignExtendNode.create(input, bitCount, NodeView.DEFAULT);
     }
 
     protected ValueNode genZeroExtend(ValueNode input, int bitCount) {
-        return ZeroExtendNode.create(input, bitCount);
+        return ZeroExtendNode.create(input, bitCount, NodeView.DEFAULT);
     }
 
     protected void genGoto() {

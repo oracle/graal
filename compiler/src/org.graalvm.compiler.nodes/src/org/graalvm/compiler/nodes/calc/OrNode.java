@@ -52,9 +52,9 @@ public final class OrNode extends BinaryArithmeticNode<Or> implements BinaryComm
     }
 
     public static ValueNode create(ValueNode x, ValueNode y, NodeView view) {
-        BinaryOp<Or> op = ArithmeticOpTable.forStamp(x.stamp(NodeView.DEFAULT)).getOr();
-        Stamp stamp = op.foldStamp(x.stamp(NodeView.DEFAULT), y.stamp(NodeView.DEFAULT));
-        ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp);
+        BinaryOp<Or> op = ArithmeticOpTable.forStamp(x.stamp(view)).getOr();
+        Stamp stamp = op.foldStamp(x.stamp(view), y.stamp(view));
+        ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp, view);
         if (tryConstantFold != null) {
             return tryConstantFold;
         }
@@ -69,7 +69,7 @@ public final class OrNode extends BinaryArithmeticNode<Or> implements BinaryComm
             return ret;
         }
 
-        return canonical(this, getOp(forX, forY), stamp(NodeView.DEFAULT), forX, forY, view);
+        return canonical(this, getOp(forX, forY), stamp(view), forX, forY, view);
     }
 
     private static ValueNode canonical(OrNode self, BinaryOp<Or> op, Stamp stamp, ValueNode forX, ValueNode forY, NodeView view) {

@@ -60,7 +60,7 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
     public static ValueNode create(ValueNode x, ValueNode y, NodeView view) {
         BinaryOp<Mul> op = ArithmeticOpTable.forStamp(x.stamp(view)).getMul();
         Stamp stamp = op.foldStamp(x.stamp(view), y.stamp(view));
-        ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp);
+        ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp, view);
         if (tryConstantFold != null) {
             return tryConstantFold;
         }
@@ -149,7 +149,7 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
             }
         } else if (i < 0) {
             if (CodeUtil.isPowerOf2(-i)) {
-                return NegateNode.create(LeftShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(-i))), view);
+                return NegateNode.create(LeftShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(-i)), view), view);
             }
         }
         return null;

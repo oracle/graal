@@ -119,6 +119,7 @@ public final class BinaryMathIntrinsicNode extends BinaryNode implements Arithme
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        NodeView view = NodeView.from(tool);
         ValueNode c = tryConstantFold(forX, forY, getOperation());
         if (c != null) {
             return c;
@@ -151,8 +152,8 @@ public final class BinaryMathIntrinsicNode extends BinaryNode implements Arithme
             }
 
             // x**0.5 = sqrt(x)
-            if (yValue == 0.5D && x.stamp(NodeView.DEFAULT) instanceof FloatStamp && ((FloatStamp) x.stamp(NodeView.DEFAULT)).lowerBound() >= 0.0D) {
-                return new SqrtNode(x);
+            if (yValue == 0.5D && x.stamp(view) instanceof FloatStamp && ((FloatStamp) x.stamp(view)).lowerBound() >= 0.0D) {
+                return SqrtNode.create(x, view);
             }
         }
         return this;

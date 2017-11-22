@@ -53,9 +53,9 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
     }
 
     public static ValueNode create(ValueNode x, ValueNode y, NodeView view) {
-        BinaryOp<And> op = ArithmeticOpTable.forStamp(x.stamp(NodeView.DEFAULT)).getAnd();
-        Stamp stamp = op.foldStamp(x.stamp(NodeView.DEFAULT), y.stamp(NodeView.DEFAULT));
-        ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp);
+        BinaryOp<And> op = ArithmeticOpTable.forStamp(x.stamp(view)).getAnd();
+        Stamp stamp = op.foldStamp(x.stamp(view), y.stamp(view));
+        ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp, view);
         if (tryConstantFold != null) {
             return tryConstantFold;
         }
@@ -70,7 +70,7 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
         }
 
         NodeView view = NodeView.from(tool);
-        return canonical(this, getOp(forX, forY), stamp(NodeView.DEFAULT), forX, forY, view);
+        return canonical(this, getOp(forX, forY), stamp(view), forX, forY, view);
     }
 
     private static ValueNode canonical(AndNode self, BinaryOp<And> op, Stamp stamp, ValueNode forX, ValueNode forY, NodeView view) {
@@ -98,7 +98,7 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
                         return new ZeroExtendNode(ext.getValue(), ext.getResultBits());
                     }
                 }
-                IntegerStamp xStamp = (IntegerStamp) forX.stamp(NodeView.DEFAULT);
+                IntegerStamp xStamp = (IntegerStamp) forX.stamp(view);
                 if (((xStamp.upMask() | xStamp.downMask()) & ~rawY) == 0) {
                     // No bits are set which are outside the mask, so the mask will have no effect.
                     return forX;

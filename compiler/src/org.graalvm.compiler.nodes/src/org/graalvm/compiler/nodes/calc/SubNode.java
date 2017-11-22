@@ -55,9 +55,9 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
     }
 
     public static ValueNode create(ValueNode x, ValueNode y, NodeView view) {
-        BinaryOp<Sub> op = ArithmeticOpTable.forStamp(x.stamp(NodeView.DEFAULT)).getSub();
-        Stamp stamp = op.foldStamp(x.stamp(NodeView.DEFAULT), y.stamp(NodeView.DEFAULT));
-        ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp);
+        BinaryOp<Sub> op = ArithmeticOpTable.forStamp(x.stamp(view)).getSub();
+        Stamp stamp = op.foldStamp(x.stamp(view), y.stamp(view));
+        ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp, view);
         if (tryConstantFold != null) {
             return tryConstantFold;
         }
@@ -67,7 +67,7 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
     private static ValueNode canonical(SubNode subNode, BinaryOp<Sub> op, Stamp stamp, ValueNode forX, ValueNode forY, NodeView view) {
         SubNode self = subNode;
         if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
-            Constant zero = op.getZero(forX.stamp(NodeView.DEFAULT));
+            Constant zero = op.getZero(forX.stamp(view));
             if (zero != null) {
                 return ConstantNode.forPrimitive(stamp, zero);
             }
@@ -145,10 +145,7 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
         if (forY instanceof NegateNode) {
             return BinaryArithmeticNode.add(forX, ((NegateNode) forY).getValue(), view);
         }
-        if (self == null) {
-            self = new SubNode(forX, forY);
-        }
-        return self;
+        return self != null ? self : new SubNode(forX, forY);
     }
 
     @Override

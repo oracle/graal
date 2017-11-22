@@ -108,7 +108,7 @@ public final class GenericArrayCopyCallNode extends AbstractMemoryCheckpoint imp
 
     private ValueNode wordValue(ValueNode value) {
         if (value.stamp(NodeView.DEFAULT).getStackKind() != runtime.getTarget().wordJavaKind) {
-            return IntegerConvertNode.convert(value, StampFactory.forKind(runtime.getTarget().wordJavaKind), graph());
+            return IntegerConvertNode.convert(value, StampFactory.forKind(runtime.getTarget().wordJavaKind), graph(), NodeView.DEFAULT);
         }
         return value;
     }

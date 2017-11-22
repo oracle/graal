@@ -53,12 +53,13 @@ public final class IntegerTestNode extends BinaryOpLogicNode implements BinaryCo
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        NodeView view = NodeView.from(tool);
         if (forX.isConstant() && forY.isConstant()) {
             return LogicConstantNode.forBoolean((forX.asJavaConstant().asLong() & forY.asJavaConstant().asLong()) == 0);
         }
-        if (forX.stamp(NodeView.DEFAULT) instanceof IntegerStamp && forY.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
-            IntegerStamp xStamp = (IntegerStamp) forX.stamp(NodeView.DEFAULT);
-            IntegerStamp yStamp = (IntegerStamp) forY.stamp(NodeView.DEFAULT);
+        if (forX.stamp(view) instanceof IntegerStamp && forY.stamp(view) instanceof IntegerStamp) {
+            IntegerStamp xStamp = (IntegerStamp) forX.stamp(view);
+            IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
             if ((xStamp.upMask() & yStamp.upMask()) == 0) {
                 return LogicConstantNode.tautology();
             } else if ((xStamp.downMask() & yStamp.downMask()) != 0) {

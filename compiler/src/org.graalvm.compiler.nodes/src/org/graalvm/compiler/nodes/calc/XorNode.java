@@ -53,9 +53,9 @@ public final class XorNode extends BinaryArithmeticNode<Xor> implements BinaryCo
     }
 
     public static ValueNode create(ValueNode x, ValueNode y, NodeView view) {
-        BinaryOp<Xor> op = ArithmeticOpTable.forStamp(x.stamp(NodeView.DEFAULT)).getXor();
-        Stamp stamp = op.foldStamp(x.stamp(NodeView.DEFAULT), y.stamp(NodeView.DEFAULT));
-        ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp);
+        BinaryOp<Xor> op = ArithmeticOpTable.forStamp(x.stamp(view)).getXor();
+        Stamp stamp = op.foldStamp(x.stamp(view), y.stamp(view));
+        ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp, view);
         if (tryConstantFold != null) {
             return tryConstantFold;
         }
@@ -75,7 +75,7 @@ public final class XorNode extends BinaryArithmeticNode<Xor> implements BinaryCo
 
     private static ValueNode canonical(XorNode self, BinaryOp<Xor> op, Stamp stamp, ValueNode forX, ValueNode forY, NodeView view) {
         if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
-            return ConstantNode.forPrimitive(stamp, op.getZero(forX.stamp(NodeView.DEFAULT)));
+            return ConstantNode.forPrimitive(stamp, op.getZero(forX.stamp(view)));
         }
         if (forX.isConstant() && !forY.isConstant()) {
             return new XorNode(forY, forX);

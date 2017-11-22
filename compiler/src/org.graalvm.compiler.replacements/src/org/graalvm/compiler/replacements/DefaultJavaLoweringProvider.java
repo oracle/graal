@@ -1073,6 +1073,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         int shift = CodeUtil.log2(arrayScalingFactor(elementKind));
         ValueNode ret = graph.unique(new RightShiftNode(scaledIndex, ConstantNode.forInt(shift, graph)));
-        return IntegerConvertNode.convert(ret, StampFactory.forKind(JavaKind.Int), graph);
+        return IntegerConvertNode.convert(ret, StampFactory.forKind(JavaKind.Int), graph, NodeView.DEFAULT);
     }
 }

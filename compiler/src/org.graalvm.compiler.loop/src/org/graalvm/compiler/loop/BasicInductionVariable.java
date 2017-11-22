@@ -146,12 +146,12 @@ public class BasicInductionVariable extends InductionVariable {
         ValueNode stride = strideNode();
         ValueNode initNode = this.initNode();
         if (!fromStamp.isCompatible(stamp)) {
-            stride = IntegerConvertNode.convert(stride, stamp, graph());
-            initNode = IntegerConvertNode.convert(initNode, stamp, graph());
+            stride = IntegerConvertNode.convert(stride, stamp, graph(), NodeView.DEFAULT);
+            initNode = IntegerConvertNode.convert(initNode, stamp, graph(), NodeView.DEFAULT);
         }
         ValueNode maxTripCount = loop.counted().maxTripCountNode(assumePositiveTripCount);
         if (!maxTripCount.stamp(NodeView.DEFAULT).isCompatible(stamp)) {
-            maxTripCount = IntegerConvertNode.convert(maxTripCount, stamp, graph());
+            maxTripCount = IntegerConvertNode.convert(maxTripCount, stamp, graph(), NodeView.DEFAULT);
         }
         return add(graph, mul(graph, stride, sub(graph, maxTripCount, ConstantNode.forIntegerStamp(stamp, 1, graph))), initNode);
     }
@@ -161,7 +161,7 @@ public class BasicInductionVariable extends InductionVariable {
         Stamp stamp = phi.stamp(NodeView.DEFAULT);
         ValueNode maxTripCount = loop.counted().maxTripCountNode(false);
         if (!maxTripCount.stamp(NodeView.DEFAULT).isCompatible(stamp)) {
-            maxTripCount = IntegerConvertNode.convert(maxTripCount, stamp, graph());
+            maxTripCount = IntegerConvertNode.convert(maxTripCount, stamp, graph(), NodeView.DEFAULT);
         }
         return add(graph(), mul(graph(), strideNode(), maxTripCount), initNode());
     }

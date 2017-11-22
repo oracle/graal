@@ -111,7 +111,7 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
                                 int width1 = p1.getBits();
                                 int width2 = p2.getBits();
                                 if (width1 == width2) {
-                                    Node replacement = new ReinterpretNode(p2, entry);
+                                    Node replacement = ReinterpretNode.create(p2, entry, NodeView.DEFAULT);
                                     tool.replaceWith((ValueNode) replacement);
                                     return;
                                 } else {

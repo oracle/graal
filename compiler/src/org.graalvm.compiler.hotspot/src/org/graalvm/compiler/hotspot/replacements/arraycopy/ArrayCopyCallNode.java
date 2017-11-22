@@ -144,7 +144,7 @@ public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements
         FixedWithNextNode basePtr = graph().add(new GetObjectAddressNode(base));
         graph().addBeforeFixed(this, basePtr);
         Stamp wordStamp = StampFactory.forKind(runtime.getTarget().wordJavaKind);
-        ValueNode wordPos = IntegerConvertNode.convert(pos, wordStamp, graph());
+        ValueNode wordPos = IntegerConvertNode.convert(pos, wordStamp, graph(), NodeView.DEFAULT);
         int shift = CodeUtil.log2(getArrayIndexScale(elementKind));
         ValueNode scaledIndex = graph().unique(new LeftShiftNode(wordPos, ConstantNode.forInt(shift, graph())));
         ValueNode offset = graph().unique(new AddNode(scaledIndex, ConstantNode.forIntegerStamp(wordStamp, getArrayBaseOffset(elementKind), graph())));
@@ -162,7 +162,7 @@ public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements
             ValueNode destAddr = computeBase(getDestination(), getDestinationPosition());
             ValueNode len = getLength();
             if (len.stamp(NodeView.DEFAULT).getStackKind() != JavaKind.Long) {
-                len = IntegerConvertNode.convert(len, StampFactory.forKind(JavaKind.Long), graph());
+                len = IntegerConvertNode.convert(len, StampFactory.forKind(JavaKind.Long), graph(), NodeView.DEFAULT);
             }
             ForeignCallNode call = graph.add(new ForeignCallNode(runtime.getHostBackend().getForeignCalls(), desc, srcAddr, destAddr, len));
             call.setStateAfter(stateAfter());
