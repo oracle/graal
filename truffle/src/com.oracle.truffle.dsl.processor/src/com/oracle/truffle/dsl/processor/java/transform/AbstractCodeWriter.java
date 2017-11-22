@@ -518,13 +518,15 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
                         TypeMirror bound = bounds.get(i);
                         write(useImport(e, bound));
                         if (j < bounds.size() - 1) {
-                            write(" , ");
+                            write(" ");
+                            write(", ");
                         }
                     }
                 }
 
                 if (i < typeParameters.size() - 1) {
-                    write(" , ");
+                    write(" ");
+                    write(", ");
                 }
             }
             write("> ");

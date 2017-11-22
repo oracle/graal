@@ -49,7 +49,7 @@ public class CachedReachableFallbackTest {
                     "Alternatively the use of @Fallback can be avoided by declaring a @Specialization with manually specified negated guards.";
 
     @SuppressWarnings("unused")
-    static abstract class ValidWithGenericNode extends Node {
+    abstract static class ValidWithGenericNode extends Node {
 
         abstract Object execute(Object other);
 
@@ -122,7 +122,7 @@ public class CachedReachableFallbackTest {
     }
 
     @SuppressWarnings("unused")
-    static abstract class ValidWithoutGenericNode extends Node {
+    abstract static class ValidWithoutGenericNode extends Node {
 
         int createGuardCalls;
 
@@ -172,7 +172,7 @@ public class CachedReachableFallbackTest {
     }
 
     @SuppressWarnings("unused")
-    static abstract class CacheDuplicatesNode extends Node {
+    abstract static class CacheDuplicatesNode extends Node {
 
         abstract Object execute(Object other);
 
@@ -215,7 +215,7 @@ public class CachedReachableFallbackTest {
     }
 
     @SuppressWarnings("unused")
-    static abstract class ManyCachesNode extends Node {
+    abstract static class ManyCachesNode extends Node {
 
         abstract Object execute(Object other);
 
@@ -281,7 +281,7 @@ public class CachedReachableFallbackTest {
     }
 
     @SuppressWarnings("unused")
-    static abstract class GuardKindsNode extends Node {
+    abstract static class GuardKindsNode extends Node {
 
         abstract Object execute(Object other);
 
@@ -377,7 +377,7 @@ public class CachedReachableFallbackTest {
     }
 
     @SuppressWarnings("unused")
-    static abstract class CachedError1Node extends Node {
+    abstract static class CachedError1Node extends Node {
 
         abstract Object execute(Object other);
 
@@ -399,7 +399,7 @@ public class CachedReachableFallbackTest {
     }
 
     @SuppressWarnings("unused")
-    static abstract class CachedError2Node extends Node {
+    abstract static class CachedError2Node extends Node {
 
         abstract Object execute(Object other);
 
@@ -421,7 +421,7 @@ public class CachedReachableFallbackTest {
     }
 
     @SuppressWarnings("unused")
-    static abstract class CachedError3Node extends Node {
+    abstract static class CachedError3Node extends Node {
 
         abstract Object execute(Object other);
 

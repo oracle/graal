@@ -523,7 +523,7 @@ public class CachedTest {
         assertEquals(1, cachedField.getAnnotation(CompilationFinal.class).dimensions());
     }
 
-    static abstract class NullChildAdoption extends Node {
+    abstract static class NullChildAdoption extends Node {
 
         abstract Object execute(Object value);
 
