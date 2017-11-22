@@ -2449,6 +2449,7 @@ class FlatNodeGenFactory {
         builder.end(duplicationIfCount);
 
         if (useDuplicate) {
+            // no counting and next traversal necessary for duplication only check
         } else {
             if (specialization.getMaximumNumberOfInstances() > 1) {
                 builder.startStatement().string(specializationLocalName, " = ", specializationLocalName, ".next_").end();
@@ -3036,35 +3037,36 @@ class FlatNodeGenFactory {
                 builder = new CodeTreeBuilder(null);
                 String fieldName = createFieldName(specialization, cache.getParameter()) + "__";
                 String insertName = useSpecializationClass ? useInsertAccessor(specialization, !isNodeInterface) : "insert";
-                builder.declaration(cache.getExpression().getResolvedType(), fieldName, value);
                 final TypeMirror castType;
                 if (isNodeInterface) {
                     if (isNode) {
-                        builder.startIf().string(fieldName).string(" != null").end().startBlock();
                         castType = null;
                     } else {
-                        builder.startIf().string(fieldName).instanceOf(nodeType).end().startBlock();
                         castType = nodeType;
                     }
                 } else {
                     assert isNodeInterfaceArray;
                     if (isNodeArray) {
-                        builder.startIf().string(fieldName).string(" != null").end().startBlock();
                         castType = null;
                     } else {
-                        builder.startIf().string(fieldName).instanceOf(nodeArrayType).end().startBlock();
                         castType = nodeArrayType;
                     }
                 }
-                builder.startStatement().startCall(insertTarget, insertName);
                 if (castType == null) {
-                    builder.string(fieldName);
+                    CodeTreeBuilder noCast = new CodeTreeBuilder(null);
+                    noCast.startCall(insertTarget, insertName);
+                    noCast.tree(value);
+                    noCast.end();
+                    value = noCast.build();
                 } else {
+                    builder.declaration(cache.getExpression().getResolvedType(), fieldName, value);
+                    builder.startIf().string(fieldName).instanceOf(castType).end().startBlock();
+                    builder.startStatement().startCall(insertTarget, insertName);
                     builder.startGroup().cast(castType).string(fieldName).end();
+                    builder.end().end();
+                    builder.end();
+                    value = CodeTreeBuilder.singleString(fieldName);
                 }
-                builder.end().end();
-                builder.end();
-                value = CodeTreeBuilder.singleString(fieldName);
             }
 
         }
@@ -3591,13 +3593,21 @@ class FlatNodeGenFactory {
 
         }
 
-        private CodeTree createReference(FrameState frameState) {
+        private CodeTree createLocalReference(FrameState frameState) {
             LocalVariable var = frameState != null ? frameState.get(name) : null;
             if (var != null) {
                 return var.createReference();
             } else {
-                return CodeTreeBuilder.createBuilder().string("this.", name, "_").build();
+                return null;
             }
+        }
+
+        private CodeTree createReference(FrameState frameState) {
+            CodeTree ref = createLocalReference(frameState);
+            if (ref == null) {
+                ref = CodeTreeBuilder.createBuilder().string("this.", name, "_").build();
+            }
+            return ref;
         }
 
         public CodeTree createNotContains(FrameState frameState, Object[] elements) {
@@ -3645,6 +3655,12 @@ class FlatNodeGenFactory {
             builder.startStatement();
             if (persist) {
                 builder.string("this.", name, "_ = ");
+
+                // if there is a local variable we need to update it as well
+                CodeTree localReference = createLocalReference(frameState);
+                if (localReference != null) {
+                    builder.tree(localReference).string(" = ");
+                }
             } else {
                 builder.tree(createReference(frameState)).string(" = ");
             }
