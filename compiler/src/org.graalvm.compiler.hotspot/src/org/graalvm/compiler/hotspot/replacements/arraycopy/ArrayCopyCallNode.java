@@ -44,6 +44,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
@@ -160,7 +161,7 @@ public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements
             ValueNode srcAddr = computeBase(getSource(), getSourcePosition());
             ValueNode destAddr = computeBase(getDestination(), getDestinationPosition());
             ValueNode len = getLength();
-            if (len.stamp().getStackKind() != JavaKind.Long) {
+            if (len.stamp(NodeView.DEFAULT).getStackKind() != JavaKind.Long) {
                 len = IntegerConvertNode.convert(len, StampFactory.forKind(JavaKind.Long), graph());
             }
             ForeignCallNode call = graph.add(new ForeignCallNode(runtime.getHostBackend().getForeignCalls(), desc, srcAddr, destAddr, len));
@@ -232,8 +233,8 @@ public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements
             // Can treat as disjoint
             disjoint = true;
         }
-        PrimitiveConstant constantSrc = (PrimitiveConstant) srcPos.stamp().asConstant();
-        PrimitiveConstant constantDst = (PrimitiveConstant) destPos.stamp().asConstant();
+        PrimitiveConstant constantSrc = (PrimitiveConstant) srcPos.stamp(NodeView.DEFAULT).asConstant();
+        PrimitiveConstant constantDst = (PrimitiveConstant) destPos.stamp(NodeView.DEFAULT).asConstant();
         if (constantSrc != null && constantDst != null) {
             if (!aligned) {
                 aligned = isHeapWordAligned(constantSrc, componentKind) && isHeapWordAligned(constantDst, componentKind);

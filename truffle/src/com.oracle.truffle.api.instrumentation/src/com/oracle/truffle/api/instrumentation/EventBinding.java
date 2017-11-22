@@ -31,7 +31,6 @@ import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AbstractIns
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.LanguageClientInstrumenter;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -56,23 +55,17 @@ import com.oracle.truffle.api.source.SourceSection;
  *
  * @since 0.12
  */
-public final class EventBinding<T> {
+public class EventBinding<T> {
 
     private final AbstractInstrumenter instrumenter;
-    private final AllocationEventFilter filterAllocation;
-    private final SourceSectionFilter filterSourceSection;
     private final T element;
-    private final boolean isExecutionEvent;
 
     /* language bindings needs special treatment. */
     private volatile boolean disposed;
 
-    <F> EventBinding(AbstractInstrumenter instrumenter, F query, T element, boolean isExecutionEvent) {
+    EventBinding(AbstractInstrumenter instrumenter, T element) {
         this.instrumenter = instrumenter;
-        this.filterAllocation = (query instanceof AllocationEventFilter) ? (AllocationEventFilter) query : null;
-        this.filterSourceSection = (query instanceof SourceSectionFilter) ? (SourceSectionFilter) query : null;
         this.element = element;
-        this.isExecutionEvent = isExecutionEvent;
     }
 
     /**
@@ -89,13 +82,11 @@ public final class EventBinding<T> {
      * @return the filter being applied to the subscription's stream of notifications
      *
      * @since 0.12
+     * @deprecated
      */
+    @Deprecated
     public SourceSectionFilter getFilter() {
-        return filterSourceSection;
-    }
-
-    AllocationEventFilter getAllocationFilter() {
-        return filterAllocation;
+        return null;
     }
 
     /**
@@ -120,42 +111,78 @@ public final class EventBinding<T> {
         }
     }
 
-    boolean isInstrumentedFull(Set<Class<?>> providedTags, RootNode rootNode, Node node, SourceSection nodeSourceSection) {
-        if (isInstrumentedLeaf(providedTags, node, nodeSourceSection)) {
-            if (rootNode == null) {
-                return false;
-            }
-            return isInstrumentedRoot(providedTags, rootNode, rootNode.getSourceSection(), 0);
-        }
-        return false;
-    }
-
-    boolean isInstrumentedRoot(Set<Class<?>> providedTags, RootNode rootNode, SourceSection rootSourceSection, int rootNodeBits) {
-        return getInstrumenter().isInstrumentableRoot(rootNode) && getFilter().isInstrumentedRoot(providedTags, rootSourceSection, rootNode, rootNodeBits);
-    }
-
-    boolean isInstrumentedLeaf(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection section) {
-        return getFilter().isInstrumentedNode(providedTags, instrumentedNode, section);
-    }
-
-    boolean isInstrumentedSource(Source source) {
-        return getInstrumenter().isInstrumentableSource(source) && getFilter().isInstrumentedSource(source);
-    }
-
-    boolean isExecutionEvent() {
-        return isExecutionEvent;
-    }
-
-    boolean isLanguageBinding() {
-        return instrumenter instanceof LanguageClientInstrumenter;
-    }
-
-    AbstractInstrumenter getInstrumenter() {
-        return instrumenter;
-    }
-
     synchronized void disposeBulk() {
         disposed = true;
+    }
+
+    static final class Source<T> extends EventBinding<T> {
+
+        private final AbstractInstrumenter instrumenter;
+        private final SourceSectionFilter filterSourceSection;
+        private final boolean isExecutionEvent;
+
+        Source(AbstractInstrumenter instrumenter, SourceSectionFilter query, T element, boolean isExecutionEvent) {
+            super(instrumenter, element);
+            this.instrumenter = instrumenter;
+            this.filterSourceSection = query;
+            this.isExecutionEvent = isExecutionEvent;
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
+        public SourceSectionFilter getFilter() {
+            return filterSourceSection;
+        }
+
+        boolean isInstrumentedFull(Set<Class<?>> providedTags, RootNode rootNode, Node node, SourceSection nodeSourceSection) {
+            if (isInstrumentedLeaf(providedTags, node, nodeSourceSection)) {
+                if (rootNode == null) {
+                    return false;
+                }
+                return isInstrumentedRoot(providedTags, rootNode, rootNode.getSourceSection(), 0);
+            }
+            return false;
+        }
+
+        boolean isInstrumentedRoot(Set<Class<?>> providedTags, RootNode rootNode, SourceSection rootSourceSection, int rootNodeBits) {
+            return getInstrumenter().isInstrumentableRoot(rootNode) && getFilter().isInstrumentedRoot(providedTags, rootSourceSection, rootNode, rootNodeBits);
+        }
+
+        boolean isInstrumentedLeaf(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection section) {
+            return getFilter().isInstrumentedNode(providedTags, instrumentedNode, section);
+        }
+
+        boolean isInstrumentedSource(com.oracle.truffle.api.source.Source source) {
+            return getInstrumenter().isInstrumentableSource(source) && getFilter().isInstrumentedSource(source);
+        }
+
+        boolean isExecutionEvent() {
+            return isExecutionEvent;
+        }
+
+        boolean isLanguageBinding() {
+            return instrumenter instanceof LanguageClientInstrumenter;
+        }
+
+        AbstractInstrumenter getInstrumenter() {
+            return instrumenter;
+        }
+
+    }
+
+    static final class Allocation<T> extends EventBinding<T> {
+
+        private final AllocationEventFilter filterAllocation;
+
+        Allocation(AbstractInstrumenter instrumenter, AllocationEventFilter filter, T listener) {
+            super(instrumenter, listener);
+            this.filterAllocation = filter;
+        }
+
+        AllocationEventFilter getAllocationFilter() {
+            return filterAllocation;
+        }
+
     }
 
 }

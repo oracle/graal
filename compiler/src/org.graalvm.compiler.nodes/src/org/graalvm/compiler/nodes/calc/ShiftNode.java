@@ -37,6 +37,7 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ArithmeticOperation;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
 
@@ -64,13 +65,13 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticOper
      * @param s the second input value
      */
     protected ShiftNode(NodeClass<? extends ShiftNode<OP>> c, SerializableShiftFunction<OP> getOp, ValueNode x, ValueNode s) {
-        super(c, getOp.apply(ArithmeticOpTable.forStamp(x.stamp())).foldStamp(x.stamp(), (IntegerStamp) s.stamp()), x, s);
-        assert ((IntegerStamp) s.stamp()).getBits() == 32;
+        super(c, getOp.apply(ArithmeticOpTable.forStamp(x.stamp(NodeView.DEFAULT))).foldStamp(x.stamp(NodeView.DEFAULT), (IntegerStamp) s.stamp(NodeView.DEFAULT)), x, s);
+        assert ((IntegerStamp) s.stamp(NodeView.DEFAULT)).getBits() == 32;
         this.getOp = getOp;
     }
 
     protected final ShiftOp<OP> getOp(ValueNode forValue) {
-        return getOp.apply(ArithmeticOpTable.forStamp(forValue.stamp()));
+        return getOp.apply(ArithmeticOpTable.forStamp(forValue.stamp(NodeView.DEFAULT)));
     }
 
     @Override
@@ -85,7 +86,7 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticOper
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        ValueNode valueNode = canonical(getOp(forX), stamp(), forX, forY);
+        ValueNode valueNode = canonical(getOp(forX), stamp(NodeView.DEFAULT), forX, forY);
         if (valueNode != null) {
             return valueNode;
         }
@@ -102,7 +103,7 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticOper
     }
 
     public int getShiftAmountMask() {
-        return getArithmeticOp().getShiftAmountMask(stamp());
+        return getArithmeticOp().getShiftAmountMask(stamp(NodeView.DEFAULT));
     }
 
     @Override
@@ -117,7 +118,7 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticOper
          * amount. We can narrow only if (y & wideMask) == (y & narrowMask) for all possible values
          * of y.
          */
-        IntegerStamp yStamp = (IntegerStamp) getY().stamp();
+        IntegerStamp yStamp = (IntegerStamp) getY().stamp(NodeView.DEFAULT);
         return (yStamp.upMask() & (wideMask & ~narrowMask)) == 0;
     }
 }

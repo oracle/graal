@@ -44,13 +44,10 @@ public abstract class SLWaitForOptimizationBuiltin extends SLGraalRuntimeBuiltin
     public SLFunction waitForOptimization(SLFunction function, long timeout) {
         OptimizedCallTarget target = (OptimizedCallTarget) function.getCallTarget();
         GraalTruffleRuntime runtime = ((GraalTruffleRuntime) Truffle.getRuntime());
-
-        for (OptimizedCallTarget effectiveCallTarget : findDuplicateCallTargets(target)) {
-            try {
-                runtime.waitForCompilation(effectiveCallTarget, timeout);
-            } catch (ExecutionException | TimeoutException e) {
-                throw new RuntimeException(e);
-            }
+        try {
+            runtime.waitForCompilation(target, timeout);
+        } catch (ExecutionException | TimeoutException e) {
+            throw new RuntimeException(e);
         }
         return function;
     }

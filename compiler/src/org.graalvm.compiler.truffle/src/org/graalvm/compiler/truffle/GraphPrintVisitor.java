@@ -238,7 +238,7 @@ final class GraphPrintVisitor implements GraphStructure<RootCallTarget, NodeElem
     }
 
     void beginGroup(RootCallTarget root, String name, String shortName) throws IOException {
-        output.beginGroup(root, name, shortName, null, 0, null);
+        output.beginGroup(root, name, shortName, null, 0, DebugContext.addVersionProperties(null));
     }
 
     private int nextId() {

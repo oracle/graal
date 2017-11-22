@@ -25,7 +25,7 @@
 package com.oracle.truffle.api.debug;
 
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import java.util.AbstractCollection;
 import java.util.Iterator;
 import java.util.Map;
@@ -38,16 +38,16 @@ import java.util.Set;
 final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
 
     private final Debugger debugger;
-    private final RootNode sourceRoot;
+    private final LanguageInfo language;
     private final TruffleObject object;
     private final Map<Object, Object> map;
     private final Set<Map.Entry<Object, Object>> entrySet;
     private final DebugScope scope;
 
-    ValuePropertiesCollection(Debugger debugger, RootNode sourceRoot, TruffleObject object,
+    ValuePropertiesCollection(Debugger debugger, LanguageInfo language, TruffleObject object,
                     Map<Object, Object> map, Set<Map.Entry<Object, Object>> entrySet, DebugScope scope) {
         this.debugger = debugger;
-        this.sourceRoot = sourceRoot;
+        this.language = language;
         this.object = object;
         this.map = map;
         this.entrySet = entrySet;
@@ -69,7 +69,7 @@ final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
         if (value == null) {
             return null;
         }
-        return new DebugValue.PropertyNamedValue(debugger, sourceRoot, object, map, name, scope);
+        return new DebugValue.PropertyNamedValue(debugger, language, object, map, name, scope);
     }
 
     private final class PropertiesIterator implements Iterator<DebugValue> {
@@ -89,7 +89,7 @@ final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
 
         @Override
         public DebugValue next() {
-            return new DebugValue.PropertyValue(debugger, sourceRoot, object, entries.next(), scope);
+            return new DebugValue.PropertyValue(debugger, language, object, entries.next(), scope);
         }
 
         @Override

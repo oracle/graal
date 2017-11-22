@@ -353,6 +353,16 @@ public final class DebuggerTester implements AutoCloseable {
     }
 
     /**
+     * Close the engine. It's not possible to evaluate code after engine is closed, use it when the
+     * engine needs to be closed before the debugger session.
+     *
+     * @since 0.30
+     */
+    public void closeEngine() {
+        engine.close();
+    }
+
+    /**
      * Closes the current debugger tester session and all its associated resources like the
      * background thread. The debugger tester becomes unusable after closing.
      *
@@ -514,7 +524,7 @@ public final class DebuggerTester implements AutoCloseable {
             Context context = null;
             try {
                 try {
-                    context = Context.newBuilder().out(out).err(err).build();
+                    context = Context.newBuilder().out(out).err(err).allowCreateThread(true).build();
                     engineRef.set(context.getEngine());
                 } catch (Throwable t) {
                     error.set(t);

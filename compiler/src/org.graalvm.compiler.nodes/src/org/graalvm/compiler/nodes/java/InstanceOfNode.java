@@ -36,6 +36,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNegationNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.UnaryOpLogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
@@ -116,7 +117,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
     }
 
     public static LogicNode findSynonym(ObjectStamp checkedStamp, ValueNode object) {
-        ObjectStamp inputStamp = (ObjectStamp) object.stamp();
+        ObjectStamp inputStamp = (ObjectStamp) object.stamp(NodeView.DEFAULT);
         ObjectStamp joinedStamp = (ObjectStamp) checkedStamp.join(inputStamp);
 
         if (joinedStamp.isEmpty()) {
@@ -158,7 +159,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
     @Override
     public void virtualize(VirtualizerTool tool) {
         ValueNode alias = tool.getAlias(getValue());
-        TriState fold = tryFold(alias.stamp());
+        TriState fold = tryFold(alias.stamp(NodeView.DEFAULT));
         if (fold != TriState.UNKNOWN) {
             tool.replaceWithValue(LogicConstantNode.forBoolean(fold.isTrue(), graph()));
         }

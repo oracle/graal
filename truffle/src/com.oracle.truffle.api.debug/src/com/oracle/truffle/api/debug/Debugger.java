@@ -85,7 +85,7 @@ public final class Debugger {
 
     private final Env env;
     final List<Object> propSupport = new CopyOnWriteArrayList<>();
-    private final ObjectStructures.MessageNodes msgNodes;
+    final ObjectStructures.MessageNodes msgNodes;
     private final Set<DebuggerSession> sessions = new HashSet<>();
     private final List<Breakpoint> breakpoints = new ArrayList<>();
     final Breakpoint alwaysHaltBreakpoint;

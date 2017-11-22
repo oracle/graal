@@ -22,18 +22,17 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import com.oracle.truffle.api.interop.java.JavaInterop;
-import java.util.Date;
-
-import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import org.junit.Before;
-import org.junit.Test;
+
+import java.util.Date;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 public class ValueAPITest {
 
@@ -51,7 +50,7 @@ public class ValueAPITest {
 
     @Test
     public void testInstantiate() {
-        context.exportSymbol("Date.class", JavaInterop.asTruffleObject(java.util.Date.class));
+        context.exportSymbol("Date.class", java.util.Date.class);
         Value classValue = context.importSymbol("Date.class");
         assertTrue(classValue.canInstantiate());
         Value dateInstance = classValue.newInstance();

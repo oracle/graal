@@ -64,13 +64,31 @@ public final class TruffleContext implements AutoCloseable {
 
     private static ThreadLocal<List<Object>> assertStack;
     final Object impl;
+    final boolean closeable;
 
-    TruffleContext(TruffleLanguage.Env env, Map<String, Object> config) {
-        this.impl = AccessAPI.engineAccess().createInternalContext(env.getVMObject(), config);
+    TruffleContext(Object impl) {
+        this.impl = impl;
+        this.closeable = false;
+    }
+
+    private TruffleContext(TruffleLanguage.Env env, Map<String, Object> config) {
+        this.impl = AccessAPI.engineAccess().createInternalContext(env.getVMObject(), config, this);
+        this.closeable = false;
+        // Initialized after this TruffleContext instance is fully set up
+        AccessAPI.engineAccess().initializeInternalContext(env.getVMObject(), impl);
+    }
+
+    /**
+     * Creates closeable context representation for use by a language.
+     */
+    private TruffleContext(Object impl, boolean closeable) {
+        this.impl = impl;
+        this.closeable = closeable;
     }
 
     private TruffleContext() {
         this.impl = null;
+        this.closeable = false;
     }
 
     static {
@@ -88,14 +106,26 @@ public final class TruffleContext implements AutoCloseable {
     }
 
     /**
+     * Get a parent context of this context, if any. This provides the hierarchy of inner contexts.
+     *
+     * @return a parent context, or <code>null</code> if there is no parent
+     * @since 0.30
+     */
+    @TruffleBoundary
+    public TruffleContext getParent() {
+        return AccessAPI.engineAccess().getParentContext(impl);
+    }
+
+    /**
      * Enters this context and returns an object representing the previous context. Calls to enter
      * must be followed by a call to {@link #leave(Object)} in a finally block and the previous
      * context must be passed as an argument. It is allowed to enter a context multiple times from
      * the same thread. If the context is currently not entered by any thread then it is allowed be
-     * entered by an arbitrary thread. Entering the context from two different threads at the same
-     * time causes an {@link IllegalStateException}. The result of the enter function is unspecified
-     * and must only be passed to {@link #leave(Object)}. The result value must not be stored
-     * permanently.
+     * entered by an arbitrary thread. Entering the context from two or more different threads at
+     * the same time is possible, unless one of the loaded languages denies access to the thread, in
+     * which case an {@link IllegalStateException} is thrown. The result of the enter function is
+     * unspecified and must only be passed to {@link #leave(Object)}. The result value must not be
+     * stored permanently.
      * <p>
      * Entering a language context is designed for compilation and is most efficient if the
      * {@link TruffleContext context} instance is compilation final.
@@ -133,11 +163,19 @@ public final class TruffleContext implements AutoCloseable {
      * entered, then an {@link IllegalStateException} is thrown. If the context is not closed
      * explicitly, then it is automatically closed together with the parent context. If an attempt
      * to close a context was successful then consecutive calls to close have no effect.
+     * <p>
+     * Only contexts created by {@link Builder#build()} can be explicitly closed. Other instances
+     * throw {@link UnsupportedOperationException} on close attempts.
      *
+     * @throws UnsupportedOperationException when not created by {@link Builder#build()}.
      * @since 0.27
      */
+    @Override
     @TruffleBoundary
     public void close() {
+        if (!closeable) {
+            throw new UnsupportedOperationException("It's not possible to close a foreign context.");
+        }
         AccessAPI.engineAccess().closeInternalContext(impl);
     }
 
@@ -193,7 +231,8 @@ public final class TruffleContext implements AutoCloseable {
          */
         @TruffleBoundary
         public TruffleContext build() {
-            return new TruffleContext(sourceEnvironment, config);
+            TruffleContext context = new TruffleContext(sourceEnvironment, config);
+            return new TruffleContext(context.impl, true);
         }
     }
 }

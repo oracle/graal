@@ -28,12 +28,15 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.util.AbstractSet;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -41,7 +44,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -105,6 +110,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * <li><code>CONSTANT(value)</code> - defines a constant value</li>
  * <li><code>PRINT(OUT, text)</code> or <code>PRINT(ERR, text)</code> - prints a text to standard
  * output resp. error output.</li>
+ * <li><code>SPAWN(&lt;function&gt;)</code> - calls the function in a new thread</li>
+ * <li><code>JOIN()</code> - waits for all spawned threads</li>
  * </ul>
  * </p>
  */
@@ -127,11 +134,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
     public static final Class<?> BLOCK = BlockNode.class;
 
     public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT};
-    public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE", "ARGUMENT", "PRINT",
-                    "ALLOCATION", "SLEEP"};
+    public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "CONTEXT", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE", "ARGUMENT",
+                    "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE"};
 
     // used to test that no getSourceSection calls happen in certain situations
     private static int rootSourceSectionQueryCount;
+    private final FunctionMetaObject functionMetaObject = new FunctionMetaObject();
 
     public InstrumentationTestLanguage() {
     }
@@ -166,7 +174,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             }
             runInitAfterExec = (Boolean) envConfig.get("runInitAfterExec");
         }
-        return new Context(env.out(), env.err(), env.lookup(AllocationReporter.class), initSource, runInitAfterExec);
+        return new Context(env, initSource, runInitAfterExec);
     }
 
     @Override
@@ -182,6 +190,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                 context.afterTarget = rct;
             }
         }
+    }
+
+    @Override
+    protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+        return true;
     }
 
     @Override
@@ -242,7 +255,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
             int argumentIndex = 0;
             int numberOfIdents = 0;
-            if (tag.equals("DEFINE") || tag.equals("ARGUMENT") || tag.equals("CALL") || tag.equals("LOOP") || tag.equals("CONSTANT") || tag.equals("SLEEP")) {
+            if (tag.equals("DEFINE") || tag.equals("ARGUMENT") || tag.equals("CALL") || tag.equals("LOOP") || tag.equals("CONSTANT") || tag.equals("SLEEP") || tag.equals("SPAWN")) {
                 numberOfIdents = 1;
             } else if (tag.equals("VARIABLE") || tag.equals("RECURSIVE_CALL") || tag.equals("PRINT")) {
                 numberOfIdents = 2;
@@ -308,6 +321,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             switch (tag) {
                 case "DEFINE":
                     return new DefineNode(lang, idents[0], sourceSection, childArray);
+                case "CONTEXT":
+                    return new ContextNode(childArray);
                 case "ARGUMENT":
                     return new ArgumentNode(idents[0], childArray);
                 case "CALL":
@@ -334,6 +349,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                     return new AllocationNode(new BaseNode[0]);
                 case "SLEEP":
                     return new SleepNode(parseIdent(idents[0]), new BaseNode[0]);
+                case "SPAWN":
+                    return new SpawnNode(idents[0], childArray);
+                case "JOIN":
+                    return new JoinNode(childArray);
+                case "INVALIDATE":
+                    return new InvalidateNode(childArray);
                 default:
                     throw new AssertionError();
             }
@@ -548,6 +569,40 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
     }
 
+    static class ContextNode extends BaseNode {
+
+        @Children private final BaseNode[] children;
+
+        ContextNode(BaseNode[] children) {
+            this.children = children;
+        }
+
+        @Override
+        @ExplodeLoop
+        public Object execute(VirtualFrame frame) {
+            Object returnValue = Null.INSTANCE;
+            TruffleContext inner = createInnerContext();
+            Object prev = inner.enter();
+            try {
+                for (BaseNode child : children) {
+                    if (child != null) {
+                        returnValue = child.execute(frame);
+                    }
+                }
+            } finally {
+                inner.leave(prev);
+                inner.close();
+            }
+            return returnValue;
+        }
+
+        @TruffleBoundary
+        private TruffleContext createInnerContext() {
+            Context context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+            return context.env.newContextBuilder().build();
+        }
+    }
+
     private static class CallNode extends InstrumentedNode {
 
         @Child private DirectCallNode callNode;
@@ -567,6 +622,78 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                 callNode = insert(Truffle.getRuntime().createDirectCallNode(target));
             }
             return callNode.call(new Object[0]);
+        }
+    }
+
+    private static class SpawnNode extends InstrumentedNode {
+
+        @Child private DirectCallNode callNode;
+        private final String identifier;
+
+        SpawnNode(String identifier, BaseNode[] children) {
+            super(children);
+            this.identifier = identifier;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            if (callNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Context context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+                CallTarget target = context.callFunctions.callTargets.get(identifier);
+                callNode = Truffle.getRuntime().createDirectCallNode(target);
+            }
+            spawnCall();
+            return Null.INSTANCE;
+        }
+
+        @TruffleBoundary
+        private void spawnCall() {
+            Context context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+            Thread t = context.env.createThread(new Runnable() {
+                @Override
+                public void run() {
+                    callNode.call(new Object[0]);
+                }
+            });
+            t.start();
+            context.spawnedThreads.add(t);
+        }
+    }
+
+    private static class JoinNode extends InstrumentedNode {
+
+        JoinNode(BaseNode[] children) {
+            super(children);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            joinSpawnedThreads();
+            return Null.INSTANCE;
+        }
+
+        @TruffleBoundary
+        private void joinSpawnedThreads() {
+            Context context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
+            List<Thread> threads;
+            do {
+                threads = new ArrayList<>();
+                synchronized (context.spawnedThreads) {
+                    for (Thread t : context.spawnedThreads) {
+                        if (t.isAlive()) {
+                            threads.add(t);
+                        }
+                    }
+                }
+                for (Thread t : threads) {
+                    try {
+                        t.join();
+                    } catch (InterruptedException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            } while (!threads.isEmpty());
         }
     }
 
@@ -654,6 +781,21 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             return constant;
         }
 
+    }
+
+    private static class InvalidateNode extends InstrumentedNode {
+
+        InvalidateNode(BaseNode[] children) {
+            super(children);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            if (CompilerDirectives.inCompiledCode()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            return 1;
+        }
     }
 
     private static Object parseIdent(String identifier) {
@@ -875,7 +1017,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
     @Override
     protected boolean isObjectOfLanguage(Object object) {
-        return false;
+        return object instanceof Function || object == functionMetaObject;
     }
 
     @Override
@@ -888,6 +1030,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         }
         if (obj != null && obj.equals(Double.POSITIVE_INFINITY)) {
             return "Infinity";
+        }
+        if (obj instanceof Function) {
+            return functionMetaObject;
         }
         return null;
     }
@@ -904,6 +1049,15 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             return Source.newBuilder("source infinity").name("double").mimeType(MIME_TYPE).build().createSection(1);
         }
         return null;
+    }
+
+    @Override
+    protected String toString(Context context, Object value) {
+        if (value == functionMetaObject) {
+            return "Function";
+        } else {
+            return Objects.toString(value);
+        }
     }
 
     public static int getRootSourceSectionQueryCount() {
@@ -1106,23 +1260,68 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         }
 
     }
+
+    static class FunctionMetaObject implements TruffleObject {
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return FunctionMetaObjectMessageResolutionForeign.ACCESS;
+        }
+
+        public static boolean isInstance(TruffleObject obj) {
+            return obj instanceof FunctionMetaObject;
+        }
+
+        @MessageResolution(receiverType = FunctionMetaObject.class)
+        static final class FunctionMetaObjectMessageResolution {
+        }
+    }
 }
 
 class Context {
 
     final FunctionsObject callFunctions = new FunctionsObject();
+    final Env env;
     final OutputStream out;
     final OutputStream err;
     final AllocationReporter allocationReporter;
     final Source initSource;
     final boolean runInitAfterExec;
     RootCallTarget afterTarget;
+    final Set<Thread> spawnedThreads = new WeakSet<>();
 
-    Context(OutputStream out, OutputStream err, AllocationReporter allocationReporter, Source initSource, Boolean runInitAfterExec) {
-        this.out = out;
-        this.err = err;
-        this.allocationReporter = allocationReporter;
+    Context(Env env, Source initSource, Boolean runInitAfterExec) {
+        this.env = env;
+        this.out = env.out();
+        this.err = env.err();
+        this.allocationReporter = env.lookup(AllocationReporter.class);
         this.initSource = initSource;
         this.runInitAfterExec = runInitAfterExec != null && runInitAfterExec;
+    }
+
+    private static class WeakSet<T> extends AbstractSet<T> {
+
+        private final Map<T, Void> map = new WeakHashMap<>();
+
+        @Override
+        public Iterator<T> iterator() {
+            return map.keySet().iterator();
+        }
+
+        @Override
+        public synchronized int size() {
+            return map.size();
+        }
+
+        @Override
+        public synchronized boolean add(T e) {
+            return map.put(e, null) == null;
+        }
+
+        @Override
+        public synchronized void clear() {
+            map.clear();
+        }
+
     }
 }

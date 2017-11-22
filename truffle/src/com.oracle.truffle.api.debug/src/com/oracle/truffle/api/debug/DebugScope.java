@@ -140,7 +140,7 @@ public final class DebugScope {
     public Iterable<DebugValue> getArguments() {
         verifyValidState();
         Object argumentssObj = scope.getArguments();
-        ValuePropertiesCollection arguments = (argumentssObj != null) ? DebugValue.getProperties(argumentssObj, debugger, root, this) : null;
+        ValuePropertiesCollection arguments = (argumentssObj != null) ? DebugValue.getProperties(argumentssObj, debugger, getLanguage(), this) : null;
         return arguments;
     }
 
@@ -176,13 +176,17 @@ public final class DebugScope {
         verifyValidState();
         if (variables == null) {
             Object variablesObj = scope.getVariables();
-            variables = DebugValue.getProperties(variablesObj, debugger, root, this);
+            variables = DebugValue.getProperties(variablesObj, debugger, getLanguage(), this);
         }
         return variables;
     }
 
     LanguageInfo getLanguage() {
-        return language;
+        if (root != null) {
+            return root.getLanguageInfo();
+        } else {
+            return language;
+        }
     }
 
     void verifyValidState() {
