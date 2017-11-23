@@ -121,7 +121,8 @@ public abstract class Node implements NodeInterface, Cloneable {
      * Retrieves the segment of guest language source code that is represented by this Node. The
      * default implementation of this method returns <code>null</code>. If your node represents a
      * segment of the source code, override this method and return a <code>final</code> or
-     * {@link CompilationFinal} field in your node to the caller.
+     * {@link CompilationFinal} field in your node to the caller. Can be called on any thread and
+     * without a language context.
      *
      * To define node with <em>fixed</em> {@link SourceSection} that doesn't change after node
      * construction use:
@@ -143,7 +144,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     /**
      * Retrieves the segment of guest language source code that is represented by this Node, if
      * present; otherwise retrieves the segment represented by the nearest AST ancestor that has
-     * this information.
+     * this information. Can be called on any thread and without a language context.
      *
      * @return an approximation of the source code represented by this Node
      * @since 0.8 or earlier
@@ -536,7 +537,8 @@ public abstract class Node implements NodeInterface, Cloneable {
      * <code>false</code>. The method is only invoked for tags which are explicitly declared as
      * {@link com.oracle.truffle.api.instrumentation.ProvidedTags provided} by the
      * {@link TruffleLanguage language}. If the {@link #getSourceSection() source section} of the
-     * node returns <code>null</code> then this node is considered to be not tagged by any tag.
+     * node returns <code>null</code> then this node is considered to be not tagged by any tag. Can
+     * be called on any thread and without a language context.
      * <p>
      * Tags are used by guest languages to indicate that a {@link Node node} is a member of a
      * certain category of nodes. For example a debugger
@@ -574,7 +576,7 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     /**
      * Returns a user-readable description of the purpose of the Node, or "" if no description is
-     * available.
+     * available. Can be called on any thread and without a language context.
      *
      * @since 0.8 or earlier
      */
