@@ -88,11 +88,6 @@ public final class LLVMScope implements TruffleObject {
     }
 
     @TruffleBoundary
-    public synchronized boolean globalExists(String name) {
-        return globalVariableRegistry.exists(name) || (parent != null && parent.globalExists(name));
-    }
-
-    @TruffleBoundary
     public synchronized Object getGlobalVariable(String name) {
         if (globalVariableRegistry.exists(name)) {
             return globalVariableRegistry.lookup(name);

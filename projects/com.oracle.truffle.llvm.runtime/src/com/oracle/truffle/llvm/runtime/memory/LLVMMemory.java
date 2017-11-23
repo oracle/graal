@@ -78,18 +78,6 @@ public abstract class LLVMMemory {
         }
     }
 
-    /** Use {@link com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode} instead. */
-    @Deprecated
-    public static void memset(long address, long size, byte value) {
-        try {
-            UNSAFE.setMemory(address, size, value);
-        } catch (Throwable e) {
-            // this avoids unnecessary exception edges in the compiled code
-            CompilerDirectives.transferToInterpreter();
-            throw e;
-        }
-    }
-
     /** Use {@link com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode} instead. */
     @Deprecated
     public static void copyMemory(long sourceAddress, long targetAddress, long length) {
@@ -217,11 +205,6 @@ public abstract class LLVMMemory {
             currentPtr += Byte.BYTES;
         }
         return LLVM80BitFloat.fromBytes(bytes);
-    }
-
-    static long extractAddr(LLVMAddress addr) {
-        assert addr.getVal() != 0;
-        return addr.getVal();
     }
 
     public static LLVMAddress getAddress(LLVMAddress addr) {
