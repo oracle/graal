@@ -37,7 +37,6 @@ import com.oracle.truffle.api.instrumentation.Instrumentable;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMAddressProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMDoubleProfiledValueNodeGen;
@@ -48,6 +47,7 @@ import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI3
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI64ProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI8ProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.wrappers.LLVMInvokeNodeWrapper;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -78,7 +78,7 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
 
         LLVMInvokeNodeImpl(FunctionType type, FrameSlot resultLocation,
                         int normalSuccessor, int unwindSuccessor,
-                        LLVMExpressionNode normalPhiNode, LLVMExpressionNode unwindPhiNode, SourceSection sourceSection) {
+                        LLVMExpressionNode normalPhiNode, LLVMExpressionNode unwindPhiNode, LLVMSourceLocation sourceSection) {
             super(sourceSection);
             this.normalSuccessor = normalSuccessor;
             this.unwindSuccessor = unwindSuccessor;
@@ -213,7 +213,7 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
     public static final int NORMAL_SUCCESSOR = 0;
     public static final int UNWIND_SUCCESSOR = 1;
 
-    public LLVMInvokeNode(SourceSection sourceSection) {
+    public LLVMInvokeNode(LLVMSourceLocation sourceSection) {
         super(sourceSection);
     }
 
@@ -244,7 +244,7 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
 
         public LLVMSubstitutionInvokeNode(FunctionType type, FrameSlot resultLocation, LLVMExpressionNode substitution,
                         int normalSuccessor, int unwindSuccessor,
-                        LLVMExpressionNode normalPhiNode, LLVMExpressionNode unwindPhiNode, SourceSection sourceSection) {
+                        LLVMExpressionNode normalPhiNode, LLVMExpressionNode unwindPhiNode, LLVMSourceLocation sourceSection) {
             super(type, resultLocation, normalSuccessor, unwindSuccessor, normalPhiNode, unwindPhiNode, sourceSection);
             this.substitution = substitution;
         }
@@ -263,7 +263,7 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
 
         public LLVMFunctionInvokeNode(FunctionType type, FrameSlot resultLocation, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes,
                         int normalSuccessor, int unwindSuccessor,
-                        LLVMExpressionNode normalPhiNode, LLVMExpressionNode unwindPhiNode, SourceSection sourceSection) {
+                        LLVMExpressionNode normalPhiNode, LLVMExpressionNode unwindPhiNode, LLVMSourceLocation sourceSection) {
             super(type, resultLocation, normalSuccessor, unwindSuccessor, normalPhiNode, unwindPhiNode, sourceSection);
             this.functionNode = functionNode;
             this.argumentNodes = argumentNodes;

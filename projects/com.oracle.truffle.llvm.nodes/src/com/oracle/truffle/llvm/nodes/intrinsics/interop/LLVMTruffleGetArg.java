@@ -34,17 +34,17 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
-@NodeField(name = "sourceSection", type = SourceSection.class)
+@NodeField(name = "sourceLocation", type = LLVMSourceLocation.class)
 public abstract class LLVMTruffleGetArg extends LLVMIntrinsic {
 
     @Override
-    public abstract SourceSection getSourceSection();
+    public abstract LLVMSourceLocation getSourceLocation();
 
     @Specialization
     protected Object doIntrinsic(VirtualFrame frame, int index) {

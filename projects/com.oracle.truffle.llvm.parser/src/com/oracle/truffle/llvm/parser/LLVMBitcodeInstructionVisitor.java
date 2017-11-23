@@ -36,7 +36,6 @@ import java.util.Map;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
@@ -92,6 +91,7 @@ import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMException;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -251,17 +251,17 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             argIndex++;
         }
 
-        final SourceSection sourceSection = sourceFunction.getSourceSection(call);
+        final LLVMSourceLocation source = sourceFunction.getSourceSection(call);
         final SymbolImpl target = call.getCallTarget();
-        LLVMExpressionNode result = nodeFactory.createLLVMBuiltin(runtime, target, argNodes, argCount, sourceSection);
+        LLVMExpressionNode result = nodeFactory.createLLVMBuiltin(runtime, target, argNodes, argCount, source);
         if (result == null) {
             if (target instanceof InlineAsmConstant) {
                 final InlineAsmConstant inlineAsmConstant = (InlineAsmConstant) target;
-                result = createInlineAssemblerNode(inlineAsmConstant, argNodes, argTypes, targetType, sourceSection);
+                result = createInlineAssemblerNode(inlineAsmConstant, argNodes, argTypes, targetType, source);
 
             } else {
                 LLVMExpressionNode function = symbols.resolve(target);
-                result = nodeFactory.createFunctionCall(runtime, function, argNodes, new FunctionType(targetType, argTypes, false), sourceSection);
+                result = nodeFactory.createFunctionCall(runtime, function, argNodes, new FunctionType(targetType, argTypes, false), source);
             }
         }
 
@@ -461,16 +461,16 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             argIndex++;
         }
 
-        final SourceSection sourceSection = sourceFunction.getSourceSection(call);
-        LLVMExpressionNode node = nodeFactory.createLLVMBuiltin(runtime, target, args, argCount, sourceSection);
+        final LLVMSourceLocation source = sourceFunction.getSourceSection(call);
+        LLVMExpressionNode node = nodeFactory.createLLVMBuiltin(runtime, target, args, argCount, source);
         if (node == null) {
             if (target instanceof InlineAsmConstant) {
                 final InlineAsmConstant inlineAsmConstant = (InlineAsmConstant) target;
-                node = createInlineAssemblerNode(inlineAsmConstant, args, argsType, call.getType(), sourceSection);
+                node = createInlineAssemblerNode(inlineAsmConstant, args, argsType, call.getType(), source);
             } else {
                 final LLVMExpressionNode function = symbols.resolve(target);
                 final FunctionType functionType = new FunctionType(call.getType(), argsType, false);
-                node = nodeFactory.createFunctionCall(runtime, function, args, functionType, sourceSection);
+                node = nodeFactory.createFunctionCall(runtime, function, args, functionType, source);
             }
         }
         addInstruction(node);
@@ -533,14 +533,14 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         LLVMExpressionNode unwindPhi = nodeFactory.createPhi(runtime, unwindValue.toArray(new LLVMExpressionNode[unwindValue.size()]), unwindTo.toArray(new FrameSlot[unwindTo.size()]),
                         unwindType.toArray(new Type[unwindType.size()]));
 
-        final SourceSection sourceSection = sourceFunction.getSourceSection(call);
+        final LLVMSourceLocation source = sourceFunction.getSourceSection(call);
         LLVMExpressionNode function = nodeFactory.createLLVMBuiltin(runtime, target, argNodes, argCount, null);
         if (function == null) {
             function = symbols.resolve(target);
         }
         LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(runtime, getSlot(call.getName()), function, argNodes, new FunctionType(targetType, argTypes, false),
                         regularIndex, unwindIndex, normalPhi,
-                        unwindPhi, sourceSection);
+                        unwindPhi, source);
 
         setControlFlowNode(result);
     }
@@ -598,13 +598,13 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         LLVMExpressionNode unwindPhi = nodeFactory.createPhi(runtime, unwindValue.toArray(new LLVMExpressionNode[unwindValue.size()]), unwindTo.toArray(new FrameSlot[unwindTo.size()]),
                         unwindType.toArray(new Type[unwindType.size()]));
 
-        final SourceSection sourceSection = sourceFunction.getSourceSection(call);
+        final LLVMSourceLocation source = sourceFunction.getSourceSection(call);
         LLVMExpressionNode function = nodeFactory.createLLVMBuiltin(runtime, target, args, argCount, null);
         if (function == null) {
             function = symbols.resolve(target);
         }
         LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(runtime, null, function, args, new FunctionType(call.getType(), argsType, false),
-                        regularIndex, unwindIndex, normalPhi, unwindPhi, sourceSection);
+                        regularIndex, unwindIndex, normalPhi, unwindPhi, source);
 
         setControlFlowNode(result);
 
@@ -810,13 +810,13 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         Type type = store.getSource().getType();
 
-        SourceSection sourceSection = null;
+        LLVMSourceLocation source = null;
         if (!(store.getSource() instanceof CallInstruction)) {
             // otherwise the debugger would stop on both the call and the store of the return value
-            sourceSection = sourceFunction.getSourceSection(store);
+            source = sourceFunction.getSourceSection(store);
         }
 
-        final LLVMExpressionNode node = nodeFactory.createStore(runtime, pointerNode, valueNode, type, sourceSection);
+        final LLVMExpressionNode node = nodeFactory.createStore(runtime, pointerNode, valueNode, type, source);
 
         addInstruction(node);
     }
@@ -927,19 +927,19 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         createFrameWrite(result, source, sourceFunction.getSourceSection(source));
     }
 
-    private void createFrameWrite(LLVMExpressionNode result, ValueInstruction source, SourceSection sourceSection) {
-        final LLVMExpressionNode node = nodeFactory.createFrameWrite(runtime, source.getType(), result, getSlot(source.getName()), sourceSection);
+    private void createFrameWrite(LLVMExpressionNode result, ValueInstruction source, LLVMSourceLocation sourceLocation) {
+        final LLVMExpressionNode node = nodeFactory.createFrameWrite(runtime, source.getType(), result, getSlot(source.getName()), sourceLocation);
         addInstruction(node);
     }
 
-    private LLVMExpressionNode createInlineAssemblerNode(InlineAsmConstant inlineAsmConstant, LLVMExpressionNode[] argNodes, Type[] argsType, Type retType, SourceSection sourceSection) {
+    private LLVMExpressionNode createInlineAssemblerNode(InlineAsmConstant inlineAsmConstant, LLVMExpressionNode[] argNodes, Type[] argsType, Type retType, LLVMSourceLocation sourceLocation) {
         if (inlineAsmConstant.needsAlignedStack()) {
             throw new UnsupportedOperationException("Assembly Expressions that require an aligned Stack are not supported yet!");
         }
         if (inlineAsmConstant.getDialect() != AsmDialect.AT_T) {
             throw new UnsupportedOperationException("Unsupported Assembly Dialect: " + inlineAsmConstant.getDialect());
         }
-        return nodeFactory.createInlineAssemblerExpression(runtime, inlineAsmConstant.getAsmExpression(), inlineAsmConstant.getAsmFlags(), argNodes, argsType, retType, sourceSection);
+        return nodeFactory.createInlineAssemblerExpression(runtime, inlineAsmConstant.getAsmExpression(), inlineAsmConstant.getAsmFlags(), argNodes, argsType, retType, sourceLocation);
     }
 
     private FrameSlot getSlot(String name) {

@@ -32,24 +32,24 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMStoreExpressionNode extends LLVMExpressionNode {
 
-    private final SourceSection sourceSection;
+    private final LLVMSourceLocation source;
     @Child private LLVMStoreNode store;
 
-    public LLVMStoreExpressionNode(SourceSection sourceSection, LLVMStoreNode store) {
-        this.sourceSection = sourceSection;
+    public LLVMStoreExpressionNode(LLVMSourceLocation source, LLVMStoreNode store) {
+        this.source = source;
         this.store = store;
     }
 
     @Override
-    public SourceSection getSourceSection() {
-        return sourceSection;
+    public LLVMSourceLocation getSourceLocation() {
+        return source;
     }
 
     @Specialization

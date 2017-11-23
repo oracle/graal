@@ -30,32 +30,32 @@
 package com.oracle.truffle.llvm.nodes.others;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
-    private final SourceSection sourceSection;
+    private final LLVMSourceLocation source;
     protected final String message;
 
-    public LLVMUnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
-        this.sourceSection = sourceSection;
+    public LLVMUnsupportedInlineAssemblerNode(LLVMSourceLocation location, String message) {
+        this.source = location;
         this.message = message;
     }
 
     @Override
-    public SourceSection getSourceSection() {
-        return sourceSection;
+    public LLVMSourceLocation getSourceLocation() {
+        return source;
     }
 
     public static class LLVMI1UnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
 
-        public LLVMI1UnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
+        public LLVMI1UnsupportedInlineAssemblerNode(LLVMSourceLocation sourceSection, String message) {
             super(sourceSection, message);
         }
 
@@ -72,7 +72,7 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     public static class LLVMI8UnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
 
-        public LLVMI8UnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
+        public LLVMI8UnsupportedInlineAssemblerNode(LLVMSourceLocation sourceSection, String message) {
             super(sourceSection, message);
         }
 
@@ -89,7 +89,7 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     public static class LLVMI16UnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
 
-        public LLVMI16UnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
+        public LLVMI16UnsupportedInlineAssemblerNode(LLVMSourceLocation sourceSection, String message) {
             super(sourceSection, message);
         }
 
@@ -106,7 +106,7 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     public static class LLVMI32UnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
 
-        public LLVMI32UnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
+        public LLVMI32UnsupportedInlineAssemblerNode(LLVMSourceLocation sourceSection, String message) {
             super(sourceSection, message);
         }
 
@@ -123,7 +123,7 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     public static class LLVMI64UnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
 
-        public LLVMI64UnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
+        public LLVMI64UnsupportedInlineAssemblerNode(LLVMSourceLocation sourceSection, String message) {
             super(sourceSection, message);
         }
 
@@ -140,7 +140,7 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     public static class LLVMFloatUnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
 
-        public LLVMFloatUnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
+        public LLVMFloatUnsupportedInlineAssemblerNode(LLVMSourceLocation sourceSection, String message) {
             super(sourceSection, message);
         }
 
@@ -157,7 +157,7 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     public static class LLVMDoubleUnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
 
-        public LLVMDoubleUnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
+        public LLVMDoubleUnsupportedInlineAssemblerNode(LLVMSourceLocation sourceSection, String message) {
             super(sourceSection, message);
         }
 
@@ -174,7 +174,7 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     public static class LLVM80BitFloatUnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
 
-        public LLVM80BitFloatUnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
+        public LLVM80BitFloatUnsupportedInlineAssemblerNode(LLVMSourceLocation sourceSection, String message) {
             super(sourceSection, message);
         }
 
@@ -191,7 +191,7 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     public static class LLVMAddressUnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
 
-        public LLVMAddressUnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
+        public LLVMAddressUnsupportedInlineAssemblerNode(LLVMSourceLocation sourceSection, String message) {
             super(sourceSection, message);
         }
 
@@ -208,7 +208,7 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     public static class LLVMFunctionUnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
 
-        public LLVMFunctionUnsupportedInlineAssemblerNode(SourceSection sourceSection, String message) {
+        public LLVMFunctionUnsupportedInlineAssemblerNode(LLVMSourceLocation sourceSection, String message) {
             super(sourceSection, message);
         }
 

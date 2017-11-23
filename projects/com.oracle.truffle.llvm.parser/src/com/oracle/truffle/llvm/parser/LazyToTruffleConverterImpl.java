@@ -43,7 +43,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.LLVMLivenessAnalysis.LLVMLivenessAnalysisResult;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
@@ -107,13 +106,13 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         method.accept(visitor);
         FrameSlot[][] nullableBeforeBlock = getNullableFrameSlots(liveness.getNullableBeforeBlock());
         FrameSlot[][] nullableAfterBlock = getNullableFrameSlots(liveness.getNullableAfterBlock());
-        SourceSection sourceSection = method.getSourceSection();
+        LLVMSourceLocation location = method.getLexicalScope();
         LLVMExpressionNode body = nodeFactory.createFunctionBlockNode(runtime, frame.findFrameSlot(LLVMException.FRAME_SLOT_ID), visitor.getBlocks(), nullableBeforeBlock, nullableAfterBlock,
-                        sourceSection);
+                        location);
 
         List<LLVMExpressionNode> copyArgumentsToFrame = copyArgumentsToFrame();
         LLVMExpressionNode[] copyArgumentsToFrameArray = copyArgumentsToFrame.toArray(new LLVMExpressionNode[copyArgumentsToFrame.size()]);
-        RootNode rootNode = nodeFactory.createFunctionStartNode(runtime, body, copyArgumentsToFrameArray, sourceSection, frame, method, source);
+        RootNode rootNode = nodeFactory.createFunctionStartNode(runtime, body, copyArgumentsToFrameArray, method.getSourceSection(), frame, method, source, location);
 
         final LLVMSourceLocation sourceScope = method.getLexicalScope();
         if (sourceScope != null) {

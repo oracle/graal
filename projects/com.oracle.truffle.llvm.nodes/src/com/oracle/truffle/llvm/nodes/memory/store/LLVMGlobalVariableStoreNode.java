@@ -33,7 +33,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
@@ -48,9 +48,9 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMGlobalVariableStoreNode extends LLVMExpressionNode {
 
     protected final LLVMGlobal descriptor;
-    private final SourceSection source;
+    private final LLVMSourceLocation source;
 
-    public LLVMGlobalVariableStoreNode(LLVMGlobal descriptor, SourceSection source) {
+    public LLVMGlobalVariableStoreNode(LLVMGlobal descriptor, LLVMSourceLocation source) {
         this.descriptor = descriptor;
         this.source = source;
     }
@@ -105,7 +105,7 @@ public abstract class LLVMGlobalVariableStoreNode extends LLVMExpressionNode {
     }
 
     @Override
-    public SourceSection getSourceSection() {
+    public LLVMSourceLocation getSourceLocation() {
         return source;
     }
 }

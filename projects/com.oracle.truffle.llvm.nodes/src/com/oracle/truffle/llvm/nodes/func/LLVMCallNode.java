@@ -34,9 +34,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNodeFactory.ArgumentNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
@@ -49,9 +49,9 @@ public final class LLVMCallNode extends LLVMExpressionNode {
     @Children private final ArgumentNode[] prepareArgumentNodes;
     @Child private LLVMLookupDispatchNode dispatchNode;
 
-    private final SourceSection sourceSection;
+    private final LLVMSourceLocation source;
 
-    public LLVMCallNode(FunctionType functionType, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes, SourceSection sourceSection) {
+    public LLVMCallNode(FunctionType functionType, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes, LLVMSourceLocation source) {
         this.functionNode = functionNode;
         this.argumentNodes = argumentNodes;
         this.dispatchNode = LLVMLookupDispatchNodeGen.create(functionType);
@@ -59,7 +59,7 @@ public final class LLVMCallNode extends LLVMExpressionNode {
         for (int i = 0; i < argumentNodes.length; i++) {
             this.prepareArgumentNodes[i] = ArgumentNodeGen.create();
         }
-        this.sourceSection = sourceSection;
+        this.source = source;
     }
 
     @ExplodeLoop
@@ -93,8 +93,8 @@ public final class LLVMCallNode extends LLVMExpressionNode {
     }
 
     @Override
-    public SourceSection getSourceSection() {
-        return sourceSection;
+    public LLVMSourceLocation getSourceLocation() {
+        return source;
     }
 
     @Override

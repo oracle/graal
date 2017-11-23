@@ -126,9 +126,8 @@ public final class SourceModel {
             this.lexicalScope = lexicalScope;
         }
 
-        public SourceSection getSourceSection(Instruction instruction) {
-            final LLVMSourceLocation scope = instructions.get(instruction);
-            return scope != null ? scope.getSourceSection() : null;
+        public LLVMSourceLocation getSourceSection(Instruction instruction) {
+            return instructions.get(instruction);
         }
 
         public LLVMSourceLocation getLexicalScope() {

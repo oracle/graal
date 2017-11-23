@@ -50,7 +50,7 @@ public class LLVMBrUnconditionalNodeWrapper implements InstrumentableFactory<LLV
         @Child private LLVMBrUnconditionalNode delegate;
 
         LLVMBrUnconditionalNodeWrapper0(ProbeNode probe, LLVMBrUnconditionalNode delegate) {
-            super(delegate.getSourceSection());
+            super(delegate.getSourceLocation());
             this.probe = probe;
             this.delegate = delegate;
         }

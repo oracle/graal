@@ -30,7 +30,7 @@
 package com.oracle.truffle.llvm.nodes.func;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNodeGen;
@@ -39,16 +39,16 @@ public final class LLVMTypeIdForExceptionNode extends LLVMExpressionNode {
 
     @Child private LLVMToNativeNode thrownTypeID;
 
-    private final SourceSection sourceSection;
+    private final LLVMSourceLocation source;
 
-    public LLVMTypeIdForExceptionNode(LLVMExpressionNode thrownTypeID, SourceSection sourceSection) {
+    public LLVMTypeIdForExceptionNode(LLVMExpressionNode thrownTypeID, LLVMSourceLocation sourceSection) {
         this.thrownTypeID = LLVMToNativeNodeGen.create(thrownTypeID);
-        this.sourceSection = sourceSection;
+        this.source = sourceSection;
     }
 
     @Override
-    public SourceSection getSourceSection() {
-        return sourceSection;
+    public LLVMSourceLocation getSourceLocation() {
+        return source;
     }
 
     @Override

@@ -48,7 +48,7 @@ public class LLVMInvokeNodeWrapper implements InstrumentableFactory<LLVMInvokeNo
         @Child private LLVMInvokeNode delegateNode;
 
         private LLVMInvokeNodeWrapper0(ProbeNode probeNode, LLVMInvokeNode delegateNode) {
-            super(delegateNode.getSourceSection());
+            super(delegateNode.getSourceLocation());
             this.probeNode = probeNode;
             this.delegateNode = delegateNode;
         }
