@@ -81,4 +81,11 @@ public final class MDFile implements MDBaseNode {
         file.directory = ParseUtil.resolveReference(args, ARGINDEX_DIRECTORY, file, md);
         return file;
     }
+
+    public static MDFile create(MDBaseNode fileNode, MDBaseNode dirNode) {
+        final MDFile file = new MDFile();
+        file.file = fileNode;
+        file.directory = dirNode;
+        return file;
+    }
 }

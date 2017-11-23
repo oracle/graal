@@ -93,7 +93,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         CompilerAsserts.neverPartOfCompilation();
 
         final SourceModel.Function sourceFunction = method.getSourceFunction();
-        Set<SourceModel.Variable> initPartialValues = null;
+        Set<SourceModel.Variable> initPartialValues;
         if (sourceFunction != null) {
             initPartialValues = sourceFunction.getPartialValues();
         } else {
@@ -114,9 +114,8 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         LLVMExpressionNode[] copyArgumentsToFrameArray = copyArgumentsToFrame.toArray(new LLVMExpressionNode[copyArgumentsToFrame.size()]);
         RootNode rootNode = nodeFactory.createFunctionStartNode(runtime, body, copyArgumentsToFrameArray, method.getSourceSection(), frame, method, source, location);
 
-        final LLVMSourceLocation sourceScope = method.getLexicalScope();
-        if (sourceScope != null) {
-            context.getSourceContext().registerSourceScope(rootNode.getName(), sourceScope);
+        if (location != null) {
+            context.getSourceContext().registerSourceScope(rootNode.getName(), location);
         }
 
         return Truffle.getRuntime().createCallTarget(rootNode);

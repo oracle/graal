@@ -41,6 +41,8 @@ import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+
 import java.util.ArrayList;
 
 import java.util.Collections;
@@ -54,23 +56,16 @@ public final class LLVMSourceScope {
     @TruffleBoundary
     public static Iterable<Scope> create(Node node, Frame frame, LLVMContext context) {
         final RootNode rootNode = node.getRootNode();
-        final SourceSection sourceSection = node.getSourceSection();
 
-        if (rootNode == null) {
+        if (rootNode == null || !(node instanceof LLVMNode)) {
             return Collections.singleton(new LLVMSourceScope(node).toScope(frame));
         }
 
-        // TODO map scope against rootnode instead of possibly ambiguous name
-        final String functionName = rootNode.getName();
-
-        LLVMSourceLocation scope = context.getSourceContext().getSourceScope(functionName);
-        if (scope != null) {
-            scope = scope.findScope(node.getSourceSection());
-        }
-
+        LLVMSourceLocation scope = ((LLVMNode) node).getSourceLocation();
         if (scope == null) {
             return Collections.singleton(new LLVMSourceScope(rootNode).toScope(frame));
         }
+        final SourceSection sourceSection = node.getSourceSection();
 
         final LLVMSourceContext sourceContext = context.getSourceContext();
         LLVMSourceScope baseScope = new LLVMSourceScope(new LinkedList<>(), new HashMap<>(), rootNode);
