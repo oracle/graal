@@ -46,22 +46,22 @@ public abstract class LLVMAMD64ToRegisterNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public long executeI64(long reg, byte from) {
+        protected long doI64(long reg, byte from) {
             return (reg & mask) | Byte.toUnsignedLong(from) << shift;
         }
 
         @Specialization
-        public long executeI64(long reg, short from) {
+        protected long doI64(long reg, short from) {
             return (reg & mask) | (from & ~mask) << shift;
         }
 
         @Specialization
-        public long executeI64(long reg, int from) {
+        protected long doI64(long reg, int from) {
             return (reg & mask) | (from & ~mask) << shift;
         }
 
         @Specialization
-        public long executeI64(long reg, long from) {
+        protected long doI64(long reg, long from) {
             return (reg & mask) | (from & ~mask) << shift;
         }
     }
@@ -71,22 +71,22 @@ public abstract class LLVMAMD64ToRegisterNode extends LLVMExpressionNode {
         private final long mask = ~(long) LLVMExpressionNode.I16_MASK;
 
         @Specialization
-        public long executeI64(long reg, byte from) {
+        protected long doI64(long reg, byte from) {
             return (reg & mask) | Byte.toUnsignedLong(from);
         }
 
         @Specialization
-        public long executeI64(long reg, short from) {
+        protected long doI64(long reg, short from) {
             return (reg & mask) | Short.toUnsignedLong(from);
         }
 
         @Specialization
-        public long executeI64(long reg, int from) {
+        protected long doI64(long reg, int from) {
             return (reg & mask) | (from & ~mask);
         }
 
         @Specialization
-        public long executeI64(long reg, long from) {
+        protected long doI64(long reg, long from) {
             return (reg & mask) | (from & ~mask);
         }
     }
@@ -96,22 +96,22 @@ public abstract class LLVMAMD64ToRegisterNode extends LLVMExpressionNode {
         private static final long MASK = 0xFFFFFFFFL;
 
         @Specialization
-        public long executeI64(byte from) {
+        protected long doI64(byte from) {
             return Byte.toUnsignedLong(from);
         }
 
         @Specialization
-        public long executeI64(short from) {
+        protected long doI64(short from) {
             return Short.toUnsignedLong(from);
         }
 
         @Specialization
-        public long executeI64(int from) {
+        protected long doI64(int from) {
             return Integer.toUnsignedLong(from);
         }
 
         @Specialization
-        public long executeI64(long from) {
+        protected long doI64(long from) {
             return from & MASK;
         }
     }

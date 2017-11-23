@@ -60,7 +60,8 @@ public abstract class LLVMStructArrayLiteralNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         return writeDouble(frame, globalAccess.getNativeLocation(global));
     }
 
@@ -87,7 +88,7 @@ public abstract class LLVMStructArrayLiteralNode extends LLVMExpressionNode {
 
     @Specialization(guards = {"noOffset(addr)"})
     @ExplodeLoop
-    public Object executeVoid(VirtualFrame frame, LLVMTruffleObject addr) {
+    protected Object doVoid(VirtualFrame frame, LLVMTruffleObject addr) {
         LLVMTruffleObject currentPtr = addr;
         for (int i = 0; i < values.length; i++) {
             LLVMTruffleObject currentValue = (LLVMTruffleObject) values[i].executeGeneric(frame);
@@ -96,5 +97,4 @@ public abstract class LLVMStructArrayLiteralNode extends LLVMExpressionNode {
         }
         return addr;
     }
-
 }

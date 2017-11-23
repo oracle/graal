@@ -59,5 +59,4 @@ public final class LLVMHeap extends LLVMMemory {
     public static long getFunctionPointer(LLVMAddress addr) {
         return LLVMMemory.getI64(addr);
     }
-
 }

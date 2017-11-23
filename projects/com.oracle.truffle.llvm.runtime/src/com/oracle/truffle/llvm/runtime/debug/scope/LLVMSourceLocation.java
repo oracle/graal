@@ -284,7 +284,6 @@ public final class LLVMSourceLocation {
                 final int length = source.getLength() - resolvedSection.getCharIndex();
                 resolvedSection = source.createSection(line, column, length);
             }
-
         } catch (Throwable ignored) {
             // if the source file has changed since it was last compiled the line and column
             // information in the metadata might not be accurate anymore

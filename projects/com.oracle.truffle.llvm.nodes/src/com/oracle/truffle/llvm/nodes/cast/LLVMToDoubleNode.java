@@ -59,7 +59,7 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
     @Child private ForeignToLLVM toDouble = ForeignToLLVM.create(ForeignToLLVMType.DOUBLE);
 
     @Specialization
-    public double executeLLVMBoxedPrimitive(VirtualFrame frame, LLVMBoxedPrimitive from) {
+    protected double doLLVMBoxedPrimitive(VirtualFrame frame, LLVMBoxedPrimitive from) {
         return (double) toDouble.executeWithTarget(frame, from.getValue());
     }
 
@@ -68,7 +68,7 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
     @Child private Node unbox = Message.UNBOX.createNode();
 
     @Specialization
-    public double executeTruffleObject(VirtualFrame frame, LLVMTruffleObject from) {
+    protected double doTruffleObject(VirtualFrame frame, LLVMTruffleObject from) {
         TruffleObject base = from.getObject();
         if (ForeignAccess.sendIsNull(isNull, base)) {
             return from.getOffset();
@@ -88,42 +88,42 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
     public abstract static class LLVMToDoubleNoZeroExtNode extends LLVMToDoubleNode {
 
         @Specialization
-        public double executeDouble(boolean from) {
+        protected double doDouble(boolean from) {
             return from ? 1.0 : 0.0;
         }
 
         @Specialization
-        public double executeDouble(byte from) {
+        protected double doDouble(byte from) {
             return from;
         }
 
         @Specialization
-        public double executeDouble(short from) {
+        protected double doDouble(short from) {
             return from;
         }
 
         @Specialization
-        public double executeDouble(int from) {
+        protected double doDouble(int from) {
             return from;
         }
 
         @Specialization
-        public double executeDouble(long from) {
+        protected double doDouble(long from) {
             return from;
         }
 
         @Specialization
-        public double executeDouble(float from) {
+        protected double doDouble(float from) {
             return from;
         }
 
         @Specialization
-        public double executeDouble(double from) {
+        protected double doDouble(double from) {
             return from;
         }
 
         @Specialization
-        public double executeDouble(LLVM80BitFloat from) {
+        protected double doDouble(LLVM80BitFloat from) {
             return from.getDoubleValue();
         }
     }
@@ -131,35 +131,34 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
     public abstract static class LLVMToDoubleZeroExtNode extends LLVMToDoubleNode {
 
         @Specialization
-        public double executeDouble(boolean from) {
+        protected double doDouble(boolean from) {
             return from ? 1 : 0;
         }
 
         @Specialization
-        public double executeDouble(byte from) {
+        protected double doDouble(byte from) {
             return from & LLVMExpressionNode.I8_MASK;
         }
 
         @Specialization
-        public double executeDouble(short from) {
+        protected double doDouble(short from) {
             return from & LLVMExpressionNode.I16_MASK;
         }
 
         @Specialization
-        public double executeInt(int from) {
+        protected double doInt(int from) {
             return from & LLVMExpressionNode.I32_MASK;
         }
 
         @Specialization
-        public double executeDouble(long from) {
+        protected double doDouble(long from) {
             return from;
         }
 
         @Specialization
-        public double executeDouble(double from) {
+        protected double doDouble(double from) {
             return from;
         }
-
     }
 
     public abstract static class LLVMToDoubleUnsignedNode extends LLVMToDoubleNode {
@@ -167,12 +166,12 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
         private static final double LEADING_BIT = 0x1.0p63;
 
         @Specialization
-        public double executeDouble(int from) {
+        protected double doDouble(int from) {
             return from & LLVMExpressionNode.I32_MASK;
         }
 
         @Specialization
-        public double executeDouble(long from) {
+        protected double doDouble(long from) {
             double val = from & Long.MAX_VALUE;
             if (from < 0) {
                 val += LEADING_BIT;
@@ -181,7 +180,7 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public double executeDouble(double from) {
+        protected double doDouble(double from) {
             return from;
         }
     }
@@ -189,47 +188,47 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
     public abstract static class LLVMToDoubleBitNode extends LLVMToDoubleNode {
 
         @Specialization
-        public double executeDouble(long from) {
+        protected double doDouble(long from) {
             return Double.longBitsToDouble(from);
         }
 
         @Specialization
-        public double executeDouble(double from) {
+        protected double doDouble(double from) {
             return from;
         }
 
         @Specialization
-        public double executeI1Vector(LLVMI1Vector from) {
+        protected double doI1Vector(LLVMI1Vector from) {
             long raw = LLVMToI64BitNode.castI1Vector(from, Long.SIZE);
             return Double.longBitsToDouble(raw);
         }
 
         @Specialization
-        public double executeI8Vector(LLVMI8Vector from) {
+        protected double doI8Vector(LLVMI8Vector from) {
             long raw = LLVMToI64BitNode.castI8Vector(from, Long.SIZE / Byte.SIZE);
             return Double.longBitsToDouble(raw);
         }
 
         @Specialization
-        public double executeI16Vector(LLVMI16Vector from) {
+        protected double doI16Vector(LLVMI16Vector from) {
             long raw = LLVMToI64BitNode.castI16Vector(from, Long.SIZE / Short.SIZE);
             return Double.longBitsToDouble(raw);
         }
 
         @Specialization
-        public double executeI32Vector(LLVMI32Vector from) {
+        protected double doI32Vector(LLVMI32Vector from) {
             long raw = LLVMToI64BitNode.castI32Vector(from, Long.SIZE / Integer.SIZE);
             return Double.longBitsToDouble(raw);
         }
 
         @Specialization
-        public double executeFloatVector(LLVMFloatVector from) {
+        protected double doFloatVector(LLVMFloatVector from) {
             long raw = LLVMToI64BitNode.castFloatVector(from, Long.SIZE / Float.SIZE);
             return Double.longBitsToDouble(raw);
         }
 
         @Specialization
-        public double executeI64Vector(LLVMI64Vector from) {
+        protected double doI64Vector(LLVMI64Vector from) {
             if (from.getLength() != 1) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError("invalid vector size!");
@@ -238,7 +237,7 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public double executeDoubleVector(LLVMDoubleVector from) {
+        protected double doDoubleVector(LLVMDoubleVector from) {
             if (from.getLength() != 1) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError("invalid vector size!");
@@ -246,5 +245,4 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
             return from.getValue(0);
         }
     }
-
 }

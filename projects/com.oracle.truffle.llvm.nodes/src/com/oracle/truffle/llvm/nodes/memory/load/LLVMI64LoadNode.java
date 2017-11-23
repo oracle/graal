@@ -48,18 +48,19 @@ public abstract class LLVMI64LoadNode extends LLVMLoadNode {
     private final LongValueProfile profile = LongValueProfile.createIdentityProfile();
 
     @Specialization
-    public long executeI64(LLVMAddress addr) {
+    protected long doI64(LLVMAddress addr) {
         long val = LLVMMemory.getI64(addr);
         return profile.profile(val);
     }
 
     @Specialization
-    public long executeI64(LLVMVirtualAllocationAddress address) {
+    protected long doI64(LLVMVirtualAllocationAddress address) {
         return address.getI64();
     }
 
     @Specialization
-    public long executeI64(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected long doI64(LLVMGlobalVariable addr,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         return profile.profile(globalAccess.getI64(addr));
     }
 
@@ -68,12 +69,13 @@ public abstract class LLVMI64LoadNode extends LLVMLoadNode {
     }
 
     @Specialization
-    public Object executeI64(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+    protected Object doI64(VirtualFrame frame, LLVMTruffleObject addr,
+                    @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
         return foreignRead.execute(frame, addr);
     }
 
     @Specialization
-    public long executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
+    protected long doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
         if (addr.getValue() instanceof Long) {
             return LLVMMemory.getI64((long) addr.getValue());
         } else {

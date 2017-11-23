@@ -53,7 +53,7 @@ public abstract class LLVMNativeStackAllocationNode extends LLVMStackAllocationN
     }
 
     @Specialization
-    public LLVMAddress alloc(VirtualFrame frame, long size) {
+    protected LLVMAddress alloc(VirtualFrame frame, long size) {
         return LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), size, 8));
     }
 }

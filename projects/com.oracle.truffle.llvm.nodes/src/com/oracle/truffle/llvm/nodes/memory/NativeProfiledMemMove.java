@@ -47,12 +47,12 @@ public abstract class NativeProfiledMemMove extends LLVMMemMoveNode {
     @Child private LLVMToNativeNode convert2 = LLVMToNativeNode.toNative();
 
     @Specialization
-    public Object case1(VirtualFrame frame, Object target, Object source, int length) {
+    protected Object case1(VirtualFrame frame, Object target, Object source, int length) {
         return memmove(convert1.executeWithTarget(frame, target), convert2.executeWithTarget(frame, source), length);
     }
 
     @Specialization
-    public Object case2(VirtualFrame frame, Object target, Object source, long length) {
+    protected Object case2(VirtualFrame frame, Object target, Object source, long length) {
         return memmove(convert1.executeWithTarget(frame, target), convert2.executeWithTarget(frame, source), length);
     }
 

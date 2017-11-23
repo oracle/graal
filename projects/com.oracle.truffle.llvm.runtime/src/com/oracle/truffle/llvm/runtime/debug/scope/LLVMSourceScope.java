@@ -152,7 +152,6 @@ public final class LLVMSourceScope {
                 if (value != null) {
                     globals.put(symbol, value);
                 }
-
             } else if (isDeclaredBefore(symbol, sourceSection)) {
                 locals.add(symbol);
             }

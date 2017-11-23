@@ -94,5 +94,4 @@ public final class ElfFile {
             throw new IllegalArgumentException("Invalid ELF file!");
         }
     }
-
 }

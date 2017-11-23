@@ -44,8 +44,7 @@ public abstract class LLVMLoadExpressionNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    public Object store(VirtualFrame frame, Object address) {
+    protected Object store(VirtualFrame frame, Object address) {
         return load.executeWithTarget(frame, address);
     }
-
 }

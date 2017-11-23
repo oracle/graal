@@ -105,7 +105,6 @@ public abstract class LLVMArithmetic extends LLVMBuiltin {
             store.executeWithTarget(frame, addr, (overflow1 | overflow2) ? 1 : 0);
             return res2;
         }
-
     };
 
     public static final CarryArithmetic CARRY_SUB = new CarryArithmetic() {
@@ -151,7 +150,6 @@ public abstract class LLVMArithmetic extends LLVMBuiltin {
             store.executeWithTarget(frame, addr, (overflow1 | overflow2) ? 1 : 0);
             return res2;
         }
-
     };
 
     public static final Arithmetic SIGNED_ADD = new Arithmetic() {
@@ -202,7 +200,6 @@ public abstract class LLVMArithmetic extends LLVMBuiltin {
             store.executeWithTarget(frame, addr, res);
             return overflow;
         }
-
     };
 
     public static final Arithmetic UNSIGNED_ADD = new Arithmetic() {
@@ -239,7 +236,6 @@ public abstract class LLVMArithmetic extends LLVMBuiltin {
             store.executeWithTarget(frame, addr, res);
             return overflow;
         }
-
     };
 
     public static final Arithmetic SIGNED_SUB = new Arithmetic() {
@@ -290,7 +286,6 @@ public abstract class LLVMArithmetic extends LLVMBuiltin {
             store.executeWithTarget(frame, addr, res);
             return overflow;
         }
-
     };
 
     public static final Arithmetic UNSIGNED_SUB = new Arithmetic() {
@@ -327,7 +322,6 @@ public abstract class LLVMArithmetic extends LLVMBuiltin {
             store.executeWithTarget(frame, addr, res);
             return overflow;
         }
-
     };
 
     public static final Arithmetic SIGNED_MUL = new Arithmetic() {
@@ -378,7 +372,6 @@ public abstract class LLVMArithmetic extends LLVMBuiltin {
             store.executeWithTarget(frame, addr, res);
             return overflow;
         }
-
     };
 
     public static final Arithmetic UNSIGNED_MUL = new Arithmetic() {
@@ -422,7 +415,6 @@ public abstract class LLVMArithmetic extends LLVMBuiltin {
             store.executeWithTarget(frame, addr, res);
             return overflow;
         }
-
     };
 
     @NodeChildren({@NodeChild(value = "left", type = LLVMExpressionNode.class), @NodeChild(value = "right", type = LLVMExpressionNode.class),
@@ -436,22 +428,26 @@ public abstract class LLVMArithmetic extends LLVMBuiltin {
         }
 
         @Specialization
-        public byte executeIntrinsic(VirtualFrame frame, byte left, byte right, Object addr, @Cached("createStoreI8()") LLVMStoreNode store) {
+        protected byte doIntrinsic(VirtualFrame frame, byte left, byte right, Object addr,
+                        @Cached("createStoreI8()") LLVMStoreNode store) {
             return (byte) (arithmetic.evalI8(frame, left, right, addr, store) ? 1 : 0);
         }
 
         @Specialization
-        public short executeIntrinsic(VirtualFrame frame, short left, short right, Object addr, @Cached("createStoreI16()") LLVMStoreNode store) {
+        protected short doIntrinsic(VirtualFrame frame, short left, short right, Object addr,
+                        @Cached("createStoreI16()") LLVMStoreNode store) {
             return (short) (arithmetic.evalI16(frame, left, right, addr, store) ? 1 : 0);
         }
 
         @Specialization
-        public int executeIntrinsic(VirtualFrame frame, int left, int right, Object addr, @Cached("createStoreI32()") LLVMStoreNode store) {
+        protected int doIntrinsic(VirtualFrame frame, int left, int right, Object addr,
+                        @Cached("createStoreI32()") LLVMStoreNode store) {
             return arithmetic.evalI32(frame, left, right, addr, store) ? 1 : 0;
         }
 
         @Specialization
-        public long executeIntrinsic(VirtualFrame frame, long left, long right, Object addr, @Cached("createStoreI64()") LLVMStoreNode store) {
+        protected long doIntrinsic(VirtualFrame frame, long left, long right, Object addr,
+                        @Cached("createStoreI64()") LLVMStoreNode store) {
             return arithmetic.evalI64(frame, left, right, addr, store) ? 1 : 0;
         }
     }
@@ -470,7 +466,8 @@ public abstract class LLVMArithmetic extends LLVMBuiltin {
         }
 
         @Specialization
-        public Object executeIntrinsic(VirtualFrame frame, byte left, byte right, Object addr, @Cached("createStoreI8()") LLVMStoreNode store,
+        protected Object doIntrinsic(VirtualFrame frame, byte left, byte right, Object addr,
+                        @Cached("createStoreI8()") LLVMStoreNode store,
                         @Cached("getIncrementPointerNode()") LLVMIncrementPointerNode incrementPointer) {
             final boolean overflow = arithmetic.evalI8(frame, left, right, addr, store);
             storeI8.executeWithTarget(frame, incrementPointer.executeWithTarget(addr, secondValueOffset, PrimitiveType.I1), overflow);
@@ -478,7 +475,8 @@ public abstract class LLVMArithmetic extends LLVMBuiltin {
         }
 
         @Specialization
-        public Object executeIntrinsic(VirtualFrame frame, short left, short right, Object addr, @Cached("createStoreI16()") LLVMStoreNode store,
+        protected Object doIntrinsic(VirtualFrame frame, short left, short right, Object addr,
+                        @Cached("createStoreI16()") LLVMStoreNode store,
                         @Cached("getIncrementPointerNode()") LLVMIncrementPointerNode incrementPointer) {
             final boolean overflow = arithmetic.evalI16(frame, left, right, addr, store);
             storeI8.executeWithTarget(frame, incrementPointer.executeWithTarget(addr, secondValueOffset, PrimitiveType.I1), overflow);
@@ -486,7 +484,8 @@ public abstract class LLVMArithmetic extends LLVMBuiltin {
         }
 
         @Specialization
-        public Object executeIntrinsic(VirtualFrame frame, int left, int right, Object addr, @Cached("createStoreI32()") LLVMStoreNode store,
+        protected Object doIntrinsic(VirtualFrame frame, int left, int right, Object addr,
+                        @Cached("createStoreI32()") LLVMStoreNode store,
                         @Cached("getIncrementPointerNode()") LLVMIncrementPointerNode incrementPointer) {
             final boolean overflow = arithmetic.evalI32(frame, left, right, addr, store);
             storeI8.executeWithTarget(frame, incrementPointer.executeWithTarget(addr, secondValueOffset, PrimitiveType.I1), overflow);
@@ -494,7 +493,8 @@ public abstract class LLVMArithmetic extends LLVMBuiltin {
         }
 
         @Specialization
-        public Object executeIntrinsic(VirtualFrame frame, long left, long right, Object addr, @Cached("createStoreI64()") LLVMStoreNode store,
+        protected Object doIntrinsic(VirtualFrame frame, long left, long right, Object addr,
+                        @Cached("createStoreI64()") LLVMStoreNode store,
                         @Cached("getIncrementPointerNode()") LLVMIncrementPointerNode incrementPointer) {
             final boolean overflow = arithmetic.evalI64(frame, left, right, addr, store);
             storeI8.executeWithTarget(frame, incrementPointer.executeWithTarget(addr, secondValueOffset, PrimitiveType.I1), overflow);
@@ -513,24 +513,27 @@ public abstract class LLVMArithmetic extends LLVMBuiltin {
         }
 
         @Specialization
-        public byte executeIntrinsic(VirtualFrame frame, byte left, byte right, byte cin, Object addr, @Cached("createStoreI8()") LLVMStoreNode store) {
+        protected byte doIntrinsic(VirtualFrame frame, byte left, byte right, byte cin, Object addr,
+                        @Cached("createStoreI8()") LLVMStoreNode store) {
             return arithmetic.evalI8(frame, left, right, cin, addr, store);
         }
 
         @Specialization
-        public short executeIntrinsic(VirtualFrame frame, short left, short right, short cin, Object addr, @Cached("createStoreI16()") LLVMStoreNode store) {
+        protected short doIntrinsic(VirtualFrame frame, short left, short right, short cin, Object addr,
+                        @Cached("createStoreI16()") LLVMStoreNode store) {
             return arithmetic.evalI16(frame, left, right, cin, addr, store);
         }
 
         @Specialization
-        public int executeIntrinsic(VirtualFrame frame, int left, int right, int cin, Object addr, @Cached("createStoreI32()") LLVMStoreNode store) {
+        protected int doIntrinsic(VirtualFrame frame, int left, int right, int cin, Object addr,
+                        @Cached("createStoreI32()") LLVMStoreNode store) {
             return arithmetic.evalI32(frame, left, right, cin, addr, store);
         }
 
         @Specialization
-        public long executeIntrinsic(VirtualFrame frame, long left, long right, long cin, Object addr, @Cached("createStoreI64()") LLVMStoreNode store) {
+        protected long doIntrinsic(VirtualFrame frame, long left, long right, long cin, Object addr,
+                        @Cached("createStoreI64()") LLVMStoreNode store) {
             return arithmetic.evalI64(frame, left, right, cin, addr, store);
         }
     }
-
 }

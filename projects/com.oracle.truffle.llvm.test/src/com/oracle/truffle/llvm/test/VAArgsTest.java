@@ -77,5 +77,4 @@ public final class VAArgsTest extends BaseSulongOnlyHarness {
     public RunConfiguration getConfiguration() {
         return configuration;
     }
-
 }

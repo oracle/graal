@@ -215,5 +215,4 @@ public interface InstructionVisitorAdapter extends InstructionVisitor {
     default void visit(FenceInstruction fence) {
         defaultAction(fence);
     }
-
 }

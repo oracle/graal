@@ -154,5 +154,4 @@ public final class LLVMEndCatchNode extends LLVMExpressionNode {
     private LLVMAddress popExceptionToStack() {
         return getCaughtExceptionStack().pop();
     }
-
 }

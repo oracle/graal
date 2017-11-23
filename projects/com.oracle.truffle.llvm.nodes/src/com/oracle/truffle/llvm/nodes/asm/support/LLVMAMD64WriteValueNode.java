@@ -47,31 +47,31 @@ public abstract class LLVMAMD64WriteValueNode extends Node {
     public abstract void execute(VirtualFrame frame, Object value);
 
     @Specialization
-    protected void executeI8(VirtualFrame frame, byte value) {
+    protected void doI8(VirtualFrame frame, byte value) {
         Object info = data.executeGeneric(frame);
         write.execute(frame, info, value);
     }
 
     @Specialization
-    protected void executeI16(VirtualFrame frame, short value) {
+    protected void doI16(VirtualFrame frame, short value) {
         Object info = data.executeGeneric(frame);
         write.execute(frame, info, value);
     }
 
     @Specialization
-    protected void executeI32(VirtualFrame frame, int value) {
+    protected void doI32(VirtualFrame frame, int value) {
         Object info = data.executeGeneric(frame);
         write.execute(frame, info, value);
     }
 
     @Specialization
-    protected void executeI64(VirtualFrame frame, long value) {
+    protected void doI64(VirtualFrame frame, long value) {
         Object info = data.executeGeneric(frame);
         write.execute(frame, info, value);
     }
 
     @Specialization
-    protected void executeAddress(VirtualFrame frame, LLVMAddress value) {
+    protected void doAddress(VirtualFrame frame, LLVMAddress value) {
         Object info = data.executeGeneric(frame);
         write.execute(frame, info, value);
     }

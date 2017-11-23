@@ -52,10 +52,9 @@ public abstract class LLVMValueProfilingNode extends LLVMExpressionNode {
         private final BooleanValueProfile profile = BooleanValueProfile.create();
 
         @Specialization
-        public boolean executeI1(boolean value) {
+        protected boolean doI1(boolean value) {
             return profile.profile(value);
         }
-
     }
 
     public abstract static class LLVMI8ProfiledValueNode extends LLVMValueProfilingNode {
@@ -63,10 +62,9 @@ public abstract class LLVMValueProfilingNode extends LLVMExpressionNode {
         private final ByteValueProfile profile = ByteValueProfile.createIdentityProfile();
 
         @Specialization
-        public byte executeI8(byte value) {
+        protected byte doI8(byte value) {
             return profile.profile(value);
         }
-
     }
 
     public abstract static class LLVMI16ProfiledValueNode extends LLVMValueProfilingNode {
@@ -74,10 +72,9 @@ public abstract class LLVMValueProfilingNode extends LLVMExpressionNode {
         private final ShortValueProfile profile = ShortValueProfile.create();
 
         @Specialization
-        public short executeI1(short value) {
+        protected short doI1(short value) {
             return profile.profile(value);
         }
-
     }
 
     public abstract static class LLVMI32ProfiledValueNode extends LLVMValueProfilingNode {
@@ -85,7 +82,7 @@ public abstract class LLVMValueProfilingNode extends LLVMExpressionNode {
         private final IntValueProfile profile = IntValueProfile.createIdentityProfile();
 
         @Specialization
-        public int executeI32(int value) {
+        protected int doI32(int value) {
             return profile.profile(value);
         }
     }
@@ -95,10 +92,9 @@ public abstract class LLVMValueProfilingNode extends LLVMExpressionNode {
         private final LongValueProfile profile = LongValueProfile.createIdentityProfile();
 
         @Specialization
-        public long executeI64(long value) {
+        protected long doI64(long value) {
             return profile.profile(value);
         }
-
     }
 
     public abstract static class LLVMFloatProfiledValueNode extends LLVMValueProfilingNode {
@@ -106,10 +102,9 @@ public abstract class LLVMValueProfilingNode extends LLVMExpressionNode {
         private final FloatValueProfile profile = FloatValueProfile.createRawIdentityProfile();
 
         @Specialization
-        public float executeFloat(float value) {
+        protected float doFloat(float value) {
             return profile.profile(value);
         }
-
     }
 
     public abstract static class LLVMDoubleProfiledValueNode extends LLVMValueProfilingNode {
@@ -117,24 +112,22 @@ public abstract class LLVMValueProfilingNode extends LLVMExpressionNode {
         private final DoubleValueProfile profile = DoubleValueProfile.createRawIdentityProfile();
 
         @Specialization
-        public double executeFloat(double value) {
+        protected double doFloat(double value) {
             return profile.profile(value);
         }
-
     }
 
     public abstract static class LLVMAddressProfiledValueNode extends LLVMValueProfilingNode {
 
         @Specialization
-        public LLVMAddress executeAddress(LLVMAddress value, @Cached("createIdentityProfile()") LongValueProfile profile) {
+        protected LLVMAddress doAddress(LLVMAddress value,
+                        @Cached("createIdentityProfile()") LongValueProfile profile) {
             return LLVMAddress.fromLong(profile.profile(value.getVal()));
         }
 
         @Specialization
-        public Object noCache(Object value) {
+        protected Object noCache(Object value) {
             return value;
         }
-
     }
-
 }

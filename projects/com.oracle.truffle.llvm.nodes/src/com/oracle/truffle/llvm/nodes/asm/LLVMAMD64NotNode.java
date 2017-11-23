@@ -37,7 +37,7 @@ public abstract class LLVMAMD64NotNode extends LLVMExpressionNode {
     @NodeChild("valueNode")
     public abstract static class LLVMAMD64NotbNode extends LLVMExpressionNode {
         @Specialization
-        protected byte executeI8(byte value) {
+        protected byte doI8(byte value) {
             return (byte) ~value;
         }
     }
@@ -45,7 +45,7 @@ public abstract class LLVMAMD64NotNode extends LLVMExpressionNode {
     @NodeChild("valueNode")
     public abstract static class LLVMAMD64NotwNode extends LLVMExpressionNode {
         @Specialization
-        protected short executeI16(short value) {
+        protected short doI16(short value) {
             return (short) ~value;
         }
     }
@@ -53,7 +53,7 @@ public abstract class LLVMAMD64NotNode extends LLVMExpressionNode {
     @NodeChild("valueNode")
     public abstract static class LLVMAMD64NotlNode extends LLVMExpressionNode {
         @Specialization
-        protected int executeI32(int value) {
+        protected int doI32(int value) {
             return ~value;
         }
     }
@@ -61,7 +61,7 @@ public abstract class LLVMAMD64NotNode extends LLVMExpressionNode {
     @NodeChild("valueNode")
     public abstract static class LLVMAMD64NotqNode extends LLVMExpressionNode {
         @Specialization
-        protected long executeI64(long value) {
+        protected long doI64(long value) {
             return ~value;
         }
     }

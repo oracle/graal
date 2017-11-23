@@ -182,7 +182,6 @@ public final class LLVMDebugAggregateValue extends LLVMDebugValue {
         public Object asInteropValue() {
             return null;
         }
-
     }
 
     private static final class OffsetValueProvider implements LLVMDebugValueProvider {

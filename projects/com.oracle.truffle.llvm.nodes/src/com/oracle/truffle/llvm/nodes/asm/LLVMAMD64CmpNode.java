@@ -50,7 +50,7 @@ public abstract class LLVMAMD64CmpNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, byte left, byte right) {
+        protected Object doOp(VirtualFrame frame, byte left, byte right) {
             int result = left - right;
             boolean overflow = (byte) ((left ^ right) & (left ^ result)) < 0;
             boolean carry = Byte.toUnsignedInt(left) < Byte.toUnsignedInt(right);
@@ -66,7 +66,7 @@ public abstract class LLVMAMD64CmpNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, short left, short right) {
+        protected Object doOp(VirtualFrame frame, short left, short right) {
             int result = left - right;
             boolean overflow = (short) ((left ^ right) & (left ^ result)) < 0;
             boolean carry = Short.toUnsignedInt(left) < Short.toUnsignedInt(right);
@@ -82,7 +82,7 @@ public abstract class LLVMAMD64CmpNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, int left, int right) {
+        protected Object doOp(VirtualFrame frame, int left, int right) {
             int result = left - right;
             boolean overflow = ((left ^ right) & (left ^ result)) < 0;
             boolean carry = Integer.compareUnsigned(left, right) < 0;
@@ -98,7 +98,7 @@ public abstract class LLVMAMD64CmpNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, long left, long right) {
+        protected Object doOp(VirtualFrame frame, long left, long right) {
             long result = left - right;
             boolean overflow = ((left ^ right) & (left ^ result)) < 0;
             boolean carry = Long.compareUnsigned(left, right) < 0;

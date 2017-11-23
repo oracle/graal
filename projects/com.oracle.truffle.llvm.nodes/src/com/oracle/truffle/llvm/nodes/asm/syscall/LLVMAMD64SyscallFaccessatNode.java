@@ -43,12 +43,12 @@ public abstract class LLVMAMD64SyscallFaccessatNode extends LLVMAMD64SyscallOper
     }
 
     @Specialization
-    public long execute(long fd, LLVMAddress path, long amode, long flag) {
+    protected long doOp(long fd, LLVMAddress path, long amode, long flag) {
         return (int) faccessat.execute((int) fd, path.getVal(), (int) amode, (int) flag);
     }
 
     @Specialization
-    public long execute(long fd, long path, long amode, long flag) {
-        return execute(fd, LLVMAddress.fromLong(path), (int) amode, flag);
+    protected long doOp(long fd, long path, long amode, long flag) {
+        return doOp(fd, LLVMAddress.fromLong(path), (int) amode, flag);
     }
 }

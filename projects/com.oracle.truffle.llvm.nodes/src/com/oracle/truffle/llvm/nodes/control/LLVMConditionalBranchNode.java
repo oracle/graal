@@ -106,6 +106,5 @@ public abstract class LLVMConditionalBranchNode extends LLVMControlFlowNode {
         public int getFalseSuccessor() {
             return falseSuccessor;
         }
-
     }
 }

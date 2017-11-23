@@ -87,5 +87,4 @@ public class LLVM80BitGetShortTest extends LLVM80BitTest {
             assertEquals(nextByte, LLVM80BitFloat.fromShort(nextByte).getShortValue());
         }
     }
-
 }

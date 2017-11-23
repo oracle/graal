@@ -61,7 +61,7 @@ public abstract class LLVMAMD64CmpXchgNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, byte a, byte src, byte dst) {
+        protected Object doOp(VirtualFrame frame, byte a, byte src, byte dst) {
             int result = a - dst;
             boolean carry = Byte.toUnsignedInt(a) < Byte.toUnsignedInt(dst);
             boolean adjust = (((a ^ dst) ^ result) & 0x10) != 0;
@@ -81,7 +81,7 @@ public abstract class LLVMAMD64CmpXchgNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, short a, short src, short dst) {
+        protected Object doOp(VirtualFrame frame, short a, short src, short dst) {
             int result = a - dst;
             boolean carry = Short.toUnsignedInt(a) < Short.toUnsignedInt(dst);
             boolean adjust = (((a ^ dst) ^ result) & 0x10) != 0;
@@ -101,7 +101,7 @@ public abstract class LLVMAMD64CmpXchgNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, int a, int src, int dst) {
+        protected Object doOp(VirtualFrame frame, int a, int src, int dst) {
             int result = a - dst;
             boolean carry = Integer.compareUnsigned(a, dst) < 0;
             boolean adjust = (((a ^ dst) ^ result) & 0x10) != 0;
@@ -121,7 +121,7 @@ public abstract class LLVMAMD64CmpXchgNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, long a, long src, long dst) {
+        protected Object doOp(VirtualFrame frame, long a, long src, long dst) {
             long result = a - dst;
             boolean carry = Long.compareUnsigned(a, dst) < 0;
             boolean adjust = (((a ^ dst) ^ result) & 0x10) != 0;
@@ -135,7 +135,7 @@ public abstract class LLVMAMD64CmpXchgNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, LLVMAddress a, LLVMAddress src, LLVMAddress dst) {
+        protected Object doOp(VirtualFrame frame, LLVMAddress a, LLVMAddress src, LLVMAddress dst) {
             long result = a.getVal() - dst.getVal();
             boolean carry = Long.compareUnsigned(a.getVal(), dst.getVal()) < 0;
             boolean adjust = (((a.getVal() ^ dst.getVal()) ^ result) & 0x10) != 0;

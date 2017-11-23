@@ -150,5 +150,4 @@ public final class LLVMFloatVector {
     public int getLength() {
         return vector.length;
     }
-
 }

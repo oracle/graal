@@ -39,8 +39,7 @@ public abstract class LLVMTrap extends LLVMBuiltin {
     private static final int UNIX_SIGABORT = 134;
 
     @Specialization
-    public Object executeVoid() {
+    protected Object doVoid() {
         throw new LLVMExitException(UNIX_SIGABORT);
     }
-
 }

@@ -44,12 +44,13 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMTruffleReadBytes extends LLVMIntrinsic {
 
     @Specialization
-    public Object executeIntrinsic(LLVMGlobalVariable value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        return executeIntrinsic(globalAccess.getNativeLocation(value));
+    protected Object doIntrinsic(LLVMGlobalVariable value,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        return doIntrinsic(globalAccess.getNativeLocation(value));
     }
 
     @Specialization
-    public Object executeIntrinsic(LLVMAddress value) {
+    protected Object doIntrinsic(LLVMAddress value) {
         byte c;
         long ptr = value.getVal();
         int count = 0;
@@ -66,5 +67,4 @@ public abstract class LLVMTruffleReadBytes extends LLVMIntrinsic {
         }
         return JavaInterop.asTruffleObject(bytes);
     }
-
 }

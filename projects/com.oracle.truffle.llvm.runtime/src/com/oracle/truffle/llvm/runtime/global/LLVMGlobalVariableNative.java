@@ -35,7 +35,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 
 public final class LLVMGlobalVariableNative extends LLVMObjectNativeLibrary {
 
-    @Child LLVMGlobalVariableAccess access = new LLVMGlobalVariableAccess();
+    @Child private LLVMGlobalVariableAccess access = new LLVMGlobalVariableAccess();
 
     @Override
     public boolean guard(Object obj) {

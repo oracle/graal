@@ -132,5 +132,4 @@ public final class SulongStackTrace {
     public void printCStackTrace() {
         System.err.println(this.toString());
     }
-
 }

@@ -48,72 +48,74 @@ abstract class ToI16 extends ForeignToLLVM {
     @Child private ToI16 toI16;
 
     @Specialization
-    public short fromInt(int value) {
+    protected short fromInt(int value) {
         return (short) value;
     }
 
     @Specialization
-    public short fromChar(char value) {
+    protected short fromChar(char value) {
         return (short) value;
     }
 
     @Specialization
-    public short fromShort(short value) {
+    protected short fromShort(short value) {
         return value;
     }
 
     @Specialization
-    public short fromLong(long value) {
+    protected short fromLong(long value) {
         return (short) value;
     }
 
     @Specialization
-    public short fromByte(byte value) {
+    protected short fromByte(byte value) {
         return value;
     }
 
     @Specialization
-    public short fromFloat(float value) {
+    protected short fromFloat(float value) {
         return (short) value;
     }
 
     @Specialization
-    public short fromDouble(double value) {
+    protected short fromDouble(double value) {
         return (short) value;
     }
 
     @Specialization
-    public short fromBoolean(boolean value) {
+    protected short fromBoolean(boolean value) {
         return (short) (value ? 1 : 0);
     }
 
     @Specialization
-    public short fromForeignPrimitive(VirtualFrame frame, LLVMBoxedPrimitive boxed) {
+    protected short fromForeignPrimitive(VirtualFrame frame, LLVMBoxedPrimitive boxed) {
         return recursiveConvert(frame, boxed.getValue());
     }
 
     @Specialization(guards = "notLLVM(obj)")
-    public short fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+    protected short fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
         return recursiveConvert(frame, fromForeign(obj));
     }
 
     @Specialization
-    public short fromString(String value) {
+    protected short fromString(String value) {
         return (short) getSingleStringCharacter(value);
     }
 
     @Specialization
-    public short fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+    protected short fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd,
+                    @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
         return (short) toNative.executeWithTarget(frame, fd).getVal();
     }
 
     @Specialization
-    public short fromLLVMTruffleAddress(LLVMTruffleAddress obj) {
+    protected short fromLLVMTruffleAddress(LLVMTruffleAddress obj) {
         return (short) obj.getAddress().getVal();
     }
 
     @Specialization
-    public short fromSharedDescriptor(LLVMSharedGlobalVariable shared, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
+    protected short fromSharedDescriptor(LLVMSharedGlobalVariable shared,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
         return (short) access.getNativeLocation(shared.getDescriptor()).getVal();
     }
 

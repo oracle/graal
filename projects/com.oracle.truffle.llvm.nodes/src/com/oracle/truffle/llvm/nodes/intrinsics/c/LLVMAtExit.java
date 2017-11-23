@@ -43,7 +43,7 @@ public abstract class LLVMAtExit extends LLVMIntrinsic {
 
     @Specialization
     @TruffleBoundary
-    public long doInt(LLVMAddress func) {
+    protected long doInt(LLVMAddress func) {
 
         LLVMContext context = getContextReference().get();
         LLVMFunctionDescriptor desc = context.getFunctionDescriptor(func);
@@ -51,5 +51,4 @@ public abstract class LLVMAtExit extends LLVMIntrinsic {
 
         return func.getVal();
     }
-
 }

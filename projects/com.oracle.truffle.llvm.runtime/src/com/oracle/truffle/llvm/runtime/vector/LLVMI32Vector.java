@@ -234,5 +234,4 @@ public final class LLVMI32Vector {
 
         return LLVMI1Vector.create(values);
     }
-
 }

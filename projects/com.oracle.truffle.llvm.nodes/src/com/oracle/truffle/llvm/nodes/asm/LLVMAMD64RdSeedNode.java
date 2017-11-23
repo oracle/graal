@@ -73,9 +73,8 @@ public abstract class LLVMAMD64RdSeedNode extends LLVMExpressionNode {
             super(cf);
         }
 
-        @Override
         @Specialization
-        public short executeI16(VirtualFrame frame) {
+        protected short doI16(VirtualFrame frame) {
             writeCFNode.execute(frame, true);
             return getSeedI16();
         }
@@ -86,9 +85,8 @@ public abstract class LLVMAMD64RdSeedNode extends LLVMExpressionNode {
             super(cf);
         }
 
-        @Override
         @Specialization
-        public int executeI32(VirtualFrame frame) {
+        protected int doI32(VirtualFrame frame) {
             writeCFNode.execute(frame, true);
             return getSeedI32();
         }
@@ -99,9 +97,8 @@ public abstract class LLVMAMD64RdSeedNode extends LLVMExpressionNode {
             super(cf);
         }
 
-        @Override
         @Specialization
-        public long executeI64(VirtualFrame frame) {
+        protected long doI64(VirtualFrame frame) {
             writeCFNode.execute(frame, true);
             return getSeedI64();
         }

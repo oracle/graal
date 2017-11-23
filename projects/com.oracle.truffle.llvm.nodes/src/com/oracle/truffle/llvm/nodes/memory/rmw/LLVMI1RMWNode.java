@@ -44,93 +44,99 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI1RMWXchgNode extends LLVMI1RMWNode {
         @Specialization
-        public boolean execute(LLVMGlobalVariable address, boolean value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        protected boolean doOp(LLVMGlobalVariable address, boolean value,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             LLVMAddress adr = globalAccess.getNativeLocation(address);
             return LLVMMemory.getAndOpI1(adr, value, (a, b) -> b);
         }
 
         @Specialization
-        public boolean execute(LLVMAddress address, boolean value) {
+        protected boolean doOp(LLVMAddress address, boolean value) {
             return LLVMMemory.getAndOpI1(address, value, (a, b) -> b);
         }
     }
 
     public abstract static class LLVMI1RMWAddNode extends LLVMI1RMWNode {
         @Specialization
-        public boolean execute(LLVMGlobalVariable address, boolean value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        protected boolean doOp(LLVMGlobalVariable address, boolean value,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             LLVMAddress adr = globalAccess.getNativeLocation(address);
             return LLVMMemory.getAndOpI1(adr, value, (a, b) -> a ^ b);
         }
 
         @Specialization
-        public boolean execute(LLVMAddress address, boolean value) {
+        protected boolean doOp(LLVMAddress address, boolean value) {
             return LLVMMemory.getAndOpI1(address, value, (a, b) -> a ^ b);
         }
     }
 
     public abstract static class LLVMI1RMWSubNode extends LLVMI1RMWNode {
         @Specialization
-        public boolean execute(LLVMGlobalVariable address, boolean value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        protected boolean doOp(LLVMGlobalVariable address, boolean value,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             LLVMAddress adr = globalAccess.getNativeLocation(address);
             return LLVMMemory.getAndOpI1(adr, value, (a, b) -> a ^ b);
         }
 
         @Specialization
-        public boolean execute(LLVMAddress address, boolean value) {
+        protected boolean doOp(LLVMAddress address, boolean value) {
             return LLVMMemory.getAndOpI1(address, value, (a, b) -> a ^ b);
         }
     }
 
     public abstract static class LLVMI1RMWAndNode extends LLVMI1RMWNode {
         @Specialization
-        public boolean execute(LLVMGlobalVariable address, boolean value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        protected boolean doOp(LLVMGlobalVariable address, boolean value,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             LLVMAddress adr = globalAccess.getNativeLocation(address);
             return LLVMMemory.getAndOpI1(adr, value, (a, b) -> a & b);
         }
 
         @Specialization
-        public boolean execute(LLVMAddress address, boolean value) {
+        protected boolean doOp(LLVMAddress address, boolean value) {
             return LLVMMemory.getAndOpI1(address, value, (a, b) -> a & b);
         }
     }
 
     public abstract static class LLVMI1RMWNandNode extends LLVMI1RMWNode {
         @Specialization
-        public boolean execute(LLVMGlobalVariable address, boolean value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        protected boolean doOp(LLVMGlobalVariable address, boolean value,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             LLVMAddress adr = globalAccess.getNativeLocation(address);
             return LLVMMemory.getAndOpI1(adr, value, (a, b) -> !(a & b));
         }
 
         @Specialization
-        public boolean execute(LLVMAddress address, boolean value) {
+        protected boolean doOp(LLVMAddress address, boolean value) {
             return LLVMMemory.getAndOpI1(address, value, (a, b) -> !(a & b));
         }
     }
 
     public abstract static class LLVMI1RMWOrNode extends LLVMI1RMWNode {
         @Specialization
-        public boolean execute(LLVMGlobalVariable address, boolean value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        protected boolean doOp(LLVMGlobalVariable address, boolean value,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             LLVMAddress adr = globalAccess.getNativeLocation(address);
             return LLVMMemory.getAndOpI1(adr, value, (a, b) -> a | b);
         }
 
         @Specialization
-        public boolean execute(LLVMAddress address, boolean value) {
+        protected boolean doOp(LLVMAddress address, boolean value) {
             return LLVMMemory.getAndOpI1(address, value, (a, b) -> a | b);
         }
     }
 
     public abstract static class LLVMI1RMWXorNode extends LLVMI1RMWNode {
         @Specialization
-        public boolean execute(LLVMGlobalVariable address, boolean value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        protected boolean doOp(LLVMGlobalVariable address, boolean value,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             LLVMAddress adr = globalAccess.getNativeLocation(address);
             return LLVMMemory.getAndOpI1(adr, value, (a, b) -> a ^ b);
         }
 
         @Specialization
-        public boolean execute(LLVMAddress address, boolean value) {
+        protected boolean doOp(LLVMAddress address, boolean value) {
             return LLVMMemory.getAndOpI1(address, value, (a, b) -> a ^ b);
         }
     }
-
 }

@@ -78,18 +78,6 @@ public abstract class LLVMMemory {
         }
     }
 
-    /** Use {@link com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode} instead. */
-    @Deprecated
-    public static void memset(long address, long size, byte value) {
-        try {
-            UNSAFE.setMemory(address, size, value);
-        } catch (Throwable e) {
-            // this avoids unnecessary exception edges in the compiled code
-            CompilerDirectives.transferToInterpreter();
-            throw e;
-        }
-    }
-
     /** Use {@link com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode} instead. */
     @Deprecated
     public static void copyMemory(long sourceAddress, long targetAddress, long length) {
@@ -217,11 +205,6 @@ public abstract class LLVMMemory {
             currentPtr += Byte.BYTES;
         }
         return LLVM80BitFloat.fromBytes(bytes);
-    }
-
-    static long extractAddr(LLVMAddress addr) {
-        assert addr.getVal() != 0;
-        return addr.getVal();
     }
 
     public static LLVMAddress getAddress(LLVMAddress addr) {
@@ -413,7 +396,7 @@ public abstract class LLVMMemory {
         private final int value;
         private final boolean swap;
 
-        public CMPXCHGI32(int value, boolean swap) {
+        private CMPXCHGI32(int value, boolean swap) {
             this.value = value;
             this.swap = swap;
         }
@@ -448,7 +431,7 @@ public abstract class LLVMMemory {
         private final long value;
         private final boolean swap;
 
-        public CMPXCHGI64(long value, boolean swap) {
+        private CMPXCHGI64(long value, boolean swap) {
             this.value = value;
             this.swap = swap;
         }
@@ -483,7 +466,7 @@ public abstract class LLVMMemory {
         private final byte value;
         private final boolean swap;
 
-        public CMPXCHGI8(byte value, boolean swap) {
+        private CMPXCHGI8(byte value, boolean swap) {
             this.value = value;
             this.swap = swap;
         }
@@ -666,5 +649,4 @@ public abstract class LLVMMemory {
     public static void fullFence() {
         UNSAFE.fullFence();
     }
-
 }

@@ -48,7 +48,7 @@ public abstract class LLVMRunDestructorFunctions extends LLVMIntrinsic {
     @CompilationFinal(dimensions = 1) private RootCallTarget[] targets;
 
     @Specialization
-    public Object execute(@Cached("getContextReference()") ContextReference<LLVMContext> context) {
+    protected Object doOp(@Cached("getContextReference()") ContextReference<LLVMContext> context) {
         if (targets == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             List<RootCallTarget> destructorFunctions = context.get().getDestructorFunctions();
@@ -59,5 +59,4 @@ public abstract class LLVMRunDestructorFunctions extends LLVMIntrinsic {
         }
         return null;
     }
-
 }

@@ -41,7 +41,7 @@ public abstract class LLVMAMD64ImmNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public boolean executeI1() {
+        protected boolean doI1() {
             return value;
         }
     }
@@ -54,7 +54,7 @@ public abstract class LLVMAMD64ImmNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public byte executeI8() {
+        protected byte doI8() {
             return value;
         }
     }
@@ -67,7 +67,7 @@ public abstract class LLVMAMD64ImmNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public short executeI16() {
+        protected short doI16() {
             return value;
         }
     }
@@ -80,7 +80,7 @@ public abstract class LLVMAMD64ImmNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public int executeI32() {
+        protected int doI32() {
             return value;
         }
     }
@@ -93,7 +93,7 @@ public abstract class LLVMAMD64ImmNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public long executeI64() {
+        protected long doI64() {
             return value;
         }
     }

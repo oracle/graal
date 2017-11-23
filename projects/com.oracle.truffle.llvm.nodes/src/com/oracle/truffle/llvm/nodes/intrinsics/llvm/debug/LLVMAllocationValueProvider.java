@@ -182,7 +182,6 @@ final class LLVMAllocationValueProvider implements LLVMDebugValueProvider {
                     case LLVMDebugTypeConstants.LONG_SIZE:
                         return BigInteger.valueOf(LLVMMemory.getI64(address));
                 }
-
             } else {
                 switch (bitSize) {
                     case LLVMDebugTypeConstants.BYTE_SIZE:

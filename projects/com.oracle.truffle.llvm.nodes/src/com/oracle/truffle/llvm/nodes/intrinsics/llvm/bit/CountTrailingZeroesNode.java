@@ -41,7 +41,7 @@ public abstract class CountTrailingZeroesNode {
     public abstract static class CountTrailingZeroesI8Node extends LLVMBuiltin {
 
         @Specialization
-        public byte executeI8(byte val, @SuppressWarnings("unused") boolean isZeroUndefined) {
+        protected byte doI8(byte val, @SuppressWarnings("unused") boolean isZeroUndefined) {
             final int trailingZeroes = Integer.numberOfTrailingZeros(val);
             return (byte) (trailingZeroes > Byte.SIZE ? Byte.SIZE : trailingZeroes);
         }
@@ -51,7 +51,7 @@ public abstract class CountTrailingZeroesNode {
     public abstract static class CountTrailingZeroesI16Node extends LLVMBuiltin {
 
         @Specialization
-        public short executeI16(short val, @SuppressWarnings("unused") boolean isZeroUndefined) {
+        protected short doI16(short val, @SuppressWarnings("unused") boolean isZeroUndefined) {
             final int trailingZeroes = Integer.numberOfTrailingZeros(val);
             return (short) (trailingZeroes > Short.SIZE ? Short.SIZE : trailingZeroes);
         }
@@ -61,7 +61,7 @@ public abstract class CountTrailingZeroesNode {
     public abstract static class CountTrailingZeroesI32Node extends LLVMBuiltin {
 
         @Specialization
-        public int executeI32(int val, @SuppressWarnings("unused") boolean isZeroUndefined) {
+        protected int doI32(int val, @SuppressWarnings("unused") boolean isZeroUndefined) {
             return Integer.numberOfTrailingZeros(val);
         }
     }
@@ -70,7 +70,7 @@ public abstract class CountTrailingZeroesNode {
     public abstract static class CountTrailingZeroesI64Node extends LLVMBuiltin {
 
         @Specialization
-        public long executeI64(long val, @SuppressWarnings("unused") boolean isZeroUndefined) {
+        protected long doI64(long val, @SuppressWarnings("unused") boolean isZeroUndefined) {
             return Long.numberOfTrailingZeros(val);
         }
     }

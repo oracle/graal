@@ -51,5 +51,4 @@ public class LLVMInlineAssemblyPrologueNode extends LLVMExpressionNode {
         }
         return null;
     }
-
 }

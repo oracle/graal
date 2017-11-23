@@ -45,17 +45,18 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 public abstract class LLVMI1LoadNode extends LLVMLoadNode {
 
     @Specialization
-    public boolean executeBoolean(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected boolean doBoolean(LLVMGlobalVariable addr,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         return globalAccess.getI1(addr);
     }
 
     @Specialization
-    public boolean executeI1(LLVMVirtualAllocationAddress address) {
+    protected boolean doI1(LLVMVirtualAllocationAddress address) {
         return address.getI1();
     }
 
     @Specialization
-    public boolean executeI1(LLVMAddress addr) {
+    protected boolean doI1(LLVMAddress addr) {
         return LLVMMemory.getI1(addr);
     }
 
@@ -64,12 +65,13 @@ public abstract class LLVMI1LoadNode extends LLVMLoadNode {
     }
 
     @Specialization
-    public boolean executeI1(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+    protected boolean doI1(VirtualFrame frame, LLVMTruffleObject addr,
+                    @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
         return (boolean) foreignRead.execute(frame, addr);
     }
 
     @Specialization
-    public boolean executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
+    protected boolean doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
         if (addr.getValue() instanceof Long) {
             return LLVMMemory.getI1((long) addr.getValue());
         } else {

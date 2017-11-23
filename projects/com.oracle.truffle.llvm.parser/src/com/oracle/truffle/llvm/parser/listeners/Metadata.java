@@ -378,7 +378,6 @@ public final class Metadata implements ParserListener {
                 default:
                     metadata.add(MDNode.create32(args, this));
             }
-
         } else {
             metadata.add(MDNode.create32(args, this));
         }

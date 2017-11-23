@@ -74,7 +74,7 @@ public abstract class LLVMAMD64ImulNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected short execute(VirtualFrame frame, byte left, byte right) {
+        protected short doOp(VirtualFrame frame, byte left, byte right) {
             short value = (short) (left * right);
             byte valueb = (byte) value;
             boolean overflow = valueb != value;
@@ -95,7 +95,7 @@ public abstract class LLVMAMD64ImulNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, short left, short right) {
+        protected Object doOp(VirtualFrame frame, short left, short right) {
             int value = left * right;
             short hi = (short) (value >> LLVMExpressionNode.I16_SIZE_IN_BITS);
             short valuew = (short) value;
@@ -115,7 +115,7 @@ public abstract class LLVMAMD64ImulNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected short executeI16(VirtualFrame frame, short left, short right) {
+        protected short doI16(VirtualFrame frame, short left, short right) {
             int value = left * right;
             short valuew = (short) value;
             boolean overflow = valuew != value;
@@ -136,7 +136,7 @@ public abstract class LLVMAMD64ImulNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, int left, int right) {
+        protected Object doOp(VirtualFrame frame, int left, int right) {
             long value = (long) left * (long) right;
             int hi = (int) (value >> LLVMExpressionNode.I32_SIZE_IN_BITS);
             int valuel = (int) value;
@@ -156,7 +156,7 @@ public abstract class LLVMAMD64ImulNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected int executeI32(VirtualFrame frame, int left, int right) {
+        protected int doI32(VirtualFrame frame, int left, int right) {
             long value = (long) left * (long) right;
             int valuel = (int) value;
             boolean overflow = valuel != value;
@@ -177,7 +177,7 @@ public abstract class LLVMAMD64ImulNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, long left, long right) {
+        protected Object doOp(VirtualFrame frame, long left, long right) {
             long value = left * right;
             long hi = LongMultiplication.multiplyHigh(left, right);
             boolean overflow = !(value < 0 && hi == -1) && !(value > 0 && hi == 0);
@@ -196,7 +196,7 @@ public abstract class LLVMAMD64ImulNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected long executeI64(VirtualFrame frame, long left, long right) {
+        protected long doI64(VirtualFrame frame, long left, long right) {
             long value = left * right;
             long hi = LongMultiplication.multiplyHigh(left, right);
             boolean overflow = !(value < 0 && hi == -1) && !(value > 0 && hi == 0);

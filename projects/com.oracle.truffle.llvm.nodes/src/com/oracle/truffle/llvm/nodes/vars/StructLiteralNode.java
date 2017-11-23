@@ -58,7 +58,7 @@ public abstract class StructLiteralNode extends LLVMExpressionNode {
 
     @ExplodeLoop
     @Specialization
-    public LLVMAddress doLLVMAddress(VirtualFrame frame, LLVMAddress address) {
+    protected LLVMAddress doLLVMAddress(VirtualFrame frame, LLVMAddress address) {
         for (int i = 0; i < offsets.length; i++) {
             LLVMAddress currentAddr = address.increment(offsets[i]);
             Object value = values[i] == null ? null : values[i].executeGeneric(frame);
@@ -69,7 +69,7 @@ public abstract class StructLiteralNode extends LLVMExpressionNode {
 
     @ExplodeLoop
     @Specialization
-    public LLVMTruffleObject doLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject address) {
+    protected LLVMTruffleObject doLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject address) {
         for (int i = 0; i < offsets.length; i++) {
             LLVMTruffleObject currentAddr = address.increment(offsets[i], types[i]);
             Object value = values[i] == null ? null : values[i].executeGeneric(frame);
@@ -77,5 +77,4 @@ public abstract class StructLiteralNode extends LLVMExpressionNode {
         }
         return address;
     }
-
 }

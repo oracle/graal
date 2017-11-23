@@ -142,5 +142,4 @@ public final class MyBoxedInt implements TruffleObject {
             }
         });
     }
-
 }

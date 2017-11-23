@@ -43,12 +43,12 @@ public abstract class LLVMAMD64SyscallFcntlNode extends LLVMAMD64SyscallOperatio
     }
 
     @Specialization
-    public long executeI64(long fd, long cmd, long arg) {
+    protected long doI64(long fd, long cmd, long arg) {
         return (int) fcntl.execute((int) fd, (int) cmd, arg);
     }
 
     @Specialization
-    public long executeI64(long fd, long cmd, LLVMAddress arg) {
-        return executeI64(fd, cmd, arg.getVal());
+    protected long doI64(long fd, long cmd, LLVMAddress arg) {
+        return doI64(fd, cmd, arg.getVal());
     }
 }

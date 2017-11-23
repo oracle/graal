@@ -45,7 +45,7 @@ public abstract class LLVMVarArgCompoundAddressNode extends LLVMExpressionNode {
     public abstract int getAlignment();
 
     @Specialization
-    public LLVMVarArgCompoundValue byValue(Object source) {
+    protected LLVMVarArgCompoundValue byValue(Object source) {
         return LLVMVarArgCompoundValue.create(source, getLength(), getAlignment());
     }
 }

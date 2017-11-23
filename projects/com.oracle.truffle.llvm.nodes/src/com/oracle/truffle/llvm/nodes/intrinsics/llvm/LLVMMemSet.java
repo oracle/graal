@@ -54,14 +54,14 @@ public abstract class LLVMMemSet extends LLVMBuiltin {
 
     @SuppressWarnings("unused")
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMAddress address, byte value, int length, int align, boolean isVolatile) {
+    protected Object doOp(VirtualFrame frame, LLVMAddress address, byte value, int length, int align, boolean isVolatile) {
         memSet.executeWithTarget(frame, address, value, length);
         return address;
     }
 
     @SuppressWarnings("unused")
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMGlobalVariable address, byte value, int length, int align, boolean isVolatile,
+    protected Object doOp(VirtualFrame frame, LLVMGlobalVariable address, byte value, int length, int align, boolean isVolatile,
                     @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         memSet.executeWithTarget(frame, globalAccess.getNativeLocation(address), value, length);
         return address;
@@ -69,14 +69,14 @@ public abstract class LLVMMemSet extends LLVMBuiltin {
 
     @SuppressWarnings("unused")
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMAddress address, byte value, long length, int align, boolean isVolatile) {
+    protected Object doOp(VirtualFrame frame, LLVMAddress address, byte value, long length, int align, boolean isVolatile) {
         memSet.executeWithTarget(frame, address, value, length);
         return address;
     }
 
     @SuppressWarnings("unused")
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMGlobalVariable address, byte value, long length, int align, boolean isVolatile,
+    protected Object doOp(VirtualFrame frame, LLVMGlobalVariable address, byte value, long length, int align, boolean isVolatile,
                     @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         memSet.executeWithTarget(frame, globalAccess.getNativeLocation(address), value, length);
         return address;
@@ -84,7 +84,8 @@ public abstract class LLVMMemSet extends LLVMBuiltin {
 
     @SuppressWarnings("unused")
     @Specialization
-    public Object execute(LLVMVirtualAllocationAddress address, byte value, long length, int align, boolean isVolatile, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doOp(LLVMVirtualAllocationAddress address, byte value, long length, int align, boolean isVolatile,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         for (int i = 0; i < length; i++) {
             address.writeI8(value);
         }
@@ -93,14 +94,14 @@ public abstract class LLVMMemSet extends LLVMBuiltin {
 
     @SuppressWarnings("unused")
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMTruffleObject address, byte value, int length, int align, boolean isVolatile) {
+    protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, byte value, int length, int align, boolean isVolatile) {
         memSet.executeWithTarget(frame, address, value, length);
         return address;
     }
 
     @SuppressWarnings("unused")
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMTruffleObject address, byte value, long length, int align, boolean isVolatile) {
+    protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, byte value, long length, int align, boolean isVolatile) {
         memSet.executeWithTarget(frame, address, value, length);
         return address;
     }

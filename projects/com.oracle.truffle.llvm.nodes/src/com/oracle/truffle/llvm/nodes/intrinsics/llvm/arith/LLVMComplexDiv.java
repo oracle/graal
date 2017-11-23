@@ -74,5 +74,4 @@ public final class LLVMComplexDiv extends LLVMExpressionNode {
             throw new IllegalStateException(e);
         }
     }
-
 }

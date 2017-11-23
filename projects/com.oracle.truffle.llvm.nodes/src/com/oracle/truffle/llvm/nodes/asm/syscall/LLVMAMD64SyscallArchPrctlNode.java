@@ -49,7 +49,7 @@ public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMAMD64SyscallOper
     }
 
     @Specialization
-    protected long execute(long code, LLVMAddress addr) {
+    protected long doOp(long code, LLVMAddress addr) {
         switch (profile.profile((int) code)) {
             case LLVMAMD64ArchPrctl.ARCH_SET_FS:
                 setTLS(addr);
@@ -62,7 +62,7 @@ public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMAMD64SyscallOper
     }
 
     @Specialization
-    protected long execute(long code, long addr) {
-        return execute(code, LLVMAddress.fromLong(addr));
+    protected long doOp(long code, long addr) {
+        return doOp(code, LLVMAddress.fromLong(addr));
     }
 }

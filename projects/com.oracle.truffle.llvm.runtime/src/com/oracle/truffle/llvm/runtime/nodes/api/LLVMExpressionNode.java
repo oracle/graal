@@ -173,5 +173,4 @@ public abstract class LLVMExpressionNode extends LLVMNode {
         return !(object instanceof LLVMFunctionDescriptor ||
                         object instanceof LLVMTruffleAddress || object instanceof LLVMSharedGlobalVariable);
     }
-
 }

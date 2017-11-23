@@ -49,7 +49,8 @@ public abstract class LLVMAMD64PopNode extends LLVMExpressionNode {
 
     public abstract static class LLVMAMD64PopwNode extends LLVMAMD64PopNode {
         @Specialization
-        public short executeI16(VirtualFrame frame, @Cached("getStackPointerSlot()") FrameSlot slot) {
+        protected short doI16(VirtualFrame frame,
+                        @Cached("getStackPointerSlot()") FrameSlot slot) {
             long sp = FrameUtil.getLongSafe(frame, slot);
             short value = LLVMMemory.getI16(sp);
             sp += LLVMExpressionNode.I16_SIZE_IN_BYTES;
@@ -60,7 +61,8 @@ public abstract class LLVMAMD64PopNode extends LLVMExpressionNode {
 
     public abstract static class LLVMAMD64PoplNode extends LLVMAMD64PopNode {
         @Specialization
-        public int executeI32(VirtualFrame frame, @Cached("getStackPointerSlot()") FrameSlot slot) {
+        protected int doI32(VirtualFrame frame,
+                        @Cached("getStackPointerSlot()") FrameSlot slot) {
             long sp = FrameUtil.getLongSafe(frame, slot);
             int value = LLVMMemory.getI32(sp);
             sp += LLVMExpressionNode.I32_SIZE_IN_BYTES;
@@ -71,7 +73,8 @@ public abstract class LLVMAMD64PopNode extends LLVMExpressionNode {
 
     public abstract static class LLVMAMD64PopqNode extends LLVMAMD64PopNode {
         @Specialization
-        public long executeI64(VirtualFrame frame, @Cached("getStackPointerSlot()") FrameSlot slot) {
+        protected long doI64(VirtualFrame frame,
+                        @Cached("getStackPointerSlot()") FrameSlot slot) {
             long sp = FrameUtil.getLongSafe(frame, slot);
             long value = LLVMMemory.getI64(sp);
             sp += LLVMExpressionNode.I64_SIZE_IN_BYTES;

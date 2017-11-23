@@ -53,22 +53,23 @@ public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
     @Child private ForeignToLLVM toLong = ForeignToLLVM.create(ForeignToLLVMType.I64);
 
     @Specialization
-    public LLVMAddress executeLLVMBoxedPrimitive(VirtualFrame frame, LLVMBoxedPrimitive from) {
+    protected LLVMAddress doLLVMBoxedPrimitive(VirtualFrame frame, LLVMBoxedPrimitive from) {
         return LLVMAddress.fromLong((long) toLong.executeWithTarget(frame, from.getValue()));
     }
 
     @Specialization
-    public LLVMAddress executeI64(long from) {
+    protected LLVMAddress doI64(long from) {
         return LLVMAddress.fromLong(from);
     }
 
     @Specialization
-    public LLVMAddress executeI64(LLVMAddress from) {
+    protected LLVMAddress doI64(LLVMAddress from) {
         return from;
     }
 
     @Specialization
-    public LLVMAddress executeGlobal(LLVMGlobalVariable from, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
+    protected LLVMAddress doGlobal(LLVMGlobalVariable from,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
         return LLVMAddress.fromLong(access.getNativeLocation(from).getVal());
     }
 
@@ -76,7 +77,7 @@ public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
     @Child private Node isNull = Message.IS_NULL.createNode();
 
     @Specialization
-    public Object executeTruffleObject(LLVMTruffleObject from) {
+    protected Object doTruffleObject(LLVMTruffleObject from) {
         if (from.getOffset() == 0) {
             if (ForeignAccess.sendIsNull(isNull, from.getObject())) {
                 return LLVMAddress.fromLong(0);
@@ -89,8 +90,7 @@ public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    public LLVMFunctionDescriptor executeLLVMFunction(LLVMFunctionDescriptor from) {
+    protected LLVMFunctionDescriptor doLLVMFunction(LLVMFunctionDescriptor from) {
         return from;
     }
-
 }

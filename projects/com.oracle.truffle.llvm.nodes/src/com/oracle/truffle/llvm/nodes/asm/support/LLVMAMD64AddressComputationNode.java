@@ -49,17 +49,17 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         }
 
         @Specialization
-        protected LLVMAddress executeLLVMAddress(LLVMAddress base) {
+        protected LLVMAddress doLLVMAddress(LLVMAddress base) {
             return base.increment(displacement);
         }
 
         @Specialization
-        protected int executeLLVMAddress(int base) {
+        protected int doLLVMAddress(int base) {
             return base + displacement;
         }
 
         @Specialization
-        protected long executeLLVMAddress(long base) {
+        protected long doLLVMAddress(long base) {
             return base + displacement;
         }
     }
@@ -74,27 +74,27 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         }
 
         @Specialization
-        protected int executeI64(int base, int offset) {
+        protected int doI64(int base, int offset) {
             return base + displacement + (offset << shift);
         }
 
         @Specialization
-        protected long executeI64(long base, int offset) {
+        protected long doI64(long base, int offset) {
             return base + displacement + (offset << shift);
         }
 
         @Specialization
-        protected long executeI64(long base, long offset) {
+        protected long doI64(long base, long offset) {
             return base + displacement + (offset << shift);
         }
 
         @Specialization
-        protected LLVMAddress executeLLVMAddress(LLVMAddress base, int offset) {
+        protected LLVMAddress doLLVMAddress(LLVMAddress base, int offset) {
             return base.increment(displacement + (offset << shift));
         }
 
         @Specialization
-        protected LLVMAddress executeLLVMAddress(LLVMAddress base, long offset) {
+        protected LLVMAddress doLLVMAddress(LLVMAddress base, long offset) {
             return base.increment(displacement + (offset << shift));
         }
     }
@@ -109,17 +109,17 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         }
 
         @Specialization
-        protected LLVMAddress executeLLVMAddress(int offset) {
+        protected LLVMAddress doLLVMAddress(int offset) {
             return LLVMAddress.fromLong(displacement + (offset << shift));
         }
 
         @Specialization
-        protected long executeLLVMAddress(long offset) {
+        protected long doLLVMAddress(long offset) {
             return displacement + (offset << shift);
         }
 
         @Specialization
-        protected LLVMAddress executeLLVMAddress(LLVMAddress offset) {
+        protected LLVMAddress doLLVMAddress(LLVMAddress offset) {
             return LLVMAddress.fromLong(displacement + (offset.getVal() << shift));
         }
     }
@@ -131,12 +131,12 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         }
 
         @Specialization
-        protected LLVMAddress executeLLVMAddress(LLVMAddress base, LLVMAddress offset) {
+        protected LLVMAddress doLLVMAddress(LLVMAddress base, LLVMAddress offset) {
             return base.increment(offset.getVal());
         }
 
         @Specialization
-        protected LLVMAddress executeI64(LLVMAddress base, long offset) {
+        protected LLVMAddress doI64(LLVMAddress base, long offset) {
             return base.increment(offset);
         }
     }

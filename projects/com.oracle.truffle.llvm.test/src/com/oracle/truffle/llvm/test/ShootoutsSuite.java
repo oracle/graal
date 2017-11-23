@@ -89,5 +89,4 @@ public final class ShootoutsSuite extends BaseSulongOnlyHarness {
     public RunConfiguration getConfiguration() {
         return configuration;
     }
-
 }

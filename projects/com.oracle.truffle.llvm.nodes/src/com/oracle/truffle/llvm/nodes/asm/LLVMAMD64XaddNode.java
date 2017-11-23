@@ -54,7 +54,7 @@ public abstract class LLVMAMD64XaddNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, byte left, byte right) {
+        protected Object doOp(VirtualFrame frame, byte left, byte right) {
             byte result = (byte) (left + right);
             boolean overflow = (result < 0 && left > 0 && right > 0) || (result > 0 && left < 0 && right < 0);
             boolean carry = ((left < 0 || right < 0) && result > 0) || (left < 0 && right < 0);
@@ -70,7 +70,7 @@ public abstract class LLVMAMD64XaddNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, short left, short right) {
+        protected Object doOp(VirtualFrame frame, short left, short right) {
             short result = (short) (left + right);
             boolean overflow = (result < 0 && left > 0 && right > 0) || (result > 0 && left < 0 && right < 0);
             boolean carry = ((left < 0 || right < 0) && result > 0) || (left < 0 && right < 0);
@@ -86,7 +86,7 @@ public abstract class LLVMAMD64XaddNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, int left, int right) {
+        protected Object doOp(VirtualFrame frame, int left, int right) {
             int result = left + right;
             boolean overflow = (result < 0 && left > 0 && right > 0) || (result > 0 && left < 0 && right < 0);
             boolean carry = ((left < 0 || right < 0) && result > 0) || (left < 0 && right < 0);
@@ -102,7 +102,7 @@ public abstract class LLVMAMD64XaddNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, long left, long right) {
+        protected Object doOp(VirtualFrame frame, long left, long right) {
             long result = left + right;
             boolean overflow = (result < 0 && left > 0 && right > 0) || (result > 0 && left < 0 && right < 0);
             boolean carry = ((left < 0 || right < 0) && result > 0) || (left < 0 && right < 0);

@@ -82,5 +82,4 @@ public final class LLVMAtExitNode extends LLVMExpressionNode {
     private void addDestructorStackElement(LLVMFunctionDescriptor d, LLVMAddress t, @SuppressWarnings("unused") LLVMAddress h) {
         getDestructorStack().push(new DestructorStackElement(d, t));
     }
-
 }

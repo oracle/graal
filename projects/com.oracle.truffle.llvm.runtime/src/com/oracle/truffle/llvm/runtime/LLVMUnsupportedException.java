@@ -53,7 +53,6 @@ public final class LLVMUnsupportedException extends RuntimeException {
         public String getDescription() {
             return description;
         }
-
     }
 
     private final UnsupportedReason reason;

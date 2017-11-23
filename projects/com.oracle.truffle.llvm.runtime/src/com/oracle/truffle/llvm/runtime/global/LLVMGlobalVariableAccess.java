@@ -62,40 +62,39 @@ public final class LLVMGlobalVariableAccess extends Node {
         abstract Container executeWithTarget(Container container);
 
         @Specialization
-        CachedLLVMAddressContainer getCachedLLVMAddressContainer(CachedLLVMAddressContainer container) {
+        protected CachedLLVMAddressContainer getCachedLLVMAddressContainer(CachedLLVMAddressContainer container) {
             return container;
         }
 
         @Specialization
-        CachedManagedContainer getCachedManagedContainer(CachedManagedContainer container) {
+        protected CachedManagedContainer getCachedManagedContainer(CachedManagedContainer container) {
             return container;
         }
 
         @Specialization
-        GenericLLVMAddressContainer getGenericLLVMAddressContainer(GenericLLVMAddressContainer container) {
+        protected GenericLLVMAddressContainer getGenericLLVMAddressContainer(GenericLLVMAddressContainer container) {
             return container;
         }
 
         @Specialization
-        GenericManagedContainer getGenericManagedContainer(GenericManagedContainer container) {
+        protected GenericManagedContainer getGenericManagedContainer(GenericManagedContainer container) {
             return container;
         }
 
         @Specialization
-        UninitializedManagedContainer getUninitializedManagedContainer(UninitializedManagedContainer container) {
+        protected UninitializedManagedContainer getUninitializedManagedContainer(UninitializedManagedContainer container) {
             return container;
         }
 
         @Specialization
-        NativeContainer getNativeContainer(NativeContainer container) {
+        protected NativeContainer getNativeContainer(NativeContainer container) {
             return container;
         }
 
         @Specialization
-        UninitializedContainer getUninitializedContainer(UninitializedContainer container) {
+        protected UninitializedContainer getUninitializedContainer(UninitializedContainer container) {
             return container;
         }
-
     }
 
     @Child private GetContainerNode getContainer = GetContainerNodeGen.create();

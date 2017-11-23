@@ -112,5 +112,4 @@ public final class LLVMIdentifier {
         builder.append('\"');
         return builder.toString();
     }
-
 }

@@ -38,12 +38,12 @@ public abstract class LLVMAMD64SyscallBrkNode extends LLVMAMD64SyscallOperationN
     }
 
     @Specialization
-    protected long execute(LLVMAddress brk) {
+    protected long doOp(LLVMAddress brk) {
         return LLVMAMD64Memory.brk(brk);
     }
 
     @Specialization
-    protected long execute(long brk) {
-        return execute(LLVMAddress.fromLong(brk));
+    protected long doOp(long brk) {
+        return doOp(LLVMAddress.fromLong(brk));
     }
 }

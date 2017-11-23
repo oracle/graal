@@ -157,5 +157,4 @@ public final class ElfHeader {
         short shstrndx = buffer.getShort();
         return new ElfHeader(type, machine, version, entry, phoff, shoff, flags, ehsize, phentsize, phnum, shentsize, shnum, shstrndx);
     }
-
 }

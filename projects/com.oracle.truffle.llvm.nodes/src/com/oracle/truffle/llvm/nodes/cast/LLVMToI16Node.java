@@ -59,52 +59,53 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
     public abstract static class LLVMToI16NoZeroExtNode extends LLVMToI16Node {
 
         @Specialization
-        public short executeLLVMFunction(short from) {
+        protected short doLLVMFunction(short from) {
             return from;
         }
 
         @Specialization
-        public short executeI16(boolean from) {
+        protected short doI16(boolean from) {
             return (short) (from ? -1 : 0);
         }
 
         @Specialization
-        public short executeI16(byte from) {
+        protected short doI16(byte from) {
             return from;
         }
 
         @Specialization
-        public short executeI16(int from) {
+        protected short doI16(int from) {
             return (short) from;
         }
 
         @Specialization
-        public short executeI16(long from) {
+        protected short doI16(long from) {
             return (short) from;
         }
 
         @Specialization
-        public short executeI16(LLVMIVarBit from) {
+        protected short doI16(LLVMIVarBit from) {
             return from.getShortValue();
         }
 
         @Specialization
-        public short executeI16(float from) {
+        protected short doI16(float from) {
             return (short) from;
         }
 
         @Specialization
-        public short executeI16(double from) {
+        protected short doI16(double from) {
             return (short) from;
         }
 
         @Specialization
-        public short executeLLVMAddress(LLVMAddress from) {
+        protected short doLLVMAddress(LLVMAddress from) {
             return (short) from.getVal();
         }
 
         @Specialization
-        public short executeLLVMAddress(LLVMGlobalVariable from, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        protected short doLLVMAddress(LLVMGlobalVariable from,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             return (short) globalAccess.getNativeLocation(from).getVal();
         }
 
@@ -114,7 +115,7 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
         @Child private ForeignToLLVM toShort = ForeignToLLVM.create(ForeignToLLVMType.I16);
 
         @Specialization
-        public short executeLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject from) {
+        protected short doLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject from) {
             TruffleObject base = from.getObject();
             if (ForeignAccess.sendIsNull(isNull, base)) {
                 return (short) from.getOffset();
@@ -132,7 +133,7 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
         }
 
         @Specialization
-        public short executeLLVMBoxedPrimitive(VirtualFrame frame, LLVMBoxedPrimitive from) {
+        protected short doLLVMBoxedPrimitive(VirtualFrame frame, LLVMBoxedPrimitive from) {
             return (short) toShort.executeWithTarget(frame, from.getValue());
         }
     }
@@ -141,22 +142,22 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
     public abstract static class LLVMToI16ZeroExtNode extends LLVMToI16Node {
 
         @Specialization
-        public short executeI16(boolean from) {
+        protected short doI16(boolean from) {
             return (short) (from ? 1 : 0);
         }
 
         @Specialization
-        public short executeI16(byte from) {
+        protected short doI16(byte from) {
             return (short) (from & LLVMExpressionNode.I8_MASK);
         }
 
         @Specialization
-        public short executeI16(LLVMIVarBit from) {
+        protected short doI16(LLVMIVarBit from) {
             return from.getZeroExtendedShortValue();
         }
 
         @Specialization
-        public short executeLLVMFunction(short from) {
+        protected short doLLVMFunction(short from) {
             return from;
         }
     }
@@ -165,22 +166,22 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
     public abstract static class LLVMToI16BitNode extends LLVMToI16Node {
 
         @Specialization
-        public short executeI16(short from) {
+        protected short doI16(short from) {
             return from;
         }
 
         @Specialization
-        public short executeI1Vector(LLVMI1Vector from) {
+        protected short doI1Vector(LLVMI1Vector from) {
             return (short) LLVMToI64BitNode.castI1Vector(from, Short.SIZE);
         }
 
         @Specialization
-        public short executeI8Vector(LLVMI8Vector from) {
+        protected short doI8Vector(LLVMI8Vector from) {
             return (short) LLVMToI64BitNode.castI8Vector(from, Short.SIZE / Byte.SIZE);
         }
 
         @Specialization
-        public short executeI16Vector(LLVMI16Vector from) {
+        protected short doI16Vector(LLVMI16Vector from) {
             if (from.getLength() != 1) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError("invalid vector size!");

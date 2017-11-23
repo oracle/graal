@@ -625,5 +625,4 @@ public final class LLVM80BitFloat {
         }
         return fromBytesBigEndian(DatatypeConverter.parseHexBinary(stringValue));
     }
-
 }

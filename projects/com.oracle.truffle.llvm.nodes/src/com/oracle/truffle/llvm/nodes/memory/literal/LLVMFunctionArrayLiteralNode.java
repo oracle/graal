@@ -56,14 +56,16 @@ public abstract class LLVMFunctionArrayLiteralNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected LLVMAddress handleGlobal(VirtualFrame frame, LLVMGlobalVariable global, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess,
+    protected LLVMAddress handleGlobal(VirtualFrame frame, LLVMGlobalVariable global,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess,
                     @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
         return handleAddress(frame, globalAccess.getNativeLocation(global), toNative);
     }
 
     @Specialization
     @ExplodeLoop
-    protected LLVMAddress handleAddress(VirtualFrame frame, LLVMAddress addr, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+    protected LLVMAddress handleAddress(VirtualFrame frame, LLVMAddress addr,
+                    @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
         long currentPtr = addr.getVal();
         for (int i = 0; i < values.length; i++) {
             try {
@@ -77,5 +79,4 @@ public abstract class LLVMFunctionArrayLiteralNode extends LLVMExpressionNode {
         }
         return addr;
     }
-
 }

@@ -58,87 +58,89 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 public abstract class LLVMToI64Node extends LLVMExpressionNode {
 
     @Specialization
-    public long executeI64(VirtualFrame frame, LLVMFunctionDescriptor from, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+    protected long doI64(VirtualFrame frame, LLVMFunctionDescriptor from,
+                    @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
         return toNative.executeWithTarget(frame, from).getVal();
     }
 
     @Specialization
-    public long executeLLVMAddress(LLVMGlobalVariable from, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected long doLLVMAddress(LLVMGlobalVariable from,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         return globalAccess.getNativeLocation(from).getVal();
     }
 
     @Child private ForeignToLLVM convert = ForeignToLLVM.create(ForeignToLLVMType.I64);
 
     @Specialization
-    public long executeTruffleObject(VirtualFrame frame, LLVMTruffleObject from, @Cached("createToNativeNode()") LLVMToNativeNode toAddress) {
+    protected long doTruffleObject(VirtualFrame frame, LLVMTruffleObject from,
+                    @Cached("createToNativeNode()") LLVMToNativeNode toAddress) {
         return toAddress.executeWithTarget(frame, from).getVal();
     }
 
     @Specialization
-    public long executeLLVMBoxedPrimitive(VirtualFrame frame, LLVMBoxedPrimitive from) {
+    protected long doLLVMBoxedPrimitive(VirtualFrame frame, LLVMBoxedPrimitive from) {
         return (long) convert.executeWithTarget(frame, from.getValue());
     }
 
     public abstract static class LLVMToI64NoZeroExtNode extends LLVMToI64Node {
 
         @Specialization
-        public long executeI64(boolean from) {
+        protected long doI64(boolean from) {
             return from ? -1 : 0;
         }
 
         @Specialization
-        public long executeI64(byte from) {
+        protected long doI64(byte from) {
             return from;
         }
 
         @Specialization
-        public long executeI64(short from) {
+        protected long doI64(short from) {
             return from;
         }
 
         @Specialization
-        public long executeI64(int from) {
+        protected long doI64(int from) {
             return from;
         }
 
         @Specialization
-        public long executeI64(long from) {
+        protected long doI64(long from) {
             return from;
         }
 
         @Specialization
-        public long executeI64(LLVMIVarBit from) {
+        protected long doI64(LLVMIVarBit from) {
             return from.getLongValue();
         }
 
         @Specialization
-        public long executeI64(float from) {
+        protected long doI64(float from) {
             return (long) from;
         }
 
         @Specialization
-        public long executeI64(double from) {
+        protected long doI64(double from) {
             return (long) from;
         }
 
         @Specialization
-        public long executeI64(LLVM80BitFloat from) {
+        protected long doI64(LLVM80BitFloat from) {
             return from.getLongValue();
         }
 
         @Specialization
-        public long executeI64(LLVMAddress from) {
+        protected long doI64(LLVMAddress from) {
             return from.getVal();
         }
 
         @Specialization
-        public long executeI64(LLVMFloatVector from) {
+        protected long doI64(LLVMFloatVector from) {
             float f1 = from.getValue(0);
             float f2 = from.getValue(1);
             long composedValue = (long) Float.floatToRawIntBits(f1) << Float.SIZE | Float.floatToRawIntBits(f2);
             return composedValue;
         }
-
     }
 
     public abstract static class LLVMToI64BitNode extends LLVMToI64Node {
@@ -204,42 +206,42 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
         }
 
         @Specialization
-        public long executeI64(double from) {
+        protected long doI64(double from) {
             return Double.doubleToRawLongBits(from);
         }
 
         @Specialization
-        public long executeI64(long from) {
+        protected long doI64(long from) {
             return from;
         }
 
         @Specialization
-        public long executeI1Vector(LLVMI1Vector from) {
+        protected long doI1Vector(LLVMI1Vector from) {
             return castI1Vector(from, Long.SIZE);
         }
 
         @Specialization
-        public long executeI8Vector(LLVMI8Vector from) {
+        protected long doI8Vector(LLVMI8Vector from) {
             return castI8Vector(from, Long.SIZE / Byte.SIZE);
         }
 
         @Specialization
-        public long executeI16Vector(LLVMI16Vector from) {
+        protected long doI16Vector(LLVMI16Vector from) {
             return castI16Vector(from, Long.SIZE / Short.SIZE);
         }
 
         @Specialization
-        public long executeI32Vector(LLVMI32Vector from) {
+        protected long doI32Vector(LLVMI32Vector from) {
             return castI32Vector(from, Long.SIZE / Integer.SIZE);
         }
 
         @Specialization
-        public long executeFloatVector(LLVMFloatVector from) {
+        protected long doFloatVector(LLVMFloatVector from) {
             return castFloatVector(from, Long.SIZE / Float.SIZE);
         }
 
         @Specialization
-        public long executeI64Vector(LLVMI64Vector from) {
+        protected long doI64Vector(LLVMI64Vector from) {
             if (from.getLength() != 1) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError("invalid vector size!");
@@ -248,7 +250,7 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
         }
 
         @Specialization
-        public long executeDoubleVector(LLVMDoubleVector from) {
+        protected long doDoubleVector(LLVMDoubleVector from) {
             if (from.getLength() != 1) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError("invalid vector size!");
@@ -260,32 +262,32 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
     public abstract static class LLVMToI64ZeroExtNode extends LLVMToI64Node {
 
         @Specialization
-        public long executeI64(boolean from) {
+        protected long doI64(boolean from) {
             return from ? 1 : 0;
         }
 
         @Specialization
-        public long executeI64(byte from) {
+        protected long doI64(byte from) {
             return from & LLVMExpressionNode.I8_MASK;
         }
 
         @Specialization
-        public long executeI64(short from) {
+        protected long doI64(short from) {
             return from & LLVMExpressionNode.I16_MASK;
         }
 
         @Specialization
-        public long executeI64(int from) {
+        protected long doI64(int from) {
             return from & LLVMExpressionNode.I32_MASK;
         }
 
         @Specialization
-        public long executeI64(LLVMIVarBit from) {
+        protected long doI64(LLVMIVarBit from) {
             return from.getZeroExtendedLongValue();
         }
 
         @Specialization
-        public long executeI64(long from) {
+        protected long doI64(long from) {
             return from;
         }
     }
@@ -293,7 +295,7 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
     public abstract static class LLVMToUnsignedI64Node extends LLVMToI32Node {
 
         @Specialization
-        public long executeI64(double from) {
+        protected long doI64(double from) {
             if (from >= Long.MAX_VALUE) {
                 return ((long) (Long.MAX_VALUE - from)) ^ 0x80000000_00000000L;
             } else {
@@ -302,9 +304,8 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
         }
 
         @Specialization
-        public long executeI64(long from) {
+        protected long doI64(long from) {
             return from;
         }
     }
-
 }

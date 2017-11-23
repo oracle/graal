@@ -45,42 +45,42 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
     public abstract static class LLVMSignedToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
 
         @Specialization
-        public LLVM80BitFloat execute80BitFloat(byte from) {
+        protected LLVM80BitFloat do80BitFloat(byte from) {
             return LLVM80BitFloat.fromByte(from);
         }
 
         @Specialization
-        public LLVM80BitFloat executeLLVM80BitFloatNode(short from) {
+        protected LLVM80BitFloat doLLVM80BitFloatNode(short from) {
             return LLVM80BitFloat.fromShort(from);
         }
 
         @Specialization
-        public LLVM80BitFloat executeLLVM80BitFloatNode(int from) {
+        protected LLVM80BitFloat doLLVM80BitFloatNode(int from) {
             return LLVM80BitFloat.fromInt(from);
         }
 
         @Specialization
-        public LLVM80BitFloat executeLLVM80BitFloatNode(long from) {
+        protected LLVM80BitFloat doLLVM80BitFloatNode(long from) {
             return LLVM80BitFloat.fromLong(from);
         }
 
         @Specialization
-        public LLVM80BitFloat executeLLVM80BitFloatNode(float from) {
+        protected LLVM80BitFloat doLLVM80BitFloatNode(float from) {
             return LLVM80BitFloat.fromFloat(from);
         }
 
         @Specialization
-        public LLVM80BitFloat executeLLVM80BitFloatNode(double from) {
+        protected LLVM80BitFloat doLLVM80BitFloatNode(double from) {
             return LLVM80BitFloat.fromDouble(from);
         }
 
         @Specialization
-        public LLVM80BitFloat executeLLVM80BitFloatNode(LLVM80BitFloat from) {
+        protected LLVM80BitFloat doLLVM80BitFloatNode(LLVM80BitFloat from) {
             return from;
         }
 
         @Specialization
-        public LLVM80BitFloat executeLLVM80BitFloatNode(LLVMIVarBit from) {
+        protected LLVM80BitFloat doLLVM80BitFloatNode(LLVMIVarBit from) {
             return LLVM80BitFloat.fromBytesBigEndian(from.getBytes());
         }
     }
@@ -89,37 +89,37 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
     public abstract static class LLVMUnsignedToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
 
         @Specialization
-        public LLVM80BitFloat execute80BitFloat(byte from) {
+        protected LLVM80BitFloat do80BitFloat(byte from) {
             return LLVM80BitFloat.fromUnsignedByte(from);
         }
 
         @Specialization
-        public LLVM80BitFloat executeLLVM80BitFloatNode(int from) {
+        protected LLVM80BitFloat doLLVM80BitFloatNode(int from) {
             return LLVM80BitFloat.fromUnsignedInt(from);
         }
 
         @Specialization
-        public LLVM80BitFloat executeLLVM80BitFloatNode(long from) {
+        protected LLVM80BitFloat doLLVM80BitFloatNode(long from) {
             return LLVM80BitFloat.fromUnsignedLong(from);
         }
 
         @Specialization
-        public LLVM80BitFloat executeLLVM80BitFloatNode(float from) {
+        protected LLVM80BitFloat doLLVM80BitFloatNode(float from) {
             return LLVM80BitFloat.fromFloat(from);
         }
 
         @Specialization
-        public LLVM80BitFloat executeLLVM80BitFloatNode(double from) {
+        protected LLVM80BitFloat doLLVM80BitFloatNode(double from) {
             return LLVM80BitFloat.fromDouble(from);
         }
 
         @Specialization
-        public LLVM80BitFloat executeLLVM80BitFloatNode(LLVM80BitFloat from) {
+        protected LLVM80BitFloat doLLVM80BitFloatNode(LLVM80BitFloat from) {
             return from;
         }
 
         @Specialization
-        public LLVM80BitFloat executeLLVM80BitFloatNode(LLVMIVarBit from) {
+        protected LLVM80BitFloat doLLVM80BitFloatNode(LLVMIVarBit from) {
             return LLVM80BitFloat.fromBytesBigEndian(from.getBytes());
         }
     }
@@ -128,7 +128,7 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
     public abstract static class LLVMToLLVM80BitFloatBitNode extends LLVMTo80BitFloatingNode {
 
         @Specialization
-        public LLVM80BitFloat executeI1Vector(LLVMI1Vector from) {
+        protected LLVM80BitFloat doI1Vector(LLVMI1Vector from) {
             if (from.getLength() != LLVM80BitFloat.BIT_WIDTH) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError("invalid vector size!");
@@ -144,7 +144,7 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public LLVM80BitFloat executeI8Vector(LLVMI8Vector from) {
+        protected LLVM80BitFloat doI8Vector(LLVMI8Vector from) {
             if (from.getLength() != LLVM80BitFloat.BIT_WIDTH / Byte.SIZE) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError("invalid vector size!");
@@ -157,7 +157,7 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public LLVM80BitFloat executeI16Vector(LLVMI16Vector from) {
+        protected LLVM80BitFloat doI16Vector(LLVMI16Vector from) {
             if (from.getLength() != LLVM80BitFloat.BIT_WIDTH / Short.SIZE) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError("invalid vector size!");
@@ -170,5 +170,4 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
             return LLVM80BitFloat.fromBytes(values);
         }
     }
-
 }

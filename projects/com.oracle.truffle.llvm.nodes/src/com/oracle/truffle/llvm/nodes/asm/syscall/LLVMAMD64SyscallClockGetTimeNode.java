@@ -43,13 +43,13 @@ public abstract class LLVMAMD64SyscallClockGetTimeNode extends LLVMAMD64SyscallO
     }
 
     @Specialization
-    protected long executeI64(long clkId, LLVMAddress tp) {
+    protected long doI64(long clkId, LLVMAddress tp) {
         return clockGetTime((int) clkId, tp);
     }
 
     @Specialization
-    protected long executeI64(long clkId, long tp) {
-        return executeI64(clkId, LLVMAddress.fromLong(tp));
+    protected long doI64(long clkId, long tp) {
+        return doI64(clkId, LLVMAddress.fromLong(tp));
     }
 
     @TruffleBoundary

@@ -39,7 +39,7 @@ import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 public abstract class LLVMShouldPrintStackTraceOnAbort extends LLVMIntrinsic {
 
     @Specialization
-    public int execute(@Cached("getContextReference()") ContextReference<LLVMContext> ctxRef) {
+    protected int doOp(@Cached("getContextReference()") ContextReference<LLVMContext> ctxRef) {
         return ctxRef.get().getEnv().getOptions().get(SulongEngineOption.STACKTRACE_ON_ABORT) ? 1 : 0;
     }
 }

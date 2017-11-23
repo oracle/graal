@@ -177,5 +177,4 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
     protected ForeignToLLVM createToLLVMNode() {
         return ForeignToLLVM.create(type.getReturnType());
     }
-
 }

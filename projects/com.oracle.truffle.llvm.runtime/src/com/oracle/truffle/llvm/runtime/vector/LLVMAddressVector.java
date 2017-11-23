@@ -74,7 +74,6 @@ public final class LLVMAddressVector {
         for (int i = 0; i < vector.length; i++) {
             this.vector[i] = vector[i].getVal();
         }
-
     }
 
     private LLVMAddressVector(long[] vector) {

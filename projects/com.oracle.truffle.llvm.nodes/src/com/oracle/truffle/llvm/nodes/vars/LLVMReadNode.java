@@ -115,7 +115,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
 
     public abstract static class LLVMAddressReadNode extends LLVMReadNode {
 
-        @Child AttachInteropTypeNode attach = AttachInteropTypeNodeGen.create();
+        @Child private AttachInteropTypeNode attach = AttachInteropTypeNodeGen.create();
 
         @Specialization
         protected Object readObject(VirtualFrame frame) {
@@ -128,12 +128,12 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
         public abstract Object execute(Object object, FrameSlot slot);
 
         @Specialization
-        protected Object executeForeign(LLVMTruffleObject object, FrameSlot slot) {
+        protected Object doForeign(LLVMTruffleObject object, FrameSlot slot) {
             return new LLVMTruffleObject(object, (Type) slot.getInfo());
         }
 
         @Specialization(guards = "!isForeign(object)")
-        protected Object executeOther(Object object, @SuppressWarnings("unused") FrameSlot slot) {
+        protected Object doOther(Object object, @SuppressWarnings("unused") FrameSlot slot) {
             return object;
         }
 
@@ -155,5 +155,4 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
             return frame.getValue(getSlot());
         }
     }
-
 }

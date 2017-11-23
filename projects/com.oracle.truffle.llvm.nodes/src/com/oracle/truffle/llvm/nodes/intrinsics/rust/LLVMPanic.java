@@ -56,7 +56,9 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
     }
 
     @Specialization
-    public Object execute(LLVMGlobalVariable panicLocVar, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess, @Cached("createPanicLocation()") PanicLocType panicLoc) {
+    protected Object doOp(LLVMGlobalVariable panicLocVar,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess,
+                    @Cached("createPanicLocation()") PanicLocType panicLoc) {
         LLVMAddress addr = globalAccess.getNativeLocation(panicLocVar);
         CompilerDirectives.transferToInterpreter();
         throw panicLoc.read(addr.getVal());
@@ -89,7 +91,6 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
             Type type = new PointerType((new StructureType(false, new Type[]{strslice.getType(), strslice.getType(), PrimitiveType.I32})));
             return new PanicLocType(dataLayout, type, strslice);
         }
-
     }
 
     private static final class StrSliceType {
@@ -122,7 +123,5 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
             Type type = new StructureType(false, new Type[]{new PointerType(PrimitiveType.I8), PrimitiveType.I64});
             return new StrSliceType(dataLayout, type);
         }
-
     }
-
 }

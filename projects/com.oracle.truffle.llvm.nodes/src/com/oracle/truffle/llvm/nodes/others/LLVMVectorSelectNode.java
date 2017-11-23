@@ -51,7 +51,7 @@ public abstract class LLVMVectorSelectNode {
     public abstract static class LLVMI1VectorSelectNode extends LLVMExpressionNode {
 
         @Specialization
-        public LLVMI1Vector execute(LLVMI1Vector condition, LLVMI1Vector trueValue, LLVMI1Vector elseValue) {
+        protected LLVMI1Vector doOp(LLVMI1Vector condition, LLVMI1Vector trueValue, LLVMI1Vector elseValue) {
             int length = condition.getLength();
 
             boolean[] values = new boolean[length];
@@ -62,7 +62,6 @@ public abstract class LLVMVectorSelectNode {
 
             return LLVMI1Vector.create(values);
         }
-
     }
 
     @NodeChildren({
@@ -72,7 +71,7 @@ public abstract class LLVMVectorSelectNode {
     public abstract static class LLVMI8VectorSelectNode extends LLVMExpressionNode {
 
         @Specialization
-        public LLVMI8Vector execute(LLVMI1Vector condition, LLVMI8Vector trueValue, LLVMI8Vector elseValue) {
+        protected LLVMI8Vector doOp(LLVMI1Vector condition, LLVMI8Vector trueValue, LLVMI8Vector elseValue) {
             int length = condition.getLength();
 
             byte[] values = new byte[length];
@@ -83,7 +82,6 @@ public abstract class LLVMVectorSelectNode {
 
             return LLVMI8Vector.create(values);
         }
-
     }
 
     @NodeChildren({
@@ -93,7 +91,7 @@ public abstract class LLVMVectorSelectNode {
     public abstract static class LLVMI16VectorSelectNode extends LLVMExpressionNode {
 
         @Specialization
-        public LLVMI16Vector execute(LLVMI1Vector condition, LLVMI16Vector trueValue, LLVMI16Vector elseValue) {
+        protected LLVMI16Vector doOp(LLVMI1Vector condition, LLVMI16Vector trueValue, LLVMI16Vector elseValue) {
             int length = condition.getLength();
 
             short[] values = new short[length];
@@ -104,7 +102,6 @@ public abstract class LLVMVectorSelectNode {
 
             return LLVMI16Vector.create(values);
         }
-
     }
 
     @NodeChildren({
@@ -114,7 +111,7 @@ public abstract class LLVMVectorSelectNode {
     public abstract static class LLVMI32VectorSelectNode extends LLVMExpressionNode {
 
         @Specialization
-        public LLVMI32Vector execute(LLVMI1Vector condition, LLVMI32Vector trueValue, LLVMI32Vector elseValue) {
+        protected LLVMI32Vector doOp(LLVMI1Vector condition, LLVMI32Vector trueValue, LLVMI32Vector elseValue) {
             int length = condition.getLength();
 
             int[] values = new int[length];
@@ -125,7 +122,6 @@ public abstract class LLVMVectorSelectNode {
 
             return LLVMI32Vector.create(values);
         }
-
     }
 
     @NodeChildren({
@@ -135,7 +131,7 @@ public abstract class LLVMVectorSelectNode {
     public abstract static class LLVMI64VectorSelectNode extends LLVMExpressionNode {
 
         @Specialization
-        public LLVMI64Vector execute(LLVMI1Vector condition, LLVMI64Vector trueValue, LLVMI64Vector elseValue) {
+        protected LLVMI64Vector doOp(LLVMI1Vector condition, LLVMI64Vector trueValue, LLVMI64Vector elseValue) {
             int length = condition.getLength();
 
             long[] values = new long[length];
@@ -146,7 +142,6 @@ public abstract class LLVMVectorSelectNode {
 
             return LLVMI64Vector.create(values);
         }
-
     }
 
     @NodeChildren({
@@ -156,7 +151,7 @@ public abstract class LLVMVectorSelectNode {
     public abstract static class LLVMFloatVectorSelectNode extends LLVMExpressionNode {
 
         @Specialization
-        public LLVMFloatVector execute(LLVMI1Vector condition, LLVMFloatVector trueValue, LLVMFloatVector elseValue) {
+        protected LLVMFloatVector doOp(LLVMI1Vector condition, LLVMFloatVector trueValue, LLVMFloatVector elseValue) {
             int length = condition.getLength();
 
             float[] values = new float[length];
@@ -167,7 +162,6 @@ public abstract class LLVMVectorSelectNode {
 
             return LLVMFloatVector.create(values);
         }
-
     }
 
     @NodeChildren({
@@ -177,7 +171,7 @@ public abstract class LLVMVectorSelectNode {
     public abstract static class LLVMDoubleVectorSelectNode extends LLVMExpressionNode {
 
         @Specialization
-        public LLVMDoubleVector execute(LLVMI1Vector condition, LLVMDoubleVector trueValue, LLVMDoubleVector elseValue) {
+        protected LLVMDoubleVector doOp(LLVMI1Vector condition, LLVMDoubleVector trueValue, LLVMDoubleVector elseValue) {
             int length = condition.getLength();
 
             double[] values = new double[length];
@@ -188,7 +182,6 @@ public abstract class LLVMVectorSelectNode {
 
             return LLVMDoubleVector.create(values);
         }
-
     }
 
     @NodeChildren({
@@ -198,7 +191,7 @@ public abstract class LLVMVectorSelectNode {
     public abstract static class LLVMAddressVectorSelectNode extends LLVMExpressionNode {
 
         @Specialization
-        public LLVMAddressVector execute(LLVMI1Vector condition, LLVMAddressVector trueValue, LLVMAddressVector elseValue) {
+        protected LLVMAddressVector doOp(LLVMI1Vector condition, LLVMAddressVector trueValue, LLVMAddressVector elseValue) {
             int length = condition.getLength();
 
             long[] values = new long[length];
@@ -209,7 +202,5 @@ public abstract class LLVMVectorSelectNode {
 
             return LLVMAddressVector.create(values);
         }
-
     }
-
 }

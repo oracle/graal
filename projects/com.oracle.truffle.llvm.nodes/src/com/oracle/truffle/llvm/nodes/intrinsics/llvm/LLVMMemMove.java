@@ -55,14 +55,14 @@ public abstract class LLVMMemMove {
 
         @SuppressWarnings("unused")
         @Specialization
-        public Object executeVoid(VirtualFrame frame, LLVMAddress dest, LLVMAddress source, long length, int align, boolean isVolatile) {
+        protected Object doVoid(VirtualFrame frame, LLVMAddress dest, LLVMAddress source, long length, int align, boolean isVolatile) {
             memMove.executeWithTarget(frame, dest, source, length);
             return null;
         }
 
         @SuppressWarnings("unused")
         @Specialization
-        public Object executeVoid(VirtualFrame frame, LLVMGlobalVariable dest, LLVMAddress source, long length, int align, boolean isVolatile,
+        protected Object doVoid(VirtualFrame frame, LLVMGlobalVariable dest, LLVMAddress source, long length, int align, boolean isVolatile,
                         @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             memMove.executeWithTarget(frame, globalAccess.getNativeLocation(dest), source, length);
             return null;
@@ -70,7 +70,7 @@ public abstract class LLVMMemMove {
 
         @SuppressWarnings("unused")
         @Specialization
-        public Object executeVoid(VirtualFrame frame, LLVMAddress dest, LLVMGlobalVariable source, long length, int align, boolean isVolatile,
+        protected Object doVoid(VirtualFrame frame, LLVMAddress dest, LLVMGlobalVariable source, long length, int align, boolean isVolatile,
                         @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
             memMove.executeWithTarget(frame, dest, globalAccess.getNativeLocation(source), length);
             return null;
@@ -78,12 +78,11 @@ public abstract class LLVMMemMove {
 
         @SuppressWarnings("unused")
         @Specialization
-        public Object executeVoid(VirtualFrame frame, LLVMGlobalVariable dest, LLVMGlobalVariable source, long length, int align, boolean isVolatile,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess1, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess2) {
+        protected Object doVoid(VirtualFrame frame, LLVMGlobalVariable dest, LLVMGlobalVariable source, long length, int align, boolean isVolatile,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess1,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess2) {
             memMove.executeWithTarget(frame, globalAccess1.getNativeLocation(dest), globalAccess2.getNativeLocation(source), length);
             return null;
         }
-
     }
-
 }

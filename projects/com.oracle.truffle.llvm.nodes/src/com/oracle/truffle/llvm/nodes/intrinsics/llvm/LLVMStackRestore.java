@@ -55,9 +55,8 @@ public abstract class LLVMStackRestore extends LLVMBuiltin {
     }
 
     @Specialization
-    public Object executeVoid(VirtualFrame frame, LLVMAddress addr) {
+    protected Object doVoid(VirtualFrame frame, LLVMAddress addr) {
         frame.setLong(getStackPointerSlot(), addr.getVal());
         return null;
     }
-
 }

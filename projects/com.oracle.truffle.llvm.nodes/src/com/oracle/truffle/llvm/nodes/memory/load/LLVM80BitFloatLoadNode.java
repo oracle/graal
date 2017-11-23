@@ -37,8 +37,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 public abstract class LLVM80BitFloatLoadNode extends LLVMLoadNode {
 
     @Specialization
-    public LLVM80BitFloat execute80BitFloat(LLVMAddress address) {
+    protected LLVM80BitFloat do80BitFloat(LLVMAddress address) {
         return LLVMMemory.get80BitFloat(address);
     }
-
 }

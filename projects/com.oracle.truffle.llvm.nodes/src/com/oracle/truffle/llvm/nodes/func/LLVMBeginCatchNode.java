@@ -103,5 +103,4 @@ public final class LLVMBeginCatchNode extends LLVMExpressionNode {
         }
         getCaughtExceptionStack().push(exc);
     }
-
 }

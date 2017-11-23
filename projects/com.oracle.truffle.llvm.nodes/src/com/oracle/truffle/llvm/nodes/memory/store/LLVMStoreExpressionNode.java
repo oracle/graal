@@ -53,8 +53,7 @@ public abstract class LLVMStoreExpressionNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    public Object store(VirtualFrame frame, Object address, Object value) {
+    protected Object store(VirtualFrame frame, Object address, Object value) {
         return store.executeWithTarget(frame, address, value);
     }
-
 }

@@ -55,43 +55,50 @@ public abstract class LLVMGlobalVariableStoreNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    public Object executeNative(LLVMVirtualAllocationAddress value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doNative(LLVMVirtualAllocationAddress value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         globalAccess.putManaged(descriptor, value);
         return null;
     }
 
     @Specialization
-    public Object executeNative(LLVMAddress value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doNative(LLVMAddress value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         globalAccess.putAddress(descriptor, value);
         return null;
     }
 
     @Specialization
-    public Object executeNative(LLVMTruffleAddress value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doNative(LLVMTruffleAddress value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         globalAccess.putAddress(descriptor, value.getAddress());
         return null;
     }
 
     @Specialization
-    public Object executeNative(LLVMFunctionDescriptor value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doNative(LLVMFunctionDescriptor value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         globalAccess.putFunction(descriptor, value);
         return null;
     }
 
     @Specialization
-    public Object executeNative(LLVMGlobalVariable value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doNative(LLVMGlobalVariable value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         globalAccess.putGlobal(descriptor, value);
         return null;
     }
 
     @Specialization
-    public Object executeNative(LLVMTruffleObject value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doNative(LLVMTruffleObject value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         globalAccess.putLLVMTruffleObject(descriptor, value);
         return null;
     }
 
     @Specialization
-    public Object executeLLVMBoxedPrimitive(LLVMBoxedPrimitive value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doLLVMBoxedPrimitive(LLVMBoxedPrimitive value,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         globalAccess.putBoxedPrimitive(descriptor, value);
         return null;
     }
@@ -100,5 +107,4 @@ public abstract class LLVMGlobalVariableStoreNode extends LLVMExpressionNode {
     public SourceSection getSourceSection() {
         return source;
     }
-
 }

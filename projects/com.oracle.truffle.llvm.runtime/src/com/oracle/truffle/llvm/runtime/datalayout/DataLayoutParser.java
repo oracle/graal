@@ -57,7 +57,6 @@ final class DataLayoutParser {
         public String toString() {
             return getType() + " " + Arrays.toString(getValues());
         }
-
     }
 
     private static void addIfMissing(List<DataTypeSpecification> specs, DataTypeSpecification newSpec) {
@@ -165,5 +164,4 @@ final class DataLayoutParser {
         }
         return objects;
     }
-
 }

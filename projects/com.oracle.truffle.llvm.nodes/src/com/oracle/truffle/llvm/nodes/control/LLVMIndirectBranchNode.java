@@ -111,6 +111,5 @@ public abstract class LLVMIndirectBranchNode extends LLVMControlFlowNode {
                 throw new IllegalStateException("should not reach here", e);
             }
         }
-
     }
 }

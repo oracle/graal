@@ -78,5 +78,4 @@ public abstract class LLVM80BitTest {
     protected static void assertBitEquals(float expected, float actual) {
         Assert.assertEquals(Float.floatToRawIntBits(expected), Float.floatToRawIntBits(actual));
     }
-
 }

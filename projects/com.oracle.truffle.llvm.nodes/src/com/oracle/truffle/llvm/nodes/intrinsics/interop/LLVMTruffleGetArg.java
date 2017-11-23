@@ -47,10 +47,9 @@ public abstract class LLVMTruffleGetArg extends LLVMIntrinsic {
     public abstract SourceSection getSourceSection();
 
     @Specialization
-    public Object doIntrinsic(VirtualFrame frame, int index) {
+    protected Object doIntrinsic(VirtualFrame frame, int index) {
         assert index >= 0;
         Object[] arguments = frame.getArguments();
         return arguments[LLVMCallNode.USER_ARGUMENT_OFFSET + index];
     }
-
 }

@@ -68,5 +68,4 @@ final class RecordBuffer {
     void invalidate() {
         size = 0;
     }
-
 }

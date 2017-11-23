@@ -48,18 +48,19 @@ public abstract class LLVMI32LoadNode extends LLVMLoadNode {
     private final IntValueProfile profile = IntValueProfile.createIdentityProfile();
 
     @Specialization
-    public int executeI32(LLVMAddress addr) {
+    protected int doI32(LLVMAddress addr) {
         int val = LLVMMemory.getI32(addr);
         return profile.profile(val);
     }
 
     @Specialization
-    public int executeI32(LLVMVirtualAllocationAddress address) {
+    protected int doI32(LLVMVirtualAllocationAddress address) {
         return address.getI32();
     }
 
     @Specialization
-    public int executeI32(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected int doI32(LLVMGlobalVariable addr,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         return profile.profile(globalAccess.getI32(addr));
     }
 
@@ -68,12 +69,13 @@ public abstract class LLVMI32LoadNode extends LLVMLoadNode {
     }
 
     @Specialization
-    public int executeI32(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+    protected int doI32(VirtualFrame frame, LLVMTruffleObject addr,
+                    @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
         return (int) foreignRead.execute(frame, addr);
     }
 
     @Specialization
-    public int executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
+    protected int doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
         if (addr.getValue() instanceof Long) {
             return LLVMMemory.getI32((long) addr.getValue());
         } else {

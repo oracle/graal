@@ -61,12 +61,13 @@ public abstract class LLVMStructByValueNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    public Object byValue(VirtualFrame frame, LLVMGlobalVariable source, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
+    protected Object byValue(VirtualFrame frame, LLVMGlobalVariable source,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
         return byValueImp(frame, access.get(source));
     }
 
     @Specialization
-    public Object byValue(VirtualFrame frame, LLVMAddress source) {
+    protected Object byValue(VirtualFrame frame, LLVMAddress source) {
         return byValueImp(frame, source);
     }
 
@@ -77,7 +78,7 @@ public abstract class LLVMStructByValueNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    public Object byValue(VirtualFrame frame, LLVMVarArgCompoundValue source) {
+    protected Object byValue(VirtualFrame frame, LLVMVarArgCompoundValue source) {
         return byValueImp(frame, source.getAddr());
     }
 }

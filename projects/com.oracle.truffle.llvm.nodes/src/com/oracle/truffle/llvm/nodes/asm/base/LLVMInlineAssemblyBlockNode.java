@@ -49,5 +49,4 @@ public class LLVMInlineAssemblyBlockNode extends LLVMExpressionNode {
         }
         return null;
     }
-
 }

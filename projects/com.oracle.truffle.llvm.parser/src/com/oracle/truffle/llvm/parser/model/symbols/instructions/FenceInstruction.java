@@ -59,5 +59,4 @@ public final class FenceInstruction extends VoidInstruction {
     public static FenceInstruction generate(long atomicOrdering, long synchronizationScope) {
         return new FenceInstruction(AtomicOrdering.decode(atomicOrdering), SynchronizationScope.decode(synchronizationScope));
     }
-
 }

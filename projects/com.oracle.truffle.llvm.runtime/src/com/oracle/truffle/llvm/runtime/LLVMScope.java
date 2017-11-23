@@ -88,11 +88,6 @@ public final class LLVMScope implements TruffleObject {
     }
 
     @TruffleBoundary
-    public synchronized boolean globalExists(String name) {
-        return globalVariableRegistry.exists(name) || (parent != null && parent.globalExists(name));
-    }
-
-    @TruffleBoundary
     public synchronized Object getGlobalVariable(String name) {
         if (globalVariableRegistry.exists(name)) {
             return globalVariableRegistry.lookup(name);
@@ -191,7 +186,6 @@ public final class LLVMScope implements TruffleObject {
                 List<String> keys = scope.functions.keySet().stream().map(s -> s.length() > 0 && s.charAt(0) == '@' ? s.substring(1) : s).collect(Collectors.toList());
                 return JavaInterop.asTruffleObject(keys.toArray(new String[keys.size()]));
             }
-
         }
 
         @Resolve(message = "READ")
@@ -207,8 +201,6 @@ public final class LLVMScope implements TruffleObject {
                 }
                 return null;
             }
-
         }
     }
-
 }

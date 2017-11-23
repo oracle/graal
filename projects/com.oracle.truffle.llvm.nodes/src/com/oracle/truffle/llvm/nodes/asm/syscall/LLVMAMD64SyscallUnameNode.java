@@ -38,12 +38,12 @@ public abstract class LLVMAMD64SyscallUnameNode extends LLVMAMD64SyscallOperatio
     }
 
     @Specialization
-    protected long execute(LLVMAddress name) {
+    protected long doOp(LLVMAddress name) {
         return LLVMInfo.uname(name);
     }
 
     @Specialization
-    protected long execute(long name) {
-        return execute(LLVMAddress.fromLong(name));
+    protected long doOp(long name) {
+        return doOp(LLVMAddress.fromLong(name));
     }
 }

@@ -293,7 +293,6 @@ public final class LLVMScanner {
                     default:
                         throw new IllegalStateException("Unexpected Record Type Id: " + recordType);
                 }
-
             }
 
             i++;
@@ -371,7 +370,6 @@ public final class LLVMScanner {
                     }
                 };
             }
-
         }
     }
 

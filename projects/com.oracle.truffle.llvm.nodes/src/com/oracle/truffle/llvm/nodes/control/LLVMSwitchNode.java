@@ -93,5 +93,4 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
             return cases[i];
         }
     }
-
 }

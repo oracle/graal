@@ -48,18 +48,19 @@ public abstract class LLVMI8LoadNode extends LLVMLoadNode {
     private final ByteValueProfile profile = ByteValueProfile.createIdentityProfile();
 
     @Specialization
-    public byte executeI8(LLVMAddress addr) {
+    protected byte doI8(LLVMAddress addr) {
         byte val = LLVMMemory.getI8(addr);
         return profile.profile(val);
     }
 
     @Specialization
-    public byte executeI8(LLVMVirtualAllocationAddress address) {
+    protected byte doI8(LLVMVirtualAllocationAddress address) {
         return address.getI8();
     }
 
     @Specialization
-    public byte executeI8(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected byte doI8(LLVMGlobalVariable addr,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         return profile.profile(globalAccess.getI8(addr));
     }
 
@@ -68,12 +69,13 @@ public abstract class LLVMI8LoadNode extends LLVMLoadNode {
     }
 
     @Specialization
-    public byte executeI8(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+    protected byte doI8(VirtualFrame frame, LLVMTruffleObject addr,
+                    @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
         return (byte) foreignRead.execute(frame, addr);
     }
 
     @Specialization
-    public byte executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
+    protected byte doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
         if (addr.getValue() instanceof Long) {
             return LLVMMemory.getI8((long) addr.getValue());
         } else {

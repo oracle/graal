@@ -37,14 +37,14 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMAMD64BswapNode extends LLVMExpressionNode {
     public abstract static class LLVMAMD64BswaplNode extends LLVMAMD64BswapNode {
         @Specialization
-        protected int executeI32(int data) {
+        protected int doI32(int data) {
             return Integer.reverseBytes(data);
         }
     }
 
     public abstract static class LLVMAMD64BswapqNode extends LLVMAMD64BswapNode {
         @Specialization
-        protected long executeI64(long data) {
+        protected long doI64(long data) {
             return Long.reverseBytes(data);
         }
     }

@@ -62,7 +62,6 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
             protected static boolean test(TruffleObject receiver) {
                 return receiver instanceof ManagedMallocObject;
             }
-
         }
 
         @Resolve(message = "HAS_SIZE")
@@ -71,7 +70,6 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
             protected Object access(@SuppressWarnings("unused") ManagedMallocObject malloc) {
                 return true;
             }
-
         }
 
         @Resolve(message = "GET_SIZE")
@@ -80,7 +78,6 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
             protected Object access(ManagedMallocObject malloc) {
                 return malloc.getSize();
             }
-
         }
 
         @Resolve(message = "READ")
@@ -89,7 +86,6 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
             protected Object access(ManagedMallocObject malloc, int index) {
                 return malloc.get(index);
             }
-
         }
 
         @Resolve(message = "WRITE")
@@ -99,7 +95,6 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
                 malloc.set(index, value);
                 return value;
             }
-
         }
 
     }
@@ -138,7 +133,6 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
         public LLVMObjectWriteNode createWriteNode() {
             return new ManagedWriteNode();
         }
-
     }
 
     static class ManagedReadNode extends LLVMObjectReadNode {
@@ -172,7 +166,7 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
     }
 
     @Specialization
-    public Object executeIntrinsic(long size) {
+    protected Object doIntrinsic(long size) {
         if (size < 0) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalArgumentException("Can't truffle_managed_malloc less than zero bytes");
@@ -186,5 +180,4 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
 
         return new LLVMTruffleObject(new ManagedMallocObject((int) sizeInWords), new PointerType(VoidType.INSTANCE));
     }
-
 }

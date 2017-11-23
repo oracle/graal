@@ -53,7 +53,7 @@ public abstract class LLVMAMD64BsfNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected short executeI16(VirtualFrame frame, short src, short dst) {
+        protected short doI16(VirtualFrame frame, short src, short dst) {
             if (profile.profile(src == 0)) {
                 writeZFNode.execute(frame, true);
                 return dst;
@@ -71,7 +71,7 @@ public abstract class LLVMAMD64BsfNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected int executeI32(VirtualFrame frame, int src, int dst) {
+        protected int doI32(VirtualFrame frame, int src, int dst) {
             if (profile.profile(src == 0)) {
                 writeZFNode.execute(frame, true);
                 return dst;
@@ -88,7 +88,7 @@ public abstract class LLVMAMD64BsfNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected long executeI64(VirtualFrame frame, long src, long dst) {
+        protected long doI64(VirtualFrame frame, long src, long dst) {
             if (profile.profile(src == 0)) {
                 writeZFNode.execute(frame, true);
                 return dst;

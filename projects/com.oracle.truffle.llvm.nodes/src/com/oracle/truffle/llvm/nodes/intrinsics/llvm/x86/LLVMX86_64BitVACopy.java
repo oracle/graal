@@ -122,13 +122,14 @@ public abstract class LLVMX86_64BitVACopy extends LLVMBuiltin {
     public abstract int getNumberExplicitArguments();
 
     @Specialization
-    public Object executeVoid(VirtualFrame frame, LLVMGlobalVariable dest, LLVMGlobalVariable source, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess1,
+    protected Object doVoid(VirtualFrame frame, LLVMGlobalVariable dest, LLVMGlobalVariable source,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess1,
                     @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess2) {
-        return executeVoid(frame, globalAccess1.getNativeLocation(dest), globalAccess2.getNativeLocation(source));
+        return doVoid(frame, globalAccess1.getNativeLocation(dest), globalAccess2.getNativeLocation(source));
     }
 
     @Specialization
-    public Object executeVoid(VirtualFrame frame, Object dest, Object source) {
+    protected Object doVoid(VirtualFrame frame, Object dest, Object source) {
 
         /*
          * COPY THIS: typedef struct { unsigned int gp_offset; unsigned int fp_offset; void
@@ -141,5 +142,4 @@ public abstract class LLVMX86_64BitVACopy extends LLVMBuiltin {
 
         return null;
     }
-
 }

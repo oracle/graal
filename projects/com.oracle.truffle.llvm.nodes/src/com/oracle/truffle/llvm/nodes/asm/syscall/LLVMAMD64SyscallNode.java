@@ -178,7 +178,7 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
     }
 
     @Specialization(replaces = "cachedSyscall")
-    protected long executeI64(long rax, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
+    protected long doI64(long rax, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
         // TODO: implement big switch with type casts + logic + ...?
         CompilerDirectives.transferToInterpreter();
         return createNode(rax).execute(rdi, rsi, rdx, r10, r8, r9);

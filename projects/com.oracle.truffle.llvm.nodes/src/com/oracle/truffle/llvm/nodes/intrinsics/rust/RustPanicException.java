@@ -61,5 +61,4 @@ public class RustPanicException extends GuestLanguageRuntimeException {
         String panicMessage = "thread '" + threadname + "' panicked at '" + desc + "', " + filename + ":" + linenr + newline + "note: No backtrace available";
         System.err.print(panicMessage);
     }
-
 }

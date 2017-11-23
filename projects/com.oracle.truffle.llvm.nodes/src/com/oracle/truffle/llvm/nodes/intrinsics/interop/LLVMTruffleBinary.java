@@ -55,7 +55,7 @@ public final class LLVMTruffleBinary {
         @Child private Node foreignIsBoxed = Message.IS_BOXED.createNode();
 
         @Specialization
-        public boolean executeIntrinsic(LLVMTruffleObject value) {
+        protected boolean doIntrinsic(LLVMTruffleObject value) {
             checkLLVMTruffleObject(value);
             return ForeignAccess.sendIsBoxed(foreignIsBoxed, value.getObject());
         }
@@ -72,7 +72,7 @@ public final class LLVMTruffleBinary {
         @Child private Node foreignIsExecutable = Message.IS_EXECUTABLE.createNode();
 
         @Specialization
-        public boolean executeIntrinsic(LLVMTruffleObject value) {
+        protected boolean doIntrinsic(LLVMTruffleObject value) {
             checkLLVMTruffleObject(value);
             return ForeignAccess.sendIsExecutable(foreignIsExecutable, value.getObject());
         }
@@ -89,7 +89,7 @@ public final class LLVMTruffleBinary {
         @Child private Node foreignIsNull = Message.IS_NULL.createNode();
 
         @Specialization
-        public boolean executeIntrinsic(LLVMTruffleObject value) {
+        protected boolean doIntrinsic(LLVMTruffleObject value) {
             checkLLVMTruffleObject(value);
             return ForeignAccess.sendIsNull(foreignIsNull, value.getObject());
         }
@@ -106,7 +106,7 @@ public final class LLVMTruffleBinary {
         @Child private Node foreignHasSize = Message.HAS_SIZE.createNode();
 
         @Specialization
-        public boolean executeIntrinsic(LLVMTruffleObject value) {
+        protected boolean doIntrinsic(LLVMTruffleObject value) {
             checkLLVMTruffleObject(value);
             return ForeignAccess.sendHasSize(foreignHasSize, value.getObject());
         }

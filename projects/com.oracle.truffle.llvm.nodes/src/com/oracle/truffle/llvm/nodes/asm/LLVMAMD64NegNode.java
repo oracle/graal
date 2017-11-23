@@ -49,7 +49,7 @@ public abstract class LLVMAMD64NegNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected byte executeI8(VirtualFrame frame, byte value) {
+        protected byte doI8(VirtualFrame frame, byte value) {
             byte result = (byte) -value;
             boolean cf = value != 0;
             boolean of = false;
@@ -64,7 +64,7 @@ public abstract class LLVMAMD64NegNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected short executeI16(VirtualFrame frame, short value) {
+        protected short doI16(VirtualFrame frame, short value) {
             short result = (short) -value;
             boolean cf = value != 0;
             boolean of = false;
@@ -79,7 +79,7 @@ public abstract class LLVMAMD64NegNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected int executeI32(VirtualFrame frame, int value) {
+        protected int doI32(VirtualFrame frame, int value) {
             int result = -value;
             boolean cf = value != 0;
             boolean of = false;
@@ -94,7 +94,7 @@ public abstract class LLVMAMD64NegNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected long executeI64(VirtualFrame frame, long value) {
+        protected long doI64(VirtualFrame frame, long value) {
             long result = -value;
             boolean cf = value != 0;
             boolean of = false;

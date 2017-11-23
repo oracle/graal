@@ -60,7 +60,8 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobalVariable address, LLVMDoubleVector value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object writeVector(LLVMGlobalVariable address, LLVMDoubleVector value,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         LLVMMemory.putVector(globalAccess.getNativeLocation(address), value);
         return null;
     }
@@ -72,7 +73,8 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobalVariable address, LLVMFloatVector value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object writeVector(LLVMGlobalVariable address, LLVMFloatVector value,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         LLVMMemory.putVector(globalAccess.getNativeLocation(address), value);
         return null;
     }
@@ -84,7 +86,8 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobalVariable address, LLVMI16Vector value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object writeVector(LLVMGlobalVariable address, LLVMI16Vector value,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         LLVMMemory.putVector(globalAccess.getNativeLocation(address), value);
         return null;
     }
@@ -96,7 +99,8 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobalVariable address, LLVMI1Vector value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object writeVector(LLVMGlobalVariable address, LLVMI1Vector value,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         LLVMMemory.putVector(globalAccess.getNativeLocation(address), value);
         return null;
     }
@@ -108,7 +112,8 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobalVariable address, LLVMI32Vector value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object writeVector(LLVMGlobalVariable address, LLVMI32Vector value,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         LLVMMemory.putVector(globalAccess.getNativeLocation(address), value);
         return null;
     }
@@ -120,7 +125,8 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobalVariable address, LLVMI64Vector value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object writeVector(LLVMGlobalVariable address, LLVMI64Vector value,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         LLVMMemory.putVector(globalAccess.getNativeLocation(address), value);
         return null;
     }
@@ -132,7 +138,8 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobalVariable address, LLVMI8Vector value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object writeVector(LLVMGlobalVariable address, LLVMI8Vector value,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         LLVMMemory.putVector(globalAccess.getNativeLocation(address), value);
         return null;
     }
@@ -144,57 +151,65 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobalVariable address, LLVMAddressVector value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object writeVector(LLVMGlobalVariable address, LLVMAddressVector value,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         LLVMMemory.putVector(globalAccess.getNativeLocation(address), value);
         return null;
     }
 
     @Specialization
-    public Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI1Vector value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI1Vector value,
+                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(frame, address, value);
         return null;
     }
 
     @Specialization
-    public Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI8Vector value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI8Vector value,
+                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(frame, address, value);
         return null;
     }
 
     @Specialization
-    public Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI16Vector value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI16Vector value,
+                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(frame, address, value);
         return null;
     }
 
     @Specialization
-    public Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI32Vector value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI32Vector value,
+                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(frame, address, value);
         return null;
     }
 
     @Specialization
-    public Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMFloatVector value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMFloatVector value,
+                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(frame, address, value);
         return null;
     }
 
     @Specialization
-    public Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMDoubleVector value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMDoubleVector value,
+                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(frame, address, value);
         return null;
     }
 
     @Specialization
-    public Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI64Vector value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI64Vector value,
+                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(frame, address, value);
         return null;
     }
 
     @Specialization
-    public Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMAddressVector value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMAddressVector value,
+                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(frame, address, value);
         return null;
     }
-
 }

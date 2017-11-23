@@ -43,12 +43,12 @@ public abstract class LLVMAMD64SyscallSendtoNode extends LLVMAMD64SyscallOperati
     }
 
     @Specialization
-    protected long execute(long socket, LLVMAddress message, long length, long flags, LLVMAddress destAddr, long destLen) {
+    protected long doOp(long socket, LLVMAddress message, long length, long flags, LLVMAddress destAddr, long destLen) {
         return (long) sendto.execute((int) socket, message.getVal(), length, (int) flags, destAddr.getVal(), (int) destLen);
     }
 
     @Specialization
-    protected long execute(long socket, long message, long length, long flags, long destAddr, long destLen) {
+    protected long doOp(long socket, long message, long length, long flags, long destAddr, long destLen) {
         return execute(socket, LLVMAddress.fromLong(message), length, flags, LLVMAddress.fromLong(destAddr), destLen);
     }
 }

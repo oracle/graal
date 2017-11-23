@@ -89,5 +89,4 @@ public class LLVM80BitAddition extends LLVM80BitTest {
     public void testInfinity() {
         assertEquals(positiveInfinity(), positiveInfinity().add(positiveInfinity()).getIntValue());
     }
-
 }

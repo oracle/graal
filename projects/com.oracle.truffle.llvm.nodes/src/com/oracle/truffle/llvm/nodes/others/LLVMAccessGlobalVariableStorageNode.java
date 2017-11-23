@@ -49,5 +49,4 @@ public final class LLVMAccessGlobalVariableStorageNode extends LLVMExpressionNod
     public LLVMGlobalVariable getDescriptor() {
         return descriptor;
     }
-
 }

@@ -89,24 +89,22 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
         }
 
         @Specialization
-        public LLVMAddress execute(VirtualFrame frame) {
+        protected LLVMAddress doOp(VirtualFrame frame) {
             return LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), getSize(), getAlignment()));
         }
-
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMAllocaInstruction extends LLVMAllocInstruction {
 
         @Specialization
-        public LLVMAddress execute(VirtualFrame frame, int nr) {
+        protected LLVMAddress doOp(VirtualFrame frame, int nr) {
             return LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), getSize() * nr, getAlignment()));
         }
 
         @Specialization
-        public LLVMAddress execute(VirtualFrame frame, long nr) {
+        protected LLVMAddress doOp(VirtualFrame frame, long nr) {
             return LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), (int) (getSize() * nr), getAlignment()));
         }
     }
-
 }

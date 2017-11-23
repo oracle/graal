@@ -187,5 +187,4 @@ public final class StructureType extends AggregateType {
         }
         return true;
     }
-
 }

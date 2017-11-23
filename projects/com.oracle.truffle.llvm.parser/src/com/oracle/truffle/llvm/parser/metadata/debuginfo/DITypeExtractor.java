@@ -446,7 +446,6 @@ final class DITypeExtractor implements MetadataVisitor {
                     elemTypes.add(elemType);
                 }
             }
-
         }
     }
 

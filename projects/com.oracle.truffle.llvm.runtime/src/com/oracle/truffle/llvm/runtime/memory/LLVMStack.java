@@ -175,5 +175,4 @@ public final class LLVMStack {
             throw new AssertionError("Did not free stack memory!");
         }
     }
-
 }

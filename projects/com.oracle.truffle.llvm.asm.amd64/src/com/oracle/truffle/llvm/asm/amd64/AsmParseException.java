@@ -35,5 +35,4 @@ class AsmParseException extends RuntimeException {
     AsmParseException(String msg) {
         super(msg);
     }
-
 }

@@ -328,5 +328,4 @@ public final class NFIContextExtension implements ContextExtension {
         sb.append(nativeRet);
         return sb.toString();
     }
-
 }

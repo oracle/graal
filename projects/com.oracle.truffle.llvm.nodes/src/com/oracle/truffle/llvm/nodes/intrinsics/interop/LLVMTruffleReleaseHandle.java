@@ -45,13 +45,14 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMTruffleReleaseHandle extends LLVMIntrinsic {
 
     @Specialization
-    public Object executeIntrinsic(LLVMAddress handle, @Cached("getContextReference()") ContextReference<LLVMContext> context) {
+    protected Object doIntrinsic(LLVMAddress handle,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> context) {
         context.get().releaseHandle(handle);
         return null;
     }
 
     @Specialization(guards = "!isLLVMAddress(handle)")
-    public TruffleObject executeFail(Object handle) {
+    protected TruffleObject doFail(Object handle) {
         CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException(handle + " not supported.");
     }

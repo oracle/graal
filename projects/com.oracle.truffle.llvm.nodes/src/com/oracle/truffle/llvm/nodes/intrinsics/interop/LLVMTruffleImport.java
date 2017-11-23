@@ -57,7 +57,8 @@ public abstract class LLVMTruffleImport extends LLVMIntrinsic {
     }
 
     @Specialization
-    public Object executeIntrinsic(VirtualFrame frame, Object value, @Cached("createReadString()") LLVMReadStringNode readStr) {
+    protected Object doIntrinsic(VirtualFrame frame, Object value,
+                    @Cached("createReadString()") LLVMReadStringNode readStr) {
         String id = readStr.executeWithTarget(frame, value);
         return toLLVM.executeWithTarget(frame, importSymbol(id));
     }

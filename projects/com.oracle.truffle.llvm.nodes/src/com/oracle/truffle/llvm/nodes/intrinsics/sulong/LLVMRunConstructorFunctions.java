@@ -48,7 +48,7 @@ public abstract class LLVMRunConstructorFunctions extends LLVMIntrinsic {
     @CompilationFinal(dimensions = 1) private RootCallTarget[] targets;
 
     @Specialization
-    public Object execute(@Cached("getContextReference()") ContextReference<LLVMContext> context) {
+    protected Object doOp(@Cached("getContextReference()") ContextReference<LLVMContext> context) {
         if (targets == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             List<RootCallTarget> constructorFunctions = context.get().getConstructorFunctions();
@@ -59,5 +59,4 @@ public abstract class LLVMRunConstructorFunctions extends LLVMIntrinsic {
         }
         return null;
     }
-
 }

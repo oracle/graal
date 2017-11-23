@@ -46,7 +46,7 @@ public abstract class LLVMAMD64RdtscNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame) {
+    protected Object doOp(VirtualFrame frame) {
         long value = rdtsc.executeI64(frame);
         long lo = value & LLVMExpressionNode.I32_MASK;
         long hi = (value >> LLVMExpressionNode.I32_SIZE_IN_BITS) & LLVMExpressionNode.I32_MASK;
@@ -57,7 +57,7 @@ public abstract class LLVMAMD64RdtscNode extends LLVMExpressionNode {
     public abstract static class LLVMAMD64RdtscReadNode extends LLVMExpressionNode {
         @TruffleBoundary
         @Specialization
-        public long executeRdtsc() {
+        protected long doRdtsc() {
             return System.currentTimeMillis();
         }
     }

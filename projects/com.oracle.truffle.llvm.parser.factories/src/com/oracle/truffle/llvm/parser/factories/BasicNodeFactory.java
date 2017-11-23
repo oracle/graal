@@ -1809,7 +1809,6 @@ public class BasicNodeFactory implements NodeFactory {
             default:
                 throw new IllegalStateException("Missing LLVM builtin: " + declaration.getName());
         }
-
     }
 
     private static int getOverflowFieldOffset(LLVMParserRuntime runtime, FunctionDeclaration declaration) {
@@ -2126,5 +2125,4 @@ public class BasicNodeFactory implements NodeFactory {
         }
         return LLVMStoreExpressionNodeGen.create(source, store, pointerNode, valueNode);
     }
-
 }

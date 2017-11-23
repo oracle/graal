@@ -46,5 +46,4 @@ public final class LLVMException extends ControlFlowException {
     public LLVMAddress getPointer() {
         return LLVMAddress.fromLong(ptr);
     }
-
 }

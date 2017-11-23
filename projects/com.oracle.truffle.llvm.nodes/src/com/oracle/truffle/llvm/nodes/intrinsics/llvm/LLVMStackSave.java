@@ -53,8 +53,7 @@ public abstract class LLVMStackSave extends LLVMBuiltin {
     }
 
     @Specialization
-    public LLVMAddress executePointee(VirtualFrame frame) {
+    protected LLVMAddress doPointee(VirtualFrame frame) {
         return LLVMAddress.fromLong(FrameUtil.getLongSafe(frame, getStackPointerSlot()));
     }
-
 }

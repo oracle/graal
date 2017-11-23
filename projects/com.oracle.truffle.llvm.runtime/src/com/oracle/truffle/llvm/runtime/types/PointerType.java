@@ -128,5 +128,4 @@ public final class PointerType extends AggregateType {
     public boolean equals(Object obj) {
         return obj instanceof PointerType;
     }
-
 }

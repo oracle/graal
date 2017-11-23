@@ -43,12 +43,12 @@ public abstract class LLVMAMD64SyscallBindNode extends LLVMAMD64SyscallOperation
     }
 
     @Specialization
-    protected long execute(long sockfd, LLVMAddress addr, long addrlen) {
+    protected long doOp(long sockfd, LLVMAddress addr, long addrlen) {
         return (int) bind.execute((int) sockfd, addr.getVal(), (int) addrlen);
     }
 
     @Specialization
-    protected long execute(long sockfd, long addr, long addrlen) {
-        return execute(sockfd, LLVMAddress.fromLong(addr), addrlen);
+    protected long doOp(long sockfd, long addr, long addrlen) {
+        return doOp(sockfd, LLVMAddress.fromLong(addr), addrlen);
     }
 }

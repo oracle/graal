@@ -37,7 +37,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 public abstract class NativeAllocateStringNode extends LLVMAllocateStringNode {
 
     @Specialization
-    public Object alloc(String s) {
+    protected Object alloc(String s) {
         LLVMAddress allocatedMemory = LLVMMemory.allocateMemory(s.length() + 1);
         long currentPtr = allocatedMemory.getVal();
         for (byte b : s.getBytes()) {
@@ -47,5 +47,4 @@ public abstract class NativeAllocateStringNode extends LLVMAllocateStringNode {
         LLVMMemory.putI8(currentPtr, (byte) 0);
         return allocatedMemory;
     }
-
 }

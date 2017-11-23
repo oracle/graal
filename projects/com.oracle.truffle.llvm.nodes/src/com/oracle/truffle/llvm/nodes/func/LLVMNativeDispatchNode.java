@@ -126,7 +126,7 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
     }
 
     @Specialization(guards = "function.getVal() == cachedFunction.getVal()")
-    public Object doCached(VirtualFrame frame, LLVMAddress function, Object[] arguments,
+    protected Object doCached(VirtualFrame frame, LLVMAddress function, Object[] arguments,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("function") LLVMAddress cachedFunction,
                     @Cached("identityFunction()") TruffleObject identity,
@@ -144,7 +144,7 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
     }
 
     @Specialization
-    public Object doGeneric(VirtualFrame frame, LLVMAddress function, Object[] arguments,
+    protected Object doGeneric(VirtualFrame frame, LLVMAddress function, Object[] arguments,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("identityFunction()") TruffleObject identity,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,

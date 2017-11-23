@@ -54,7 +54,7 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
 
     @SuppressWarnings("unused")
     @Specialization(limit = "2", guards = {"mime.equals(readMime.executeWithTarget(frame, mimePointer))", "src.equals(readSrc.executeWithTarget(frame, srcPointer))"})
-    public Object doCached(VirtualFrame frame, Object mimePointer, Object srcPointer,
+    protected Object doCached(VirtualFrame frame, Object mimePointer, Object srcPointer,
                     @Cached("createReadString()") LLVMReadStringNode readMime,
                     @Cached("createReadString()") LLVMReadStringNode readSrc,
                     @Cached("readMime.executeWithTarget(frame, mimePointer)") String mime,
@@ -65,7 +65,7 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
     }
 
     @Specialization(replaces = "doCached")
-    public Object uncached(VirtualFrame frame, Object mimePointer, Object srcPointer,
+    protected Object uncached(VirtualFrame frame, Object mimePointer, Object srcPointer,
                     @Cached("createReadString()") LLVMReadStringNode readMime,
                     @Cached("createReadString()") LLVMReadStringNode readSrc,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context) {

@@ -43,7 +43,7 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
     @CompilationFinal private boolean inJava = true;
 
     @Specialization
-    public Object memset(LLVMAddress address, byte value, long length) {
+    protected Object memset(LLVMAddress address, byte value, long length) {
         if (inJava) {
             if (length <= MAX_JAVA_LEN) {
                 long current = address.getVal();

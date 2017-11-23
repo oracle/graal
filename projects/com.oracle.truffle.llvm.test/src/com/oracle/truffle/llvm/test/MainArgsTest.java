@@ -73,5 +73,4 @@ public final class MainArgsTest extends BaseSulongOnlyHarness {
     public RunConfiguration getConfiguration() {
         return configuration;
     }
-
 }

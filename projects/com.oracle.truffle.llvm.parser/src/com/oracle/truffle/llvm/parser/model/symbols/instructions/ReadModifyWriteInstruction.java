@@ -92,5 +92,4 @@ public final class ReadModifyWriteInstruction extends ValueInstruction {
         inst.value = symbols.getSymbol(value, inst);
         return inst;
     }
-
 }

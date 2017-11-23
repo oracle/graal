@@ -68,7 +68,6 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
         public Object executeGeneric(VirtualFrame frame) {
             return executeI1(frame);
         }
-
     }
 
     public static class LLVMI8UnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
@@ -205,7 +204,6 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
         public Object executeGeneric(VirtualFrame frame) {
             return executeLLVMAddress(frame);
         }
-
     }
 
     public static class LLVMFunctionUnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
@@ -229,5 +227,4 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
     public Object executeGeneric(VirtualFrame frame) {
         throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER, message);
     }
-
 }

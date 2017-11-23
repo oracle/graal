@@ -126,7 +126,6 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException();
         }
-
     }
 
     public static final class LandingpadCatchEntryNode extends LandingpadEntryNode {
@@ -218,7 +217,6 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
             }
             return false;
         }
-
     }
 
     private static LLVMToNativeNode[] getForceLLVMAddressNodes(int size) {

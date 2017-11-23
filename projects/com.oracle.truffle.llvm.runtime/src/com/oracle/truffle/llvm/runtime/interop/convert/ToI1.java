@@ -49,72 +49,74 @@ abstract class ToI1 extends ForeignToLLVM {
     @Child private ToI1 toI1;
 
     @Specialization
-    public boolean fromInt(int value) {
+    protected boolean fromInt(int value) {
         return value != 0;
     }
 
     @Specialization
-    public boolean fromChar(char value) {
+    protected boolean fromChar(char value) {
         return value != 0;
     }
 
     @Specialization
-    public boolean fromShort(short value) {
+    protected boolean fromShort(short value) {
         return value != 0;
     }
 
     @Specialization
-    public boolean fromLong(long value) {
+    protected boolean fromLong(long value) {
         return value != 0;
     }
 
     @Specialization
-    public boolean fromByte(byte value) {
+    protected boolean fromByte(byte value) {
         return value != 0;
     }
 
     @Specialization
-    public boolean fromFloat(float value) {
+    protected boolean fromFloat(float value) {
         return value != 0;
     }
 
     @Specialization
-    public boolean fromDouble(double value) {
+    protected boolean fromDouble(double value) {
         return value != 0;
     }
 
     @Specialization
-    public boolean fromBoolean(boolean value) {
+    protected boolean fromBoolean(boolean value) {
         return value;
     }
 
     @Specialization
-    public boolean fromForeignPrimitive(VirtualFrame frame, LLVMBoxedPrimitive boxed) {
+    protected boolean fromForeignPrimitive(VirtualFrame frame, LLVMBoxedPrimitive boxed) {
         return recursiveConvert(frame, boxed.getValue());
     }
 
     @Specialization
-    public boolean fromString(String value) {
+    protected boolean fromString(String value) {
         return getSingleStringCharacter(value) != 0;
     }
 
     @Specialization
-    public boolean fromLLVMTruffleAddress(LLVMTruffleAddress obj) {
+    protected boolean fromLLVMTruffleAddress(LLVMTruffleAddress obj) {
         return obj.getAddress().getVal() != 0;
     }
 
     @Specialization
-    public boolean fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+    protected boolean fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd,
+                    @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
         return toNative.executeWithTarget(frame, fd).getVal() != 0;
     }
 
     @Specialization
-    public boolean fromSharedDescriptor(LLVMSharedGlobalVariable shared, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
+    protected boolean fromSharedDescriptor(LLVMSharedGlobalVariable shared,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
         return access.getNativeLocation(shared.getDescriptor()).getVal() != 0;
     }
 
     @Specialization(guards = "notLLVM(obj)")
-    public boolean fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+    protected boolean fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
         return recursiveConvert(frame, fromForeign(obj));
     }
 
@@ -154,5 +156,4 @@ abstract class ToI1 extends ForeignToLLVM {
             throw UnsupportedTypeException.raise(new Object[]{value});
         }
     }
-
 }

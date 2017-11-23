@@ -63,5 +63,4 @@ public enum ReadModifyWriteOperator {
     public String getIrString() {
         return irString;
     }
-
 }

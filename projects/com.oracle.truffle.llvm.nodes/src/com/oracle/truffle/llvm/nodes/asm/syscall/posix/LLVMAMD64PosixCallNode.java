@@ -66,7 +66,8 @@ public abstract class LLVMAMD64PosixCallNode extends LLVMNode {
     public abstract Object executeObject(Object[] args);
 
     @Specialization
-    public Object doCall(Object[] args, @Cached("createFunction()") TruffleObject function) {
+    protected Object doCall(Object[] args,
+                    @Cached("createFunction()") TruffleObject function) {
         try {
             return ForeignAccess.sendExecute(nativeExecute, function, args);
         } catch (InteropException e) {

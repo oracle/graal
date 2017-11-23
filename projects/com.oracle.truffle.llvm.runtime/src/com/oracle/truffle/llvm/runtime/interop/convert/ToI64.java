@@ -48,72 +48,74 @@ abstract class ToI64 extends ForeignToLLVM {
     @Child private ToI64 toI64;
 
     @Specialization
-    public long fromInt(int value) {
+    protected long fromInt(int value) {
         return value;
     }
 
     @Specialization
-    public long fromChar(char value) {
+    protected long fromChar(char value) {
         return value;
     }
 
     @Specialization
-    public long fromShort(short value) {
+    protected long fromShort(short value) {
         return value;
     }
 
     @Specialization
-    public long fromLong(long value) {
+    protected long fromLong(long value) {
         return value;
     }
 
     @Specialization
-    public long fromByte(byte value) {
+    protected long fromByte(byte value) {
         return value;
     }
 
     @Specialization
-    public long fromFloat(float value) {
+    protected long fromFloat(float value) {
         return (long) value;
     }
 
     @Specialization
-    public long fromDouble(double value) {
+    protected long fromDouble(double value) {
         return (long) value;
     }
 
     @Specialization
-    public long fromBoolean(boolean value) {
+    protected long fromBoolean(boolean value) {
         return value ? 1 : 0;
     }
 
     @Specialization
-    public long fromForeignPrimitive(VirtualFrame frame, LLVMBoxedPrimitive boxed) {
+    protected long fromForeignPrimitive(VirtualFrame frame, LLVMBoxedPrimitive boxed) {
         return recursiveConvert(frame, boxed.getValue());
     }
 
     @Specialization(guards = "notLLVM(obj)")
-    public long fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+    protected long fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
         return recursiveConvert(frame, fromForeign(obj));
     }
 
     @Specialization
-    public long fromString(String value) {
+    protected long fromString(String value) {
         return getSingleStringCharacter(value);
     }
 
     @Specialization
-    public long fromLLVMTruffleAddress(LLVMTruffleAddress obj) {
+    protected long fromLLVMTruffleAddress(LLVMTruffleAddress obj) {
         return obj.getAddress().getVal();
     }
 
     @Specialization
-    public long fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+    protected long fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd,
+                    @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
         return toNative.executeWithTarget(frame, fd).getVal();
     }
 
     @Specialization
-    public long fromSharedDescriptor(LLVMSharedGlobalVariable shared, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
+    protected long fromSharedDescriptor(LLVMSharedGlobalVariable shared,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
         return access.getNativeLocation(shared.getDescriptor()).getVal();
     }
 

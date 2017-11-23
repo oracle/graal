@@ -48,72 +48,74 @@ abstract class ToFloat extends ForeignToLLVM {
     @Child private ToFloat toFloat;
 
     @Specialization
-    public float fromInt(int value) {
+    protected float fromInt(int value) {
         return value;
     }
 
     @Specialization
-    public float fromLong(long value) {
+    protected float fromLong(long value) {
         return value;
     }
 
     @Specialization
-    public float fromChar(char value) {
+    protected float fromChar(char value) {
         return value;
     }
 
     @Specialization
-    public float fromShort(short value) {
+    protected float fromShort(short value) {
         return value;
     }
 
     @Specialization
-    public float fromByte(byte value) {
+    protected float fromByte(byte value) {
         return value;
     }
 
     @Specialization
-    public float fromFloat(float value) {
+    protected float fromFloat(float value) {
         return value;
     }
 
     @Specialization
-    public float fromDouble(double value) {
+    protected float fromDouble(double value) {
         return (float) value;
     }
 
     @Specialization
-    public float fromBoolean(boolean value) {
+    protected float fromBoolean(boolean value) {
         return (value ? 1.0f : 0.0f);
     }
 
     @Specialization
-    public float fromString(String value) {
+    protected float fromString(String value) {
         return getSingleStringCharacter(value);
     }
 
     @Specialization
-    public float fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+    protected float fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd,
+                    @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
         return toNative.executeWithTarget(frame, fd).getVal();
     }
 
     @Specialization
-    public float fromLLVMTruffleAddress(LLVMTruffleAddress obj) {
+    protected float fromLLVMTruffleAddress(LLVMTruffleAddress obj) {
         return obj.getAddress().getVal();
     }
 
     @Specialization
-    public float fromSharedDescriptor(LLVMSharedGlobalVariable shared, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
+    protected float fromSharedDescriptor(LLVMSharedGlobalVariable shared,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
         return access.getNativeLocation(shared.getDescriptor()).getVal();
     }
 
     @Specialization
-    public float fromForeignPrimitive(VirtualFrame frame, LLVMBoxedPrimitive boxed) {
+    protected float fromForeignPrimitive(VirtualFrame frame, LLVMBoxedPrimitive boxed) {
         return recursiveConvert(frame, boxed.getValue());
     }
 
     @Specialization(guards = "notLLVM(obj)")
-    public float fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+    protected float fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
         return recursiveConvert(frame, fromForeign(obj));
     }
 
@@ -149,5 +151,4 @@ abstract class ToFloat extends ForeignToLLVM {
             throw UnsupportedTypeException.raise(new Object[]{value});
         }
     }
-
 }

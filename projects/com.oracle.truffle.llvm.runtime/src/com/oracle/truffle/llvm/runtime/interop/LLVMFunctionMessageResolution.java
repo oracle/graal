@@ -47,7 +47,6 @@ public class LLVMFunctionMessageResolution {
         protected Object access(@SuppressWarnings("unused") VirtualFrame frame, LLVMFunctionDescriptor object) {
             return object.isNullFunction();
         }
-
     }
 
     @Resolve(message = "IS_EXECUTABLE")
@@ -57,7 +56,6 @@ public class LLVMFunctionMessageResolution {
         protected Object access(VirtualFrame frame, LLVMFunctionDescriptor object) {
             return true;
         }
-
     }
 
     @Resolve(message = "EXECUTE")
@@ -90,7 +88,5 @@ public class LLVMFunctionMessageResolution {
                 return UnsupportedMessageException.raise(Message.createInvoke(arguments.length));
             }
         }
-
     }
-
 }

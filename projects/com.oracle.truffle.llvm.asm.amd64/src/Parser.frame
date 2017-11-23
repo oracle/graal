@@ -182,7 +182,6 @@ class Errors {
 	public void Warning (String s) {
 		errorStream.println(s);
 	}
-
 } // Errors
 
 

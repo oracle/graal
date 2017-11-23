@@ -45,25 +45,25 @@ public abstract class LLVMAMD64WriteTupelNode extends Node {
     public abstract void execute(VirtualFrame frame, Object value1, Object value2);
 
     @Specialization
-    public void execute(VirtualFrame frame, byte value1, byte value2) {
+    protected void doOp(VirtualFrame frame, byte value1, byte value2) {
         write1.execute(frame, value1);
         write2.execute(frame, value2);
     }
 
     @Specialization
-    public void execute(VirtualFrame frame, short value1, short value2) {
+    protected void doOp(VirtualFrame frame, short value1, short value2) {
         write1.execute(frame, value1);
         write2.execute(frame, value2);
     }
 
     @Specialization
-    public void execute(VirtualFrame frame, int value1, int value2) {
+    protected void doOp(VirtualFrame frame, int value1, int value2) {
         write1.execute(frame, value1);
         write2.execute(frame, value2);
     }
 
     @Specialization
-    public void execute(VirtualFrame frame, long value1, long value2) {
+    protected void doOp(VirtualFrame frame, long value1, long value2) {
         write1.execute(frame, value1);
         write2.execute(frame, value2);
     }

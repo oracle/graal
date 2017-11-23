@@ -85,7 +85,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         public abstract Object executeWithTarget(VirtualFrame frame, LLVMAddress address, Object cmpValue, Object newValue);
 
         @Specialization
-        public Object execute(VirtualFrame frame, LLVMAddress address, byte comparisonValue, byte newValue) {
+        protected Object doOp(VirtualFrame frame, LLVMAddress address, byte comparisonValue, byte newValue) {
             CMPXCHGI8 compareAndSwapI8 = LLVMMemory.compareAndSwapI8(address, comparisonValue, newValue);
             LLVMAddress allocation = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), resultSize, 8));
             LLVMMemory.putI8(allocation, compareAndSwapI8.getValue());
@@ -94,7 +94,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(VirtualFrame frame, LLVMAddress address, short comparisonValue, short newValue) {
+        protected Object doOp(VirtualFrame frame, LLVMAddress address, short comparisonValue, short newValue) {
             CMPXCHGI16 compareAndSwapI16 = LLVMMemory.compareAndSwapI16(address, comparisonValue, newValue);
             LLVMAddress allocation = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), resultSize, 8));
             LLVMMemory.putI16(allocation, compareAndSwapI16.getValue());
@@ -103,7 +103,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(VirtualFrame frame, LLVMAddress address, int comparisonValue, int newValue) {
+        protected Object doOp(VirtualFrame frame, LLVMAddress address, int comparisonValue, int newValue) {
             CMPXCHGI32 compareAndSwapI32 = LLVMMemory.compareAndSwapI32(address, comparisonValue, newValue);
             LLVMAddress allocation = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), resultSize, 8));
             LLVMMemory.putI32(allocation, compareAndSwapI32.getValue());
@@ -112,7 +112,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(VirtualFrame frame, LLVMAddress address, long comparisonValue, long newValue) {
+        protected Object doOp(VirtualFrame frame, LLVMAddress address, long comparisonValue, long newValue) {
             CMPXCHGI64 compareAndSwapI64 = LLVMMemory.compareAndSwapI64(address, comparisonValue, newValue);
             LLVMAddress allocation = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), resultSize, 8));
             LLVMMemory.putI64(allocation, compareAndSwapI64.getValue());
@@ -121,24 +121,23 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(VirtualFrame frame, LLVMAddress address, LLVMAddress comparisonValue, LLVMAddress newValue) {
+        protected Object doOp(VirtualFrame frame, LLVMAddress address, LLVMAddress comparisonValue, LLVMAddress newValue) {
             CMPXCHGI64 compareAndSwapI64 = LLVMMemory.compareAndSwapI64(address, comparisonValue.getVal(), newValue.getVal());
             LLVMAddress allocation = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), resultSize, 8));
             LLVMMemory.putI64(allocation, compareAndSwapI64.getValue());
             LLVMMemory.putI1(allocation.getVal() + secondValueOffset, compareAndSwapI64.isSwap());
             return allocation;
         }
-
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMAddress address, Object comparisonValue, Object newValue) {
+    protected Object doOp(VirtualFrame frame, LLVMAddress address, Object comparisonValue, Object newValue) {
         return cmpxch.executeWithTarget(frame, address, comparisonValue, newValue);
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMGlobalVariable address, Object comparisonValue, Object newValue, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doOp(VirtualFrame frame, LLVMGlobalVariable address, Object comparisonValue, Object newValue,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         return cmpxch.executeWithTarget(frame, globalAccess.getNativeLocation(address), comparisonValue, newValue);
     }
-
 }

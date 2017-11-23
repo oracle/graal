@@ -41,7 +41,6 @@ public class ValueList<V extends ValueList.Value<V, C>, C extends ValueList.Valu
 
         default void defaultAction(@SuppressWarnings("unused") V v) {
         }
-
     }
 
     public interface Value<V, C extends ValueVisitor<V>> {

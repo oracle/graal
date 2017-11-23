@@ -63,7 +63,7 @@ public abstract class LLVMDebugFrameWriteNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object write(VirtualFrame frame, Object llvmValue) {
+        protected Object write(VirtualFrame frame, Object llvmValue) {
             final LLVMDebugValue value = LLVMDebugValue.create(valueProcessor, llvmValue);
             frame.setObject(getFrameSlot(), value);
             return null;
@@ -82,7 +82,7 @@ public abstract class LLVMDebugFrameWriteNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object init(VirtualFrame frame) {
+        protected Object init(VirtualFrame frame) {
             frame.setObject(getFrameSlot(), new LLVMDebugAggregateValue(offsets, lengths));
             return null;
         }
@@ -106,7 +106,7 @@ public abstract class LLVMDebugFrameWriteNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object setPart(LLVMDebugAggregateValue aggregate, Object partLLVMValue) {
+        protected Object setPart(LLVMDebugAggregateValue aggregate, Object partLLVMValue) {
             aggregate.setPart(partIndex, builder, partLLVMValue);
             clearIndices(aggregate);
             return null;

@@ -45,12 +45,13 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 public abstract class LLVMI16LoadNode extends LLVMLoadNode {
 
     @Specialization
-    public short executeShort(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected short doShort(LLVMGlobalVariable addr,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         return globalAccess.getI16(addr);
     }
 
     @Specialization
-    public short executeShort(LLVMAddress addr) {
+    protected short doShort(LLVMAddress addr) {
         return LLVMMemory.getI16(addr);
     }
 
@@ -59,17 +60,18 @@ public abstract class LLVMI16LoadNode extends LLVMLoadNode {
     }
 
     @Specialization
-    public short executeI16(LLVMVirtualAllocationAddress address) {
+    protected short doI16(LLVMVirtualAllocationAddress address) {
         return address.getI16();
     }
 
     @Specialization
-    public short executeShort(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+    protected short doShort(VirtualFrame frame, LLVMTruffleObject addr,
+                    @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
         return (short) foreignRead.execute(frame, addr);
     }
 
     @Specialization
-    public short executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
+    protected short doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
         if (addr.getValue() instanceof Long) {
             return LLVMMemory.getI16((long) addr.getValue());
         } else {

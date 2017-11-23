@@ -48,25 +48,29 @@ public abstract class LLVMFunctionStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMAddress address, Object function, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+    protected Object doOp(VirtualFrame frame, LLVMAddress address, Object function,
+                    @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
         LLVMHeap.putFunctionPointer(address, toNative.executeWithTarget(frame, function).getVal());
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMGlobalVariable address, LLVMAddress function, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doOp(LLVMGlobalVariable address, LLVMAddress function,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         globalAccess.putAddress(address, function);
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMGlobalVariable address, LLVMFunctionDescriptor function, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doOp(LLVMGlobalVariable address, LLVMFunctionDescriptor function,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         globalAccess.putFunction(address, function);
         return null;
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMTruffleObject address, Object value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, Object value,
+                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(frame, address, value);
         return null;
     }

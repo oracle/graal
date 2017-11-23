@@ -38,7 +38,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMAMD64ModNode extends LLVMExpressionNode {
 
     @Specialization
-    public int executeI32(int left, int rightAX, int rightDX) {
+    protected int doI32(int left, int rightAX, int rightDX) {
         long dividend = (long) rightDX << LLVMExpressionNode.I32_SIZE_IN_BYTES * Byte.SIZE;
         dividend = dividend | rightAX;
         return (int) (dividend % left);

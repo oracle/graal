@@ -48,17 +48,18 @@ public abstract class LLVMDoubleLoadNode extends LLVMLoadNode {
     private final DoubleValueProfile profile = DoubleValueProfile.createRawIdentityProfile();
 
     @Specialization
-    public double executeDouble(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected double doDouble(LLVMGlobalVariable addr,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         return profile.profile(globalAccess.getDouble(addr));
     }
 
     @Specialization
-    public double executeDouble(LLVMVirtualAllocationAddress address) {
+    protected double doDouble(LLVMVirtualAllocationAddress address) {
         return address.getDouble();
     }
 
     @Specialization
-    public double executeDouble(LLVMAddress addr) {
+    protected double doDouble(LLVMAddress addr) {
         double value = LLVMMemory.getDouble(addr);
         return profile.profile(value);
     }
@@ -68,12 +69,13 @@ public abstract class LLVMDoubleLoadNode extends LLVMLoadNode {
     }
 
     @Specialization
-    public double executeDouble(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+    protected double doDouble(VirtualFrame frame, LLVMTruffleObject addr,
+                    @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
         return (double) foreignRead.execute(frame, addr);
     }
 
     @Specialization
-    public double executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
+    protected double doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
         if (addr.getValue() instanceof Long) {
             return LLVMMemory.getDouble((long) addr.getValue());
         } else {

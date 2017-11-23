@@ -99,7 +99,6 @@ public final class Symbols {
             if (symbols[index] instanceof MetadataAttachmentHolder) {
                 ((MetadataAttachmentHolder) symbols[index]).attachMetadata(attachment);
             }
-
         } else {
             getForwardReference(index).attachMetadata(attachment);
         }

@@ -45,7 +45,7 @@ public abstract class LLVMAMD64IdivNode extends LLVMExpressionNode {
     @NodeChildren({@NodeChild(value = "left", type = LLVMExpressionNode.class), @NodeChild(value = "right", type = LLVMExpressionNode.class)})
     public abstract static class LLVMAMD64IdivbNode extends LLVMExpressionNode {
         @Specialization
-        protected short execute(short left, byte right) {
+        protected short doOp(short left, byte right) {
             if (right == 0) {
                 CompilerDirectives.transferToInterpreter();
                 throw new ArithmeticException(DIV_BY_ZERO);
@@ -66,7 +66,7 @@ public abstract class LLVMAMD64IdivNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, short high, short left, short right) {
+        protected Object doOp(VirtualFrame frame, short high, short left, short right) {
             if (right == 0) {
                 CompilerDirectives.transferToInterpreter();
                 throw new ArithmeticException(DIV_BY_ZERO);
@@ -89,7 +89,7 @@ public abstract class LLVMAMD64IdivNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, int high, int left, int right) {
+        protected Object doOp(VirtualFrame frame, int high, int left, int right) {
             if (right == 0) {
                 CompilerDirectives.transferToInterpreter();
                 throw new ArithmeticException(DIV_BY_ZERO);
@@ -112,7 +112,7 @@ public abstract class LLVMAMD64IdivNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, long high, long left, long right) {
+        protected Object doOp(VirtualFrame frame, long high, long left, long right) {
             if (right == 0) {
                 CompilerDirectives.transferToInterpreter();
                 throw new ArithmeticException(DIV_BY_ZERO);

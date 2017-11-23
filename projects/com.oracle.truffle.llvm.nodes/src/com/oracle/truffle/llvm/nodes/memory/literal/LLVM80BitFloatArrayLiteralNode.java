@@ -55,7 +55,8 @@ public abstract class LLVM80BitFloatArrayLiteralNode extends LLVMExpressionNode 
     }
 
     @Specialization
-    protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global,
+                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
         return write80BitFloat(frame, globalAccess.getNativeLocation(global));
     }
 
@@ -75,5 +76,4 @@ public abstract class LLVM80BitFloatArrayLiteralNode extends LLVMExpressionNode 
         }
         return addr;
     }
-
 }

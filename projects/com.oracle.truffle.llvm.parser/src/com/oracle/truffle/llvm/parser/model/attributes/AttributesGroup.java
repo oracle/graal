@@ -80,5 +80,4 @@ public final class AttributesGroup {
     public String toString() {
         return "AttributesGroup [groupId=" + groupId + ", paramIdx=" + paramIdx + ", attributes=" + attributes + "]";
     }
-
 }

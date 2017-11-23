@@ -70,7 +70,6 @@ final class LLVMSourceScopeVariables implements TruffleObject {
             public Object access(LLVMSourceScopeVariables vars) {
                 return new VariableNames(vars.vars.keySet());
             }
-
         }
 
         @Resolve(message = "KEY_INFO")
@@ -84,7 +83,6 @@ final class LLVMSourceScopeVariables implements TruffleObject {
                     return 0b11;
                 }
             }
-
         }
 
         @Resolve(message = "READ")
@@ -98,7 +96,6 @@ final class LLVMSourceScopeVariables implements TruffleObject {
                     throw UnknownIdentifierException.raise(String.valueOf(name));
                 }
             }
-
         }
 
     }
@@ -129,7 +126,6 @@ final class LLVMSourceScopeVariables implements TruffleObject {
                 public Object access(@SuppressWarnings("unused") VariableNames varNames) {
                     return true;
                 }
-
             }
 
             @Resolve(message = "GET_SIZE")
@@ -139,7 +135,6 @@ final class LLVMSourceScopeVariables implements TruffleObject {
                 public Object access(VariableNames varNames) {
                     return varNames.names.size();
                 }
-
             }
 
             @Resolve(message = "READ")
@@ -153,7 +148,6 @@ final class LLVMSourceScopeVariables implements TruffleObject {
                         return "No such index: " + index;
                     }
                 }
-
             }
 
         }

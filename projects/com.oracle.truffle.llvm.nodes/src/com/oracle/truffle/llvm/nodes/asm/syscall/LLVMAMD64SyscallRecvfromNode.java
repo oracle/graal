@@ -43,12 +43,12 @@ public abstract class LLVMAMD64SyscallRecvfromNode extends LLVMAMD64SyscallOpera
     }
 
     @Specialization
-    protected long execute(long socket, LLVMAddress buffer, long length, long flags, LLVMAddress address, LLVMAddress addressLen) {
+    protected long doOp(long socket, LLVMAddress buffer, long length, long flags, LLVMAddress address, LLVMAddress addressLen) {
         return (long) recvfrom.execute((int) socket, buffer.getVal(), length, (int) flags, address.getVal(), addressLen.getVal());
     }
 
     @Specialization
-    protected long execute(long socket, long buffer, long length, long flags, long address, long addressLen) {
+    protected long doOp(long socket, long buffer, long length, long flags, long address, long addressLen) {
         return execute(socket, LLVMAddress.fromLong(buffer), length, flags, LLVMAddress.fromLong(address), LLVMAddress.fromLong(addressLen));
     }
 }

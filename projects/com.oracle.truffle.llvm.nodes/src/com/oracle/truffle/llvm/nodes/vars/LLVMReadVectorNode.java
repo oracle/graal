@@ -133,5 +133,4 @@ public class LLVMReadVectorNode {
             return (LLVMAddressVector) FrameUtil.getObjectSafe(frame, getSlot());
         }
     }
-
 }

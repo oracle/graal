@@ -236,7 +236,7 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
     }
 
     @Specialization
-    public Object vaStart(VirtualFrame frame, Object targetAddress) {
+    protected Object vaStart(VirtualFrame frame, Object targetAddress) {
         final Object[] arguments = getArgumentsArray(frame);
         final int vaLength = arguments.length - numberOfExplicitArguments;
 
@@ -334,5 +334,4 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
         storeNode.executeWithTarget(frame, currentPtr, value);
         return X86_64BitVarArgs.STACK_STEP;
     }
-
 }

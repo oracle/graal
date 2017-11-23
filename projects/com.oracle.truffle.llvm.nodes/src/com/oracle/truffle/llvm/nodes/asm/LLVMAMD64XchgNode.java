@@ -50,7 +50,7 @@ public abstract class LLVMAMD64XchgNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, byte a, byte b) {
+        protected Object doOp(VirtualFrame frame, byte a, byte b) {
             out.execute(frame, b, a);
             return null;
         }
@@ -62,7 +62,7 @@ public abstract class LLVMAMD64XchgNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, short a, short b) {
+        protected Object doOp(VirtualFrame frame, short a, short b) {
             out.execute(frame, b, a);
             return null;
         }
@@ -74,7 +74,7 @@ public abstract class LLVMAMD64XchgNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, int a, int b) {
+        protected Object doOp(VirtualFrame frame, int a, int b) {
             out.execute(frame, b, a);
             return null;
         }
@@ -86,7 +86,7 @@ public abstract class LLVMAMD64XchgNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, long a, long b) {
+        protected Object doOp(VirtualFrame frame, long a, long b) {
             out.execute(frame, b, a);
             return null;
         }

@@ -39,7 +39,7 @@ public abstract class LLVMDisabledExpect {
     public abstract static class LLVMDisabledExpectI1 extends LLVMExpressionNode {
 
         @Specialization
-        public boolean executeI1(boolean val) {
+        protected boolean doI1(boolean val) {
             return val;
         }
     }
@@ -48,20 +48,17 @@ public abstract class LLVMDisabledExpect {
     public abstract static class LLVMDisabledExpectI32 extends LLVMExpressionNode {
 
         @Specialization
-        public int executeI32(int val) {
+        protected int doI32(int val) {
             return val;
         }
-
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "val")
     public abstract static class LLVMDisabledExpectI64 extends LLVMExpressionNode {
 
         @Specialization
-        public long executeI64(long val) {
+        protected long doI64(long val) {
             return val;
         }
-
     }
-
 }

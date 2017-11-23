@@ -39,7 +39,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMSulongFunctionToNativePointer extends LLVMIntrinsic {
 
     @Specialization
-    Object identity(Object pointer, @SuppressWarnings("unused") Object signature) {
+    protected Object identity(Object pointer, @SuppressWarnings("unused") Object signature) {
         // this function is deprecated in truffle.h
         return pointer;
     }

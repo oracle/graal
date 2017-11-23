@@ -74,7 +74,7 @@ public abstract class LLVMAMD64MulNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected short execute(VirtualFrame frame, byte left, byte right) {
+        protected short doOp(VirtualFrame frame, byte left, byte right) {
             short value = (short) (Byte.toUnsignedInt(left) * Byte.toUnsignedInt(right));
             byte valueb = (byte) value;
             boolean overflow = ((value >> LLVMExpressionNode.I8_SIZE_IN_BITS) & LLVMExpressionNode.I8_MASK) != 0;
@@ -95,7 +95,7 @@ public abstract class LLVMAMD64MulNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, short left, short right) {
+        protected Object doOp(VirtualFrame frame, short left, short right) {
             int value = Short.toUnsignedInt(left) * Short.toUnsignedInt(right);
             short hi = (short) (value >> LLVMExpressionNode.I16_SIZE_IN_BITS);
             setFlags(frame, (byte) value, hi != 0, (short) value < 0);
@@ -115,7 +115,7 @@ public abstract class LLVMAMD64MulNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, int left, int right) {
+        protected Object doOp(VirtualFrame frame, int left, int right) {
             long value = Integer.toUnsignedLong(left) * Integer.toUnsignedLong(right);
             int hi = (int) (value >> LLVMExpressionNode.I32_SIZE_IN_BITS);
             setFlags(frame, (byte) value, hi != 0, (int) value < 0);
@@ -135,7 +135,7 @@ public abstract class LLVMAMD64MulNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, long left, long right) {
+        protected Object doOp(VirtualFrame frame, long left, long right) {
             long value = left * right;
             long hi = LongMultiplication.multiplyHighUnsigned(left, right);
             setFlags(frame, (byte) value, hi != 0, value < 0);

@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallGetcwdNode extends LLVMAMD64SyscallOperati
     }
 
     @Specialization
-    protected long execute(LLVMAddress buf, long size) {
+    protected long doOp(LLVMAddress buf, long size) {
         String cwd = LLVMPath.getcwd();
         if (cwd.length() >= size) {
             return -LLVMAMD64Error.ERANGE;
@@ -50,7 +50,7 @@ public abstract class LLVMAMD64SyscallGetcwdNode extends LLVMAMD64SyscallOperati
     }
 
     @Specialization
-    protected long execute(long buf, long size) {
-        return execute(LLVMAddress.fromLong(buf), size);
+    protected long doOp(long buf, long size) {
+        return doOp(LLVMAddress.fromLong(buf), size);
     }
 }
