@@ -32,15 +32,15 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class SelectInstruction extends ValueInstruction {
 
-    private Symbol condition;
+    private SymbolImpl condition;
 
-    private Symbol trueValue;
+    private SymbolImpl trueValue;
 
-    private Symbol falseValue;
+    private SymbolImpl falseValue;
 
     private SelectInstruction(Type type) {
         super(type);
@@ -51,20 +51,20 @@ public final class SelectInstruction extends ValueInstruction {
         visitor.visit(this);
     }
 
-    public Symbol getCondition() {
+    public SymbolImpl getCondition() {
         return condition;
     }
 
-    public Symbol getFalseValue() {
+    public SymbolImpl getFalseValue() {
         return falseValue;
     }
 
-    public Symbol getTrueValue() {
+    public SymbolImpl getTrueValue() {
         return trueValue;
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (condition == original) {
             condition = replacement;
         }

@@ -42,13 +42,13 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class VoidInvokeInstruction extends VoidInstruction implements Invoke {
 
-    private Symbol target;
+    private SymbolImpl target;
 
-    private final List<Symbol> arguments = new ArrayList<>();
+    private final List<SymbolImpl> arguments = new ArrayList<>();
 
     private final InstructionBlock normalSuccessor;
 
@@ -68,7 +68,7 @@ public final class VoidInvokeInstruction extends VoidInstruction implements Invo
     }
 
     @Override
-    public Symbol getArgument(int index) {
+    public SymbolImpl getArgument(int index) {
         return arguments.get(index);
     }
 
@@ -78,7 +78,7 @@ public final class VoidInvokeInstruction extends VoidInstruction implements Invo
     }
 
     @Override
-    public Symbol getCallTarget() {
+    public SymbolImpl getCallTarget() {
         return target;
     }
 
@@ -98,7 +98,7 @@ public final class VoidInvokeInstruction extends VoidInstruction implements Invo
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (target == original) {
             target = replacement;
         }

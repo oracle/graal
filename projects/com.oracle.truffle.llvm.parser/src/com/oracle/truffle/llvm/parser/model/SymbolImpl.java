@@ -27,53 +27,12 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.model;
 
-import com.oracle.truffle.llvm.parser.model.SymbolTable;
-import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.parser.ValueList;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
-public final class BlockAddressConstant extends AbstractConstant {
+public interface SymbolImpl extends ValueList.Value<SymbolImpl, SymbolVisitor>, Symbol {
 
-    private FunctionDefinition function;
-
-    private final int block;
-
-    private BlockAddressConstant(Type type, int block) {
-        super(type);
-        this.block = block;
-    }
-
-    @Override
-    public void accept(SymbolVisitor visitor) {
-        visitor.visit(this);
-    }
-
-    public FunctionDefinition getFunction() {
-        return function;
-    }
-
-    public InstructionBlock getInstructionBlock() {
-        return function.getBlock(block);
-    }
-
-    @Override
-    public void replace(SymbolImpl original, SymbolImpl replacement) {
-        if (function == original) {
-            if (replacement instanceof FunctionDefinition) {
-                function = (FunctionDefinition) replacement;
-            } else {
-                throw new IllegalStateException("Expected FunctionDefinition!");
-            }
-        }
-    }
-
-    public static BlockAddressConstant fromSymbols(SymbolTable symbols, Type type, int function, int block) {
-        final BlockAddressConstant constant = new BlockAddressConstant(type, block);
-        constant.function = (FunctionDefinition) symbols.getForwardReferenced(function, constant);
-        return constant;
-    }
 }

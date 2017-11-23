@@ -38,13 +38,13 @@ import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class CallInstruction extends ValueInstruction implements Call {
 
-    private Symbol target;
+    private SymbolImpl target;
 
-    private final List<Symbol> arguments = new ArrayList<>();
+    private final List<SymbolImpl> arguments = new ArrayList<>();
 
     private final AttributesCodeEntry paramAttr;
 
@@ -59,7 +59,7 @@ public final class CallInstruction extends ValueInstruction implements Call {
     }
 
     @Override
-    public Symbol getArgument(int index) {
+    public SymbolImpl getArgument(int index) {
         return arguments.get(index);
     }
 
@@ -69,7 +69,7 @@ public final class CallInstruction extends ValueInstruction implements Call {
     }
 
     @Override
-    public Symbol getCallTarget() {
+    public SymbolImpl getCallTarget() {
         return target;
     }
 
@@ -89,7 +89,7 @@ public final class CallInstruction extends ValueInstruction implements Call {
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (target == original) {
             target = replacement;
         }

@@ -36,9 +36,9 @@ import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
-public final class SymbolTable extends ValueList<Symbol, SymbolVisitor> {
+public final class SymbolTable extends ValueList<SymbolImpl, SymbolVisitor> {
 
-    private static final PlaceholderFactory<Symbol, SymbolVisitor> PLACEHOLDER_FACTORY = () -> new Symbol() {
+    private static final PlaceholderFactory<SymbolImpl, SymbolVisitor> PLACEHOLDER_FACTORY = () -> new SymbolImpl() {
 
         @Override
         public Type getType() {
@@ -51,7 +51,7 @@ public final class SymbolTable extends ValueList<Symbol, SymbolVisitor> {
         }
 
         @Override
-        public void replace(Symbol oldValue, Symbol newValue) {
+        public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
             throw new IllegalStateException("Cannot replace Symbol in Forward Reference!");
         }
 
@@ -66,7 +66,7 @@ public final class SymbolTable extends ValueList<Symbol, SymbolVisitor> {
     }
 
     public void nameSymbol(int index, String name) {
-        final Symbol symbol = getOrNull(index);
+        final SymbolImpl symbol = getOrNull(index);
         if (symbol instanceof ValueSymbol) {
             ((ValueSymbol) symbol).setName(name);
 
@@ -80,7 +80,7 @@ public final class SymbolTable extends ValueList<Symbol, SymbolVisitor> {
     }
 
     public void attachMetadata(int index, MDAttachment attachment) {
-        final Symbol symbol = getOrNull(index);
+        final SymbolImpl symbol = getOrNull(index);
         if (symbol instanceof MetadataAttachmentHolder) {
             ((MetadataAttachmentHolder) symbol).attachMetadata(attachment);
 

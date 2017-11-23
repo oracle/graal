@@ -32,12 +32,12 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
 public final class IndirectBranchInstruction extends VoidInstruction implements TerminatingInstruction {
 
-    private Symbol address;
+    private SymbolImpl address;
 
     private final InstructionBlock[] successors;
 
@@ -50,7 +50,7 @@ public final class IndirectBranchInstruction extends VoidInstruction implements 
         visitor.visit(this);
     }
 
-    public Symbol getAddress() {
+    public SymbolImpl getAddress() {
         return address;
     }
 
@@ -65,7 +65,7 @@ public final class IndirectBranchInstruction extends VoidInstruction implements 
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (address == original) {
             address = replacement;
         }

@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.parser.model;
 
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
-public interface ValueSymbol extends Symbol {
+public interface ValueSymbol extends SymbolImpl {
 
     default int getAlign() {
         return 0;

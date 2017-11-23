@@ -32,13 +32,13 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class ExtractElementInstruction extends ValueInstruction {
 
-    private Symbol vector;
+    private SymbolImpl vector;
 
-    private Symbol index;
+    private SymbolImpl index;
 
     private ExtractElementInstruction(Type type) {
         super(type);
@@ -49,16 +49,16 @@ public final class ExtractElementInstruction extends ValueInstruction {
         visitor.visit(this);
     }
 
-    public Symbol getIndex() {
+    public SymbolImpl getIndex() {
         return index;
     }
 
-    public Symbol getVector() {
+    public SymbolImpl getVector() {
         return vector;
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (vector == original) {
             vector = replacement;
         }

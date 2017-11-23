@@ -34,15 +34,15 @@ import com.oracle.truffle.llvm.parser.model.enums.BinaryOperator;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class BinaryOperationConstant extends AbstractConstant {
 
     private final BinaryOperator operator;
 
-    private Symbol lhs;
+    private SymbolImpl lhs;
 
-    private Symbol rhs;
+    private SymbolImpl rhs;
 
     private BinaryOperationConstant(Type type, BinaryOperator operator) {
         super(type);
@@ -56,7 +56,7 @@ public final class BinaryOperationConstant extends AbstractConstant {
         visitor.visit(this);
     }
 
-    public Symbol getLHS() {
+    public SymbolImpl getLHS() {
         return lhs;
     }
 
@@ -64,12 +64,12 @@ public final class BinaryOperationConstant extends AbstractConstant {
         return operator;
     }
 
-    public Symbol getRHS() {
+    public SymbolImpl getRHS() {
         return rhs;
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (lhs == original) {
             lhs = replacement;
         }

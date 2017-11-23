@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.enums.AtomicOrdering;
 import com.oracle.truffle.llvm.parser.model.enums.SynchronizationScope;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
 public final class StoreInstruction extends VoidInstruction {
@@ -42,8 +42,8 @@ public final class StoreInstruction extends VoidInstruction {
     private final boolean isVolatile;
     private final SynchronizationScope synchronizationScope;
 
-    private Symbol destination;
-    private Symbol source;
+    private SymbolImpl destination;
+    private SymbolImpl source;
 
     private StoreInstruction(int align, boolean isVolatile, AtomicOrdering ordering, SynchronizationScope scope) {
         this.align = align;
@@ -81,11 +81,11 @@ public final class StoreInstruction extends VoidInstruction {
         return atomicOrdering;
     }
 
-    public Symbol getDestination() {
+    public SymbolImpl getDestination() {
         return destination;
     }
 
-    public Symbol getSource() {
+    public SymbolImpl getSource() {
         return source;
     }
 
@@ -98,7 +98,7 @@ public final class StoreInstruction extends VoidInstruction {
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (destination == original) {
             destination = replacement;
         }

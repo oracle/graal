@@ -68,7 +68,7 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class LLVMParserRuntime {
     private static final String CONSTRUCTORS_VARNAME = "@llvm.global_ctors";
@@ -144,12 +144,12 @@ public final class LLVMParserRuntime {
     private final LLVMContext context;
     private final StackAllocation stack;
     private final NodeFactory nodeFactory;
-    private final Map<GlobalAlias, Symbol> aliases;
+    private final Map<GlobalAlias, SymbolImpl> aliases;
     private final List<LLVMExpressionNode> deallocations;
     private final LLVMScope scope;
 
     private LLVMParserRuntime(Source source, String libraryName, LLVMLanguage language, LLVMContext context, StackAllocation stack, NodeFactory nodeFactory,
-                    Map<GlobalAlias, Symbol> aliases) {
+                    Map<GlobalAlias, SymbolImpl> aliases) {
         this.source = source;
         this.libraryName = libraryName;
         this.context = context;
@@ -215,7 +215,7 @@ public final class LLVMParserRuntime {
     }
 
     private LLVMExpressionNode getGlobalVariable(LLVMSymbolReadResolver symbolResolver, GlobalValueSymbol global) {
-        Symbol g = global;
+        SymbolImpl g = global;
         while (g instanceof GlobalAlias) {
             g = aliases.get(g);
         }
@@ -283,7 +283,7 @@ public final class LLVMParserRuntime {
             final LLVMExpressionNode functionCall = nodeFactory.createFunctionCall(this, loadedFunction, argNodes, functionType, null);
 
             final StructureConstant structorDefinition = (StructureConstant) arrayConstant.getElement(i);
-            final Symbol prioritySymbol = structorDefinition.getElement(0);
+            final SymbolImpl prioritySymbol = structorDefinition.getElement(0);
             final Integer priority = LLVMSymbolReadResolver.evaluateIntegerConstant(prioritySymbol);
             structors.add(new Pair<>(priority != null ? priority : LEAST_CONSTRUCTOR_PRIORITY, functionCall));
         }

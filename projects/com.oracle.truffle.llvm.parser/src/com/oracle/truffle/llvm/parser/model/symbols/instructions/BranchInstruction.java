@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
@@ -42,7 +42,7 @@ public final class BranchInstruction extends VoidInstruction implements Terminat
     }
 
     @Override
-    public void replace(Symbol oldValue, Symbol newValue) {
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
     }
 
     @Override

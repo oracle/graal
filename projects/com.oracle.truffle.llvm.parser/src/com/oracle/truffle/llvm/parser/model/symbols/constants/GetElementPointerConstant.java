@@ -36,15 +36,15 @@ import java.util.List;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class GetElementPointerConstant extends AbstractConstant {
 
     private final boolean isInbounds;
 
-    private Symbol base;
+    private SymbolImpl base;
 
-    private final List<Symbol> indices = new ArrayList<>();
+    private final List<SymbolImpl> indices = new ArrayList<>();
 
     private GetElementPointerConstant(Type type, boolean isInbounds) {
         super(type);
@@ -56,11 +56,11 @@ public final class GetElementPointerConstant extends AbstractConstant {
         visitor.visit(this);
     }
 
-    public Symbol getBasePointer() {
+    public SymbolImpl getBasePointer() {
         return base;
     }
 
-    public List<Symbol> getIndices() {
+    public List<SymbolImpl> getIndices() {
         return Collections.unmodifiableList(indices);
     }
 
@@ -69,7 +69,7 @@ public final class GetElementPointerConstant extends AbstractConstant {
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (base == original) {
             base = replacement;
         }

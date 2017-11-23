@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.enums.AtomicOrdering;
 import com.oracle.truffle.llvm.parser.model.enums.SynchronizationScope;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
@@ -58,7 +58,7 @@ public final class FenceInstruction extends VoidInstruction {
     }
 
     @Override
-    public void replace(Symbol oldValue, Symbol newValue) {
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
     }
 
     public static FenceInstruction generate(long atomicOrdering, long synchronizationScope) {

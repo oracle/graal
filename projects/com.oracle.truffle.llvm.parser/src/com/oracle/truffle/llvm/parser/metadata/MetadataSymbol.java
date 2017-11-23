@@ -33,7 +33,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class MetadataSymbol implements Constant {
 
@@ -53,7 +53,7 @@ public final class MetadataSymbol implements Constant {
     }
 
     @Override
-    public void replace(Symbol oldValue, Symbol newValue) {
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
 
     }
 

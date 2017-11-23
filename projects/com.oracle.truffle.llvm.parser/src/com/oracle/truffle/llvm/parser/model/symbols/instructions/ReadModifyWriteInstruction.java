@@ -35,7 +35,7 @@ import com.oracle.truffle.llvm.parser.model.enums.ReadModifyWriteOperator;
 import com.oracle.truffle.llvm.parser.model.enums.SynchronizationScope;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class ReadModifyWriteInstruction extends ValueInstruction {
 
@@ -45,8 +45,8 @@ public final class ReadModifyWriteInstruction extends ValueInstruction {
     private final boolean isVolatile;
     private final SynchronizationScope synchronizationScope;
 
-    private Symbol ptr;
-    private Symbol value;
+    private SymbolImpl ptr;
+    private SymbolImpl value;
 
     private ReadModifyWriteInstruction(Type type, ReadModifyWriteOperator operator, boolean isVolatile, AtomicOrdering atomicOrdering, SynchronizationScope synchronizationScope) {
         super(type);
@@ -61,11 +61,11 @@ public final class ReadModifyWriteInstruction extends ValueInstruction {
         visitor.visit(this);
     }
 
-    public Symbol getPtr() {
+    public SymbolImpl getPtr() {
         return ptr;
     }
 
-    public Symbol getValue() {
+    public SymbolImpl getValue() {
         return value;
     }
 
@@ -86,7 +86,7 @@ public final class ReadModifyWriteInstruction extends ValueInstruction {
     }
 
     @Override
-    public void replace(Symbol oldValue, Symbol newValue) {
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
         if (ptr == oldValue) {
             ptr = newValue;
         }

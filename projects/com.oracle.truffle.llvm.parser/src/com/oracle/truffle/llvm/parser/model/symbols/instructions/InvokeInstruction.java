@@ -39,13 +39,13 @@ import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class InvokeInstruction extends ValueInstruction implements Invoke {
 
-    private Symbol target;
+    private SymbolImpl target;
 
-    private final List<Symbol> arguments = new ArrayList<>();
+    private final List<SymbolImpl> arguments = new ArrayList<>();
 
     private final InstructionBlock normalSuccessor;
 
@@ -66,7 +66,7 @@ public final class InvokeInstruction extends ValueInstruction implements Invoke 
     }
 
     @Override
-    public Symbol getArgument(int index) {
+    public SymbolImpl getArgument(int index) {
         return arguments.get(index);
     }
 
@@ -76,7 +76,7 @@ public final class InvokeInstruction extends ValueInstruction implements Invoke 
     }
 
     @Override
-    public Symbol getCallTarget() {
+    public SymbolImpl getCallTarget() {
         return target;
     }
 
@@ -96,7 +96,7 @@ public final class InvokeInstruction extends ValueInstruction implements Invoke 
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (target == original) {
             target = replacement;
         }

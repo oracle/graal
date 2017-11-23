@@ -37,7 +37,7 @@ import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 
 import java.util.ArrayList;
@@ -51,7 +51,7 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
 
     private String name = LLVMIdentifier.UNKNOWN;
 
-    private Symbol value = null;
+    private SymbolImpl value = null;
 
     private final Linkage linkage;
 
@@ -78,6 +78,10 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
         return value != null;
     }
 
+    public int getInitialiser() {
+        return isInitialized() ? 1 : 0;
+    }
+
     @Override
     public String getName() {
         return name;
@@ -92,7 +96,7 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
         return linkage;
     }
 
-    public Symbol getValue() {
+    public SymbolImpl getValue() {
         return value;
     }
 
@@ -124,7 +128,7 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
     }
 
     @Override
-    public void replace(Symbol oldValue, Symbol newValue) {
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
         if (value == oldValue) {
             value = newValue;
         }

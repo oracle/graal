@@ -35,7 +35,7 @@ import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class CompareInstruction extends ValueInstruction {
 
@@ -43,9 +43,9 @@ public final class CompareInstruction extends ValueInstruction {
 
     private Type baseType;
 
-    private Symbol lhs;
+    private SymbolImpl lhs;
 
-    private Symbol rhs;
+    private SymbolImpl rhs;
 
     private CompareInstruction(Type type, CompareOperator operator) {
         super(calculateResultType(type));
@@ -70,7 +70,7 @@ public final class CompareInstruction extends ValueInstruction {
         return baseType;
     }
 
-    public Symbol getLHS() {
+    public SymbolImpl getLHS() {
         return lhs;
     }
 
@@ -78,12 +78,12 @@ public final class CompareInstruction extends ValueInstruction {
         return operator;
     }
 
-    public Symbol getRHS() {
+    public SymbolImpl getRHS() {
         return rhs;
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (lhs == original) {
             lhs = replacement;
         }

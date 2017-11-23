@@ -32,15 +32,15 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 
 public final class LandingpadInstruction extends ValueInstruction {
 
-    private Symbol value;
+    private SymbolImpl value;
     private final boolean isCleanup;
     private final long[] clauseTypes;
-    private Symbol[] clauseSymbols;
+    private SymbolImpl[] clauseSymbols;
 
     private LandingpadInstruction(Type type, boolean isCleanup, long[] clauseTypes) {
         super(type);
@@ -58,12 +58,12 @@ public final class LandingpadInstruction extends ValueInstruction {
         return ((ValueSymbol) value).getAlign();
     }
 
-    public Symbol getValue() {
+    public SymbolImpl getValue() {
         return value;
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (value == original) {
             value = replacement;
         }
@@ -77,13 +77,13 @@ public final class LandingpadInstruction extends ValueInstruction {
         return clauseTypes;
     }
 
-    public Symbol[] getClauseSymbols() {
+    public SymbolImpl[] getClauseSymbols() {
         return clauseSymbols;
     }
 
     public static LandingpadInstruction generate(SymbolTable symbols, Type type, boolean isCleanup, long[] clauseTypes, long[] clauseTODO) {
         LandingpadInstruction l = new LandingpadInstruction(type, isCleanup, clauseTypes);
-        Symbol[] s = new Symbol[clauseTODO.length];
+        SymbolImpl[] s = new SymbolImpl[clauseTODO.length];
         for (int i = 0; i < clauseTODO.length; i++) {
             s[i] = symbols.getForwardReferenced((int) clauseTODO[i], l);
         }

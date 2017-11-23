@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.parser.model.visitors;
 import com.oracle.truffle.llvm.parser.ValueList;
 import com.oracle.truffle.llvm.parser.metadata.MetadataSymbol;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
@@ -87,7 +87,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInst
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
 
-public interface SymbolVisitor extends ValueList.ValueVisitor<Symbol> {
+public interface SymbolVisitor extends ValueList.ValueVisitor<SymbolImpl> {
 
     default void visit(ArrayConstant constant) {
         defaultAction(constant);

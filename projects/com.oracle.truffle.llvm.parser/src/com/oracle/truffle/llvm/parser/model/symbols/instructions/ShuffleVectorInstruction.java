@@ -32,15 +32,15 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class ShuffleVectorInstruction extends ValueInstruction {
 
-    private Symbol vector1;
+    private SymbolImpl vector1;
 
-    private Symbol vector2;
+    private SymbolImpl vector2;
 
-    private Symbol mask;
+    private SymbolImpl mask;
 
     private ShuffleVectorInstruction(Type type) {
         super(type);
@@ -51,20 +51,20 @@ public final class ShuffleVectorInstruction extends ValueInstruction {
         visitor.visit(this);
     }
 
-    public Symbol getMask() {
+    public SymbolImpl getMask() {
         return mask;
     }
 
-    public Symbol getVector1() {
+    public SymbolImpl getVector1() {
         return vector1;
     }
 
-    public Symbol getVector2() {
+    public SymbolImpl getVector2() {
         return vector2;
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (vector1 == original) {
             vector1 = replacement;
         }

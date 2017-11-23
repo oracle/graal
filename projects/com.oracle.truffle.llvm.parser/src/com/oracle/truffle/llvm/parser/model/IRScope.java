@@ -57,7 +57,7 @@ public final class IRScope {
         valueTypesScopeStart = GLOBAL_SCOPE_START;
     }
 
-    public void addSymbol(Symbol symbol, Type type) {
+    public void addSymbol(SymbolImpl symbol, Type type) {
         symbols.add(symbol);
         valueTypes.add(type);
     }

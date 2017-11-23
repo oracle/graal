@@ -34,13 +34,13 @@ import com.oracle.truffle.llvm.parser.model.enums.AtomicOrdering;
 import com.oracle.truffle.llvm.parser.model.enums.SynchronizationScope;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class CompareExchangeInstruction extends ValueInstruction {
 
-    private Symbol ptr;
-    private Symbol cmp;
-    private Symbol replace;
+    private SymbolImpl ptr;
+    private SymbolImpl cmp;
+    private SymbolImpl replace;
 
     private final AtomicOrdering successOrdering;
     private final AtomicOrdering failureOrdering;
@@ -58,15 +58,15 @@ public final class CompareExchangeInstruction extends ValueInstruction {
         this.isVolatile = isVolatile;
     }
 
-    public Symbol getPtr() {
+    public SymbolImpl getPtr() {
         return ptr;
     }
 
-    public Symbol getCmp() {
+    public SymbolImpl getCmp() {
         return cmp;
     }
 
-    public Symbol getReplace() {
+    public SymbolImpl getReplace() {
         return replace;
     }
 
@@ -91,7 +91,7 @@ public final class CompareExchangeInstruction extends ValueInstruction {
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (original == ptr) {
             ptr = replacement;
         }

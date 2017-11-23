@@ -33,13 +33,13 @@ import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.enums.CastOperator;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class CastConstant extends AbstractConstant {
 
     private final CastOperator operator;
 
-    private Symbol value;
+    private SymbolImpl value;
 
     private CastConstant(Type type, CastOperator operator) {
         super(type);
@@ -55,12 +55,12 @@ public final class CastConstant extends AbstractConstant {
         return operator;
     }
 
-    public Symbol getValue() {
+    public SymbolImpl getValue() {
         return value;
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (value == original) {
             value = replacement;
         }

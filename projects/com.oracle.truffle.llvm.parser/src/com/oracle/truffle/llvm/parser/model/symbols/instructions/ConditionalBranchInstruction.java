@@ -31,12 +31,12 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
 public final class ConditionalBranchInstruction extends VoidInstruction implements TerminatingInstruction {
 
-    private Symbol condition;
+    private SymbolImpl condition;
 
     private final InstructionBlock trueSuccessor;
 
@@ -52,7 +52,7 @@ public final class ConditionalBranchInstruction extends VoidInstruction implemen
         visitor.visit(this);
     }
 
-    public Symbol getCondition() {
+    public SymbolImpl getCondition() {
         return condition;
     }
 
@@ -80,7 +80,7 @@ public final class ConditionalBranchInstruction extends VoidInstruction implemen
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (condition == original) {
             condition = replacement;
         }

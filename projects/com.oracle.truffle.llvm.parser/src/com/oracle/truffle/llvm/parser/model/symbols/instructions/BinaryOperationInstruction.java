@@ -35,7 +35,7 @@ import com.oracle.truffle.llvm.parser.model.enums.Flag;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class BinaryOperationInstruction extends ValueInstruction {
 
@@ -43,9 +43,9 @@ public final class BinaryOperationInstruction extends ValueInstruction {
 
     private final Flag[] flags;
 
-    private Symbol lhs;
+    private SymbolImpl lhs;
 
-    private Symbol rhs;
+    private SymbolImpl rhs;
 
     private BinaryOperationInstruction(Type type, BinaryOperator operator, Flag[] flags) {
         super(type);
@@ -62,7 +62,7 @@ public final class BinaryOperationInstruction extends ValueInstruction {
         return flags;
     }
 
-    public Symbol getLHS() {
+    public SymbolImpl getLHS() {
         return lhs;
     }
 
@@ -70,12 +70,12 @@ public final class BinaryOperationInstruction extends ValueInstruction {
         return operator;
     }
 
-    public Symbol getRHS() {
+    public SymbolImpl getRHS() {
         return rhs;
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (lhs == original) {
             lhs = replacement;
         }

@@ -30,11 +30,11 @@
 package com.oracle.truffle.llvm.parser.metadata;
 
 import com.oracle.truffle.llvm.parser.model.IRScope;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class MDValue implements MDBaseNode {
 
-    private Symbol value;
+    private SymbolImpl value;
 
     @Override
     public void accept(MetadataVisitor visitor) {
@@ -44,7 +44,7 @@ public final class MDValue implements MDBaseNode {
     private MDValue() {
     }
 
-    public Symbol getValue() {
+    public SymbolImpl getValue() {
         return value;
     }
 
@@ -71,7 +71,7 @@ public final class MDValue implements MDBaseNode {
         return value;
     }
 
-    public static MDValue create(Symbol symbol) {
+    public static MDValue create(SymbolImpl symbol) {
         final MDValue value = new MDValue();
         value.value = symbol;
         return value;

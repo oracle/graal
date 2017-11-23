@@ -34,13 +34,13 @@ import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDValue;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 final class MDSymbolExtractor implements MetadataVisitor {
 
-    private static final Symbol DEFAULT_SYMBOL = null;
+    private static final SymbolImpl DEFAULT_SYMBOL = null;
 
-    static Symbol getSymbol(MDBaseNode container) {
+    static SymbolImpl getSymbol(MDBaseNode container) {
         if (container == null) {
             return DEFAULT_SYMBOL;
         }
@@ -53,7 +53,7 @@ final class MDSymbolExtractor implements MetadataVisitor {
     private MDSymbolExtractor() {
     }
 
-    private Symbol sym = DEFAULT_SYMBOL;
+    private SymbolImpl sym = DEFAULT_SYMBOL;
 
     @Override
     public void visit(MDValue mdVal) {

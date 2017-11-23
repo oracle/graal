@@ -30,15 +30,15 @@
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
-public interface Call extends Symbol {
+public interface Call extends SymbolImpl {
 
-    Symbol getArgument(int index);
+    SymbolImpl getArgument(int index);
 
     int getArgumentCount();
 
-    Symbol getCallTarget();
+    SymbolImpl getCallTarget();
 
     AttributesGroup getFunctionAttributesGroup();
 

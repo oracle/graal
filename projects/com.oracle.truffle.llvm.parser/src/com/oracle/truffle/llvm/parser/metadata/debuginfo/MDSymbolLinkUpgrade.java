@@ -43,7 +43,7 @@ import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 final class MDSymbolLinkUpgrade implements MetadataVisitor {
 
@@ -89,7 +89,7 @@ final class MDSymbolLinkUpgrade implements MetadataVisitor {
 
     @Override
     public void visit(MDSubprogram md) {
-        final Symbol valueSymbol = MDSymbolExtractor.getSymbol(md.getFunction());
+        final SymbolImpl valueSymbol = MDSymbolExtractor.getSymbol(md.getFunction());
         if (valueSymbol instanceof FunctionDefinition) {
             final FunctionDefinition function = (FunctionDefinition) valueSymbol;
             attachSymbol(function, md);
@@ -101,7 +101,7 @@ final class MDSymbolLinkUpgrade implements MetadataVisitor {
 
     @Override
     public void visit(MDGlobalVariable mdGlobal) {
-        final Symbol symbol = MDSymbolExtractor.getSymbol(mdGlobal.getVariable());
+        final SymbolImpl symbol = MDSymbolExtractor.getSymbol(mdGlobal.getVariable());
         if (symbol instanceof GlobalValueSymbol) {
             final GlobalValueSymbol global = (GlobalValueSymbol) symbol;
             attachSymbol(global, mdGlobal);

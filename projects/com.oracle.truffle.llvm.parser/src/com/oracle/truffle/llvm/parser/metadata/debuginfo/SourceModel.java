@@ -65,7 +65,7 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFile;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -150,7 +150,7 @@ public final class SourceModel {
         }
     }
 
-    public static final class Variable implements Symbol {
+    public static final class Variable implements SymbolImpl {
 
         private final LLVMSourceSymbol variable;
 
@@ -229,7 +229,7 @@ public final class SourceModel {
         }
 
         @Override
-        public void replace(Symbol oldValue, Symbol newValue) {
+        public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
         }
 
         @Override
@@ -251,13 +251,13 @@ public final class SourceModel {
 
     private final Map<LLVMSourceSymbol, GlobalValueSymbol> globals;
 
-    private final Map<LLVMSourceStaticMemberType, Symbol> staticMembers;
+    private final Map<LLVMSourceStaticMemberType, SymbolImpl> staticMembers;
 
     public Map<LLVMSourceSymbol, GlobalValueSymbol> getGlobals() {
         return Collections.unmodifiableMap(globals);
     }
 
-    public Map<LLVMSourceStaticMemberType, Symbol> getStaticMembers() {
+    public Map<LLVMSourceStaticMemberType, SymbolImpl> getStaticMembers() {
         return Collections.unmodifiableMap(staticMembers);
     }
 
@@ -395,7 +395,7 @@ public final class SourceModel {
 
         @Override
         public void visit(VoidCallInstruction call) {
-            final Symbol callTarget = call.getCallTarget();
+            final SymbolImpl callTarget = call.getCallTarget();
             if (callTarget instanceof FunctionDeclaration) {
                 int mdlocalArgIndex = -1;
                 int mdExprArgIndex = -1;
@@ -424,7 +424,7 @@ public final class SourceModel {
         }
 
         private void handleDebugIntrinsic(VoidCallInstruction call, int mdlocalArgIndex, int mdExprArgIndex) {
-            Symbol value = call.getArgument(LLVM_DBG_INTRINSICS_VALUE_ARGINDEX);
+            SymbolImpl value = call.getArgument(LLVM_DBG_INTRINSICS_VALUE_ARGINDEX);
             if (value instanceof MetadataSymbol) {
                 // the first argument should reference the allocation site of the variable
                 value = MDSymbolExtractor.getSymbol(((MetadataSymbol) value).getNode());
@@ -444,7 +444,7 @@ public final class SourceModel {
                 ((FunctionParameter) value).setSourceVariable(true);
             }
 
-            final Symbol mdLocalMDRef = call.getArgument(mdlocalArgIndex);
+            final SymbolImpl mdLocalMDRef = call.getArgument(mdlocalArgIndex);
             final Variable variable;
             if (mdLocalMDRef instanceof MetadataSymbol) {
                 final MDBaseNode mdLocal = ((MetadataSymbol) mdLocalMDRef).getNode();
@@ -461,7 +461,7 @@ public final class SourceModel {
                 variable = null;
             }
 
-            final Symbol expr = call.getArgument(mdExprArgIndex);
+            final SymbolImpl expr = call.getArgument(mdExprArgIndex);
             if (expr instanceof MetadataSymbol) {
                 final MDBaseNode exprNode = ((MetadataSymbol) expr).getNode();
                 if (exprNode instanceof MDExpression) {

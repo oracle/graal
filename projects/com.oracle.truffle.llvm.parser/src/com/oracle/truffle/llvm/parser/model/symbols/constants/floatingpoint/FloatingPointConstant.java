@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint;
 
 import java.nio.ByteBuffer;
 
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.AbstractConstant;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -63,6 +63,6 @@ public abstract class FloatingPointConstant extends AbstractConstant {
     }
 
     @Override
-    public void replace(Symbol oldValue, Symbol newValue) {
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
     }
 }

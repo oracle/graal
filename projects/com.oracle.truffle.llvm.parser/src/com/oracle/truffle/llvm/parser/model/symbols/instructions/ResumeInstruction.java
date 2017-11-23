@@ -31,12 +31,12 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
 public final class ResumeInstruction extends VoidInstruction implements TerminatingInstruction {
 
-    private Symbol value;
+    private SymbolImpl value;
 
     private ResumeInstruction() {
     }
@@ -46,7 +46,7 @@ public final class ResumeInstruction extends VoidInstruction implements Terminat
         visitor.visit(this);
     }
 
-    public Symbol getValue() {
+    public SymbolImpl getValue() {
         return value;
     }
 
@@ -61,7 +61,7 @@ public final class ResumeInstruction extends VoidInstruction implements Terminat
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (value == original) {
             value = replacement;
         }

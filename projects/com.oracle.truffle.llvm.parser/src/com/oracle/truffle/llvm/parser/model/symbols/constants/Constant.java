@@ -34,9 +34,9 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.Aggregat
 import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.FloatingPointConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
-public interface Constant extends Symbol {
+public interface Constant extends SymbolImpl {
 
     static Constant createFromData(Type type, long datum) {
         if (Type.isIntegerType(type)) {

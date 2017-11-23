@@ -34,7 +34,7 @@ import com.oracle.truffle.llvm.parser.model.enums.AtomicOrdering;
 import com.oracle.truffle.llvm.parser.model.enums.SynchronizationScope;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class LoadInstruction extends ValueInstruction {
 
@@ -42,7 +42,7 @@ public final class LoadInstruction extends ValueInstruction {
     private final AtomicOrdering atomicOrdering;
     private final boolean isVolatile;
     private final SynchronizationScope synchronizationScope;
-    private Symbol source;
+    private SymbolImpl source;
 
     private LoadInstruction(Type type, int align, boolean isVolatile, AtomicOrdering ordering, SynchronizationScope scope) {
         super(type);
@@ -80,7 +80,7 @@ public final class LoadInstruction extends ValueInstruction {
         return atomicOrdering;
     }
 
-    public Symbol getSource() {
+    public SymbolImpl getSource() {
         return source;
     }
 
@@ -93,7 +93,7 @@ public final class LoadInstruction extends ValueInstruction {
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (source == original) {
             source = replacement;
         }

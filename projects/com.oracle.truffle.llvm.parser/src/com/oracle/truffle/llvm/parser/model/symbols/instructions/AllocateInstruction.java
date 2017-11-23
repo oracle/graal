@@ -33,11 +33,11 @@ import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class AllocateInstruction extends ValueInstruction {
 
-    private Symbol count;
+    private SymbolImpl count;
 
     private final int align;
 
@@ -56,7 +56,7 @@ public final class AllocateInstruction extends ValueInstruction {
         return align;
     }
 
-    public Symbol getCount() {
+    public SymbolImpl getCount() {
         return count;
     }
 
@@ -70,7 +70,7 @@ public final class AllocateInstruction extends ValueInstruction {
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (count == original) {
             count = replacement;
         }

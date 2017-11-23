@@ -48,7 +48,7 @@ import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 
 public final class LLVMPhiManager implements ModelVisitor {
@@ -139,9 +139,9 @@ public final class LLVMPhiManager implements ModelVisitor {
 
         private final ValueSymbol phi;
 
-        private final Symbol value;
+        private final SymbolImpl value;
 
-        private Phi(InstructionBlock block, ValueSymbol phi, Symbol value) {
+        private Phi(InstructionBlock block, ValueSymbol phi, SymbolImpl value) {
             this.block = block;
             this.phi = phi;
             this.value = value;
@@ -155,7 +155,7 @@ public final class LLVMPhiManager implements ModelVisitor {
             return phi;
         }
 
-        public Symbol getValue() {
+        public SymbolImpl getValue() {
             return value;
         }
     }

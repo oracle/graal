@@ -37,18 +37,18 @@ import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public abstract class AggregateConstant extends AbstractConstant {
 
-    private final Symbol[] elements;
+    private final SymbolImpl[] elements;
 
     AggregateConstant(Type type, int size) {
         super(type);
-        this.elements = new Symbol[size];
+        this.elements = new SymbolImpl[size];
     }
 
-    public Symbol getElement(int idx) {
+    public SymbolImpl getElement(int idx) {
         return elements[idx];
     }
 
@@ -57,7 +57,7 @@ public abstract class AggregateConstant extends AbstractConstant {
     }
 
     @Override
-    public void replace(Symbol oldValue, Symbol newValue) {
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
         if (!(newValue instanceof Constant || newValue instanceof GlobalValueSymbol)) {
             throw new IllegalStateException("Values can only be replaced by Constants or Globals!");
         }
@@ -75,7 +75,7 @@ public abstract class AggregateConstant extends AbstractConstant {
             if (i > 0) {
                 sb.append(", ");
             }
-            Symbol value = getElement(i);
+            SymbolImpl value = getElement(i);
             sb.append(value.getType()).append(" ").append(value);
         }
         return sb.toString();

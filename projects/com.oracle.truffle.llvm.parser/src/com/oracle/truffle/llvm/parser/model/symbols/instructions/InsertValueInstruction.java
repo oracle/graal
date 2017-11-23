@@ -32,13 +32,13 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class InsertValueInstruction extends ValueInstruction {
 
-    private Symbol aggregate;
+    private SymbolImpl aggregate;
 
-    private Symbol value;
+    private SymbolImpl value;
 
     private final int index;
 
@@ -52,7 +52,7 @@ public final class InsertValueInstruction extends ValueInstruction {
         visitor.visit(this);
     }
 
-    public Symbol getAggregate() {
+    public SymbolImpl getAggregate() {
         return aggregate;
     }
 
@@ -60,12 +60,12 @@ public final class InsertValueInstruction extends ValueInstruction {
         return index;
     }
 
-    public Symbol getValue() {
+    public SymbolImpl getValue() {
         return value;
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (aggregate == original) {
             aggregate = replacement;
         }

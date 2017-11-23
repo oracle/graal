@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants;
 
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -50,6 +50,6 @@ public final class NullConstant extends AbstractConstant {
     }
 
     @Override
-    public void replace(Symbol oldValue, Symbol newValue) {
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
     }
 }

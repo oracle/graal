@@ -42,10 +42,10 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 final class LLVMModelVisitor implements ModelVisitor {
-    private final Map<GlobalAlias, Symbol> aliases;
+    private final Map<GlobalAlias, SymbolImpl> aliases;
     private final List<GlobalValueSymbol> globals;
     private final List<FunctionDefinition> functions;
 
@@ -55,7 +55,7 @@ final class LLVMModelVisitor implements ModelVisitor {
         this.functions = new ArrayList<>();
     }
 
-    public Map<GlobalAlias, Symbol> getAliases() {
+    public Map<GlobalAlias, SymbolImpl> getAliases() {
         return aliases;
     }
 

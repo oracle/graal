@@ -37,14 +37,14 @@ import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.GetElementPointerConstant;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 
 public final class GetElementPointerInstruction extends ValueInstruction {
 
-    private Symbol base;
+    private SymbolImpl base;
 
-    private final List<Symbol> indices;
+    private final List<SymbolImpl> indices;
 
     private final boolean isInbounds;
 
@@ -70,11 +70,11 @@ public final class GetElementPointerInstruction extends ValueInstruction {
         }
     }
 
-    public Symbol getBasePointer() {
+    public SymbolImpl getBasePointer() {
         return base;
     }
 
-    public List<Symbol> getIndices() {
+    public List<SymbolImpl> getIndices() {
         return Collections.unmodifiableList(indices);
     }
 
@@ -83,7 +83,7 @@ public final class GetElementPointerInstruction extends ValueInstruction {
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (base == original) {
             base = replacement;
         }

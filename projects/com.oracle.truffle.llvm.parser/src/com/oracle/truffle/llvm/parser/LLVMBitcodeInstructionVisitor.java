@@ -105,7 +105,7 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
@@ -154,7 +154,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     }
 
     @Override
-    public void defaultAction(Symbol symbol) {
+    public void defaultAction(SymbolImpl symbol) {
         throw new IllegalStateException("Unimplemented Instruction: " + symbol.getClass().getSimpleName());
     }
 
@@ -172,7 +172,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         }
 
         final int size = runtime.getContext().getByteSize(type);
-        final Symbol count = allocate.getCount();
+        final SymbolImpl count = allocate.getCount();
         final LLVMExpressionNode result;
         if (count instanceof NullConstant) {
             result = nodeFactory.createAlloca(runtime, type, size, alignment);
@@ -251,7 +251,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         }
 
         final SourceSection sourceSection = sourceFunction.getSourceSection(call);
-        final Symbol target = call.getCallTarget();
+        final SymbolImpl target = call.getCallTarget();
         LLVMExpressionNode result = nodeFactory.createLLVMBuiltin(runtime, target, argNodes, argCount, sourceSection);
         if (result == null) {
             if (target instanceof InlineAsmConstant) {
@@ -302,7 +302,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     private static final int[] CLEAR_NONE = new int[0];
 
     private void visitDebugIntrinsic(VoidCallInstruction call, boolean isDeclaration) {
-        final Symbol sourceVariableSymbol;
+        final SymbolImpl sourceVariableSymbol;
         if (isDeclaration) {
             sourceVariableSymbol = call.getArgument(SourceModel.LLVM_DBG_DECLARE_LOCALREF_ARGINDEX);
         } else {
@@ -317,7 +317,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             return;
         }
 
-        final Symbol valueSymbol = call.getArgument(SourceModel.LLVM_DBG_INTRINSICS_VALUE_ARGINDEX);
+        final SymbolImpl valueSymbol = call.getArgument(SourceModel.LLVM_DBG_INTRINSICS_VALUE_ARGINDEX);
         FrameSlot valueSlot = null;
         if (valueSymbol instanceof ValueInstruction) {
             valueSlot = frame.findFrameSlot(((ValueInstruction) valueSymbol).getName());
@@ -350,7 +350,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             exprIndex = SourceModel.LLVM_DBG_DECLARE_EXPR_ARGINDEX;
 
         } else {
-            final Symbol valueOffsetSymbol = call.getArgument(LLVM_DBG_VALUE_OFFSET_INDEX);
+            final SymbolImpl valueOffsetSymbol = call.getArgument(LLVM_DBG_VALUE_OFFSET_INDEX);
             final Integer valueOffset = LLVMSymbolReadResolver.evaluateIntegerConstant(valueOffsetSymbol);
             valueRead = symbols.resolve(valueSymbol);
             exprIndex = SourceModel.LLVM_DBG_VALUE_EXPR_ARGINDEX;
@@ -370,7 +370,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         int partIndex = -1;
         int[] clearParts = null;
 
-        final Symbol exprSymbol = call.getArgument(exprIndex);
+        final SymbolImpl exprSymbol = call.getArgument(exprIndex);
         if (exprSymbol instanceof MetadataSymbol && ((MetadataSymbol) exprSymbol).getNode() instanceof MDExpression) {
             final MDExpression expression = (MDExpression) ((MetadataSymbol) exprSymbol).getNode();
             if (ValueFragment.describesFragment(expression)) {
@@ -424,7 +424,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     @Override
     public void visit(VoidCallInstruction call) {
-        final Symbol target = call.getCallTarget();
+        final SymbolImpl target = call.getCallTarget();
 
         if (target instanceof FunctionDeclaration) {
             final String name = ((FunctionDeclaration) target).getName();
@@ -501,7 +501,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             }
         }
 
-        final Symbol target = call.getCallTarget();
+        final SymbolImpl target = call.getCallTarget();
         int regularIndex = labels.get(call.normalSuccessor().getName());
         int unwindIndex = labels.get(call.unwindSuccessor().getName());
 
@@ -546,7 +546,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     @Override
     public void visit(VoidInvokeInstruction call) {
-        final Symbol target = call.getCallTarget();
+        final SymbolImpl target = call.getCallTarget();
 
         final int argumentCount = call.getArgumentCount() + 1; // stackpointer
         final LLVMExpressionNode[] args = new LLVMExpressionNode[argumentCount];

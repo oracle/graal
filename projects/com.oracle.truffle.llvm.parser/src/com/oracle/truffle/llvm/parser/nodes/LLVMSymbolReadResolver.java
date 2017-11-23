@@ -81,7 +81,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
-import com.oracle.truffle.llvm.parser.model.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 import java.math.BigInteger;
@@ -210,7 +210,7 @@ public final class LLVMSymbolReadResolver {
         };
 
         @Override
-        public void defaultAction(Symbol symbol) {
+        public void defaultAction(SymbolImpl symbol) {
             unsupported(symbol);
         }
 
@@ -449,7 +449,7 @@ public final class LLVMSymbolReadResolver {
         this.allLabels = allLabels;
     }
 
-    public static Integer evaluateIntegerConstant(Symbol constant) {
+    public static Integer evaluateIntegerConstant(SymbolImpl constant) {
         if (constant instanceof IntegerConstant) {
             return (int) ((IntegerConstant) constant).getValue();
         } else if (constant instanceof BigIntegerConstant) {
@@ -461,12 +461,12 @@ public final class LLVMSymbolReadResolver {
         }
     }
 
-    public LLVMExpressionNode resolveElementPointer(Symbol base, List<Symbol> indices) {
+    public LLVMExpressionNode resolveElementPointer(SymbolImpl base, List<SymbolImpl> indices) {
         LLVMExpressionNode currentAddress = resolve(base);
         Type currentType = base.getType();
 
         for (int i = 0, indicesSize = indices.size(); i < indicesSize; i++) {
-            final Symbol indexSymbol = indices.get(i);
+            final SymbolImpl indexSymbol = indices.get(i);
             final Type indexType = indexSymbol.getType();
 
             final Integer indexInteger = evaluateIntegerConstant(indexSymbol);
@@ -506,7 +506,7 @@ public final class LLVMSymbolReadResolver {
         return currentAddress;
     }
 
-    public LLVMExpressionNode resolve(Symbol symbol) {
+    public LLVMExpressionNode resolve(SymbolImpl symbol) {
         resolvedNode = null;
         symbol.accept(visitor);
         return resolvedNode;
