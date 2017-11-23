@@ -75,7 +75,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
      * closed state.
      */
     volatile boolean cancelling;
-    private volatile boolean closing;
+    private volatile Thread closingThread;
     /*
      * If the context is closed all operations should fail with IllegalStateException.
      */
@@ -216,7 +216,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
     }
 
     private synchronized void addChildContext(PolyglotContextImpl child) {
-        if (closing) {
+        if (closingThread != null) {
             throw new IllegalStateException("Adding child context into a closing context.");
         }
         childContexts.add(child);
@@ -291,6 +291,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                 }
 
                 if (needsInitialization) {
+                    if (closingThread != null && closingThread != current) {
+                        throw new PolyglotIllegalStateException("Can not create new threads in closing context.");
+                    }
                     threads.put(current, threadInfo);
                 }
 
@@ -308,8 +311,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                     initializeNewThread(current);
                 }
 
-                // never cache last thread on close or when closing
-                if (!closed && !closing) {
+                // never cache last thread on close or when closingThread
+                if (!closed && closingThread == null) {
                     lastThread = threadInfo;
                 }
             } else {
@@ -377,7 +380,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         if (threadInfo.thread != current) {
             threadInfo = threads.get(current);
             // never cache last thread on close or when cancelling
-            if (!closed && !closing) {
+            if (!closed && closingThread == null) {
                 lastThread = threadInfo;
             }
         }
@@ -787,8 +790,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         PolyglotThreadInfo currentTInfo = getCurrentThreadInfo();
         if (currentTInfo != PolyglotThreadInfo.NULL) {
             currentTInfo.cancelled = true;
-            // clear interrupted status after closing
-            // needed because we interrupt when closing from another thread.
+            // clear interrupted status after closingThread
+            // needed because we interrupt when closingThread from another thread.
             Thread.interrupted();
             notifyAll();
         }
@@ -801,7 +804,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         try {
             synchronized (this) {
                 if (!closed) {
-                    closing = true;
+                    closingThread = Thread.currentThread();
 
                     // triggers a thread changed event which requires synchronization on the next
                     // enter/leave.
@@ -812,8 +815,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                         PolyglotThreadInfo currentTInfo = getCurrentThreadInfo();
                         if (currentTInfo != PolyglotThreadInfo.NULL) {
                             currentTInfo.cancelled = true;
-                            // clear interrupted status after closing
-                            // needed because we interrupt when closing from another thread.
+                            // clear interrupted status after closingThread
+                            // needed because we interrupt when closingThread from another thread.
                             Thread.interrupted();
                         }
                     }
@@ -887,7 +890,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                         } else {
                             engine.removeContext(this);
                         }
-                        remainingThreads = threads.keySet().toArray(new Thread[0]);
+                        synchronized (this) {
+                            remainingThreads = threads.keySet().toArray(new Thread[0]);
+                        }
                     }
                     closed = success;
                     lastThread = PolyglotThreadInfo.NULL;
@@ -895,7 +900,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                 }
             }
         } finally {
-            closing = false;
+            closingThread = null;
         }
         if (success) {
             for (Thread thread : remainingThreads) {
@@ -923,12 +928,13 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
     }
 
     PolyglotThreadInfo getCurrentThreadInfo() {
+        assert Thread.holdsLock(this);
         PolyglotThreadInfo currentTInfo = lastThread;
 
         if (currentTInfo.thread != Thread.currentThread()) {
             currentTInfo = threads.get(Thread.currentThread());
             if (currentTInfo == null) {
-                // closing from a thread we have never seen.
+                // closingThread from a thread we have never seen.
                 currentTInfo = PolyglotThreadInfo.NULL;
             }
         }
