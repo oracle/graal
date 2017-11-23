@@ -1,8 +1,12 @@
 #include <stdio.h>
 
 int main() {
-  char name[200];
+  char name[L_tmpnam];
   FILE *file = fopen(tmpnam(name), "w");
+  if (file == NULL) {
+    printf("Failed to open file\n");
+    abort();
+  }
   fputc('\n', file);
   fclose(file);
   FILE *read = fopen(name, "r");
