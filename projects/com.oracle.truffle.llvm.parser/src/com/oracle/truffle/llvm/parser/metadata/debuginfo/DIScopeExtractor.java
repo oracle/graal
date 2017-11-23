@@ -129,7 +129,7 @@ final class DIScopeExtractor {
                 return;
             }
 
-            final LLVMSourceLocation scope = new LLVMSourceLocation(kind, line, column);
+            final LLVMSourceLocation scope = LLVMSourceLocation.create(kind, line, column);
             scopes.put(scopeRef, scope);
 
             copyFile(scope, fileRef);
@@ -155,7 +155,7 @@ final class DIScopeExtractor {
                 return;
             }
 
-            final LLVMSourceLocation scope = new LLVMSourceLocation(Kind.LOCATION, md.getLine(), md.getColumn());
+            final LLVMSourceLocation scope = LLVMSourceLocation.create(Kind.LOCATION, md.getLine(), md.getColumn());
             lineScopes.put(md, scope);
             linkToParent(scope, md.getScope());
         }
@@ -166,7 +166,7 @@ final class DIScopeExtractor {
                 return;
             }
 
-            final LLVMSourceLocation scope = new LLVMSourceLocation(Kind.FILE, DEFAULT_LINE, DEFAULT_COLUMN);
+            final LLVMSourceLocation scope = LLVMSourceLocation.create(Kind.FILE, DEFAULT_LINE, DEFAULT_COLUMN);
             scopes.put(md, scope);
 
             final String name = MDString.getIfInstance(md.getFile());
@@ -226,7 +226,7 @@ final class DIScopeExtractor {
                 return;
             }
 
-            final LLVMSourceLocation scope = new LLVMSourceLocation(Kind.COMPILEUNIT, DEFAULT_LINE, DEFAULT_COLUMN);
+            final LLVMSourceLocation scope = LLVMSourceLocation.create(Kind.COMPILEUNIT, DEFAULT_LINE, DEFAULT_COLUMN);
             scopes.put(md, scope);
 
             final MDBaseNode fileNode = md.getFile();

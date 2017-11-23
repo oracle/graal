@@ -38,7 +38,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-public final class LLVMSourceLocation {
+public abstract class LLVMSourceLocation {
 
     public enum Kind {
         TYPE,
@@ -49,6 +49,7 @@ public final class LLVMSourceLocation {
         NAMESPACE,
         COMPILEUNIT,
         FILE,
+        SYMBOL,
         UNKNOWN;
     }
 
@@ -60,48 +61,20 @@ public final class LLVMSourceLocation {
     private LLVMSourceLocation parent = null;
     private LLVMSourceFile file = null;
     private LLVMSourceLocation compileUnit = null;
-    private List<LLVMSourceLocation> children = null;
-    private List<LLVMSourceSymbol> symbols = null;
 
-    public LLVMSourceLocation(Kind kind, long line, long column) {
+    private LLVMSourceLocation(Kind kind, long line, long column) {
         this.kind = kind != null ? kind : Kind.UNKNOWN;
         this.line = (int) line;
         this.column = (int) column;
     }
 
-    @TruffleBoundary
-    public void addChild(LLVMSourceLocation child) {
-        if (child != null) {
-            if (children == null) {
-                children = new LinkedList<>();
-            }
-            children.add(child);
-        }
-    }
+    public abstract void addChild(LLVMSourceLocation child);
 
-    @TruffleBoundary
-    public void addSymbol(LLVMSourceSymbol symbol) {
-        if (symbol != null) {
-            if (symbols == null) {
-                symbols = new LinkedList<>();
-            }
-            symbols.add(symbol);
-        }
-    }
+    public abstract void addSymbol(LLVMSourceSymbol symbol);
 
-    @TruffleBoundary
-    public boolean hasSymbols() {
-        return symbols != null && !symbols.isEmpty();
-    }
+    public abstract boolean hasSymbols();
 
-    @TruffleBoundary
-    public List<LLVMSourceSymbol> getSymbols() {
-        if (symbols != null) {
-            return Collections.unmodifiableList(symbols);
-        } else {
-            return Collections.emptyList();
-        }
-    }
+    public abstract List<LLVMSourceSymbol> getSymbols();
 
     public void setParent(LLVMSourceLocation parent) {
         this.parent = parent;
@@ -167,6 +140,13 @@ public final class LLVMSourceLocation {
                 }
             }
 
+            case SYMBOL:
+                if (name != null) {
+                    return name;
+                } else {
+                    return "<symbol>";
+                }
+
             default:
                 return "<scope>";
         }
@@ -220,15 +200,6 @@ public final class LLVMSourceLocation {
         // this can only be the looked for scope if its source was resolved at least once
         if (resolvedSection != null && resolvedSection.equals(location)) {
             return this;
-        }
-
-        if (children != null) {
-            for (LLVMSourceLocation child : children) {
-                final LLVMSourceLocation searchResult = child.findScope(location);
-                if (searchResult != null) {
-                    return searchResult;
-                }
-            }
         }
 
         return null;
@@ -314,7 +285,7 @@ public final class LLVMSourceLocation {
             return false;
         }
 
-        if (name != null ? !name.equals(location.name) : location.name != null) {
+        if (!getName().equals(location.getName())) {
             return false;
         }
 
@@ -338,5 +309,108 @@ public final class LLVMSourceLocation {
             }
         }
         return null;
+    }
+
+    private static final class FullScope extends LLVMSourceLocation {
+
+        private List<LLVMSourceLocation> children = null;
+        private List<LLVMSourceSymbol> symbols = null;
+
+        private FullScope(Kind kind, long line, long column) {
+            super(kind, line, column);
+        }
+
+        @TruffleBoundary
+        @Override
+        public void addChild(LLVMSourceLocation child) {
+            if (child != null) {
+                if (children == null) {
+                    children = new LinkedList<>();
+                }
+                children.add(child);
+            }
+        }
+
+        @TruffleBoundary
+        @Override
+        public void addSymbol(LLVMSourceSymbol symbol) {
+            if (symbol != null) {
+                if (symbols == null) {
+                    symbols = new LinkedList<>();
+                }
+                symbols.add(symbol);
+            }
+        }
+
+        @TruffleBoundary
+        @Override
+        public boolean hasSymbols() {
+            return symbols != null && !symbols.isEmpty();
+        }
+
+        @TruffleBoundary
+        @Override
+        public List<LLVMSourceSymbol> getSymbols() {
+            if (symbols != null) {
+                return Collections.unmodifiableList(symbols);
+            } else {
+                return Collections.emptyList();
+            }
+        }
+
+        @Override
+        public LLVMSourceLocation findScope(SourceSection location) {
+            final LLVMSourceLocation superResult = super.findScope(location);
+            if (superResult != null) {
+                return superResult;
+            }
+
+            if (children != null) {
+                for (LLVMSourceLocation child : children) {
+                    final LLVMSourceLocation searchResult = child.findScope(location);
+                    if (searchResult != null) {
+                        return searchResult;
+                    }
+                }
+            }
+            return null;
+        }
+    }
+
+    private static final class RestrictedScope extends LLVMSourceLocation {
+
+        private RestrictedScope(Kind kind, long line, long column) {
+            super(kind, line, column);
+        }
+
+        @Override
+        public void addChild(LLVMSourceLocation child) {
+        }
+
+        @Override
+        public void addSymbol(LLVMSourceSymbol symbol) {
+        }
+
+        @Override
+        public boolean hasSymbols() {
+            return false;
+        }
+
+        @Override
+        @TruffleBoundary
+        public List<LLVMSourceSymbol> getSymbols() {
+            return Collections.emptyList();
+        }
+    }
+
+    public static LLVMSourceLocation create(Kind kind, long line, long column) {
+        switch (kind) {
+            case LOCATION:
+            case SYMBOL:
+                return new RestrictedScope(kind, line, column);
+
+            default:
+                return new FullScope(kind, line, column);
+        }
     }
 }
