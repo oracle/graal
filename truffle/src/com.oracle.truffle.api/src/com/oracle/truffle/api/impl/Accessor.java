@@ -38,12 +38,12 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.Scope;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -217,6 +217,10 @@ public abstract class Accessor {
         public abstract Iterable<Scope> createDefaultLexicalScope(Node node, Frame frame);
 
         public abstract Iterable<Scope> createDefaultTopScope(TruffleLanguage<?> language, Object context, Object global);
+
+        public abstract Object legacyTckEnter(Object vm);
+
+        public abstract void legacyTckLeave(Object vm, Object prev);
 
     }
 
