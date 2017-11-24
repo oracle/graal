@@ -1869,6 +1869,16 @@ public class PolyglotEngine {
         }
 
         @Override
+        public Object legacyTckEnter(Object vm) {
+            return ((PolyglotEngine) vm).enter();
+        }
+
+        @Override
+        public void legacyTckLeave(Object vm, Object prev) {
+            ((PolyglotEngine) vm).leave(prev);
+        }
+
+        @Override
         public Thread createThread(Object vmObject, Runnable runnable, Object context) {
             throw new IllegalStateException("createThread is not supported.");
         }

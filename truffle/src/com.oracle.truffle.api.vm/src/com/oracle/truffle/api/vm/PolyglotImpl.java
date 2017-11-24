@@ -705,6 +705,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             return new PolyglotThread(threadContext, runnable);
         }
 
+        @Override
+        public Object legacyTckEnter(Object vm) {
+            throw new AssertionError("Should not reach here.");
+        }
+
+        @Override
+        public void legacyTckLeave(Object vm, Object prev) {
+            throw new AssertionError("Should not reach here.");
+        }
+
     }
 
 }
