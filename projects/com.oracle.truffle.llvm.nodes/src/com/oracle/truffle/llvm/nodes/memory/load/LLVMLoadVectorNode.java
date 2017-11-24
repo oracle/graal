@@ -35,10 +35,10 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
@@ -61,9 +61,9 @@ public class LLVMLoadVectorNode {
         }
 
         @Specialization
-        protected LLVMI1Vector doI1Vector(LLVMGlobalVariable addr,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return LLVMMemory.getI1Vector(globalAccess.getNativeLocation(addr), getSize());
+        protected LLVMI1Vector doI1Vector(VirtualFrame frame, LLVMGlobal addr,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            return LLVMMemory.getI1Vector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         LLVMForeignReadNode createForeignRead() {
@@ -83,9 +83,9 @@ public class LLVMLoadVectorNode {
         public abstract int getSize();
 
         @Specialization
-        protected LLVMI8Vector doI8Vector(LLVMGlobalVariable addr,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return LLVMMemory.getI8Vector(globalAccess.getNativeLocation(addr), getSize());
+        protected LLVMI8Vector doI8Vector(VirtualFrame frame, LLVMGlobal addr,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            return LLVMMemory.getI8Vector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         @Specialization
@@ -110,9 +110,9 @@ public class LLVMLoadVectorNode {
         public abstract int getSize();
 
         @Specialization
-        protected LLVMI16Vector doI16Vector(LLVMGlobalVariable addr,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return LLVMMemory.getI16Vector(globalAccess.getNativeLocation(addr), getSize());
+        protected LLVMI16Vector doI16Vector(VirtualFrame frame, LLVMGlobal addr,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            return LLVMMemory.getI16Vector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         @Specialization
@@ -137,9 +137,9 @@ public class LLVMLoadVectorNode {
         public abstract int getSize();
 
         @Specialization
-        protected LLVMI32Vector doI32Vector(LLVMGlobalVariable addr,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return LLVMMemory.getI32Vector(globalAccess.getNativeLocation(addr), getSize());
+        protected LLVMI32Vector doI32Vector(VirtualFrame frame, LLVMGlobal addr,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            return LLVMMemory.getI32Vector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         @Specialization
@@ -164,9 +164,9 @@ public class LLVMLoadVectorNode {
         public abstract int getSize();
 
         @Specialization
-        protected LLVMI64Vector doI64Vector(LLVMGlobalVariable addr,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return LLVMMemory.getI64Vector(globalAccess.getNativeLocation(addr), getSize());
+        protected LLVMI64Vector doI64Vector(VirtualFrame frame, LLVMGlobal addr,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            return LLVMMemory.getI64Vector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         @Specialization
@@ -191,9 +191,9 @@ public class LLVMLoadVectorNode {
         public abstract int getSize();
 
         @Specialization
-        protected LLVMFloatVector doFloatVector(LLVMGlobalVariable addr,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return LLVMMemory.getFloatVector(globalAccess.getNativeLocation(addr), getSize());
+        protected LLVMFloatVector doFloatVector(VirtualFrame frame, LLVMGlobal addr,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            return LLVMMemory.getFloatVector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         @Specialization
@@ -218,9 +218,9 @@ public class LLVMLoadVectorNode {
         public abstract int getSize();
 
         @Specialization
-        protected LLVMDoubleVector doDoubleVector(LLVMGlobalVariable addr,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return LLVMMemory.getDoubleVector(globalAccess.getNativeLocation(addr), getSize());
+        protected LLVMDoubleVector doDoubleVector(VirtualFrame frame, LLVMGlobal addr,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            return LLVMMemory.getDoubleVector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         @Specialization
@@ -245,9 +245,9 @@ public class LLVMLoadVectorNode {
         public abstract int getSize();
 
         @Specialization
-        protected LLVMAddressVector doAddressVector(LLVMGlobalVariable addr,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return LLVMMemory.getAddressVector(globalAccess.getNativeLocation(addr), getSize());
+        protected LLVMAddressVector doAddressVector(VirtualFrame frame, LLVMGlobal addr,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            return LLVMMemory.getAddressVector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         @Specialization

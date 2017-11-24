@@ -40,13 +40,14 @@ import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 public abstract class LLVMDirectLoadNode {
 
@@ -69,9 +70,9 @@ public abstract class LLVMDirectLoadNode {
         }
 
         @Specialization
-        protected LLVMIVarBit doI64(LLVMGlobalVariable addr,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return LLVMMemory.getIVarBit(globalAccess.getNativeLocation(addr), getBitWidth());
+        protected LLVMIVarBit doI64(VirtualFrame frame, LLVMGlobal addr,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            return LLVMMemory.getIVarBit(globalAccess.executeWithTarget(frame, addr), getBitWidth());
         }
 
         LLVMForeignReadNode createForeignRead() {
@@ -93,9 +94,9 @@ public abstract class LLVMDirectLoadNode {
         }
 
         @Specialization
-        protected LLVM80BitFloat doDouble(LLVMGlobalVariable addr,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return LLVMMemory.get80BitFloat(globalAccess.getNativeLocation(addr));
+        protected LLVM80BitFloat doDouble(VirtualFrame frame, LLVMGlobal addr,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            return LLVMMemory.get80BitFloat(globalAccess.executeWithTarget(frame, addr));
         }
     }
 
@@ -107,9 +108,9 @@ public abstract class LLVMDirectLoadNode {
         }
 
         @Specialization
-        protected LLVMAddress doAddress(LLVMGlobalVariable addr,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return LLVMAddress.fromLong(LLVMHeap.getFunctionPointer(globalAccess.getNativeLocation(addr)));
+        protected LLVMAddress doAddress(VirtualFrame frame, LLVMGlobal addr,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            return LLVMAddress.fromLong(LLVMHeap.getFunctionPointer(globalAccess.executeWithTarget(frame, addr)));
         }
 
         static LLVMForeignReadNode createForeignRead() {
@@ -138,8 +139,8 @@ public abstract class LLVMDirectLoadNode {
         }
 
         @Specialization
-        protected Object doAddress(LLVMGlobalVariable addr,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        protected Object doAddress(LLVMGlobal addr,
+                        @Cached("createRead()") LLVMGlobalReadNode globalAccess) {
             return globalAccess.get(addr);
         }
 
@@ -164,12 +165,12 @@ public abstract class LLVMDirectLoadNode {
         }
     }
 
-    public static final class LLVMGlobalVariableDirectLoadNode extends LLVMExpressionNode {
+    public static final class LLVMGlobalDirectLoadNode extends LLVMExpressionNode {
 
-        protected final LLVMGlobalVariable descriptor;
-        @Child private LLVMGlobalVariableAccess access = createGlobalAccess();
+        protected final LLVMGlobal descriptor;
+        @Child private LLVMGlobalReadNode access = LLVMGlobalReadNode.createRead();
 
-        public LLVMGlobalVariableDirectLoadNode(LLVMGlobalVariable descriptor) {
+        public LLVMGlobalDirectLoadNode(LLVMGlobal descriptor) {
             this.descriptor = descriptor;
         }
 

@@ -37,8 +37,8 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
@@ -49,8 +49,8 @@ public abstract class LLVMI1StoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object doOp(LLVMGlobalVariable address, boolean value,
-                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doOp(LLVMGlobal address, boolean value,
+                    @Cached("createWrite()") LLVMGlobalWriteNode globalAccess) {
         globalAccess.putI1(address, value);
         return null;
     }

@@ -37,10 +37,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
@@ -110,14 +111,14 @@ abstract class ToI8 extends ForeignToLLVM {
 
     @Specialization
     protected byte fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd,
-                    @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+                    @Cached("toNative()") LLVMToNativeNode toNative) {
         return (byte) toNative.executeWithTarget(frame, fd).getVal();
     }
 
     @Specialization
-    protected byte fromSharedDescriptor(LLVMSharedGlobalVariable shared,
-                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
-        return (byte) access.getNativeLocation(shared.getDescriptor()).getVal();
+    protected byte fromSharedDescriptor(VirtualFrame frame, LLVMSharedGlobalVariable shared,
+                    @Cached("toNative()") LLVMToNativeNode access) {
+        return (byte) access.executeWithTarget(frame, shared.getDescriptor()).getVal();
     }
 
     private byte recursiveConvert(VirtualFrame frame, Object o) {
@@ -133,7 +134,7 @@ abstract class ToI8 extends ForeignToLLVM {
     }
 
     @TruffleBoundary
-    static byte slowPathPrimitiveConvert(ForeignToLLVM thiz, Object value) {
+    static byte slowPathPrimitiveConvert(ForeignToLLVM thiz, LLVMContext context, Object value) {
         if (value instanceof Number) {
             return ((Number) value).byteValue();
         } else if (value instanceof Boolean) {
@@ -145,13 +146,13 @@ abstract class ToI8 extends ForeignToLLVM {
         } else if (value instanceof LLVMFunctionDescriptor) {
             return (byte) ((LLVMFunctionDescriptor) value).toNative().asPointer();
         } else if (value instanceof LLVMBoxedPrimitive) {
-            return slowPathPrimitiveConvert(thiz, ((LLVMBoxedPrimitive) value).getValue());
+            return slowPathPrimitiveConvert(thiz, context, ((LLVMBoxedPrimitive) value).getValue());
         } else if (value instanceof LLVMTruffleAddress) {
             return (byte) ((LLVMTruffleAddress) value).getAddress().getVal();
         } else if (value instanceof LLVMSharedGlobalVariable) {
-            return (byte) createGlobalAccess().getNativeLocation(((LLVMSharedGlobalVariable) value).getDescriptor()).getVal();
+            return (byte) LLVMGlobal.toNative(context, ((LLVMSharedGlobalVariable) value).getDescriptor()).getVal();
         } else if (value instanceof TruffleObject && notLLVM((TruffleObject) value)) {
-            return slowPathPrimitiveConvert(thiz, thiz.fromForeign((TruffleObject) value));
+            return slowPathPrimitiveConvert(thiz, context, thiz.fromForeign((TruffleObject) value));
         } else {
             throw UnsupportedTypeException.raise(new Object[]{value});
         }

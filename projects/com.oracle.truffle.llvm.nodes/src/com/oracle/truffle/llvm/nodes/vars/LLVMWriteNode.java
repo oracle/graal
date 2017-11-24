@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.vars;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -168,6 +169,12 @@ public abstract class LLVMWriteNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        protected Object writeAddress(VirtualFrame frame, long value) {
+            frame.setObject(getSlot(), LLVMAddress.fromLong(value));
+            return null;
+        }
+
+        @Fallback
         protected Object writeObject(VirtualFrame frame, Object value) {
             frame.setObject(getSlot(), value);
             return null;

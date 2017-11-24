@@ -46,11 +46,11 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -314,9 +314,9 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, LLVMGlobalVariable retResult,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return returnStruct(frame, globalAccess.getNativeLocation(retResult));
+        protected Object doOp(VirtualFrame frame, LLVMGlobal retResult,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            return returnStruct(frame, globalAccess.executeWithTarget(frame, retResult));
         }
     }
 

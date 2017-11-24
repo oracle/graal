@@ -5,6 +5,10 @@ int main() {
   remove("sulong_test_file");
   FILE *writeableFile = fopen("sulong_test_file", "a");
   if (writeableFile == NULL) {
+    printf("Failed to open file\n");
+    abort();
+  }
+  if (writeableFile == NULL) {
     printf("error opening file!\n");
     exit(2);
   }
@@ -12,6 +16,10 @@ int main() {
   fclose(writeableFile);
 
   FILE *readableFile = fopen("sulong_test_file", "r");
+  if (readableFile == NULL) {
+    printf("Failed to open file\n");
+    abort();
+  }
   if (readableFile == NULL) {
     printf("error opening file!\n");
     exit(3);

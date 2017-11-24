@@ -55,7 +55,7 @@ import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -286,7 +286,7 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected boolean doGlobal(LLVMGlobalVariable g1, LLVMGlobalVariable g2) {
+        protected boolean doGlobal(LLVMGlobal g1, LLVMGlobal g2) {
             return g1 == g2;
         }
 

@@ -52,7 +52,7 @@ public final class LLVMScope implements TruffleObject {
 
     private final HashMap<String, LLVMFunctionDescriptor> functions;
     private final LLVMScope parent;
-    private final LLVMGlobalVariableRegistry globalVariableRegistry;
+    private final LLVMGlobalRegistry globalVariableRegistry;
 
     public static synchronized LLVMScope createFileScope(LLVMContext context) {
         return new LLVMScope(context.getGlobalScope());
@@ -68,7 +68,7 @@ public final class LLVMScope implements TruffleObject {
     private LLVMScope(LLVMScope parent) {
         this.functions = new HashMap<>();
         this.parent = parent;
-        this.globalVariableRegistry = new LLVMGlobalVariableRegistry();
+        this.globalVariableRegistry = new LLVMGlobalRegistry();
     }
 
     @TruffleBoundary
@@ -126,7 +126,7 @@ public final class LLVMScope implements TruffleObject {
         }
     }
 
-    private static final class LLVMGlobalVariableRegistry {
+    private static final class LLVMGlobalRegistry {
         private final Map<String, Object> globals = new HashMap<>();
 
         synchronized boolean exists(String name) {

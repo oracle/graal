@@ -46,8 +46,7 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -108,22 +107,22 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
     }
 
     private void setGPOffset(VirtualFrame frame, Object address, int value) {
-        Object p = pointerArithmeticStructInit.executeWithTarget(address, X86_64BitVarArgs.GP_OFFSET, PrimitiveType.I32);
+        Object p = pointerArithmeticStructInit.executeWithTarget(frame, address, X86_64BitVarArgs.GP_OFFSET, PrimitiveType.I32);
         gpOffsetStore.executeWithTarget(frame, p, value);
     }
 
     private void setFPOffset(VirtualFrame frame, Object address, int value) {
-        Object p = pointerArithmeticStructInit.executeWithTarget(address, X86_64BitVarArgs.FP_OFFSET, PrimitiveType.I32);
+        Object p = pointerArithmeticStructInit.executeWithTarget(frame, address, X86_64BitVarArgs.FP_OFFSET, PrimitiveType.I32);
         fpOffsetStore.executeWithTarget(frame, p, value);
     }
 
     private void setOverflowArgArea(VirtualFrame frame, Object address, Object value) {
-        Object p = pointerArithmeticStructInit.executeWithTarget(address, X86_64BitVarArgs.OVERFLOW_ARG_AREA, new PointerType(VoidType.INSTANCE));
+        Object p = pointerArithmeticStructInit.executeWithTarget(frame, address, X86_64BitVarArgs.OVERFLOW_ARG_AREA, new PointerType(VoidType.INSTANCE));
         overflowArgAreaStore.executeWithTarget(frame, p, value);
     }
 
     private void setRegSaveArea(VirtualFrame frame, Object address, Object value) {
-        Object p = pointerArithmeticStructInit.executeWithTarget(address, X86_64BitVarArgs.REG_SAVE_AREA, new PointerType(VoidType.INSTANCE));
+        Object p = pointerArithmeticStructInit.executeWithTarget(frame, address, X86_64BitVarArgs.REG_SAVE_AREA, new PointerType(VoidType.INSTANCE));
         regSaveAreaStore.executeWithTarget(frame, p, value);
     }
 
@@ -159,7 +158,7 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
             return VarArgArea.OVERFLOW_AREA;
         } else if (arg instanceof LLVMAddress) {
             return VarArgArea.GP_AREA;
-        } else if (arg instanceof LLVMGlobalVariable) {
+        } else if (arg instanceof LLVMGlobal) {
             return VarArgArea.GP_AREA;
         } else if (arg instanceof LLVM80BitFloat) {
             return VarArgArea.OVERFLOW_AREA;
@@ -279,8 +278,6 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
         return sourceSection;
     }
 
-    @Child private LLVMGlobalVariableAccess globalAccess = createGlobalAccess();
-
     private static int storeArgument(VirtualFrame frame, Object ptr, long offset, LLVMMemMoveNode memmove, LLVMIncrementPointerNode pointerArithmetic, LLVMStoreNode storeI64Node,
                     LLVMStoreNode storeI32Node,
                     LLVMStoreNode storeFP80Node, Object object) {
@@ -288,21 +285,21 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
             return doPrimitiveWrite(frame, ptr, offset, pointerArithmetic, storeI64Node, object);
         } else if (object instanceof LLVMVarArgCompoundValue) {
             LLVMVarArgCompoundValue obj = (LLVMVarArgCompoundValue) object;
-            Object currentPtr = pointerArithmetic.executeWithTarget(ptr, offset, PrimitiveType.I64);
+            Object currentPtr = pointerArithmetic.executeWithTarget(frame, ptr, offset, PrimitiveType.I64);
             memmove.executeWithTarget(frame, currentPtr, obj.getAddr(), obj.getSize());
             return obj.getSize();
-        } else if (object instanceof LLVMAddress || object instanceof LLVMGlobalVariable || object instanceof LLVMTruffleObject) {
-            Object currentPtr = pointerArithmetic.executeWithTarget(ptr, offset, PrimitiveType.I64);
+        } else if (object instanceof LLVMAddress || object instanceof LLVMGlobal || object instanceof LLVMTruffleObject) {
+            Object currentPtr = pointerArithmetic.executeWithTarget(frame, ptr, offset, PrimitiveType.I64);
             storeI64Node.executeWithTarget(frame, currentPtr, object);
             return X86_64BitVarArgs.STACK_STEP;
         } else if (object instanceof LLVM80BitFloat) {
-            Object currentPtr = pointerArithmetic.executeWithTarget(ptr, offset, PrimitiveType.X86_FP80);
+            Object currentPtr = pointerArithmetic.executeWithTarget(frame, ptr, offset, PrimitiveType.X86_FP80);
             storeFP80Node.executeWithTarget(frame, currentPtr, object);
             return 16;
         } else if (object instanceof LLVMFloatVector) {
             final LLVMFloatVector floatVec = (LLVMFloatVector) object;
             for (int i = 0; i < floatVec.getLength(); i++) {
-                Object currentPtr = pointerArithmetic.executeWithTarget(ptr, offset + i * Float.BYTES, PrimitiveType.FLOAT);
+                Object currentPtr = pointerArithmetic.executeWithTarget(frame, ptr, offset + i * Float.BYTES, PrimitiveType.FLOAT);
                 storeI32Node.executeWithTarget(frame, currentPtr, Float.floatToIntBits(floatVec.getValue(i)));
             }
             return floatVec.getLength() * Float.BYTES;
@@ -312,7 +309,7 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
     }
 
     private static int doPrimitiveWrite(VirtualFrame frame, Object ptr, long offset, LLVMIncrementPointerNode pointerArithmetic, LLVMStoreNode storeNode, Object arg) throws AssertionError {
-        Object currentPtr = pointerArithmetic.executeWithTarget(ptr, offset, PrimitiveType.I64);
+        Object currentPtr = pointerArithmetic.executeWithTarget(frame, ptr, offset, PrimitiveType.I64);
         long value;
         if (arg instanceof Boolean) {
             value = ((boolean) arg) ? 1L : 0L;

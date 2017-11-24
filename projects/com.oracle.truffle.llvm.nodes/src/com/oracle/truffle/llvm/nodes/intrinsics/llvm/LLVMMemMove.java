@@ -35,10 +35,10 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 public abstract class LLVMMemMove {
 
@@ -62,26 +62,26 @@ public abstract class LLVMMemMove {
 
         @SuppressWarnings("unused")
         @Specialization
-        protected Object doVoid(VirtualFrame frame, LLVMGlobalVariable dest, LLVMAddress source, long length, int align, boolean isVolatile,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            memMove.executeWithTarget(frame, globalAccess.getNativeLocation(dest), source, length);
+        protected Object doVoid(VirtualFrame frame, LLVMGlobal dest, LLVMAddress source, long length, int align, boolean isVolatile,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            memMove.executeWithTarget(frame, globalAccess.executeWithTarget(frame, dest), source, length);
             return null;
         }
 
         @SuppressWarnings("unused")
         @Specialization
-        protected Object doVoid(VirtualFrame frame, LLVMAddress dest, LLVMGlobalVariable source, long length, int align, boolean isVolatile,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            memMove.executeWithTarget(frame, dest, globalAccess.getNativeLocation(source), length);
+        protected Object doVoid(VirtualFrame frame, LLVMAddress dest, LLVMGlobal source, long length, int align, boolean isVolatile,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            memMove.executeWithTarget(frame, dest, globalAccess.executeWithTarget(frame, source), length);
             return null;
         }
 
         @SuppressWarnings("unused")
         @Specialization
-        protected Object doVoid(VirtualFrame frame, LLVMGlobalVariable dest, LLVMGlobalVariable source, long length, int align, boolean isVolatile,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess1,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess2) {
-            memMove.executeWithTarget(frame, globalAccess1.getNativeLocation(dest), globalAccess2.getNativeLocation(source), length);
+        protected Object doVoid(VirtualFrame frame, LLVMGlobal dest, LLVMGlobal source, long length, int align, boolean isVolatile,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess1,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess2) {
+            memMove.executeWithTarget(frame, globalAccess1.executeWithTarget(frame, dest), globalAccess2.executeWithTarget(frame, source), length);
             return null;
         }
     }

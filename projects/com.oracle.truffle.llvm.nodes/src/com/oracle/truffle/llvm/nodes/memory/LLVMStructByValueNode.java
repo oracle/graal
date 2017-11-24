@@ -38,8 +38,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStackAllocationNode;
@@ -61,8 +61,8 @@ public abstract class LLVMStructByValueNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected Object byValue(VirtualFrame frame, LLVMGlobalVariable source,
-                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
+    protected Object byValue(VirtualFrame frame, LLVMGlobal source,
+                    @Cached("createRead()") LLVMGlobalReadNode access) {
         return byValueImp(frame, access.get(source));
     }
 

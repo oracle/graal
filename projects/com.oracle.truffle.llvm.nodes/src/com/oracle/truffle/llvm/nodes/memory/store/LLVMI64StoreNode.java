@@ -37,8 +37,8 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -50,8 +50,8 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object doOp(LLVMGlobalVariable address, long value,
-                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doOp(LLVMGlobal address, long value,
+                    @Cached(value = "createWrite()") LLVMGlobalWriteNode globalAccess) {
         globalAccess.putI64(address, value);
         return null;
     }
@@ -76,9 +76,9 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object doOp(LLVMAddress address, LLVMGlobalVariable value,
-                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        LLVMMemory.putI64(address, globalAccess.getNativeLocation(value).getVal());
+    protected Object doOp(VirtualFrame frame, LLVMAddress address, LLVMGlobal value,
+                    @Cached(value = "toNative()") LLVMToNativeNode globalAccess) {
+        LLVMMemory.putI64(address, globalAccess.executeWithTarget(frame, value).getVal());
         return null;
     }
 

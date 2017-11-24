@@ -37,16 +37,16 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
 public abstract class LLVMI1LoadNode extends LLVMLoadNode {
 
     @Specialization
-    protected boolean doBoolean(LLVMGlobalVariable addr,
-                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected boolean doBoolean(LLVMGlobal addr,
+                    @Cached("createRead()") LLVMGlobalReadNode globalAccess) {
         return globalAccess.getI1(addr);
     }
 

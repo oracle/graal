@@ -36,15 +36,16 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.NodeFields;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -61,22 +62,22 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected Object intIncrement(Object addr, int val,
+    protected Object intIncrement(VirtualFrame frame, Object addr, int val,
                     @Cached("getIncrementPointerNode()") LLVMIncrementPointerNode incrementNode) {
         int incr = getTypeWidth() * val;
-        return incrementNode.executeWithTarget(addr, incr, getTargetType());
+        return incrementNode.executeWithTarget(frame, addr, incr, getTargetType());
     }
 
     @Specialization
-    protected Object longIncrement(Object addr, long val,
+    protected Object longIncrement(VirtualFrame frame, Object addr, long val,
                     @Cached("getIncrementPointerNode()") LLVMIncrementPointerNode incrementNode) {
         long incr = getTypeWidth() * val;
-        return incrementNode.executeWithTarget(addr, incr, getTargetType());
+        return incrementNode.executeWithTarget(frame, addr, incr, getTargetType());
     }
 
     public abstract static class LLVMIncrementPointerNode extends LLVMNode {
 
-        public abstract Object executeWithTarget(Object addr, Object val, Type targetType);
+        public abstract Object executeWithTarget(VirtualFrame frame, Object addr, Object val, Type targetType);
 
         @Specialization
         protected LLVMAddress doPointee(LLVMAddress addr, int incr, @SuppressWarnings("unused") Type targetType) {
@@ -94,9 +95,9 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMAddress doPointee(LLVMGlobalVariable addr, int incr, @SuppressWarnings("unused") Type targetType,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return globalAccess.getNativeLocation(addr).increment(incr);
+        protected LLVMAddress executePointee(VirtualFrame frame, LLVMGlobal addr, int incr, @SuppressWarnings("unused") Type targetType,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            return globalAccess.executeWithTarget(frame, addr).increment(incr);
         }
 
         @Specialization
@@ -135,9 +136,9 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMAddress doPointee(LLVMGlobalVariable addr, long incr, @SuppressWarnings("unused") Type targetType,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return globalAccess.getNativeLocation(addr).increment(incr);
+        protected LLVMAddress executePointee(VirtualFrame frame, LLVMGlobal addr, long incr, @SuppressWarnings("unused") Type targetType,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            return globalAccess.executeWithTarget(frame, addr).increment(incr);
         }
     }
 }

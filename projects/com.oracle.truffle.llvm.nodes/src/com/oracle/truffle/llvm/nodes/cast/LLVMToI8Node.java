@@ -41,8 +41,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -55,21 +54,21 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
 
     @Specialization
     protected byte doI8(VirtualFrame frame, LLVMFunctionDescriptor from,
-                    @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+                    @Cached("toNative()") LLVMToNativeNode toNative) {
         return (byte) toNative.executeWithTarget(frame, from).getVal();
     }
 
     @Specialization
-    protected byte doLLVMAddress(LLVMGlobalVariable from,
-                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        return (byte) globalAccess.getNativeLocation(from).getVal();
+    protected byte doGlobal(VirtualFrame frame, LLVMGlobal from,
+                    @Cached("toNative()") LLVMToNativeNode access) {
+        return (byte) access.executeWithTarget(frame, from).getVal();
     }
 
     @Child private ForeignToLLVM convert = ForeignToLLVM.create(ForeignToLLVMType.I8);
 
     @Specialization
     protected byte doLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject from,
-                    @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+                    @Cached("toNative()") LLVMToNativeNode toNative) {
         return (byte) toNative.executeWithTarget(frame, from).getVal();
     }
 

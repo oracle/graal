@@ -37,10 +37,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class),
                 @NodeChild(type = LLVMExpressionNode.class)})
@@ -61,9 +61,9 @@ public abstract class LLVMMemSet extends LLVMBuiltin {
 
     @SuppressWarnings("unused")
     @Specialization
-    protected Object doOp(VirtualFrame frame, LLVMGlobalVariable address, byte value, int length, int align, boolean isVolatile,
-                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        memSet.executeWithTarget(frame, globalAccess.getNativeLocation(address), value, length);
+    protected Object doOp(VirtualFrame frame, LLVMGlobal address, byte value, int length, int align, boolean isVolatile,
+                    @Cached("toNative()") LLVMToNativeNode globalAccess) {
+        memSet.executeWithTarget(frame, globalAccess.executeWithTarget(frame, address), value, length);
         return address;
     }
 
@@ -76,16 +76,15 @@ public abstract class LLVMMemSet extends LLVMBuiltin {
 
     @SuppressWarnings("unused")
     @Specialization
-    protected Object doOp(VirtualFrame frame, LLVMGlobalVariable address, byte value, long length, int align, boolean isVolatile,
-                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        memSet.executeWithTarget(frame, globalAccess.getNativeLocation(address), value, length);
+    protected Object doOp(VirtualFrame frame, LLVMGlobal address, byte value, long length, int align, boolean isVolatile,
+                    @Cached("toNative()") LLVMToNativeNode globalAccess) {
+        memSet.executeWithTarget(frame, globalAccess.executeWithTarget(frame, address), value, length);
         return address;
     }
 
     @SuppressWarnings("unused")
     @Specialization
-    protected Object doOp(LLVMVirtualAllocationAddress address, byte value, long length, int align, boolean isVolatile,
-                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+    protected Object doOp(LLVMVirtualAllocationAddress address, byte value, long length, int align, boolean isVolatile) {
         for (int i = 0; i < length; i++) {
             address.writeI8(value);
         }

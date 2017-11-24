@@ -145,7 +145,7 @@ public final class LLVMFrameNullerUtil {
                     } else {
                         /*
                          * This is a best effort approach. It could still be that LLVMAddress and
-                         * LLVMGlobalVariable clash.
+                         * LLVMGlobal clash.
                          */
                         nullAddress(frame, frameSlot);
                     }

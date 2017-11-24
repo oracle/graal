@@ -29,14 +29,13 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.instrumentation.StandardTags;
 import java.io.PrintStream;
 
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 public abstract class LLVMNode extends Node {
@@ -67,10 +66,6 @@ public abstract class LLVMNode extends Node {
         return getRootNode().getLanguage(LLVMLanguage.class);
     }
 
-    protected static final LLVMGlobalVariableAccess createGlobalAccess() {
-        return new LLVMGlobalVariableAccess();
-    }
-
     protected static PrintStream debugStream(ContextReference<LLVMContext> context) {
         return SulongEngineOption.getStream(context.get().getEnv().getOptions().get(SulongEngineOption.DEBUG));
     }
@@ -95,7 +90,4 @@ public abstract class LLVMNode extends Node {
         return tag == StandardTags.StatementTag.class || super.isTaggedWith(tag);
     }
 
-    protected LLVMToNativeNode createToNativeNode() {
-        return LLVMToNativeNodeGen.create();
-    }
 }

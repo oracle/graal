@@ -38,8 +38,7 @@ import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
@@ -72,9 +71,9 @@ public abstract class LLVMAddressArrayLiteralNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global,
-                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        return writeAddress(frame, globalAccess.getNativeLocation(global));
+    protected LLVMAddress write(VirtualFrame frame, LLVMGlobal global,
+                    @Cached(value = "toNative()") LLVMToNativeNode globalAccess) {
+        return writeAddress(frame, globalAccess.executeWithTarget(frame, global));
     }
 
     @Specialization

@@ -9,11 +9,19 @@ void print(FILE *file) {
 }
 
 int main() {
-  char name[200];
+  char name[L_tmpnam];
   FILE *file = fopen(tmpnam(name), "w");
+  if (file == NULL) {
+    printf("Failed to open file\n");
+    abort();
+  }
   fputs("a asd a xdfasdf abn asdfasdf asdfdfaa", file);
   fclose(file);
   FILE *read = fopen(name, "r");
+  if (read == NULL) {
+    printf("Failed to open file\n");
+    abort();
+  }
   if (fseek(read, 9, SEEK_SET) != 0) {
     abort();
   }

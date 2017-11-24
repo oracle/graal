@@ -33,20 +33,21 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 @NodeChildren(value = {@NodeChild(type = LLVMExpressionNode.class, value = "pointerNode"), @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")})
 public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI1RMWXchgNode extends LLVMI1RMWNode {
         @Specialization
-        protected boolean doOp(LLVMGlobalVariable address, boolean value,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            LLVMAddress adr = globalAccess.getNativeLocation(address);
+        protected boolean doOp(VirtualFrame frame, LLVMGlobal address, boolean value,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
             return LLVMMemory.getAndOpI1(adr, value, (a, b) -> b);
         }
 
@@ -58,9 +59,9 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI1RMWAddNode extends LLVMI1RMWNode {
         @Specialization
-        protected boolean doOp(LLVMGlobalVariable address, boolean value,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            LLVMAddress adr = globalAccess.getNativeLocation(address);
+        protected boolean doOp(VirtualFrame frame, LLVMGlobal address, boolean value,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
             return LLVMMemory.getAndOpI1(adr, value, (a, b) -> a ^ b);
         }
 
@@ -72,9 +73,9 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI1RMWSubNode extends LLVMI1RMWNode {
         @Specialization
-        protected boolean doOp(LLVMGlobalVariable address, boolean value,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            LLVMAddress adr = globalAccess.getNativeLocation(address);
+        protected boolean doOp(VirtualFrame frame, LLVMGlobal address, boolean value,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
             return LLVMMemory.getAndOpI1(adr, value, (a, b) -> a ^ b);
         }
 
@@ -86,9 +87,9 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI1RMWAndNode extends LLVMI1RMWNode {
         @Specialization
-        protected boolean doOp(LLVMGlobalVariable address, boolean value,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            LLVMAddress adr = globalAccess.getNativeLocation(address);
+        protected boolean doOp(VirtualFrame frame, LLVMGlobal address, boolean value,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
             return LLVMMemory.getAndOpI1(adr, value, (a, b) -> a & b);
         }
 
@@ -100,9 +101,9 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI1RMWNandNode extends LLVMI1RMWNode {
         @Specialization
-        protected boolean doOp(LLVMGlobalVariable address, boolean value,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            LLVMAddress adr = globalAccess.getNativeLocation(address);
+        protected boolean doOp(VirtualFrame frame, LLVMGlobal address, boolean value,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
             return LLVMMemory.getAndOpI1(adr, value, (a, b) -> !(a & b));
         }
 
@@ -114,9 +115,9 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI1RMWOrNode extends LLVMI1RMWNode {
         @Specialization
-        protected boolean doOp(LLVMGlobalVariable address, boolean value,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            LLVMAddress adr = globalAccess.getNativeLocation(address);
+        protected boolean doOp(VirtualFrame frame, LLVMGlobal address, boolean value,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
             return LLVMMemory.getAndOpI1(adr, value, (a, b) -> a | b);
         }
 
@@ -128,9 +129,9 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI1RMWXorNode extends LLVMI1RMWNode {
         @Specialization
-        protected boolean doOp(LLVMGlobalVariable address, boolean value,
-                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            LLVMAddress adr = globalAccess.getNativeLocation(address);
+        protected boolean doOp(VirtualFrame frame, LLVMGlobal address, boolean value,
+                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
             return LLVMMemory.getAndOpI1(adr, value, (a, b) -> a ^ b);
         }
 

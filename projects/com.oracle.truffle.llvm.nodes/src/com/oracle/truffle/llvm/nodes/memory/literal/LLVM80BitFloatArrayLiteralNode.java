@@ -38,10 +38,10 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 @NodeChild(value = "address", type = LLVMExpressionNode.class)
 public abstract class LLVM80BitFloatArrayLiteralNode extends LLVMExpressionNode {
@@ -55,9 +55,9 @@ public abstract class LLVM80BitFloatArrayLiteralNode extends LLVMExpressionNode 
     }
 
     @Specialization
-    protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global,
-                    @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        return write80BitFloat(frame, globalAccess.getNativeLocation(global));
+    protected LLVMAddress write(VirtualFrame frame, LLVMGlobal global,
+                    @Cached(value = "toNative()") LLVMToNativeNode globalAccess) {
+        return write80BitFloat(frame, globalAccess.executeWithTarget(frame, global));
     }
 
     @Specialization

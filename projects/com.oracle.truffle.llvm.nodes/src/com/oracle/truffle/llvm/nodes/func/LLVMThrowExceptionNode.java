@@ -51,11 +51,11 @@ public final class LLVMThrowExceptionNode extends LLVMExpressionNode {
 
     public LLVMThrowExceptionNode(LLVMExpressionNode arg1, LLVMExpressionNode arg2, LLVMExpressionNode arg3) {
         this.exceptionInfo = arg1;
-        this.exceptionInfoToLLVM = createToNativeNode();
+        this.exceptionInfoToLLVM = LLVMToNativeNode.toNative();
         this.thrownTypeID = arg2;
-        this.thrownTypeIDToLLVM = createToNativeNode();
+        this.thrownTypeIDToLLVM = LLVMToNativeNode.toNative();
         this.destructor = arg3;
-        this.destructorToLLVM = createToNativeNode();
+        this.destructorToLLVM = LLVMToNativeNode.toNative();
     }
 
     public LLVMNativeFunctions.SulongThrowNode getExceptionInitializaton() {
