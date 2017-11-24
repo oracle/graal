@@ -106,8 +106,8 @@ public class MemoryTracerInstrument extends TruffleInstrument {
         tracer = factory.create(env);
         if (env.getOptions().get(MemoryTracerCLI.ENABLED)) {
             tracer.setFilter(getSourceSectionFilter(env));
-            tracer.setCollecting(true);
             tracer.setStackLimit(env.getOptions().get(MemoryTracerCLI.STACK_LIMIT));
+            tracer.setCollecting(true);
         }
         env.registerService(tracer);
     }
