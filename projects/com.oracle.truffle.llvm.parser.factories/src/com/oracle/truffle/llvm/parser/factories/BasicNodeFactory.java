@@ -1624,6 +1624,7 @@ public class BasicNodeFactory implements NodeFactory {
                 return LLVMMemSetNodeGen.create(createMemSet(), args[1], args[2], args[3], args[4], args[5], sourceSection);
             case "@llvm.assume":
                 return LLVMAssumeNodeGen.create(args[1], sourceSection);
+            case "@llvm.clear_cache": // STUB
             case "@llvm.donothing":
                 return LLVMNoOpNodeGen.create(sourceSection);
             case "@llvm.prefetch":
@@ -1681,6 +1682,7 @@ public class BasicNodeFactory implements NodeFactory {
                 return LLVMPowNodeGen.create(args[1], args[2], sourceSection);
             case "@llvm.fabs.f32":
             case "@llvm.fabs.f64":
+            case "@llvm.fabs.f80":
                 return LLVMFAbsNodeGen.create(args[1], sourceSection);
             case "@llvm.returnaddress":
                 return LLVMReturnAddressNodeGen.create(args[1], sourceSection);

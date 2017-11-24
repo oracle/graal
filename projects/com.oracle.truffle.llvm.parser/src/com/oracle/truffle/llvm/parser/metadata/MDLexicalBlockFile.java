@@ -54,6 +54,10 @@ public final class MDLexicalBlockFile implements MDBaseNode {
         return file;
     }
 
+    public MDBaseNode getScope() {
+        return scope;
+    }
+
     public long getDiscriminator() {
         return discriminator;
     }
