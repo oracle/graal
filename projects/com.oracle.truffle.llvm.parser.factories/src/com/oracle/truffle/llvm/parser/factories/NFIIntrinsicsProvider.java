@@ -84,6 +84,8 @@ import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCTypeIntrinsicsFactory.LLV
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCTypeIntrinsicsFactory.LLVMToUpperNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCTypeIntrinsicsFactory.LLVMTolowerNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMExitNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMMemIntrinsicFactory.LLVMLibcMemcpyNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMMemIntrinsicFactory.LLVMLibcMemsetNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMSignalNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMSyscall;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMTruffleReadBytesNodeGen;
@@ -1378,6 +1380,18 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
             @Override
             protected RootCallTarget generate(FunctionType type) {
                 return wrap("@free", LLVMFreeNodeGen.create(LLVMArgNodeGen.create(1)));
+            }
+        });
+        factories.put("@memset", new LLVMNativeIntrinsicFactory(true, false) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@memset", LLVMLibcMemsetNodeGen.create(factory.createMemSet(), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
+            }
+        });
+        factories.put("@memcpy", new LLVMNativeIntrinsicFactory(true, false) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@memcpy", LLVMLibcMemcpyNodeGen.create(factory.createMemMove(), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
             }
         });
     }
