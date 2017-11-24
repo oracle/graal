@@ -31,6 +31,7 @@ import static org.graalvm.compiler.serviceprovider.JDK9Method.Java8OrEarlier;
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MutableCallSite;
 import java.lang.invoke.VolatileCallSite;
+import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.math.BigInteger;
@@ -50,6 +51,7 @@ import org.graalvm.compiler.hotspot.replacements.CRC32CSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.CallSiteTargetNode;
 import org.graalvm.compiler.hotspot.replacements.CipherBlockChainingSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.ClassGetHubNode;
+import org.graalvm.compiler.hotspot.replacements.HotSpotArraySubstitutions;
 import org.graalvm.compiler.hotspot.replacements.HotSpotClassSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.IdentityHashCodeNode;
 import org.graalvm.compiler.hotspot.replacements.ObjectCloneNode;
@@ -158,6 +160,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerObjectPlugins(invocationPlugins, options, replacementBytecodeProvider);
                 registerClassPlugins(plugins, config, replacementBytecodeProvider);
                 registerSystemPlugins(invocationPlugins, foreignCalls);
+                registerArrayPlugins(invocationPlugins, replacementBytecodeProvider);
                 registerThreadPlugins(invocationPlugins, metaAccess, wordTypes, config, replacementBytecodeProvider);
                 if (!GeneratePIC.getValue(options)) {
                     registerCallSitePlugins(invocationPlugins);
@@ -399,6 +402,11 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
+    }
+
+    private static void registerArrayPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
+        Registration r = new Registration(plugins, Array.class, bytecodeProvider);
+        r.registerMethodSubstitution(HotSpotArraySubstitutions.class, "newInstance", Class.class, int.class);
     }
 
     private static void registerThreadPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, WordTypes wordTypes, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {

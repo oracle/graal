@@ -197,13 +197,6 @@ public class StandardGraphBuilderPlugins {
 
     private static void registerArrayPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
         Registration r = new Registration(plugins, Array.class, bytecodeProvider);
-        r.register2("newInstance", Class.class, int.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode componentType, ValueNode length) {
-                b.addPush(JavaKind.Object, new DynamicNewArrayNode(componentType, length, true));
-                return true;
-            }
-        });
         r.registerMethodSubstitution(ArraySubstitutions.class, "getLength", Object.class);
     }
 
