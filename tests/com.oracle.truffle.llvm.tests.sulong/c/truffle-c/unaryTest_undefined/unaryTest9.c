@@ -2,7 +2,7 @@ int a = 1;
 int b = 2;
 int c = 3;
 
-int main() { 
+int main() {
   // NOTE: unary semantics differ between
   // GCC and Clang
   // One unary per line hides these differences.
@@ -16,5 +16,5 @@ int main() {
   int t8 = c--;
   int t9 = c++;
 
-  return t1 - t2 + t3 + t4 * t5 * t6 + t7 - t8 * t9; 
+  return t1 - t2 + t3 + t4 * t5 * t6 + t7 - t8 * t9;
 }

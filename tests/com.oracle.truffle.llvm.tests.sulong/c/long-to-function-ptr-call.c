@@ -7,7 +7,7 @@ int div(int a, int b) { return a / b; }
 
 int rem(int a, int b) { return a % b; }
 
-long arr[5] = {(long)&add, (long)&sub, (long)&mul, (long)&div, (long)&rem };
+long arr[5] = { (long)&add, (long)&sub, (long)&mul, (long)&div, (long)&rem };
 
 int main() {
   int i;

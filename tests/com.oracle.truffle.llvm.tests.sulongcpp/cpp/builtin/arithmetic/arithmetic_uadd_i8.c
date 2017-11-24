@@ -1,5 +1,5 @@
 #ifndef __clang__
-unsigned char __builtin_addcb(unsigned char, unsigned char, unsigned char, unsigned char*);
+unsigned char __builtin_addcb(unsigned char, unsigned char, unsigned char, unsigned char *);
 #endif
 
 int main(int argc, const char **argv) {

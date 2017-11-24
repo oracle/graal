@@ -1,13 +1,13 @@
 #ifndef __clang__
 #include <stdbool.h>
-bool __builtin_mul_overflow(unsigned int, unsigned int, unsigned int*);
+bool __builtin_mul_overflow(unsigned int, unsigned int, unsigned int *);
 #endif
 
 int main(int argc, const char **argv) {
   unsigned int res;
 
 #ifndef __clang__
-  #warning "Disable testcase for non clang compiler!"
+#warning "Disable testcase for non clang compiler!"
   return 0;
 #endif
 

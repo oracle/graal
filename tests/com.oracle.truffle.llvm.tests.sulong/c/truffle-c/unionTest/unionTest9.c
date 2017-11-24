@@ -1,9 +1,5 @@
 
-enum type {
-  SINGLE,
-  DOUBLE,
-  TRIPLE
-};
+enum type { SINGLE, DOUBLE, TRIPLE };
 
 union val {
   int single_val;

@@ -15,5 +15,5 @@ int function(struct test t, int iter) {
 
 int main() {
   struct test t = { 1, 2 };
-  return (function((struct test) { 1, 2 }, 20) + function(t, 10)) % 256;
+  return (function((struct test){ 1, 2 }, 20) + function(t, 10)) % 256;
 }

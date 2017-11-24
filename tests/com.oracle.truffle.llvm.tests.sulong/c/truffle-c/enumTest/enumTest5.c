@@ -1,8 +1,4 @@
-enum E1 {
-  B1 = 3,
-  B2 /* = 4 */,
-  B3 = 5
-};
+enum E1 { B1 = 3, B2 /* = 4 */, B3 = 5 };
 
 int func(enum E1 val) {
   static int sum = 0;

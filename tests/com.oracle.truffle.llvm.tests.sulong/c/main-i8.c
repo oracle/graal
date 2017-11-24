@@ -1,4 +1,1 @@
-char main(void)
-{
-	return 42;
-}
+char main(void) { return 42; }

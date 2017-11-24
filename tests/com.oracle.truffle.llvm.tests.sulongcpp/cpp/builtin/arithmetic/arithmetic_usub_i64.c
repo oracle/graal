@@ -1,5 +1,5 @@
 #ifndef __clang__
-unsigned long __builtin_subcl(unsigned long, unsigned long, unsigned long, unsigned long*);
+unsigned long __builtin_subcl(unsigned long, unsigned long, unsigned long, unsigned long *);
 #endif
 
 int main(int argc, const char **argv) {

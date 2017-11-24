@@ -8,10 +8,9 @@ struct container {
 
 void store_native_function(struct container *);
 
-
-int main(int argc, char** argv) {
-	struct container c;
-	store_native_function(&c);
-	fprintf(stderr, "%p\n",c.callback);
-	return 0;
+int main(int argc, char **argv) {
+  struct container c;
+  store_native_function(&c);
+  fprintf(stderr, "%p\n", c.callback);
+  return 0;
 }

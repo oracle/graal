@@ -4,7 +4,7 @@
 long double getResult(int num, ...) {
   va_list arguments;
   va_start(arguments, num);
-  long double result = va_arg(arguments, long double)+va_arg(arguments, long double);
+  long double result = va_arg(arguments, long double) + va_arg(arguments, long double);
   va_end(arguments);
   return result;
 }

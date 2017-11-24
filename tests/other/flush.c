@@ -1,6 +1,3 @@
 #include <stdio.h>
 
-int main() {
-	fflush(stdout);
-}
-
+int main() { fflush(stdout); }

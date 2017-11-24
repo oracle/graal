@@ -1,10 +1,4 @@
-enum NUMBERS {
-  ONE,
-  TWO,
-  THREE,
-  FOUR,
-  FIVE
-};
+enum NUMBERS { ONE, TWO, THREE, FOUR, FIVE };
 
 enum NUMBERS *add(enum NUMBERS *first, enum NUMBERS *second) {
   static int result;

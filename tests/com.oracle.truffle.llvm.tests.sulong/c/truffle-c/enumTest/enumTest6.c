@@ -1,10 +1,4 @@
-enum NUMBERS {
-  ONE,
-  TWO,
-  THREE,
-  FOUR,
-  FIVE
-};
+enum NUMBERS { ONE, TWO, THREE, FOUR, FIVE };
 
 int add(enum NUMBERS first, enum NUMBERS second) { return first + second; }
 

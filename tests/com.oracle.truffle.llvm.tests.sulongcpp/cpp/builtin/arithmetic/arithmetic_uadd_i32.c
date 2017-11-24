@@ -1,5 +1,5 @@
 #ifndef __clang__
-unsigned int __builtin_addc(unsigned int, unsigned int, unsigned int, unsigned int*);
+unsigned int __builtin_addc(unsigned int, unsigned int, unsigned int, unsigned int *);
 #endif
 
 int main(int argc, const char **argv) {
