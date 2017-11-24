@@ -133,6 +133,11 @@ public abstract class LLVMCMathsIntrinsics {
             return Math.abs(value);
         }
 
+        @Specialization
+        public LLVM80BitFloat executeIntrinsic(LLVM80BitFloat value) {
+            return value.abs();
+        }
+
         @Override
         public abstract SourceSection getSourceSection();
 
