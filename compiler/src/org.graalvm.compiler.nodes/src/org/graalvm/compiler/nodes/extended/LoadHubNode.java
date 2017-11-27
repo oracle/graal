@@ -35,6 +35,7 @@ import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
@@ -61,8 +62,8 @@ public final class LoadHubNode extends FloatingNode implements Lowerable, Canoni
     }
 
     private static Stamp hubStamp(StampProvider stampProvider, ValueNode value) {
-        assert value.stamp() instanceof ObjectStamp;
-        return stampProvider.createHubStamp(((ObjectStamp) value.stamp()));
+        assert value.stamp(NodeView.DEFAULT) instanceof ObjectStamp;
+        return stampProvider.createHubStamp(((ObjectStamp) value.stamp(NodeView.DEFAULT)));
     }
 
     public static ValueNode create(ValueNode value, StampProvider stampProvider, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
@@ -93,7 +94,7 @@ public final class LoadHubNode extends FloatingNode implements Lowerable, Canoni
         if (!GeneratePIC.getValue(tool.getOptions())) {
             MetaAccessProvider metaAccess = tool.getMetaAccess();
             ValueNode curValue = getValue();
-            ValueNode newNode = findSynonym(curValue, stamp(), metaAccess, tool.getConstantReflection());
+            ValueNode newNode = findSynonym(curValue, stamp(NodeView.DEFAULT), metaAccess, tool.getConstantReflection());
             if (newNode != null) {
                 return newNode;
             }
@@ -117,7 +118,7 @@ public final class LoadHubNode extends FloatingNode implements Lowerable, Canoni
             ValueNode alias = tool.getAlias(getValue());
             TypeReference type = StampTool.typeReferenceOrNull(alias);
             if (type != null && type.isExact()) {
-                tool.replaceWithValue(ConstantNode.forConstant(stamp(), tool.getConstantReflectionProvider().asObjectHub(type.getType()), tool.getMetaAccessProvider(), graph()));
+                tool.replaceWithValue(ConstantNode.forConstant(stamp(NodeView.DEFAULT), tool.getConstantReflectionProvider().asObjectHub(type.getType()), tool.getMetaAccessProvider(), graph()));
             }
         }
     }

@@ -55,6 +55,7 @@ import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiArrayNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -393,7 +394,7 @@ public class TruffleGraphBuilderPlugins {
         r.register2("castArrayFixedLength", Object[].class, int.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode args, ValueNode length) {
-                b.addPush(JavaKind.Object, new PiArrayNode(args, length, args.stamp()));
+                b.addPush(JavaKind.Object, new PiArrayNode(args, length, args.stamp(NodeView.DEFAULT)));
                 return true;
             }
         });
@@ -564,7 +565,8 @@ public class TruffleGraphBuilderPlugins {
                             // Nothing to do.
                         } else {
                             boolean skipAnchor = false;
-                            LogicNode compareNode = CompareNode.createCompareNode(object.graph(), Condition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), constantReflection);
+                            LogicNode compareNode = CompareNode.createCompareNode(object.graph(), Condition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), constantReflection,
+                                            NodeView.DEFAULT);
 
                             if (compareNode instanceof LogicConstantNode) {
                                 LogicConstantNode logicConstantNode = (LogicConstantNode) compareNode;
@@ -626,7 +628,7 @@ public class TruffleGraphBuilderPlugins {
                     locationIdentity = ObjectLocationIdentity.create(location.asJavaConstant());
                 }
                 LogicNode compare = b.addWithInputs(CompareNode.createCompareNode(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), null, Condition.EQ, condition,
-                                ConstantNode.forBoolean(true, object.graph())));
+                                ConstantNode.forBoolean(true, object.graph()), NodeView.DEFAULT));
                 ConditionAnchorNode anchor = b.add(new ConditionAnchorNode(compare));
                 b.addPush(returnKind, b.add(new GuardedUnsafeLoadNode(b.addNonNullCast(object), offset, returnKind, locationIdentity, anchor)));
                 return true;

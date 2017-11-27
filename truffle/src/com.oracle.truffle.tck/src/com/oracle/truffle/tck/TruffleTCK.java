@@ -33,8 +33,6 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -46,8 +44,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.DoubleBinaryOperator;
 
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
@@ -58,6 +58,7 @@ import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -76,7 +77,6 @@ import com.oracle.truffle.tck.impl.LongBinaryOperation;
 import com.oracle.truffle.tck.impl.ObjectBinaryOperation;
 import com.oracle.truffle.tck.impl.TckInstrument;
 import com.oracle.truffle.tck.impl.TestObject;
-import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
 
 /**
  * Test compatibility kit (the <em>TCK</em>) is a collection of tests to certify your
@@ -139,8 +139,8 @@ import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
  */
 public abstract class TruffleTCK {
     private static final Random RANDOM = new Random();
-    private static Reference<PolyglotEngine> previousVMReference = new WeakReference<>(null);
     private PolyglotEngine tckVM;
+    private Object prev;
 
     /** @since 0.8 or earlier */
     protected TruffleTCK() {
@@ -153,19 +153,23 @@ public abstract class TruffleTCK {
      */
     @AfterClass
     public static void disposePreviousVM() {
-        replacePreviousVM(null);
-
     }
 
-    private static void replacePreviousVM(PolyglotEngine newVM) {
-        PolyglotEngine vm = previousVMReference.get();
-        if (vm == newVM) {
-            return;
-        }
-        if (vm != null) {
-            vm.dispose();
-        }
-        previousVMReference = new WeakReference<>(newVM);
+    /**
+     * @since 0.30
+     */
+    @Before
+    public final void enterTCK() throws Exception {
+        PolyglotEngine vm = vm();
+        this.prev = TruffleTCKAccessor.engineAccess().legacyTckEnter(vm);
+    }
+
+    /**
+     * @since 0.30
+     */
+    @After
+    public final void afterTCK() throws Exception {
+        TruffleTCKAccessor.engineAccess().legacyTckLeave(vm(), this.prev);
     }
 
     /**
@@ -731,7 +735,6 @@ public abstract class TruffleTCK {
     private PolyglotEngine vm() throws Exception {
         if (tckVM == null) {
             tckVM = prepareVM();
-            replacePreviousVM(tckVM);
         }
         return tckVM;
     }

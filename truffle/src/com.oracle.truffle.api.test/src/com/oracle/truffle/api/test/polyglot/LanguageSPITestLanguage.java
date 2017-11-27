@@ -61,7 +61,13 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
     }
 
     @Override
+    protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+        return true;
+    }
+
+    @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
+        getContext(); // We must have the context here
         Object result = "null result";
         if (runinside != null) {
             try {

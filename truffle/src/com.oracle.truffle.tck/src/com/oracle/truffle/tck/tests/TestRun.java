@@ -71,6 +71,41 @@ public final class TestRun {
     }
 
     @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (obj == null || obj.getClass() != TestRun.class) {
+            return false;
+        }
+        final TestRun otherRun = (TestRun) obj;
+        if (!snippet.getKey().equals(otherRun.snippet.getKey()) ||
+                        !snippet.getValue().getId().equals(otherRun.snippet.getValue().getId()) ||
+                        snippet.getValue().getExecutableValue() != otherRun.snippet.getValue().getExecutableValue() ||
+                        arguments.size() != otherRun.arguments.size()) {
+            return false;
+        }
+        for (int i = 0; i < arguments.size(); i++) {
+            final Entry<String, ? extends Snippet> thisArg = arguments.get(i);
+            final Entry<String, ? extends Snippet> otherArg = otherRun.arguments.get(i);
+            if (!thisArg.getKey().equals(otherArg.getKey()) ||
+                            !thisArg.getValue().getId().equals(otherArg.getValue().getId()) ||
+                            !thisArg.getValue().getReturnType().equals(otherArg.getValue().getReturnType())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int res = 17;
+        res = res * 31 + snippet.getKey().hashCode();
+        res = res * 31 + snippet.getValue().getId().hashCode();
+        return res;
+    }
+
+    @Override
     public String toString() {
         return arguments.stream().map(new Function<Entry<String, ? extends Snippet>, String>() {
             @Override

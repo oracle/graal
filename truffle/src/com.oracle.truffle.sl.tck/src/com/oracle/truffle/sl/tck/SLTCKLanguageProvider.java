@@ -106,9 +106,7 @@ public class SLTCKLanguageProvider implements LanguageProvider {
                                                         "return fn;\n" +
                                                         "}",
                                         "createFunction"),
-                        TypeDescriptor.intersection(
-                                        TypeDescriptor.OBJECT,
-                                        TypeDescriptor.EXECUTABLE));
+                        TypeDescriptor.EXECUTABLE);
         res.add(opb.build());
         return Collections.unmodifiableCollection(res);
     }

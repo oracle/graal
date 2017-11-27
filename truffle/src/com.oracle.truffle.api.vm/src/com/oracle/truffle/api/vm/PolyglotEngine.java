@@ -62,6 +62,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
@@ -1587,6 +1588,11 @@ public class PolyglotEngine {
         }
 
         @Override
+        public TruffleContext getPolyglotContext(Object vmObject) {
+            throw new UnsupportedOperationException("Polyglot contexts are not supported within PolygotEngine.");
+        }
+
+        @Override
         public <T extends TruffleLanguage<?>> T getCurrentLanguage(Class<T> languageClass) {
             PolyglotEngine engine = PolyglotEngine.GLOBAL_PROFILE.get();
             if (engine == null) {
@@ -1818,12 +1824,32 @@ public class PolyglotEngine {
         }
 
         @Override
+        public void reportAllLanguageContexts(Object vmObject, Object contextsListener) {
+            throw new UnsupportedOperationException("Internal contexts are not supported within PolygotEngine.");
+        }
+
+        @Override
+        public void reportAllContextThreads(Object vmObject, Object threadsListener) {
+            throw new UnsupportedOperationException("Internal contexts are not supported within PolygotEngine.");
+        }
+
+        @Override
+        public TruffleContext getParentContext(Object impl) {
+            throw new UnsupportedOperationException("Internal contexts are not supported within PolygotEngine.");
+        }
+
+        @Override
         public void closeInternalContext(Object impl) {
             throw new UnsupportedOperationException("Internal contexts are not supported within PolygotEngine.");
         }
 
         @Override
-        public Object createInternalContext(Object vmObject, Map<String, Object> config) {
+        public Object createInternalContext(Object vmObject, Map<String, Object> config, TruffleContext context) {
+            throw new UnsupportedOperationException("Internal contexts are not supported within PolygotEngine.");
+        }
+
+        @Override
+        public void initializeInternalContext(Object vmObject, Object contextImpl) {
             throw new UnsupportedOperationException("Internal contexts are not supported within PolygotEngine.");
         }
 
@@ -1840,6 +1866,16 @@ public class PolyglotEngine {
         @Override
         public boolean isCreateThreadAllowed(Object vmObject) {
             return false;
+        }
+
+        @Override
+        public Object legacyTckEnter(Object vm) {
+            return ((PolyglotEngine) vm).enter();
+        }
+
+        @Override
+        public void legacyTckLeave(Object vm, Object prev) {
+            ((PolyglotEngine) vm).leave(prev);
         }
 
         @Override

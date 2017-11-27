@@ -38,11 +38,12 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -179,6 +180,8 @@ public abstract class Accessor {
 
         public abstract <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass);
 
+        public abstract TruffleContext getPolyglotContext(Object vmObject);
+
         public abstract Value toHostValue(Object obj, Object languageContext);
 
         public abstract Object toGuestValue(Object obj, Object languageContext);
@@ -191,13 +194,21 @@ public abstract class Accessor {
 
         public abstract boolean isHostAccessAllowed(Object vmObject, Env env);
 
-        public abstract Object createInternalContext(Object vmObject, Map<String, Object> config);
+        public abstract Object createInternalContext(Object vmObject, Map<String, Object> config, TruffleContext spiContext);
+
+        public abstract void initializeInternalContext(Object vmObject, Object contextImpl);
 
         public abstract Object enterInternalContext(Object impl);
 
         public abstract void leaveInternalContext(Object impl, Object prev);
 
         public abstract void closeInternalContext(Object impl);
+
+        public abstract void reportAllLanguageContexts(Object vmObject, Object contextsListener);
+
+        public abstract void reportAllContextThreads(Object vmObject, Object threadsListener);
+
+        public abstract TruffleContext getParentContext(Object impl);
 
         public abstract boolean isCreateThreadAllowed(Object vmObject);
 
@@ -206,6 +217,10 @@ public abstract class Accessor {
         public abstract Iterable<Scope> createDefaultLexicalScope(Node node, Frame frame);
 
         public abstract Iterable<Scope> createDefaultTopScope(TruffleLanguage<?> language, Object context, Object global);
+
+        public abstract Object legacyTckEnter(Object vm);
+
+        public abstract void legacyTckLeave(Object vm, Object prev);
 
     }
 
@@ -217,6 +232,8 @@ public abstract class Accessor {
                         String[] applicationArguments);
 
         public abstract Object createEnvContext(Env localEnv);
+
+        public abstract TruffleContext createTruffleContext(Object impl);
 
         public abstract void postInitEnv(Env env);
 
@@ -323,6 +340,22 @@ public abstract class Accessor {
         public abstract Object getEngineInstrumenter(Object instrumentationHandler);
 
         public abstract void onNodeInserted(RootNode rootNode, Node tree);
+
+        public abstract void notifyContextCreated(Object engine, TruffleContext context);
+
+        public abstract void notifyContextClosed(Object engine, TruffleContext context);
+
+        public abstract void notifyLanguageContextCreated(Object engine, TruffleContext context, LanguageInfo info);
+
+        public abstract void notifyLanguageContextInitialized(Object engine, TruffleContext context, LanguageInfo info);
+
+        public abstract void notifyLanguageContextFinalized(Object engine, TruffleContext context, LanguageInfo info);
+
+        public abstract void notifyLanguageContextDisposed(Object engine, TruffleContext context, LanguageInfo info);
+
+        public abstract void notifyThreadStarted(Object engine, TruffleContext context, Thread thread);
+
+        public abstract void notifyThreadFinished(Object engine, TruffleContext context, Thread thread);
 
         public abstract void patchInstrumentationHandler(Object instrumentationHandler, DispatchOutputStream out, DispatchOutputStream err, InputStream in);
 

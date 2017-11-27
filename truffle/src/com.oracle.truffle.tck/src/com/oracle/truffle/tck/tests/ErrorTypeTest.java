@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -59,7 +60,7 @@ public class ErrorTypeTest {
     public static Collection<? extends TestRun> createErrorTypeTests() {
         context = new TestContext();
         final Set<? extends String> requiredLanguages = TestUtil.getRequiredLanguages(context);
-        final List<TestRun> testRuns = new ArrayList<>();
+        final Collection<TestRun> testRuns = new LinkedHashSet<>();
         for (String snippetLanguage : requiredLanguages) {
             Collection<? extends Snippet> snippets = context.getExpressions(null, null, snippetLanguage);
             Map<String, Collection<? extends Snippet>> overloads = computeOverloads(snippets);
@@ -90,6 +91,9 @@ public class ErrorTypeTest {
         final Set<? extends String> requiredValueLanguages = TestUtil.getRequiredValueLanguages(context);
         for (Snippet snippet : snippets) {
             for (String parLanguage : requiredValueLanguages) {
+                if (snippetLanguage.equals(parLanguage)) {
+                    continue;
+                }
                 final Collection<Map.Entry<String, ? extends Snippet>> valueConstructors = new HashSet<>();
                 for (Snippet valueConstructor : context.getValueConstructors(null, parLanguage)) {
                     valueConstructors.add(new AbstractMap.SimpleImmutableEntry<>(parLanguage, valueConstructor));
