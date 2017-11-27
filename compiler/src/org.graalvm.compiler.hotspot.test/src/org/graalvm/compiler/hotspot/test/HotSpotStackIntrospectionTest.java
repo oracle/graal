@@ -24,6 +24,8 @@ package org.graalvm.compiler.hotspot.test;
 
 import java.util.function.Function;
 
+import org.graalvm.compiler.test.GraalTest;
+import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
@@ -72,11 +74,15 @@ public class HotSpotStackIntrospectionTest extends HotSpotGraalCompilerTest {
 
     @Test(timeout = 20000)
     public void run() throws InvalidInstalledCodeException {
+        // The JDK9 bits are currently broken
+        Assume.assumeTrue(GraalTest.Java8OrEarlier);
         test("testSnippet");
     }
 
     @Test(timeout = 20000)
     public void runSynchronized() throws InvalidInstalledCodeException {
+        // The JDK9 bits are currently broken
+        Assume.assumeTrue(GraalTest.Java8OrEarlier);
         test("testSynchronizedSnippet");
     }
 
