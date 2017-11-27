@@ -4,7 +4,7 @@
 
 Download and install the latest IntelliJ IDEA Community Edition: [https://www.jetbrains.com/idea/download/](https://www.jetbrains.com/idea/download/)
 
-Change the IntelliJ maximum memory to 2 GB or more ([instructions](https://www.jetbrains.com/idea/help/increasing-memory-heap.html#d1366197e127)).
+Change the IntelliJ maximum memory to 2 GB or more. As per the [instructions](https://www.jetbrains.com/idea/help/increasing-memory-heap.html#d1366197e127), from the main menu choose **Help | Edit Custom VM Options** and modify the **-Xmx** and **-Xms** options.
 
 Enable parallel builds in **Preferences > Build, Execution, Deployment > Compiler > Compile independent modules in parallel**.
 
@@ -17,7 +17,7 @@ Open IntelliJ and go to **Preferences > Plugins > Browse Repositories**. Install
 * [Python Plugin](https://plugins.jetbrains.com/idea/plugin/631-python): python plugin
 * [Markdown Navigator](https://plugins.jetbrains.com/plugin/7896-markdown-navigator): markdown plugin
 
-Make sure you have [`mx`](https://github.com/graalvm/mx) installed and updated (`mx update`). Then, to initialize IntelliJ project files, go to the root of your project and invoke: `mx intellijinit --mx-python-modules`
+Make sure you have [`mx`](https://github.com/graalvm/mx) installed and updated (`mx update`). Then, to initialize IntelliJ project files, go to the root of your project and invoke: `mx intellijinit`
 
 Open the folder of your freshly initialized project from IntelliJ (**IntelliJ IDEA > File > Open…**). All depending projects will be included automatically.
 
