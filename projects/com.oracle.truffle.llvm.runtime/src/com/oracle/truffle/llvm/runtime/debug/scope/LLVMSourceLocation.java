@@ -40,6 +40,13 @@ import java.util.List;
 
 public abstract class LLVMSourceLocation {
 
+    private static final SourceSection UNAVAILABLE_SECTION;
+
+    static {
+        final Source source = Source.newBuilder("Source unavailable!").name("<unavailable>").mimeType("text/plain").build();
+        UNAVAILABLE_SECTION = source.createUnavailableSection();
+    }
+
     private static final List<LLVMSourceSymbol> NO_SYMBOLS = Collections.emptyList();
 
     public enum Kind {
@@ -188,7 +195,16 @@ public abstract class LLVMSourceLocation {
             final String sourceName = sourceSection.getSource().getName();
             final int line = sourceSection.getStartLine();
             final int col = sourceSection.getStartColumn();
-            return String.format("%s:%d:%d", sourceName, line, col);
+            final StringBuilder sb = new StringBuilder(sourceName);
+            if (sourceSection.isAvailable()) {
+                if (line >= 0) {
+                    sb.append(':').append(line);
+                    if (col >= 0) {
+                        sb.append(':').append(col);
+                    }
+                }
+            }
+            return sb.toString();
         }
     }
 
@@ -238,13 +254,6 @@ public abstract class LLVMSourceLocation {
 
     private static final class UnavailableScope extends LLVMSourceLocation {
 
-        private static final SourceSection UNAVAILABLE_SECTION;
-
-        static {
-            final Source source = Source.newBuilder("Source unavailable!").name("<unavailable>").mimeType("text/plain").build();
-            UNAVAILABLE_SECTION = source.createUnavailableSection();
-        }
-
         private final String file;
         private final int line;
         private final int col;
@@ -269,7 +278,14 @@ public abstract class LLVMSourceLocation {
         @TruffleBoundary
         @Override
         public String describeLocation() {
-            return String.format("%s:%d:%d", describeFile(), line, col);
+            final StringBuilder sb = new StringBuilder(describeFile());
+            if (line >= 0) {
+                sb.append(':').append(line);
+                if (col >= 0) {
+                    sb.append(':').append(col);
+                }
+            }
+            return sb.toString();
         }
 
     }
@@ -301,5 +317,9 @@ public abstract class LLVMSourceLocation {
 
     public static LLVMSourceLocation createBitcodeFunction(String name, SourceSection simpleSection) {
         return new DefaultScope(null, Kind.FUNCTION, name, simpleSection);
+    }
+
+    public static LLVMSourceLocation createUnknown(SourceSection sourceSection) {
+        return new LineScope(null, Kind.UNKNOWN, "<unknown>", sourceSection != null ? sourceSection : UNAVAILABLE_SECTION);
     }
 }

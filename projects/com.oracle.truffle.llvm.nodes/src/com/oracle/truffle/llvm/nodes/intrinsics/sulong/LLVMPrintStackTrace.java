@@ -45,6 +45,8 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsicRootNode.LLVMIntrinsicExpressionNode;
 import com.oracle.truffle.llvm.runtime.SulongStackTrace;
 import com.oracle.truffle.llvm.runtime.SulongStackTrace.Element;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public abstract class LLVMPrintStackTrace extends LLVMIntrinsic {
     @TruffleBoundary
@@ -83,24 +85,39 @@ public abstract class LLVMPrintStackTrace extends LLVMIntrinsic {
     }
 
     private static void fillStackTrace(SulongStackTrace stackTrace, Node node) {
-        SourceSection s = node.getSourceSection();
         LLVMBasicBlockNode block = NodeUtil.findParent(node, LLVMBasicBlockNode.class);
         LLVMFunctionStartNode f = NodeUtil.findParent(node, LLVMFunctionStartNode.class);
-        if (s == null && block != null) {
-            s = block.getSourceSection();
-        }
-        if (s == null && f != null) {
-            s = f.getSourceSection();
-        }
+
         if (block == null || f == null) {
             LLVMIntrinsicExpressionNode intrinsic = NodeUtil.findParent(node, LLVMIntrinsicExpressionNode.class);
             if (intrinsic != null) {
-                stackTrace.addStackTraceElement(intrinsic.toString(), "unknown", "unknown");
+                stackTrace.addStackTraceElement(intrinsic.toString(), null, null);
             }
-        } else if (s == null) {
+            return;
+        }
+
+        LLVMSourceLocation location = null;
+        if (node instanceof LLVMNode && ((LLVMNode) node).getSourceLocation() != null) {
+            location = ((LLVMNode) node).getSourceLocation();
+        }
+        if (location == null) {
+            location = block.getSourceLocation();
+        }
+        if (location != null) {
+            stackTrace.addStackTraceElement(f.getOriginalName(), location, f.getName(), f.getBcSource().getName(), blockName(block));
+            return;
+        }
+
+        SourceSection s = node.getSourceSection();
+        if (s == null) {
+            s = f.getSourceSection();
+        }
+
+        if (s == null) {
             stackTrace.addStackTraceElement(f.getName(), f.getBcSource().getName(), blockName(block));
         } else {
-            stackTrace.addStackTraceElement(f.getOriginalName(), s.getSource().getName(), f.getName(), f.getBcSource().getName(), blockName(block), s.getStartLine(), s.getStartColumn());
+            location = LLVMSourceLocation.createUnknown(s);
+            stackTrace.addStackTraceElement(f.getOriginalName(), location, f.getName(), f.getBcSource().getName(), blockName(block));
         }
     }
 
