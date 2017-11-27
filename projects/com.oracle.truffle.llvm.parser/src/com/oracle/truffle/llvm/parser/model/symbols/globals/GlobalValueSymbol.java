@@ -31,14 +31,14 @@ package com.oracle.truffle.llvm.parser.model.symbols.globals;
 
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
-import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,13 +47,11 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
 
     private final Type type;
 
-    private final int initialiser;
-
     private final int align;
 
     private String name = LLVMIdentifier.UNKNOWN;
 
-    private Symbol value = null;
+    private SymbolImpl value = null;
 
     private final Linkage linkage;
 
@@ -61,12 +59,12 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
 
     private List<MDAttachment> mdAttachments = null;
 
-    GlobalValueSymbol(Type type, int initialiser, int align, Linkage linkage, Visibility visibility) {
+    GlobalValueSymbol(Type type, int align, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value) {
         this.type = type;
-        this.initialiser = initialiser;
         this.align = align;
         this.linkage = linkage;
         this.visibility = visibility;
+        this.value = value > 0 ? symbolTable.getForwardReferenced(value - 1, this) : null;
     }
 
     public abstract void accept(ModelVisitor visitor);
@@ -76,8 +74,12 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
         return align;
     }
 
+    public boolean isInitialized() {
+        return value != null;
+    }
+
     public int getInitialiser() {
-        return initialiser;
+        return isInitialized() ? 1 : 0;
     }
 
     @Override
@@ -94,18 +96,12 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
         return linkage;
     }
 
-    public Symbol getValue() {
+    public SymbolImpl getValue() {
         return value;
     }
 
     public Visibility getVisibility() {
         return visibility;
-    }
-
-    public void initialise(Symbols symbols) {
-        if (getInitialiser() > 0) {
-            value = symbols.getSymbol(getInitialiser() - 1);
-        }
     }
 
     @Override
@@ -129,5 +125,12 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
             mdAttachments = new ArrayList<>(1);
         }
         return mdAttachments;
+    }
+
+    @Override
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
+        if (value == oldValue) {
+            value = newValue;
+        }
     }
 }

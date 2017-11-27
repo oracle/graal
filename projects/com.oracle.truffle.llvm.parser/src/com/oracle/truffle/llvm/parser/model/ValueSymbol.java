@@ -27,36 +27,19 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.model;
 
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
-import com.oracle.truffle.llvm.runtime.types.MetaType;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
-public final class MetadataConstant implements Constant {
+public interface ValueSymbol extends SymbolImpl {
 
-    private final long value;
-
-    public MetadataConstant(long value) {
-        this.value = value;
+    default int getAlign() {
+        return 0;
     }
 
-    public long getValue() {
-        return value;
+    default String getName() {
+        return LLVMIdentifier.UNKNOWN;
     }
 
-    @Override
-    public String toString() {
-        return String.valueOf(value);
-    }
-
-    @Override
-    public Type getType() {
-        return MetaType.METADATA;
-    }
-
-    @Override
-    public void accept(ConstantVisitor visitor) {
-        visitor.visit(this);
-    }
+    void setName(String name);
 }

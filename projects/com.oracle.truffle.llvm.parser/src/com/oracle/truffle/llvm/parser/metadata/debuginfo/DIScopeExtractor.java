@@ -50,6 +50,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDString;
 import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
 import com.oracle.truffle.llvm.parser.metadata.MDSubroutine;
 import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
+import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFile;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -63,20 +64,39 @@ final class DIScopeExtractor {
 
     private final Map<MDBaseNode, LLVMSourceLocation> scopes = new HashMap<>();
 
-    private final ScopeVisitor extractor = new ScopeVisitor();
-    private final DITypeIdentifier typeIdentifier;
+    // linescopes cannot have locals and are usually specific to a function, this can be cleared
+    // after the function has been parsed
+    private final Map<MDBaseNode, LLVMSourceLocation> lineScopes = new HashMap<>();
 
-    DIScopeExtractor(DITypeIdentifier typeIdentifier) {
-        this.typeIdentifier = typeIdentifier;
+    private final ScopeVisitor extractor = new ScopeVisitor();
+    private final MetadataValueList metadata;
+
+    DIScopeExtractor(MetadataValueList metadata) {
+        this.metadata = metadata;
     }
 
     LLVMSourceLocation resolve(MDBaseNode node) {
         if (node == null || node == MDVoidNode.INSTANCE) {
             return null;
-        } else if (!scopes.containsKey(node)) {
-            node.accept(extractor);
         }
-        return scopes.get(node);
+
+        if (scopes.containsKey(node)) {
+            return scopes.get(node);
+        } else if (lineScopes.containsKey(node)) {
+            return lineScopes.get(node);
+        }
+
+        node.accept(extractor);
+
+        if (scopes.containsKey(node)) {
+            return scopes.get(node);
+        } else {
+            return lineScopes.get(node);
+        }
+    }
+
+    void clearLineScopes() {
+        lineScopes.clear();
     }
 
     private final class ScopeVisitor implements MetadataVisitor {
@@ -126,17 +146,17 @@ final class DIScopeExtractor {
 
         @Override
         public void visit(MDLocation md) {
-            if (scopes.containsKey(md)) {
+            if (lineScopes.containsKey(md)) {
                 return;
 
             } else if (md.getInlinedAt() != MDVoidNode.INSTANCE) {
                 final LLVMSourceLocation actualLoc = resolve(md.getInlinedAt());
-                scopes.put(md, actualLoc);
+                lineScopes.put(md, actualLoc);
                 return;
             }
 
             final LLVMSourceLocation scope = new LLVMSourceLocation(Kind.LOCATION, md.getLine(), md.getColumn());
-            scopes.put(md, scope);
+            lineScopes.put(md, scope);
             linkToParent(scope, md.getScope());
         }
 
@@ -274,7 +294,7 @@ final class DIScopeExtractor {
             }
 
             scopes.put(md, null);
-            final MDCompositeType ref = typeIdentifier.identify(md.getString());
+            final MDCompositeType ref = metadata.identifyType(md.getString());
             final LLVMSourceLocation scope = resolve(ref);
             scopes.put(ref, scope);
             scopes.put(md, scope);

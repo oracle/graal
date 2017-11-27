@@ -32,22 +32,23 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.metadata.MetadataSymbol;
+import com.oracle.truffle.llvm.parser.model.IRScope;
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.MetadataConstant;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class VoidCallInstruction extends VoidInstruction implements Call {
 
-    private Symbol target;
+    private SymbolImpl target;
 
-    private final List<Symbol> arguments;
+    private final List<SymbolImpl> arguments;
 
     private final AttributesCodeEntry paramAttr;
 
@@ -57,12 +58,12 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
     @Override
-    public Symbol getArgument(int index) {
+    public SymbolImpl getArgument(int index) {
         return arguments.get(index);
     }
 
@@ -72,7 +73,7 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
     }
 
     @Override
-    public Symbol getCallTarget() {
+    public SymbolImpl getCallTarget() {
         return target;
     }
 
@@ -92,7 +93,7 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (target == original) {
             target = replacement;
         }
@@ -103,9 +104,10 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
         }
     }
 
-    public static VoidCallInstruction fromSymbols(Symbols symbols, int targetIndex, int[] arguments, AttributesCodeEntry paramAttr) {
+    public static VoidCallInstruction fromSymbols(IRScope scope, int targetIndex, int[] arguments, AttributesCodeEntry paramAttr) {
+        final SymbolTable symbols = scope.getSymbols();
         final VoidCallInstruction inst = new VoidCallInstruction(paramAttr);
-        inst.target = symbols.getSymbol(targetIndex, inst);
+        inst.target = symbols.getForwardReferenced(targetIndex, inst);
         final Type[] argTypes;
         if (inst.target instanceof FunctionDefinition) {
             argTypes = ((FunctionDefinition) (inst.target)).getType().getArgumentTypes();
@@ -118,14 +120,14 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
             for (int i = 0; i < arguments.length; i++) {
                 // TODO: why is it possible to have more arguments than argument types?
                 if (argTypes.length > i && argTypes[i] == MetaType.METADATA) {
-                    inst.arguments.add(new MetadataConstant(arguments[i]));
+                    inst.arguments.add(MetadataSymbol.create(scope.getMetadata(), arguments[i]));
                 } else {
-                    inst.arguments.add(symbols.getSymbol(arguments[i], inst));
+                    inst.arguments.add(symbols.getForwardReferenced(arguments[i], inst));
                 }
             }
         } else {
             for (final int argument : arguments) {
-                inst.arguments.add(symbols.getSymbol(argument, inst));
+                inst.arguments.add(symbols.getForwardReferenced(argument, inst));
             }
         }
         return inst;

@@ -34,13 +34,10 @@ import java.util.List;
 
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.TerminatingInstruction;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
-import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
-public final class InstructionBlock implements ValueSymbol {
+public final class InstructionBlock {
 
     private final int blockIndex;
 
@@ -52,7 +49,7 @@ public final class InstructionBlock implements ValueSymbol {
         this.blockIndex = index;
     }
 
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         for (Instruction instruction : instructions) {
             instruction.accept(visitor);
         }
@@ -66,7 +63,6 @@ public final class InstructionBlock implements ValueSymbol {
         return blockIndex;
     }
 
-    @Override
     public String getName() {
         return name;
     }
@@ -79,12 +75,6 @@ public final class InstructionBlock implements ValueSymbol {
         return instructions.size();
     }
 
-    @Override
-    public Type getType() {
-        return VoidType.INSTANCE;
-    }
-
-    @Override
     public void setName(String name) {
         this.name = LLVMIdentifier.toBlockName(name);
     }

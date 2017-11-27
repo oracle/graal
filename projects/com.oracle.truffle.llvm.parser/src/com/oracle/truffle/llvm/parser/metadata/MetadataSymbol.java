@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,17 +27,47 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.types.symbols;
+package com.oracle.truffle.llvm.parser.metadata;
 
-public interface ValueSymbol extends Symbol {
+import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
-    default int getAlign() {
-        return 0;
+public final class MetadataSymbol implements Constant {
+
+    private MDBaseNode node;
+
+    private MetadataSymbol() {
+        this.node = MDVoidNode.INSTANCE;
     }
 
-    default String getName() {
-        return LLVMIdentifier.UNKNOWN;
+    @Override
+    public Type getType() {
+        return MetaType.METADATA;
     }
 
-    void setName(String name);
+    public MDBaseNode getNode() {
+        return node;
+    }
+
+    @Override
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
+
+    }
+
+    @Override
+    public void accept(SymbolVisitor visitor) {
+        visitor.visit(this);
+    }
+
+    public static MetadataSymbol create(MetadataValueList md, int index) {
+        final MetadataSymbol symbol = new MetadataSymbol();
+        md.onParse(index, mdNode -> {
+            symbol.node = mdNode;
+        });
+        return symbol;
+    }
+
 }

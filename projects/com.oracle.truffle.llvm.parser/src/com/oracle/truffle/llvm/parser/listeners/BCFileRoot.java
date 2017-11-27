@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,46 +27,47 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint;
+package com.oracle.truffle.llvm.parser.listeners;
 
-import java.util.Arrays;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.parser.model.IRScope;
+import com.oracle.truffle.llvm.parser.model.ModelModule;
+import com.oracle.truffle.llvm.parser.scanner.Block;
 
-import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+public final class BCFileRoot implements ParserListener {
 
-public final class X86FP80Constant extends FloatingPointConstant {
+    private final Source source;
+    private final ModelModule module;
+    private final StringTable stringTable;
+    private final IRScope scope;
 
-    private final byte[] value;
-
-    X86FP80Constant(byte[] value) {
-        super(PrimitiveType.X86_FP80);
-        this.value = value;
+    public BCFileRoot(Source source, ModelModule module) {
+        this.source = source;
+        this.module = module;
+        this.stringTable = new StringTable();
+        this.scope = new IRScope();
     }
 
     @Override
-    public void accept(SymbolVisitor visitor) {
-        visitor.visit(this);
-    }
+    public ParserListener enter(Block block) {
+        switch (block) {
+            case MODULE:
+                return new Module(module, stringTable, scope);
 
-    public byte[] getValue() {
-        return value;
-    }
+            case STRTAB:
+                return stringTable;
 
-    @Override
-    public String toString() {
-        return Arrays.toString(value);
-    }
-
-    private static final int HEX_MASK = 0xf;
-
-    private static final int BYTE_MSB_SHIFT = 4;
-
-    @Override
-    public String getStringValue() {
-        final StringBuilder builder = new StringBuilder("0xK");
-        for (byte aValue : value) {
-            builder.append(String.format("%x%x", (aValue >>> BYTE_MSB_SHIFT) & HEX_MASK, aValue & HEX_MASK));
+            default:
+                return ParserListener.DEFAULT;
         }
-        return builder.toString();
+    }
+
+    @Override
+    public void exit() {
+        module.exitModule(scope, source);
+    }
+
+    @Override
+    public void record(long id, long[] args) {
     }
 }

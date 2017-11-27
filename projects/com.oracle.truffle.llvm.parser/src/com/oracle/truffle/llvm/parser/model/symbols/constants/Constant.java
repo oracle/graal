@@ -29,17 +29,14 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants;
 
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.AggregateConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.FloatingPointConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
-public interface Constant extends Symbol {
-
-    void accept(ConstantVisitor visitor);
+public interface Constant extends SymbolImpl {
 
     static Constant createFromData(Type type, long datum) {
         if (Type.isIntegerType(type)) {
@@ -57,7 +54,7 @@ public interface Constant extends Symbol {
         return AggregateConstant.fromData(type, data);
     }
 
-    static Constant createFromValues(Type type, Symbols symbols, int[] valueIndices) {
+    static Constant createFromValues(Type type, SymbolTable symbols, int[] valueIndices) {
         return AggregateConstant.fromSymbols(symbols, type, valueIndices);
     }
 }

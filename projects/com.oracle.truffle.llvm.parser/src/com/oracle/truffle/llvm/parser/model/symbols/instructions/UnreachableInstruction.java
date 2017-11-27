@@ -29,8 +29,9 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
 public final class UnreachableInstruction extends VoidInstruction implements TerminatingInstruction {
 
@@ -38,7 +39,7 @@ public final class UnreachableInstruction extends VoidInstruction implements Ter
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -50,6 +51,10 @@ public final class UnreachableInstruction extends VoidInstruction implements Ter
     @Override
     public InstructionBlock getSuccessor(int index) {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
     }
 
     public static UnreachableInstruction generate() {

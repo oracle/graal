@@ -29,13 +29,13 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.enums.CompareOperator;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class CompareInstruction extends ValueInstruction {
 
@@ -43,9 +43,9 @@ public final class CompareInstruction extends ValueInstruction {
 
     private Type baseType;
 
-    private Symbol lhs;
+    private SymbolImpl lhs;
 
-    private Symbol rhs;
+    private SymbolImpl rhs;
 
     private CompareInstruction(Type type, CompareOperator operator) {
         super(calculateResultType(type));
@@ -62,7 +62,7 @@ public final class CompareInstruction extends ValueInstruction {
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -70,7 +70,7 @@ public final class CompareInstruction extends ValueInstruction {
         return baseType;
     }
 
-    public Symbol getLHS() {
+    public SymbolImpl getLHS() {
         return lhs;
     }
 
@@ -78,12 +78,12 @@ public final class CompareInstruction extends ValueInstruction {
         return operator;
     }
 
-    public Symbol getRHS() {
+    public SymbolImpl getRHS() {
         return rhs;
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (lhs == original) {
             lhs = replacement;
         }
@@ -92,10 +92,10 @@ public final class CompareInstruction extends ValueInstruction {
         }
     }
 
-    public static CompareInstruction fromSymbols(Symbols symbols, Type type, int opcode, int lhs, int rhs) {
+    public static CompareInstruction fromSymbols(SymbolTable symbols, Type type, int opcode, int lhs, int rhs) {
         final CompareInstruction cmpInst = new CompareInstruction(type, CompareOperator.decode(opcode));
-        cmpInst.lhs = symbols.getSymbol(lhs, cmpInst);
-        cmpInst.rhs = symbols.getSymbol(rhs, cmpInst);
+        cmpInst.lhs = symbols.getForwardReferenced(lhs, cmpInst);
+        cmpInst.rhs = symbols.getForwardReferenced(rhs, cmpInst);
         return cmpInst;
     }
 }

@@ -76,11 +76,11 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.TerminatingInst
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
-import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 
 public final class LLVMLivenessAnalysis {
 
@@ -336,7 +336,7 @@ public final class LLVMLivenessAnalysis {
         instruction.accept(readVisitor);
     }
 
-    private static void processWrite(FrameDescriptor frame, Symbol symbol, BlockInfo blockInfo) {
+    private static void processWrite(FrameDescriptor frame, SymbolImpl symbol, BlockInfo blockInfo) {
         int frameSlotIndex = resolve(frame, symbol);
         if (frameSlotIndex >= 0) {
             blockInfo.defs.set(frameSlotIndex);
@@ -346,7 +346,7 @@ public final class LLVMLivenessAnalysis {
         }
     }
 
-    private static void processRead(FrameDescriptor frame, Symbol symbol, BlockInfo blockInfo) {
+    private static void processRead(FrameDescriptor frame, SymbolImpl symbol, BlockInfo blockInfo) {
         int frameSlotIndex = resolve(frame, symbol);
         processRead(blockInfo, frameSlotIndex);
     }
@@ -359,7 +359,7 @@ public final class LLVMLivenessAnalysis {
         }
     }
 
-    private static void processValueUsedInPhi(FrameDescriptor frame, Symbol symbol, BlockInfo blockInfo) {
+    private static void processValueUsedInPhi(FrameDescriptor frame, SymbolImpl symbol, BlockInfo blockInfo) {
         int frameSlotIndex = resolve(frame, symbol);
         if (frameSlotIndex >= 0) {
             blockInfo.phiUses.set(frameSlotIndex);
@@ -374,7 +374,7 @@ public final class LLVMLivenessAnalysis {
         }
     }
 
-    private static int resolve(FrameDescriptor frame, Symbol symbol) {
+    private static int resolve(FrameDescriptor frame, SymbolImpl symbol) {
         if (symbol instanceof ValueSymbol && !(symbol instanceof GlobalValueSymbol || symbol instanceof FunctionDefinition || symbol instanceof FunctionDeclaration)) {
             String name = ((ValueSymbol) symbol).getName();
             assert name != null;
@@ -492,7 +492,7 @@ public final class LLVMLivenessAnalysis {
         }
 
         @Override
-        public void visitLocalRead(Symbol symbol) {
+        public void visitLocalRead(SymbolImpl symbol) {
             processRead(frame, symbol, blockInfo);
         }
     }
@@ -512,7 +512,7 @@ public final class LLVMLivenessAnalysis {
         }
 
         @Override
-        public void visitLocalRead(Symbol symbol) {
+        public void visitLocalRead(SymbolImpl symbol) {
             int frameSlotIndex = resolve(frame, symbol);
             if (frameSlotIndex >= 0) {
                 lastInstructionIndexTouchingLocal[frameSlotIndex] = instructionIndex;
@@ -520,7 +520,7 @@ public final class LLVMLivenessAnalysis {
         }
     }
 
-    private abstract static class LLVMLocalReadVisitor implements InstructionVisitor {
+    private abstract static class LLVMLocalReadVisitor implements SymbolVisitor {
 
         @Override
         public void visit(AllocateInstruction allocate) {
@@ -590,7 +590,7 @@ public final class LLVMLivenessAnalysis {
         @Override
         public void visit(GetElementPointerInstruction gep) {
             visitLocalRead(gep.getBasePointer());
-            for (Symbol symbol : gep.getIndices()) {
+            for (SymbolImpl symbol : gep.getIndices()) {
                 visitLocalRead(symbol);
             }
         }
@@ -706,7 +706,7 @@ public final class LLVMLivenessAnalysis {
         public void visit(FenceInstruction fence) {
         }
 
-        protected abstract void visitLocalRead(Symbol symbol);
+        protected abstract void visitLocalRead(SymbolImpl symbol);
     }
 
     private static class BlockInfo {

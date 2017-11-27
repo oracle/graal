@@ -55,13 +55,13 @@ public final class Constants implements ParserListener {
 
     private final Types types;
 
-    private final IRScope container;
+    private final IRScope scope;
 
     private Type type;
 
-    Constants(Types types, IRScope container) {
+    Constants(Types types, IRScope scope) {
         this.types = types;
-        this.container = container;
+        this.scope = scope;
     }
 
     @Override
@@ -75,19 +75,19 @@ public final class Constants implements ParserListener {
 
             case NULL:
                 if (Type.isIntegerType(type)) {
-                    container.addSymbol(new NullConstant(type), Type.createConstantForType(type, 0));
+                    scope.addSymbol(new NullConstant(type), Type.createConstantForType(type, 0));
                 } else {
-                    container.addSymbol(new NullConstant(type), type);
+                    scope.addSymbol(new NullConstant(type), type);
                 }
                 return;
 
             case UNDEF:
-                container.addSymbol(new UndefinedConstant(type), type);
+                scope.addSymbol(new UndefinedConstant(type), type);
                 return;
 
             case INTEGER: {
                 long value = Records.toSignedValue(args[0]);
-                container.addSymbol(new IntegerConstant(type, value), Type.createConstantForType(type, value));
+                scope.addSymbol(new IntegerConstant(type, value), Type.createConstantForType(type, value));
                 return;
             }
             case WIDE_INTEGER: {
@@ -99,37 +99,37 @@ public final class Constants implements ParserListener {
                     temp = temp.shiftLeft(i * Long.SIZE);
                     value = value.add(temp);
                 }
-                container.addSymbol(new BigIntegerConstant(type, value), Type.createConstantForType(type, value));
+                scope.addSymbol(new BigIntegerConstant(type, value), Type.createConstantForType(type, value));
                 return;
             }
             case FLOAT:
-                container.addSymbol(FloatingPointConstant.create(type, args), type);
+                scope.addSymbol(FloatingPointConstant.create(type, args), type);
                 return;
 
             case AGGREGATE: {
-                container.addSymbol(Constant.createFromValues(type, container.getSymbols(), Records.toIntegers(args)), type);
+                scope.addSymbol(Constant.createFromValues(type, scope.getSymbols(), Records.toIntegers(args)), type);
                 return;
             }
             case STRING:
-                container.addSymbol(new StringConstant(type, Records.toString(args), false), type);
+                scope.addSymbol(new StringConstant(type, Records.toString(args), false), type);
                 return;
 
             case CSTRING:
-                container.addSymbol(new StringConstant(type, Records.toString(args), true), type);
+                scope.addSymbol(new StringConstant(type, Records.toString(args), true), type);
                 return;
 
             case CE_BINOP: {
                 int opCode = (int) args[0];
                 int lhs = (int) args[1];
                 int rhs = (int) args[2];
-                container.addSymbol(BinaryOperationConstant.fromSymbols(container.getSymbols(), type, opCode, lhs, rhs), type);
+                scope.addSymbol(BinaryOperationConstant.fromSymbols(scope.getSymbols(), type, opCode, lhs, rhs), type);
                 return;
             }
 
             case CE_CAST: {
                 int opCode = (int) args[0];
                 int value = (int) args[2];
-                container.addSymbol(CastConstant.fromSymbols(container.getSymbols(), type, opCode, value), type);
+                scope.addSymbol(CastConstant.fromSymbols(scope.getSymbols(), type, opCode, value), type);
                 return;
             }
 
@@ -139,23 +139,23 @@ public final class Constants implements ParserListener {
                 int rhs = (int) args[i++];
                 int opcode = (int) args[i];
 
-                container.addSymbol(CompareConstant.fromSymbols(container.getSymbols(), type, opcode, lhs, rhs), type);
+                scope.addSymbol(CompareConstant.fromSymbols(scope.getSymbols(), type, opcode, lhs, rhs), type);
                 return;
             }
 
             case BLOCKADDRESS: {
                 int function = (int) args[1];
                 int block = (int) args[2];
-                container.addSymbol(BlockAddressConstant.fromSymbols(container.getSymbols(), type, function, block), type);
+                scope.addSymbol(BlockAddressConstant.fromSymbols(scope.getSymbols(), type, function, block), type);
                 return;
             }
 
             case DATA:
-                container.addSymbol(Constant.createFromData(type, args), type);
+                scope.addSymbol(Constant.createFromData(type, args), type);
                 return;
 
             case INLINEASM:
-                container.addSymbol(InlineAsmConstant.generate(type, args), type);
+                scope.addSymbol(InlineAsmConstant.generate(type, args), type);
                 return;
 
             case CE_GEP:
@@ -192,6 +192,6 @@ public final class Constants implements ParserListener {
             indices[j] = (int) args[i++];
         }
 
-        container.addSymbol(GetElementPointerConstant.fromSymbols(container.getSymbols(), type, pointer, indices, isInbounds), type);
+        scope.addSymbol(GetElementPointerConstant.fromSymbols(scope.getSymbols(), type, pointer, indices, isInbounds), type);
     }
 }

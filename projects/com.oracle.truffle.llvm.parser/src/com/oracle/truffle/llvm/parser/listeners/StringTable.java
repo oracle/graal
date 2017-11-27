@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.listeners;
 
-import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
+import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 
 import java.util.ArrayList;
 import java.util.List;

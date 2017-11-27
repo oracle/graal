@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,8 +35,4 @@ public interface Symbol {
 
     Type getType();
 
-    @SuppressWarnings("unused")
-    default void replace(Symbol original, Symbol replacement) {
-        throw new IllegalStateException("Fordward reference used with unsuspecting type " + getClass().getSimpleName());
-    }
 }

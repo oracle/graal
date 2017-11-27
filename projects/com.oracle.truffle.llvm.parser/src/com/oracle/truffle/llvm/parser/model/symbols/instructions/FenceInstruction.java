@@ -29,9 +29,10 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.enums.AtomicOrdering;
 import com.oracle.truffle.llvm.parser.model.enums.SynchronizationScope;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
 public final class FenceInstruction extends VoidInstruction {
 
@@ -44,7 +45,7 @@ public final class FenceInstruction extends VoidInstruction {
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -54,6 +55,10 @@ public final class FenceInstruction extends VoidInstruction {
 
     public SynchronizationScope getSynchronizationScope() {
         return synchronizationScope;
+    }
+
+    @Override
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
     }
 
     public static FenceInstruction generate(long atomicOrdering, long synchronizationScope) {

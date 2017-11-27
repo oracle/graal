@@ -32,16 +32,15 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class PhiInstruction extends ValueInstruction {
 
-    private final List<Symbol> values = new ArrayList<>();
+    private final List<SymbolImpl> values = new ArrayList<>();
 
     private final List<InstructionBlock> blocks = new ArrayList<>();
 
@@ -50,7 +49,7 @@ public final class PhiInstruction extends ValueInstruction {
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -62,12 +61,12 @@ public final class PhiInstruction extends ValueInstruction {
         return values.size();
     }
 
-    public Symbol getValue(int index) {
+    public SymbolImpl getValue(int index) {
         return values.get(index);
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacment) {
+    public void replace(SymbolImpl original, SymbolImpl replacment) {
         for (int i = 0; i < values.size(); i++) {
             if (values.get(i) == original) {
                 values.set(i, replacment);
@@ -75,11 +74,10 @@ public final class PhiInstruction extends ValueInstruction {
         }
     }
 
-    public static PhiInstruction generate(FunctionDefinition function, Type type, int[] values, InstructionBlock[] blocks) {
+    public static PhiInstruction generate(SymbolTable symbols, Type type, int[] values, InstructionBlock[] blocks) {
         final PhiInstruction phi = new PhiInstruction(type);
-        final Symbols symbols = function.getSymbols();
         for (int i = 0; i < values.length; i++) {
-            phi.values.add(symbols.getSymbol(values[i], phi));
+            phi.values.add(symbols.getForwardReferenced(values[i], phi));
             phi.blocks.add(blocks[i]);
         }
         return phi;

@@ -29,24 +29,24 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
 public final class ReturnInstruction extends VoidInstruction implements TerminatingInstruction {
 
-    private Symbol value;
+    private SymbolImpl value;
 
     private ReturnInstruction() {
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
-    public Symbol getValue() {
+    public SymbolImpl getValue() {
         return value;
     }
 
@@ -61,15 +61,15 @@ public final class ReturnInstruction extends VoidInstruction implements Terminat
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (value == original) {
             value = replacement;
         }
     }
 
-    public static ReturnInstruction generate(Symbols symbols, int value) {
+    public static ReturnInstruction generate(SymbolTable symbols, int value) {
         final ReturnInstruction inst = new ReturnInstruction();
-        inst.value = symbols.getSymbol(value, inst);
+        inst.value = symbols.getForwardReferenced(value, inst);
         return inst;
     }
 

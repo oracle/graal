@@ -29,33 +29,22 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.listeners.Metadata;
 import com.oracle.truffle.llvm.parser.model.IRScope;
-import com.oracle.truffle.llvm.runtime.types.MetaType;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
-public final class MDValue implements MDBaseNode, Symbol {
+public final class MDValue implements MDBaseNode {
 
-    private final Type type;
-    private Symbol value;
+    private SymbolImpl value;
 
     @Override
     public void accept(MetadataVisitor visitor) {
         visitor.visit(this);
     }
 
-    private MDValue(Type type) {
-        this.type = type;
+    private MDValue() {
     }
 
-    @Override
-    public Type getType() {
-        return type;
-    }
-
-    public Symbol getValue() {
+    public SymbolImpl getValue() {
         return value;
     }
 
@@ -64,38 +53,26 @@ public final class MDValue implements MDBaseNode, Symbol {
     }
 
     @Override
-    public void replace(Symbol oldValue, Symbol newValue) {
-        if (value == oldValue) {
-            value = newValue;
-        }
-    }
-
-    @Override
     public String toString() {
         return String.format("Value (%s)", value);
     }
 
-    private static final int VALUE_ARGINDEX_TYPE = 0;
     private static final int VALUE_ARGINDEX_VALUE = 1;
 
-    public static MDBaseNode create(long[] args, Metadata md) {
-        final Type type = md.getTypeById(args[VALUE_ARGINDEX_TYPE]);
-        if (type == MetaType.METADATA || VoidType.INSTANCE.equals(type)) {
-            return MDVoidNode.INSTANCE;
-        }
-        final MDValue value = new MDValue(type);
-        value.value = md.getContainer().getSymbols().getSymbol((int) args[VALUE_ARGINDEX_VALUE], value);
+    public static MDBaseNode create(long[] args, IRScope scope) {
+        return create(args[VALUE_ARGINDEX_VALUE], scope);
+    }
+
+    public static MDBaseNode create(long arg, IRScope scope) {
+        final MDValue value = new MDValue();
+        scope.getSymbols().onParse((int) arg, s -> {
+            value.value = s;
+        });
         return value;
     }
 
-    public static MDValue create(Type type, long index, IRScope scope) {
-        final MDValue value = new MDValue(type);
-        value.value = scope.getSymbols().getSymbol((int) index, value);
-        return value;
-    }
-
-    public static MDValue create(Symbol symbol) {
-        final MDValue value = new MDValue(symbol.getType());
+    public static MDValue create(SymbolImpl symbol) {
+        final MDValue value = new MDValue();
         value.value = symbol;
         return value;
     }

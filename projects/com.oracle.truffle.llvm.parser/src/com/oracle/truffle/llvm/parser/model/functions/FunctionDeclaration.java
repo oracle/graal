@@ -29,14 +29,15 @@
  */
 package com.oracle.truffle.llvm.parser.model.functions;
 
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
-import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
+import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 
 public final class FunctionDeclaration implements Constant, ValueSymbol {
 
@@ -71,7 +72,11 @@ public final class FunctionDeclaration implements Constant, ValueSymbol {
     }
 
     @Override
-    public void accept(ConstantVisitor visitor) {
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
+    }
+
+    @Override
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 

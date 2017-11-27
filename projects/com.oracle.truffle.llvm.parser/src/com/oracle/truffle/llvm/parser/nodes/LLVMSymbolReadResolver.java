@@ -46,10 +46,8 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.BinaryOperationCon
 import com.oracle.truffle.llvm.parser.model.symbols.constants.BlockAddressConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.CastConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.CompareConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.GetElementPointerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.InlineAsmConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.MetadataConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.StringConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.UndefinedConstant;
@@ -63,12 +61,8 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigInteger
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
-import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -87,7 +81,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 import java.math.BigInteger;
@@ -110,7 +104,7 @@ public final class LLVMSymbolReadResolver {
         throw new UnsupportedOperationException("Cannot resolve symbol: " + obj);
     }
 
-    private final class InternalVisitor extends ValueInstructionVisitor implements ConstantVisitor, ModelVisitor {
+    private final class InternalVisitor extends ValueInstructionVisitor {
 
         private final TypeVisitor nullValueVisitor = new TypeVisitor() {
 
@@ -216,13 +210,8 @@ public final class LLVMSymbolReadResolver {
         };
 
         @Override
-        public void defaultAction(Object obj) {
-            unsupported(obj);
-        }
-
-        @Override
-        public void defaultAction(Instruction inst) {
-            unsupported(inst);
+        public void defaultAction(SymbolImpl symbol) {
+            unsupported(symbol);
         }
 
         @Override
@@ -399,12 +388,6 @@ public final class LLVMSymbolReadResolver {
         }
 
         @Override
-        public void visit(MetadataConstant constant) {
-            // TODO: point to Metadata
-            resolvedNode = runtime.getNodeFactory().createLiteral(runtime, constant.getValue(), PrimitiveType.I64);
-        }
-
-        @Override
         public void visit(FunctionDeclaration toResolve) {
             final boolean global = !Linkage.isFileLocal(toResolve.getLinkage());
             final LLVMContext.FunctionFactory generator = i -> LLVMFunctionDescriptor.createDescriptor(runtime.getContext(), runtime.getLibraryName(), toResolve.getName(), toResolve.getType(),
@@ -438,6 +421,12 @@ public final class LLVMSymbolReadResolver {
         }
 
         @Override
+        public void visit(FunctionParameter param) {
+            final FrameSlot slot = frame.findFrameSlot(param.getName());
+            resolvedNode = runtime.getNodeFactory().createFrameRead(runtime, param.getType(), slot);
+        }
+
+        @Override
         public void visitValueInstruction(ValueInstruction value) {
             final FrameSlot slot = frame.findFrameSlot(value.getName());
             resolvedNode = runtime.getNodeFactory().createFrameRead(runtime, value.getType(), slot);
@@ -460,7 +449,7 @@ public final class LLVMSymbolReadResolver {
         this.allLabels = allLabels;
     }
 
-    public static Integer evaluateIntegerConstant(Symbol constant) {
+    public static Integer evaluateIntegerConstant(SymbolImpl constant) {
         if (constant instanceof IntegerConstant) {
             return (int) ((IntegerConstant) constant).getValue();
         } else if (constant instanceof BigIntegerConstant) {
@@ -472,12 +461,12 @@ public final class LLVMSymbolReadResolver {
         }
     }
 
-    public LLVMExpressionNode resolveElementPointer(Symbol base, List<Symbol> indices) {
+    public LLVMExpressionNode resolveElementPointer(SymbolImpl base, List<SymbolImpl> indices) {
         LLVMExpressionNode currentAddress = resolve(base);
         Type currentType = base.getType();
 
         for (int i = 0, indicesSize = indices.size(); i < indicesSize; i++) {
-            final Symbol indexSymbol = indices.get(i);
+            final SymbolImpl indexSymbol = indices.get(i);
             final Type indexType = indexSymbol.getType();
 
             final Integer indexInteger = evaluateIntegerConstant(indexSymbol);
@@ -517,25 +506,9 @@ public final class LLVMSymbolReadResolver {
         return currentAddress;
     }
 
-    public LLVMExpressionNode resolve(Symbol symbol) {
+    public LLVMExpressionNode resolve(SymbolImpl symbol) {
         resolvedNode = null;
-        if (symbol instanceof ValueInstruction) {
-            ((ValueInstruction) symbol).accept(visitor);
-
-        } else if (symbol instanceof Constant) {
-            ((Constant) symbol).accept(visitor);
-
-        } else if (symbol instanceof GlobalValueSymbol) {
-            ((GlobalValueSymbol) symbol).accept(visitor);
-
-        } else if (symbol instanceof FunctionParameter) {
-            final FrameSlot slot = frame.findFrameSlot(((FunctionParameter) symbol).getName());
-            resolvedNode = runtime.getNodeFactory().createFrameRead(runtime, symbol.getType(), slot);
-
-        } else {
-            unsupported(symbol);
-        }
-
+        symbol.accept(visitor);
         return resolvedNode;
     }
 }

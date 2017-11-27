@@ -29,30 +29,30 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
 public final class SwitchInstruction extends VoidInstruction implements TerminatingInstruction {
 
-    private Symbol condition;
+    private SymbolImpl condition;
 
     private final InstructionBlock defaultBlock;
 
-    private final Symbol[] values;
+    private final SymbolImpl[] values;
 
     private final InstructionBlock[] blocks;
 
     private SwitchInstruction(InstructionBlock defaultBlock, int numCases) {
         this.defaultBlock = defaultBlock;
-        this.values = new Symbol[numCases];
+        this.values = new SymbolImpl[numCases];
         this.blocks = new InstructionBlock[numCases];
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -64,11 +64,11 @@ public final class SwitchInstruction extends VoidInstruction implements Terminat
         return values.length;
     }
 
-    public Symbol getCaseValue(int index) {
+    public SymbolImpl getCaseValue(int index) {
         return values[index];
     }
 
-    public Symbol getCondition() {
+    public SymbolImpl getCondition() {
         return condition;
     }
 
@@ -92,7 +92,7 @@ public final class SwitchInstruction extends VoidInstruction implements Terminat
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (condition == original) {
             condition = replacement;
         }
@@ -103,13 +103,12 @@ public final class SwitchInstruction extends VoidInstruction implements Terminat
         }
     }
 
-    public static SwitchInstruction generate(FunctionDefinition function, int condition, int defaultBlock, int[] caseValues, int[] caseBlocks) {
+    public static SwitchInstruction generate(FunctionDefinition function, SymbolTable symbols, int condition, int defaultBlock, int[] caseValues, int[] caseBlocks) {
         final SwitchInstruction inst = new SwitchInstruction(function.getBlock(defaultBlock), caseBlocks.length);
 
-        final Symbols symbols = function.getSymbols();
-        inst.condition = symbols.getSymbol(condition, inst);
+        inst.condition = symbols.getForwardReferenced(condition, inst);
         for (int i = 0; i < caseBlocks.length; i++) {
-            inst.values[i] = symbols.getSymbol(caseValues[i], inst);
+            inst.values[i] = symbols.getForwardReferenced(caseValues[i], inst);
             inst.blocks[i] = function.getBlock(caseBlocks[i]);
         }
 
