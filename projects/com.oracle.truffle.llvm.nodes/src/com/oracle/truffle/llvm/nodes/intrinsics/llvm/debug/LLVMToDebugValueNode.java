@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -55,6 +54,12 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebugValueProvider.Builder {
+
+    private final ContextReference<LLVMContext> contextRef;
+
+    protected LLVMToDebugValueNode(ContextReference<LLVMContext> contextRef) {
+        this.contextRef = contextRef;
+    }
 
     public abstract LLVMDebugValueProvider executeWithTarget(Object target);
 
@@ -124,15 +129,13 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromGlobal(LLVMGlobal value,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context) {
-        return new LLVMConstantGlobalValueProvider(value, context.get(), LLVMToDebugValueNodeGen.create());
+    protected LLVMDebugValueProvider fromGlobal(LLVMGlobal value) {
+        return new LLVMConstantGlobalValueProvider(value, contextRef.get(), LLVMToDebugValueNodeGen.create(contextRef));
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromSharedGlobal(LLVMSharedGlobalVariable value,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context) {
-        return fromGlobal(value.getDescriptor(), context);
+    protected LLVMDebugValueProvider fromSharedGlobal(LLVMSharedGlobalVariable value) {
+        return fromGlobal(value.getDescriptor());
     }
 
     @Specialization

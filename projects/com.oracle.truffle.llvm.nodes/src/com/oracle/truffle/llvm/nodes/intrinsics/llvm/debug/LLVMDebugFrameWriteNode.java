@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -55,15 +56,19 @@ public abstract class LLVMDebugFrameWriteNode extends LLVMExpressionNode {
     @NodeChild(value = "valueRead", type = LLVMExpressionNode.class)
     public abstract static class WriteNode extends LLVMDebugFrameWriteNode {
 
-        private final LLVMDebugValueProvider.Builder valueProcessor;
+        private final LLVMDebugBuilder processorBuilder;
 
-        protected WriteNode(FrameSlot frameSlot, LLVMDebugValueProvider.Builder valueProcessor) {
+        protected WriteNode(FrameSlot frameSlot, LLVMDebugBuilder processorBuilder) {
             super(frameSlot);
-            this.valueProcessor = valueProcessor;
+            this.processorBuilder = processorBuilder;
+        }
+
+        protected LLVMDebugValueProvider.Builder createBuilder() {
+            return processorBuilder.createBuilder(getContextReference());
         }
 
         @Specialization
-        protected Object write(VirtualFrame frame, Object llvmValue) {
+        protected Object write(VirtualFrame frame, Object llvmValue, @Cached("createBuilder()") LLVMDebugValueProvider.Builder valueProcessor) {
             final LLVMDebugValue value = LLVMDebugValue.create(valueProcessor, llvmValue);
             frame.setObject(getFrameSlot(), value);
             return null;
@@ -95,19 +100,23 @@ public abstract class LLVMDebugFrameWriteNode extends LLVMExpressionNode {
     public abstract static class AggregateWriteNode extends LLVMDebugFrameWriteNode {
 
         private final int partIndex;
-        private final LLVMDebugValueProvider.Builder builder;
+        private final LLVMDebugBuilder builder;
         @CompilerDirectives.CompilationFinal(dimensions = 1) private final int[] clearIndices;
 
-        protected AggregateWriteNode(FrameSlot frameSlot, int partIndex, LLVMDebugValueProvider.Builder builder, int[] clearIndices) {
+        protected AggregateWriteNode(FrameSlot frameSlot, int partIndex, LLVMDebugBuilder builder, int[] clearIndices) {
             super(frameSlot);
             this.partIndex = partIndex;
             this.builder = builder;
             this.clearIndices = clearIndices;
         }
 
+        protected LLVMDebugValueProvider.Builder createBuilder() {
+            return builder.createBuilder(getContextReference());
+        }
+
         @Specialization
-        protected Object setPart(LLVMDebugAggregateValue aggregate, Object partLLVMValue) {
-            aggregate.setPart(partIndex, builder, partLLVMValue);
+        protected Object setPart(LLVMDebugAggregateValue aggregate, Object partLLVMValue, @Cached("createBuilder()") LLVMDebugValueProvider.Builder valueProcessor) {
+            aggregate.setPart(partIndex, valueProcessor, partLLVMValue);
             clearIndices(aggregate);
             return null;
         }

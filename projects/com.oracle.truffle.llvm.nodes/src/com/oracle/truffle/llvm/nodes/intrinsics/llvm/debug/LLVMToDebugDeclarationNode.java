@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -51,8 +50,14 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLVMDebugValueProvider.Builder {
 
+    private final ContextReference<LLVMContext> contextRef;
+
     @Child protected Node isPointer = Message.IS_POINTER.createNode();
     @Child protected Node asPointer = Message.AS_POINTER.createNode();
+
+    protected LLVMToDebugDeclarationNode(ContextReference<LLVMContext> contextRef) {
+        this.contextRef = contextRef;
+    }
 
     protected static boolean notLLVM(TruffleObject object) {
         return LLVMExpressionNode.notLLVM(object);
@@ -92,15 +97,13 @@ public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLV
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromGlobal(LLVMGlobal value,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context) {
-        return new LLVMConstantGlobalValueProvider(value, context.get(), LLVMToDebugValueNodeGen.create());
+    protected LLVMDebugValueProvider fromGlobal(LLVMGlobal value) {
+        return new LLVMConstantGlobalValueProvider(value, contextRef.get(), LLVMToDebugValueNodeGen.create(contextRef));
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromSharedGlobal(LLVMSharedGlobalVariable value,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context) {
-        return fromGlobal(value.getDescriptor(), context);
+    protected LLVMDebugValueProvider fromSharedGlobal(LLVMSharedGlobalVariable value) {
+        return fromGlobal(value.getDescriptor());
     }
 
     @Specialization(guards = "notLLVM(obj)")
