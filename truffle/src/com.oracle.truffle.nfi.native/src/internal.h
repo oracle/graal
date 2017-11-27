@@ -72,6 +72,8 @@ struct __TruffleEnvInternal {
 extern const struct __TruffleNativeAPI truffleNativeAPI;
 extern const struct __TruffleThreadAPI truffleThreadAPI;
 
+extern __thread int errnoMirror;
+
 // keep this in sync with the code in com.oracle.truffle.nfi.NativeArgumentBuffer$TypeTag
 enum TypeTag {
     OBJECT = 0,
