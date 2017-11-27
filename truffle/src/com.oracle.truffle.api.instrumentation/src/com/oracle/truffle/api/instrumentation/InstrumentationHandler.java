@@ -1783,6 +1783,7 @@ final class InstrumentationHandler {
                 instrumentationHandler.notifyThreadFinished(context, thread);
             }
 
+            @Override
             public void patchInstrumentationHandler(Object vm, DispatchOutputStream out, DispatchOutputStream err, InputStream in) {
                 final InstrumentationHandler instrumentationHandler = (InstrumentationHandler) vm;
                 instrumentationHandler.patch(out, err, in);

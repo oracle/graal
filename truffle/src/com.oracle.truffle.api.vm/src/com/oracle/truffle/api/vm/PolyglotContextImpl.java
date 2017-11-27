@@ -93,7 +93,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
     final Map<String, Value> polyglotScope = new HashMap<>();
     Predicate<String> classFilter;  // effectively final
     boolean hostAccessAllowed;      // effectively final
-    boolean createThreadAllowed;    // effectively final
+    @CompilationFinal boolean createThreadAllowed;
 
     // map from class to language index
     private final FinalIntMap languageIndexMap = new FinalIntMap();
@@ -959,15 +959,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         return true;
     }
 
-    private void patchInstance(
-                    OutputStream newOut,
-                    OutputStream newErr,
-                    InputStream newIn,
-                    boolean newHostAccessAllowed,
-                    boolean newCreateThreadAllowed,
-                    Predicate<String> newClassFilter,
-                    Map<String, String[]> newApplicationArguments,
-                    Set<String> newAllowedPublicLanguages) {
+    private void patchInstance(OutputStream newOut, OutputStream newErr, InputStream newIn, boolean newHostAccessAllowed,
+                    boolean newCreateThreadAllowed, Predicate<String> newClassFilter,
+                    Map<String, String[]> newApplicationArguments, Set<String> newAllowedPublicLanguages) {
         this.hostAccessAllowed = newHostAccessAllowed;
         this.createThreadAllowed = newCreateThreadAllowed;
         this.applicationArguments = newApplicationArguments;
