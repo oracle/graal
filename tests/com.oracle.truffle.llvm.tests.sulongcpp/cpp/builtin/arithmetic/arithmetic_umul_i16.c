@@ -1,6 +1,6 @@
 #ifndef __clang__
 #include <stdbool.h>
-bool __builtin_mul_overflow(unsigned short, unsigned short, unsigned short*);
+bool __builtin_mul_overflow(unsigned short, unsigned short, unsigned short *);
 #endif
 
 int main(int argc, const char **argv) {

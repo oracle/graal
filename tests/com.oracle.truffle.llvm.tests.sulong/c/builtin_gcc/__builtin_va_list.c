@@ -6,8 +6,7 @@ struct _point {
   long z;
 };
 
-int foo(int x, ...)
-{
+int foo(int x, ...) {
   __builtin_va_list argp;
 
   __builtin_va_start(argp, x);
@@ -26,7 +25,7 @@ int foo(int x, ...)
 }
 
 int main() {
-  struct _point p = {19L, 13L, 9L};
+  struct _point p = { 19L, 13L, 9L };
 
   return foo(2, p) + foo(2, p);
 }

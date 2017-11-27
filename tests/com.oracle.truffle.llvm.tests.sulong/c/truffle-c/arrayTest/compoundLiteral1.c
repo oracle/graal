@@ -5,6 +5,6 @@ int func() {
 
 int main() {
   int *arr;
-  arr = (int[]) { 1, func(), func() };
+  arr = (int[]){ 1, func(), func() };
   return arr[0] + arr[1] + arr[2] + func();
 }

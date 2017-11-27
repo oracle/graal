@@ -1,36 +1,34 @@
 #include <stdio.h>
 
 void foo() throw(int) {
-	printf("Throwing an int!");
-	throw 42;
+  printf("Throwing an int!");
+  throw 42;
 }
 
 void bar() throw() {
-	try {
-		foo();
-	} catch(...) {
-		printf("Hander in bar");
-	}
+  try {
+    foo();
+  } catch (...) {
+    printf("Hander in bar");
+  }
 }
 
 void tar() {
-	try {
-		foo();
-	} catch (int i) {
-		printf("Hander in tar");
-	}
+  try {
+    foo();
+  } catch (int i) {
+    printf("Hander in tar");
+  }
 }
 
-void car() {
-	foo();
-}
+void car() { foo(); }
 
-int main () {
-	bar();
-	tar();
-	try {
-		car();
-	} catch (...) {
-		printf("Caught car exception");
-	}
+int main() {
+  bar();
+  tar();
+  try {
+    car();
+  } catch (...) {
+    printf("Caught car exception");
+  }
 }

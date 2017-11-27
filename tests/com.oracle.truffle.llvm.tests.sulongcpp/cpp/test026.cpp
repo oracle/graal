@@ -1,16 +1,15 @@
 #include <stdio.h>
 
 void foo() throw(int) {
-	printf("Throwing an int!");
-	throw 42;
+  printf("Throwing an int!");
+  throw 42;
 }
 
+int main() {
 
-int main () {
-
-	try {
-		foo();
-	} catch (int i) {
-		printf("Caught car exception");
-	}
+  try {
+    foo();
+  } catch (int i) {
+    printf("Caught car exception");
+  }
 }

@@ -1,21 +1,6 @@
 #define LOOP_COUNT 10000
 
-enum {
-  A,
-  B,
-  C,
-  D,
-  E,
-  F,
-  G,
-  H,
-  I,
-  J,
-  K,
-  L,
-  M,
-  N
-};
+enum { A, B, C, D, E, F, G, H, I, J, K, L, M, N };
 
 int main() {
   int i;

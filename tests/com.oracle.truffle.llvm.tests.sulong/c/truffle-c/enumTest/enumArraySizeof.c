@@ -1,8 +1,4 @@
-enum test {
-  a,
-  b,
-  c
-};
+enum test { a, b, c };
 
 int main() {
   enum test asdf[3];

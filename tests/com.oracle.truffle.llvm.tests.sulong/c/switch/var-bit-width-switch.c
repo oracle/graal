@@ -1,12 +1,11 @@
-#include<stdio.h>
-#include<stdlib.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 struct var_bit_width_t {
-  unsigned x:2;
-  unsigned y:1;
-  unsigned z:1;
+  unsigned x : 2;
+  unsigned y : 1;
+  unsigned z : 1;
 };
-
 
 void switch_inside(struct var_bit_width_t *var) {
   switch (var->x) {

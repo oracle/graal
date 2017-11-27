@@ -1,8 +1,4 @@
-enum Flag {
-  NO_ERRORS = 1,
-  IO_ERROR = 2,
-  OTHER_ERROR = 3
-};
+enum Flag { NO_ERRORS = 1, IO_ERROR = 2, OTHER_ERROR = 3 };
 
 int main() {
   enum Flag f = IO_ERROR;

@@ -63,7 +63,12 @@ basicLLVMDependencies = [
 clangFormatCheckPaths = [
     join(_suite.dir, "include"),
     _libPath,
-    _captureSrcDir
+    _captureSrcDir,
+    join(_testDir, "com.oracle.truffle.llvm.tests.sulong"),
+    join(_testDir, "com.oracle.truffle.llvm.tests.sulongcpp"),
+    join(_testDir, "interoptests"),
+    join(_testDir, "inlineassemblytests"),
+    join(_testDir, "other")
 ]
 
 # the clang-format versions that can be used for formatting the test case C and C++ files
