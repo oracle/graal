@@ -332,7 +332,7 @@ final class DIScopeBuilder {
         @Override
         public void visit(MDLocalVariable md) {
             parent = buildLocation(md.getScope());
-            kind = LLVMSourceLocation.Kind.GLOBAL;
+            kind = LLVMSourceLocation.Kind.LOCAL;
             file = fileExtractor.extractFile(md.getFile());
             name = MDNameExtractor.getName(md.getName());
             line = md.getLine();
