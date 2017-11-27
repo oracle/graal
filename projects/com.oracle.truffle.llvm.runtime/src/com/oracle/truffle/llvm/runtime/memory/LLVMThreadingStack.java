@@ -29,138 +29,69 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
-import java.lang.ref.ReferenceQueue;
-import java.lang.ref.WeakReference;
 import java.util.HashMap;
+import java.util.Map;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public final class LLVMThreadingStack {
 
-    private final Assumption singleThreading = Truffle.getRuntime().createAssumption();
-    private final Thread defaultThread;
-    private final LLVMStack defaultStack;
-
-    private final HashMap<Long, LLVMStack> threadToStack = new HashMap<>();
-
-    private final ReferenceQueue<Thread> threadsQueue = new ReferenceQueue<>();
-
+    private final Map<Thread, LLVMStack> threadMap;
+    private final ThreadLocal<LLVMStack> stack;
     private final int stackSize;
+    private final Thread mainThread;
 
-    public LLVMThreadingStack(int stackSize) {
+    public LLVMThreadingStack(Thread mainTread, int stackSize) {
+        this.mainThread = mainTread;
         this.stackSize = stackSize;
-        this.defaultThread = Thread.currentThread();
-        this.defaultStack = new LLVMStack(stackSize);
-    }
-
-    private class ReferenceWithCleanup extends WeakReference<Thread> {
-        private final long threadID;
-
-        ReferenceWithCleanup(Thread thread) {
-            super(thread, threadsQueue);
-            this.threadID = thread.getId();
-        }
-
-        public void cleanUp() {
-            LLVMStack stack = threadToStack.get(threadID);
-            stack.free();
-            threadToStack.remove(threadID);
-        }
-    }
-
-    private class StackGCThread implements Runnable {
-        @Override
-        public void run() {
-            while (true) {
-                try {
-                    ReferenceWithCleanup ref = (ReferenceWithCleanup) threadsQueue.remove();
-                    ref.cleanUp();
-                } catch (InterruptedException ex) {
-                    // ignore
-                }
-            }
-        }
-    }
-
-    public Thread getDefaultThread() {
-        return defaultThread;
-    }
-
-    public void initializeThread() {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        synchronized (this) {
-            // recheck under lock as a race condition can still happen
-            if (singleThreading.isValid()) {
-                singleThreading.invalidate();
-
-                Thread stackGC = new Thread(new StackGCThread(), "sulongStackGC");
-                stackGC.setDaemon(true);
-                stackGC.start();
-            }
-        }
-    }
-
-    public boolean checkThread() {
-        if (singleThreading.isValid()) {
-            return Thread.currentThread() == defaultThread;
-        } else {
-            // in that case, we do a lookup always anyway.
-            return true;
-        }
+        this.stack = new ThreadLocal<>();
+        this.threadMap = new HashMap<>();
     }
 
     public LLVMStack getStack() {
-        if (singleThreading.isValid()) {
-            assert Thread.currentThread() == defaultThread;
-            return defaultStack;
-        } else {
-            Thread currentThread = Thread.currentThread();
-            if (currentThread == defaultThread) {
-                return defaultStack;
-            } else {
-                synchronized (this) {
-                    if (isKnownThread(currentThread)) {
-                        return getKnownThread(currentThread);
-                    } else {
-                        return addNewThread(currentThread);
-                    }
-                }
-            }
+        LLVMStack s = getCurrentStack();
+        if (s == null) {
+            s = createNewStack();
+        }
+        return s;
+    }
+
+    @TruffleBoundary
+    private LLVMStack getCurrentStack() {
+        return stack.get();
+    }
+
+    @TruffleBoundary
+    private synchronized LLVMStack createNewStack() {
+        LLVMStack s = new LLVMStack(stackSize);
+        stack.set(s);
+        threadMap.put(Thread.currentThread(), s);
+        return s;
+    }
+
+    @TruffleBoundary
+    public void freeStack(Thread thread) {
+        /*
+         * Do not free the main thread: Sulong#disposeThread runs before Sulong#disposeContext,
+         * which needs to call destructors that need a SP.
+         */
+        if (mainThread != Thread.currentThread()) {
+            LLVMStack s = threadMap.get(thread);
+            free(s);
         }
     }
 
-    @SuppressWarnings("unused")
-    @TruffleBoundary
-    private LLVMStack addNewThread(Thread currentThread) {
-        LLVMStack newStack = new LLVMStack(stackSize);
-        threadToStack.put(currentThread.getId(), newStack);
-        new ReferenceWithCleanup(currentThread);
-        return newStack;
-    }
-
-    @TruffleBoundary
-    private LLVMStack getKnownThread(Thread currentThread) {
-        return threadToStack.get(currentThread.getId());
-    }
-
-    @TruffleBoundary
-    private boolean isKnownThread(Thread currentThread) {
-        return threadToStack.containsKey(currentThread.getId());
-    }
-
-    public void freeStacks() {
-        CompilerAsserts.neverPartOfCompilation();
-        synchronized (this) {
-            defaultStack.free();
-            for (LLVMStack s : threadToStack.values()) {
-                if (!s.isFreed()) {
-                    s.free();
-                }
-            }
+    private static void free(LLVMStack s) {
+        if (s != null) {
+            s.free();
         }
+    }
+
+    @TruffleBoundary
+    public void freeMainStack() {
+        assert mainThread == Thread.currentThread();
+        assert stack.get() == threadMap.get(Thread.currentThread());
+        LLVMStack s = threadMap.get(Thread.currentThread());
+        free(s);
     }
 }

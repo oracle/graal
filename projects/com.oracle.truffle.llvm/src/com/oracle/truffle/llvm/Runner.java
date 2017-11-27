@@ -226,7 +226,6 @@ public final class Runner {
             context.registerDestructorFunction(result.getDestructorFunction());
         }
         if (!context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
-            assert context.getThreadingStack().checkThread();
             try (StackPointer stackPointer = context.getThreadingStack().getStack().takeStackPointer()) {
                 result.getGlobalVarInit().call(stackPointer.get());
             }
@@ -246,7 +245,6 @@ public final class Runner {
                 atexit.call(stackPointer.get());
             }
         }
-        assert context.getThreadingStack().checkThread();
         for (RootCallTarget destructorFunction : context.getDestructorFunctions()) {
             try (StackPointer stackPointer = context.getThreadingStack().getStack().takeStackPointer()) {
                 destructorFunction.call(stackPointer.get());
@@ -257,7 +255,7 @@ public final class Runner {
                 destructor.call(stackPointer.get());
             }
         }
-        context.getThreadingStack().freeStacks();
+        context.getThreadingStack().freeMainStack();
         context.getGlobalsStack().free();
     }
 

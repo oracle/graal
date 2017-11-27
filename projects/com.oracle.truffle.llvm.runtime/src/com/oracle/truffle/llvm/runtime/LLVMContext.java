@@ -207,7 +207,7 @@ public final class LLVMContext {
 
         this.globalStack = new LLVMGlobalsStack();
         this.nativeCallStatistics = SulongEngineOption.isTrue(env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new HashMap<>() : null;
-        this.threadingStack = new LLVMThreadingStack(env.getOptions().get(SulongEngineOption.STACK_SIZE_KB));
+        this.threadingStack = new LLVMThreadingStack(Thread.currentThread(), env.getOptions().get(SulongEngineOption.STACK_SIZE_KB));
         this.sigDfl = LLVMAddress.fromLong(0);
         this.sigIgn = LLVMAddress.fromLong(1);
         this.sigErr = LLVMAddress.fromLong(-1);

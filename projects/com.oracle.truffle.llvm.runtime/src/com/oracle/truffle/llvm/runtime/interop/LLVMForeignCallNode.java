@@ -142,7 +142,6 @@ abstract class LLVMForeignCallNode extends LLVMNode {
                     boolean needsStackPointer) {
         Object result;
         if (needsStackPointer) {
-            assert getThreadingStack(context).checkThread();
             LLVMStack stack = getStack.executeWithTarget(getThreadingStack(context), Thread.currentThread());
             try (StackPointer stackPointer = stack.takeStackPointer()) {
                 result = callNode.call(packNode.pack(frame, arguments, stackPointer.get()));
@@ -159,7 +158,6 @@ abstract class LLVMForeignCallNode extends LLVMNode {
                     @Cached("createSlowPackArguments()") SlowPackForeignArgumentsNode slowPack,
                     @Cached("create()") LLVMGetStackNode getStack) {
         assert !(function.getType().getReturnType() instanceof StructureType);
-        assert function.getContext().getThreadingStack().checkThread();
         LLVMStack stack = getStack.executeWithTarget(function.getContext().getThreadingStack(), Thread.currentThread());
         Object result;
         try (StackPointer stackPointer = stack.takeStackPointer()) {

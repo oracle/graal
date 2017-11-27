@@ -80,7 +80,6 @@ public class LLVMGlobalRootNode extends RootNode {
     @Override
     @ExplodeLoop
     public Object execute(VirtualFrame frame) {
-        assert getContext().getThreadingStack().checkThread();
         try (StackPointer basePointer = getContext().getThreadingStack().getStack().takeStackPointer()) {
             try {
                 Object result = null;
