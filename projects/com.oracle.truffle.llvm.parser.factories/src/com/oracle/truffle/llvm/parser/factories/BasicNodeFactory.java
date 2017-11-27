@@ -1927,10 +1927,16 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMDebugValue createGlobalVariableDebug(LLVMExpressionNode globalSymbol) {
+    public LLVMDebugValue createDebugConstantValue(LLVMExpressionNode valueNode) {
         final LLVMDebugValueProvider.Builder toDebugNode = LLVMToDebugValueNodeGen.create();
-        final Object globalDescriptor = globalSymbol.executeGeneric(null);
-        return LLVMDebugValue.create(toDebugNode, globalDescriptor);
+        Object value;
+        try {
+            value = valueNode.executeGeneric(null);
+        } catch (Throwable t) {
+            // constant values should not need frame access
+            value = null;
+        }
+        return LLVMDebugValue.create(toDebugNode, value);
     }
 
     @Override

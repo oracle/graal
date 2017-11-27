@@ -62,7 +62,7 @@ public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLV
         // @llvm.dbg.declare is supposed to tell us the location of the variable in memory, there
         // should never be a case where this cannot be resolved to a pointer. If it happens anyhow
         // this is a safe default.
-        return LLVMUnavailableDebugValueProvider.INSTANCE;
+        return LLVMDebugValueProvider.UNAVAILABLE;
     }
 
     public abstract LLVMDebugValueProvider executeWithTarget(Object value);

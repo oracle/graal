@@ -39,6 +39,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
@@ -58,7 +59,6 @@ import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -106,14 +106,21 @@ public final class LLVMParserRuntime {
         RootCallTarget constructorFunctions = runtime.getConstructors(module.getGlobals());
         RootCallTarget destructorFunctions = runtime.getDestructors(module.getGlobals());
 
-        Map<LLVMSourceSymbol, GlobalValueSymbol> sourceGlobals = parserResult.getSourceModel().getGlobals();
-        if (!sourceGlobals.isEmpty() && context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
-            LLVMSourceContext sourceContext = context.getSourceContext();
-            for (LLVMSourceSymbol symbol : sourceGlobals.keySet()) {
-                final LLVMExpressionNode symbolNode = runtime.getGlobalVariable(symbolResolver, sourceGlobals.get(symbol));
-                final LLVMDebugValue value = nodeFactory.createGlobalVariableDebug(symbolNode);
+        if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
+            final SourceModel sourceModel = parserResult.getSourceModel();
+            final LLVMSourceContext sourceContext = context.getSourceContext();
+
+            sourceModel.getGlobals().forEach((symbol, global) -> {
+                final LLVMExpressionNode node = symbolResolver.resolve(global);
+                final LLVMDebugValue value = nodeFactory.createDebugConstantValue(node);
                 sourceContext.registerGlobal(symbol, value);
-            }
+            });
+
+            sourceModel.getStaticMembers().forEach(((type, symbol) -> {
+                final LLVMExpressionNode node = symbolResolver.resolve(symbol);
+                final LLVMDebugValue value = nodeFactory.createDebugConstantValue(node);
+                type.setValue(value);
+            }));
         }
 
         RootCallTarget mainFunctionCallTarget;

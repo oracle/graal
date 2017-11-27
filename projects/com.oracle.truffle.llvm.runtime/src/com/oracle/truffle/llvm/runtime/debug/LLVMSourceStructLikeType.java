@@ -39,27 +39,38 @@ import java.util.function.Supplier;
 
 public final class LLVMSourceStructLikeType extends LLVMSourceType {
 
-    private final List<LLVMSourceMemberType> members;
+    private final List<LLVMSourceMemberType> dynamicMembers;
+
+    private final LLVMSourceStaticMemberType.CollectionType staticMembers;
 
     @TruffleBoundary
     public LLVMSourceStructLikeType(String name, long size, long align, long offset, LLVMSourceLocation location) {
         super(() -> name, size, align, offset, location);
-        this.members = new ArrayList<>();
+        this.dynamicMembers = new ArrayList<>();
+        this.staticMembers = new LLVMSourceStaticMemberType.CollectionType();
     }
 
-    private LLVMSourceStructLikeType(Supplier<String> name, long size, long align, long offset, List<LLVMSourceMemberType> members, LLVMSourceLocation location) {
+    private LLVMSourceStructLikeType(Supplier<String> name, long size, long align, long offset, List<LLVMSourceMemberType> dynamicMembers, LLVMSourceStaticMemberType.CollectionType staticMembers,
+                    LLVMSourceLocation location) {
         super(name, size, align, offset, location);
-        this.members = members;
+        this.dynamicMembers = dynamicMembers;
+        this.staticMembers = staticMembers;
     }
 
-    public void addMember(LLVMSourceMemberType member) {
+    @TruffleBoundary
+    public void addDynamicMember(LLVMSourceMemberType member) {
         CompilerAsserts.neverPartOfCompilation();
-        members.add(member);
+        dynamicMembers.add(member);
+    }
+
+    public void addStaticMember(LLVMSourceStaticMemberType member) {
+        CompilerAsserts.neverPartOfCompilation();
+        staticMembers.addMember(member);
     }
 
     @Override
     public LLVMSourceType getOffset(long newOffset) {
-        return new LLVMSourceStructLikeType(this::getName, getSize(), getAlign(), newOffset, members, getLocation());
+        return new LLVMSourceStructLikeType(this::getName, getSize(), getAlign(), newOffset, dynamicMembers, staticMembers, getLocation());
     }
 
     @Override
@@ -70,21 +81,33 @@ public final class LLVMSourceStructLikeType extends LLVMSourceType {
     @Override
     @TruffleBoundary
     public int getElementCount() {
-        return members.size();
+        int elementCount = dynamicMembers.size();
+        if (staticMembers.getElementCount() != 0) {
+            elementCount++;
+        }
+        return elementCount;
     }
 
     @Override
     @TruffleBoundary
     public String getElementName(long i) {
-        if (0 <= i && i < members.size()) {
-            return members.get((int) i).getName();
+        int index = (int) i;
+        if (staticMembers.getElementCount() != 0) {
+            if (index == 0) {
+                return LLVMSourceStaticMemberType.CollectionType.MEMBERNAME;
+            } else {
+                index--;
+            }
+        }
+        if (0 <= index && index < dynamicMembers.size()) {
+            return dynamicMembers.get(index).getName();
         }
         return null;
     }
 
     @TruffleBoundary
     public String getElementNameByOffset(long offset) {
-        for (LLVMSourceMemberType member : members) {
+        for (LLVMSourceMemberType member : dynamicMembers) {
             if (member.getOffset() == offset) {
                 return member.getName();
             }
@@ -95,8 +118,16 @@ public final class LLVMSourceStructLikeType extends LLVMSourceType {
     @Override
     @TruffleBoundary
     public LLVMSourceType getElementType(long i) {
-        if (0 <= i && i < members.size()) {
-            return members.get((int) i).getOffsetElementType();
+        int index = (int) i;
+        if (staticMembers.getElementCount() != 0) {
+            if (index == 0) {
+                return staticMembers;
+            } else {
+                index--;
+            }
+        }
+        if (0 <= index && index < dynamicMembers.size()) {
+            return dynamicMembers.get(index).getOffsetElementType();
         }
         return null;
     }
@@ -107,10 +138,13 @@ public final class LLVMSourceStructLikeType extends LLVMSourceType {
         if (name == null) {
             return null;
         }
-        for (final LLVMSourceMemberType member : members) {
+        for (final LLVMSourceMemberType member : dynamicMembers) {
             if (name.equals(member.getName())) {
                 return member.getOffsetElementType();
             }
+        }
+        if (LLVMSourceStaticMemberType.CollectionType.MEMBERNAME.equals(name)) {
+            return staticMembers;
         }
         return null;
     }
@@ -118,8 +152,16 @@ public final class LLVMSourceStructLikeType extends LLVMSourceType {
     @Override
     @TruffleBoundary
     public LLVMSourceLocation getElementDeclaration(long i) {
-        if (0 <= i && i < members.size()) {
-            return members.get((int) i).getLocation();
+        int index = (int) i;
+        if (staticMembers.getElementCount() != 0) {
+            if (index == 0) {
+                return staticMembers.getLocation();
+            } else {
+                index--;
+            }
+        }
+        if (0 <= index && index < dynamicMembers.size()) {
+            return dynamicMembers.get(index).getLocation();
         }
         return null;
     }
@@ -130,10 +172,13 @@ public final class LLVMSourceStructLikeType extends LLVMSourceType {
         if (name == null) {
             return null;
         }
-        for (final LLVMSourceMemberType member : members) {
+        for (final LLVMSourceMemberType member : dynamicMembers) {
             if (name.equals(member.getName())) {
                 return member.getLocation();
             }
+        }
+        if (LLVMSourceStaticMemberType.CollectionType.MEMBERNAME.equals(name)) {
+            return staticMembers.getLocation();
         }
         return null;
     }

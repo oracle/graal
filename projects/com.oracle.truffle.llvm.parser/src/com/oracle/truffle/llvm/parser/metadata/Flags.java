@@ -33,6 +33,7 @@ public enum Flags {
 
     // see https://llvm.org/svn/llvm-project/llvm/trunk/include/llvm/IR/DebugInfoFlags.def
     OBJECT_POINTER(1L << 10),
+    STATIC_MEMBER(1L << 12),
     BITFIELD(1L << 19);
 
     private final long mask;

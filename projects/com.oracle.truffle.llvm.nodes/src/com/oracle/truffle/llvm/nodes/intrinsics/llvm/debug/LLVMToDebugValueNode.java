@@ -187,6 +187,6 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
 
     @Specialization
     protected LLVMDebugValueProvider fromGenericObject(@SuppressWarnings("unused") Object value) {
-        return LLVMUnavailableDebugValueProvider.INSTANCE;
+        return LLVMDebugValueProvider.UNAVAILABLE;
     }
 }

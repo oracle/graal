@@ -44,6 +44,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDNode;
 import com.oracle.truffle.llvm.parser.metadata.MDString;
 import com.oracle.truffle.llvm.parser.metadata.MDSubrange;
 import com.oracle.truffle.llvm.parser.metadata.MDSubroutine;
+import com.oracle.truffle.llvm.parser.metadata.MDValue;
 import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceArrayLikeType;
@@ -52,9 +53,11 @@ import com.oracle.truffle.llvm.runtime.debug.LLVMSourceDecoratorType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceEnumLikeType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceMemberType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourcePointerType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -79,13 +82,15 @@ final class DITypeExtractor implements MetadataVisitor {
     }
 
     private final Map<MDBaseNode, LLVMSourceType> parsedTypes = new HashMap<>();
+    private final Map<LLVMSourceStaticMemberType, Symbol> staticMembers;
 
     private final DIScopeExtractor scopeExtractor;
     private final DITypeIdentifier typeIdentifier;
 
-    DITypeExtractor(DIScopeExtractor scopeExtractor, DITypeIdentifier typeIdentifier) {
+    DITypeExtractor(DIScopeExtractor scopeExtractor, DITypeIdentifier typeIdentifier, Map<LLVMSourceStaticMemberType, Symbol> staticMembers) {
         this.scopeExtractor = scopeExtractor;
         this.typeIdentifier = typeIdentifier;
+        this.staticMembers = staticMembers;
     }
 
     @Override
@@ -207,8 +212,10 @@ final class DITypeExtractor implements MetadataVisitor {
                 getElements(mdType.getMembers(), members, false);
                 for (final LLVMSourceType member : members) {
                     if (member instanceof LLVMSourceMemberType) {
-                        type.addMember((LLVMSourceMemberType) member);
+                        type.addDynamicMember((LLVMSourceMemberType) member);
 
+                    } else if (member instanceof LLVMSourceStaticMemberType) {
+                        type.addStaticMember((LLVMSourceStaticMemberType) member);
                     }
                 }
                 break;
@@ -297,6 +304,20 @@ final class DITypeExtractor implements MetadataVisitor {
 
             case DW_TAG_MEMBER: {
                 final String name = MDNameExtractor.getName(mdType.getName());
+
+                if (Flags.STATIC_MEMBER.isSetIn(mdType.getFlags())) {
+                    final LLVMSourceStaticMemberType type = new LLVMSourceStaticMemberType(name, size, align, location);
+                    parsedTypes.put(mdType, type);
+                    final LLVMSourceType baseType = resolve(mdType.getBaseType());
+                    type.setElementType(baseType);
+
+                    if (mdType.getExtraData() instanceof MDValue) {
+                        staticMembers.put(type, ((MDValue) mdType.getExtraData()).getValue());
+                    }
+
+                    break;
+                }
+
                 final LLVMSourceMemberType type = new LLVMSourceMemberType(name, size, align, offset, location);
                 parsedTypes.put(mdType, type);
 
@@ -406,6 +427,14 @@ final class DITypeExtractor implements MetadataVisitor {
         if (!parsedTypes.containsKey(mdGlobal)) {
             final LLVMSourceType type = resolve(mdGlobal.getType());
             parsedTypes.put(mdGlobal, type);
+
+            if (mdGlobal.getStaticMemberDeclaration() != MDVoidNode.INSTANCE && mdGlobal.getVariable() instanceof MDValue) {
+                final LLVMSourceType declType = resolve(mdGlobal.getStaticMemberDeclaration());
+                final Symbol symbol = ((MDValue) mdGlobal.getVariable()).getValue();
+                if (declType instanceof LLVMSourceStaticMemberType) {
+                    staticMembers.put((LLVMSourceStaticMemberType) declType, symbol);
+                }
+            }
         }
     }
 

@@ -200,7 +200,7 @@ public interface NodeFactory {
 
     LLVMExpressionNode createDebugFragmentInit(FrameSlot targetSlot, int[] offsets, int[] lengths);
 
-    LLVMDebugValue createGlobalVariableDebug(LLVMExpressionNode globalSymbol);
+    LLVMDebugValue createDebugConstantValue(LLVMExpressionNode valueNode);
 
     LLVMExpressionNode registerSourceType(FrameSlot valueSlot, LLVMSourceType type);
 
