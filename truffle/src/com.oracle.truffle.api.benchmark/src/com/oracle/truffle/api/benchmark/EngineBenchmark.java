@@ -22,21 +22,26 @@
  */
 package com.oracle.truffle.api.benchmark;
 
+import java.util.Collections;
+import java.util.function.Function;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Measurement;
-import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
@@ -78,7 +83,7 @@ public class EngineBenchmark extends TruffleBenchmark {
         }
     }
 
-    @State(Scope.Thread)
+    @State(org.openjdk.jmh.annotations.Scope.Thread)
     public static class ContextStateEnterLeave extends ContextState {
 
         public ContextStateEnterLeave() {
@@ -226,7 +231,12 @@ public class EngineBenchmark extends TruffleBenchmark {
 
         @Override
         protected BenchmarkContext createContext(Env env) {
-            BenchmarkContext context = new BenchmarkContext(env);
+            BenchmarkContext context = new BenchmarkContext(env, new Function<TruffleObject, Scope>() {
+                @Override
+                public Scope apply(TruffleObject obj) {
+                    return Scope.newBuilder("Benchmark top scope", obj).build();
+                }
+            });
             return context;
         }
 
@@ -238,6 +248,15 @@ public class EngineBenchmark extends TruffleBenchmark {
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(getCurrentContext(BenchmarkTestLanguage.class).object));
+        }
+
+        @Override
+        protected Iterable<Scope> findLocalScopes(BenchmarkContext context, Node node, Frame frame) {
+            if (node != null) {
+                return super.findLocalScopes(context, node, frame);
+            } else {
+                return context.topScopes;
+            }
         }
 
         @Override
@@ -261,11 +280,12 @@ public class EngineBenchmark extends TruffleBenchmark {
 
         final Env env;
         final BenchmarkObject object = new BenchmarkObject();
+        final Iterable<Scope> topScopes;
 
-        BenchmarkContext(Env env) {
+        BenchmarkContext(Env env, Function<TruffleObject, Scope> scopeProvider) {
             this.env = env;
+            topScopes = Collections.singleton(scopeProvider.apply(new TopScopeObject(this)));
         }
-
     }
 
     public static class BenchmarkObject implements TruffleObject {
