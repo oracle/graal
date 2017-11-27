@@ -29,20 +29,18 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
+import static com.oracle.truffle.llvm.runtime.memory.LLVMMemory.getUnsafe;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.lang.reflect.Field;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
-
-import sun.misc.Unsafe;
 
 /**
  * Implements a stack that grows from the top to the bottom.
@@ -61,20 +59,6 @@ public final class LLVMStack {
 
     public static final String FRAME_ID = "<stackpointer>";
 
-    static final Unsafe UNSAFE = getUnsafe();
-
-    @SuppressWarnings("restriction")
-    private static Unsafe getUnsafe() {
-        CompilerAsserts.neverPartOfCompilation();
-        try {
-            Field singleoneInstanceField = Unsafe.class.getDeclaredField("theUnsafe");
-            singleoneInstanceField.setAccessible(true);
-            return (Unsafe) singleoneInstanceField.get(null);
-        } catch (Exception e) {
-            throw new AssertionError();
-        }
-    }
-
     @CompilationFinal private long lowerBounds;
     @CompilationFinal private long upperBounds;
     private boolean isFreed = true;
@@ -90,7 +74,7 @@ public final class LLVMStack {
         if (!isFreed) {
             throw new AssertionError("previously not deallocated");
         }
-        final long stackAllocation = UNSAFE.allocateMemory(stackSize * 1024);
+        final long stackAllocation = getUnsafe().allocateMemory(stackSize * 1024);
         lowerBounds = stackAllocation;
         upperBounds = stackAllocation + stackSize * 1024;
         isFreed = false;
@@ -144,7 +128,7 @@ public final class LLVMStack {
         if (isFreed) {
             throw new AssertionError("already freed");
         }
-        UNSAFE.freeMemory(lowerBounds);
+        getUnsafe().freeMemory(lowerBounds);
         lowerBounds = 0;
         upperBounds = 0;
         stackPointer = 0;
@@ -168,6 +152,10 @@ public final class LLVMStack {
         return (value & -value) == value;
     }
 
+    /*
+     * TODO: How frequent is this? having a finalizer will prevent EA and add significant overhead.
+     * maybe this can be done using a reference queue?
+     */
     @Override
     protected void finalize() throws Throwable {
         super.finalize();
