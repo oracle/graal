@@ -247,10 +247,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
         public Object getValueSafe() {
             final int size = (int) getType().getSize();
 
-            LLVMSourceType actualType = getType();
-            if (actualType instanceof LLVMSourceDecoratorType) {
-                actualType = ((LLVMSourceDecoratorType) actualType).getTrueBaseType();
-            }
+            LLVMSourceType actualType = getType().getActualType();
 
             if (actualType instanceof LLVMSourceBasicType) {
                 switch (((LLVMSourceBasicType) actualType).getKind()) {
@@ -327,10 +324,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
         Pointer(LLVMDebugValueProvider value, long offset, LLVMSourceType type, LLVMSourceLocation declaration) {
             super(value, offset, type, declaration);
 
-            LLVMSourceType actualType = getType();
-            if (type instanceof LLVMSourceDecoratorType) {
-                actualType = ((LLVMSourceDecoratorType) actualType).getTrueBaseType();
-            }
+            LLVMSourceType actualType = getType().getActualType();
             if (actualType instanceof LLVMSourcePointerType) {
                 this.pointerType = (LLVMSourcePointerType) actualType;
             } else {

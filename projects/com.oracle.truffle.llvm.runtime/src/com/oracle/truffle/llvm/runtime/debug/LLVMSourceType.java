@@ -95,6 +95,10 @@ public abstract class LLVMSourceType {
 
     public abstract LLVMSourceType getOffset(long newOffset);
 
+    public LLVMSourceType getActualType() {
+        return this;
+    }
+
     public boolean isPointer() {
         return false;
     }
