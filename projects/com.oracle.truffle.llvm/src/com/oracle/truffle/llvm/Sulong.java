@@ -232,6 +232,10 @@ public final class Sulong extends LLVMLanguage {
 
     @Override
     protected Iterable<Scope> findLocalScopes(LLVMContext context, Node node, Frame frame) {
-        return LLVMSourceScope.create(node, frame, context);
+        if (!context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
+            return super.findLocalScopes(context, node, frame);
+        } else {
+            return LLVMSourceScope.create(node, frame, context);
+        }
     }
 }
