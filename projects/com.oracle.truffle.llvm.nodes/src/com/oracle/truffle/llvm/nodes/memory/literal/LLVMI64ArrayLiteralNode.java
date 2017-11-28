@@ -57,17 +57,19 @@ public abstract class LLVMI64ArrayLiteralNode extends LLVMExpressionNode {
 
     @Specialization
     protected LLVMAddress write(VirtualFrame frame, LLVMGlobal global,
-                    @Cached(value = "toNative()") LLVMToNativeNode globalAccess) {
-        return writeI64(frame, globalAccess.executeWithTarget(frame, global));
+                    @Cached(value = "toNative()") LLVMToNativeNode globalAccess,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        return writeI64(frame, globalAccess.executeWithTarget(frame, global), memory);
     }
 
     @Specialization
     @ExplodeLoop
-    protected LLVMAddress writeI64(VirtualFrame frame, LLVMAddress addr) {
+    protected LLVMAddress writeI64(VirtualFrame frame, LLVMAddress addr,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
         long currentPtr = addr.getVal();
         for (int i = 0; i < values.length; i++) {
             long currentValue = values[i].executeI64(frame);
-            LLVMMemory.putI64(currentPtr, currentValue);
+            memory.putI64(currentPtr, currentValue);
             currentPtr += stride;
         }
         return addr;

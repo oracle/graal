@@ -46,98 +46,112 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI32RMWXchgNode extends LLVMI32RMWNode {
         @Specialization
         protected int doOp(VirtualFrame frame, LLVMGlobal address, int value,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
             LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
-            return LLVMMemory.getAndSetI32(adr, value);
+            return memory.getAndSetI32(adr, value);
         }
 
         @Specialization
-        protected int doOp(LLVMAddress address, int value) {
-            return LLVMMemory.getAndSetI32(address, value);
+        protected int doOp(LLVMAddress address, int value,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getAndSetI32(address, value);
         }
     }
 
     public abstract static class LLVMI32RMWAddNode extends LLVMI32RMWNode {
         @Specialization
         protected int doOp(VirtualFrame frame, LLVMGlobal address, int value,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
             LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
-            return LLVMMemory.getAndAddI32(adr, value);
+            return memory.getAndAddI32(adr, value);
         }
 
         @Specialization
-        protected int doOp(LLVMAddress address, int value) {
-            return LLVMMemory.getAndAddI32(address, value);
+        protected int doOp(LLVMAddress address, int value,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getAndAddI32(address, value);
         }
     }
 
     public abstract static class LLVMI32RMWSubNode extends LLVMI32RMWNode {
         @Specialization
         protected int doOp(VirtualFrame frame, LLVMGlobal address, int value,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
             LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
-            return LLVMMemory.getAndSubI32(adr, value);
+            return memory.getAndSubI32(adr, value);
         }
 
         @Specialization
-        protected int doOp(LLVMAddress address, int value) {
-            return LLVMMemory.getAndSubI32(address, value);
+        protected int doOp(LLVMAddress address, int value,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getAndSubI32(address, value);
         }
     }
 
     public abstract static class LLVMI32RMWAndNode extends LLVMI32RMWNode {
         @Specialization
         protected int doOp(VirtualFrame frame, LLVMGlobal address, int value,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
             LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
-            return LLVMMemory.getAndOpI32(adr, value, (a, b) -> a & b);
+            return memory.getAndOpI32(adr, value, (a, b) -> a & b);
         }
 
         @Specialization
-        protected int doOp(LLVMAddress address, int value) {
-            return LLVMMemory.getAndOpI32(address, value, (a, b) -> a & b);
+        protected int doOp(LLVMAddress address, int value,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getAndOpI32(address, value, (a, b) -> a & b);
         }
     }
 
     public abstract static class LLVMI32RMWNandNode extends LLVMI32RMWNode {
         @Specialization
         protected int doOp(VirtualFrame frame, LLVMGlobal address, int value,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
             LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
-            return LLVMMemory.getAndOpI32(adr, value, (a, b) -> ~(a & b));
+            return memory.getAndOpI32(adr, value, (a, b) -> ~(a & b));
         }
 
         @Specialization
-        protected int doOp(LLVMAddress address, int value) {
-            return LLVMMemory.getAndOpI32(address, value, (a, b) -> ~(a & b));
+        protected int doOp(LLVMAddress address, int value,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getAndOpI32(address, value, (a, b) -> ~(a & b));
         }
     }
 
     public abstract static class LLVMI32RMWOrNode extends LLVMI32RMWNode {
         @Specialization
         protected int doOp(VirtualFrame frame, LLVMGlobal address, int value,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
             LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
-            return LLVMMemory.getAndOpI32(adr, value, (a, b) -> a | b);
+            return memory.getAndOpI32(adr, value, (a, b) -> a | b);
         }
 
         @Specialization
-        protected int doOp(LLVMAddress address, int value) {
-            return LLVMMemory.getAndOpI32(address, value, (a, b) -> a | b);
+        protected int doOp(LLVMAddress address, int value,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getAndOpI32(address, value, (a, b) -> a | b);
         }
     }
 
     public abstract static class LLVMI32RMWXorNode extends LLVMI32RMWNode {
         @Specialization
         protected int doOp(VirtualFrame frame, LLVMGlobal address, int value,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
             LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
-            return LLVMMemory.getAndOpI32(adr, value, (a, b) -> a ^ b);
+            return memory.getAndOpI32(adr, value, (a, b) -> a ^ b);
         }
 
         @Specialization
-        protected int doOp(LLVMAddress address, int value) {
-            return LLVMMemory.getAndOpI32(address, value, (a, b) -> a ^ b);
+        protected int doOp(LLVMAddress address, int value,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getAndOpI32(address, value, (a, b) -> a ^ b);
         }
     }
 }

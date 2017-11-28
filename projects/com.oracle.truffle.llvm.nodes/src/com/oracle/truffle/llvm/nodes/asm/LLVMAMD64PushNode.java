@@ -52,11 +52,12 @@ public abstract class LLVMAMD64PushNode extends LLVMExpressionNode {
     public abstract static class LLVMAMD64PushwNode extends LLVMAMD64PushNode {
         @Specialization
         protected Object doVoid(VirtualFrame frame, short value,
-                        @Cached("getStackPointerSlot()") FrameSlot slot) {
+                        @Cached("getStackPointerSlot()") FrameSlot slot,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
             long sp = FrameUtil.getLongSafe(frame, slot);
             sp -= LLVMExpressionNode.I16_SIZE_IN_BYTES;
             frame.setLong(slot, sp);
-            LLVMMemory.putI16(sp, value);
+            memory.putI16(sp, value);
             return null;
         }
     }
@@ -64,11 +65,12 @@ public abstract class LLVMAMD64PushNode extends LLVMExpressionNode {
     public abstract static class LLVMAMD64PushlNode extends LLVMAMD64PushNode {
         @Specialization
         protected Object doVoid(VirtualFrame frame, int value,
-                        @Cached("getStackPointerSlot()") FrameSlot slot) {
+                        @Cached("getStackPointerSlot()") FrameSlot slot,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
             long sp = FrameUtil.getLongSafe(frame, slot);
             sp -= LLVMExpressionNode.I32_SIZE_IN_BYTES;
             frame.setLong(slot, sp);
-            LLVMMemory.putI32(sp, value);
+            memory.putI32(sp, value);
             return null;
         }
     }
@@ -76,11 +78,12 @@ public abstract class LLVMAMD64PushNode extends LLVMExpressionNode {
     public abstract static class LLVMAMD64PushqNode extends LLVMAMD64PushNode {
         @Specialization
         protected Object doVoid(VirtualFrame frame, long value,
-                        @Cached("getStackPointerSlot()") FrameSlot slot) {
+                        @Cached("getStackPointerSlot()") FrameSlot slot,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
             long sp = FrameUtil.getLongSafe(frame, slot);
             sp -= LLVMExpressionNode.I64_SIZE_IN_BYTES;
             frame.setLong(slot, sp);
-            LLVMMemory.putI64(sp, value);
+            memory.putI64(sp, value);
             return null;
         }
     }

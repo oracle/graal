@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
-import static com.oracle.truffle.llvm.runtime.memory.LLVMMemory.getUnsafe;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -65,16 +63,16 @@ public final class LLVMStack {
 
     private long stackPointer;
 
-    public LLVMStack(int stackSize) {
-        allocate(stackSize);
+    public LLVMStack(LLVMMemory memory, int stackSize) {
+        allocate(memory, stackSize);
     }
 
     @TruffleBoundary
-    private void allocate(final int stackSize) {
+    private void allocate(LLVMMemory memory, final int stackSize) {
         if (!isFreed) {
             throw new AssertionError("previously not deallocated");
         }
-        final long stackAllocation = getUnsafe().allocateMemory(stackSize * 1024);
+        final long stackAllocation = memory.allocateMemory(stackSize * 1024).getVal();
         lowerBounds = stackAllocation;
         upperBounds = stackAllocation + stackSize * 1024;
         isFreed = false;
@@ -124,11 +122,11 @@ public final class LLVMStack {
     }
 
     @TruffleBoundary
-    public void free() {
+    public void free(LLVMMemory memory) {
         if (isFreed) {
             throw new AssertionError("already freed");
         }
-        getUnsafe().freeMemory(lowerBounds);
+        memory.free(lowerBounds);
         lowerBounds = 0;
         upperBounds = 0;
         stackPointer = 0;

@@ -29,15 +29,13 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import static com.oracle.truffle.llvm.runtime.memory.LLVMMemory.getUnsafe;
-
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.memory.UnsafeIntArrayAccess;
 
 @ValueType
 public final class LLVMVirtualAllocationAddress {
-    private static final long intArrayBaseOffset = getUnsafe().arrayBaseOffset(int[].class);
 
     private final int[] object;
     private final long offset;
@@ -69,60 +67,60 @@ public final class LLVMVirtualAllocationAddress {
         return new LLVMVirtualAllocationAddress(this.object, this.offset + value);
     }
 
-    public void writeI1(boolean value) {
-        getUnsafe().putByte(object, intArrayBaseOffset + offset, (byte) (value ? 1 : 0));
+    public void writeI1(UnsafeIntArrayAccess memory, boolean value) {
+        memory.writeI1(object, offset, value);
     }
 
-    public boolean getI1() {
-        return getUnsafe().getByte(object, intArrayBaseOffset + offset) != 0;
+    public boolean getI1(UnsafeIntArrayAccess memory) {
+        return memory.getI1(object, offset);
     }
 
-    public void writeI8(byte value) {
-        getUnsafe().putByte(object, intArrayBaseOffset + offset, value);
+    public void writeI8(UnsafeIntArrayAccess memory, byte value) {
+        memory.writeI8(object, offset, value);
     }
 
-    public byte getI8() {
-        return getUnsafe().getByte(object, intArrayBaseOffset + offset);
+    public byte getI8(UnsafeIntArrayAccess memory) {
+        return memory.getI8(object, offset);
     }
 
-    public void writeI16(short value) {
-        getUnsafe().putShort(object, intArrayBaseOffset + offset, value);
+    public void writeI16(UnsafeIntArrayAccess memory, short value) {
+        memory.writeI16(object, offset, value);
     }
 
-    public short getI16() {
-        return getUnsafe().getShort(object, intArrayBaseOffset + offset);
+    public short getI16(UnsafeIntArrayAccess memory) {
+        return memory.getI16(object, offset);
     }
 
-    public void writeI32(int value) {
-        getUnsafe().putInt(object, intArrayBaseOffset + offset, value);
+    public void writeI32(UnsafeIntArrayAccess memory, int value) {
+        memory.writeI32(object, offset, value);
     }
 
-    public int getI32() {
-        return getUnsafe().getInt(object, intArrayBaseOffset + offset);
+    public int getI32(UnsafeIntArrayAccess memory) {
+        return memory.getI32(object, offset);
     }
 
-    public void writeI64(long value) {
-        getUnsafe().putLong(object, intArrayBaseOffset + offset, value);
+    public void writeI64(UnsafeIntArrayAccess memory, long value) {
+        memory.writeI64(object, offset, value);
     }
 
-    public long getI64() {
-        return getUnsafe().getLong(object, intArrayBaseOffset + offset);
+    public long getI64(UnsafeIntArrayAccess memory) {
+        return memory.getI64(object, offset);
     }
 
-    public void writeFloat(float value) {
-        getUnsafe().putFloat(object, intArrayBaseOffset + offset, value);
+    public void writeFloat(UnsafeIntArrayAccess memory, float value) {
+        memory.writeFloat(object, offset, value);
     }
 
-    public float getFloat() {
-        return getUnsafe().getFloat(object, intArrayBaseOffset + offset);
+    public float getFloat(UnsafeIntArrayAccess memory) {
+        return memory.getFloat(object, offset);
     }
 
-    public void writeDouble(double value) {
-        getUnsafe().putDouble(object, intArrayBaseOffset + offset, value);
+    public void writeDouble(UnsafeIntArrayAccess memory, double value) {
+        memory.writeDouble(object, offset, value);
     }
 
-    public double getDouble() {
-        return getUnsafe().getDouble(object, intArrayBaseOffset + offset);
+    public double getDouble(UnsafeIntArrayAccess memory) {
+        return memory.getDouble(object, offset);
     }
 
     public LLVMVirtualAllocationAddress copy() {

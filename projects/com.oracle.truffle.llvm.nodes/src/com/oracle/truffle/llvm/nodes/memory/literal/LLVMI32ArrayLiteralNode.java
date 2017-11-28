@@ -57,17 +57,19 @@ public abstract class LLVMI32ArrayLiteralNode extends LLVMExpressionNode {
 
     @Specialization
     protected LLVMAddress write(VirtualFrame frame, LLVMGlobal global,
-                    @Cached(value = "toNative()") LLVMToNativeNode globalAccess) {
-        return writeI32(frame, globalAccess.executeWithTarget(frame, global));
+                    @Cached(value = "toNative()") LLVMToNativeNode globalAccess,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        return writeI32(frame, globalAccess.executeWithTarget(frame, global), memory);
     }
 
     @Specialization
     @ExplodeLoop
-    protected LLVMAddress writeI32(VirtualFrame frame, LLVMAddress addr) {
+    protected LLVMAddress writeI32(VirtualFrame frame, LLVMAddress addr,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
         long currentPtr = addr.getVal();
         for (int i = 0; i < values.length; i++) {
             int currentValue = values[i].executeI32(frame);
-            LLVMMemory.putI32(currentPtr, currentValue);
+            memory.putI32(currentPtr, currentValue);
             currentPtr += stride;
         }
         return addr;

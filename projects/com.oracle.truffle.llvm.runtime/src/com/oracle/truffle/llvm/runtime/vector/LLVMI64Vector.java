@@ -29,39 +29,18 @@
  */
 package com.oracle.truffle.llvm.runtime.vector;
 
-import com.oracle.truffle.api.CompilerDirectives.ValueType;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-
 import java.util.Arrays;
 import java.util.function.BiFunction;
+
+import com.oracle.truffle.api.CompilerDirectives.ValueType;
 
 @ValueType
 public final class LLVMI64Vector {
 
-    private static final int I64_SIZE = 8;
     private final long[] vector;
 
     public static LLVMI64Vector create(long[] vector) {
         return new LLVMI64Vector(vector);
-    }
-
-    public static LLVMI64Vector readVectorFromMemory(LLVMAddress address, int size) {
-        long[] vector = new long[size];
-        long currentPtr = address.getVal();
-        for (int i = 0; i < size; i++) {
-            vector[i] = LLVMMemory.getI64(currentPtr);
-            currentPtr += I64_SIZE;
-        }
-        return create(vector);
-    }
-
-    public static void writeVectorToMemory(LLVMAddress address, LLVMI64Vector vector) {
-        long currentPtr = address.getVal();
-        for (int i = 0; i < vector.getLength(); i++) {
-            LLVMMemory.putI64(currentPtr, vector.getValue(i));
-            currentPtr += I64_SIZE;
-        }
     }
 
     private LLVMI64Vector(long[] vector) {

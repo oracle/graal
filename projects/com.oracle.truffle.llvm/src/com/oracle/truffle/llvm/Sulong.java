@@ -41,6 +41,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
@@ -57,6 +58,7 @@ import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceScope;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 @TruffleLanguage.Registration(id = "llvm", name = "llvm", version = "0.01", mimeType = {Sulong.LLVM_SULONG_TYPE, Sulong.LLVM_BITCODE_MIME_TYPE, Sulong.LLVM_BITCODE_BASE64_MIME_TYPE,
@@ -74,6 +76,19 @@ public final class Sulong extends LLVMLanguage {
         }
     }
 
+    @TruffleBoundary
+    @Override
+    public <E> E getCapability(Class<E> type) {
+        String config = findLLVMContext().getEnv().getOptions().get(SulongEngineOption.CONFIGURATION);
+        E capability = null;
+        for (Configuration c : configurations) {
+            if (config.equals(c.getConfigurationName())) {
+                capability = c.getCapability(type);
+            }
+        }
+        return capability;
+    }
+
     @Override
     protected LLVMContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
         return new LLVMContext(env, getContextExtensions(env));
@@ -82,7 +97,7 @@ public final class Sulong extends LLVMLanguage {
     @Override
     protected void disposeContext(LLVMContext context) {
         context.printNativeCallStatistic();
-        Runner.disposeContext(context);
+        Runner.disposeContext(getCapability(LLVMMemory.class), context);
     }
 
     @Override
@@ -189,7 +204,7 @@ public final class Sulong extends LLVMLanguage {
     @Override
     protected void disposeThread(LLVMContext context, Thread thread) {
         super.disposeThread(context, thread);
-        context.getThreadingStack().freeStack(thread);
+        context.getThreadingStack().freeStack(getCapability(LLVMMemory.class), thread);
     }
 
     @Override

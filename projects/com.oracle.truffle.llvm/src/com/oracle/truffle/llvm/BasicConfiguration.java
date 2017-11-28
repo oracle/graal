@@ -41,6 +41,8 @@ import com.oracle.truffle.llvm.parser.factories.NFIIntrinsicsProvider;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.UnsafeIntArrayAccess;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 public final class BasicConfiguration implements Configuration {
@@ -63,5 +65,15 @@ public final class BasicConfiguration implements Configuration {
     @Override
     public List<ContextExtension> createContextExtensions(com.oracle.truffle.api.TruffleLanguage.Env env, TruffleLanguage<?> language) {
         return Arrays.asList(new ContextExtension[]{new NFIContextExtension(env), new NFIIntrinsicsProvider(language).collectIntrinsics(new BasicNodeFactory())});
+    }
+
+    @Override
+    public <E> E getCapability(Class<E> type) {
+        if (type.equals(LLVMMemory.class)) {
+            return type.cast(LLVMMemory.getInstance());
+        } else if (type.equals(UnsafeIntArrayAccess.class)) {
+            return type.cast(UnsafeIntArrayAccess.getInstance());
+        }
+        return null;
     }
 }

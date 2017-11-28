@@ -34,8 +34,11 @@ import java.io.PrintStream;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.UnsafeIntArrayAccess;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 public abstract class LLVMNode extends Node {
@@ -64,6 +67,24 @@ public abstract class LLVMNode extends Node {
 
     public final LLVMLanguage getLLVMLanguage() {
         return getRootNode().getLanguage(LLVMLanguage.class);
+    }
+
+    public final LLVMMemory getLLVMMemory() {
+        RootNode rootNode = getRootNode();
+        if (rootNode != null && rootNode.getLanguage(LLVMLanguage.class) != null) {
+            return rootNode.getLanguage(LLVMLanguage.class).getCapability(LLVMMemory.class);
+        } else {
+            return LLVMLanguage.getLanguage().getCapability(LLVMMemory.class);
+        }
+    }
+
+    public final UnsafeIntArrayAccess getUnsafeIntArrayAccess() {
+        RootNode rootNode = getRootNode();
+        if (rootNode != null && rootNode.getLanguage(LLVMLanguage.class) != null) {
+            return rootNode.getLanguage(LLVMLanguage.class).getCapability(UnsafeIntArrayAccess.class);
+        } else {
+            return LLVMLanguage.getLanguage().getCapability(UnsafeIntArrayAccess.class);
+        }
     }
 
     protected static PrintStream debugStream(ContextReference<LLVMContext> context) {

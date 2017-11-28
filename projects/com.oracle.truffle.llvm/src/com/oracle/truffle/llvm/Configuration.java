@@ -47,4 +47,6 @@ public interface Configuration {
     NodeFactory getNodeFactory(LLVMContext context);
 
     List<ContextExtension> createContextExtensions(com.oracle.truffle.api.TruffleLanguage.Env env, TruffleLanguage<?> language);
+
+    <E> E getCapability(Class<E> type);
 }

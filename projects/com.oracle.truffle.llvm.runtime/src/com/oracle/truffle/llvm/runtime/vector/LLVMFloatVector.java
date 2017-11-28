@@ -29,17 +29,14 @@
  */
 package com.oracle.truffle.llvm.runtime.vector;
 
-import com.oracle.truffle.api.CompilerDirectives.ValueType;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-
 import java.util.Arrays;
+
+import com.oracle.truffle.api.CompilerDirectives.ValueType;
 
 @ValueType
 public final class LLVMFloatVector {
 
     private final float[] vector;
-    private static final int FLOAT_SIZE = 4;
 
     public static LLVMFloatVector create(float[] vector) {
         return new LLVMFloatVector(vector);
@@ -47,24 +44,6 @@ public final class LLVMFloatVector {
 
     private LLVMFloatVector(float[] vector) {
         this.vector = vector;
-    }
-
-    public static LLVMFloatVector readVectorFromMemory(LLVMAddress address, int size) {
-        float[] vector = new float[size];
-        long currentPtr = address.getVal();
-        for (int i = 0; i < size; i++) {
-            vector[i] = LLVMMemory.getFloat(currentPtr);
-            currentPtr += FLOAT_SIZE;
-        }
-        return create(vector);
-    }
-
-    public static void writeVectorToMemory(LLVMAddress address, LLVMFloatVector vector) {
-        long currentPtr = address.getVal();
-        for (int i = 0; i < vector.getLength(); i++) {
-            LLVMMemory.putFloat(currentPtr, vector.getValue(i));
-            currentPtr += FLOAT_SIZE;
-        }
     }
 
     // We do not want to use lambdas because of bad startup

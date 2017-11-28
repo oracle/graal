@@ -35,12 +35,25 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public final class LLVMGlobalReadNode extends LLVMNode {
 
     private final ConditionProfile condition = ConditionProfile.createBinaryProfile();
     @CompilationFinal private ContextReference<LLVMContext> contextRef;
+
+    @CompilationFinal private LLVMMemory memory;
+    @CompilationFinal private boolean memoryResolved = false;
+
+    private LLVMMemory getMemory() {
+        if (!memoryResolved) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            memory = getLLVMMemory();
+            memoryResolved = true;
+        }
+        return memory;
+    }
 
     public static LLVMGlobalReadNode createRead() {
         return new LLVMGlobalReadNode();
@@ -56,7 +69,7 @@ public final class LLVMGlobalReadNode extends LLVMNode {
 
     public Object get(LLVMGlobal global) {
         if (condition.profile(global.isNative(getContext()))) {
-            return global.getNative(getContext());
+            return global.getNative(getMemory(), getContext());
         } else {
             return global.getFrame(getContext());
         }
@@ -64,57 +77,57 @@ public final class LLVMGlobalReadNode extends LLVMNode {
 
     public boolean getI1(LLVMGlobal global) {
         if (condition.profile(global.isNative(getContext()))) {
-            return global.getNativeI1(getContext());
+            return global.getNativeI1(getMemory(), getContext());
         } else {
-            return global.getFrameI1(getContext());
+            return global.getFrameI1(getMemory(), getContext());
         }
     }
 
     public byte getI8(LLVMGlobal global) {
         if (condition.profile(global.isNative(getContext()))) {
-            return global.getNativeI8(getContext());
+            return global.getNativeI8(getMemory(), getContext());
         } else {
-            return global.getFrameI8(getContext());
+            return global.getFrameI8(getMemory(), getContext());
         }
     }
 
     public short getI16(LLVMGlobal global) {
         if (condition.profile(global.isNative(getContext()))) {
-            return global.getNativeI16(getContext());
+            return global.getNativeI16(getMemory(), getContext());
         } else {
-            return global.getFrameI16(getContext());
+            return global.getFrameI16(getMemory(), getContext());
         }
     }
 
     public int getI32(LLVMGlobal global) {
         if (condition.profile(global.isNative(getContext()))) {
-            return global.getNativeI32(getContext());
+            return global.getNativeI32(getMemory(), getContext());
         } else {
-            return global.getFrameI32(getContext());
+            return global.getFrameI32(getMemory(), getContext());
         }
     }
 
     public long getI64(LLVMGlobal global) {
         if (condition.profile(global.isNative(getContext()))) {
-            return global.getNativeI64(getContext());
+            return global.getNativeI64(getMemory(), getContext());
         } else {
-            return global.getFrameI64(getContext());
+            return global.getFrameI64(getMemory(), getContext());
         }
     }
 
     public float getFloat(LLVMGlobal global) {
         if (condition.profile(global.isNative(getContext()))) {
-            return global.getNativeFloat(getContext());
+            return global.getNativeFloat(getMemory(), getContext());
         } else {
-            return global.getFrameFloat(getContext());
+            return global.getFrameFloat(getMemory(), getContext());
         }
     }
 
     public double getDouble(LLVMGlobal global) {
         if (condition.profile(global.isNative(getContext()))) {
-            return global.getNativeDouble(getContext());
+            return global.getNativeDouble(getMemory(), getContext());
         } else {
-            return global.getFrameDouble(getContext());
+            return global.getFrameDouble(getMemory(), getContext());
         }
     }
 

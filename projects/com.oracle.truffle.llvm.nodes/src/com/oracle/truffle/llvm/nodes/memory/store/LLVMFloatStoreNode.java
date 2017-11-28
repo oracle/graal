@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.UnsafeIntArrayAccess;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 public abstract class LLVMFloatStoreNode extends LLVMStoreNode {
@@ -56,14 +57,16 @@ public abstract class LLVMFloatStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object doOp(LLVMAddress address, float value) {
-        LLVMMemory.putFloat(address, value);
+    protected Object doOp(LLVMAddress address, float value,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        memory.putFloat(address, value);
         return null;
     }
 
     @Specialization
-    protected Object doOp(LLVMVirtualAllocationAddress address, float value) {
-        address.writeFloat(value);
+    protected Object doOp(LLVMVirtualAllocationAddress address, float value,
+                    @Cached("getUnsafeIntArrayAccess()") UnsafeIntArrayAccess memory) {
+        address.writeFloat(memory, value);
         return null;
     }
 
@@ -75,9 +78,10 @@ public abstract class LLVMFloatStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object doOp(LLVMBoxedPrimitive address, float value) {
+    protected Object doOp(LLVMBoxedPrimitive address, float value,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
         if (address.getValue() instanceof Long) {
-            LLVMMemory.putFloat((long) address.getValue(), value);
+            memory.putFloat((long) address.getValue(), value);
             return null;
         } else {
             CompilerDirectives.transferToInterpreter();

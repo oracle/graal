@@ -59,10 +59,11 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
     @Specialization
     protected Object doOp(VirtualFrame frame, LLVMGlobal panicLocVar,
                     @Cached("toNative()") LLVMToNativeNode globalAccess,
-                    @Cached("createPanicLocation()") PanicLocType panicLoc) {
+                    @Cached("createPanicLocation()") PanicLocType panicLoc,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
         LLVMAddress addr = globalAccess.executeWithTarget(frame, panicLocVar);
         CompilerDirectives.transferToInterpreter();
-        throw panicLoc.read(addr.getVal());
+        throw panicLoc.read(memory, addr.getVal());
     }
 
     static final class PanicLocType {
@@ -78,11 +79,11 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
             this.offsetLineNr = structureType.getOffsetOf(2, dataLayout);
         }
 
-        RustPanicException read(long address) {
+        RustPanicException read(LLVMMemory memory, long address) {
             CompilerAsserts.neverPartOfCompilation();
-            String desc = strslice.read(address);
-            String filename = strslice.read(address + offsetFilename);
-            int linenr = LLVMMemory.getI32(address + offsetLineNr);
+            String desc = strslice.read(memory, address);
+            String filename = strslice.read(memory, address + offsetFilename);
+            int linenr = memory.getI32(address + offsetLineNr);
             return new RustPanicException(desc, filename, linenr);
         }
 
@@ -105,12 +106,12 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
         }
 
         @TruffleBoundary
-        String read(long address) {
-            long strAddr = LLVMMemory.getAddress(address).getVal();
-            int strLen = LLVMMemory.getI32(address + lengthOffset);
+        String read(LLVMMemory memory, long address) {
+            long strAddr = memory.getAddress(address).getVal();
+            int strLen = memory.getI32(address + lengthOffset);
             StringBuilder strBuilder = new StringBuilder();
             for (int i = 0; i < strLen; i++) {
-                strBuilder.append((char) Byte.toUnsignedInt(LLVMMemory.getI8(strAddr)));
+                strBuilder.append((char) Byte.toUnsignedInt(memory.getI8(strAddr)));
                 strAddr += Byte.BYTES;
             }
             return strBuilder.toString();

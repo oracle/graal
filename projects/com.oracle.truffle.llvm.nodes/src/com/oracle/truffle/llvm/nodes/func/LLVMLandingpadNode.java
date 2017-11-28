@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.func;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -81,6 +82,15 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
     }
 
     @Child private LLVMToNativeNode toNative = LLVMToNativeNode.toNative();
+    @CompilationFinal private LLVMMemory memory;
+
+    private LLVMMemory getMemory() {
+        if (memory == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            memory = getLLVMMemory();
+        }
+        return memory;
+    }
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
@@ -96,8 +106,8 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
             } else {
                 LLVMAddress executeLLVMAddress = toNative.executeWithTarget(frame, allocateLandingPadValue.executeGeneric(frame));
                 LLVMAddress pair0 = executeLLVMAddress;
-                LLVMMemory.putAddress(pair0, unwindHeader);
-                LLVMMemory.putI32(executeLLVMAddress.getVal() + LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES, clauseId);
+                getMemory().putAddress(pair0, unwindHeader);
+                getMemory().putI32(executeLLVMAddress.getVal() + LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES, clauseId);
                 return executeLLVMAddress;
             }
         } catch (FrameSlotTypeException e) {
