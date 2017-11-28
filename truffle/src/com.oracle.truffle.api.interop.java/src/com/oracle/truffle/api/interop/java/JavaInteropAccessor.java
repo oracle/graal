@@ -44,7 +44,7 @@ final class JavaInteropAccessor extends Accessor {
             @Override
             public Object toJava(Node javaNode, Class<?> type, Object value) {
                 ToJavaNode toJavaNode = (ToJavaNode) javaNode;
-                return toJavaNode.execute(value, new TypeAndClass<>(null, type));
+                return toJavaNode.execute(value, type, null);
             }
 
             @Override
