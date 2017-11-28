@@ -124,6 +124,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
 
     @Override
     public void simplify(SimplifierTool tool) {
+        NodeView view = NodeView.from(tool);
         if (value() instanceof ConstantNode) {
             Constant constant = value().asConstant();
 
@@ -140,8 +141,8 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
             }
             killOtherSuccessors(tool, survivingEdge);
         }
-        if (value() instanceof LoadHubNode && ((LoadHubNode) value()).getValue().stamp(NodeView.DEFAULT) instanceof ObjectStamp) {
-            ObjectStamp objectStamp = (ObjectStamp) ((LoadHubNode) value()).getValue().stamp(NodeView.DEFAULT);
+        if (value() instanceof LoadHubNode && ((LoadHubNode) value()).getValue().stamp(view) instanceof ObjectStamp) {
+            ObjectStamp objectStamp = (ObjectStamp) ((LoadHubNode) value()).getValue().stamp(view);
             if (objectStamp.type() != null) {
                 int validKeys = 0;
                 for (int i = 0; i < keyCount(); i++) {
