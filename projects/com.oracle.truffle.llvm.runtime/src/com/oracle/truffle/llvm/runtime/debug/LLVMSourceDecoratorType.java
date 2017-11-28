@@ -48,7 +48,7 @@ public final class LLVMSourceDecoratorType extends LLVMSourceType {
     public LLVMSourceDecoratorType(long size, long align, long offset, Function<String, String> nameDecorator, LLVMSourceLocation location) {
         super(size, align, offset, location);
         this.nameDecorator = nameDecorator;
-        this.baseType = LLVMSourceType.UNKNOWN_TYPE;
+        this.baseType = LLVMSourceType.UNKNOWN;
         this.size = size;
     }
 

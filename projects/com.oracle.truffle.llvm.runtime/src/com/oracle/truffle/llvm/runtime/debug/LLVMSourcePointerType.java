@@ -44,7 +44,7 @@ public final class LLVMSourcePointerType extends LLVMSourceType {
     @CompilationFinal private LLVMSourceType baseType;
 
     public LLVMSourcePointerType(long size, long align, long offset, boolean isSafeToDereference, boolean isReference, LLVMSourceLocation location) {
-        this(LLVMSourceType.UNKNOWN_TYPE::getName, size, align, offset, LLVMSourceType.UNKNOWN_TYPE, isSafeToDereference, isReference, location);
+        this(LLVMSourceType.UNKNOWN::getName, size, align, offset, LLVMSourceType.UNKNOWN, isSafeToDereference, isReference, location);
     }
 
     private LLVMSourcePointerType(Supplier<String> nameSupplier, long size, long align, long offset, LLVMSourceType baseType, boolean isSafeToDereference, boolean isReference,

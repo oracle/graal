@@ -396,8 +396,33 @@ public abstract class LLVMDebugObject implements TruffleObject {
         }
     }
 
+    private static final class Unsupported extends LLVMDebugObject {
+
+        Unsupported(LLVMDebugValueProvider value, long offset, LLVMSourceType type, LLVMSourceLocation location) {
+            super(value, offset, type, location);
+        }
+
+        @Override
+        protected Object[] getKeysSafe() {
+            return NO_KEYS;
+        }
+
+        @Override
+        protected Object getMemberSafe(Object identifier) {
+            return null;
+        }
+
+        @Override
+        protected Object getValueSafe() {
+            return value.describeValue(0, 0);
+        }
+    }
+
     public static LLVMDebugObject instantiate(LLVMSourceType type, long baseOffset, LLVMDebugValueProvider value, LLVMSourceLocation declaration) {
-        if (type.isAggregate()) {
+        if (type.getActualType() == LLVMSourceType.UNKNOWN || type.getActualType() == LLVMSourceType.UNSUPPORTED) {
+            return new Unsupported(value, baseOffset, LLVMSourceType.UNSUPPORTED, declaration);
+
+        } else if (type.isAggregate()) {
             int elementCount = type.getElementCount();
             if (elementCount < 0) {
                 // happens for dynamically initialized arrays

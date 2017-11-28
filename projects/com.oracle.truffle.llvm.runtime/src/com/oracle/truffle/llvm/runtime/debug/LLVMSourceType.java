@@ -38,7 +38,7 @@ import java.util.function.Supplier;
 
 public abstract class LLVMSourceType {
 
-    public static final LLVMSourceType UNKNOWN_TYPE = new LLVMSourceType(() -> "<unknown>", 0, 0, 0, null) {
+    public static final LLVMSourceType UNSUPPORTED = new LLVMSourceType(() -> "<unsupported>", 0, 0, 0, null) {
 
         @Override
         public LLVMSourceType getOffset(long newOffset) {
@@ -46,7 +46,15 @@ public abstract class LLVMSourceType {
         }
     };
 
-    public static final LLVMSourceType VOID_TYPE = new LLVMSourceType(() -> "void", 0, 0, 0, null) {
+    public static final LLVMSourceType UNKNOWN = new LLVMSourceType(() -> "<unknown>", 0, 0, 0, null) {
+
+        @Override
+        public LLVMSourceType getOffset(long newOffset) {
+            return this;
+        }
+    };
+
+    public static final LLVMSourceType VOID = new LLVMSourceType(() -> "void", 0, 0, 0, null) {
         @Override
         public LLVMSourceType getOffset(long newOffset) {
             return this;
@@ -68,7 +76,7 @@ public abstract class LLVMSourceType {
     }
 
     LLVMSourceType(long size, long align, long offset, LLVMSourceLocation location) {
-        this(UNKNOWN_TYPE::getName, size, align, offset, location);
+        this(UNKNOWN::getName, size, align, offset, location);
     }
 
     @TruffleBoundary

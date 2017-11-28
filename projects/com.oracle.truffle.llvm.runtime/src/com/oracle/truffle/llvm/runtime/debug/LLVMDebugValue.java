@@ -40,7 +40,7 @@ public abstract class LLVMDebugValue {
         if (symbol != null) {
             return getValue(symbol.getType(), symbol.getLocation());
         } else {
-            return getValue(LLVMSourceType.UNKNOWN_TYPE, null);
+            return getValue(LLVMSourceType.UNKNOWN, null);
         }
     }
 

@@ -42,7 +42,7 @@ public final class LLVMSourceArrayLikeType extends LLVMSourceType {
     @CompilationFinal private long length;
 
     public LLVMSourceArrayLikeType(long size, long align, long offset, LLVMSourceLocation location) {
-        this(LLVMSourceType.UNKNOWN_TYPE::getName, size, align, offset, LLVMSourceType.UNKNOWN_TYPE, 1L, location);
+        this(LLVMSourceType.UNKNOWN::getName, size, align, offset, LLVMSourceType.UNKNOWN, 1L, location);
     }
 
     private LLVMSourceArrayLikeType(Supplier<String> name, long size, long align, long offset, LLVMSourceType baseType, long length, LLVMSourceLocation location) {
