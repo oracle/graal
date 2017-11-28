@@ -53,9 +53,13 @@ import sun.misc.Unsafe;
 
 public abstract class LLVMMemory {
 
-    private static final Unsafe UNSAFE = getUnsafe();
+    private static final Unsafe UNSAFE = initializeUnsafe();
 
-    private static Unsafe getUnsafe() {
+    public static Unsafe getUnsafe() {
+        return UNSAFE;
+    }
+
+    private static Unsafe initializeUnsafe() {
         CompilerAsserts.neverPartOfCompilation();
         try {
             Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
@@ -70,7 +74,7 @@ public abstract class LLVMMemory {
     @Deprecated
     public static void memset(LLVMAddress address, long size, byte value) {
         try {
-            UNSAFE.setMemory(address.getVal(), size, value);
+            getUnsafe().setMemory(address.getVal(), size, value);
         } catch (Throwable e) {
             // this avoids unnecessary exception edges in the compiled code
             CompilerDirectives.transferToInterpreter();
@@ -81,7 +85,7 @@ public abstract class LLVMMemory {
     /** Use {@link com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode} instead. */
     @Deprecated
     public static void copyMemory(long sourceAddress, long targetAddress, long length) {
-        UNSAFE.copyMemory(sourceAddress, targetAddress, length);
+        getUnsafe().copyMemory(sourceAddress, targetAddress, length);
     }
 
     public static void free(LLVMAddress address) {
@@ -90,7 +94,7 @@ public abstract class LLVMMemory {
 
     public static void free(long address) {
         try {
-            UNSAFE.freeMemory(address);
+            getUnsafe().freeMemory(address);
         } catch (Throwable e) {
             // this avoids unnecessary exception edges in the compiled code
             CompilerDirectives.transferToInterpreter();
@@ -100,7 +104,7 @@ public abstract class LLVMMemory {
 
     public static LLVMAddress allocateMemory(long size) {
         try {
-            return LLVMAddress.fromLong(UNSAFE.allocateMemory(size));
+            return LLVMAddress.fromLong(getUnsafe().allocateMemory(size));
         } catch (Throwable e) {
             // this avoids unnecessary exception edges in the compiled code
             CompilerDirectives.transferToInterpreter();
@@ -111,7 +115,7 @@ public abstract class LLVMMemory {
     public static LLVMAddress reallocateMemory(LLVMAddress addr, long size) {
         // a null pointer is a valid argument
         try {
-            return LLVMAddress.fromLong(UNSAFE.reallocateMemory(addr.getVal(), size));
+            return LLVMAddress.fromLong(getUnsafe().reallocateMemory(addr.getVal(), size));
         } catch (Throwable e) {
             // this avoids unnecessary exception edges in the compiled code
             CompilerDirectives.transferToInterpreter();
@@ -125,7 +129,7 @@ public abstract class LLVMMemory {
 
     public static boolean getI1(long ptr) {
         assert ptr != 0;
-        return UNSAFE.getByte(ptr) != 0;
+        return getUnsafe().getByte(ptr) != 0;
     }
 
     public static byte getI8(LLVMAddress addr) {
@@ -134,7 +138,7 @@ public abstract class LLVMMemory {
 
     public static byte getI8(long ptr) {
         assert ptr != 0;
-        return UNSAFE.getByte(ptr);
+        return getUnsafe().getByte(ptr);
     }
 
     public static short getI16(LLVMAddress addr) {
@@ -143,7 +147,7 @@ public abstract class LLVMMemory {
 
     public static short getI16(long ptr) {
         assert ptr != 0;
-        return UNSAFE.getShort(ptr);
+        return getUnsafe().getShort(ptr);
     }
 
     public static int getI32(LLVMAddress addr) {
@@ -152,7 +156,7 @@ public abstract class LLVMMemory {
 
     public static int getI32(long ptr) {
         assert ptr != 0;
-        return UNSAFE.getInt(ptr);
+        return getUnsafe().getInt(ptr);
     }
 
     public static LLVMIVarBit getIVarBit(LLVMAddress addr, int bitWidth) {
@@ -176,7 +180,7 @@ public abstract class LLVMMemory {
 
     public static long getI64(long ptr) {
         assert ptr != 0;
-        return UNSAFE.getLong(ptr);
+        return getUnsafe().getLong(ptr);
     }
 
     public static float getFloat(LLVMAddress addr) {
@@ -185,7 +189,7 @@ public abstract class LLVMMemory {
 
     public static float getFloat(long ptr) {
         assert ptr != 0;
-        return UNSAFE.getFloat(ptr);
+        return getUnsafe().getFloat(ptr);
     }
 
     public static double getDouble(LLVMAddress addr) {
@@ -194,7 +198,7 @@ public abstract class LLVMMemory {
 
     public static double getDouble(long ptr) {
         assert ptr != 0;
-        return UNSAFE.getDouble(ptr);
+        return getUnsafe().getDouble(ptr);
     }
 
     public static LLVM80BitFloat get80BitFloat(LLVMAddress addr) {
@@ -213,7 +217,7 @@ public abstract class LLVMMemory {
 
     public static LLVMAddress getAddress(long ptr) {
         assert ptr != 0;
-        return LLVMAddress.fromLong(UNSAFE.getAddress(ptr));
+        return LLVMAddress.fromLong(getUnsafe().getAddress(ptr));
     }
 
     public static void putI1(LLVMAddress addr, boolean value) {
@@ -222,7 +226,7 @@ public abstract class LLVMMemory {
 
     public static void putI1(long ptr, boolean value) {
         assert ptr != 0;
-        UNSAFE.putByte(ptr, (byte) (value ? 1 : 0));
+        getUnsafe().putByte(ptr, (byte) (value ? 1 : 0));
     }
 
     public static void putI8(LLVMAddress addr, byte value) {
@@ -231,7 +235,7 @@ public abstract class LLVMMemory {
 
     public static void putI8(long ptr, byte value) {
         assert ptr != 0;
-        UNSAFE.putByte(ptr, value);
+        getUnsafe().putByte(ptr, value);
     }
 
     public static void putI16(LLVMAddress addr, short value) {
@@ -240,7 +244,7 @@ public abstract class LLVMMemory {
 
     public static void putI16(long ptr, short value) {
         assert ptr != 0;
-        UNSAFE.putShort(ptr, value);
+        getUnsafe().putShort(ptr, value);
     }
 
     public static void putI32(LLVMAddress addr, int value) {
@@ -249,7 +253,7 @@ public abstract class LLVMMemory {
 
     public static void putI32(long ptr, int value) {
         assert ptr != 0;
-        UNSAFE.putInt(ptr, value);
+        getUnsafe().putInt(ptr, value);
     }
 
     public static void putI64(LLVMAddress addr, long value) {
@@ -258,7 +262,7 @@ public abstract class LLVMMemory {
 
     public static void putI64(long ptr, long value) {
         assert ptr != 0;
-        UNSAFE.putLong(ptr, value);
+        getUnsafe().putLong(ptr, value);
     }
 
     public static void putIVarBit(LLVMAddress addr, LLVMIVarBit value) {
@@ -288,7 +292,7 @@ public abstract class LLVMMemory {
 
     public static void putFloat(long ptr, float value) {
         assert ptr != 0;
-        UNSAFE.putFloat(ptr, value);
+        getUnsafe().putFloat(ptr, value);
     }
 
     public static void putDouble(LLVMAddress addr, double value) {
@@ -297,7 +301,7 @@ public abstract class LLVMMemory {
 
     public static void putDouble(long ptr, double value) {
         assert ptr != 0;
-        UNSAFE.putDouble(ptr, value);
+        getUnsafe().putDouble(ptr, value);
     }
 
     public static void put80BitFloat(LLVMAddress addr, LLVM80BitFloat value) {
@@ -322,7 +326,7 @@ public abstract class LLVMMemory {
 
     public static void putAddress(long ptr, long ptrValue) {
         assert ptr != 0;
-        UNSAFE.putAddress(ptr, ptrValue);
+        getUnsafe().putAddress(ptr, ptrValue);
     }
 
     public static LLVMI32Vector getI32Vector(LLVMAddress addr, int size) {
@@ -412,11 +416,11 @@ public abstract class LLVMMemory {
 
     public static CMPXCHGI32 compareAndSwapI32(LLVMAddress p, int comparisonValue, int newValue) {
         while (true) {
-            boolean b = UNSAFE.compareAndSwapInt(null, p.getVal(), comparisonValue, newValue);
+            boolean b = getUnsafe().compareAndSwapInt(null, p.getVal(), comparisonValue, newValue);
             if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, b)) {
                 return new CMPXCHGI32(comparisonValue, b);
             } else {
-                int t = UNSAFE.getIntVolatile(null, p.getVal());
+                int t = getUnsafe().getIntVolatile(null, p.getVal());
                 if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, t == comparisonValue)) {
                     continue;
                 } else {
@@ -447,11 +451,11 @@ public abstract class LLVMMemory {
 
     public static CMPXCHGI64 compareAndSwapI64(LLVMAddress p, long comparisonValue, long newValue) {
         while (true) {
-            boolean b = UNSAFE.compareAndSwapLong(null, p.getVal(), comparisonValue, newValue);
+            boolean b = getUnsafe().compareAndSwapLong(null, p.getVal(), comparisonValue, newValue);
             if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, b)) {
                 return new CMPXCHGI64(comparisonValue, b);
             } else {
-                long t = UNSAFE.getLongVolatile(null, p.getVal());
+                long t = getUnsafe().getLongVolatile(null, p.getVal());
                 if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, t == comparisonValue)) {
                     continue;
                 } else {
@@ -502,13 +506,13 @@ public abstract class LLVMMemory {
         int byteIndex = getI8Index(p.getVal());
         long address = alignToI32(p.getVal());
         while (true) {
-            int t = UNSAFE.getIntVolatile(null, address);
+            int t = getUnsafe().getIntVolatile(null, address);
             byte b = getI8At(t, byteIndex);
             if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, b != comparisonValue)) {
                 return new CMPXCHGI8(b, false);
             } else {
                 int newVal = replaceI8(byteIndex, t, newValue);
-                boolean c = UNSAFE.compareAndSwapInt(null, address, t, newVal);
+                boolean c = getUnsafe().compareAndSwapInt(null, address, t, newVal);
                 if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, c)) {
                     return new CMPXCHGI8(comparisonValue, true);
                 } else {
@@ -554,13 +558,13 @@ public abstract class LLVMMemory {
         int idx = getI16Index(p.getVal());
         long address = alignToI32(p.getVal());
         while (true) {
-            int t = UNSAFE.getIntVolatile(null, address);
+            int t = getUnsafe().getIntVolatile(null, address);
             short b = getI16At(t, idx);
             if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, b != comparisonValue)) {
                 return new CMPXCHGI16(b, false);
             } else {
                 int newVal = replaceI16(idx, t, newValue);
-                boolean c = UNSAFE.compareAndSwapInt(null, address, t, newVal);
+                boolean c = getUnsafe().compareAndSwapInt(null, address, t, newVal);
                 if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, c)) {
                     return new CMPXCHGI16(comparisonValue, true);
                 } else {
@@ -571,15 +575,15 @@ public abstract class LLVMMemory {
     }
 
     public static long getAndSetI64(LLVMAddress address, long value) {
-        return UNSAFE.getAndSetLong(null, address.getVal(), value);
+        return getUnsafe().getAndSetLong(null, address.getVal(), value);
     }
 
     public static long getAndAddI64(LLVMAddress address, long value) {
-        return UNSAFE.getAndAddLong(null, address.getVal(), value);
+        return getUnsafe().getAndAddLong(null, address.getVal(), value);
     }
 
     public static long getAndSubI64(LLVMAddress address, long value) {
-        return UNSAFE.getAndAddLong(null, address.getVal(), -value);
+        return getUnsafe().getAndAddLong(null, address.getVal(), -value);
     }
 
     public static long getAndOpI64(LLVMAddress address, long value, LongBinaryOperator f) {
@@ -589,20 +593,20 @@ public abstract class LLVMMemory {
         do {
             old = getI64(address);
             nevv = f.applyAsLong(old, value);
-        } while (!UNSAFE.compareAndSwapLong(null, addr, old, nevv));
+        } while (!getUnsafe().compareAndSwapLong(null, addr, old, nevv));
         return old;
     }
 
     public static int getAndSetI32(LLVMAddress address, int value) {
-        return UNSAFE.getAndSetInt(null, address.getVal(), value);
+        return getUnsafe().getAndSetInt(null, address.getVal(), value);
     }
 
     public static int getAndAddI32(LLVMAddress address, int value) {
-        return UNSAFE.getAndAddInt(null, address.getVal(), value);
+        return getUnsafe().getAndAddInt(null, address.getVal(), value);
     }
 
     public static int getAndSubI32(LLVMAddress address, int value) {
-        return UNSAFE.getAndAddInt(null, address.getVal(), -value);
+        return getUnsafe().getAndAddInt(null, address.getVal(), -value);
     }
 
     public static int getAndOpI32(LLVMAddress address, int value, IntBinaryOperator f) {
@@ -612,7 +616,7 @@ public abstract class LLVMMemory {
         do {
             old = getI32(address);
             nevv = f.applyAsInt(old, value);
-        } while (!UNSAFE.compareAndSwapInt(null, addr, old, nevv));
+        } while (!getUnsafe().compareAndSwapInt(null, addr, old, nevv));
         return old;
     }
 
@@ -647,6 +651,6 @@ public abstract class LLVMMemory {
     }
 
     public static void fullFence() {
-        UNSAFE.fullFence();
+        getUnsafe().fullFence();
     }
 }
