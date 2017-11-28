@@ -43,8 +43,10 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 
 abstract class ExecuteMethodNode extends Node {
+    static final int LIMIT = 3;
 
     ExecuteMethodNode() {
     }
@@ -65,10 +67,10 @@ abstract class ExecuteMethodNode extends Node {
 
     @SuppressWarnings("unused")
     @ExplodeLoop
-    @Specialization(guards = {"!method.isVarArgs()", "method == cachedMethod"})
+    @Specialization(guards = {"!method.isVarArgs()", "method == cachedMethod"}, limit = "LIMIT")
     Object doFixed(SingleMethodDesc method, Object obj, Object[] args, Object languageContext,
                     @Cached("method") SingleMethodDesc cachedMethod,
-                    @Cached(value = "getTypes(method, method.getParameterCount())", dimensions = 1) TypeAndClass<?>[] types,
+                    @Cached(value = "getTypes(method)", dimensions = 1) TypeAndClass<?>[] types,
                     @Cached("createToJava(method.getParameterCount())") ToJavaNode[] toJavaNodes) {
         int arity = cachedMethod.getParameterCount();
         if (args.length != arity) {
@@ -82,63 +84,106 @@ abstract class ExecuteMethodNode extends Node {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"method.isVarArgs()", "method == cachedMethod"})
+    @Specialization(guards = {"method.isVarArgs()", "method == cachedMethod"}, limit = "LIMIT")
     Object doVarArgs(SingleMethodDesc method, Object obj, Object[] args, Object languageContext,
                     @Cached("method") SingleMethodDesc cachedMethod,
+                    @Cached(value = "getTypes(method)", dimensions = 1) TypeAndClass<?>[] types,
                     @Cached("create()") ToJavaNode toJavaNode) {
-        int minArity = cachedMethod.getParameterCount() - 1;
+        int parameterCount = cachedMethod.getParameterCount();
+        int minArity = parameterCount - 1;
         if (args.length < minArity) {
             throw ArityException.raise(minArity, args.length);
         }
-        TypeAndClass<?>[] types = getTypes(cachedMethod, args.length);
         Object[] convertedArguments = new Object[args.length];
-        for (int i = 0; i < args.length; i++) {
+        for (int i = 0; i < minArity; i++) {
             convertedArguments[i] = toJavaNode.execute(args[i], types[i], languageContext);
+        }
+        if (asVarArgs(args, cachedMethod)) {
+            for (int i = minArity; i < args.length; i++) {
+                TypeAndClass<?> expectedType = types[minArity].componentType;
+                convertedArguments[i] = toJavaNode.execute(args[i], expectedType, languageContext);
+            }
+            convertedArguments = createVarArgsArray(cachedMethod, convertedArguments, parameterCount);
+        } else {
+            convertedArguments[minArity] = toJavaNode.execute(args[minArity], types[minArity], languageContext);
         }
         return doInvoke(cachedMethod, obj, convertedArguments, languageContext);
     }
 
     @Specialization(replaces = {"doFixed", "doVarArgs"})
     Object doSingleUncached(SingleMethodDesc method, Object obj, Object[] args, Object languageContext,
-                    @Cached("create()") ToJavaNode toJavaNode) {
-        int minArity = method.isVarArgs() ? method.getParameterCount() - 1 : method.getParameterCount();
+                    @Cached("create()") ToJavaNode toJavaNode,
+                    @Cached("createBinaryProfile()") ConditionProfile isVarArgsProfile) {
+        int parameterCount = method.getParameterCount();
+        int minArity = method.isVarArgs() ? parameterCount - 1 : parameterCount;
         if (args.length < minArity) {
             throw ArityException.raise(minArity, args.length);
         }
-        TypeAndClass<?>[] types = getTypes(method, args.length);
+        TypeAndClass<?>[] types = getTypes(method);
         Object[] convertedArguments = new Object[args.length];
-        for (int i = 0; i < args.length; i++) {
-            convertedArguments[i] = toJavaNode.execute(args[i], types[i], languageContext);
+        if (isVarArgsProfile.profile(method.isVarArgs()) && asVarArgs(args, method)) {
+            assert method.isVarArgs();
+            for (int i = 0; i < args.length; i++) {
+                TypeAndClass<?> expectedType = i < parameterCount - 1 ? types[i] : types[parameterCount - 1].componentType;
+                convertedArguments[i] = toJavaNode.execute(args[i], expectedType, languageContext);
+            }
+            convertedArguments = createVarArgsArray(method, convertedArguments, parameterCount);
+        } else {
+            for (int i = 0; i < args.length; i++) {
+                convertedArguments[i] = toJavaNode.execute(args[i], types[i], languageContext);
+            }
         }
         return doInvoke(method, obj, convertedArguments, languageContext);
     }
 
     @SuppressWarnings("unused")
     @ExplodeLoop
-    @Specialization(guards = {"method == cachedMethod", "checkArgTypes(args, cachedArgTypes)"})
+    @Specialization(guards = {"method == cachedMethod", "checkArgTypes(args, cachedArgTypes)"}, limit = "LIMIT")
     Object doOverloadedCached(OverloadedMethodDesc method, Object obj, Object[] args, Object languageContext,
                     @Cached("method") OverloadedMethodDesc cachedMethod,
                     @Cached(value = "getArgTypes(args)", dimensions = 1) Type[] cachedArgTypes,
                     @Cached("create()") ToJavaNode toJavaNode,
                     @Cached("selectOverload(method, args, languageContext, toJavaNode)") SingleMethodDesc overload,
-                    @Cached(value = "getTypes(overload, args.length)", dimensions = 1) TypeAndClass<?>[] types) {
+                    @Cached(value = "getTypes(overload)", dimensions = 1) TypeAndClass<?>[] types,
+                    @Cached("asVarArgs(args, overload)") boolean asVarArgs) {
         assert overload == selectOverload(method, args, languageContext, toJavaNode);
-        assert Arrays.equals(types, getTypes(overload, args.length));
+        assert Arrays.equals(types, getTypes(overload));
         Object[] convertedArguments = new Object[cachedArgTypes.length];
-        for (int i = 0; i < cachedArgTypes.length; i++) {
-            convertedArguments[i] = toJavaNode.execute(args[i], types[i], languageContext);
+        if (asVarArgs) {
+            assert overload.isVarArgs();
+            int parameterCount = overload.getParameterCount();
+            for (int i = 0; i < cachedArgTypes.length; i++) {
+                TypeAndClass<?> expectedType = i < parameterCount - 1 ? types[i] : types[parameterCount - 1].componentType;
+                convertedArguments[i] = toJavaNode.execute(args[i], expectedType, languageContext);
+            }
+            convertedArguments = createVarArgsArray(overload, convertedArguments, parameterCount);
+        } else {
+            for (int i = 0; i < cachedArgTypes.length; i++) {
+                convertedArguments[i] = toJavaNode.execute(args[i], types[i], languageContext);
+            }
         }
         return doInvoke(overload, obj, convertedArguments, languageContext);
     }
 
     @Specialization(replaces = "doOverloadedCached")
     Object doOverloadedUncached(OverloadedMethodDesc method, Object obj, Object[] args, Object languageContext,
-                    @Cached("create()") ToJavaNode toJavaNode) {
+                    @Cached("create()") ToJavaNode toJavaNode,
+                    @Cached("createBinaryProfile()") ConditionProfile isVarArgsProfile) {
         SingleMethodDesc overload = selectOverload(method, args, languageContext, toJavaNode);
-        TypeAndClass<?>[] types = getTypes(overload, args.length);
+        TypeAndClass<?>[] types = getTypes(overload);
         Object[] convertedArguments = new Object[args.length];
-        for (int i = 0; i < args.length; i++) {
-            convertedArguments[i] = toJavaNode.execute(args[i], types[i], languageContext);
+        if (isVarArgsProfile.profile(overload.isVarArgs()) && asVarArgs(args, overload)) {
+            assert overload.isVarArgs();
+            int parameterCount = overload.getParameterCount();
+            for (int i = 0; i < args.length; i++) {
+                TypeAndClass<?> expectedType = i < parameterCount - 1 ? types[i] : types[parameterCount - 1].componentType;
+                convertedArguments[i] = toJavaNode.execute(args[i], expectedType, languageContext);
+            }
+            convertedArguments = createVarArgsArray(overload, convertedArguments, parameterCount);
+        } else {
+            for (int i = 0; i < args.length; i++) {
+                convertedArguments[i] = toJavaNode.execute(args[i], types[i], languageContext);
+            }
         }
         return doInvoke(overload, obj, convertedArguments, languageContext);
     }
@@ -187,6 +232,21 @@ abstract class ExecuteMethodNode extends Node {
             }
         }
         return true;
+    }
+
+    @TruffleBoundary
+    static boolean asVarArgs(Object[] args, SingleMethodDesc overload) {
+        if (overload.isVarArgs()) {
+            int parameterCount = overload.getParameterCount();
+            if (args.length == parameterCount) {
+                return !isSubtypeOf(args[parameterCount - 1], overload.getParameterTypes()[parameterCount - 1]);
+            } else {
+                assert args.length != parameterCount;
+                return true;
+            }
+        } else {
+            return false;
+        }
     }
 
     static Class<?> primitiveTypeToBoxedType(Class<?> primitiveType) {
@@ -446,46 +506,31 @@ abstract class ExecuteMethodNode extends Node {
     }
 
     @TruffleBoundary
-    static TypeAndClass<?>[] getTypes(SingleMethodDesc method, int expectedTypeCount) {
-        Type[] argumentTypes = method.getGenericParameterTypes();
-        Class<?>[] argumentClasses = method.getParameterTypes();
+    static TypeAndClass<?>[] getTypes(SingleMethodDesc method) {
+        int parameterCount = method.getParameterCount();
+        Class<?>[] parameterTypes = method.getParameterTypes();
+        Type[] genericParameterTypes = method.getGenericParameterTypes();
         if (method.isVarArgs()) {
-            TypeAndClass<?>[] types = new TypeAndClass<?>[expectedTypeCount];
-            for (int i = 0; i < expectedTypeCount; i++) {
-                if (i < argumentTypes.length - 1) {
-                    types[i] = new TypeAndClass<>(argumentTypes[i], argumentClasses[i]);
+            TypeAndClass<?>[] types = new TypeAndClass<?>[parameterCount];
+            for (int i = 0; i < parameterCount; i++) {
+                if (i < parameterTypes.length - 1) {
+                    types[i] = new TypeAndClass<>(genericParameterTypes[i], parameterTypes[i]);
                 } else {
-                    final Type lastArgumentType = argumentTypes[argumentTypes.length - 1];
-                    final Class<?> arrayClazz = argumentClasses[argumentClasses.length - 1];
-                    if (lastArgumentType instanceof GenericArrayType) {
-                        final GenericArrayType arrayType = (GenericArrayType) lastArgumentType;
-                        types[i] = new TypeAndClass<>(arrayType.getGenericComponentType(), arrayClazz.getComponentType());
-                    } else {
-                        types[i] = new TypeAndClass<>(arrayClazz.getComponentType(), arrayClazz.getComponentType());
-                    }
+                    Type genericArrayType = genericParameterTypes[parameterCount - 1];
+                    Class<?> arrayType = parameterTypes[parameterCount - 1];
+                    Type genericComponentType = genericArrayType instanceof GenericArrayType ? ((GenericArrayType) genericArrayType).getGenericComponentType() : arrayType.getComponentType();
+                    Class<?> componentType = arrayType.getComponentType();
+                    types[i] = new TypeAndClass<>(genericArrayType, arrayType, new TypeAndClass<>(genericComponentType, componentType));
                 }
             }
             return types;
         } else {
-            assert expectedTypeCount == argumentTypes.length;
-            TypeAndClass<?>[] types = new TypeAndClass<?>[expectedTypeCount];
-            for (int i = 0; i < expectedTypeCount; i++) {
-                types[i] = new TypeAndClass<>(argumentTypes[i], argumentClasses[i]);
+            TypeAndClass<?>[] types = new TypeAndClass<?>[parameterCount];
+            for (int i = 0; i < parameterCount; i++) {
+                types[i] = new TypeAndClass<>(genericParameterTypes[i], parameterTypes[i]);
             }
             return types;
         }
-    }
-
-    private static Object doInvoke(SingleMethodDesc method, Object obj, Object[] args, Object languageContext) {
-        Object[] arguments;
-        int parameterCount = method.getParameterCount();
-        if (method.isVarArgs()) {
-            arguments = createVarArgsArray(method, args, parameterCount);
-        } else {
-            arguments = args;
-        }
-        assert arguments.length == parameterCount;
-        return invoke(method, obj, arguments, languageContext);
     }
 
     @TruffleBoundary
@@ -505,7 +550,8 @@ abstract class ExecuteMethodNode extends Node {
         return arguments;
     }
 
-    private static Object invoke(SingleMethodDesc method, Object obj, Object[] arguments, Object languageContext) {
+    private static Object doInvoke(SingleMethodDesc method, Object obj, Object[] arguments, Object languageContext) {
+        assert arguments.length == method.getParameterCount();
         Object ret;
         try {
             ret = method.invoke(obj, arguments);

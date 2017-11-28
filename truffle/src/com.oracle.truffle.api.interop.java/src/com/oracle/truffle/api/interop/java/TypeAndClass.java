@@ -35,10 +35,16 @@ final class TypeAndClass<T> {
 
     private final Type type;
     final Class<T> clazz;
+    final TypeAndClass<?> componentType;
 
-    TypeAndClass(Type type, Class<T> clazz) {
+    TypeAndClass(Type type, Class<T> clazz, TypeAndClass<?> componentType) {
         this.type = type;
         this.clazz = clazz;
+        this.componentType = componentType;
+    }
+
+    TypeAndClass(Type type, Class<T> clazz) {
+        this(type, clazz, null);
     }
 
     T cast(Object o) {
