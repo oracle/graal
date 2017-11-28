@@ -54,47 +54,42 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 final class JavaInteropReflect {
-    private static final Object[] EMPTY = {};
+    static final Object[] EMPTY = {};
+
+    private JavaInteropReflect() {
+    }
 
     @CompilerDirectives.TruffleBoundary
     static Object readField(JavaObject object, String name) {
         Object obj = object.obj;
-        final boolean onlyStatic = object.isClass();
-        JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
-        Field field = classDesc.lookupField(name, onlyStatic);
+        Field field = findField(object, name);
         if (field != null) {
             Object val = getField(obj, field);
             return JavaInterop.toGuestValue(val, object.languageContext);
         } else {
-            JavaMethodDesc method = classDesc.lookupMethod(name, onlyStatic);
+            JavaMethodDesc method = findMethod(object, name);
             if (method != null) {
                 return new JavaFunctionObject(method, obj, object.languageContext);
             }
 
-            if (isJNIName(name)) {
-                method = classDesc.lookupMethodByJNIName(name, onlyStatic);
-                if (method != null) {
-                    return new JavaFunctionObject(method, obj, object.languageContext);
-                }
-            }
-
-            if (onlyStatic) {
+            if (object.isClass()) {
                 Class<?> clazz = object.clazz;
-                JavaObject innerclass = lookupInnerClass(clazz, name);
+                Class<?> innerclass = findInnerClass(clazz, name);
                 if (innerclass != null) {
-                    return innerclass;
+                    return JavaObject.forClass(innerclass, object.languageContext);
                 }
             }
             throw UnknownIdentifierException.raise(name);
         }
     }
 
-    static JavaObject lookupInnerClass(Class<?> clazz, String name) {
+    @CompilerDirectives.TruffleBoundary
+    static Class<?> findInnerClass(Class<?> clazz, String name) {
         if (Modifier.isPublic(clazz.getModifiers())) {
             for (Class<?> t : clazz.getClasses()) {
                 // no support for non-static type members now
                 if (isStaticTypeOrInterface(t) && t.getSimpleName().equals(name)) {
-                    return new JavaObject(null, t);
+                    return t;
                 }
             }
         }
@@ -142,17 +137,7 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static JavaMethodDesc findMethod(JavaObject object, String name, Object[] args) {
-        JavaMethodDesc method = findMethod(object, name);
-        if (method != null) {
-            if (!isApplicableByArity(method, args.length)) {
-                return null;
-            }
-        }
-        return method;
-    }
-
-    private static boolean isApplicableByArity(JavaMethodDesc method, int nArgs) {
+    static boolean isApplicableByArity(JavaMethodDesc method, int nArgs) {
         if (method instanceof SingleMethodDesc) {
             return nArgs == ((SingleMethodDesc) method).getParameterCount() ||
                             ((SingleMethodDesc) method).isVarArgs() && nArgs >= ((SingleMethodDesc) method).getParameterCount() - 1;
@@ -174,10 +159,11 @@ final class JavaInteropReflect {
         }
 
         JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
-        return classDesc.lookupMethod(name, object.isClass());
-    }
-
-    private JavaInteropReflect() {
+        JavaMethodDesc foundMethod = classDesc.lookupMethod(name, object.isClass());
+        if (foundMethod == null && isJNIName(name)) {
+            foundMethod = classDesc.lookupMethodByJNIName(name, object.isClass());
+        }
+        return foundMethod;
     }
 
     @CompilerDirectives.TruffleBoundary
