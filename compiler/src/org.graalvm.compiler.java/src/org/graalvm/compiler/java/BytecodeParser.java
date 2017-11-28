@@ -4213,8 +4213,7 @@ public class BytecodeParser implements GraphBuilderContext {
         /*
          * When the profile indicates a case is never taken, the above code will cause the case to
          * deopt should it be subsequently encountered. However, the case may share code with
-         * another case that is taken according to the profile. Since code will be compiled for that
-         * latter case, the first case should simply route to that code instead of deopting.
+         * another case that is taken according to the profile.
          *
          * For example:
          * // @formatter:off
@@ -4227,15 +4226,27 @@ public class BytecodeParser implements GraphBuilderContext {
          * }
          * // @formatter:on
          *
-         * The profile may indicate the GOTO_W case is never taken. However, instead of deopting,
-         * it should use the same target code as the GOTO case.
+         * The profile may indicate the GOTO_W case is never taken, and thus a deoptimization stub
+         * will be emitted. There might be optimization opportunity if additional branching based
+         * on opcode is within the case block. Specially, if there is only single case that
+         * reaches a target, we have better chance cutting out unused branches. Otherwise,
+         * it might be beneficial routing to the same code instead of deopting.
+         *
+         * The following code rewires deoptimization stub to existing resolved branch target if
+         * the target is connected by more than 1 cases.
          */
         if (deoptSuccessorIndex >= 0) {
+            int[] connectedCases = new int[nextSuccessorIndex];
+            for (int i = 0; i < nofCasesPlusDefault; i++) {
+                connectedCases[keySuccessors[i]]++;
+            }
+
             for (int i = 0; i < nofCasesPlusDefault; i++) {
                 if (keySuccessors[i] == deoptSuccessorIndex) {
                     int targetBci = i < nofCases ? bs.targetAt(i) : bs.defaultTarget();
                     SuccessorInfo info = bciToBlockSuccessorIndex.get(targetBci);
-                    if (info.actualIndex >= 0) {
+                    int rewiredIndex = info.actualIndex;
+                    if (rewiredIndex >= 0 && connectedCases[rewiredIndex] > 1) {
                         keySuccessors[i] = info.actualIndex;
                     }
                 }
