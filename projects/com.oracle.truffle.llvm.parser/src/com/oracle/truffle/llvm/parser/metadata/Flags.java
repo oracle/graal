@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.parser.metadata;
 public enum Flags {
 
     // see https://llvm.org/svn/llvm-project/llvm/trunk/include/llvm/IR/DebugInfoFlags.def
+    ARTIFICIAL(1L << 6),
     OBJECT_POINTER(1L << 10),
     STATIC_MEMBER(1L << 12),
     BITFIELD(1L << 19);
@@ -44,5 +45,9 @@ public enum Flags {
 
     public boolean isSetIn(long flags) {
         return (mask & flags) != 0;
+    }
+
+    public boolean isAllFlags(long flags) {
+        return mask == flags;
     }
 }

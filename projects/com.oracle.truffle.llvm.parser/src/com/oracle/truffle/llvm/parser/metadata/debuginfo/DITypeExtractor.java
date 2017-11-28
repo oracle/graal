@@ -305,6 +305,11 @@ final class DITypeExtractor implements MetadataVisitor {
         switch (mdType.getTag()) {
 
             case DW_TAG_MEMBER: {
+                if (Flags.ARTIFICIAL.isAllFlags(mdType.getFlags())) {
+                    parsedTypes.put(mdType, LLVMSourceType.VOID);
+                    break;
+                }
+
                 final String name = MDNameExtractor.getName(mdType.getName());
 
                 if (Flags.STATIC_MEMBER.isSetIn(mdType.getFlags())) {
