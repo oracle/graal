@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
+import com.oracle.truffle.llvm.parser.metadata.DwarfOpcode;
 import com.oracle.truffle.llvm.parser.metadata.MDExpression;
 import com.oracle.truffle.llvm.parser.metadata.MetadataSymbol;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
@@ -378,6 +379,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             return;
         }
 
+        boolean mustDereference = isDeclaration;
         int partIndex = -1;
         int[] clearParts = null;
 
@@ -395,6 +397,9 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                 } else {
                     clearParts = clearSiblings.stream().mapToInt(Integer::intValue).toArray();
                 }
+            }
+            if (DwarfOpcode.isDeref(expression)) {
+                mustDereference = true;
             }
         }
 
@@ -415,7 +420,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         final FrameSlot targetSlot = getDebugValueSlot(var.getSymbol());
         final LLVMExpressionNode containerRead = nodeFactory.createFrameRead(runtime, MetaType.DEBUG, targetSlot);
-        final LLVMExpressionNode dbgWrite = nodeFactory.createDebugWrite(isDeclaration, valueRead, targetSlot, containerRead, partIndex, clearParts);
+        final LLVMExpressionNode dbgWrite = nodeFactory.createDebugWrite(mustDereference, valueRead, targetSlot, containerRead, partIndex, clearParts);
         addInstructionUnchecked(dbgWrite);
         handleNullerInfo();
     }

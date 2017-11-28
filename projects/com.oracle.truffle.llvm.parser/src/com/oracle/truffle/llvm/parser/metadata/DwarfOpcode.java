@@ -200,6 +200,10 @@ public final class DwarfOpcode {
     public static final long GNU_CONST_INDEX = 0xfc;
     public static final long LLVM_FRAGMENT = 0x1000;
 
+    public static boolean isDeref(MDExpression expression) {
+        return expression.getElementCount() == 1 && expression.getOperand(0) == DEREF;
+    }
+
     private DwarfOpcode() {
     }
 }
