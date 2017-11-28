@@ -115,6 +115,11 @@ public final class LLVMSourceDecoratorType extends LLVMSourceType {
     }
 
     @Override
+    public boolean isReference() {
+        return baseType.isReference();
+    }
+
+    @Override
     public boolean isAggregate() {
         return baseType.isAggregate();
     }
@@ -142,6 +147,16 @@ public final class LLVMSourceDecoratorType extends LLVMSourceType {
     @Override
     public LLVMSourceType getElementType(String name) {
         return baseType.getElementType(name);
+    }
+
+    @Override
+    public LLVMSourceLocation getElementDeclaration(long i) {
+        return baseType.getElementDeclaration(i);
+    }
+
+    @Override
+    public LLVMSourceLocation getElementDeclaration(String name) {
+        return baseType.getElementDeclaration(name);
     }
 
     @Override

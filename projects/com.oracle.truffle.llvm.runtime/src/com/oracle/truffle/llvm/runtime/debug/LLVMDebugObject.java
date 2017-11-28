@@ -352,7 +352,12 @@ public abstract class LLVMDebugObject implements TruffleObject {
 
         @Override
         protected Object getValueSafe() {
-            return value.readAddress(offset);
+            if (pointerType == null || !pointerType.isReference()) {
+                return value.readAddress(offset);
+            } else {
+                final LLVMDebugObject target = dereference();
+                return target == null ? value.readAddress(offset) : target.getValue();
+            }
         }
 
         private LLVMDebugObject dereference() {

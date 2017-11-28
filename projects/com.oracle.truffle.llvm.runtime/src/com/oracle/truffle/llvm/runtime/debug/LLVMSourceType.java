@@ -99,6 +99,10 @@ public abstract class LLVMSourceType {
         return false;
     }
 
+    public boolean isReference() {
+        return false;
+    }
+
     public boolean isAggregate() {
         return false;
     }

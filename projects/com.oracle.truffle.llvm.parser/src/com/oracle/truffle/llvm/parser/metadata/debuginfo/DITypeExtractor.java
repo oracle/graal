@@ -332,19 +332,22 @@ final class DITypeExtractor implements MetadataVisitor {
                 break;
             }
 
+            case DW_TAG_REFERENCE_TYPE:
             case DW_TAG_POINTER_TYPE: {
                 final boolean isSafeToDereference = Flags.OBJECT_POINTER.isSetIn(mdType.getFlags());
-                final LLVMSourcePointerType type = new LLVMSourcePointerType(size, align, offset, isSafeToDereference, location);
+                final boolean isReference = mdType.getTag() == MDDerivedType.Tag.DW_TAG_REFERENCE_TYPE;
+                final LLVMSourcePointerType type = new LLVMSourcePointerType(size, align, offset, isSafeToDereference, isReference, location);
                 parsedTypes.put(mdType, type);
 
                 final LLVMSourceType baseType = resolve(mdType.getBaseType(), LLVMSourceType.VOID_TYPE);
                 type.setBaseType(baseType);
                 type.setName(() -> {
                     final String baseName = baseType.getName();
+                    final String sym = isReference ? " &" : "*";
                     if (!baseType.isPointer() && baseName.contains(" ")) {
-                        return String.format("(%s)*", baseName);
+                        return String.format("(%s)%s", baseName, sym);
                     } else {
-                        return String.format("%s*", baseName);
+                        return String.format("%s%s", baseName, sym);
                     }
                 });
                 break;
@@ -458,7 +461,8 @@ final class DITypeExtractor implements MetadataVisitor {
                 // llvm does not set the objectpointer flag on this pointer type even though it sets
                 // it on the pointer type that is used in the function type descriptor
                 final LLVMSourcePointerType oldPointer = (LLVMSourcePointerType) type;
-                final LLVMSourcePointerType newPointer = new LLVMSourcePointerType(oldPointer.getSize(), oldPointer.getAlign(), oldPointer.getOffset(), true, type.getLocation());
+                final LLVMSourcePointerType newPointer = new LLVMSourcePointerType(oldPointer.getSize(), oldPointer.getAlign(), oldPointer.getOffset(), true, oldPointer.isReference(),
+                                type.getLocation());
                 newPointer.setBaseType(oldPointer.getBaseType());
                 newPointer.setName(oldPointer::getName);
                 type = newPointer;
