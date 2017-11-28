@@ -142,11 +142,12 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
                     if (arrayConstant != null) {
                         int stableDimension = objectConstant.getStableDimension();
                         if (stableDimension > 0) {
+                            NodeView view = NodeView.from(tool);
                             long constantOffset = offset().asJavaConstant().asLong();
-                            Constant constant = stamp(NodeView.DEFAULT).readConstant(tool.getConstantReflection().getMemoryAccessProvider(), arrayConstant, constantOffset);
+                            Constant constant = stamp(view).readConstant(tool.getConstantReflection().getMemoryAccessProvider(), arrayConstant, constantOffset);
                             boolean isDefaultStable = objectConstant.isDefaultStable();
                             if (constant != null && (isDefaultStable || !constant.isDefaultForKind())) {
-                                return ConstantNode.forConstant(stamp(NodeView.DEFAULT), constant, stableDimension - 1, isDefaultStable, tool.getMetaAccess());
+                                return ConstantNode.forConstant(stamp(view), constant, stableDimension - 1, isDefaultStable, tool.getMetaAccess());
                             }
                         }
                     }

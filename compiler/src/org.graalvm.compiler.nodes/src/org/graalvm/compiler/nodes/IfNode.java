@@ -366,7 +366,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 continue;
             }
             IntegerEqualsNode equals = (IntegerEqualsNode) fixed.condition();
-            if ((isUnboxedFrom(meta, view, equals.getX(), x) && isUnboxedFrom(meta, view, equals.getY(), y)) || (isUnboxedFrom(meta, view, equals.getX(), y) && isUnboxedFrom(meta, view, equals.getY(), x))) {
+            if ((isUnboxedFrom(meta, view, equals.getX(), x) && isUnboxedFrom(meta, view, equals.getY(), y)) ||
+                            (isUnboxedFrom(meta, view, equals.getX(), y) && isUnboxedFrom(meta, view, equals.getY(), x))) {
                 unboxCheck = fixed;
             }
         }
