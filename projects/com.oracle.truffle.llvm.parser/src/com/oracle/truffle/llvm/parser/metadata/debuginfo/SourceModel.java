@@ -134,11 +134,15 @@ public final class SourceModel {
 
         private List<ValueFragment> fragments;
         private boolean hasFullDefinition;
+        private boolean hasDeclaration;
+        private boolean hasValue;
 
         private Variable(LLVMSourceSymbol variable) {
             this.variable = variable;
             this.fragments = null;
             this.hasFullDefinition = false;
+            this.hasDeclaration = false;
+            this.hasValue = false;
         }
 
         public LLVMSourceSymbol getSymbol() {
@@ -167,6 +171,14 @@ public final class SourceModel {
                 }
             }
             return -1;
+        }
+
+        public boolean hasDeclaration() {
+            return hasDeclaration;
+        }
+
+        public boolean hasValue() {
+            return hasValue;
         }
 
         public List<ValueFragment> getFragments() {
@@ -200,6 +212,14 @@ public final class SourceModel {
         @Override
         public String toString() {
             return variable.getName();
+        }
+
+        private void addDeclaration() {
+            hasDeclaration = true;
+        }
+
+        private void addValue() {
+            hasValue = true;
         }
 
         private void addFullDefinition() {
@@ -381,11 +401,13 @@ public final class SourceModel {
             if (callTarget instanceof FunctionDeclaration) {
                 int mdlocalArgIndex = -1;
                 int mdExprArgIndex = -1;
+                boolean isDeclaration = false;
                 switch (((FunctionDeclaration) callTarget).getName()) {
                     case LLVM_DBG_DECLARE_NAME:
                         if (call.getArgumentCount() >= LLVM_DBG_DECLARE_ARGSIZE) {
                             mdlocalArgIndex = LLVM_DBG_DECLARE_LOCALREF_ARGINDEX;
                             mdExprArgIndex = LLVM_DBG_DECLARE_EXPR_ARGINDEX;
+                            isDeclaration = true;
                         }
                         break;
 
@@ -398,14 +420,14 @@ public final class SourceModel {
                 }
 
                 if (mdlocalArgIndex >= 0) {
-                    handleDebugIntrinsic(call, mdlocalArgIndex, mdExprArgIndex);
+                    handleDebugIntrinsic(call, mdlocalArgIndex, mdExprArgIndex, isDeclaration);
                 }
             }
 
             visitInstruction(call);
         }
 
-        private void handleDebugIntrinsic(VoidCallInstruction call, int mdlocalArgIndex, int mdExprArgIndex) {
+        private void handleDebugIntrinsic(VoidCallInstruction call, int mdlocalArgIndex, int mdExprArgIndex, boolean isDeclaration) {
             SymbolImpl value = call.getArgument(LLVM_DBG_INTRINSICS_VALUE_ARGINDEX);
             if (value instanceof MetadataSymbol) {
                 // the first argument should reference the allocation site of the variable
@@ -438,6 +460,12 @@ public final class SourceModel {
                 // the call
                 call.replace(call.getArgument(LLVM_DBG_INTRINSICS_VALUE_ARGINDEX), value);
                 call.replace(mdLocalMDRef, variable);
+
+                if (isDeclaration) {
+                    variable.addDeclaration();
+                } else {
+                    variable.addValue();
+                }
 
             } else {
                 variable = null;

@@ -342,8 +342,18 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         LLVMExpressionNode valueRead = null;
         int exprIndex;
         if (isDeclaration) {
-            if (valueSymbol instanceof UndefinedConstant || valueSymbol instanceof NullConstant) {
+            if (valueSymbol instanceof UndefinedConstant) {
+                if (var.hasValue()) {
+                    // this declaration only tells us that the variable is not in memory, we already
+                    // know this from the presence of the value
+                    handleNullerInfo();
+                    return;
+                }
                 valueRead = symbols.resolve(new NullConstant(MetaType.DEBUG));
+
+            } else if (valueSymbol instanceof NullConstant) {
+                valueRead = symbols.resolve(new NullConstant(MetaType.DEBUG));
+
             } else if (valueSymbol instanceof GlobalValueSymbol || valueSymbol.getType() instanceof PointerType) {
                 valueRead = symbols.resolve(valueSymbol);
             }
