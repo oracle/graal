@@ -76,7 +76,11 @@ public class SLObjectMessageResolution {
         public Object access(DynamicObject receiver, Object name, Object value) {
             Object convertedName = nameToSLType.executeConvert(name);
             Object convertedValue = valueToSLType.executeConvert(value);
-            write.executeWrite(receiver, convertedName, convertedValue);
+            try {
+                write.executeWrite(receiver, convertedName, convertedValue);
+            } catch (SLUndefinedNameException undefinedName) {
+                throw UnknownIdentifierException.raise(String.valueOf(convertedName));
+            }
             return convertedValue;
         }
     }
@@ -93,7 +97,12 @@ public class SLObjectMessageResolution {
 
         public Object access(DynamicObject receiver, Object name) {
             Object convertedName = nameToSLType.executeConvert(name);
-            Object result = read.executeRead(receiver, convertedName);
+            Object result;
+            try {
+                result = read.executeRead(receiver, convertedName);
+            } catch (SLUndefinedNameException undefinedName) {
+                throw UnknownIdentifierException.raise(String.valueOf(convertedName));
+            }
             return toForeign.executeConvert(result);
         }
     }
