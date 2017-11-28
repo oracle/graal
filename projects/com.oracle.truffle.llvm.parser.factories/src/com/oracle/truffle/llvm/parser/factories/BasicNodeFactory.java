@@ -118,8 +118,8 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNode
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI32NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI64NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI8NodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugBuilder;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugFrameWriteNodeFactory;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMToDebugDeclarationNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMToDebugValueNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVACopyNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVAEnd;
@@ -1901,23 +1901,23 @@ public class BasicNodeFactory implements NodeFactory {
         return LLVMVarArgCompoundAddressNodeGen.create(parameterNode, length, alignment);
     }
 
-    private static LLVMDebugValueProvider.Builder getDebugBuilder(boolean isDeclaration) {
+    private static LLVMDebugBuilder getDebugBuilder(boolean isDeclaration) {
         if (isDeclaration) {
-            return LLVMToDebugDeclarationNodeGen.create();
+            return LLVMDebugBuilder.NATIVE_DECLARATION;
         } else {
-            return LLVMToDebugValueNodeGen.create();
+            return LLVMDebugBuilder.NATIVE_VALUE;
         }
     }
 
     @Override
     public LLVMExpressionNode createDebugWrite(boolean isDeclaration, LLVMExpressionNode valueRead, FrameSlot targetSlot) {
-        final LLVMDebugValueProvider.Builder builder = getDebugBuilder(isDeclaration);
+        final LLVMDebugBuilder builder = getDebugBuilder(isDeclaration);
         return LLVMDebugFrameWriteNodeFactory.WriteNodeGen.create(targetSlot, builder, valueRead);
     }
 
     @Override
     public LLVMExpressionNode createDebugFragmentWrite(boolean isDeclaration, LLVMExpressionNode valueRead, FrameSlot targetSlot, LLVMExpressionNode aggregateRead, int partIndex, int[] clearParts) {
-        final LLVMDebugValueProvider.Builder builder = getDebugBuilder(isDeclaration);
+        final LLVMDebugBuilder builder = getDebugBuilder(isDeclaration);
         return LLVMDebugFrameWriteNodeFactory.AggregateWriteNodeGen.create(targetSlot, partIndex, builder, clearParts, aggregateRead, valueRead);
     }
 
@@ -1928,7 +1928,7 @@ public class BasicNodeFactory implements NodeFactory {
 
     @Override
     public LLVMDebugValue createDebugConstantValue(LLVMExpressionNode valueNode) {
-        final LLVMDebugValueProvider.Builder toDebugNode = LLVMToDebugValueNodeGen.create();
+        final LLVMDebugValueProvider.Builder toDebugNode = LLVMToDebugValueNodeGen.create(LLVMLanguage.getLLVMContextReference());
         Object value;
         try {
             value = valueNode.executeGeneric(null);
