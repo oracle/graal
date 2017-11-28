@@ -230,7 +230,7 @@ final class DIScopeBuilder {
         public void visit(MDLexicalBlockFile md) {
             parent = buildLocation(md.getFile());
             kind = LLVMSourceLocation.Kind.BLOCK;
-            file = fileExtractor.extractFile(md.getFile());
+            file = fileExtractor.extractFile(md);
         }
 
         @Override
@@ -272,7 +272,7 @@ final class DIScopeBuilder {
         @Override
         public void visit(MDCompileUnit md) {
             kind = LLVMSourceLocation.Kind.COMPILEUNIT;
-            file = fileExtractor.extractFile(md.getFile());
+            file = fileExtractor.extractFile(md);
         }
 
         @Override
@@ -324,7 +324,7 @@ final class DIScopeBuilder {
                 parent = buildLocation(md.getCompileUnit());
             }
             kind = LLVMSourceLocation.Kind.GLOBAL;
-            file = fileExtractor.extractFile(md.getFile());
+            file = fileExtractor.extractFile(md);
             name = MDNameExtractor.getName(md.getName());
             line = md.getLine();
         }
@@ -333,7 +333,7 @@ final class DIScopeBuilder {
         public void visit(MDLocalVariable md) {
             parent = buildLocation(md.getScope());
             kind = LLVMSourceLocation.Kind.LOCAL;
-            file = fileExtractor.extractFile(md.getFile());
+            file = fileExtractor.extractFile(md);
             name = MDNameExtractor.getName(md.getName());
             line = md.getLine();
         }
@@ -482,12 +482,14 @@ final class DIScopeBuilder {
 
         @Override
         public void visit(MDLexicalBlockFile md) {
-            md.getFile().accept(this);
+            MDBaseNode fileRef = md.getFile() != MDVoidNode.INSTANCE ? md.getFile() : md.getScope();
+            fileRef.accept(this);
         }
 
         @Override
         public void visit(MDLocalVariable md) {
-            md.getFile().accept(this);
+            MDBaseNode fileRef = md.getFile() != MDVoidNode.INSTANCE ? md.getFile() : md.getScope();
+            fileRef.accept(this);
         }
 
         @Override
