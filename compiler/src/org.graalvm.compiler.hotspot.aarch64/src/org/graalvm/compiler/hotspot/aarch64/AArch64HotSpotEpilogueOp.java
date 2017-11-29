@@ -37,10 +37,18 @@ import jdk.vm.ci.code.Register;
 abstract class AArch64HotSpotEpilogueOp extends AArch64BlockEndOp {
 
     private final GraalHotSpotVMConfig config;
+    private final Register thread;
+
+    protected AArch64HotSpotEpilogueOp(LIRInstructionClass<? extends AArch64HotSpotEpilogueOp> c, GraalHotSpotVMConfig config, Register thread) {
+        super(c);
+        this.config = config;
+        this.thread = thread;
+    }
 
     protected AArch64HotSpotEpilogueOp(LIRInstructionClass<? extends AArch64HotSpotEpilogueOp> c, GraalHotSpotVMConfig config) {
         super(c);
         this.config = config;
+        this.thread = null; // no safepoint
     }
 
     protected void leaveFrame(CompilationResultBuilder crb, AArch64MacroAssembler masm, boolean emitSafepoint) {
@@ -49,7 +57,7 @@ abstract class AArch64HotSpotEpilogueOp extends AArch64BlockEndOp {
         if (emitSafepoint) {
             try (ScratchRegister sc = masm.getScratchRegister()) {
                 Register scratch = sc.getRegister();
-                AArch64HotSpotSafepointOp.emitCode(crb, masm, config, true, scratch, null);
+                AArch64HotSpotSafepointOp.emitCode(crb, masm, config, true, thread, scratch, null);
             }
         }
     }

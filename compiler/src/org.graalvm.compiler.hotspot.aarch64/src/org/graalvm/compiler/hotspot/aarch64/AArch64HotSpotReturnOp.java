@@ -33,6 +33,7 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -46,8 +47,8 @@ public final class AArch64HotSpotReturnOp extends AArch64HotSpotEpilogueOp {
     @Use({REG, ILLEGAL}) private Value result;
     private final boolean isStub;
 
-    public AArch64HotSpotReturnOp(Value result, boolean isStub, GraalHotSpotVMConfig config) {
-        super(TYPE, config);
+    public AArch64HotSpotReturnOp(Value result, boolean isStub, GraalHotSpotVMConfig config, Register thread) {
+        super(TYPE, config, thread);
         assert validReturnValue(result);
         this.result = result;
         this.isStub = isStub;

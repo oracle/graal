@@ -119,8 +119,9 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
     @Override
     public void visitSafepointNode(SafepointNode i) {
         LIRFrameState info = state(i);
+        Register thread = getGen().getProviders().getRegisters().getThreadRegister();
         Variable scratch = gen.newVariable(LIRKind.value(getGen().target().arch.getWordKind()));
-        append(new AArch64HotSpotSafepointOp(info, getGen().config, scratch));
+        append(new AArch64HotSpotSafepointOp(info, getGen().config, thread, scratch));
     }
 
     @Override

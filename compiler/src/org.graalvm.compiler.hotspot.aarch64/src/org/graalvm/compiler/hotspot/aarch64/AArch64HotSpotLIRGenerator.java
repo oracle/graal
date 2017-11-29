@@ -342,7 +342,8 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
             operand = resultOperandFor(kind, input.getValueKind());
             emitMove(operand, input);
         }
-        append(new AArch64HotSpotReturnOp(operand, getStub() != null, config));
+        Register thread = getProviders().getRegisters().getThreadRegister();
+        append(new AArch64HotSpotReturnOp(operand, getStub() != null, config, thread));
     }
 
     /**
