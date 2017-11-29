@@ -251,7 +251,7 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
             }
 
             if (type != null) {
-                return toJavaNode.execute(ret, type);
+                return toJavaNode.execute(ret, type.clazz, type.type);
             } else {
                 return ret;
             }

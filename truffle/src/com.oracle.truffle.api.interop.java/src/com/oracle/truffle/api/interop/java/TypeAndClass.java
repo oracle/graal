@@ -24,16 +24,13 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import com.oracle.truffle.api.TruffleOptions;
-import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Objects;
 
 final class TypeAndClass<T> {
     static final TypeAndClass<Object> ANY = new TypeAndClass<>(null, Object.class);
 
-    private final Type type;
+    final Type type;
     final Class<T> clazz;
 
     TypeAndClass(Type type, Class<T> clazz) {
@@ -45,35 +42,9 @@ final class TypeAndClass<T> {
         return clazz.cast(o);
     }
 
-    TypeAndClass<?> getParameterType(int i) {
-        if (!TruffleOptions.AOT && type instanceof ParameterizedType) {
-            ParameterizedType parametrizedType = (ParameterizedType) type;
-            final Type[] arr = parametrizedType.getActualTypeArguments();
-            Class<?> elementClass = Object.class;
-            if (arr.length > i) {
-                Type elementType = arr[i];
-                if (elementType instanceof ParameterizedType) {
-                    elementType = ((ParameterizedType) elementType).getRawType();
-                }
-                if (elementType instanceof Class<?>) {
-                    elementClass = (Class<?>) elementType;
-                }
-            }
-            return new TypeAndClass<>(arr[i], elementClass);
-        }
-        return ANY;
-    }
-
     @Override
     public String toString() {
         return "[" + clazz + ": " + Objects.toString(type) + "]";
-    }
-
-    static TypeAndClass<?> forReturnType(Method method) {
-        if (method == null || method.getReturnType() == void.class) {
-            return ANY;
-        }
-        return new TypeAndClass<>(method.getGenericReturnType(), method.getReturnType());
     }
 
     @Override

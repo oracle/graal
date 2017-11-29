@@ -29,6 +29,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
+import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 
@@ -310,7 +311,7 @@ final class JavaInteropReflect {
                     arguments[i] = JavaInterop.toGuestValue(arg, languageContext);
                 }
             }
-            return target.call(symbol, TypeAndClass.forReturnType(method), args);
+            return target.call(symbol, args, getMethodReturnType(method), getMethodGenericReturnType(method));
         }
     }
 
@@ -338,8 +339,7 @@ final class JavaInteropReflect {
             CallTarget call = JavaInterop.lookupOrRegisterComputation(obj, null, method);
             if (call == null) {
                 Message message = findMessage(method, method.getAnnotation(MethodMessage.class), args.length);
-                TypeAndClass<?> convertTo = TypeAndClass.forReturnType(method);
-                MethodNode methodNode = MethodNodeGen.create(method.getName(), message, convertTo);
+                MethodNode methodNode = MethodNodeGen.create(method.getName(), message, getMethodReturnType(method), getMethodGenericReturnType(method));
                 call = JavaInterop.lookupOrRegisterComputation(obj, methodNode, method);
             }
 
@@ -350,17 +350,19 @@ final class JavaInteropReflect {
 
     abstract static class MethodNode extends RootNode {
         private final String name;
-        private final TypeAndClass<?> returnType;
-        @CompilerDirectives.CompilationFinal private Message message;
+        private final Message message;
+        private final Class<?> returnType;
+        private final Type genericReturnType;
         @Child private ToJavaNode toJavaNode;
         @Child private Node node;
 
-        MethodNode(String name, Message message, TypeAndClass<?> returnType) {
+        MethodNode(String name, Message message, Class<?> returnType, Type genericReturnType) {
             super(null);
             this.name = name;
-            this.toJavaNode = ToJavaNode.create();
             this.message = message;
             this.returnType = returnType;
+            this.genericReturnType = genericReturnType;
+            this.toJavaNode = ToJavaNode.create();
         }
 
         @Override
@@ -369,10 +371,10 @@ final class JavaInteropReflect {
                 TruffleObject receiver = (TruffleObject) frame.getArguments()[0];
                 Object[] params = (Object[]) frame.getArguments()[1];
                 Object res = executeImpl(receiver, params);
-                if (!returnType.clazz.isInterface()) {
+                if (!returnType.isInterface()) {
                     res = JavaInterop.findOriginalObject(res);
                 }
-                return toJavaNode.execute(res, returnType);
+                return toJavaNode.execute(res, returnType, genericReturnType);
             } catch (InteropException ex) {
                 throw reraise(ex);
             }
@@ -484,14 +486,14 @@ final class JavaInteropReflect {
     }
 
     abstract static class InvokeAndReadExecNode extends Node {
-        private final TypeAndClass<?> returnType;
+        private final Class<?> returnType;
         @Child private Node invokeNode;
         @Child private Node isExecNode;
         @Child private ToPrimitiveNode primitive;
         @Child private Node readNode;
         @Child private Node execNode;
 
-        InvokeAndReadExecNode(TypeAndClass<?> returnType, int arity) {
+        InvokeAndReadExecNode(Class<?> returnType, int arity) {
             this.returnType = returnType;
             this.invokeNode = Message.createInvoke(arity).createNode();
         }
@@ -513,7 +515,7 @@ final class JavaInteropReflect {
                     isExecNode = insert(Message.IS_EXECUTABLE.createNode());
                 }
                 Object val = ForeignAccess.sendRead(readNode, obj, name);
-                Object primitiveVal = primitive.toPrimitive(val, returnType.clazz);
+                Object primitiveVal = primitive.toPrimitive(val, returnType);
                 if (primitiveVal != null) {
                     return primitiveVal;
                 }
@@ -563,7 +565,21 @@ final class JavaInteropReflect {
     }
 
     private static Object toJava(Object ret, Method method) {
-        return ToJavaNode.toJava(ret, TypeAndClass.forReturnType(method));
+        return ToJavaNode.toJava(ret, getMethodReturnType(method), getMethodGenericReturnType(method));
+    }
+
+    static Class<?> getMethodReturnType(Method method) {
+        if (method == null || method.getReturnType() == void.class) {
+            return Object.class;
+        }
+        return method.getReturnType();
+    }
+
+    static Type getMethodGenericReturnType(Method method) {
+        if (method == null || method.getReturnType() == void.class) {
+            return Object.class;
+        }
+        return method.getGenericReturnType();
     }
 
     static String jniName(Method m) {

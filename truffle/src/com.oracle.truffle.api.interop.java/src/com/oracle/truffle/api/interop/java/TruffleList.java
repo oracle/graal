@@ -125,7 +125,7 @@ final class TruffleList<T> extends AbstractList<T> {
             }
 
             if (type != null) {
-                return toJavaNode.execute(ret, type);
+                return toJavaNode.execute(ret, type.clazz, type.type);
             } else {
                 return ret;
             }

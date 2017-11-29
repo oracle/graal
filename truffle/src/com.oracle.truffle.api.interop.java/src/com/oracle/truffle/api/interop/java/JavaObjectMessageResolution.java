@@ -144,7 +144,6 @@ class JavaObjectMessageResolution {
     abstract static class NewNode extends Node {
         @Child private ExecuteMethodNode doExecute;
         @Child private ToJavaNode toJava;
-        private static final TypeAndClass<Integer> INT_TYPE = new TypeAndClass<>(null, int.class);
 
         public Object access(JavaObject receiver, Object[] args) {
             if (TruffleOptions.AOT) {
@@ -160,7 +159,7 @@ class JavaObjectMessageResolution {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         toJava = insert(ToJavaNode.create());
                     }
-                    int length = (int) toJava.execute(args[0], INT_TYPE, receiver.languageContext);
+                    int length = (int) toJava.execute(args[0], int.class, null, receiver.languageContext);
                     return JavaInterop.asTruffleObject(Array.newInstance(receiver.clazz.getComponentType(), length), receiver.languageContext);
                 }
 
@@ -212,7 +211,7 @@ class JavaObjectMessageResolution {
     }
 
     @Resolve(message = "READ")
-    abstract static class ReadFieldNode extends Node {
+    abstract static class ReadNode extends Node {
 
         @Child private ArrayReadNode read = ArrayReadNode.create();
 
@@ -239,7 +238,7 @@ class JavaObjectMessageResolution {
     }
 
     @Resolve(message = "WRITE")
-    abstract static class WriteFieldNode extends Node {
+    abstract static class WriteNode extends Node {
 
         @Child private ToJavaNode toJava = ToJavaNode.create();
         @Child private ArrayWriteNode write = ArrayWriteNode.create();
@@ -257,7 +256,7 @@ class JavaObjectMessageResolution {
             if (f == null) {
                 throw UnknownIdentifierException.raise(name);
             }
-            Object convertedValue = toJava.execute(value, new TypeAndClass<>(f.getGenericType(), f.getType()), receiver.languageContext);
+            Object convertedValue = toJava.execute(value, f.getType(), f.getGenericType(), receiver.languageContext);
             JavaInteropReflect.setField(obj, f, convertedValue);
             return JavaObject.NULL;
         }
@@ -266,7 +265,7 @@ class JavaObjectMessageResolution {
         @SuppressWarnings("unchecked")
         private Object accessMap(JavaObject receiver, String name, Object value) {
             Map<Object, Object> map = (Map<Object, Object>) receiver.obj;
-            Object convertedValue = toJava.execute(value, TypeAndClass.ANY, receiver.languageContext);
+            Object convertedValue = toJava.execute(value, Object.class, null, receiver.languageContext);
             return map.put(name, convertedValue);
         }
 
