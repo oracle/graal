@@ -49,7 +49,7 @@ public abstract class AbstractLanguageLauncher extends Launcher {
     protected final void launch(String[] args) {
         try {
             try {
-                launch(new ArrayList<>(Arrays.asList(args)), null);
+                launch(new ArrayList<>(Arrays.asList(args)), null, true);
             } catch (AbortException e) {
                 throw e;
             } catch (Throwable t) {
@@ -60,20 +60,20 @@ public abstract class AbstractLanguageLauncher extends Launcher {
         }
     }
 
-    final void launch(List<String> args, Map<String, String> defaultOptions) {
+    final void launch(List<String> args, Map<String, String> defaultOptions, boolean doNativeSetup) {
         Map<String, String> polyglotOptions = defaultOptions;
         if (polyglotOptions == null) {
             polyglotOptions = new HashMap<>();
         }
 
-        if (isAOT()) {
+        if (isAOT() && doNativeSetup) {
             assert nativeAccess != null;
             nativeAccess.setGraalVMProperties();
         }
 
         List<String> unrecognizedArgs = preprocessArguments(args, polyglotOptions);
 
-        if (isAOT()) {
+        if (isAOT() && doNativeSetup) {
             assert nativeAccess != null;
             nativeAccess.maybeExec(args, false, polyglotOptions, getDefaultVMType());
         }
