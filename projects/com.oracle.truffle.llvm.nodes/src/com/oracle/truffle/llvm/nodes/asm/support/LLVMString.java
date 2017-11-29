@@ -45,24 +45,24 @@ public class LLVMString {
         return SharedSecrets.getJavaNioAccess().newDirectByteBuffer(address.getVal(), size, null);
     }
 
-    public static byte[] memcpy(LLVMAddress address, int size) {
+    public static byte[] memcpy(LLVMMemory memory, LLVMAddress address, int size) {
         byte[] out = new byte[size];
         LLVMAddress ptr = address;
         for (int i = 0; i < size; i++) {
-            out[i] = LLVMMemory.getI8(ptr);
+            out[i] = memory.getI8(ptr);
             ptr = ptr.increment(1);
         }
         return out;
     }
 
-    public static void memcpy(byte[] src, LLVMAddress dst, long size) {
+    public static void memcpy(LLVMMemory memory, byte[] src, LLVMAddress dst, long size) {
         int min = src.length;
         if (min > size) {
             min = (int) size;
         }
         LLVMAddress ptr = dst;
         for (int i = 0; i < min; i++) {
-            LLVMMemory.putI8(ptr, src[i]);
+            memory.putI8(ptr, src[i]);
             ptr = ptr.increment(1);
         }
     }
@@ -77,31 +77,31 @@ public class LLVMString {
         return new String(bytes);
     }
 
-    public static void strcpy(LLVMAddress dst, String src) {
-        memcpy(getBytes(src), dst, src.length());
+    public static void strcpy(LLVMMemory memory, LLVMAddress dst, String src) {
+        memcpy(memory, getBytes(src), dst, src.length());
         LLVMAddress zero = dst.increment(src.length());
-        LLVMMemory.putI8(zero, (byte) 0);
+        memory.putI8(zero, (byte) 0);
     }
 
-    public static void strncpy(LLVMAddress dst, String src, long size) {
-        memcpy(getBytes(src), dst, size);
+    public static void strncpy(LLVMMemory memory, LLVMAddress dst, String src, long size) {
+        memcpy(memory, getBytes(src), dst, size);
         if (src.length() < size) {
             LLVMAddress zero = dst.increment(src.length());
-            LLVMMemory.putI8(zero, (byte) 0);
+            memory.putI8(zero, (byte) 0);
         }
     }
 
-    public static long strlen(LLVMAddress address) {
+    public static long strlen(LLVMMemory memory, LLVMAddress address) {
         LLVMAddress ptr = address;
-        while (LLVMMemory.getI8(ptr) != 0) {
+        while (memory.getI8(ptr) != 0) {
             ptr = ptr.increment(1);
         }
         return ptr.getVal() - address.getVal();
     }
 
-    public static String cstr(LLVMAddress address) {
-        long len = strlen(address);
-        byte[] bytes = memcpy(address, (int) len);
+    public static String cstr(LLVMMemory memory, LLVMAddress address) {
+        long len = strlen(memory, address);
+        byte[] bytes = memcpy(memory, address, (int) len);
         return toString(bytes);
     }
 }

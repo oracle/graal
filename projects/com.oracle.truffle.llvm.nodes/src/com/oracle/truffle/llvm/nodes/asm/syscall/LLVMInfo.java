@@ -39,6 +39,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMString;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
 public class LLVMInfo {
     // See http://man7.org/linux/man-pages/man2/uname.2.html and
@@ -94,19 +95,19 @@ public class LLVMInfo {
         return readFile("/proc/sys/kernel/domainname", null);
     }
 
-    public static long uname(LLVMAddress name) {
+    public static long uname(LLVMMemory memory, LLVMAddress name) {
         LLVMAddress ptr = name;
-        LLVMString.strcpy(ptr, sysname);
+        LLVMString.strcpy(memory, ptr, sysname);
         ptr = ptr.increment(UTS_FIELD_LENGTH);
-        LLVMString.strcpy(ptr, getHostname());
+        LLVMString.strcpy(memory, ptr, getHostname());
         ptr = ptr.increment(UTS_FIELD_LENGTH);
-        LLVMString.strcpy(ptr, release);
+        LLVMString.strcpy(memory, ptr, release);
         ptr = ptr.increment(UTS_FIELD_LENGTH);
-        LLVMString.strcpy(ptr, getVersion());
+        LLVMString.strcpy(memory, ptr, getVersion());
         ptr = ptr.increment(UTS_FIELD_LENGTH);
-        LLVMString.strcpy(ptr, machine);
+        LLVMString.strcpy(memory, ptr, machine);
         ptr = ptr.increment(UTS_FIELD_LENGTH);
-        LLVMString.strcpy(ptr, getDomainName());
+        LLVMString.strcpy(memory, ptr, getDomainName());
         return 0;
     }
 

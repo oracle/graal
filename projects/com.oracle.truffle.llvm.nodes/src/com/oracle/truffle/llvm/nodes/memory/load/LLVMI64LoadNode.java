@@ -42,6 +42,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.UnsafeIntArrayAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 public abstract class LLVMI64LoadNode extends LLVMLoadNode {
@@ -49,14 +50,16 @@ public abstract class LLVMI64LoadNode extends LLVMLoadNode {
     private final LongValueProfile profile = LongValueProfile.createIdentityProfile();
 
     @Specialization
-    protected long doI64(LLVMAddress addr) {
-        long val = LLVMMemory.getI64(addr);
+    protected long doI64(LLVMAddress addr,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        long val = memory.getI64(addr);
         return profile.profile(val);
     }
 
     @Specialization
-    protected long doI64(LLVMVirtualAllocationAddress address) {
-        return address.getI64();
+    protected long doI64(LLVMVirtualAllocationAddress address,
+                    @Cached("getUnsafeIntArrayAccess()") UnsafeIntArrayAccess memory) {
+        return address.getI64(memory);
     }
 
     @Specialization
@@ -77,9 +80,10 @@ public abstract class LLVMI64LoadNode extends LLVMLoadNode {
     }
 
     @Specialization
-    protected long doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
+    protected long doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
         if (addr.getValue() instanceof Long) {
-            return LLVMMemory.getI64((long) addr.getValue());
+            return memory.getI64((long) addr.getValue());
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalAccessError("Cannot access address: " + addr.getValue());

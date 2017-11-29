@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.memory;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStringNode;
@@ -37,14 +38,15 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 public abstract class NativeAllocateStringNode extends LLVMAllocateStringNode {
 
     @Specialization
-    protected Object alloc(String s) {
-        LLVMAddress allocatedMemory = LLVMMemory.allocateMemory(s.length() + 1);
+    protected Object alloc(String s,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        LLVMAddress allocatedMemory = memory.allocateMemory(s.length() + 1);
         long currentPtr = allocatedMemory.getVal();
         for (byte b : s.getBytes()) {
-            LLVMMemory.putI8(currentPtr, b);
+            memory.putI8(currentPtr, b);
             currentPtr += 1;
         }
-        LLVMMemory.putI8(currentPtr, (byte) 0);
+        memory.putI8(currentPtr, (byte) 0);
         return allocatedMemory;
     }
 }

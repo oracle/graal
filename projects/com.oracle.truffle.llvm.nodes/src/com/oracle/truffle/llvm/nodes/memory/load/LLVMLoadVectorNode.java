@@ -56,14 +56,16 @@ public class LLVMLoadVectorNode {
         public abstract int getSize();
 
         @Specialization
-        protected LLVMI1Vector doI1Vector(LLVMAddress addr) {
-            return LLVMMemory.getI1Vector(addr, getSize());
+        protected LLVMI1Vector doI1Vector(LLVMAddress addr,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getI1Vector(addr, getSize());
         }
 
         @Specialization
         protected LLVMI1Vector doI1Vector(VirtualFrame frame, LLVMGlobal addr,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
-            return LLVMMemory.getI1Vector(globalAccess.executeWithTarget(frame, addr), getSize());
+                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getI1Vector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         LLVMForeignReadNode createForeignRead() {
@@ -84,13 +86,15 @@ public class LLVMLoadVectorNode {
 
         @Specialization
         protected LLVMI8Vector doI8Vector(VirtualFrame frame, LLVMGlobal addr,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
-            return LLVMMemory.getI8Vector(globalAccess.executeWithTarget(frame, addr), getSize());
+                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getI8Vector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         @Specialization
-        protected LLVMI8Vector doI8Vector(LLVMAddress addr) {
-            return LLVMMemory.getI8Vector(addr, getSize());
+        protected LLVMI8Vector doI8Vector(LLVMAddress addr,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getI8Vector(addr, getSize());
         }
 
         LLVMForeignReadNode createForeignRead() {
@@ -111,13 +115,15 @@ public class LLVMLoadVectorNode {
 
         @Specialization
         protected LLVMI16Vector doI16Vector(VirtualFrame frame, LLVMGlobal addr,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
-            return LLVMMemory.getI16Vector(globalAccess.executeWithTarget(frame, addr), getSize());
+                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getI16Vector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         @Specialization
-        protected LLVMI16Vector doI16Vector(LLVMAddress addr) {
-            return LLVMMemory.getI16Vector(addr, getSize());
+        protected LLVMI16Vector doI16Vector(LLVMAddress addr,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getI16Vector(addr, getSize());
         }
 
         LLVMForeignReadNode createForeignRead() {
@@ -138,13 +144,15 @@ public class LLVMLoadVectorNode {
 
         @Specialization
         protected LLVMI32Vector doI32Vector(VirtualFrame frame, LLVMGlobal addr,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
-            return LLVMMemory.getI32Vector(globalAccess.executeWithTarget(frame, addr), getSize());
+                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getI32Vector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         @Specialization
-        protected LLVMI32Vector doI32Vector(LLVMAddress addr) {
-            return LLVMMemory.getI32Vector(addr, getSize());
+        protected LLVMI32Vector doI32Vector(LLVMAddress addr,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getI32Vector(addr, getSize());
         }
 
         LLVMForeignReadNode createForeignRead() {
@@ -165,13 +173,15 @@ public class LLVMLoadVectorNode {
 
         @Specialization
         protected LLVMI64Vector doI64Vector(VirtualFrame frame, LLVMGlobal addr,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
-            return LLVMMemory.getI64Vector(globalAccess.executeWithTarget(frame, addr), getSize());
+                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getI64Vector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         @Specialization
-        protected LLVMI64Vector doI64Vector(LLVMAddress addr) {
-            return LLVMMemory.getI64Vector(addr, getSize());
+        protected LLVMI64Vector doI64Vector(LLVMAddress addr,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getI64Vector(addr, getSize());
         }
 
         LLVMForeignReadNode createForeignRead() {
@@ -192,13 +202,15 @@ public class LLVMLoadVectorNode {
 
         @Specialization
         protected LLVMFloatVector doFloatVector(VirtualFrame frame, LLVMGlobal addr,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
-            return LLVMMemory.getFloatVector(globalAccess.executeWithTarget(frame, addr), getSize());
+                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getFloatVector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         @Specialization
-        protected LLVMFloatVector doFloatVector(LLVMAddress addr) {
-            return LLVMMemory.getFloatVector(addr, getSize());
+        protected LLVMFloatVector doFloatVector(LLVMAddress addr,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getFloatVector(addr, getSize());
         }
 
         LLVMForeignReadNode createForeignRead() {
@@ -219,13 +231,15 @@ public class LLVMLoadVectorNode {
 
         @Specialization
         protected LLVMDoubleVector doDoubleVector(VirtualFrame frame, LLVMGlobal addr,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
-            return LLVMMemory.getDoubleVector(globalAccess.executeWithTarget(frame, addr), getSize());
+                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getDoubleVector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         @Specialization
-        protected LLVMDoubleVector doDoubleVector(LLVMAddress addr) {
-            return LLVMMemory.getDoubleVector(addr, getSize());
+        protected LLVMDoubleVector doDoubleVector(LLVMAddress addr,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getDoubleVector(addr, getSize());
         }
 
         LLVMForeignReadNode createForeignRead() {
@@ -246,13 +260,15 @@ public class LLVMLoadVectorNode {
 
         @Specialization
         protected LLVMAddressVector doAddressVector(VirtualFrame frame, LLVMGlobal addr,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
-            return LLVMMemory.getAddressVector(globalAccess.executeWithTarget(frame, addr), getSize());
+                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getAddressVector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         @Specialization
-        protected LLVMAddressVector doAddressVector(LLVMAddress addr) {
-            return LLVMMemory.getAddressVector(addr, getSize());
+        protected LLVMAddressVector doAddressVector(LLVMAddress addr,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getAddressVector(addr, getSize());
         }
 
         LLVMForeignReadNode createForeignRead() {

@@ -31,11 +31,10 @@ package com.oracle.truffle.llvm.runtime.types;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class PointerType extends AggregateType {
@@ -73,11 +72,7 @@ public final class PointerType extends AggregateType {
 
     @Override
     public int getSize(DataSpecConverter targetDataLayout) {
-        if (getPointeeType() instanceof FunctionType) {
-            return LLVMHeap.FUNCTION_PTR_SIZE_BYTE;
-        } else {
-            return LLVMAddress.WORD_LENGTH_BIT / Byte.SIZE;
-        }
+        return LLVMAddress.WORD_LENGTH_BIT / Byte.SIZE;
     }
 
     @Override

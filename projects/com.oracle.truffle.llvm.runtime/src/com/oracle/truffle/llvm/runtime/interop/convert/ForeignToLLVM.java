@@ -39,6 +39,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
@@ -181,29 +182,29 @@ public abstract class ForeignToLLVM extends LLVMNode {
 
     public static final class SlowPathForeignToLLVM extends ForeignToLLVM {
         @TruffleBoundary
-        public Object convert(Type type, LLVMContext context, Object value) {
-            return convert(ForeignToLLVM.convert(type), context, value);
+        public Object convert(Type type, LLVMMemory memory, LLVMContext context, Object value) {
+            return convert(memory, ForeignToLLVM.convert(type), context, value);
         }
 
         @TruffleBoundary
-        public Object convert(ForeignToLLVMType type, LLVMContext context, Object value) {
+        public Object convert(LLVMMemory memory, ForeignToLLVMType type, LLVMContext context, Object value) {
             switch (type) {
                 case ANY:
                     return ToAnyLLVM.slowPathPrimitiveConvert(this, value);
                 case DOUBLE:
-                    return ToDouble.slowPathPrimitiveConvert(this, context, value);
+                    return ToDouble.slowPathPrimitiveConvert(memory, this, context, value);
                 case FLOAT:
-                    return ToFloat.slowPathPrimitiveConvert(this, context, value);
+                    return ToFloat.slowPathPrimitiveConvert(memory, this, context, value);
                 case I1:
-                    return ToI1.slowPathPrimitiveConvert(this, context, value);
+                    return ToI1.slowPathPrimitiveConvert(memory, this, context, value);
                 case I16:
-                    return ToI16.slowPathPrimitiveConvert(this, context, value);
+                    return ToI16.slowPathPrimitiveConvert(memory, this, context, value);
                 case I32:
-                    return ToI32.slowPathPrimitiveConvert(this, context, value);
+                    return ToI32.slowPathPrimitiveConvert(memory, this, context, value);
                 case I64:
-                    return ToI64.slowPathPrimitiveConvert(this, context, value);
+                    return ToI64.slowPathPrimitiveConvert(memory, this, context, value);
                 case I8:
-                    return ToI8.slowPathPrimitiveConvert(this, context, value);
+                    return ToI8.slowPathPrimitiveConvert(memory, this, context, value);
                 case POINTER:
                     return ToPointer.slowPathPrimitiveConvert(this, value);
                 default:

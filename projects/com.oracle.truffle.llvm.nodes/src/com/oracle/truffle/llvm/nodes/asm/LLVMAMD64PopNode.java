@@ -50,9 +50,10 @@ public abstract class LLVMAMD64PopNode extends LLVMExpressionNode {
     public abstract static class LLVMAMD64PopwNode extends LLVMAMD64PopNode {
         @Specialization
         protected short doI16(VirtualFrame frame,
-                        @Cached("getStackPointerSlot()") FrameSlot slot) {
+                        @Cached("getStackPointerSlot()") FrameSlot slot,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
             long sp = FrameUtil.getLongSafe(frame, slot);
-            short value = LLVMMemory.getI16(sp);
+            short value = memory.getI16(sp);
             sp += LLVMExpressionNode.I16_SIZE_IN_BYTES;
             frame.setLong(slot, sp);
             return value;
@@ -62,9 +63,10 @@ public abstract class LLVMAMD64PopNode extends LLVMExpressionNode {
     public abstract static class LLVMAMD64PoplNode extends LLVMAMD64PopNode {
         @Specialization
         protected int doI32(VirtualFrame frame,
-                        @Cached("getStackPointerSlot()") FrameSlot slot) {
+                        @Cached("getStackPointerSlot()") FrameSlot slot,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
             long sp = FrameUtil.getLongSafe(frame, slot);
-            int value = LLVMMemory.getI32(sp);
+            int value = memory.getI32(sp);
             sp += LLVMExpressionNode.I32_SIZE_IN_BYTES;
             frame.setLong(slot, sp);
             return value;
@@ -74,9 +76,10 @@ public abstract class LLVMAMD64PopNode extends LLVMExpressionNode {
     public abstract static class LLVMAMD64PopqNode extends LLVMAMD64PopNode {
         @Specialization
         protected long doI64(VirtualFrame frame,
-                        @Cached("getStackPointerSlot()") FrameSlot slot) {
+                        @Cached("getStackPointerSlot()") FrameSlot slot,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
             long sp = FrameUtil.getLongSafe(frame, slot);
-            long value = LLVMMemory.getI64(sp);
+            long value = memory.getI64(sp);
             sp += LLVMExpressionNode.I64_SIZE_IN_BYTES;
             frame.setLong(slot, sp);
             return value;

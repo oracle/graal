@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.global;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
 public final class LLVMGlobalVariableDebugAccess {
 
@@ -43,12 +44,12 @@ public final class LLVMGlobalVariableDebugAccess {
         return global.isNative(context);
     }
 
-    public static LLVMAddress getNativeLocation(LLVMContext context, LLVMGlobal global) {
+    public static LLVMAddress getNativeLocation(LLVMMemory memory, LLVMContext context, LLVMGlobal global) {
         if (!isInNative(context, global)) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Global is not in native memory!");
         }
-        return global.getNative(context);
+        return global.getNative(memory, context);
     }
 
     public static Object getManagedValue(LLVMContext context, LLVMGlobal global) {

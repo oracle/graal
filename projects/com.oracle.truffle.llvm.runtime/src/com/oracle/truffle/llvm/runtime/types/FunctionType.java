@@ -37,7 +37,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class FunctionType extends Type {
@@ -98,7 +98,7 @@ public final class FunctionType extends Type {
 
     @Override
     public int getSize(DataSpecConverter targetDataLayout) {
-        return LLVMHeap.FUNCTION_PTR_SIZE_BYTE;
+        return LLVMAddress.WORD_LENGTH_BIT / Byte.SIZE;
     }
 
     @Override

@@ -646,22 +646,24 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
         public abstract LLVM80BitFloat execute(LLVM80BitFloat x, LLVM80BitFloat y);
 
         @Specialization
-        public LLVM80BitFloat doCall(LLVM80BitFloat x, LLVM80BitFloat y, @Cached("createFunction()") TruffleObject function) {
-            LLVMAddress mem = LLVMMemory.allocateMemory(3 * 16);
+        protected LLVM80BitFloat doCall(LLVM80BitFloat x, LLVM80BitFloat y,
+                        @Cached("createFunction()") TruffleObject function,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            LLVMAddress mem = memory.allocateMemory(3 * 16);
             LLVMAddress ptrX = mem;
             LLVMAddress ptrY = ptrX.increment(16);
             LLVMAddress ptrZ = ptrY.increment(16);
-            LLVMMemory.put80BitFloat(ptrX, x);
-            LLVMMemory.put80BitFloat(ptrY, y);
+            memory.put80BitFloat(ptrX, x);
+            memory.put80BitFloat(ptrY, y);
             try {
                 ForeignAccess.sendExecute(nativeExecute, function, ptrZ.getVal(), ptrX.getVal(), ptrY.getVal());
-                LLVM80BitFloat z = LLVMMemory.get80BitFloat(ptrZ);
+                LLVM80BitFloat z = memory.get80BitFloat(ptrZ);
                 return z;
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(e);
             } finally {
-                LLVMMemory.free(mem);
+                memory.free(mem);
             }
         }
 

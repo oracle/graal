@@ -36,7 +36,7 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -48,8 +48,9 @@ public abstract class LLVMFunctionStoreNode extends LLVMStoreNode {
 
     @Specialization
     protected Object doOp(VirtualFrame frame, LLVMAddress address, Object value,
-                    @Cached("toNative()") LLVMToNativeNode toNative) {
-        LLVMHeap.putFunctionPointer(address, toNative.executeWithTarget(frame, value).getVal());
+                    @Cached("toNative()") LLVMToNativeNode toNative,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        memory.putFunctionPointer(address, toNative.executeWithTarget(frame, value).getVal());
         return null;
     }
 

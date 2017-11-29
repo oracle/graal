@@ -37,6 +37,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
@@ -57,10 +58,22 @@ public final class LLVMGlobalWriteNode extends LLVMNode {
         return contextRef.get();
     }
 
+    @CompilationFinal private LLVMMemory memory;
+    @CompilationFinal private boolean memoryResolved = false;
+
+    private LLVMMemory getMemory() {
+        if (!memoryResolved) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            memory = getLLVMMemory();
+            memoryResolved = true;
+        }
+        return memory;
+    }
+
     public void put(VirtualFrame frame, LLVMGlobal global, Object object, LLVMToNativeNode toNative) {
         if (condition.profile(global.isNative(getContext()))) {
             LLVMAddress address = toNative.executeWithTarget(frame, object);
-            global.setNative(getContext(), address);
+            global.setNative(getMemory(), getContext(), address);
         } else {
             global.setFrame(getContext(), object);
         }
@@ -68,7 +81,7 @@ public final class LLVMGlobalWriteNode extends LLVMNode {
 
     public void putI1(LLVMGlobal global, boolean value) {
         if (condition.profile(global.isNative(getContext()))) {
-            global.setNativeI1(getContext(), value);
+            global.setNativeI1(getMemory(), getContext(), value);
         } else {
             global.setFrameI1(getContext(), value);
         }
@@ -76,7 +89,7 @@ public final class LLVMGlobalWriteNode extends LLVMNode {
 
     public void putI8(LLVMGlobal global, byte value) {
         if (condition.profile(global.isNative(getContext()))) {
-            global.setNativeI8(getContext(), value);
+            global.setNativeI8(getMemory(), getContext(), value);
         } else {
             global.setFrameI8(getContext(), value);
         }
@@ -84,7 +97,7 @@ public final class LLVMGlobalWriteNode extends LLVMNode {
 
     public void putI16(LLVMGlobal global, short value) {
         if (condition.profile(global.isNative(getContext()))) {
-            global.setNativeI16(getContext(), value);
+            global.setNativeI16(getMemory(), getContext(), value);
         } else {
             global.setFrameI16(getContext(), value);
         }
@@ -92,7 +105,7 @@ public final class LLVMGlobalWriteNode extends LLVMNode {
 
     public void putI32(LLVMGlobal global, int value) {
         if (condition.profile(global.isNative(getContext()))) {
-            global.setNativeI32(getContext(), value);
+            global.setNativeI32(getMemory(), getContext(), value);
         } else {
             global.setFrameI32(getContext(), value);
         }
@@ -100,7 +113,7 @@ public final class LLVMGlobalWriteNode extends LLVMNode {
 
     public void putI64(LLVMGlobal global, long value) {
         if (condition.profile(global.isNative(getContext()))) {
-            global.setNativeI64(getContext(), value);
+            global.setNativeI64(getMemory(), getContext(), value);
         } else {
             global.setFrameI64(getContext(), value);
         }
@@ -108,7 +121,7 @@ public final class LLVMGlobalWriteNode extends LLVMNode {
 
     public void putFloat(LLVMGlobal global, float value) {
         if (condition.profile(global.isNative(getContext()))) {
-            global.setNativeFloat(getContext(), value);
+            global.setNativeFloat(getMemory(), getContext(), value);
         } else {
             global.setFrameFloat(getContext(), value);
         }
@@ -116,7 +129,7 @@ public final class LLVMGlobalWriteNode extends LLVMNode {
 
     public void putDouble(LLVMGlobal global, double value) {
         if (condition.profile(global.isNative(getContext()))) {
-            global.setNativeDouble(getContext(), value);
+            global.setNativeDouble(getMemory(), getContext(), value);
         } else {
             global.setFrameDouble(getContext(), value);
         }

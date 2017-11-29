@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.memory;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -36,8 +37,8 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMFence extends LLVMExpressionNode {
 
     @Specialization
-    protected Object doOp() {
-        LLVMMemory.fullFence();
+    protected Object doOp(@Cached("getLLVMMemory()") LLVMMemory memory) {
+        memory.fullFence();
         return null;
     }
 }

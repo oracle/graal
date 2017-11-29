@@ -48,10 +48,10 @@ public final class LLVMThreadingStack {
         this.threadMap = new HashMap<>();
     }
 
-    public LLVMStack getStack() {
+    public LLVMStack getStack(LLVMMemory memory) {
         LLVMStack s = getCurrentStack();
         if (s == null) {
-            s = createNewStack();
+            s = createNewStack(memory);
         }
         return s;
     }
@@ -62,36 +62,36 @@ public final class LLVMThreadingStack {
     }
 
     @TruffleBoundary
-    private synchronized LLVMStack createNewStack() {
-        LLVMStack s = new LLVMStack(stackSize);
+    private synchronized LLVMStack createNewStack(LLVMMemory memory) {
+        LLVMStack s = new LLVMStack(memory, stackSize);
         stack.set(s);
         threadMap.put(Thread.currentThread(), s);
         return s;
     }
 
     @TruffleBoundary
-    public void freeStack(Thread thread) {
+    public void freeStack(LLVMMemory memory, Thread thread) {
         /*
          * Do not free the main thread: Sulong#disposeThread runs before Sulong#disposeContext,
          * which needs to call destructors that need a SP.
          */
         if (mainThread != Thread.currentThread()) {
             LLVMStack s = threadMap.get(thread);
-            free(s);
+            free(memory, s);
         }
     }
 
-    private static void free(LLVMStack s) {
+    private static void free(LLVMMemory memory, LLVMStack s) {
         if (s != null) {
-            s.free();
+            s.free(memory);
         }
     }
 
     @TruffleBoundary
-    public void freeMainStack() {
+    public void freeMainStack(LLVMMemory memory) {
         assert mainThread == Thread.currentThread();
         assert stack.get() == threadMap.get(Thread.currentThread());
         LLVMStack s = threadMap.get(Thread.currentThread());
-        free(s);
+        free(memory, s);
     }
 }

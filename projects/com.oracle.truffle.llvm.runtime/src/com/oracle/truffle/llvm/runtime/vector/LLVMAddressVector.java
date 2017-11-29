@@ -33,10 +33,8 @@ import java.util.Arrays;
 import java.util.function.BiFunction;
 
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
 public final class LLVMAddressVector {
-    private static final int ADDRESS_LENGTH = 8; // Sulong only supports 64 bit addresses
     private final long[] vector;    // no LLVMAddress stored to improve performance
 
     public static LLVMAddressVector create(LLVMAddress[] vector) {
@@ -49,24 +47,6 @@ public final class LLVMAddressVector {
 
     public static LLVMAddressVector createNullVector() {
         return new LLVMAddressVector();
-    }
-
-    public static LLVMAddressVector readVectorFromMemory(LLVMAddress address, int size) {
-        LLVMAddress[] vector = new LLVMAddress[size];
-        long currentPtr = address.getVal();
-        for (int i = 0; i < size; i++) {
-            vector[i] = LLVMMemory.getAddress(currentPtr);
-            currentPtr += ADDRESS_LENGTH;
-        }
-        return create(vector);
-    }
-
-    public static void writeVectorToMemory(LLVMAddress address, LLVMAddressVector vector) {
-        long currentPtr = address.getVal();
-        for (int i = 0; i < vector.getLength(); i++) {
-            LLVMMemory.putAddress(currentPtr, vector.getValue(i));
-            currentPtr += ADDRESS_LENGTH;
-        }
     }
 
     private LLVMAddressVector(LLVMAddress[] vector) {

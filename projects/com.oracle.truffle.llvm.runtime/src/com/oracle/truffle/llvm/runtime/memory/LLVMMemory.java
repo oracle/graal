@@ -51,15 +51,12 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 import sun.misc.Unsafe;
 
-public abstract class LLVMMemory {
+@SuppressWarnings("static-method")
+public final class LLVMMemory {
 
-    private static final Unsafe UNSAFE = initializeUnsafe();
+    private static final Unsafe unsafe = getUnsafe();
 
-    public static Unsafe getUnsafe() {
-        return UNSAFE;
-    }
-
-    private static Unsafe initializeUnsafe() {
+    private static Unsafe getUnsafe() {
         CompilerAsserts.neverPartOfCompilation();
         try {
             Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
@@ -70,11 +67,20 @@ public abstract class LLVMMemory {
         }
     }
 
+    private static final LLVMMemory INSTANCE = new LLVMMemory();
+
+    public static LLVMMemory getInstance() {
+        return INSTANCE;
+    }
+
+    private LLVMMemory() {
+    }
+
     /** Use {@link com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode} instead. */
     @Deprecated
-    public static void memset(LLVMAddress address, long size, byte value) {
+    public void memset(LLVMAddress address, long size, byte value) {
         try {
-            getUnsafe().setMemory(address.getVal(), size, value);
+            unsafe.setMemory(address.getVal(), size, value);
         } catch (Throwable e) {
             // this avoids unnecessary exception edges in the compiled code
             CompilerDirectives.transferToInterpreter();
@@ -84,17 +90,17 @@ public abstract class LLVMMemory {
 
     /** Use {@link com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode} instead. */
     @Deprecated
-    public static void copyMemory(long sourceAddress, long targetAddress, long length) {
-        getUnsafe().copyMemory(sourceAddress, targetAddress, length);
+    public void copyMemory(long sourceAddress, long targetAddress, long length) {
+        unsafe.copyMemory(sourceAddress, targetAddress, length);
     }
 
-    public static void free(LLVMAddress address) {
+    public void free(LLVMAddress address) {
         free(address.getVal());
     }
 
-    public static void free(long address) {
+    public void free(long address) {
         try {
-            getUnsafe().freeMemory(address);
+            unsafe.freeMemory(address);
         } catch (Throwable e) {
             // this avoids unnecessary exception edges in the compiled code
             CompilerDirectives.transferToInterpreter();
@@ -102,9 +108,9 @@ public abstract class LLVMMemory {
         }
     }
 
-    public static LLVMAddress allocateMemory(long size) {
+    public LLVMAddress allocateMemory(long size) {
         try {
-            return LLVMAddress.fromLong(getUnsafe().allocateMemory(size));
+            return LLVMAddress.fromLong(unsafe.allocateMemory(size));
         } catch (Throwable e) {
             // this avoids unnecessary exception edges in the compiled code
             CompilerDirectives.transferToInterpreter();
@@ -112,10 +118,10 @@ public abstract class LLVMMemory {
         }
     }
 
-    public static LLVMAddress reallocateMemory(LLVMAddress addr, long size) {
+    public LLVMAddress reallocateMemory(LLVMAddress addr, long size) {
         // a null pointer is a valid argument
         try {
-            return LLVMAddress.fromLong(getUnsafe().reallocateMemory(addr.getVal(), size));
+            return LLVMAddress.fromLong(unsafe.reallocateMemory(addr.getVal(), size));
         } catch (Throwable e) {
             // this avoids unnecessary exception edges in the compiled code
             CompilerDirectives.transferToInterpreter();
@@ -123,43 +129,43 @@ public abstract class LLVMMemory {
         }
     }
 
-    public static boolean getI1(LLVMAddress addr) {
+    public boolean getI1(LLVMAddress addr) {
         return getI1(addr.getVal());
     }
 
-    public static boolean getI1(long ptr) {
+    public boolean getI1(long ptr) {
         assert ptr != 0;
-        return getUnsafe().getByte(ptr) != 0;
+        return unsafe.getByte(ptr) != 0;
     }
 
-    public static byte getI8(LLVMAddress addr) {
+    public byte getI8(LLVMAddress addr) {
         return getI8(addr.getVal());
     }
 
-    public static byte getI8(long ptr) {
+    public byte getI8(long ptr) {
         assert ptr != 0;
-        return getUnsafe().getByte(ptr);
+        return unsafe.getByte(ptr);
     }
 
-    public static short getI16(LLVMAddress addr) {
+    public short getI16(LLVMAddress addr) {
         return getI16(addr.getVal());
     }
 
-    public static short getI16(long ptr) {
+    public short getI16(long ptr) {
         assert ptr != 0;
-        return getUnsafe().getShort(ptr);
+        return unsafe.getShort(ptr);
     }
 
-    public static int getI32(LLVMAddress addr) {
+    public int getI32(LLVMAddress addr) {
         return getI32(addr.getVal());
     }
 
-    public static int getI32(long ptr) {
+    public int getI32(long ptr) {
         assert ptr != 0;
-        return getUnsafe().getInt(ptr);
+        return unsafe.getInt(ptr);
     }
 
-    public static LLVMIVarBit getIVarBit(LLVMAddress addr, int bitWidth) {
+    public LLVMIVarBit getIVarBit(LLVMAddress addr, int bitWidth) {
         if (bitWidth % Byte.SIZE != 0) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError();
@@ -174,34 +180,34 @@ public abstract class LLVMMemory {
         return LLVMIVarBit.create(bitWidth, loadedBytes, bitWidth, false);
     }
 
-    public static long getI64(LLVMAddress addr) {
+    public long getI64(LLVMAddress addr) {
         return getI64(addr.getVal());
     }
 
-    public static long getI64(long ptr) {
+    public long getI64(long ptr) {
         assert ptr != 0;
-        return getUnsafe().getLong(ptr);
+        return unsafe.getLong(ptr);
     }
 
-    public static float getFloat(LLVMAddress addr) {
+    public float getFloat(LLVMAddress addr) {
         return getFloat(addr.getVal());
     }
 
-    public static float getFloat(long ptr) {
+    public float getFloat(long ptr) {
         assert ptr != 0;
-        return getUnsafe().getFloat(ptr);
+        return unsafe.getFloat(ptr);
     }
 
-    public static double getDouble(LLVMAddress addr) {
+    public double getDouble(LLVMAddress addr) {
         return getDouble(addr.getVal());
     }
 
-    public static double getDouble(long ptr) {
+    public double getDouble(long ptr) {
         assert ptr != 0;
-        return getUnsafe().getDouble(ptr);
+        return unsafe.getDouble(ptr);
     }
 
-    public static LLVM80BitFloat get80BitFloat(LLVMAddress addr) {
+    public LLVM80BitFloat get80BitFloat(LLVMAddress addr) {
         byte[] bytes = new byte[LLVM80BitFloat.BYTE_WIDTH];
         long currentPtr = addr.getVal();
         for (int i = 0; i < bytes.length; i++) {
@@ -211,61 +217,61 @@ public abstract class LLVMMemory {
         return LLVM80BitFloat.fromBytes(bytes);
     }
 
-    public static LLVMAddress getAddress(LLVMAddress addr) {
+    public LLVMAddress getAddress(LLVMAddress addr) {
         return getAddress(addr.getVal());
     }
 
-    public static LLVMAddress getAddress(long ptr) {
+    public LLVMAddress getAddress(long ptr) {
         assert ptr != 0;
-        return LLVMAddress.fromLong(getUnsafe().getAddress(ptr));
+        return LLVMAddress.fromLong(unsafe.getAddress(ptr));
     }
 
-    public static void putI1(LLVMAddress addr, boolean value) {
+    public void putI1(LLVMAddress addr, boolean value) {
         putI1(addr.getVal(), value);
     }
 
-    public static void putI1(long ptr, boolean value) {
+    public void putI1(long ptr, boolean value) {
         assert ptr != 0;
-        getUnsafe().putByte(ptr, (byte) (value ? 1 : 0));
+        unsafe.putByte(ptr, (byte) (value ? 1 : 0));
     }
 
-    public static void putI8(LLVMAddress addr, byte value) {
+    public void putI8(LLVMAddress addr, byte value) {
         putI8(addr.getVal(), value);
     }
 
-    public static void putI8(long ptr, byte value) {
+    public void putI8(long ptr, byte value) {
         assert ptr != 0;
-        getUnsafe().putByte(ptr, value);
+        unsafe.putByte(ptr, value);
     }
 
-    public static void putI16(LLVMAddress addr, short value) {
+    public void putI16(LLVMAddress addr, short value) {
         putI16(addr.getVal(), value);
     }
 
-    public static void putI16(long ptr, short value) {
+    public void putI16(long ptr, short value) {
         assert ptr != 0;
-        getUnsafe().putShort(ptr, value);
+        unsafe.putShort(ptr, value);
     }
 
-    public static void putI32(LLVMAddress addr, int value) {
+    public void putI32(LLVMAddress addr, int value) {
         putI32(addr.getVal(), value);
     }
 
-    public static void putI32(long ptr, int value) {
+    public void putI32(long ptr, int value) {
         assert ptr != 0;
-        getUnsafe().putInt(ptr, value);
+        unsafe.putInt(ptr, value);
     }
 
-    public static void putI64(LLVMAddress addr, long value) {
+    public void putI64(LLVMAddress addr, long value) {
         putI64(addr.getVal(), value);
     }
 
-    public static void putI64(long ptr, long value) {
+    public void putI64(long ptr, long value) {
         assert ptr != 0;
-        getUnsafe().putLong(ptr, value);
+        unsafe.putLong(ptr, value);
     }
 
-    public static void putIVarBit(LLVMAddress addr, LLVMIVarBit value) {
+    public void putIVarBit(LLVMAddress addr, LLVMIVarBit value) {
         byte[] bytes = value.getBytes();
         long currentptr = addr.getVal();
         for (int i = bytes.length - 1; i >= 0; i--) {
@@ -274,11 +280,11 @@ public abstract class LLVMMemory {
         }
     }
 
-    private static void putByteArray(LLVMAddress addr, byte[] bytes) {
+    private void putByteArray(LLVMAddress addr, byte[] bytes) {
         putByteArray(addr.getVal(), bytes);
     }
 
-    private static void putByteArray(long ptr, byte[] bytes) {
+    private void putByteArray(long ptr, byte[] bytes) {
         long currentptr = ptr;
         for (int i = 0; i < bytes.length; i++) {
             putI8(currentptr, bytes[i]);
@@ -286,113 +292,229 @@ public abstract class LLVMMemory {
         }
     }
 
-    public static void putFloat(LLVMAddress addr, float value) {
+    public void putFloat(LLVMAddress addr, float value) {
         putFloat(addr.getVal(), value);
     }
 
-    public static void putFloat(long ptr, float value) {
+    public void putFloat(long ptr, float value) {
         assert ptr != 0;
-        getUnsafe().putFloat(ptr, value);
+        unsafe.putFloat(ptr, value);
     }
 
-    public static void putDouble(LLVMAddress addr, double value) {
+    public void putDouble(LLVMAddress addr, double value) {
         putDouble(addr.getVal(), value);
     }
 
-    public static void putDouble(long ptr, double value) {
+    public void putDouble(long ptr, double value) {
         assert ptr != 0;
-        getUnsafe().putDouble(ptr, value);
+        unsafe.putDouble(ptr, value);
     }
 
-    public static void put80BitFloat(LLVMAddress addr, LLVM80BitFloat value) {
+    public void put80BitFloat(LLVMAddress addr, LLVM80BitFloat value) {
         putByteArray(addr, value.getBytes());
     }
 
-    public static void put80BitFloat(long ptr, LLVM80BitFloat value) {
+    public void put80BitFloat(long ptr, LLVM80BitFloat value) {
         putByteArray(ptr, value.getBytes());
     }
 
-    public static void putAddress(LLVMAddress addr, LLVMAddress value) {
+    public void putAddress(LLVMAddress addr, LLVMAddress value) {
         putAddress(addr.getVal(), value);
     }
 
-    public static void putAddress(LLVMAddress addr, long ptrValue) {
+    public void putAddress(LLVMAddress addr, long ptrValue) {
         putAddress(addr.getVal(), ptrValue);
     }
 
-    public static void putAddress(long ptr, LLVMAddress value) {
+    public void putAddress(long ptr, LLVMAddress value) {
         putAddress(ptr, value.getVal());
     }
 
-    public static void putAddress(long ptr, long ptrValue) {
+    public void putAddress(long ptr, long ptrValue) {
         assert ptr != 0;
-        getUnsafe().putAddress(ptr, ptrValue);
+        unsafe.putAddress(ptr, ptrValue);
     }
 
-    public static LLVMI32Vector getI32Vector(LLVMAddress addr, int size) {
-        return LLVMI32Vector.readVectorFromMemory(addr, size);
+    private static final int I32_SIZE = 4;
+    private static final int I8_SIZE = 1;
+    private static final int I1_SIZE = 1;
+    private static final int I16_SIZE = 2;
+    private static final int I64_SIZE = 8;
+    private static final int FLOAT_SIZE = 4;
+    private static final int DOUBLE_SIZE = 8;
+    private static final int ADDRESS_LENGTH = 8;
+
+    public LLVMI32Vector getI32Vector(LLVMAddress address, int size) {
+        int[] vector = new int[size];
+        long currentPtr = address.getVal();
+        for (int i = 0; i < size; i++) {
+            vector[i] = getI32(currentPtr);
+            currentPtr += I32_SIZE;
+        }
+        return LLVMI32Vector.create(vector);
     }
 
-    public static LLVMI8Vector getI8Vector(LLVMAddress addr, int size) {
-        return LLVMI8Vector.readVectorFromMemory(addr, size);
+    public LLVMI8Vector getI8Vector(LLVMAddress address, int size) {
+        byte[] vector = new byte[size];
+        long currentPtr = address.getVal();
+        for (int i = 0; i < size; i++) {
+            vector[i] = getI8(currentPtr);
+            currentPtr += I8_SIZE;
+        }
+        return LLVMI8Vector.create(vector);
     }
 
-    public static LLVMI1Vector getI1Vector(LLVMAddress addr, int size) {
-        return LLVMI1Vector.readVectorFromMemory(addr, size);
+    public LLVMI1Vector getI1Vector(LLVMAddress address, int size) {
+        boolean[] vector = new boolean[size];
+        long currentPtr = address.getVal();
+        for (int i = 0; i < size; i++) {
+            vector[i] = getI1(currentPtr);
+            currentPtr += I1_SIZE;
+        }
+        return LLVMI1Vector.create(vector);
     }
 
-    public static LLVMI16Vector getI16Vector(LLVMAddress addr, int size) {
-        return LLVMI16Vector.readVectorFromMemory(addr, size);
+    public LLVMI16Vector getI16Vector(LLVMAddress address, int size) {
+        short[] vector = new short[size];
+        long currentPtr = address.getVal();
+        for (int i = 0; i < size; i++) {
+            vector[i] = getI16(currentPtr);
+            currentPtr += I16_SIZE;
+        }
+        return LLVMI16Vector.create(vector);
     }
 
-    public static LLVMI64Vector getI64Vector(LLVMAddress addr, int size) {
-        return LLVMI64Vector.readVectorFromMemory(addr, size);
+    public LLVMI64Vector getI64Vector(LLVMAddress address, int size) {
+        long[] vector = new long[size];
+        long currentPtr = address.getVal();
+        for (int i = 0; i < size; i++) {
+            vector[i] = getI64(currentPtr);
+            currentPtr += I64_SIZE;
+        }
+        return LLVMI64Vector.create(vector);
     }
 
-    public static LLVMFloatVector getFloatVector(LLVMAddress addr, int size) {
-        return LLVMFloatVector.readVectorFromMemory(addr, size);
+    public LLVMFloatVector getFloatVector(LLVMAddress address, int size) {
+        float[] vector = new float[size];
+        long currentPtr = address.getVal();
+        for (int i = 0; i < size; i++) {
+            vector[i] = getFloat(currentPtr);
+            currentPtr += FLOAT_SIZE;
+        }
+        return LLVMFloatVector.create(vector);
     }
 
-    public static LLVMDoubleVector getDoubleVector(LLVMAddress addr, int size) {
-        return LLVMDoubleVector.readVectorFromMemory(addr, size);
+    public LLVMDoubleVector getDoubleVector(LLVMAddress address, int size) {
+        double[] vector = new double[size];
+        long currentPtr = address.getVal();
+        for (int i = 0; i < size; i++) {
+            vector[i] = getDouble(currentPtr);
+            currentPtr += DOUBLE_SIZE;
+        }
+        return LLVMDoubleVector.create(vector);
     }
 
-    public static LLVMAddressVector getAddressVector(LLVMAddress addr, int size) {
-        return LLVMAddressVector.readVectorFromMemory(addr, size);
+    public LLVMAddressVector getAddressVector(LLVMAddress address, int size) {
+        LLVMAddress[] vector = new LLVMAddress[size];
+        long currentPtr = address.getVal();
+        for (int i = 0; i < size; i++) {
+            vector[i] = getAddress(currentPtr);
+            currentPtr += ADDRESS_LENGTH;
+        }
+        return LLVMAddressVector.create(vector);
     }
 
     // watch out for casts such as I32* to I32Vector* when changing the way how vectors are
     // implemented
-    public static void putVector(LLVMAddress addr, LLVMDoubleVector vector) {
-        LLVMDoubleVector.writeVectorToMemory(addr, vector);
+    public void putVector(LLVMAddress address, LLVMDoubleVector vector) {
+        long currentPtr = address.getVal();
+        for (int i = 0; i < vector.getLength(); i++) {
+            putDouble(currentPtr, vector.getValue(i));
+            currentPtr += DOUBLE_SIZE;
+        }
     }
 
-    public static void putVector(LLVMAddress addr, LLVMFloatVector vector) {
-        LLVMFloatVector.writeVectorToMemory(addr, vector);
+    public void putVector(LLVMAddress address, LLVMFloatVector vector) {
+        long currentPtr = address.getVal();
+        for (int i = 0; i < vector.getLength(); i++) {
+            putFloat(currentPtr, vector.getValue(i));
+            currentPtr += FLOAT_SIZE;
+        }
     }
 
-    public static void putVector(LLVMAddress addr, LLVMI16Vector vector) {
-        LLVMI16Vector.writeVectorToMemory(addr, vector);
+    public void putVector(LLVMAddress address, LLVMI16Vector vector) {
+        long currentPtr = address.getVal();
+        for (int i = 0; i < vector.getLength(); i++) {
+            putI16(currentPtr, vector.getValue(i));
+            currentPtr += I16_SIZE;
+        }
     }
 
-    public static void putVector(LLVMAddress addr, LLVMI1Vector vector) {
-        LLVMI1Vector.writeVectorToMemory(addr, vector);
+    public void putVector(LLVMAddress address, LLVMI1Vector vector) {
+        long currentPtr = address.getVal();
+        for (int i = 0; i < vector.getLength(); i++) {
+            putI1(currentPtr, vector.getValue(i));
+            currentPtr += I1_SIZE;
+        }
     }
 
-    public static void putVector(LLVMAddress addr, LLVMI32Vector vector) {
-        LLVMI32Vector.writeVectorToMemory(addr, vector);
+    public void putVector(LLVMAddress address, LLVMI32Vector vector) {
+        long currentPtr = address.getVal();
+        for (int i = 0; i < vector.getLength(); i++) {
+            putI32(currentPtr, vector.getValue(i));
+            currentPtr += I32_SIZE;
+        }
     }
 
-    public static void putVector(LLVMAddress addr, LLVMI64Vector vector) {
-        LLVMI64Vector.writeVectorToMemory(addr, vector);
+    public void putVector(LLVMAddress address, LLVMI64Vector vector) {
+        long currentPtr = address.getVal();
+        for (int i = 0; i < vector.getLength(); i++) {
+            putI64(currentPtr, vector.getValue(i));
+            currentPtr += I64_SIZE;
+        }
     }
 
-    public static void putVector(LLVMAddress addr, LLVMI8Vector vector) {
-        LLVMI8Vector.writeVectorToMemory(addr, vector);
+    public void putVector(LLVMAddress address, LLVMI8Vector vector) {
+        long currentPtr = address.getVal();
+        for (int i = 0; i < vector.getLength(); i++) {
+            putI8(currentPtr, vector.getValue(i));
+            currentPtr += I8_SIZE;
+        }
     }
 
-    public static void putVector(LLVMAddress addr, LLVMAddressVector vector) {
-        LLVMAddressVector.writeVectorToMemory(addr, vector);
+    public void putVector(LLVMAddress address, LLVMAddressVector vector) {
+        long currentPtr = address.getVal();
+        for (int i = 0; i < vector.getLength(); i++) {
+            putAddress(currentPtr, vector.getValue(i));
+            currentPtr += ADDRESS_LENGTH;
+        }
+    }
+
+    public LLVMAddress allocateCString(String string) {
+        LLVMAddress baseAddress = allocateMemory(string.length() + 1);
+        long currentAddress = baseAddress.getVal();
+        for (int i = 0; i < string.length(); i++) {
+            byte c = (byte) string.charAt(i);
+            putI8(currentAddress, c);
+            currentAddress++;
+        }
+        putI8(currentAddress, (byte) 0);
+        return baseAddress;
+    }
+
+    // current hack: we cannot directly store the LLVMFunction in the native memory due to GC
+    public static final int FUNCTION_PTR_SIZE_BYTE = 8;
+
+    public void putFunctionPointer(LLVMAddress address, long functionIndex) {
+        putI64(address, functionIndex);
+    }
+
+    public void putFunctionPointer(long ptr, long functionIndex) {
+        putI64(ptr, functionIndex);
+    }
+
+    public long getFunctionPointer(LLVMAddress addr) {
+        return getI64(addr);
     }
 
     @ValueType
@@ -414,13 +536,13 @@ public abstract class LLVMMemory {
         }
     }
 
-    public static CMPXCHGI32 compareAndSwapI32(LLVMAddress p, int comparisonValue, int newValue) {
+    public CMPXCHGI32 compareAndSwapI32(LLVMAddress p, int comparisonValue, int newValue) {
         while (true) {
-            boolean b = getUnsafe().compareAndSwapInt(null, p.getVal(), comparisonValue, newValue);
+            boolean b = unsafe.compareAndSwapInt(null, p.getVal(), comparisonValue, newValue);
             if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, b)) {
                 return new CMPXCHGI32(comparisonValue, b);
             } else {
-                int t = getUnsafe().getIntVolatile(null, p.getVal());
+                int t = unsafe.getIntVolatile(null, p.getVal());
                 if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, t == comparisonValue)) {
                     continue;
                 } else {
@@ -449,13 +571,13 @@ public abstract class LLVMMemory {
         }
     }
 
-    public static CMPXCHGI64 compareAndSwapI64(LLVMAddress p, long comparisonValue, long newValue) {
+    public CMPXCHGI64 compareAndSwapI64(LLVMAddress p, long comparisonValue, long newValue) {
         while (true) {
-            boolean b = getUnsafe().compareAndSwapLong(null, p.getVal(), comparisonValue, newValue);
+            boolean b = unsafe.compareAndSwapLong(null, p.getVal(), comparisonValue, newValue);
             if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, b)) {
                 return new CMPXCHGI64(comparisonValue, b);
             } else {
-                long t = getUnsafe().getLongVolatile(null, p.getVal());
+                long t = unsafe.getLongVolatile(null, p.getVal());
                 if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, t == comparisonValue)) {
                     continue;
                 } else {
@@ -502,17 +624,17 @@ public abstract class LLVMMemory {
         return (value & ~(0xFF << (index * 8))) | ((replaceByte & 0xFF) << (index * 8));
     }
 
-    public static CMPXCHGI8 compareAndSwapI8(LLVMAddress p, byte comparisonValue, byte newValue) {
+    public CMPXCHGI8 compareAndSwapI8(LLVMAddress p, byte comparisonValue, byte newValue) {
         int byteIndex = getI8Index(p.getVal());
         long address = alignToI32(p.getVal());
         while (true) {
-            int t = getUnsafe().getIntVolatile(null, address);
+            int t = unsafe.getIntVolatile(null, address);
             byte b = getI8At(t, byteIndex);
             if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, b != comparisonValue)) {
                 return new CMPXCHGI8(b, false);
             } else {
                 int newVal = replaceI8(byteIndex, t, newValue);
-                boolean c = getUnsafe().compareAndSwapInt(null, address, t, newVal);
+                boolean c = unsafe.compareAndSwapInt(null, address, t, newVal);
                 if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, c)) {
                     return new CMPXCHGI8(comparisonValue, true);
                 } else {
@@ -554,17 +676,17 @@ public abstract class LLVMMemory {
         return (value & ~(0xFFFF << (index * 16))) | ((replace & 0xFFFF) << (index * 16));
     }
 
-    public static CMPXCHGI16 compareAndSwapI16(LLVMAddress p, short comparisonValue, short newValue) {
+    public CMPXCHGI16 compareAndSwapI16(LLVMAddress p, short comparisonValue, short newValue) {
         int idx = getI16Index(p.getVal());
         long address = alignToI32(p.getVal());
         while (true) {
-            int t = getUnsafe().getIntVolatile(null, address);
+            int t = unsafe.getIntVolatile(null, address);
             short b = getI16At(t, idx);
             if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, b != comparisonValue)) {
                 return new CMPXCHGI16(b, false);
             } else {
                 int newVal = replaceI16(idx, t, newValue);
-                boolean c = getUnsafe().compareAndSwapInt(null, address, t, newVal);
+                boolean c = unsafe.compareAndSwapInt(null, address, t, newVal);
                 if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, c)) {
                     return new CMPXCHGI16(comparisonValue, true);
                 } else {
@@ -574,53 +696,53 @@ public abstract class LLVMMemory {
         }
     }
 
-    public static long getAndSetI64(LLVMAddress address, long value) {
-        return getUnsafe().getAndSetLong(null, address.getVal(), value);
+    public long getAndSetI64(LLVMAddress address, long value) {
+        return unsafe.getAndSetLong(null, address.getVal(), value);
     }
 
-    public static long getAndAddI64(LLVMAddress address, long value) {
-        return getUnsafe().getAndAddLong(null, address.getVal(), value);
+    public long getAndAddI64(LLVMAddress address, long value) {
+        return unsafe.getAndAddLong(null, address.getVal(), value);
     }
 
-    public static long getAndSubI64(LLVMAddress address, long value) {
-        return getUnsafe().getAndAddLong(null, address.getVal(), -value);
+    public long getAndSubI64(LLVMAddress address, long value) {
+        return unsafe.getAndAddLong(null, address.getVal(), -value);
     }
 
-    public static long getAndOpI64(LLVMAddress address, long value, LongBinaryOperator f) {
+    public long getAndOpI64(LLVMAddress address, long value, LongBinaryOperator f) {
         long addr = address.getVal();
         long old;
         long nevv;
         do {
             old = getI64(address);
             nevv = f.applyAsLong(old, value);
-        } while (!getUnsafe().compareAndSwapLong(null, addr, old, nevv));
+        } while (!unsafe.compareAndSwapLong(null, addr, old, nevv));
         return old;
     }
 
-    public static int getAndSetI32(LLVMAddress address, int value) {
-        return getUnsafe().getAndSetInt(null, address.getVal(), value);
+    public int getAndSetI32(LLVMAddress address, int value) {
+        return unsafe.getAndSetInt(null, address.getVal(), value);
     }
 
-    public static int getAndAddI32(LLVMAddress address, int value) {
-        return getUnsafe().getAndAddInt(null, address.getVal(), value);
+    public int getAndAddI32(LLVMAddress address, int value) {
+        return unsafe.getAndAddInt(null, address.getVal(), value);
     }
 
-    public static int getAndSubI32(LLVMAddress address, int value) {
-        return getUnsafe().getAndAddInt(null, address.getVal(), -value);
+    public int getAndSubI32(LLVMAddress address, int value) {
+        return unsafe.getAndAddInt(null, address.getVal(), -value);
     }
 
-    public static int getAndOpI32(LLVMAddress address, int value, IntBinaryOperator f) {
+    public int getAndOpI32(LLVMAddress address, int value, IntBinaryOperator f) {
         long addr = address.getVal();
         int old;
         int nevv;
         do {
             old = getI32(address);
             nevv = f.applyAsInt(old, value);
-        } while (!getUnsafe().compareAndSwapInt(null, addr, old, nevv));
+        } while (!unsafe.compareAndSwapInt(null, addr, old, nevv));
         return old;
     }
 
-    public static short getAndOpI16(LLVMAddress address, short value, BinaryOperator<Short> f) {
+    public short getAndOpI16(LLVMAddress address, short value, BinaryOperator<Short> f) {
         short old;
         short nevv;
         do {
@@ -630,7 +752,7 @@ public abstract class LLVMMemory {
         return old;
     }
 
-    public static byte getAndOpI8(LLVMAddress address, byte value, BinaryOperator<Byte> f) {
+    public byte getAndOpI8(LLVMAddress address, byte value, BinaryOperator<Byte> f) {
         byte old;
         byte nevv;
         do {
@@ -640,7 +762,7 @@ public abstract class LLVMMemory {
         return old;
     }
 
-    public static boolean getAndOpI1(LLVMAddress address, boolean value, BinaryOperator<Boolean> f) {
+    public boolean getAndOpI1(LLVMAddress address, boolean value, BinaryOperator<Boolean> f) {
         byte old;
         boolean nevv;
         do {
@@ -650,7 +772,7 @@ public abstract class LLVMMemory {
         return old != 0;
     }
 
-    public static void fullFence() {
-        getUnsafe().fullFence();
+    public void fullFence() {
+        unsafe.fullFence();
     }
 }

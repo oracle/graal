@@ -39,7 +39,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
@@ -57,19 +57,21 @@ public abstract class LLVMFunctionArrayLiteralNode extends LLVMExpressionNode {
     @Specialization
     protected LLVMAddress handleGlobal(VirtualFrame frame, LLVMGlobal global,
                     @Cached("toNative()") LLVMToNativeNode globalAccess,
-                    @Cached("toNative()") LLVMToNativeNode toNative) {
-        return handleAddress(frame, globalAccess.executeWithTarget(frame, global), toNative);
+                    @Cached("toNative()") LLVMToNativeNode toNative,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        return handleAddress(frame, globalAccess.executeWithTarget(frame, global), toNative, memory);
     }
 
     @Specialization
     @ExplodeLoop
     protected LLVMAddress handleAddress(VirtualFrame frame, LLVMAddress addr,
-                    @Cached("toNative()") LLVMToNativeNode toNative) {
+                    @Cached("toNative()") LLVMToNativeNode toNative,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
         long currentPtr = addr.getVal();
         for (int i = 0; i < values.length; i++) {
             try {
                 LLVMFunctionDescriptor currentValue = (LLVMFunctionDescriptor) values[i].executeTruffleObject(frame);
-                LLVMHeap.putFunctionPointer(currentPtr, toNative.executeWithTarget(frame, currentValue).getVal());
+                memory.putFunctionPointer(currentPtr, toNative.executeWithTarget(frame, currentValue).getVal());
                 currentPtr += stride;
             } catch (UnexpectedResultException e) {
                 CompilerDirectives.transferToInterpreter();

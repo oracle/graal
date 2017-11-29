@@ -53,17 +53,18 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMTruffleReadNString extends LLVMIntrinsic {
 
     @Specialization
-    protected Object doIntrinsic(LLVMAddress value, int n) {
-        return getString(value, n);
+    protected Object doIntrinsic(LLVMAddress value, int n,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        return getString(memory, value, n);
     }
 
     @TruffleBoundary
-    private static Object getString(LLVMAddress value, int n) {
+    private static Object getString(LLVMMemory memory, LLVMAddress value, int n) {
         long ptr = value.getVal();
         int count = n < 0 ? 0 : n;
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < count; i++) {
-            sb.append((char) Byte.toUnsignedInt(LLVMMemory.getI8(ptr)));
+            sb.append((char) Byte.toUnsignedInt(memory.getI8(ptr)));
             ptr += Byte.BYTES;
         }
         return sb.toString();

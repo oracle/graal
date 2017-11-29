@@ -42,6 +42,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
@@ -134,7 +135,7 @@ abstract class ToI1 extends ForeignToLLVM {
     }
 
     @TruffleBoundary
-    static boolean slowPathPrimitiveConvert(ForeignToLLVM thiz, LLVMContext context, Object value) {
+    static boolean slowPathPrimitiveConvert(LLVMMemory memory, ForeignToLLVM thiz, LLVMContext context, Object value) {
         if (value instanceof Number) {
             return ((Number) value).longValue() != 0;
         } else if (value instanceof Boolean) {
@@ -146,13 +147,13 @@ abstract class ToI1 extends ForeignToLLVM {
         } else if (value instanceof LLVMFunctionDescriptor) {
             return ((LLVMFunctionDescriptor) value).toNative().asPointer() != 0;
         } else if (value instanceof LLVMBoxedPrimitive) {
-            return slowPathPrimitiveConvert(thiz, context, ((LLVMBoxedPrimitive) value).getValue());
+            return slowPathPrimitiveConvert(memory, thiz, context, ((LLVMBoxedPrimitive) value).getValue());
         } else if (value instanceof LLVMTruffleAddress) {
             return ((LLVMTruffleAddress) value).getAddress().getVal() != 0;
         } else if (value instanceof LLVMSharedGlobalVariable) {
-            return LLVMGlobal.toNative(context, ((LLVMSharedGlobalVariable) value).getDescriptor()).getVal() != 0;
+            return LLVMGlobal.toNative(context, memory, ((LLVMSharedGlobalVariable) value).getDescriptor()).getVal() != 0;
         } else if (value instanceof TruffleObject && notLLVM((TruffleObject) value)) {
-            return slowPathPrimitiveConvert(thiz, context, thiz.fromForeign((TruffleObject) value));
+            return slowPathPrimitiveConvert(memory, thiz, context, thiz.fromForeign((TruffleObject) value));
         } else {
             throw UnsupportedTypeException.raise(new Object[]{value});
         }

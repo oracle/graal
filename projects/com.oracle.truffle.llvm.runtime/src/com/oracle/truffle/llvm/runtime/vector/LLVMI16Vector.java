@@ -29,18 +29,15 @@
  */
 package com.oracle.truffle.llvm.runtime.vector;
 
-import com.oracle.truffle.api.CompilerDirectives.ValueType;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-
 import java.util.Arrays;
 import java.util.function.BiFunction;
+
+import com.oracle.truffle.api.CompilerDirectives.ValueType;
 
 @ValueType
 public final class LLVMI16Vector {
 
     private static final int MASK = 0xffff;
-    private static final int I16_SIZE = 2;
 
     private final short[] vector;
 
@@ -50,24 +47,6 @@ public final class LLVMI16Vector {
 
     private LLVMI16Vector(short[] vector) {
         this.vector = vector;
-    }
-
-    public static LLVMI16Vector readVectorFromMemory(LLVMAddress address, int size) {
-        short[] vector = new short[size];
-        long currentPtr = address.getVal();
-        for (int i = 0; i < size; i++) {
-            vector[i] = LLVMMemory.getI16(currentPtr);
-            currentPtr += I16_SIZE;
-        }
-        return create(vector);
-    }
-
-    public static void writeVectorToMemory(LLVMAddress address, LLVMI16Vector vector) {
-        long currentPtr = address.getVal();
-        for (int i = 0; i < vector.getLength(); i++) {
-            LLVMMemory.putI16(currentPtr, vector.getValue(i));
-            currentPtr += I16_SIZE;
-        }
     }
 
     // We do not want to use lambdas because of bad startup

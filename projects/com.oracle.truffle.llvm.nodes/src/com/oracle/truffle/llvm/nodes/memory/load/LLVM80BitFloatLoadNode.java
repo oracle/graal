@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.load;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -37,7 +38,8 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 public abstract class LLVM80BitFloatLoadNode extends LLVMLoadNode {
 
     @Specialization
-    protected LLVM80BitFloat do80BitFloat(LLVMAddress address) {
-        return LLVMMemory.get80BitFloat(address);
+    protected LLVM80BitFloat do80BitFloat(LLVMAddress address,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        return memory.get80BitFloat(address);
     }
 }

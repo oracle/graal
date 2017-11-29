@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.c;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -174,10 +175,11 @@ public abstract class LLVMCMathsIntrinsics {
     public abstract static class LLVMModf extends LLVMIntrinsic {
 
         @Specialization
-        protected double doIntrinsic(double value, LLVMAddress integralAddr) {
+        protected double doIntrinsic(double value, LLVMAddress integralAddr,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
             double fractional = Math.IEEEremainder(value, 1);
             double integral = value - fractional;
-            LLVMMemory.putDouble(integralAddr, integral);
+            memory.putDouble(integralAddr, integral);
             return fractional;
         }
     }

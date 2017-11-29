@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.UnsafeIntArrayAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -51,23 +52,26 @@ public abstract class LLVMAddressStoreNode extends LLVMStoreNode {
 
     @Specialization
     protected Object doAddress(VirtualFrame frame, LLVMAddress address, Object value,
-                    @Cached("toNative()") LLVMToNativeNode toNative) {
-        LLVMMemory.putAddress(address, toNative.executeWithTarget(frame, value));
+                    @Cached("toNative()") LLVMToNativeNode toNative,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        memory.putAddress(address, toNative.executeWithTarget(frame, value));
         return null;
     }
 
     @Specialization
     protected Object doAddress(VirtualFrame frame, LLVMVirtualAllocationAddress address, Object value,
-                    @Cached("toNative()") LLVMToNativeNode toNative) {
-        address.writeI64(toNative.executeWithTarget(frame, value).getVal());
+                    @Cached("toNative()") LLVMToNativeNode toNative,
+                    @Cached("getUnsafeIntArrayAccess()") UnsafeIntArrayAccess memory) {
+        address.writeI64(memory, toNative.executeWithTarget(frame, value).getVal());
         return null;
     }
 
     @Specialization
     protected Object doBoxed(VirtualFrame frame, LLVMBoxedPrimitive address, Object value,
-                    @Cached("toNative()") LLVMToNativeNode toNative) {
+                    @Cached("toNative()") LLVMToNativeNode toNative,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
         if (address.getValue() instanceof Long) {
-            LLVMMemory.putAddress((long) address.getValue(), toNative.executeWithTarget(frame, value));
+            memory.putAddress((long) address.getValue(), toNative.executeWithTarget(frame, value));
             return null;
         } else {
             CompilerDirectives.transferToInterpreter();
