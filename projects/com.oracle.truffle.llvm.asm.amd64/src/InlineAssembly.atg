@@ -180,6 +180,9 @@ ZeroOp<> =						(. String op; .)
   | "sfence"
   | "hlt"
   | "syscall"
+  | "stosb"
+  | "stosw"
+  | "stosq"
   )							(. op = t.val; .)
   							(. factory.createOperation(op); .)
   .
