@@ -105,7 +105,8 @@ public class AArch64HotSpotSafepointOp extends AArch64LIRInstruction {
         }
     }
 
-    private static void emitThreadLocalPoll(CompilationResultBuilder crb, AArch64MacroAssembler masm, GraalHotSpotVMConfig config, boolean onReturn, Register thread, Register scratch, LIRFrameState state) {
+    private static void emitThreadLocalPoll(CompilationResultBuilder crb, AArch64MacroAssembler masm, GraalHotSpotVMConfig config, boolean onReturn, Register thread, Register scratch,
+                    LIRFrameState state) {
         assert config.threadPollingPageOffset >= 0;
         masm.ldr(64, scratch, masm.makeAddress(thread, config.threadPollingPageOffset, 8));
         crb.recordMark(onReturn ? config.MARKID_POLL_RETURN_NEAR : config.MARKID_POLL_NEAR);
