@@ -24,8 +24,7 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import java.lang.reflect.Field;
-
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -39,11 +38,19 @@ abstract class ReadFieldNode extends Node {
         return ReadFieldNodeGen.create();
     }
 
-    public abstract Object execute(Field field, JavaObject object);
+    public abstract Object execute(JavaFieldDesc field, JavaObject object);
 
-    @Specialization
-    static Object doGeneric(Field field, JavaObject object) {
-        Object val = JavaInteropReflect.getField(object.obj, field);
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"field == cachedField"}, limit = "LIMIT")
+    static Object doCached(SingleFieldDesc field, JavaObject object,
+                    @Cached("field") SingleFieldDesc cachedField) {
+        Object val = cachedField.get(object.obj);
+        return JavaInterop.toGuestValue(val, object.languageContext);
+    }
+
+    @Specialization(replaces = "doCached")
+    static Object doUncached(SingleFieldDesc field, JavaObject object) {
+        Object val = field.get(object.obj);
         return JavaInterop.toGuestValue(val, object.languageContext);
     }
 }

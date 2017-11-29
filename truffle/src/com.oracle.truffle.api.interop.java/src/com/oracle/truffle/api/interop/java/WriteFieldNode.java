@@ -24,8 +24,7 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import java.lang.reflect.Field;
-
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -41,11 +40,19 @@ abstract class WriteFieldNode extends Node {
         return WriteFieldNodeGen.create();
     }
 
-    public abstract void execute(Field field, JavaObject object, Object value);
+    public abstract void execute(JavaFieldDesc field, JavaObject object, Object value);
 
-    @Specialization
-    void doGeneric(Field field, JavaObject object, Object rawValue) {
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"field == cachedField"}, limit = "LIMIT")
+    void doCached(SingleFieldDesc field, JavaObject object, Object rawValue,
+                    @Cached("field") SingleFieldDesc cachedField) {
+        Object val = toJava.execute(rawValue, cachedField.getType(), cachedField.getGenericType(), object.languageContext);
+        cachedField.set(object.obj, val);
+    }
+
+    @Specialization(replaces = "doCached")
+    void doUncached(SingleFieldDesc field, JavaObject object, Object rawValue) {
         Object val = toJava.execute(rawValue, field.getType(), field.getGenericType(), object.languageContext);
-        JavaInteropReflect.setField(object.obj, field, val);
+        field.set(object.obj, val);
     }
 }

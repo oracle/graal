@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -57,30 +56,6 @@ final class JavaInteropReflect {
     static final Object[] EMPTY = {};
 
     private JavaInteropReflect() {
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    static Object readField(JavaObject object, String name) {
-        Object obj = object.obj;
-        Field field = findField(object, name);
-        if (field != null) {
-            Object val = getField(obj, field);
-            return JavaInterop.toGuestValue(val, object.languageContext);
-        } else {
-            JavaMethodDesc method = findMethod(object, name);
-            if (method != null) {
-                return new JavaFunctionObject(method, obj, object.languageContext);
-            }
-
-            if (object.isClass()) {
-                Class<?> clazz = object.clazz;
-                Class<?> innerclass = findInnerClass(clazz, name);
-                if (innerclass != null) {
-                    return JavaObject.forClass(innerclass, object.languageContext);
-                }
-            }
-            throw UnknownIdentifierException.raise(name);
-        }
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -167,28 +142,10 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static Field findField(JavaObject receiver, String name) {
+    static JavaFieldDesc findField(JavaObject receiver, String name) {
         JavaClassDesc classDesc = JavaClassDesc.forClass(receiver.clazz);
         final boolean onlyStatic = receiver.isClass();
         return classDesc.lookupField(name, onlyStatic);
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    static void setField(Object obj, Field field, Object value) {
-        try {
-            field.set(obj, value);
-        } catch (IllegalAccessException ex) {
-            throw new IllegalStateException(ex);
-        }
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    static Object getField(Object obj, Field field) {
-        try {
-            return field.get(obj);
-        } catch (IllegalAccessException e) {
-            throw new IllegalStateException(e);
-        }
     }
 
     @CompilerDirectives.TruffleBoundary

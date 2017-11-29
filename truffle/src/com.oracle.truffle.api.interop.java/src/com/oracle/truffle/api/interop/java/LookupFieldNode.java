@@ -24,8 +24,6 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import java.lang.reflect.Field;
-
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
@@ -40,20 +38,20 @@ abstract class LookupFieldNode extends Node {
         return LookupFieldNodeGen.create();
     }
 
-    public abstract Field execute(JavaObject object, String name);
+    public abstract JavaFieldDesc execute(JavaObject object, String name);
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"cachedField != null", "object.getClazz() == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
-    static Field doCached(JavaObject object, String name,
+    static JavaFieldDesc doCached(JavaObject object, String name,
                     @Cached("object.getClazz()") Class<?> cachedClazz,
                     @Cached("name") String cachedName,
-                    @Cached("doUncached(object, name)") Field cachedField) {
+                    @Cached("doUncached(object, name)") JavaFieldDesc cachedField) {
         assert cachedField == JavaInteropReflect.findField(object, name);
         return cachedField;
     }
 
     @Specialization(replaces = "doCached")
-    static Field doUncached(JavaObject object, String name) {
+    static JavaFieldDesc doUncached(JavaObject object, String name) {
         return JavaInteropReflect.findField(object, name);
     }
 }
