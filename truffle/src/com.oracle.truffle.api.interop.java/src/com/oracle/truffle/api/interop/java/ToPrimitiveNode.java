@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.interop.java;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
@@ -77,25 +78,25 @@ final class ToPrimitiveNode extends Node {
             if (requestedType != null) {
                 Number n = (Number) attr;
                 if (requestedType == byte.class || requestedType == Byte.class) {
-                    return n.byteValue();
+                    return byteValue(n);
                 }
                 if (requestedType == short.class || requestedType == Short.class) {
-                    return n.shortValue();
+                    return shortValue(n);
                 }
                 if (requestedType == int.class || requestedType == Integer.class) {
-                    return n.intValue();
+                    return intValue(n);
                 }
                 if (requestedType == long.class || requestedType == Long.class) {
-                    return n.longValue();
+                    return longValue(n);
                 }
                 if (requestedType == float.class || requestedType == Float.class) {
-                    return n.floatValue();
+                    return floatValue(n);
                 }
                 if (requestedType == double.class || requestedType == Double.class) {
-                    return n.doubleValue();
+                    return doubleValue(n);
                 }
                 if (requestedType == char.class || requestedType == Character.class) {
-                    return (char) n.intValue();
+                    return (char) intValue(n);
                 }
             }
             if (JavaInterop.isPrimitive(attr)) {
@@ -104,14 +105,14 @@ final class ToPrimitiveNode extends Node {
                 return null;
             }
         }
-        if (attr instanceof CharSequence) {
-            CharSequence str = (CharSequence) attr;
+        if (attr instanceof String) {
+            String str = (String) attr;
             if (requestedType == char.class || requestedType == Character.class) {
                 if (str.length() == 1) {
                     return str.charAt(0);
                 }
             }
-            return str.toString();
+            return str;
         }
         if (attr instanceof Character) {
             return attr;
@@ -120,6 +121,36 @@ final class ToPrimitiveNode extends Node {
             return attr;
         }
         return null;
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    private static byte byteValue(Number n) {
+        return n.byteValue();
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    private static short shortValue(Number n) {
+        return n.shortValue();
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    private static int intValue(Number n) {
+        return n.intValue();
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    private static long longValue(Number n) {
+        return n.longValue();
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    private static float floatValue(Number n) {
+        return n.floatValue();
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    private static double doubleValue(Number n) {
+        return n.doubleValue();
     }
 
     boolean hasKeys(TruffleObject truffleObject) {
