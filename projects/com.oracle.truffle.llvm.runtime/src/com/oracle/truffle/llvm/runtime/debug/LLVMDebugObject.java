@@ -197,6 +197,8 @@ public abstract class LLVMDebugObject implements TruffleObject {
 
     private static final class Structured extends LLVMDebugObject {
 
+        private static final int STRING_MAX_LENGTH = 64;
+
         // in the order of their actual declaration in the containing type
         private final Object[] memberIdentifiers;
 
@@ -222,8 +224,66 @@ public abstract class LLVMDebugObject implements TruffleObject {
         }
 
         @Override
-        public Object getValueSafe() {
-            return value.computeAddress(offset);
+        protected Object getValueSafe() {
+            Object o = value.computeAddress(offset);
+
+            final LLVMSourceType actualType = getType().getActualType();
+            if (actualType instanceof LLVMSourceArrayLikeType) {
+                final LLVMSourceType baseType = ((LLVMSourceArrayLikeType) actualType).getBaseType().getActualType();
+
+                if (baseType instanceof LLVMSourceBasicType) {
+                    switch (((LLVMSourceBasicType) baseType).getKind()) {
+                        case UNSIGNED_CHAR:
+                            o = appendString(o, false);
+                            break;
+
+                        case SIGNED_CHAR:
+                            o = appendString(o, true);
+                            break;
+                    }
+                }
+            }
+
+            return o;
+        }
+
+        private Object appendString(Object o, boolean signed) {
+            if (getType().getElementCount() <= 0) {
+                return o;
+            }
+
+            final StringBuilder sb = new StringBuilder();
+
+            sb.append(o).append(" \"");
+
+            final int numChars = Math.min(getType().getElementCount(), STRING_MAX_LENGTH);
+            for (int i = 0; i < numChars; i++) {
+                final LLVMSourceType elementType = getType().getElementType(i);
+                final long newOffset = offset + elementType.getOffset();
+                int size = (int) elementType.getSize();
+
+                if (!value.canRead(newOffset, size)) {
+                    sb.append("??");
+                    continue;
+                }
+
+                final Object intRead = value.readBigInteger(newOffset, size, signed);
+                if (intRead instanceof BigInteger) {
+                    byte byteVal = ((BigInteger) intRead).byteValue();
+                    char ch = signed ? (char) byteVal : (char) Byte.toUnsignedInt(byteVal);
+                    sb.append(ch);
+                } else {
+                    sb.append("??");
+                }
+            }
+
+            if (numChars < getType().getElementCount()) {
+                sb.append("... (+ ").append(getType().getElementCount() - numChars).append(" characters)");
+            }
+
+            sb.append("\"");
+
+            return sb.toString();
         }
     }
 
