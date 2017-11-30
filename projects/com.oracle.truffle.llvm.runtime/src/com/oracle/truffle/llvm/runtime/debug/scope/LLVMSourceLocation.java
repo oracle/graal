@@ -137,7 +137,7 @@ public abstract class LLVMSourceLocation {
 
             case FUNCTION: {
                 if (name != null) {
-                    return "function " + name;
+                    return name;
                 } else {
                     return "<function>";
                 }
@@ -244,6 +244,12 @@ public abstract class LLVMSourceLocation {
         FunctionScope(LLVMSourceLocation parent, Kind kind, String name, SourceSection sourceSection, LLVMSourceLocation compileUnit) {
             super(parent, kind, name, sourceSection);
             this.compileUnit = compileUnit;
+        }
+
+        @Override
+        @TruffleBoundary
+        public String describeLocation() {
+            return String.format("%s at %s", getName(), super.describeLocation());
         }
 
         @Override
