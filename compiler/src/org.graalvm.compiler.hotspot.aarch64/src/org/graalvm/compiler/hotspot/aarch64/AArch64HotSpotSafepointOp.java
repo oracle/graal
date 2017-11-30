@@ -108,7 +108,7 @@ public class AArch64HotSpotSafepointOp extends AArch64LIRInstruction {
                     LIRFrameState state) {
         assert config.threadPollingPageOffset >= 0;
         masm.ldr(64, scratch, masm.makeAddress(thread, config.threadPollingPageOffset, 8));
-        crb.recordMark(onReturn ? config.MARKID_POLL_RETURN_NEAR : config.MARKID_POLL_NEAR);
+        crb.recordMark(onReturn ? config.MARKID_POLL_RETURN_FAR : config.MARKID_POLL_FAR);
         if (state != null) {
             crb.recordInfopoint(masm.position(), state, InfopointReason.SAFEPOINT);
         }
