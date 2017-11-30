@@ -477,6 +477,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     xcompTests = [
         'BlackholeDirectiveTest',
         'OpaqueDirectiveTest',
+        'CompiledMethodTest',
         'ControlFlowAnchorDirectiveTest',
         'ConditionalElimination',
         'MarkUnsafeAccessTest',
