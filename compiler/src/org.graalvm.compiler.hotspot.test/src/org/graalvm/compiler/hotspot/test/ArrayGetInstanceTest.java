@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,9 +23,12 @@
 package org.graalvm.compiler.hotspot.test;
 
 import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.InvalidInstalledCodeException;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.core.phases.HighTier;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.options.OptionValues;
 import org.junit.Test;
 
 import java.lang.reflect.Array;
@@ -38,10 +41,29 @@ public class ArrayGetInstanceTest extends GraalCompilerTest {
     }
 
     @Test
-    public void testNewArray() throws Exception {
+    public void testNewArray() throws InvalidInstalledCodeException {
         ResolvedJavaMethod method = getResolvedJavaMethod("newArray");
         InstalledCode code = getCode(method);
         assertTrue((Boolean) code.executeVarargs(ArrayGetInstanceTest.class));
+    }
+
+    public static boolean newArrayInLoop(Class<?> klass, int length) {
+        for (int i = 0; i < 10; i++) {
+            Array.newInstance(klass, length);
+        }
+        return GraalDirectives.inCompiledCode();
+    }
+
+    @Test
+    public void testNewArrayInLoop() throws InvalidInstalledCodeException {
+        ResolvedJavaMethod method = getResolvedJavaMethod("newArrayInLoop");
+        InstalledCode code = getCode(method, new OptionValues(getInitialOptions(), HighTier.Options.Inline, false));
+        try {
+            code.executeVarargs(ArrayGetInstanceTest.class, -1);
+        } catch (Throwable e) {
+        }
+        code = getCode(method, new OptionValues(getInitialOptions(), HighTier.Options.Inline, false));
+        assertTrue((Boolean) code.executeVarargs(ArrayGetInstanceTest.class, 0));
     }
 
 }
