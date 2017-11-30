@@ -706,6 +706,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
+        public RuntimeException wrapHostException(Throwable exception) {
+            return PolyglotImpl.wrapHostException(exception);
+        }
+
+        @Override
         public Object legacyTckEnter(Object vm) {
             throw new AssertionError("Should not reach here.");
         }

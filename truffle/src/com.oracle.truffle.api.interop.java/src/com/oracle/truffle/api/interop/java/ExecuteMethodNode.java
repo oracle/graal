@@ -526,7 +526,7 @@ abstract class ExecuteMethodNode extends Node {
         try {
             ret = method.invoke(obj, arguments);
         } catch (Throwable e) {
-            throw JavaInteropReflect.rethrow(e);
+            throw JavaInteropReflect.rethrow(JavaInterop.wrapHostException(e));
         }
         return JavaInterop.toGuestValue(ret, languageContext);
     }

@@ -219,6 +219,8 @@ public abstract class Accessor {
 
         public abstract Iterable<Scope> createDefaultTopScope(TruffleLanguage<?> language, Object context, Object global);
 
+        public abstract RuntimeException wrapHostException(Throwable exception);
+
         public abstract Object legacyTckEnter(Object vm);
 
         public abstract void legacyTckLeave(Object vm, Object prev);
