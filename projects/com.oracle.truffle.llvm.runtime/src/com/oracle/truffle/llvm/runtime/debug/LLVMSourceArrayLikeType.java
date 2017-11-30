@@ -89,7 +89,7 @@ public final class LLVMSourceArrayLikeType extends LLVMSourceType {
     @TruffleBoundary
     public String getElementName(long i) {
         if (0 <= i && i < getLength()) {
-            return String.valueOf(i);
+            return String.format("[%d]", i);
         }
         return null;
     }
@@ -104,14 +104,8 @@ public final class LLVMSourceArrayLikeType extends LLVMSourceType {
 
     @Override
     @TruffleBoundary
-    public LLVMSourceType getElementType(String name) {
-        int i;
-        try {
-            i = Integer.parseInt(name);
-        } catch (NumberFormatException nfe) {
-            return null;
-        }
-        return getElementType(i);
+    public LLVMSourceType getElementType(String key) {
+        return getElementType(parseKey(key));
     }
 
     @Override
@@ -122,5 +116,18 @@ public final class LLVMSourceArrayLikeType extends LLVMSourceType {
     @Override
     public LLVMSourceLocation getElementDeclaration(String name) {
         return getLocation();
+    }
+
+    private static final int KEY_MIN_LENGTH = "[0]".length();
+
+    @TruffleBoundary
+    private static long parseKey(String key) {
+        if (key.length() >= KEY_MIN_LENGTH) {
+            try {
+                return Integer.parseInt(key.substring(1, key.length() - 1));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return -1;
     }
 }
