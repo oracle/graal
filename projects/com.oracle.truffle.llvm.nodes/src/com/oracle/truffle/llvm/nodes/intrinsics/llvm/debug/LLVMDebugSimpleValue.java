@@ -27,22 +27,45 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-public abstract class LLVMDebugValue {
+public final class LLVMDebugSimpleValue extends LLVMDebugValue {
 
-    protected LLVMDebugValue() {
+    public static LLVMDebugValue create(LLVMDebugValueProvider.Builder builder, Object value) {
+        final LLVMDebugSimpleValue dbgValue = new LLVMDebugSimpleValue();
+        dbgValue.set(builder, value);
+        return dbgValue;
     }
 
-    public LLVMDebugObject getValue(LLVMSourceSymbol symbol) {
-        if (symbol != null) {
-            return getValue(symbol.getType(), symbol.getLocation());
-        } else {
-            return getValue(LLVMSourceType.UNKNOWN_TYPE, null);
-        }
+    private LLVMDebugValueProvider.Builder builder;
+    private Object value;
+
+    LLVMDebugSimpleValue() {
+        this.builder = null;
+        this.value = null;
     }
 
-    public abstract LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration);
+    void set(LLVMDebugValueProvider.Builder builder, Object value) {
+        this.builder = builder;
+        this.value = value;
+    }
+
+    private LLVMDebugValueProvider getProvider() {
+        return builder != null ? builder.build(value) : LLVMDebugValueProvider.UNAVAILABLE;
+    }
+
+    @Override
+    @TruffleBoundary
+    public LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration) {
+        final LLVMDebugValueProvider valueProvider = getProvider();
+        return LLVMDebugObject.instantiate(type, 0L, valueProvider, declaration);
+    }
+
 }

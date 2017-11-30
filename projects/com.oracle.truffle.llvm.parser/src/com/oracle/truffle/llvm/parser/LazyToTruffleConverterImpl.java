@@ -31,10 +31,10 @@ package com.oracle.truffle.llvm.parser;
 
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
@@ -93,16 +93,16 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         CompilerAsserts.neverPartOfCompilation();
 
         final SourceModel.Function sourceFunction = method.getSourceFunction();
-        Set<SourceModel.Variable> initPartialValues;
+        Collection<SourceModel.Variable> initDebugValues;
         if (sourceFunction != null) {
-            initPartialValues = sourceFunction.getPartialValues();
+            initDebugValues = sourceFunction.getVariables();
         } else {
-            initPartialValues = Collections.emptySet();
+            initDebugValues = Collections.emptySet();
         }
 
         LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(frame, context, phis, method);
         LLVMBitcodeFunctionVisitor visitor = new LLVMBitcodeFunctionVisitor(runtime, frame, labels, phis, nodeFactory, method.getParameters().size(),
-                        new LLVMSymbolReadResolver(runtime, method, frame, labels), method, liveness, initPartialValues);
+                        new LLVMSymbolReadResolver(runtime, method, frame, labels), method, liveness, initDebugValues);
         method.accept(visitor);
         FrameSlot[][] nullableBeforeBlock = getNullableFrameSlots(liveness.getNullableBeforeBlock());
         FrameSlot[][] nullableAfterBlock = getNullableFrameSlots(liveness.getNullableAfterBlock());

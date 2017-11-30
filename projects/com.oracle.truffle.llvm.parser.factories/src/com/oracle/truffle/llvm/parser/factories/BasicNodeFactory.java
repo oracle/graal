@@ -119,7 +119,9 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNode
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI64NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI8NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugBuilder;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugFrameWriteNodeFactory;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugInitNodeFactory;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugWriteNodeFactory;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugSimpleValue;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMToDebugValueNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVACopyNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVAEnd;
@@ -1919,20 +1921,22 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createDebugWrite(boolean isDeclaration, LLVMExpressionNode valueRead, FrameSlot targetSlot) {
+    public LLVMExpressionNode createDebugWrite(boolean isDeclaration, LLVMExpressionNode valueRead, FrameSlot targetSlot, LLVMExpressionNode containerRead, int partIndex, int[] clearParts) {
         final LLVMDebugBuilder builder = getDebugBuilder(isDeclaration);
-        return LLVMDebugFrameWriteNodeFactory.WriteNodeGen.create(targetSlot, builder, valueRead);
+        if (partIndex < 0 || clearParts == null) {
+            return LLVMDebugWriteNodeFactory.SimpleWriteNodeGen.create(builder, containerRead, valueRead);
+        } else {
+            return LLVMDebugWriteNodeFactory.AggregateWriteNodeGen.create(builder, partIndex, clearParts, containerRead, valueRead);
+        }
     }
 
     @Override
-    public LLVMExpressionNode createDebugFragmentWrite(boolean isDeclaration, LLVMExpressionNode valueRead, FrameSlot targetSlot, LLVMExpressionNode aggregateRead, int partIndex, int[] clearParts) {
-        final LLVMDebugBuilder builder = getDebugBuilder(isDeclaration);
-        return LLVMDebugFrameWriteNodeFactory.AggregateWriteNodeGen.create(targetSlot, partIndex, builder, clearParts, aggregateRead, valueRead);
-    }
-
-    @Override
-    public LLVMExpressionNode createDebugFragmentInit(FrameSlot targetSlot, int[] offsets, int[] lengths) {
-        return LLVMDebugFrameWriteNodeFactory.AggregateInitNodeGen.create(targetSlot, offsets, lengths);
+    public LLVMExpressionNode createDebugInit(FrameSlot targetSlot, int[] offsets, int[] lengths) {
+        if (offsets == null || lengths == null) {
+            return LLVMDebugInitNodeFactory.SimpleInitNodeGen.create(targetSlot);
+        } else {
+            return LLVMDebugInitNodeFactory.AggregateInitNodeGen.create(targetSlot, offsets, lengths);
+        }
     }
 
     @Override
@@ -1945,7 +1949,7 @@ public class BasicNodeFactory implements NodeFactory {
             // constant values should not need frame access
             value = null;
         }
-        return LLVMDebugValue.create(toDebugNode, value);
+        return LLVMDebugSimpleValue.create(toDebugNode, value);
     }
 
     @Override

@@ -404,15 +404,8 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         }
 
         final FrameSlot targetSlot = getDebugValueSlot(var.getSymbol());
-        final LLVMExpressionNode dbgWrite;
-        if (partIndex < 0) {
-            dbgWrite = nodeFactory.createDebugWrite(isDeclaration, valueRead, targetSlot);
-
-        } else {
-            final LLVMExpressionNode aggregateRead = nodeFactory.createFrameRead(runtime, MetaType.DEBUG, targetSlot);
-            dbgWrite = nodeFactory.createDebugFragmentWrite(isDeclaration, valueRead, targetSlot, aggregateRead, partIndex, clearParts);
-        }
-
+        final LLVMExpressionNode containerRead = nodeFactory.createFrameRead(runtime, MetaType.DEBUG, targetSlot);
+        final LLVMExpressionNode dbgWrite = nodeFactory.createDebugWrite(isDeclaration, valueRead, targetSlot, containerRead, partIndex, clearParts);
         addInstructionUnchecked(dbgWrite);
         handleNullerInfo();
     }

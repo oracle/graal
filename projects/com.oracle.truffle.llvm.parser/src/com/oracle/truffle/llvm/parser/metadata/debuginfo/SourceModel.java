@@ -67,12 +67,11 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public final class SourceModel {
 
@@ -124,8 +123,8 @@ public final class SourceModel {
             return variable;
         }
 
-        public Set<Variable> getPartialValues() {
-            return locals.values().stream().filter(Variable::hasFragments).collect(Collectors.toSet());
+        public Collection<Variable> getVariables() {
+            return locals.values();
         }
     }
 
