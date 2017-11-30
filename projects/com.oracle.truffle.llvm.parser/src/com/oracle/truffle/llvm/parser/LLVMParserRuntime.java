@@ -113,8 +113,8 @@ public final class LLVMParserRuntime {
             final SourceModel sourceModel = model.getSourceModel();
             final LLVMSourceContext sourceContext = context.getSourceContext();
 
-            sourceModel.getGlobals().forEach((symbol, global) -> {
-                final LLVMExpressionNode node = symbolResolver.resolve(global);
+            sourceModel.getGlobals().forEach((symbol, irValue) -> {
+                final LLVMExpressionNode node = symbolResolver.resolve(irValue);
                 final LLVMDebugValue value = nodeFactory.createDebugConstantValue(node);
                 sourceContext.registerGlobal(symbol, value);
             });

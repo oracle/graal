@@ -31,22 +31,28 @@ package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.parser.metadata.DwarfOpcode;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
+import com.oracle.truffle.llvm.parser.metadata.MDCompileUnit;
 import com.oracle.truffle.llvm.parser.metadata.MDExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
+import com.oracle.truffle.llvm.parser.metadata.MDNamedNode;
+import com.oracle.truffle.llvm.parser.metadata.MDNode;
 import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
 import com.oracle.truffle.llvm.parser.metadata.MetadataSymbol;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
+import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigIntegerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
@@ -65,7 +71,9 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -236,22 +244,29 @@ public final class SourceModel {
         }
     }
 
+    private final Map<LLVMSourceSymbol, SymbolImpl> globals;
+    private final Map<LLVMSourceStaticMemberType, SymbolImpl> staticMembers;
+
     public SourceModel() {
         globals = new HashMap<>();
         staticMembers = new HashMap<>();
     }
 
     public void process(ModelModule irModel, Source bitcodeSource, MetadataValueList metadata) {
-        final Parser parser = new Parser(this, metadata, bitcodeSource);
+        final Cache cache = new Cache(this, metadata);
         MDUpgrade.perform(metadata);
-        irModel.accept(parser);
+
+        final SymbolParser symbolParser = new SymbolParser(cache, bitcodeSource);
+        irModel.accept(symbolParser);
+
+        final MDBaseNode cuNode = metadata.getNamedNode(MDNamedNode.COMPILEUNIT_NAME);
+        if (cuNode != null) {
+            final MetadataParser mdParser = new MetadataParser(cache);
+            cuNode.accept(mdParser);
+        }
     }
 
-    private final Map<LLVMSourceSymbol, GlobalValueSymbol> globals;
-
-    private final Map<LLVMSourceStaticMemberType, SymbolImpl> staticMembers;
-
-    public Map<LLVMSourceSymbol, GlobalValueSymbol> getGlobals() {
+    public Map<LLVMSourceSymbol, SymbolImpl> getGlobals() {
         return Collections.unmodifiableMap(globals);
     }
 
@@ -259,34 +274,21 @@ public final class SourceModel {
         return Collections.unmodifiableMap(staticMembers);
     }
 
-    private static final class Parser implements FunctionVisitor, InstructionVisitorAdapter, ModelVisitor {
+    private static final class Cache {
 
-        private static MDBaseNode getDebugInfo(MetadataAttachmentHolder holder) {
-            if (holder.hasAttachedMetadata()) {
-                return holder.getMetadataAttachment(MDKind.DBG_NAME);
+        final Map<MDBaseNode, LLVMSourceSymbol> parsedVariables;
+        final DIScopeBuilder scopeBuilder;
+        final DITypeExtractor typeExtractor;
+        final SourceModel sourceModel;
 
-            } else {
-                return null;
-            }
-        }
-
-        private final Map<MDBaseNode, LLVMSourceSymbol> parsedVariables;
-        private final DIScopeBuilder scopeBuilder;
-        private final DITypeExtractor typeExtractor;
-        private final SourceModel sourceModel;
-        private final Source bitcodeSource;
-
-        private Function currentFunction = null;
-
-        private Parser(SourceModel sourceModel, MetadataValueList metadata, Source bitcodeSource) {
-            this.bitcodeSource = bitcodeSource;
+        private Cache(SourceModel sourceModel, MetadataValueList metadata) {
             this.sourceModel = sourceModel;
             this.parsedVariables = new HashMap<>();
             this.scopeBuilder = new DIScopeBuilder(metadata);
             this.typeExtractor = new DITypeExtractor(scopeBuilder, metadata, sourceModel.staticMembers);
         }
 
-        private LLVMSourceSymbol getSourceSymbol(MDBaseNode mdVariable, boolean isGlobal) {
+        LLVMSourceSymbol getSourceSymbol(MDBaseNode mdVariable, boolean isGlobal) {
             if (parsedVariables.containsKey(mdVariable)) {
                 return parsedVariables.get(mdVariable);
             }
@@ -311,6 +313,36 @@ public final class SourceModel {
             return symbol;
         }
 
+        LLVMSourceLocation buildLocation(MDBaseNode node) {
+            return scopeBuilder.buildLocation(node);
+        }
+
+        void endLocalScope() {
+            scopeBuilder.clearLocalScopes();
+        }
+    }
+
+    private static final class SymbolParser implements FunctionVisitor, InstructionVisitorAdapter, ModelVisitor {
+
+        private static MDBaseNode getDebugInfo(MetadataAttachmentHolder holder) {
+            if (holder.hasAttachedMetadata()) {
+                return holder.getMetadataAttachment(MDKind.DBG_NAME);
+
+            } else {
+                return null;
+            }
+        }
+
+        private final Cache cache;
+        private final Source bitcodeSource;
+
+        private Function currentFunction = null;
+
+        private SymbolParser(Cache cache, Source bitcodeSource) {
+            this.cache = cache;
+            this.bitcodeSource = bitcodeSource;
+        }
+
         @Override
         public void visit(FunctionDeclaration function) {
         }
@@ -318,7 +350,7 @@ public final class SourceModel {
         @Override
         public void visit(FunctionDefinition function) {
             final MDBaseNode debugInfo = getDebugInfo(function);
-            LLVMSourceLocation scope = debugInfo != null ? scopeBuilder.buildLocation(debugInfo) : null;
+            LLVMSourceLocation scope = debugInfo != null ? cache.buildLocation(debugInfo) : null;
 
             if (scope == null) {
                 final String sourceText = String.format("%s:%s", bitcodeSource.getName(), function.getName());
@@ -336,16 +368,16 @@ public final class SourceModel {
                 local.processFragments();
             }
 
-            scopeBuilder.clearLocalScopes();
+            cache.endLocalScope();
             currentFunction = null;
         }
 
         private void visitGlobal(GlobalValueSymbol global) {
             MDBaseNode mdGlobal = getDebugInfo(global);
             if (mdGlobal != null) {
-                final LLVMSourceSymbol symbol = getSourceSymbol(mdGlobal, true);
+                final LLVMSourceSymbol symbol = cache.getSourceSymbol(mdGlobal, true);
                 if (symbol != null) {
-                    sourceModel.globals.put(symbol, global);
+                    cache.sourceModel.globals.put(symbol, global);
                 }
 
                 if (mdGlobal instanceof MDGlobalVariableExpression) {
@@ -355,9 +387,9 @@ public final class SourceModel {
                 if (mdGlobal instanceof MDGlobalVariable) {
                     final MDBaseNode declaration = ((MDGlobalVariable) mdGlobal).getStaticMemberDeclaration();
                     if (declaration != MDVoidNode.INSTANCE) {
-                        final LLVMSourceType sourceType = typeExtractor.parseType(declaration);
+                        final LLVMSourceType sourceType = cache.typeExtractor.parseType(declaration);
                         if (sourceType instanceof LLVMSourceStaticMemberType) {
-                            sourceModel.staticMembers.put((LLVMSourceStaticMemberType) sourceType, global);
+                            cache.sourceModel.staticMembers.put((LLVMSourceStaticMemberType) sourceType, global);
                         }
                     }
                 }
@@ -388,7 +420,7 @@ public final class SourceModel {
         public void visitInstruction(Instruction instruction) {
             final MDLocation loc = instruction.getDebugLocation();
             if (loc != null) {
-                final LLVMSourceLocation scope = scopeBuilder.buildLocation(loc);
+                final LLVMSourceLocation scope = cache.buildLocation(loc);
                 if (scope != null) {
                     currentFunction.instructions.put(instruction, scope);
                 }
@@ -453,7 +485,7 @@ public final class SourceModel {
             if (mdLocalMDRef instanceof MetadataSymbol) {
                 final MDBaseNode mdLocal = ((MetadataSymbol) mdLocalMDRef).getNode();
 
-                final LLVMSourceSymbol symbol = getSourceSymbol(mdLocal, false);
+                final LLVMSourceSymbol symbol = cache.getSourceSymbol(mdLocal, false);
                 variable = currentFunction.getLocal(symbol);
 
                 // ensure that lifetime analysis does not kill the variable before it is used in
@@ -485,6 +517,71 @@ public final class SourceModel {
                     }
                 }
             }
+        }
+    }
+
+    private static final class MetadataParser implements MetadataVisitor {
+
+        private final Cache cache;
+
+        private MetadataParser(Cache cache) {
+            this.cache = cache;
+        }
+
+        @Override
+        public void visit(MDNamedNode md) {
+            for (MDBaseNode node : md) {
+                node.accept(this);
+            }
+        }
+
+        @Override
+        public void visit(MDNode md) {
+            for (MDBaseNode node : md) {
+                node.accept(this);
+            }
+        }
+
+        @Override
+        public void visit(MDCompileUnit md) {
+            md.getGlobalVariables().accept(this);
+        }
+
+        @Override
+        public void visit(MDGlobalVariableExpression md) {
+            final MDBaseNode var = md.getExpression();
+            if (var instanceof MDExpression && !MDExpression.EMPTY.equals(var)) {
+                final LLVMSourceSymbol symbol = cache.getSourceSymbol(md, true);
+                SymbolImpl value = getSymbol((MDExpression) var, (int) symbol.getType().getSize());
+                if (value != null) {
+                    cache.sourceModel.globals.put(symbol, value);
+                }
+            }
+        }
+
+        @Override
+        public void visit(MDGlobalVariable md) {
+            if (md.getVariable() == MDVoidNode.INSTANCE) {
+                return;
+            }
+
+            final LLVMSourceSymbol symbol = cache.getSourceSymbol(md, true);
+            if (cache.sourceModel.globals.containsKey(symbol)) {
+                return;
+            }
+
+            final SymbolImpl value = MDSymbolExtractor.getSymbol(md.getVariable());
+            if (value != null) {
+                cache.sourceModel.globals.put(symbol, value);
+            }
+        }
+
+        private static SymbolImpl getSymbol(MDExpression expr, int typeSize) {
+            final BigInteger val = DwarfOpcode.toIntegerSymbol(expr);
+            if (val != null) {
+                return new BigIntegerConstant(new VariableBitWidthType(typeSize), val);
+            }
+            return null;
         }
     }
 }
