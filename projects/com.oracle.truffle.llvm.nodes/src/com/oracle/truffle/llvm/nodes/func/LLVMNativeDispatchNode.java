@@ -52,6 +52,7 @@ import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.UnsupportedNativeTypeException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
@@ -137,9 +138,10 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
                     @Cached("create()") LLVMGetStackNode getStack) {
         Object[] nativeArgs = prepareNativeArguments(frame, arguments, toNative);
         LLVMStack stack = getStack.executeWithTarget(getThreadingStack(context), Thread.currentThread());
-        stack.setStackPointer((long) arguments[0]);
-        Object returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCallNode, nativeFunctionHandle, nativeArgs, null);
-        stack.setStackPointer((long) arguments[0]);
+        Object returnValue;
+        try (StackPointer save = ((StackPointer) arguments[0]).newFrame()) {
+            returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCallNode, nativeFunctionHandle, nativeArgs, null);
+        }
         return fromNative.executeConvert(frame, returnValue);
     }
 
@@ -153,9 +155,10 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
                     @Cached("create()") LLVMGetStackNode getStack) {
         Object[] nativeArgs = prepareNativeArguments(frame, arguments, toNative);
         LLVMStack stack = getStack.executeWithTarget(getThreadingStack(context), Thread.currentThread());
-        stack.setStackPointer((long) arguments[0]);
-        Object returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCallNode, dispatchIdentity(identity, function.getVal()), nativeArgs, null);
-        stack.setStackPointer((long) arguments[0]);
+        Object returnValue;
+        try (StackPointer save = ((StackPointer) arguments[0]).newFrame()) {
+            returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCallNode, dispatchIdentity(identity, function.getVal()), nativeArgs, null);
+        }
         return fromNative.executeConvert(frame, returnValue);
     }
 }

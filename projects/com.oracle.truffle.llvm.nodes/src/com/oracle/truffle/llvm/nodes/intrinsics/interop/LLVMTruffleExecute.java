@@ -55,12 +55,11 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-@NeedsStack
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleExecute extends LLVMIntrinsic {
 
@@ -106,9 +105,10 @@ public abstract class LLVMTruffleExecute extends LLVMIntrinsic {
         }
         try {
             LLVMStack stack = getStack.executeWithTarget(getThreadingStack(context), Thread.currentThread());
-            stack.setStackPointer(stackPointer.executeI64(frame));
-            Object rawValue = ForeignAccess.sendExecute(foreignExecute, value, evaluatedArgs);
-            stack.setStackPointer(stackPointer.executeI64(frame));
+            Object rawValue;
+            try (StackPointer save = stack.newFrame()) {
+                rawValue = ForeignAccess.sendExecute(foreignExecute, value, evaluatedArgs);
+            }
             return toLLVM.executeWithTarget(frame, rawValue);
         } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
             CompilerDirectives.transferToInterpreter();

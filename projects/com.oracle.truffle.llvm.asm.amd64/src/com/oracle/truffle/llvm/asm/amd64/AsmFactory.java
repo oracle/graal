@@ -1801,11 +1801,10 @@ class AsmFactory {
         // copy stack pointer
         LLVMExpressionNode stackPointer = LLVMArgNodeGen.create(0);
         FrameSlot stackSlot = frameDescriptor.addFrameSlot(LLVMStack.FRAME_ID);
-        stackSlot.setKind(FrameSlotKind.Long);
-        arguments.add(LLVMWriteI64NodeGen.create(stackPointer, frameDescriptor.findFrameSlot(LLVMStack.FRAME_ID), sourceSection));
+        stackSlot.setKind(FrameSlotKind.Object);
+        arguments.add(LLVMWriteAddressNodeGen.create(stackPointer, frameDescriptor.findFrameSlot(LLVMStack.FRAME_ID), sourceSection));
 
-        LLVMExpressionNode node = LLVMToAddressNodeGen.create(stackPointer, PrimitiveType.I64);
-        arguments.add(LLVMWriteAddressNodeGen.create(node, getRegisterSlot("rsp"), null));
+        arguments.add(LLVMWriteAddressNodeGen.create(stackPointer, getRegisterSlot("rsp"), null));
 
         assert retType instanceof VoidType || retType != null;
     }

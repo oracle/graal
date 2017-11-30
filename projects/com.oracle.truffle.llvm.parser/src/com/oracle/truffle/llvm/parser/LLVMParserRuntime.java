@@ -68,6 +68,7 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class LLVMParserRuntime {
@@ -279,7 +280,8 @@ public final class LLVMParserRuntime {
             final LLVMExpressionNode oneLiteralNode = nodeFactory.createLiteral(this, 1, PrimitiveType.I32);
             final LLVMExpressionNode functionLoadTarget = nodeFactory.createTypedElementPointer(this, loadedStruct, oneLiteralNode, indexedTypeLength, functionType);
             final LLVMExpressionNode loadedFunction = nodeFactory.createLoad(this, functionType, functionLoadTarget);
-            final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{nodeFactory.createFrameRead(this, PrimitiveType.I64, stack.getRootFrame().findFrameSlot(LLVMStack.FRAME_ID))};
+            final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{
+                            nodeFactory.createFrameRead(this, new PointerType(VoidType.INSTANCE), stack.getRootFrame().findFrameSlot(LLVMStack.FRAME_ID))};
             final LLVMExpressionNode functionCall = nodeFactory.createFunctionCall(this, loadedFunction, argNodes, functionType, null);
 
             final StructureConstant structorDefinition = (StructureConstant) arrayConstant.getElement(i);

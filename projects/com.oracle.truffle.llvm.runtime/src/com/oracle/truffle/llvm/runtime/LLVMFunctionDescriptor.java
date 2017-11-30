@@ -45,10 +45,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.llvm.runtime.interop.LLVMFunctionMessageResolutionForeign;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -309,35 +306,6 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
 
     public boolean isLLVMIRFunction() {
         return getFunction() instanceof LLVMIRFunction || getFunction() instanceof LazyLLVMIRFunction;
-    }
-
-    private static class NeedsStackPointer {
-        boolean condition = false;
-    }
-
-    public boolean needsStackPointer() {
-        if (isLLVMIRFunction()) {
-            final NeedsStackPointer needsStackPointer = new NeedsStackPointer();
-
-            getLLVMIRFunction().getRootNode().accept(new NodeVisitor() {
-
-                @Override
-                public boolean visit(Node node) {
-                    Class<?> nodeClass = node.getClass();
-                    while (nodeClass != null) {
-                        if (nodeClass.isAnnotationPresent(NeedsStack.class)) {
-                            needsStackPointer.condition = true;
-                            break;
-                        }
-                        nodeClass = nodeClass.getSuperclass();
-                    }
-                    return true;
-                }
-            });
-            return needsStackPointer.condition;
-        } else {
-            return false;
-        }
     }
 
     public boolean isNativeIntrinsicFunction() {

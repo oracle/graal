@@ -32,8 +32,8 @@ package com.oracle.truffle.llvm.nodes.func;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -49,7 +49,9 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.Intrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.UnsupportedNativeTypeException;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -89,14 +91,20 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function == cachedFunction", "cachedFunction.isLLVMIRFunction()"})
     protected static Object doDirect(LLVMFunctionDescriptor function, Object[] arguments,
                     @Cached("function") LLVMFunctionDescriptor cachedFunction,
-                    @Cached("create(cachedFunction.getLLVMIRFunction())") DirectCallNode callNode) {
-        return callNode.call(arguments);
+                    @Cached("create(cachedFunction.getLLVMIRFunction())") DirectCallNode callNode,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        try (StackPointer sp = ((StackPointer) arguments[0]).newFrame()) {
+            return callNode.call(arguments);
+        }
     }
 
     @Specialization(replaces = "doDirect", guards = "descriptor.isLLVMIRFunction()")
     protected static Object doIndirect(LLVMFunctionDescriptor descriptor, Object[] arguments,
-                    @Cached("create()") IndirectCallNode callNode) {
-        return callNode.call(descriptor.getLLVMIRFunction(), arguments);
+                    @Cached("create()") IndirectCallNode callNode,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        try (StackPointer sp = ((StackPointer) arguments[0]).newFrame()) {
+            return callNode.call(descriptor.getLLVMIRFunction(), arguments);
+        }
     }
 
     /*
@@ -117,13 +125,17 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     protected Object doDirectIntrinsic(LLVMFunctionDescriptor function, Object[] arguments,
                     @Cached("function") LLVMFunctionDescriptor cachedFunction,
                     @Cached("getIntrinsificationCallNode(cachedFunction.getNativeIntrinsic())") DirectCallNode callNode) {
-        return callNode.call(arguments);
+        try (StackPointer sp = ((StackPointer) arguments[0]).newFrame()) {
+            return callNode.call(arguments);
+        }
     }
 
     @Specialization(replaces = "doDirectIntrinsic", guards = "descriptor.isNativeIntrinsicFunction()")
     protected Object doIndirectIntrinsic(LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached("create()") IndirectCallNode callNode) {
-        return callNode.call(descriptor.getNativeIntrinsic().cachedCallTarget(type), arguments);
+        try (StackPointer sp = ((StackPointer) arguments[0]).newFrame()) {
+            return callNode.call(descriptor.getNativeIntrinsic().cachedCallTarget(type), arguments);
+        }
     }
 
     /*
@@ -154,9 +166,10 @@ public abstract class LLVMDispatchNode extends LLVMNode {
 
         Object[] nativeArgs = prepareNativeArguments(frame, arguments, toNative);
         LLVMStack stack = getStack.executeWithTarget(getThreadingStack(context), Thread.currentThread());
-        stack.setStackPointer((long) arguments[0]);
-        Object returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCall, cachedBoundFunction, nativeArgs, cachedDescriptor);
-        stack.setStackPointer((long) arguments[0]);
+        Object returnValue;
+        try (StackPointer save = ((StackPointer) arguments[0]).newFrame()) {
+            returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCall, cachedBoundFunction, nativeArgs, cachedDescriptor);
+        }
         return fromNative.executeConvert(frame, returnValue);
     }
 
@@ -179,9 +192,10 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         Object[] nativeArgs = prepareNativeArguments(frame, arguments, toNative);
         TruffleObject boundSymbol = LLVMNativeCallUtils.bindNativeSymbol(bindNode, descriptor.getNativeFunction(), getSignature());
         LLVMStack stack = getStack.executeWithTarget(getThreadingStack(context), Thread.currentThread());
-        stack.setStackPointer((long) arguments[0]);
-        Object returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCall, boundSymbol, nativeArgs, descriptor);
-        stack.setStackPointer((long) arguments[0]);
+        Object returnValue;
+        try (StackPointer save = ((StackPointer) arguments[0]).newFrame()) {
+            returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCall, boundSymbol, nativeArgs, descriptor);
+        }
         return fromNative.executeConvert(frame, returnValue);
     }
 

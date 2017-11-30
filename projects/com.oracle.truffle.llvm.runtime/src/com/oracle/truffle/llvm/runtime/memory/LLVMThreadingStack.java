@@ -48,10 +48,10 @@ public final class LLVMThreadingStack {
         this.threadMap = new HashMap<>();
     }
 
-    public LLVMStack getStack(LLVMMemory memory) {
+    public LLVMStack getStack() {
         LLVMStack s = getCurrentStack();
         if (s == null) {
-            s = createNewStack(memory);
+            s = createNewStack();
         }
         return s;
     }
@@ -62,8 +62,8 @@ public final class LLVMThreadingStack {
     }
 
     @TruffleBoundary
-    private synchronized LLVMStack createNewStack(LLVMMemory memory) {
-        LLVMStack s = new LLVMStack(memory, stackSize);
+    private synchronized LLVMStack createNewStack() {
+        LLVMStack s = new LLVMStack(stackSize);
         stack.set(s);
         threadMap.put(Thread.currentThread(), s);
         return s;
