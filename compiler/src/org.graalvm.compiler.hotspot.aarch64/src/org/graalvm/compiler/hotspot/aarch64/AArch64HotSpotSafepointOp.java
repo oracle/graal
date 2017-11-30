@@ -26,7 +26,6 @@ import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -51,19 +50,20 @@ public class AArch64HotSpotSafepointOp extends AArch64LIRInstruction {
     @Temp protected AllocatableValue scratchValue;
 
     private final GraalHotSpotVMConfig config;
+    private final Register thread;
 
-    public AArch64HotSpotSafepointOp(LIRFrameState state, GraalHotSpotVMConfig config, AllocatableValue scratch) {
+    public AArch64HotSpotSafepointOp(LIRFrameState state, GraalHotSpotVMConfig config, Register thread, AllocatableValue scratch) {
         super(TYPE);
         this.state = state;
         this.config = config;
+        this.thread = thread;
         this.scratchValue = scratch;
-        GraalError.guarantee(!config.threadLocalHandshakes, "-XX:+ThreadLocalHandshakes is not currently supported on AArch64");
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         Register scratch = asRegister(scratchValue);
-        emitCode(crb, masm, config, false, scratch, state);
+        emitCode(crb, masm, config, false, thread, scratch, state);
     }
 
     /**
@@ -78,7 +78,15 @@ public class AArch64HotSpotSafepointOp extends AArch64LIRInstruction {
         return !NumUtil.isSignedNbit(21, pollingPageAddress - config.codeCacheLowBound) || !NumUtil.isSignedNbit(21, pollingPageAddress - config.codeCacheHighBound);
     }
 
-    public static void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm, GraalHotSpotVMConfig config, boolean onReturn, Register scratch, LIRFrameState state) {
+    public static void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm, GraalHotSpotVMConfig config, boolean onReturn, Register thread, Register scratch, LIRFrameState state) {
+        if (config.threadLocalHandshakes) {
+            emitThreadLocalPoll(crb, masm, config, onReturn, thread, scratch, state);
+        } else {
+            emitGlobalPoll(crb, masm, config, onReturn, scratch, state);
+        }
+    }
+
+    private static void emitGlobalPoll(CompilationResultBuilder crb, AArch64MacroAssembler masm, GraalHotSpotVMConfig config, boolean onReturn, Register scratch, LIRFrameState state) {
         if (isPollingPageFar(config)) {
             crb.recordMark(onReturn ? config.MARKID_POLL_RETURN_FAR : config.MARKID_POLL_FAR);
             masm.movNativeAddress(scratch, config.safepointPollingAddress);
@@ -94,6 +102,17 @@ public class AArch64HotSpotSafepointOp extends AArch64LIRInstruction {
             }
             masm.ldr(32, zr, AArch64Address.createPcLiteralAddress(0));
         }
+    }
+
+    private static void emitThreadLocalPoll(CompilationResultBuilder crb, AArch64MacroAssembler masm, GraalHotSpotVMConfig config, boolean onReturn, Register thread, Register scratch,
+                    LIRFrameState state) {
+        assert config.threadPollingPageOffset >= 0;
+        masm.ldr(64, scratch, masm.makeAddress(thread, config.threadPollingPageOffset, 8));
+        crb.recordMark(onReturn ? config.MARKID_POLL_RETURN_FAR : config.MARKID_POLL_FAR);
+        if (state != null) {
+            crb.recordInfopoint(masm.position(), state, InfopointReason.SAFEPOINT);
+        }
+        masm.ldr(32, zr, AArch64Address.createBaseRegisterOnlyAddress(scratch));
     }
 
 }
