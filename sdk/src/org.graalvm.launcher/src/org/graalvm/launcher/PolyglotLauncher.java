@@ -219,7 +219,7 @@ public final class PolyglotLauncher extends Launcher {
         try {
             AbstractLanguageLauncher launcher = launcherClass.newInstance();
             launcher.setPolyglot(true);
-            launcher.launch(args, options);
+            launcher.launch(args, options, false);
         } catch (IllegalAccessException | InstantiationException e) {
             throw new RuntimeException("Failed to instanciate launcher class " + launcherName, e);
         }
@@ -268,7 +268,7 @@ public final class PolyglotLauncher extends Launcher {
 
     private void runShell(Context.Builder contextBuilder) {
         try (Context context = contextBuilder.build()) {
-            MultiLanguageShell shell = new MultiLanguageShell(context, System.in, System.out);
+            MultiLanguageShell shell = new MultiLanguageShell(context, System.in, System.out, mainLanguage);
             throw exit(shell.readEvalPrint());
         } catch (IOException e) {
             throw abort(e);

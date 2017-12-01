@@ -423,7 +423,7 @@ public abstract class Launcher {
             System.out.println("Runtime Options:");
             printOption("--polyglot",                   "Run with all other guest languages accessible.");
             printOption("--native",                     "Run using the native launcher with limited Java access (default).");
-            printOption("--native.[option]",            "Pass options to the native image; for example, '--native.Xmx1G'. To see available options, use '--native.help'.");
+            printOption("--native.[option]",            "Pass options to the native image. To see available options, use '--native.help'.");
             printOption("--jvm",                        "Run on the Java Virtual Machine with Java access.");
             printOption("--jvm.[option]",               "Pass options to the JVM; for example, '--jvm.classpath=myapp.jar'. To see available options. use '--jvm.help'.");
             printOption("--help",                       "Print this help message.");
@@ -1021,8 +1021,9 @@ public abstract class Launcher {
         }
 
         private void execNativePolyglot(List<String> args, Map<String, String> polyglotOptions) {
-            List<String> command = new ArrayList<>(args.size() + (polyglotOptions == null ? 0 : polyglotOptions.size()) + 2);
+            List<String> command = new ArrayList<>(args.size() + (polyglotOptions == null ? 0 : polyglotOptions.size()) + 3);
             Path executable = getGraalVMBinaryPath("polyglot");
+            command.add("--native");
             serializePolyglotOptions(polyglotOptions, command);
             command.add("--use-launcher");
             command.add(getMainClass());
