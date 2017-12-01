@@ -172,10 +172,6 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
         receiver.define(name, value);
     }
 
-    /**
-     * When no specialization fits, the receiver is either not an object (which is a type error), or
-     * the object has a shape that has been invalidated.
-     */
     @TruffleBoundary
     @Specialization(guards = {"!receiver.getShape().isValid()"})
     protected static void updateShape(DynamicObject receiver, Object name, Object value) {
