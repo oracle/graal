@@ -35,13 +35,13 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Introspectable;
-import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
-import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback10NodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback1Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback2Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback3Factory;
@@ -52,6 +52,7 @@ import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback8NodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback9NodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.FallbackWithAssumptionArrayNodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.FallbackWithAssumptionNodeGen;
+import com.oracle.truffle.api.dsl.test.FallbackTestFactory.ImplicitCastInFallbackNodeGen;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.dsl.test.examples.ExampleTypes;
@@ -409,36 +410,6 @@ public class FallbackTest {
 
     }
 
-    @Test
-    public void testFallback10() {
-        Fallback10 node = Fallback10NodeGen.create();
-
-        Assert.assertFalse(Introspection.getSpecialization(node, "s0").isActive());
-        Assert.assertFalse(Introspection.getSpecialization(node, "f0").isActive());
-        Assert.assertEquals("s0", node.execute(1, 1));
-        Assert.assertEquals(1, Introspection.getSpecialization(node, "s0").getInstances());
-        Assert.assertEquals(1, Introspection.getSpecialization(node, "s0").getCachedData(0).get(0));
-        Assert.assertEquals(1, Introspection.getSpecialization(node, "s0").getCachedData(0).get(1));
-        Assert.assertFalse(Introspection.getSpecialization(node, "f0").isActive());
-
-        Assert.assertEquals("f0", node.execute(1, ""));
-        Assert.assertEquals(1, Introspection.getSpecialization(node, "s0").getInstances());
-        Assert.assertEquals(1, Introspection.getSpecialization(node, "s0").getCachedData(0).get(0));
-        Assert.assertEquals(1, Introspection.getSpecialization(node, "s0").getCachedData(0).get(1));
-        Assert.assertTrue(Introspection.getSpecialization(node, "f0").isActive());
-
-        /*
-         * Without a generic specialization that covers (int, int), once fallback is triggered it
-         * will always trigger instead of adding new cache entries.
-         */
-        Assert.assertEquals("f0", node.execute(1, 2));
-        Assert.assertEquals(1, Introspection.getSpecialization(node, "s0").getInstances());
-        Assert.assertEquals(1, Introspection.getSpecialization(node, "s0").getCachedData(0).get(0));
-        Assert.assertEquals(1, Introspection.getSpecialization(node, "s0").getCachedData(0).get(1));
-        Assert.assertTrue(Introspection.getSpecialization(node, "f0").isActive());
-
-    }
-
     /*
      * Tests that fallback behavior with cached guards that do not have a generic case.
      */
@@ -450,7 +421,7 @@ public class FallbackTest {
         public abstract String execute(Object left, Object right);
 
         @Specialization(limit = "2", guards = {"left == cachedLeft", "right == cachedRight"})
-        protected String s0(
+        protected String s1(
                         int left,
                         int right,
                         @Cached("left") int cachedLeft,
@@ -459,6 +430,7 @@ public class FallbackTest {
         }
 
         @Fallback
+        @ExpectError(CachedReachableFallbackTest.CACHED_GUARD_FALLBACK_ERROR)
         @TruffleBoundary
         protected String f0(Object left, Object right) {
             return "f0";
@@ -481,15 +453,12 @@ public class FallbackTest {
         FallbackWithAssumption node3 = FallbackWithAssumptionNodeGen.create();
         Assert.assertEquals("f0", node3.execute(3.14));
         Assert.assertEquals("f0", node3.execute(3.14));
-        // This will stay in fallback if we assume a null assumption is "invalid"
-        Assert.assertEquals("f0", node3.execute(0));
+        Assert.assertEquals("s0", node3.execute(0));
 
         FallbackWithAssumption node4 = FallbackWithAssumptionNodeGen.create();
         Assert.assertEquals("f0", node4.execute(3.14));
         Assert.assertEquals("f0", node4.execute(3.14));
         node4.assumption.invalidate();
-        // These go to executeAndSpecialize() and deopt every time
-        // if we assume a null assumption is "valid"
         Assert.assertEquals("f0", node4.execute(0));
         Assert.assertEquals("f0", node4.execute(0));
     }
@@ -534,15 +503,11 @@ public class FallbackTest {
         FallbackWithAssumptionArray node3 = FallbackWithAssumptionArrayNodeGen.create();
         Assert.assertEquals("f0", node3.execute(3.14));
         Assert.assertEquals("f0", node3.execute(3.14));
-        // This will stay in fallback if we assume a null assumptions array is "invalid"
-        Assert.assertEquals("f0", node3.execute(0));
 
         FallbackWithAssumptionArray node4 = FallbackWithAssumptionArrayNodeGen.create();
         Assert.assertEquals("f0", node4.execute(3.14));
         Assert.assertEquals("f0", node4.execute(3.14));
         node4.assumptions[0].invalidate();
-        // These go to executeAndSpecialize() and deopt every time
-        // if we assume a null assumptions array is "valid"
         Assert.assertEquals("f0", node4.execute(0));
         Assert.assertEquals("f0", node4.execute(0));
     }
@@ -568,6 +533,86 @@ public class FallbackTest {
 
         protected Assumption[] getAssumptions() {
             return assumptions;
+        }
+
+    }
+
+    @TypeSystemReference(ExampleTypes.class)
+    @SuppressWarnings("unused")
+    public abstract static class FallbackFrame extends Node {
+
+        public abstract String execute(VirtualFrame frame, Object n);
+
+        @Specialization(guards = "n == cachedN", limit = "3")
+        protected String s0(VirtualFrame frame, int n, @Cached("n") int cachedN) {
+            return "s0";
+        }
+
+        @Specialization
+        protected String s1(VirtualFrame frame, int n) {
+            return "s1";
+        }
+
+        @Fallback
+        protected String f0(Object n) {
+            return "f0";
+        }
+
+    }
+
+    @TypeSystem
+    public static class ImplicitCastInFallbackTypeSystem {
+
+        @ImplicitCast
+        public static ImplicitValue implicitCast(int value) {
+            return new ImplicitValue(value);
+        }
+
+    }
+
+    @Test
+    public void testImplicitCastInFallback() {
+        ImplicitCastInFallbackNode node;
+
+        // test s0 first
+        node = ImplicitCastInFallbackNodeGen.create();
+        Assert.assertEquals("s0", node.execute(42));
+        Assert.assertEquals("s0", node.execute(new ImplicitValue(42)));
+        Assert.assertEquals("fallback", node.execute("42"));
+
+        // test fallback first
+        node = ImplicitCastInFallbackNodeGen.create();
+        Assert.assertEquals("fallback", node.execute("42"));
+        Assert.assertEquals("s0", node.execute(42));
+        Assert.assertEquals("s0", node.execute(new ImplicitValue(42)));
+
+    }
+
+    static class ImplicitValue {
+
+        public final int value;
+
+        ImplicitValue(int value) {
+            this.value = value;
+        }
+
+    }
+
+    @TypeSystemReference(ImplicitCastInFallbackTypeSystem.class)
+    @SuppressWarnings("unused")
+    public abstract static class ImplicitCastInFallbackNode extends Node {
+
+        public abstract String execute(Object n);
+
+        // if the implicitly casted value is used
+        @Specialization(guards = "type.value == 42")
+        protected String s0(ImplicitValue type) {
+            return "s0";
+        }
+
+        @Fallback
+        protected String f0(Object n) {
+            return "fallback";
         }
 
     }

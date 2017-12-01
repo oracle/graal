@@ -70,47 +70,47 @@ public class IdentityComparisonTest {
 
         public abstract Object execute(Object arg0);
 
-        @Specialization(guards = "value == cachedValue")
+        @Specialization(guards = "value == cachedValue", limit = "3")
         boolean s0(boolean value, @Cached("value") boolean cachedValue) {
             return value;
         }
 
-        @Specialization(guards = "value == cachedValue")
+        @Specialization(guards = "value == cachedValue", limit = "3")
         byte s1(byte value, @Cached("value") byte cachedValue) {
             return value;
         }
 
-        @Specialization(guards = "value == cachedValue")
+        @Specialization(guards = "value == cachedValue", limit = "3")
         short s2(short value, @Cached("value") short cachedValue) {
             return value;
         }
 
-        @Specialization(guards = "value == cachedValue")
+        @Specialization(guards = "value == cachedValue", limit = "3")
         char s3(char value, @Cached("value") char cachedValue) {
             return value;
         }
 
-        @Specialization(guards = "value == cachedValue")
+        @Specialization(guards = "value == cachedValue", limit = "3")
         int s4(int value, @Cached("value") int cachedValue) {
             return value;
         }
 
-        @Specialization(guards = "value == cachedValue")
+        @Specialization(guards = "value == cachedValue", limit = "3")
         long s5(long value, @Cached("value") long cachedValue) {
             return value;
         }
 
-        @Specialization(guards = "value == cachedValue")
+        @Specialization(guards = "value == cachedValue", limit = "3")
         float s6(float value, @Cached("value") float cachedValue) {
             return value;
         }
 
-        @Specialization(guards = "value == cachedValue")
+        @Specialization(guards = "value == cachedValue", limit = "3")
         double s7(double value, @Cached("value") double cachedValue) {
             return value;
         }
 
-        @Specialization(guards = "value == cachedValue")
+        @Specialization(guards = "value == cachedValue", limit = "3")
         String s8(String value, @Cached("value") String cachedValue) {
             return value;
         }
@@ -151,52 +151,52 @@ public class IdentityComparisonTest {
 
         public abstract Object execute(Object arg0);
 
-        @Specialization(guards = "value.equals(cachedValue)")
+        @Specialization(guards = "value.equals(cachedValue)", limit = "3")
         Boolean s0(Boolean value, @Cached("value") Boolean cachedValue) {
             return value;
         }
 
-        @Specialization(guards = "value.equals(cachedValue)")
+        @Specialization(guards = "value.equals(cachedValue)", limit = "3")
         Byte s1(Byte value, @Cached("value") Byte cachedValue) {
             return value;
         }
 
-        @Specialization(guards = "value.equals(cachedValue)")
+        @Specialization(guards = "value.equals(cachedValue)", limit = "3")
         Short s2(Short value, @Cached("value") Short cachedValue) {
             return value;
         }
 
-        @Specialization(guards = "value.equals(cachedValue)")
+        @Specialization(guards = "value.equals(cachedValue)", limit = "3")
         Character s3(Character value, @Cached("value") Character cachedValue) {
             return value;
         }
 
-        @Specialization(guards = "value.equals(cachedValue)")
+        @Specialization(guards = "value.equals(cachedValue)", limit = "3")
         Integer s4(Integer value, @Cached("value") Integer cachedValue) {
             return value;
         }
 
-        @Specialization(guards = "value.equals(cachedValue)")
+        @Specialization(guards = "value.equals(cachedValue)", limit = "3")
         Long s5(Long value, @Cached("value") Long cachedValue) {
             return value;
         }
 
-        @Specialization(guards = "value.equals(cachedValue)")
+        @Specialization(guards = "value.equals(cachedValue)", limit = "3")
         Float s6(Float value, @Cached("value") Float cachedValue) {
             return value;
         }
 
-        @Specialization(guards = "value.equals(cachedValue)")
+        @Specialization(guards = "value.equals(cachedValue)", limit = "3")
         Double s7(Double value, @Cached("value") Double cachedValue) {
             return value;
         }
 
-        @Specialization(guards = "value.equals(cachedValue)")
+        @Specialization(guards = "value.equals(cachedValue)", limit = "3")
         String s8(String value, @Cached("value") String cachedValue) {
             return value;
         }
 
-        @Specialization(guards = "value.equals(cachedValue)")
+        @Specialization(guards = "value.equals(cachedValue)", limit = "3")
         MyClass s8(MyClass value, @Cached("value") MyClass cachedValue) {
             return value;
         }

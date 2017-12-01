@@ -127,9 +127,6 @@ final class NodeClassImpl extends NodeClass {
         if (!(field.getType().isArray() && isNodeType(field.getType().getComponentType()))) {
             throw new AssertionError("@Children field type must be an array of a subclass of Node or an interface extending NodeInterface (" + field + ")");
         }
-        if (!Modifier.isFinal(field.getModifiers())) {
-            throw new AssertionError("@Children field must be final (" + field + ")");
-        }
     }
 
     @Override

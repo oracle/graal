@@ -23,6 +23,7 @@
 package com.oracle.truffle.dsl.processor.expression;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -32,6 +33,9 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
+
+import com.oracle.truffle.dsl.processor.generator.DSLExpressionGenerator;
+import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 
 public abstract class DSLExpression {
 
@@ -84,6 +88,11 @@ public abstract class DSLExpression {
 
     public TypeMirror getResolvedTargetType() {
         return resolvedTargetType;
+    }
+
+    public String asString() {
+        CodeTree tree = DSLExpressionGenerator.write(this, null, new HashMap<>());
+        return tree.toString();
     }
 
     public abstract TypeMirror getResolvedType();

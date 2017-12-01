@@ -74,6 +74,11 @@ public final class GuardExpression extends MessageContainer {
         return expression;
     }
 
+    @Override
+    public String toString() {
+        return "Guard[" + (expression != null ? expression.asString() : "null") + "]";
+    }
+
     public boolean isConstantTrueInSlowPath(ProcessorContext context) {
         DSLExpression reducedExpression = getExpression().reduce(new AbstractDSLExpressionReducer() {
 

@@ -44,7 +44,7 @@ import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 
-class DSLExpressionGenerator implements DSLExpressionVisitor {
+public class DSLExpressionGenerator implements DSLExpressionVisitor {
 
     private final Map<Variable, CodeTree> bindings;
     private final CodeTree root;
@@ -164,7 +164,7 @@ class DSLExpressionGenerator implements DSLExpressionVisitor {
         return stack.pop();
     }
 
-    static CodeTree write(DSLExpression expression, CodeTree root, Map<Variable, CodeTree> bindings) {
+    public static CodeTree write(DSLExpression expression, CodeTree root, Map<Variable, CodeTree> bindings) {
         DSLExpressionGenerator writer = new DSLExpressionGenerator(root, bindings);
         expression.accept(writer);
         return combine(string("("), writer.pop(), string(")"));

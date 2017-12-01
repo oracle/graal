@@ -40,11 +40,24 @@
  */
 package com.oracle.truffle.sl.nodes.access;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
+import com.oracle.truffle.sl.runtime.SLContext;
+import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 /**
  * The node for writing a property of an object. When executed, this node:
@@ -58,18 +71,47 @@ import com.oracle.truffle.sl.nodes.SLExpressionNode;
  */
 @NodeInfo(shortName = ".=")
 @NodeChildren({@NodeChild("receiverNode"), @NodeChild("nameNode"), @NodeChild("valueNode")})
+@ImportStatic({SLContext.class, Message.class})
 public abstract class SLWritePropertyNode extends SLExpressionNode {
 
-    /**
-     * The polymorphic cache node that performs the actual write. This is a separate node so that it
-     * can be re-used in cases where the receiver, name, and value are not nodes but already
-     * evaluated values.
-     */
-    @Child private SLWritePropertyCacheNode writeNode = SLWritePropertyCacheNodeGen.create();
-
-    @Specialization
-    protected Object write(Object receiver, Object name, Object value) {
+    @Specialization(guards = "isSLObject(receiver)")
+    protected Object write(DynamicObject receiver, Object name, Object value,
+                    @Cached("create()") SLWritePropertyCacheNode writeNode) {
+        /**
+         * The polymorphic cache node that performs the actual write. This is a separate node so
+         * that it can be re-used in cases where the receiver, name, and value are not nodes but
+         * already evaluated values.
+         */
         writeNode.executeWrite(receiver, name, value);
         return value;
     }
+
+    /**
+     * Language interoperability: If the receiver object is a foreign value we use Truffle's interop
+     * API to access the foreign data.
+     */
+    @Specialization(guards = "!isSLObject(receiver)")
+    protected static void writeForeign(TruffleObject receiver, Object name, Object value,
+                    // The child node to access the foreign object
+                    @Cached("WRITE.createNode()") Node foreignWriteNode) {
+
+        try {
+            /* Perform the foreign object access. */
+            ForeignAccess.sendWrite(foreignWriteNode, receiver, name, value);
+
+        } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+            /* Foreign access was not successful. */
+            throw SLUndefinedNameException.undefinedProperty(name);
+        }
+    }
+
+    /**
+     * When no specialization fits, the receiver is not an object (which is a type error).
+     */
+    @Fallback
+    @SuppressWarnings("unused")
+    protected static void updateShape(Object r, Object name, Object value) {
+        throw SLUndefinedNameException.undefinedProperty(name);
+    }
+
 }

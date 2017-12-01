@@ -36,6 +36,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
@@ -233,6 +234,75 @@ public class NodeParser extends AbstractParser<NodeData> {
         verifyConstructors(node);
         verifySpecializationThrows(node);
         return node;
+    }
+
+    private static void initializeFallbackReachability(NodeData node) {
+        List<SpecializationData> specializations = node.getSpecializations();
+        SpecializationData fallback = null;
+        for (int i = specializations.size() - 1; i >= 0; i--) {
+            SpecializationData specialization = specializations.get(i);
+            if (specialization.isFallback() && specialization.getMethod() != null) {
+                fallback = specialization;
+                break;
+            }
+        }
+
+        if (fallback == null) {
+            // no need to compute reachability
+            return;
+        }
+
+        for (int index = 0; index < specializations.size(); index++) {
+            SpecializationData specialization = specializations.get(index);
+            SpecializationData lastReachable = specialization;
+            for (int searchIndex = index + 1; searchIndex < specializations.size(); searchIndex++) {
+                SpecializationData search = specializations.get(searchIndex);
+                if (search == fallback) {
+                    // reached the end of the specialization
+                    break;
+                }
+                assert lastReachable != search;
+                if (!lastReachable.isReachableAfter(search)) {
+                    lastReachable = search;
+                } else if (search.getReplaces().contains(specialization)) {
+                    lastReachable = search;
+                }
+            }
+
+            specialization.setReachesFallback(lastReachable == specialization);
+
+            List<SpecializationData> failedSpecializations = null;
+            if (specialization.isReachesFallback() && !specialization.getCaches().isEmpty() && !specialization.getGuards().isEmpty()) {
+                boolean guardBoundByCache = false;
+                for (GuardExpression guard : specialization.getGuards()) {
+                    if (specialization.isGuardBoundWithCache(guard)) {
+                        guardBoundByCache = true;
+                        break;
+                    }
+                }
+
+                if (guardBoundByCache && specialization.getMaximumNumberOfInstances() > 1) {
+                    if (failedSpecializations == null) {
+                        failedSpecializations = new ArrayList<>();
+                    }
+                    failedSpecializations.add(specialization);
+                }
+            }
+
+            if (failedSpecializations != null) {
+                List<String> specializationIds = failedSpecializations.stream().map((e) -> e.getId()).collect(Collectors.toList());
+
+                fallback.addError(
+                                "Some guards for the following specializations could not be negated for the @%s specialization: %s. " +
+                                                "Guards cannot be negated for the @%s when they bind @%s parameters and the specialization may consist of multiple instances. " +
+                                                "To fix this limit the number of instances to '1' or " +
+                                                "introduce a more generic specialization declared between this specialization and the fallback. " +
+                                                "Alternatively the use of @%s can be avoided by declaring a @%s with manually specified negated guards.",
+                                Fallback.class.getSimpleName(), specializationIds, Fallback.class.getSimpleName(), Cached.class.getSimpleName(), Fallback.class.getSimpleName(),
+                                Specialization.class.getSimpleName());
+            }
+
+        }
     }
 
     private static void initializeExecutableTypeHierarchy(NodeData node) {
@@ -892,6 +962,7 @@ public class NodeParser extends AbstractParser<NodeData> {
         initializePolymorphism(node); // requires specializations
         initializeReachability(node);
         initializeReplaces(node);
+        initializeFallbackReachability(node);
         resolveReplaces(node);
 
         List<SpecializationData> specializations = node.getSpecializations();
