@@ -25,15 +25,28 @@
 package com.oracle.truffle.api.instrumentation.test;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
+import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.test.ExpectError;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.Instrumentable;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.polyglot.Value;
 
 public class InstrumentableTest {
 
@@ -170,4 +183,146 @@ public class InstrumentableTest {
         }
     }
 
+    @Test
+    public void testUnexpectedResult() {
+        org.graalvm.polyglot.Context context = org.graalvm.polyglot.Context.create(TestUnexpectedResultLanguage.ID);
+        TestExecInterceptor execInterceptor = context.getEngine().getInstruments().get("testExecInterceptor").lookup(TestExecInterceptor.class);
+        // Provide 42 long (42L) from boolean (Z) specialization:
+        Value ret = context.eval(TestUnexpectedResultLanguage.ID, "42L\nZ");
+        assertEquals(42L, ret.asLong());
+        assertEquals("[Enter, Return 42]", execInterceptor.calls.toString());
+    }
+
+    public static class TestUnexpectedResultRootNode extends RootNode {
+
+        @Node.Child TestUnexpectedResultNode testNode;
+        private Class<?> type;
+
+        TestUnexpectedResultRootNode(TruffleLanguage<?> language) {
+            super(language);
+        }
+
+        void setTest(TestUnexpectedResultNode node, Class<?> type) {
+            this.testNode = node;
+            this.type = type;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            try {
+                if (type == Long.TYPE) {
+                    return testNode.executeLong(frame);
+                } else if (type == Boolean.TYPE) {
+                    return testNode.executeBoolean(frame);
+                } else {
+                    return testNode.executeGeneric(frame);
+                }
+            } catch (UnexpectedResultException urex) {
+                return urex.getResult();
+            }
+        }
+    }
+
+    @Instrumentable(factory = TestUnexpectedResultNodeWrapper.class)
+    public static class TestUnexpectedResultNode extends Node {
+
+        private Object returnValue;
+        private final SourceSection sourceSection;
+
+        public TestUnexpectedResultNode(SourceSection sourceSection) {
+            this.sourceSection = sourceSection;
+        }
+
+        public void setReturnValue(Object returnValue) {
+            this.returnValue = returnValue;
+        }
+
+        @SuppressWarnings("unused")
+        public Object executeGeneric(VirtualFrame frame) {
+            return returnValue;
+        }
+
+        @SuppressWarnings("unused")
+        public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
+            if (returnValue instanceof Long) {
+                return (Long) returnValue;
+            } else {
+                throw new UnexpectedResultException(returnValue);
+            }
+        }
+
+        @SuppressWarnings("unused")
+        public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
+            if (returnValue instanceof Boolean) {
+                return (Boolean) returnValue;
+            } else {
+                throw new UnexpectedResultException(returnValue);
+            }
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return sourceSection;
+        }
+
+    }
+
+    @TruffleLanguage.Registration(id = TestUnexpectedResultLanguage.ID, name = "", version = "", mimeType = "testUnexpectedResultLang")
+    public static class TestUnexpectedResultLanguage extends InstrumentationTestLanguage {
+
+        static final String ID = "testUnexpectedResult-lang";
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) {
+            String code = request.getSource().getCharacters().toString();
+            int rowEnd = code.indexOf('\n');
+            String retVal = code.substring(0, rowEnd);
+            TestUnexpectedResultNode node = new TestUnexpectedResultNode(request.getSource().createSection(1));
+            assert retVal.endsWith("L");
+            node.setReturnValue(Long.parseLong(retVal.substring(0, retVal.length() - 1)));
+            TestUnexpectedResultRootNode root = new TestUnexpectedResultRootNode(this);
+            Class<?> type;
+            switch (code.charAt(code.length() - 1)) {
+                case 'Z':
+                    type = Boolean.TYPE;
+                    break;
+                case 'J':
+                    type = Long.TYPE;
+                    break;
+                default:
+                    throw new IllegalArgumentException(code);
+            }
+            root.setTest(node, type);
+            RootCallTarget target = Truffle.getRuntime().createCallTarget(root);
+            return target;
+        }
+    }
+
+    @TruffleInstrument.Registration(id = "testExecInterceptor", services = TestExecInterceptor.class)
+    public static class TestExecInterceptor extends TruffleInstrument implements ExecutionEventListener {
+
+        List<String> calls = new ArrayList<>();
+
+        @Override
+        protected void onCreate(Env env) {
+            env.registerService(this);
+            env.getInstrumenter().attachListener(SourceSectionFilter.ANY, this);
+        }
+
+        @Override
+        public void onEnter(EventContext context, VirtualFrame frame) {
+            calls.add("Enter");
+        }
+
+        @Override
+        public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+            calls.add("Return " + result);
+        }
+
+        @Override
+        public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+            calls.add("Exception " + exception);
+        }
+
+    }
 }
