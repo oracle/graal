@@ -449,7 +449,7 @@ public final class SpecializationData extends TemplateMethod {
             return true;
         }
 
-        if (prev.hasMultipleInstances()) {
+        if (prev.isGuardBindsCache()) {
             // may fallthrough due to limit
             return true;
         }
