@@ -64,7 +64,7 @@ public class LLVMStaticInitsBlockNode extends RootNode {
     @ExplodeLoop
     @Override
     public Object execute(VirtualFrame frame) {
-        frame.setLong(getStackPointerSlot(), (long) frame.getArguments()[0]);
+        frame.setObject(getStackPointerSlot(), frame.getArguments()[0]);
         for (LLVMExpressionNode node : nodes) {
             node.executeGeneric(frame);
         }

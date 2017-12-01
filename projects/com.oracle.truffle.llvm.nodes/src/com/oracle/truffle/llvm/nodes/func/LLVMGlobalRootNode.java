@@ -33,7 +33,6 @@ import java.util.Deque;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -56,7 +55,6 @@ import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.SulongRuntimeException;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -79,27 +77,17 @@ public class LLVMGlobalRootNode extends RootNode {
         this.prepareArguments = new LLVMPrepareArgumentsNode(source, returnType, types);
     }
 
-    @CompilationFinal private LLVMMemory memory;
-
-    private LLVMMemory getMemory() {
-        if (memory == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            memory = LLVMLanguage.getLanguage().getCapability(LLVMMemory.class);
-        }
-        return memory;
-    }
-
     @Override
     @ExplodeLoop
     public Object execute(VirtualFrame frame) {
-        try (StackPointer basePointer = getContext().getThreadingStack().getStack(getMemory()).takeStackPointer()) {
+        try (StackPointer basePointer = getContext().getThreadingStack().getStack().newFrame()) {
             try {
                 Object result = null;
                 assert LLVMSignal.getNumberOfRegisteredSignals() == 0;
 
                 Object[] arguments = prepareArguments.execute(frame);
                 Object[] realArgs = new Object[arguments.length + LLVMCallNode.USER_ARGUMENT_OFFSET];
-                realArgs[0] = basePointer.get();
+                realArgs[0] = basePointer;
                 System.arraycopy(arguments, 0, realArgs, LLVMCallNode.USER_ARGUMENT_OFFSET, arguments.length);
 
                 result = executeIteration(realArgs);
@@ -120,14 +108,14 @@ public class LLVMGlobalRootNode extends RootNode {
             } catch (Throwable e) {
                 throw e;
             } finally {
-                runDestructors(frame, basePointer.get());
+                runDestructors(frame, basePointer);
                 // if not done already, we want at least call a shutdown command
                 getContext().shutdownThreads();
             }
         }
     }
 
-    private void runDestructors(VirtualFrame frame, long basePointer) {
+    private void runDestructors(VirtualFrame frame, StackPointer basePointer) {
         for (DestructorStackElement destructorStackElement : getContext().getDestructorStack()) {
             executeDestructor.executeDispatch(frame, destructorStackElement.getDestructor(), new Object[]{basePointer, destructorStackElement.getThiz()});
         }

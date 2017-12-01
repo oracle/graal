@@ -40,18 +40,16 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.memory.LLVMCompareExchangeNodeGen.LLVMCMPXCHInternalNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.CMPXCHGI16;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.CMPXCHGI32;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.CMPXCHGI64;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.CMPXCHGI8;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
-@NeedsStack
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "address"), @NodeChild(type = LLVMExpressionNode.class, value = "comparisonValue"),
                 @NodeChild(type = LLVMExpressionNode.class, value = "newValue")})
 public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
@@ -88,7 +86,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         protected Object doOp(VirtualFrame frame, LLVMAddress address, byte comparisonValue, byte newValue,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             CMPXCHGI8 compareAndSwapI8 = memory.compareAndSwapI8(address, comparisonValue, newValue);
-            LLVMAddress allocation = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), resultSize, 8));
+            LLVMAddress allocation = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), resultSize, 8));
             memory.putI8(allocation, compareAndSwapI8.getValue());
             memory.putI1(allocation.getVal() + secondValueOffset, compareAndSwapI8.isSwap());
             return allocation;
@@ -98,7 +96,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         protected Object doOp(VirtualFrame frame, LLVMAddress address, short comparisonValue, short newValue,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             CMPXCHGI16 compareAndSwapI16 = memory.compareAndSwapI16(address, comparisonValue, newValue);
-            LLVMAddress allocation = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), resultSize, 8));
+            LLVMAddress allocation = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), resultSize, 8));
             memory.putI16(allocation, compareAndSwapI16.getValue());
             memory.putI1(allocation.getVal() + secondValueOffset, compareAndSwapI16.isSwap());
             return allocation;
@@ -108,7 +106,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         protected Object doOp(VirtualFrame frame, LLVMAddress address, int comparisonValue, int newValue,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             CMPXCHGI32 compareAndSwapI32 = memory.compareAndSwapI32(address, comparisonValue, newValue);
-            LLVMAddress allocation = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), resultSize, 8));
+            LLVMAddress allocation = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), resultSize, 8));
             memory.putI32(allocation, compareAndSwapI32.getValue());
             memory.putI1(allocation.getVal() + secondValueOffset, compareAndSwapI32.isSwap());
             return allocation;
@@ -118,7 +116,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         protected Object doOp(VirtualFrame frame, LLVMAddress address, long comparisonValue, long newValue,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             CMPXCHGI64 compareAndSwapI64 = memory.compareAndSwapI64(address, comparisonValue, newValue);
-            LLVMAddress allocation = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), resultSize, 8));
+            LLVMAddress allocation = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), resultSize, 8));
             memory.putI64(allocation, compareAndSwapI64.getValue());
             memory.putI1(allocation.getVal() + secondValueOffset, compareAndSwapI64.isSwap());
             return allocation;
@@ -128,7 +126,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         protected Object doOp(VirtualFrame frame, LLVMAddress address, LLVMAddress comparisonValue, LLVMAddress newValue,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             CMPXCHGI64 compareAndSwapI64 = memory.compareAndSwapI64(address, comparisonValue.getVal(), newValue.getVal());
-            LLVMAddress allocation = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), resultSize, 8));
+            LLVMAddress allocation = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), resultSize, 8));
             memory.putI64(allocation, compareAndSwapI64.getValue());
             memory.putI1(allocation.getVal() + secondValueOffset, compareAndSwapI64.isSwap());
             return allocation;

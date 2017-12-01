@@ -80,7 +80,7 @@ abstract class LLVMForeignCallNode extends Node {
         }
 
         @ExplodeLoop
-        Object[] pack(VirtualFrame frame, Object[] arguments, long stackPointer) {
+        Object[] pack(VirtualFrame frame, Object[] arguments, StackPointer stackPointer) {
             assert arguments.length == toLLVM.length;
             final Object[] packedArguments = new Object[1 + toLLVM.length];
             packedArguments[0] = stackPointer;
@@ -99,7 +99,7 @@ abstract class LLVMForeignCallNode extends Node {
     protected static class SlowPackForeignArgumentsNode extends Node {
         @Child private SlowPathForeignToLLVM slowConvert = ForeignToLLVM.createSlowPathNode();
 
-        Object[] pack(LLVMFunctionDescriptor function, LLVMMemory memory, LLVMContext context, Object[] arguments, long stackPointer) {
+        Object[] pack(LLVMFunctionDescriptor function, LLVMMemory memory, LLVMContext context, Object[] arguments, StackPointer stackPointer) {
             int actualArgumentsLength = Math.max(arguments.length, function.getType().getArgumentTypes().length);
             final Object[] packedArguments = new Object[1 + actualArgumentsLength];
             packedArguments[0] = stackPointer;
@@ -137,22 +137,16 @@ abstract class LLVMForeignCallNode extends Node {
                     @Cached("createFastPackArguments(cachedFunction, arguments.length)") PackForeignArgumentsNode packNode,
                     @Cached("arguments.length") int cachedLength,
                     @Cached("cachedFunction.getContext()") LLVMContext context,
-                    @Cached("cachedFunction.needsStackPointer()") boolean needsStackPointer,
                     @Cached("create()") LLVMGetStackNode getStack) {
         assert !(cachedFunction.getType().getReturnType() instanceof StructureType);
-        return directCall(frame, arguments, callNode, packNode, getStack, context, needsStackPointer);
+        return directCall(frame, arguments, callNode, packNode, getStack, context);
     }
 
-    private Object directCall(VirtualFrame frame, Object[] arguments, DirectCallNode callNode, PackForeignArgumentsNode packNode, LLVMGetStackNode getStack, LLVMContext context,
-                    boolean needsStackPointer) {
+    private Object directCall(VirtualFrame frame, Object[] arguments, DirectCallNode callNode, PackForeignArgumentsNode packNode, LLVMGetStackNode getStack, LLVMContext context) {
         Object result;
-        if (needsStackPointer) {
-            LLVMStack stack = getStack.executeWithTarget(getThreadingStack(context), Thread.currentThread());
-            try (StackPointer stackPointer = stack.takeStackPointer()) {
-                result = callNode.call(packNode.pack(frame, arguments, stackPointer.get()));
-            }
-        } else {
-            result = callNode.call(packNode.pack(frame, arguments, 0));
+        LLVMStack stack = getStack.executeWithTarget(getThreadingStack(context), Thread.currentThread());
+        try (StackPointer stackPointer = stack.newFrame()) {
+            result = callNode.call(packNode.pack(frame, arguments, stackPointer));
         }
         return prepareValueForEscape.executeWithTarget(result, context);
     }
@@ -166,8 +160,8 @@ abstract class LLVMForeignCallNode extends Node {
         assert !(function.getType().getReturnType() instanceof StructureType);
         LLVMStack stack = getStack.executeWithTarget(function.getContext().getThreadingStack(), Thread.currentThread());
         Object result;
-        try (StackPointer stackPointer = stack.takeStackPointer()) {
-            result = callNode.call(getCallTarget(function), slowPack.pack(function, memory, function.getContext(), arguments, stackPointer.get()));
+        try (StackPointer stackPointer = stack.newFrame()) {
+            result = callNode.call(getCallTarget(function), slowPack.pack(function, memory, function.getContext(), arguments, stackPointer));
         }
         return prepareValueForEscape.executeWithTarget(result, function.getContext());
     }

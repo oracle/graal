@@ -55,25 +55,22 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-@NeedsStack
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
-    @Child private LLVMExpressionNode stackPointer;
     @Children private final LLVMExpressionNode[] args;
     @Children private final LLVMDataEscapeNode[] prepareValuesForEscape;
     @Child private Node foreignInvoke;
     @Child private ForeignToLLVM toLLVM;
 
-    public LLVMTruffleInvoke(LLVMExpressionNode stackPointer, ForeignToLLVM toLLVM, LLVMExpressionNode[] args, Type[] argTypes) {
+    public LLVMTruffleInvoke(ForeignToLLVM toLLVM, LLVMExpressionNode[] args, Type[] argTypes) {
         this.toLLVM = toLLVM;
         this.args = args;
         this.prepareValuesForEscape = new LLVMDataEscapeNode[args.length];
-        this.stackPointer = stackPointer;
         for (int i = 0; i < prepareValuesForEscape.length; i++) {
             prepareValuesForEscape[i] = LLVMDataEscapeNodeGen.create(argTypes[i]);
         }
@@ -107,9 +104,10 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
         }
         try {
             LLVMStack stack = getStack.executeWithTarget(getThreadingStack(context), Thread.currentThread());
-            stack.setStackPointer(stackPointer.executeI64(frame));
-            Object rawValue = ForeignAccess.sendInvoke(foreignInvoke, value, id, evaluatedArgs);
-            stack.setStackPointer(stackPointer.executeI64(frame));
+            Object rawValue;
+            try (StackPointer save = stack.newFrame()) {
+                rawValue = ForeignAccess.sendInvoke(foreignInvoke, value, id, evaluatedArgs);
+            }
             return toLLVM.executeWithTarget(frame, rawValue);
         } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
             CompilerDirectives.transferToInterpreter();

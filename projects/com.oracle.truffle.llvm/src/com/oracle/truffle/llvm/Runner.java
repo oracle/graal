@@ -176,7 +176,7 @@ public final class Runner {
             } else if (mainFunction == null) {
                 mainFunction = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(new SulongLibrary(context, libraryName)));
             }
-            handleParserResult(language.getCapability(LLVMMemory.class), context, parserResult);
+            handleParserResult(context, parserResult);
             return mainFunction;
         } catch (Throwable t) {
             throw new IOException("Error while trying to parse " + code.getPath(), t);
@@ -217,7 +217,7 @@ public final class Runner {
         }
     }
 
-    private static void handleParserResult(LLVMMemory memory, LLVMContext context, LLVMParserResult result) {
+    private static void handleParserResult(LLVMContext context, LLVMParserResult result) {
         context.registerGlobalVarInit(result.getGlobalVarInit());
         context.registerGlobalVarDealloc(result.getGlobalVarDealloc());
         if (result.getConstructorFunction() != null) {
@@ -227,12 +227,12 @@ public final class Runner {
             context.registerDestructorFunction(result.getDestructorFunction());
         }
         if (!context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
-            try (StackPointer stackPointer = context.getThreadingStack().getStack(memory).takeStackPointer()) {
-                result.getGlobalVarInit().call(stackPointer.get());
+            try (StackPointer stackPointer = context.getThreadingStack().getStack().newFrame()) {
+                result.getGlobalVarInit().call(stackPointer);
             }
             if (result.getConstructorFunction() != null) {
-                try (StackPointer stackPointer = context.getThreadingStack().getStack(memory).takeStackPointer()) {
-                    result.getConstructorFunction().call(stackPointer.get());
+                try (StackPointer stackPointer = context.getThreadingStack().getStack().newFrame()) {
+                    result.getConstructorFunction().call(stackPointer);
                 }
             }
         }
@@ -242,18 +242,18 @@ public final class Runner {
         LLVMFunctionDescriptor atexitDescriptor = context.getGlobalScope().getFunctionDescriptor("@__sulong_funcs_on_exit");
         if (atexitDescriptor != null) {
             RootCallTarget atexit = atexitDescriptor.getLLVMIRFunction();
-            try (StackPointer stackPointer = context.getThreadingStack().getStack(memory).takeStackPointer()) {
-                atexit.call(stackPointer.get());
+            try (StackPointer stackPointer = context.getThreadingStack().getStack().newFrame()) {
+                atexit.call(stackPointer);
             }
         }
         for (RootCallTarget destructorFunction : context.getDestructorFunctions()) {
-            try (StackPointer stackPointer = context.getThreadingStack().getStack(memory).takeStackPointer()) {
-                destructorFunction.call(stackPointer.get());
+            try (StackPointer stackPointer = context.getThreadingStack().getStack().newFrame()) {
+                destructorFunction.call(stackPointer);
             }
         }
         for (RootCallTarget destructor : context.getGlobalVarDeallocs()) {
-            try (StackPointer stackPointer = context.getThreadingStack().getStack(memory).takeStackPointer()) {
-                destructor.call(stackPointer.get());
+            try (StackPointer stackPointer = context.getThreadingStack().getStack().newFrame()) {
+                destructor.call(stackPointer);
             }
         }
         context.getThreadingStack().freeMainStack(memory);

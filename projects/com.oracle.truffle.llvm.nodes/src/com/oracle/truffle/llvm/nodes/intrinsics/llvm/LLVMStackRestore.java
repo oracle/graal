@@ -34,13 +34,13 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NeedsStack
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMStackRestore extends LLVMBuiltin {
 
@@ -56,7 +56,8 @@ public abstract class LLVMStackRestore extends LLVMBuiltin {
 
     @Specialization
     protected Object doVoid(VirtualFrame frame, LLVMAddress addr) {
-        frame.setLong(getStackPointerSlot(), addr.getVal());
+        StackPointer pointer = (StackPointer) FrameUtil.getObjectSafe(frame, getStackPointerSlot());
+        pointer.set(addr.getVal());
         return null;
     }
 }

@@ -31,15 +31,16 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 
-@NeedsStack
 public abstract class LLVMStackSave extends LLVMBuiltin {
 
     @CompilationFinal private FrameSlot stackPointer;
@@ -53,7 +54,9 @@ public abstract class LLVMStackSave extends LLVMBuiltin {
     }
 
     @Specialization
-    protected LLVMAddress doPointee(VirtualFrame frame) {
-        return LLVMAddress.fromLong(FrameUtil.getLongSafe(frame, getStackPointerSlot()));
+    protected LLVMAddress doPointee(VirtualFrame frame,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        StackPointer pointer = (StackPointer) FrameUtil.getObjectSafe(frame, getStackPointerSlot());
+        return LLVMAddress.fromLong(pointer.get(memory));
     }
 }
