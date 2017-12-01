@@ -56,14 +56,14 @@ public abstract class SLCallWithOptionOverrideBuiltin extends SLGraalRuntimeBuil
     }
 
     @TruffleBoundary
-    private static TruffleOptionsOverrideScope override(String name, Object value) {
+    private TruffleOptionsOverrideScope override(String name, Object value) {
         TruffleCompilerOptions_OptionDescriptors options = new TruffleCompilerOptions_OptionDescriptors();
         for (OptionDescriptor option : options) {
             if (option.getName().equals(name)) {
                 return TruffleCompilerOptions.overrideOptions(option.getOptionKey(), convertValue(value));
             }
         }
-        throw new SLAssertionError("No such option named \"" + name + "\" found in " + TruffleCompilerOptions.class.getName());
+        throw new SLAssertionError("No such option named \"" + name + "\" found in " + TruffleCompilerOptions.class.getName(), this);
     }
 
     private static Object convertValue(Object value) {

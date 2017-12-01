@@ -75,9 +75,9 @@ public abstract class SLCallUntilOptimizedBuiltin extends SLGraalRuntimeBuiltin 
     }
 
     @TruffleBoundary
-    private static void checkTarget(OptimizedCallTarget target) throws SLAssertionError {
+    private void checkTarget(OptimizedCallTarget target) throws SLAssertionError {
         if (!target.isValid()) {
-            throw new SLAssertionError("Function " + target + " invalidated.");
+            throw new SLAssertionError("Function " + target + " invalidated.", this);
         }
     }
 

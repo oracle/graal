@@ -49,7 +49,7 @@ public abstract class SLCallFunctionsWithBuiltin extends SLGraalRuntimeBuiltin {
             }
         }
         if (!found) {
-            throw new SLAssertionError("No tests found to execute.");
+            throw new SLAssertionError("No tests found to execute.", this);
         }
         return SLNull.SINGLETON;
     }

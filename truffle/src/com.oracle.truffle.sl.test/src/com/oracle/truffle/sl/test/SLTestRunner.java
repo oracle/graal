@@ -62,6 +62,9 @@ import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.internal.TextListener;
@@ -76,15 +79,8 @@ import org.junit.runners.ParentRunner;
 import org.junit.runners.model.InitializationError;
 
 import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.sl.SLLanguage;
-import com.oracle.truffle.sl.SLMain;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
-import com.oracle.truffle.sl.parser.SLParseError;
-import com.oracle.truffle.sl.runtime.SLContext;
-import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 import com.oracle.truffle.sl.test.SLTestRunner.TestCase;
 
 public class SLTestRunner extends ParentRunner<TestCase> {
@@ -289,12 +285,16 @@ public class SLTestRunner extends ParentRunner<TestCase> {
     protected void runChild(TestCase testCase, RunNotifier notifier) {
         notifier.fireTestStarted(testCase.name);
 
-        PolyglotEngine engine = null;
+        Context context = null;
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
-            engine = PolyglotEngine.newBuilder().setIn(new ByteArrayInputStream(testCase.testInput.getBytes("UTF-8"))).setOut(out).build();
+            for (NodeFactory<? extends SLBuiltinNode> builtin : builtins) {
+                SLLanguage.installBuiltin(builtin);
+            }
+
+            context = Context.newBuilder().in(new ByteArrayInputStream(testCase.testInput.getBytes("UTF-8"))).out(out).build();
             PrintWriter printer = new PrintWriter(out);
-            run(engine, testCase.path, printer);
+            run(context, testCase.path, printer);
             printer.flush();
 
             String actualOutput = new String(out.toByteArray());
@@ -302,32 +302,26 @@ public class SLTestRunner extends ParentRunner<TestCase> {
         } catch (Throwable ex) {
             notifier.fireTestFailure(new Failure(testCase.name, ex));
         } finally {
-            if (engine != null) {
-                engine.dispose();
+            if (context != null) {
+                context.close();
             }
             notifier.fireTestFinished(testCase.name);
         }
     }
 
-    private static void run(PolyglotEngine engine, Path path, PrintWriter out) throws IOException {
-        SLContext context = (SLContext) engine.getLanguages().get(SLLanguage.MIME_TYPE).getGlobalObject().get();
-
-        for (NodeFactory<? extends SLBuiltinNode> builtin : builtins) {
-            context.installBuiltin(builtin);
-        }
-
+    private static void run(Context context, Path path, PrintWriter out) throws IOException {
         try {
             /* Parse the SL source file. */
-            Source source = Source.newBuilder(path.toFile()).interactive().build();
+            Source source = Source.newBuilder(SLLanguage.ID, path.toFile()).interactive(true).build();
 
             /* Call the main entry point, without any arguments. */
-            engine.eval(source);
-        } catch (UnsupportedSpecializationException ex) {
-            out.println(SLMain.formatTypeError(ex));
-        } catch (SLUndefinedNameException ex) {
-            out.println(ex.getMessage());
-        } catch (SLParseError ex) {
-            out.println(ex.getMessage());
+            context.eval(source);
+        } catch (PolyglotException ex) {
+            if (!ex.isInternalError()) {
+                out.println(ex.getMessage());
+            } else {
+                throw ex;
+            }
         }
     }
 

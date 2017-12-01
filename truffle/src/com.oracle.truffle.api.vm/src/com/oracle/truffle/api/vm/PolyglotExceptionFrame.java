@@ -175,10 +175,11 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
             return "Unknown";
         }
         StringBuilder b = new StringBuilder();
-        if (source.getPath() == null) {
+        String path = source.getPath();
+        if (path == null) {
             b.append(source.getName());
         } else {
-            Path pathAbsolute = Paths.get(source.getPath());
+            Path pathAbsolute = Paths.get(path);
             Path pathBase = new File("").getAbsoluteFile().toPath();
             try {
                 Path pathRelative = pathBase.relativize(pathAbsolute);

@@ -650,6 +650,17 @@ suite = {
       "license" : "UPL",
     },
 
+    "com.oracle.truffle.sl.launcher" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "sdk:GRAAL_SDK",
+      ],
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle,SimpleLanguage",
+      "license" : "UPL",
+    },
+
     "com.oracle.truffle.sl.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -800,6 +811,20 @@ suite = {
       ],
       "license" : "UPL",
       "description" : "Truffle SL is an example language implemented using the Truffle API.",
+      "allowsJavadocWarnings": True,
+    },
+                     
+    "TRUFFLE_SL_LAUNCHER" : {
+      "subDir" : "src",
+      "javaCompliance" : "1.8",
+      "dependencies" : [
+        "com.oracle.truffle.sl.launcher",
+      ],
+      "distDependencies" : [
+          "sdk:GRAAL_SDK",
+      ],
+      "license" : "UPL",
+      "description" : "Truffle SL launchers using the polyglot API.",
       "allowsJavadocWarnings": True,
     },
 

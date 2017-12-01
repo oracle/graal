@@ -58,6 +58,6 @@ public class SLUndefinedFunctionRootNode extends SLRootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        throw SLUndefinedNameException.undefinedFunction(getName());
+        throw SLUndefinedNameException.undefinedFunction(null, getName());
     }
 }

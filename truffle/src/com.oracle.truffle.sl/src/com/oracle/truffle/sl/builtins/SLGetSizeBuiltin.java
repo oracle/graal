@@ -63,7 +63,7 @@ public abstract class SLGetSizeBuiltin extends SLBuiltinNode {
         try {
             return ForeignAccess.sendGetSize(getSize, obj);
         } catch (UnsupportedMessageException e) {
-            throw new SLException(e.getMessage());
+            throw new SLException(e.getMessage(), this);
         }
     }
 }

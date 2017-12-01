@@ -39,7 +39,7 @@ public abstract class SLAssertTrueBuiltin extends SLBuiltinNode {
     public boolean doAssert(boolean value, String message) {
         if (!value) {
             CompilerDirectives.transferToInterpreter();
-            throw new SLAssertionError(message == null ? "" : message);
+            throw new SLAssertionError(message == null ? "" : message, this);
         }
         return value;
     }

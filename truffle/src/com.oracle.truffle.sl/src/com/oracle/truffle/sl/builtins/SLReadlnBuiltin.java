@@ -70,11 +70,11 @@ public abstract class SLReadlnBuiltin extends SLBuiltinNode {
     }
 
     @TruffleBoundary
-    private static String doRead(BufferedReader in) {
+    private String doRead(BufferedReader in) {
         try {
             return in.readLine();
         } catch (IOException ex) {
-            throw new SLException(ex.getMessage());
+            throw new SLException(ex.getMessage(), this);
         }
     }
 }
