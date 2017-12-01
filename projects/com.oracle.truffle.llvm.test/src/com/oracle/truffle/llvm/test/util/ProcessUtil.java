@@ -43,7 +43,7 @@ import java.util.Objects;
 public class ProcessUtil {
 
     private static final int BUFFER_SIZE = 1024;
-    private static final int PROCESS_WAIT_TIMEOUT = 20000;
+    private static final int PROCESS_WAIT_TIMEOUT = 60 * 1000; // 1min timeout
 
     /**
      * This class represents the result of a native command executed by the operating system.
