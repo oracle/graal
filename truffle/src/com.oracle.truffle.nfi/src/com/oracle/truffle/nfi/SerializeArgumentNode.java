@@ -241,7 +241,13 @@ abstract class SerializeArgumentNode extends Node {
         }
 
         @Specialization(guards = "isJavaObject(arrayType, object)", limit = "1")
-        protected boolean serializeArray(NativeArgumentBuffer buffer, TruffleObject object, @Cached("argType.getArrayType(object)") Class<?> arrayType) {
+        protected boolean serializeArray1(NativeArgumentBuffer buffer, TruffleObject object, @Cached("argType.getArrayType(object)") Class<?> arrayType) {
+            argType.serialize(buffer, JavaInterop.asJavaObject(arrayType, object));
+            return true;
+        }
+
+        @Specialization(guards = "isJavaObject(arrayType, object)", limit = "1")
+        protected boolean serializeArray2(NativeArgumentBuffer buffer, TruffleObject object, @Cached("argType.getArrayType(object)") Class<?> arrayType) {
             argType.serialize(buffer, JavaInterop.asJavaObject(arrayType, object));
             return true;
         }
