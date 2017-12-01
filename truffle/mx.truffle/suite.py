@@ -813,7 +813,7 @@ suite = {
       "description" : "Truffle SL is an example language implemented using the Truffle API.",
       "allowsJavadocWarnings": True,
     },
-                     
+
     "TRUFFLE_SL_LAUNCHER" : {
       "subDir" : "src",
       "javaCompliance" : "1.8",
