@@ -30,6 +30,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -181,6 +182,25 @@ public class AsCollectionsTest {
         MapBasedTO mapTO = new MapBasedTO(Collections.singletonMap("foo", "bar"));
         TruffleObject listOfMapTO = new ListBasedTO(Arrays.asList(mapTO));
         assertEquals(Boolean.TRUE, ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), validator, "validateListOfMap", listOfMapTO, listOfMapTO));
+    }
+
+    public interface ProxyValidator {
+        boolean test(List<Map> list);
+    }
+
+    @Test
+    public void testInvokeListOfMapProxy() throws InteropException {
+        TruffleObject validator = JavaInterop.asTruffleObject(Proxy.newProxyInstance(Thread.currentThread().getContextClassLoader(), new Class<?>[]{ProxyValidator.class}, (p, method, args) -> {
+            List<Map> listOfMap = (List<Map>) args[0];
+            assertEquals(1, listOfMap.size());
+            Map map = listOfMap.get(0);
+            assertEquals(1, map.size());
+            assertEquals("bar", map.get("foo"));
+            return true;
+        }));
+        MapBasedTO mapTO = new MapBasedTO(Collections.singletonMap("foo", "bar"));
+        TruffleObject listOfMapTO = new ListBasedTO(Arrays.asList(mapTO));
+        assertEquals(Boolean.TRUE, ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), validator, "test", listOfMapTO));
     }
 
     static final class ListBasedTO implements TruffleObject {
