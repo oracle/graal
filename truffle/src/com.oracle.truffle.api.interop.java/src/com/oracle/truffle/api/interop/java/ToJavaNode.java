@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.interop.java;
 
+import java.lang.reflect.Array;
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.List;
@@ -192,9 +194,6 @@ abstract class ToJavaNode extends Node {
         if (clazz.isInstance(foreignObject)) {
             obj = foreignObject;
         } else {
-            if (!clazz.isInterface()) {
-                throw new ClassCastException();
-            }
             if (clazz == List.class && hasSize) {
                 TypeAndClass<?> elementType = getGenericParameterType(genericType, 0);
                 obj = TruffleList.create(elementType, foreignObject);
@@ -202,7 +201,12 @@ abstract class ToJavaNode extends Node {
                 TypeAndClass<?> keyType = getGenericParameterType(genericType, 0);
                 TypeAndClass<?> valueType = getGenericParameterType(genericType, 1);
                 obj = TruffleMap.create(keyType, valueType, foreignObject);
+            } else if (clazz.isArray() && hasSize) {
+                obj = truffleObjectToArray(foreignObject, clazz, genericType);
             } else {
+                if (!clazz.isInterface()) {
+                    throw new ClassCastException();
+                }
                 if (!TruffleOptions.AOT) {
                     obj = JavaInteropReflect.newProxyInstance(clazz, foreignObject);
                 } else {
@@ -230,6 +234,26 @@ abstract class ToJavaNode extends Node {
             }
         }
         return TypeAndClass.ANY;
+    }
+
+    private static TypeAndClass<?> getGenericArrayComponentType(Class<?> type, Type genericType) {
+        assert type.isArray();
+        Class<?> componentType = type.getComponentType();
+        Type genericComponentType = null;
+        if (!TruffleOptions.AOT && genericType instanceof GenericArrayType) {
+            GenericArrayType genericArrayType = (GenericArrayType) genericType;
+            genericComponentType = genericArrayType.getGenericComponentType();
+        }
+        return new TypeAndClass<>(genericComponentType, componentType);
+    }
+
+    private static Object truffleObjectToArray(TruffleObject foreignObject, Class<?> arrayType, Type genericArrayType) {
+        List<?> list = TruffleList.create(getGenericArrayComponentType(arrayType, genericArrayType), foreignObject);
+        Object array = Array.newInstance(arrayType.getComponentType(), list.size());
+        for (int i = 0; i < list.size(); i++) {
+            Array.set(array, i, list.get(i));
+        }
+        return array;
     }
 
     static final class TemporaryRoot extends RootNode {
