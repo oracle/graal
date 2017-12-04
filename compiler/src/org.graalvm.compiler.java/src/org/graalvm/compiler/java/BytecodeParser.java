@@ -577,10 +577,11 @@ public class BytecodeParser implements GraphBuilderContext {
                             // value on the stack on entry to an exception handler,
                             // namely the exception object.
                             assert frameState.rethrowException();
-                            ExceptionObjectNode exceptionObject = (ExceptionObjectNode) frameState.stackAt(0);
+                            ValueNode exceptionValue = frameState.stackAt(0);
+                            ExceptionObjectNode exceptionObject = (ExceptionObjectNode) GraphUtil.unproxify(exceptionValue);
                             FrameStateBuilder dispatchState = parser.frameState.copy();
                             dispatchState.clearStack();
-                            dispatchState.push(JavaKind.Object, exceptionObject);
+                            dispatchState.push(JavaKind.Object, exceptionValue);
                             dispatchState.setRethrowException(true);
                             FrameState newFrameState = dispatchState.create(parser.bci(), exceptionObject);
                             frameState.replaceAndDelete(newFrameState);
