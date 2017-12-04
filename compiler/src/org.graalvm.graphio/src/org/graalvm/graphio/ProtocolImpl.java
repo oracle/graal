@@ -128,7 +128,11 @@ final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod
 
     @Override
     protected Object findType(Port edges, int i) {
-        return structure.edgeType(edges, i);
+        Object type = structure.edgeType(edges, i);
+        if (findEnumOrdinal(type) < 0) {
+            throw new IllegalStateException("edgeType method shall return an enum! Was: " + type);
+        }
+        return type;
     }
 
     @Override
