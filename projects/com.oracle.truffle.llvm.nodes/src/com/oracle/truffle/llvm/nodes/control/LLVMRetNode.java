@@ -315,7 +315,7 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
 
         @Specialization
         protected Object doOp(VirtualFrame frame, LLVMGlobal retResult,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess) {
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
             return returnStruct(frame, globalAccess.executeWithTarget(frame, retResult));
         }
     }

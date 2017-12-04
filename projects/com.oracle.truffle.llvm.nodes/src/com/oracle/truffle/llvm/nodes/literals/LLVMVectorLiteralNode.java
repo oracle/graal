@@ -35,6 +35,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNodeGen;
 import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
@@ -181,23 +182,21 @@ public class LLVMVectorLiteralNode {
 
     public abstract static class LLVMVectorAddressLiteralNode extends LLVMExpressionNode {
 
-        @Children private final LLVMExpressionNode[] values;
         @Children private final LLVMToNativeNode[] toNatives;
 
         public LLVMVectorAddressLiteralNode(LLVMExpressionNode[] values) {
-            this.values = values;
             this.toNatives = new LLVMToNativeNode[values.length];
             for (int i = 0; i < values.length; i++) {
-                this.toNatives[i] = LLVMToNativeNode.toNative();
+                this.toNatives[i] = LLVMToNativeNodeGen.create(values[i]);
             }
         }
 
         @ExplodeLoop
         @Specialization
         protected LLVMAddressVector doAddressVector(VirtualFrame frame) {
-            LLVMAddress[] vals = new LLVMAddress[values.length];
-            for (int i = 0; i < values.length; i++) {
-                vals[i] = toNatives[i].executeWithTarget(frame, values[i].executeGeneric(frame));
+            LLVMAddress[] vals = new LLVMAddress[toNatives.length];
+            for (int i = 0; i < toNatives.length; i++) {
+                vals[i] = toNatives[i].executeGeneric(frame);
             }
             return LLVMAddressVector.create(vals);
         }

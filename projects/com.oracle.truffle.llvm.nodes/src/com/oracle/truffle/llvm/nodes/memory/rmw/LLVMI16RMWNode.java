@@ -46,7 +46,7 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI16RMWXchgNode extends LLVMI16RMWNode {
         @Specialization
         protected short doOp(VirtualFrame frame, LLVMGlobal address, short value,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
             return memory.getAndOpI16(adr, value, (a, b) -> b);
@@ -62,7 +62,7 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI16RMWAddNode extends LLVMI16RMWNode {
         @Specialization
         protected short doOp(VirtualFrame frame, LLVMGlobal address, short value,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
             return memory.getAndOpI16(adr, value, (a, b) -> ((short) (a + b)));
@@ -78,7 +78,7 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI16RMWSubNode extends LLVMI16RMWNode {
         @Specialization
         protected short doOp(VirtualFrame frame, LLVMGlobal address, short value,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
             return memory.getAndOpI16(adr, value, (a, b) -> ((short) (a - b)));
@@ -94,7 +94,7 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI16RMWAndNode extends LLVMI16RMWNode {
         @Specialization
         protected short doOp(VirtualFrame frame, LLVMGlobal address, short value,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
             return memory.getAndOpI16(adr, value, (a, b) -> ((short) (a & b)));
@@ -110,7 +110,7 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI16RMWNandNode extends LLVMI16RMWNode {
         @Specialization
         protected short doOp(VirtualFrame frame, LLVMGlobal address, short value,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
             return memory.getAndOpI16(adr, value, (a, b) -> ((short) ~(a & b)));
@@ -126,7 +126,7 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI16RMWOrNode extends LLVMI16RMWNode {
         @Specialization
         protected short doOp(VirtualFrame frame, LLVMGlobal address, short value,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
             return memory.getAndOpI16(adr, value, (a, b) -> ((short) (a | b)));
@@ -142,7 +142,7 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI16RMWXorNode extends LLVMI16RMWNode {
         @Specialization
         protected short doOp(VirtualFrame frame, LLVMGlobal address, short value,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
             return memory.getAndOpI16(adr, value, (a, b) -> ((short) (a ^ b)));

@@ -46,7 +46,7 @@ public abstract class LLVMTruffleReadBytes extends LLVMIntrinsic {
 
     @Specialization
     protected Object doIntrinsic(VirtualFrame frame, LLVMGlobal value,
-                    @Cached("toNative()") LLVMToNativeNode globalAccess,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         return doIntrinsic(globalAccess.executeWithTarget(frame, value), memory);
     }

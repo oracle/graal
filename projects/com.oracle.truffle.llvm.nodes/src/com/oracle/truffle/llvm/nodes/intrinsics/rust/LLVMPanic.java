@@ -58,7 +58,7 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
 
     @Specialization
     protected Object doOp(VirtualFrame frame, LLVMGlobal panicLocVar,
-                    @Cached("toNative()") LLVMToNativeNode globalAccess,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("createPanicLocation()") PanicLocType panicLoc,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         LLVMAddress addr = globalAccess.executeWithTarget(frame, panicLocVar);

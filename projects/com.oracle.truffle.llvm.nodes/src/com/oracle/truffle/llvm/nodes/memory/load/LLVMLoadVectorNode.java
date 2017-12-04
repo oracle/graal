@@ -63,7 +63,7 @@ public class LLVMLoadVectorNode {
 
         @Specialization
         protected LLVMI1Vector doI1Vector(VirtualFrame frame, LLVMGlobal addr,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getI1Vector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
@@ -86,7 +86,7 @@ public class LLVMLoadVectorNode {
 
         @Specialization
         protected LLVMI8Vector doI8Vector(VirtualFrame frame, LLVMGlobal addr,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getI8Vector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
@@ -115,7 +115,7 @@ public class LLVMLoadVectorNode {
 
         @Specialization
         protected LLVMI16Vector doI16Vector(VirtualFrame frame, LLVMGlobal addr,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getI16Vector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
@@ -144,7 +144,7 @@ public class LLVMLoadVectorNode {
 
         @Specialization
         protected LLVMI32Vector doI32Vector(VirtualFrame frame, LLVMGlobal addr,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getI32Vector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
@@ -173,7 +173,7 @@ public class LLVMLoadVectorNode {
 
         @Specialization
         protected LLVMI64Vector doI64Vector(VirtualFrame frame, LLVMGlobal addr,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getI64Vector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
@@ -202,7 +202,7 @@ public class LLVMLoadVectorNode {
 
         @Specialization
         protected LLVMFloatVector doFloatVector(VirtualFrame frame, LLVMGlobal addr,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getFloatVector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
@@ -231,7 +231,7 @@ public class LLVMLoadVectorNode {
 
         @Specialization
         protected LLVMDoubleVector doDoubleVector(VirtualFrame frame, LLVMGlobal addr,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getDoubleVector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
@@ -260,7 +260,7 @@ public class LLVMLoadVectorNode {
 
         @Specialization
         protected LLVMAddressVector doAddressVector(VirtualFrame frame, LLVMGlobal addr,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getAddressVector(globalAccess.executeWithTarget(frame, addr), getSize());
         }

@@ -72,7 +72,7 @@ public abstract class LLVMDirectLoadNode {
 
         @Specialization
         protected LLVMIVarBit doI64(VirtualFrame frame, LLVMGlobal addr,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getIVarBit(globalAccess.executeWithTarget(frame, addr), getBitWidth());
         }
@@ -98,7 +98,7 @@ public abstract class LLVMDirectLoadNode {
 
         @Specialization
         protected LLVM80BitFloat doDouble(VirtualFrame frame, LLVMGlobal addr,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.get80BitFloat(globalAccess.executeWithTarget(frame, addr));
         }
@@ -114,7 +114,7 @@ public abstract class LLVMDirectLoadNode {
 
         @Specialization
         protected LLVMAddress doAddress(VirtualFrame frame, LLVMGlobal addr,
-                        @Cached("toNative()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return LLVMAddress.fromLong(memory.getFunctionPointer(globalAccess.executeWithTarget(frame, addr)));
         }

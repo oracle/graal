@@ -56,8 +56,8 @@ public abstract class LLVMFunctionArrayLiteralNode extends LLVMExpressionNode {
 
     @Specialization
     protected LLVMAddress handleGlobal(VirtualFrame frame, LLVMGlobal global,
-                    @Cached("toNative()") LLVMToNativeNode globalAccess,
-                    @Cached("toNative()") LLVMToNativeNode toNative,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         return handleAddress(frame, globalAccess.executeWithTarget(frame, global), toNative, memory);
     }
@@ -65,7 +65,7 @@ public abstract class LLVMFunctionArrayLiteralNode extends LLVMExpressionNode {
     @Specialization
     @ExplodeLoop
     protected LLVMAddress handleAddress(VirtualFrame frame, LLVMAddress addr,
-                    @Cached("toNative()") LLVMToNativeNode toNative,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         long currentPtr = addr.getVal();
         for (int i = 0; i < values.length; i++) {

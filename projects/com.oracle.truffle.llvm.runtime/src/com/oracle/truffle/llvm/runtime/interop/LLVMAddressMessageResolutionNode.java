@@ -326,7 +326,7 @@ abstract class LLVMAddressMessageResolutionNode extends LLVMNode {
                         @Cached("receiver.getDescriptor()") LLVMGlobal cachedReceiver,
                         @Cached("getToTruffleObjectLLVMNode()") ForeignToLLVM toLLVM,
                         @Cached("createWrite()") LLVMGlobalWriteNode globalAccess,
-                        @Cached("toNative()") LLVMToNativeNode toNative) {
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
             if (index != 0) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise("Index must be 0 for globals - but was " + index);
@@ -340,7 +340,7 @@ abstract class LLVMAddressMessageResolutionNode extends LLVMNode {
         protected Object doPrimitiveToPointer(VirtualFrame frame, LLVMSharedGlobalVariable receiver, int index, Object value,
                         @Cached("getToTruffleObjectLLVMNode()") ForeignToLLVM toLLVM,
                         @Cached("createWrite()") LLVMGlobalWriteNode globalAccess,
-                        @Cached("toNative()") LLVMToNativeNode toNative) {
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
             if (index != 0) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise("Index must be 0 for globals - but was " + index);
@@ -355,7 +355,7 @@ abstract class LLVMAddressMessageResolutionNode extends LLVMNode {
                         @Cached("getToTruffleObjectLLVMNode()") ForeignToLLVM toLLVM,
                         @Cached("receiver.getDescriptor()") LLVMGlobal cachedReceiver,
                         @Cached("createWrite()") LLVMGlobalWriteNode globalAccess,
-                        @Cached("toNative()") LLVMToNativeNode toNative) {
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
             if (index != 0) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise("Index must be 0 for globals - but was " + index);
@@ -369,7 +369,7 @@ abstract class LLVMAddressMessageResolutionNode extends LLVMNode {
         protected Object doGlobalTruffleObject(VirtualFrame frame, LLVMSharedGlobalVariable receiver, int index, TruffleObject value,
                         @Cached("getToTruffleObjectLLVMNode()") ForeignToLLVM toLLVM,
                         @Cached("createWrite()") LLVMGlobalWriteNode globalAccess,
-                        @Cached("toNative()") LLVMToNativeNode toNative) {
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
             if (index != 0) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise("Index must be 0 for globals - but was " + index);

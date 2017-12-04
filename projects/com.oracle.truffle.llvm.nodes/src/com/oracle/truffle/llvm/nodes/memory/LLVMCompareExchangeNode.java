@@ -140,7 +140,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
 
     @Specialization
     protected Object doOp(VirtualFrame frame, LLVMGlobal address, Object comparisonValue, Object newValue,
-                    @Cached("toNative()") LLVMToNativeNode globalAccess) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         return cmpxch.executeWithTarget(frame, globalAccess.executeWithTarget(frame, address), comparisonValue, newValue);
     }
 }

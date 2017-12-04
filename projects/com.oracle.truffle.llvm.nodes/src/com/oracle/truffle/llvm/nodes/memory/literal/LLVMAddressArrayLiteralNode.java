@@ -42,26 +42,25 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNodeGen;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 @NodeChild(value = "address", type = LLVMExpressionNode.class)
 public abstract class LLVMAddressArrayLiteralNode extends LLVMExpressionNode {
 
-    @Children private final LLVMExpressionNode[] values;
-    @Children private final LLVMToNativeNode[] toLLVM;
+    @Children private final LLVMToNativeNode[] values;
     private final int stride;
 
     public LLVMAddressArrayLiteralNode(LLVMExpressionNode[] values, int stride) {
-        this.values = values;
+        this.values = getForceLLVMAddressNodes(values);
         this.stride = stride;
-        this.toLLVM = getForceLLVMAddressNodes(values.length);
     }
 
-    private static LLVMToNativeNode[] getForceLLVMAddressNodes(int size) {
-        LLVMToNativeNode[] forceToLLVM = new LLVMToNativeNode[size];
-        for (int i = 0; i < size; i++) {
-            forceToLLVM[i] = LLVMToNativeNode.toNative();
+    private static LLVMToNativeNode[] getForceLLVMAddressNodes(LLVMExpressionNode[] values) {
+        LLVMToNativeNode[] forceToLLVM = new LLVMToNativeNode[values.length];
+        for (int i = 0; i < values.length; i++) {
+            forceToLLVM[i] = LLVMToNativeNodeGen.create(values[i]);
         }
         return forceToLLVM;
     }
@@ -72,7 +71,7 @@ public abstract class LLVMAddressArrayLiteralNode extends LLVMExpressionNode {
 
     @Specialization
     protected LLVMAddress write(VirtualFrame frame, LLVMGlobal global,
-                    @Cached(value = "toNative()") LLVMToNativeNode globalAccess,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         return writeAddress(frame, globalAccess.executeWithTarget(frame, global), memory);
     }
@@ -83,7 +82,7 @@ public abstract class LLVMAddressArrayLiteralNode extends LLVMExpressionNode {
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         long currentPtr = addr.getVal();
         for (int i = 0; i < values.length; i++) {
-            LLVMAddress currentValue = toLLVM[i].executeWithTarget(frame, values[i].executeGeneric(frame));
+            LLVMAddress currentValue = values[i].executeGeneric(frame);
             memory.putAddress(currentPtr, currentValue);
             currentPtr += stride;
         }

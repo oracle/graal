@@ -69,7 +69,7 @@ public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
 
     @Specialization
     protected LLVMAddress doGlobal(VirtualFrame frame, LLVMGlobal from,
-                    @Cached("toNative()") LLVMToNativeNode access) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode access) {
         return access.executeWithTarget(frame, from);
     }
 

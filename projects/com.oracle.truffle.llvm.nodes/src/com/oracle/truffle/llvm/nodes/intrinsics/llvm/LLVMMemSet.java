@@ -63,7 +63,7 @@ public abstract class LLVMMemSet extends LLVMBuiltin {
     @SuppressWarnings("unused")
     @Specialization
     protected Object doOp(VirtualFrame frame, LLVMGlobal address, byte value, int length, int align, boolean isVolatile,
-                    @Cached("toNative()") LLVMToNativeNode globalAccess) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         memSet.executeWithTarget(frame, globalAccess.executeWithTarget(frame, address), value, length);
         return address;
     }
@@ -78,7 +78,7 @@ public abstract class LLVMMemSet extends LLVMBuiltin {
     @SuppressWarnings("unused")
     @Specialization
     protected Object doOp(VirtualFrame frame, LLVMGlobal address, byte value, long length, int align, boolean isVolatile,
-                    @Cached("toNative()") LLVMToNativeNode globalAccess) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         memSet.executeWithTarget(frame, globalAccess.executeWithTarget(frame, address), value, length);
         return address;
     }

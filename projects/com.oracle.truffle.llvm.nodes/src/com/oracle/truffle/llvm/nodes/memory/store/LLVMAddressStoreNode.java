@@ -52,7 +52,7 @@ public abstract class LLVMAddressStoreNode extends LLVMStoreNode {
 
     @Specialization
     protected Object doAddress(VirtualFrame frame, LLVMAddress address, Object value,
-                    @Cached("toNative()") LLVMToNativeNode toNative,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         memory.putAddress(address, toNative.executeWithTarget(frame, value));
         return null;
@@ -60,7 +60,7 @@ public abstract class LLVMAddressStoreNode extends LLVMStoreNode {
 
     @Specialization
     protected Object doAddress(VirtualFrame frame, LLVMVirtualAllocationAddress address, Object value,
-                    @Cached("toNative()") LLVMToNativeNode toNative,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                     @Cached("getUnsafeIntArrayAccess()") UnsafeIntArrayAccess memory) {
         address.writeI64(memory, toNative.executeWithTarget(frame, value).getVal());
         return null;
@@ -68,7 +68,7 @@ public abstract class LLVMAddressStoreNode extends LLVMStoreNode {
 
     @Specialization
     protected Object doBoxed(VirtualFrame frame, LLVMBoxedPrimitive address, Object value,
-                    @Cached("toNative()") LLVMToNativeNode toNative,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         if (address.getValue() instanceof Long) {
             memory.putAddress((long) address.getValue(), toNative.executeWithTarget(frame, value));
@@ -82,7 +82,7 @@ public abstract class LLVMAddressStoreNode extends LLVMStoreNode {
     @Specialization
     protected Object doGlobal(VirtualFrame frame, LLVMGlobal address, Object value,
                     @Cached(value = "createWrite()") LLVMGlobalWriteNode globalAccess,
-                    @Cached("toNative()") LLVMToNativeNode toNative) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         globalAccess.put(frame, address, value, toNative);
         return null;
     }

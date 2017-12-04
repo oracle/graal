@@ -66,7 +66,7 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
 
     @Specialization
     protected Object doOp(VirtualFrame frame, LLVMAddress address, LLVMTruffleObject value,
-                    @Cached("toNative()") LLVMToNativeNode toAddress,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toAddress,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         memory.putI64(address, toAddress.executeWithTarget(frame, value).getVal());
         return null;
@@ -81,7 +81,7 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
 
     @Specialization
     protected Object doOp(VirtualFrame frame, LLVMAddress address, LLVMGlobal value,
-                    @Cached(value = "toNative()") LLVMToNativeNode globalAccess,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         memory.putI64(address, globalAccess.executeWithTarget(frame, value).getVal());
         return null;

@@ -54,22 +54,22 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNode {
 
     @Specialization
     protected Object doOp(VirtualFrame frame, LLVMGlobal address, LLVMGlobal value,
-                    @Cached(value = "toNative()") LLVMToNativeNode globalAccess1,
-                    @Cached(value = "toNative()") LLVMToNativeNode globalAccess2) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess1,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess2) {
         memMove.executeWithTarget(frame, globalAccess1.executeWithTarget(frame, address), globalAccess2.executeWithTarget(frame, value), getStructSize());
         return null;
     }
 
     @Specialization
     protected Object doOp(VirtualFrame frame, LLVMAddress address, LLVMGlobal value,
-                    @Cached(value = "toNative()") LLVMToNativeNode globalAccess) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         memMove.executeWithTarget(frame, address, globalAccess.executeWithTarget(frame, value), getStructSize());
         return null;
     }
 
     @Specialization
     protected Object doOp(VirtualFrame frame, LLVMGlobal address, LLVMAddress value,
-                    @Cached(value = "toNative()") LLVMToNativeNode globalAccess) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         memMove.executeWithTarget(frame, globalAccess.executeWithTarget(frame, address), value, getStructSize());
         return null;
     }

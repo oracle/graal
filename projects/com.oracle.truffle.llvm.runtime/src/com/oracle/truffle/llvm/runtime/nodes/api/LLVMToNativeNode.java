@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -42,12 +43,16 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 
-public abstract class LLVMToNativeNode extends Node {
+@NodeChild
+public abstract class LLVMToNativeNode extends LLVMExpressionNode {
+
+    @Override
+    public abstract LLVMAddress executeGeneric(VirtualFrame frame);
 
     public abstract LLVMAddress executeWithTarget(VirtualFrame frame, Object object);
 
-    public static LLVMToNativeNode toNative() {
-        return LLVMToNativeNodeGen.create();
+    public static LLVMToNativeNode createToNativeWithTarget() {
+        return LLVMToNativeNodeGen.create(null);
     }
 
     @Specialization
@@ -61,7 +66,7 @@ public abstract class LLVMToNativeNode extends Node {
     }
 
     @Specialization
-    protected LLVMAddress executeLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
+    protected LLVMAddress doLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
         if (from.getValue() instanceof Long) {
             return LLVMAddress.fromLong((long) from.getValue());
         } else {

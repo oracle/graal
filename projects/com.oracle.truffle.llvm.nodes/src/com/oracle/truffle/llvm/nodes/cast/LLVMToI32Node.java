@@ -57,13 +57,13 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
 
     @Specialization
     protected int doI32(VirtualFrame frame, LLVMFunctionDescriptor from,
-                    @Cached("toNative()") LLVMToNativeNode toNative) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         return (int) toNative.executeWithTarget(frame, from).getVal();
     }
 
     @Specialization
     protected int doGlobal(VirtualFrame frame, LLVMGlobal from,
-                    @Cached("toNative()") LLVMToNativeNode access) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode access) {
         return (int) access.executeWithTarget(frame, from).getVal();
     }
 
@@ -71,7 +71,7 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
 
     @Specialization
     protected int doLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject from,
-                    @Cached("toNative()") LLVMToNativeNode toNative) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         return (int) toNative.executeWithTarget(frame, from).getVal();
     }
 

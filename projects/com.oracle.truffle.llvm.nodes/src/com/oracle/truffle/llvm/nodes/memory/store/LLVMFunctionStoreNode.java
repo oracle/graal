@@ -48,7 +48,7 @@ public abstract class LLVMFunctionStoreNode extends LLVMStoreNode {
 
     @Specialization
     protected Object doOp(VirtualFrame frame, LLVMAddress address, Object value,
-                    @Cached("toNative()") LLVMToNativeNode toNative,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         memory.putFunctionPointer(address, toNative.executeWithTarget(frame, value).getVal());
         return null;
@@ -57,7 +57,7 @@ public abstract class LLVMFunctionStoreNode extends LLVMStoreNode {
     @Specialization
     protected Object doOp(VirtualFrame frame, LLVMGlobal address, Object value,
                     @Cached(value = "createWrite()") LLVMGlobalWriteNode globalAccess,
-                    @Cached("toNative()") LLVMToNativeNode toNative) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         globalAccess.put(frame, address, value, toNative);
         return null;
     }

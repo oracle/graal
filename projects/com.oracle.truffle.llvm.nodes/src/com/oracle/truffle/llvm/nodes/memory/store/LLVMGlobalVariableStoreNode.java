@@ -59,7 +59,7 @@ public abstract class LLVMGlobalVariableStoreNode extends LLVMExpressionNode {
     @Specialization
     protected Object doNative(VirtualFrame frame, LLVMVirtualAllocationAddress value,
                     @Cached("createWrite()") LLVMGlobalWriteNode globalAccess,
-                    @Cached("toNative()") LLVMToNativeNode toNative) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         globalAccess.put(frame, descriptor, value, toNative);
         return null;
     }
@@ -67,7 +67,7 @@ public abstract class LLVMGlobalVariableStoreNode extends LLVMExpressionNode {
     @Specialization
     protected Object doNative(VirtualFrame frame, LLVMAddress value,
                     @Cached("createWrite()") LLVMGlobalWriteNode globalAccess,
-                    @Cached("toNative()") LLVMToNativeNode toNative) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         globalAccess.put(frame, descriptor, value, toNative);
         return null;
     }
@@ -75,7 +75,7 @@ public abstract class LLVMGlobalVariableStoreNode extends LLVMExpressionNode {
     @Specialization
     protected Object doNative(VirtualFrame frame, LLVMTruffleAddress value,
                     @Cached("createWrite()") LLVMGlobalWriteNode globalAccess,
-                    @Cached("toNative()") LLVMToNativeNode toNative) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         globalAccess.put(frame, descriptor, value.getAddress(), toNative);
         return null;
     }
@@ -83,7 +83,7 @@ public abstract class LLVMGlobalVariableStoreNode extends LLVMExpressionNode {
     @Specialization
     protected Object doNative(VirtualFrame frame, LLVMFunctionDescriptor value,
                     @Cached("createWrite()") LLVMGlobalWriteNode globalAccess,
-                    @Cached("toNative()") LLVMToNativeNode toNative) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         globalAccess.put(frame, descriptor, value, toNative);
         return null;
     }
@@ -91,7 +91,7 @@ public abstract class LLVMGlobalVariableStoreNode extends LLVMExpressionNode {
     @Specialization
     protected Object doNative(VirtualFrame frame, LLVMGlobal value,
                     @Cached("createWrite()") LLVMGlobalWriteNode globalAccess,
-                    @Cached("toNative()") LLVMToNativeNode toNative) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         globalAccess.put(frame, descriptor, value, toNative);
         return null;
     }
@@ -99,7 +99,7 @@ public abstract class LLVMGlobalVariableStoreNode extends LLVMExpressionNode {
     @Specialization
     protected Object doNative(VirtualFrame frame, LLVMTruffleObject value,
                     @Cached("createWrite()") LLVMGlobalWriteNode globalAccess,
-                    @Cached("toNative()") LLVMToNativeNode toNative) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         globalAccess.put(frame, descriptor, value, toNative);
         return null;
     }
@@ -107,7 +107,7 @@ public abstract class LLVMGlobalVariableStoreNode extends LLVMExpressionNode {
     @Specialization
     protected Object doLLVMBoxedPrimitive(VirtualFrame frame, LLVMBoxedPrimitive value,
                     @Cached("createWrite()") LLVMGlobalWriteNode globalAccess,
-                    @Cached("toNative()") LLVMToNativeNode toNative) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         globalAccess.put(frame, descriptor, value, toNative);
         return null;
     }
