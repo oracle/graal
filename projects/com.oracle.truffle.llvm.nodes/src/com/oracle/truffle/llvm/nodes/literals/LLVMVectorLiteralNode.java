@@ -29,13 +29,12 @@
  */
 package com.oracle.truffle.llvm.nodes.literals;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
@@ -183,9 +182,14 @@ public class LLVMVectorLiteralNode {
     public abstract static class LLVMVectorAddressLiteralNode extends LLVMExpressionNode {
 
         @Children private final LLVMExpressionNode[] values;
+        @Children private final LLVMToNativeNode[] toNatives;
 
         public LLVMVectorAddressLiteralNode(LLVMExpressionNode[] values) {
             this.values = values;
+            this.toNatives = new LLVMToNativeNode[values.length];
+            for (int i = 0; i < values.length; i++) {
+                this.toNatives[i] = LLVMToNativeNode.toNative();
+            }
         }
 
         @ExplodeLoop
@@ -193,12 +197,7 @@ public class LLVMVectorLiteralNode {
         protected LLVMAddressVector doAddressVector(VirtualFrame frame) {
             LLVMAddress[] vals = new LLVMAddress[values.length];
             for (int i = 0; i < values.length; i++) {
-                try {
-                    vals[i] = values[i].executeLLVMAddress(frame);
-                } catch (UnexpectedResultException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new IllegalStateException(e);
-                }
+                vals[i] = toNatives[i].executeWithTarget(frame, values[i].executeGeneric(frame));
             }
             return LLVMAddressVector.create(vals);
         }
