@@ -99,7 +99,7 @@ abstract class ToJavaNode extends Node {
                 boolean hasKeys = primitive.hasKeys((TruffleObject) value);
                 boolean hasSize = primitive.hasSize((TruffleObject) value);
                 boolean isNull = primitive.isNull((TruffleObject) value);
-                convertedValue = asJavaObject(targetType, genericType, (TruffleObject) value, hasKeys, hasSize, isNull);
+                convertedValue = asJavaObject(targetType, genericType, (TruffleObject) value, hasKeys, hasSize, isNull, languageContext);
             }
         } else {
             assert targetType.isAssignableFrom(value.getClass()) : value.getClass().getName() + " is not assignable to " + targetType;
@@ -183,7 +183,7 @@ abstract class ToJavaNode extends Node {
     }
 
     @TruffleBoundary
-    private static <T> T asJavaObject(Class<T> clazz, Type genericType, TruffleObject foreignObject, boolean hasKeys, boolean hasSize, boolean isNull) {
+    private static <T> T asJavaObject(Class<T> clazz, Type genericType, TruffleObject foreignObject, boolean hasKeys, boolean hasSize, boolean isNull, Object languageContext) {
         Object obj;
         if (foreignObject == null) {
             return null;
@@ -196,13 +196,13 @@ abstract class ToJavaNode extends Node {
         } else {
             if (clazz == List.class && hasSize) {
                 TypeAndClass<?> elementType = getGenericParameterType(genericType, 0);
-                obj = TruffleList.create(elementType, foreignObject);
+                obj = TruffleList.create(elementType, foreignObject, languageContext);
             } else if (clazz == Map.class && hasKeys) {
                 TypeAndClass<?> keyType = getGenericParameterType(genericType, 0);
                 TypeAndClass<?> valueType = getGenericParameterType(genericType, 1);
-                obj = TruffleMap.create(keyType, valueType, foreignObject);
+                obj = TruffleMap.create(keyType, valueType, foreignObject, languageContext);
             } else if (clazz.isArray() && hasSize) {
-                obj = truffleObjectToArray(foreignObject, clazz, genericType);
+                obj = truffleObjectToArray(foreignObject, clazz, genericType, languageContext);
             } else {
                 if (!clazz.isInterface()) {
                     throw new ClassCastException();
@@ -247,8 +247,8 @@ abstract class ToJavaNode extends Node {
         return new TypeAndClass<>(genericComponentType, componentType);
     }
 
-    private static Object truffleObjectToArray(TruffleObject foreignObject, Class<?> arrayType, Type genericArrayType) {
-        List<?> list = TruffleList.create(getGenericArrayComponentType(arrayType, genericArrayType), foreignObject);
+    private static Object truffleObjectToArray(TruffleObject foreignObject, Class<?> arrayType, Type genericArrayType, Object languageContext) {
+        List<?> list = TruffleList.create(getGenericArrayComponentType(arrayType, genericArrayType), foreignObject, languageContext);
         Object array = Array.newInstance(arrayType.getComponentType(), list.size());
         for (int i = 0; i < list.size(); i++) {
             Array.set(array, i, list.get(i));
@@ -273,11 +273,8 @@ abstract class ToJavaNode extends Node {
             Object[] args = (Object[]) frame.getArguments()[1];
             Class<?> type = (Class<?>) frame.getArguments()[2];
             Type genericType = (Type) frame.getArguments()[3];
+            Object languageContext = frame.getArguments()[4];
 
-            return call(function, args, type, genericType);
-        }
-
-        Object call(TruffleObject function, Object[] args, Class<?> type, Type genericType) {
             Object raw;
             try {
                 raw = ForeignAccess.send(foreignAccess, function, args);
@@ -289,12 +286,12 @@ abstract class ToJavaNode extends Node {
                 return raw;
             }
             Object real = JavaInterop.findOriginalObject(raw);
-            return toJava.execute(real, type, genericType);
+            return toJava.execute(real, type, genericType, languageContext);
         }
     }
 
     @TruffleBoundary
-    static Object toJava(Object ret, Class<?> retType, Type genericType) {
+    static Object toJava(Object ret, Class<?> retType, Type genericType, Object languageContext) {
         CompilerAsserts.neverPartOfCompilation();
         final ToPrimitiveNode primitiveNode = ToPrimitiveNode.temporary();
         Object primitiveRet = primitiveNode.toPrimitive(ret, retType);
@@ -312,7 +309,10 @@ abstract class ToJavaNode extends Node {
         if (ret instanceof TruffleObject) {
             final TruffleObject truffleObject = (TruffleObject) ret;
             if (retType.isInterface()) {
-                return asJavaObject(retType, genericType, truffleObject, primitiveNode.hasKeys(truffleObject), primitiveNode.hasSize(truffleObject), primitiveNode.isNull(truffleObject));
+                boolean hasKeys = primitiveNode.hasKeys(truffleObject);
+                boolean hasSize = primitiveNode.hasSize(truffleObject);
+                boolean isNull = primitiveNode.isNull(truffleObject);
+                return asJavaObject(retType, genericType, truffleObject, hasKeys, hasSize, isNull, languageContext);
             }
         }
         return ret;
