@@ -24,50 +24,33 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import java.util.StringJoiner;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 
-class OverloadedMethodDesc implements JavaMethodDesc {
-    private final SingleMethodDesc[] overloads;
+abstract class ReadFieldNode extends Node {
+    static final int LIMIT = 3;
 
-    OverloadedMethodDesc(SingleMethodDesc[] overloads) {
-        this.overloads = overloads;
-        assert overloads.length >= 2;
+    ReadFieldNode() {
     }
 
-    @Override
-    public SingleMethodDesc[] getOverloads() {
-        return overloads;
+    static ReadFieldNode create() {
+        return ReadFieldNodeGen.create();
     }
 
-    @Override
-    public String getName() {
-        return getOverloads()[0].getName();
+    public abstract Object execute(JavaFieldDesc field, JavaObject object);
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"field == cachedField"}, limit = "LIMIT")
+    static Object doCached(SingleFieldDesc field, JavaObject object,
+                    @Cached("field") SingleFieldDesc cachedField) {
+        Object val = cachedField.get(object.obj);
+        return JavaInterop.toGuestValue(val, object.languageContext);
     }
 
-    public boolean isMethod() {
-        return getOverloads()[0].isMethod();
-    }
-
-    public boolean isConstructor() {
-        return getOverloads()[0].isConstructor();
-    }
-
-    @Override
-    public String toString() {
-        StringJoiner sj = new StringJoiner(", ", "Method[", "]");
-        for (SingleMethodDesc overload : getOverloads()) {
-            sj.add(overload.getReflectionMethod().toString());
-        }
-        return sj.toString();
-    }
-
-    @Override
-    public boolean isInternal() {
-        for (SingleMethodDesc overload : overloads) {
-            if (!overload.isInternal()) {
-                return false;
-            }
-        }
-        return true;
+    @Specialization(replaces = "doCached")
+    static Object doUncached(SingleFieldDesc field, JavaObject object) {
+        Object val = field.get(object.obj);
+        return JavaInterop.toGuestValue(val, object.languageContext);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package com.oracle.truffle.api.interop.java;
 
 import java.lang.reflect.Array;
-import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.Objects;
 
@@ -80,7 +79,11 @@ class JavaObjectMessageResolution {
     @Resolve(message = "INVOKE")
     abstract static class InvokeNode extends Node {
 
-        @Child private ExecuteMethodNode doExecute;
+        @Child private LookupMethodNode lookupMethod;
+        @Child private IsApplicableByArityNode isApplicableByArityNode;
+        @Child private ExecuteMethodNode executeMethod;
+        @Child private LookupFieldNode lookupField;
+        @Child private ReadFieldNode readField;
         @Child private Node sendIsExecutableNode;
         @Child private Node sendExecuteNode;
 
@@ -90,32 +93,29 @@ class JavaObjectMessageResolution {
             }
 
             // (1) look for a method; if found, invoke it on obj.
-            JavaMethodDesc foundMethod = JavaInteropReflect.findMethod(object, name, args);
+            JavaMethodDesc foundMethod = lookupMethod(object, name);
             if (foundMethod != null) {
-                if (doExecute == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    doExecute = insert(ExecuteMethodNode.create());
+                if (isApplicableByArity(foundMethod, args.length)) {
+                    return executeMethod(foundMethod, object, args);
                 }
-                return doExecute.execute(foundMethod, object.obj, args, object.languageContext);
             }
 
             // (2) look for a field; if found, read its value and if that IsExecutable, Execute it.
-            Field foundField = JavaInteropReflect.findField(object, name);
+            JavaFieldDesc foundField = lookupField(object, name);
             if (foundField != null) {
-                Object fieldValue = JavaInteropReflect.readField(object, name);
-                if (!JavaInterop.isPrimitive(fieldValue)) {
-                    TruffleObject fieldObject = JavaInterop.asTruffleObject(fieldValue, object.languageContext);
-
+                Object fieldValue = readField(foundField, object);
+                if (fieldValue instanceof TruffleObject) {
+                    TruffleObject fieldObject = (TruffleObject) fieldValue;
                     if (sendIsExecutableNode == null) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         sendIsExecutableNode = insert(Message.IS_EXECUTABLE.createNode());
                     }
-                    if (sendExecuteNode == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        sendExecuteNode = insert(Message.createExecute(args.length).createNode());
-                    }
                     boolean isExecutable = ForeignAccess.sendIsExecutable(sendIsExecutableNode, fieldObject);
                     if (isExecutable) {
+                        if (sendExecuteNode == null) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            sendExecuteNode = insert(Message.createExecute(args.length).createNode());
+                        }
                         try {
                             return ForeignAccess.sendExecute(sendExecuteNode, fieldObject, args);
                         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
@@ -126,6 +126,46 @@ class JavaObjectMessageResolution {
             }
 
             throw UnknownIdentifierException.raise(name);
+        }
+
+        private JavaMethodDesc lookupMethod(JavaObject object, String name) {
+            if (lookupMethod == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                lookupMethod = insert(LookupMethodNode.create());
+            }
+            return lookupMethod.execute(object, name);
+        }
+
+        private Object executeMethod(JavaMethodDesc foundMethod, JavaObject object, Object[] args) {
+            if (executeMethod == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                executeMethod = insert(ExecuteMethodNode.create());
+            }
+            return executeMethod.execute(foundMethod, object.obj, args, object.languageContext);
+        }
+
+        private boolean isApplicableByArity(JavaMethodDesc foundMethod, int argsLength) {
+            if (isApplicableByArityNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                isApplicableByArityNode = insert(IsApplicableByArityNode.create());
+            }
+            return isApplicableByArityNode.execute(foundMethod, argsLength);
+        }
+
+        private JavaFieldDesc lookupField(JavaObject object, String name) {
+            if (lookupField == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                lookupField = insert(LookupFieldNode.create());
+            }
+            return lookupField.execute(object, name);
+        }
+
+        private Object readField(JavaFieldDesc field, JavaObject object) {
+            if (readField == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                readField = insert(ReadFieldNode.create());
+            }
+            return readField.execute(field, object);
         }
     }
 
@@ -212,14 +252,20 @@ class JavaObjectMessageResolution {
 
     @Resolve(message = "READ")
     abstract static class ReadNode extends Node {
-
-        @Child private ArrayReadNode read = ArrayReadNode.create();
+        @Child private ArrayReadNode arrayRead;
+        @Child private LookupFieldNode lookupField;
+        @Child private ReadFieldNode readField;
+        @Child private LookupMethodNode lookupMethod;
+        @Child private LookupInnerClassNode lookupInnerClass;
 
         public Object access(JavaObject object, Number index) {
-            return read.executeWithTarget(object, index);
+            if (arrayRead == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                arrayRead = insert(ArrayReadNode.create());
+            }
+            return arrayRead.executeWithTarget(object, index);
         }
 
-        @TruffleBoundary
         public Object access(JavaObject object, String name) {
             if (object.obj instanceof Map) {
                 return accessMap(object, name);
@@ -227,7 +273,19 @@ class JavaObjectMessageResolution {
             if (TruffleOptions.AOT) {
                 return JavaObject.NULL;
             }
-            return JavaInteropReflect.readField(object, name);
+            JavaFieldDesc foundField = lookupField(object, name);
+            if (foundField != null) {
+                return readField(foundField, object);
+            }
+            JavaMethodDesc foundMethod = lookupMethod(object, name);
+            if (foundMethod != null) {
+                return new JavaFunctionObject(foundMethod, object.obj, object.languageContext);
+            }
+            Class<?> innerclass = lookupInnerClass(object, name);
+            if (innerclass != null) {
+                return JavaObject.forClass(innerclass, object.languageContext);
+            }
+            throw UnknownIdentifierException.raise(name);
         }
 
         @TruffleBoundary
@@ -235,15 +293,55 @@ class JavaObjectMessageResolution {
             Map<?, ?> map = (Map<?, ?>) object.obj;
             return JavaInterop.asTruffleValue(map.get(name));
         }
+
+        private Object readField(JavaFieldDesc field, JavaObject object) {
+            if (readField == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                readField = insert(ReadFieldNode.create());
+            }
+            return readField.execute(field, object);
+        }
+
+        private JavaFieldDesc lookupField(JavaObject object, String name) {
+            if (lookupField == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                lookupField = insert(LookupFieldNode.create());
+            }
+            return lookupField.execute(object, name);
+        }
+
+        private JavaMethodDesc lookupMethod(JavaObject object, String name) {
+            if (lookupMethod == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                lookupMethod = insert(LookupMethodNode.create());
+            }
+            return lookupMethod.execute(object, name);
+        }
+
+        private Class<?> lookupInnerClass(JavaObject object, String name) {
+            if (lookupInnerClass == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                lookupInnerClass = insert(LookupInnerClassNode.create());
+            }
+            return lookupInnerClass.execute(object.clazz, name);
+        }
     }
 
     @Resolve(message = "WRITE")
     abstract static class WriteNode extends Node {
-
+        @Child private ArrayWriteNode arrayWrite;
+        @Child private LookupFieldNode lookupField;
+        @Child private WriteFieldNode writeField;
         @Child private ToJavaNode toJava = ToJavaNode.create();
-        @Child private ArrayWriteNode write = ArrayWriteNode.create();
 
-        @TruffleBoundary
+        public Object access(JavaObject receiver, Number index, Object value) {
+            if (arrayWrite == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                arrayWrite = insert(ArrayWriteNode.create());
+            }
+            return arrayWrite.executeWithTarget(receiver, index, value);
+        }
+
         public Object access(JavaObject receiver, String name, Object value) {
             Object obj = receiver.obj;
             if (obj instanceof Map) {
@@ -252,12 +350,11 @@ class JavaObjectMessageResolution {
             if (TruffleOptions.AOT) {
                 throw UnsupportedMessageException.raise(Message.WRITE);
             }
-            Field f = JavaInteropReflect.findField(receiver, name);
+            JavaFieldDesc f = lookupField(receiver, name);
             if (f == null) {
                 throw UnknownIdentifierException.raise(name);
             }
-            Object convertedValue = toJava.execute(value, f.getType(), f.getGenericType(), receiver.languageContext);
-            JavaInteropReflect.setField(obj, f, convertedValue);
+            writeField(f, receiver, value);
             return JavaObject.NULL;
         }
 
@@ -269,10 +366,21 @@ class JavaObjectMessageResolution {
             return map.put(name, convertedValue);
         }
 
-        public Object access(JavaObject receiver, Number index, Object value) {
-            return write.executeWithTarget(receiver, index, value);
+        private JavaFieldDesc lookupField(JavaObject object, String name) {
+            if (lookupField == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                lookupField = insert(LookupFieldNode.create());
+            }
+            return lookupField.execute(object, name);
         }
 
+        private void writeField(JavaFieldDesc field, JavaObject object, Object value) {
+            if (writeField == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                writeField = insert(WriteFieldNode.create());
+            }
+            writeField.execute(field, object, value);
+        }
     }
 
     @Resolve(message = "HAS_KEYS")

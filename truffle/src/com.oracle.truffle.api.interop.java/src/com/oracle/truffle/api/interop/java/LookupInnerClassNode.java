@@ -24,50 +24,34 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import java.util.StringJoiner;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 
-class OverloadedMethodDesc implements JavaMethodDesc {
-    private final SingleMethodDesc[] overloads;
+abstract class LookupInnerClassNode extends Node {
+    static final int LIMIT = 3;
 
-    OverloadedMethodDesc(SingleMethodDesc[] overloads) {
-        this.overloads = overloads;
-        assert overloads.length >= 2;
+    LookupInnerClassNode() {
     }
 
-    @Override
-    public SingleMethodDesc[] getOverloads() {
-        return overloads;
+    static LookupInnerClassNode create() {
+        return LookupInnerClassNodeGen.create();
     }
 
-    @Override
-    public String getName() {
-        return getOverloads()[0].getName();
+    public abstract Class<?> execute(Class<?> outerclass, String name);
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"cachedInnerClass != null", "clazz == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
+    static Class<?> doCached(Class<?> clazz, String name,
+                    @Cached("clazz") Class<?> cachedClazz,
+                    @Cached("name") String cachedName,
+                    @Cached("doUncached(clazz, name)") Class<?> cachedInnerClass) {
+        assert cachedInnerClass == JavaInteropReflect.findInnerClass(clazz, name);
+        return cachedInnerClass;
     }
 
-    public boolean isMethod() {
-        return getOverloads()[0].isMethod();
-    }
-
-    public boolean isConstructor() {
-        return getOverloads()[0].isConstructor();
-    }
-
-    @Override
-    public String toString() {
-        StringJoiner sj = new StringJoiner(", ", "Method[", "]");
-        for (SingleMethodDesc overload : getOverloads()) {
-            sj.add(overload.getReflectionMethod().toString());
-        }
-        return sj.toString();
-    }
-
-    @Override
-    public boolean isInternal() {
-        for (SingleMethodDesc overload : overloads) {
-            if (!overload.isInternal()) {
-                return false;
-            }
-        }
-        return true;
+    @Specialization(replaces = "doCached")
+    static Class<?> doUncached(Class<?> clazz, String name) {
+        return JavaInteropReflect.findInnerClass(clazz, name);
     }
 }

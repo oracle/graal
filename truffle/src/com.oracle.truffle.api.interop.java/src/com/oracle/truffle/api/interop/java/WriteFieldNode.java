@@ -24,50 +24,35 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import java.util.StringJoiner;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 
-class OverloadedMethodDesc implements JavaMethodDesc {
-    private final SingleMethodDesc[] overloads;
+abstract class WriteFieldNode extends Node {
+    static final int LIMIT = 3;
 
-    OverloadedMethodDesc(SingleMethodDesc[] overloads) {
-        this.overloads = overloads;
-        assert overloads.length >= 2;
+    @Child ToJavaNode toJava = ToJavaNode.create();
+
+    WriteFieldNode() {
     }
 
-    @Override
-    public SingleMethodDesc[] getOverloads() {
-        return overloads;
+    static WriteFieldNode create() {
+        return WriteFieldNodeGen.create();
     }
 
-    @Override
-    public String getName() {
-        return getOverloads()[0].getName();
+    public abstract void execute(JavaFieldDesc field, JavaObject object, Object value);
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"field == cachedField"}, limit = "LIMIT")
+    void doCached(SingleFieldDesc field, JavaObject object, Object rawValue,
+                    @Cached("field") SingleFieldDesc cachedField) {
+        Object val = toJava.execute(rawValue, cachedField.getType(), cachedField.getGenericType(), object.languageContext);
+        cachedField.set(object.obj, val);
     }
 
-    public boolean isMethod() {
-        return getOverloads()[0].isMethod();
-    }
-
-    public boolean isConstructor() {
-        return getOverloads()[0].isConstructor();
-    }
-
-    @Override
-    public String toString() {
-        StringJoiner sj = new StringJoiner(", ", "Method[", "]");
-        for (SingleMethodDesc overload : getOverloads()) {
-            sj.add(overload.getReflectionMethod().toString());
-        }
-        return sj.toString();
-    }
-
-    @Override
-    public boolean isInternal() {
-        for (SingleMethodDesc overload : overloads) {
-            if (!overload.isInternal()) {
-                return false;
-            }
-        }
-        return true;
+    @Specialization(replaces = "doCached")
+    void doUncached(SingleFieldDesc field, JavaObject object, Object rawValue) {
+        Object val = toJava.execute(rawValue, field.getType(), field.getGenericType(), object.languageContext);
+        field.set(object.obj, val);
     }
 }

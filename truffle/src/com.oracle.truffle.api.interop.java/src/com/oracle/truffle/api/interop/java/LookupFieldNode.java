@@ -24,50 +24,34 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import java.util.StringJoiner;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 
-class OverloadedMethodDesc implements JavaMethodDesc {
-    private final SingleMethodDesc[] overloads;
+abstract class LookupFieldNode extends Node {
+    static final int LIMIT = 3;
 
-    OverloadedMethodDesc(SingleMethodDesc[] overloads) {
-        this.overloads = overloads;
-        assert overloads.length >= 2;
+    LookupFieldNode() {
     }
 
-    @Override
-    public SingleMethodDesc[] getOverloads() {
-        return overloads;
+    static LookupFieldNode create() {
+        return LookupFieldNodeGen.create();
     }
 
-    @Override
-    public String getName() {
-        return getOverloads()[0].getName();
+    public abstract JavaFieldDesc execute(JavaObject object, String name);
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"cachedField != null", "object.getClazz() == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
+    static JavaFieldDesc doCached(JavaObject object, String name,
+                    @Cached("object.getClazz()") Class<?> cachedClazz,
+                    @Cached("name") String cachedName,
+                    @Cached("doUncached(object, name)") JavaFieldDesc cachedField) {
+        assert cachedField == JavaInteropReflect.findField(object, name);
+        return cachedField;
     }
 
-    public boolean isMethod() {
-        return getOverloads()[0].isMethod();
-    }
-
-    public boolean isConstructor() {
-        return getOverloads()[0].isConstructor();
-    }
-
-    @Override
-    public String toString() {
-        StringJoiner sj = new StringJoiner(", ", "Method[", "]");
-        for (SingleMethodDesc overload : getOverloads()) {
-            sj.add(overload.getReflectionMethod().toString());
-        }
-        return sj.toString();
-    }
-
-    @Override
-    public boolean isInternal() {
-        for (SingleMethodDesc overload : overloads) {
-            if (!overload.isInternal()) {
-                return false;
-            }
-        }
-        return true;
+    @Specialization(replaces = "doCached")
+    static JavaFieldDesc doUncached(JavaObject object, String name) {
+        return JavaInteropReflect.findField(object, name);
     }
 }

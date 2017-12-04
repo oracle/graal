@@ -24,50 +24,33 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import java.util.StringJoiner;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 
-class OverloadedMethodDesc implements JavaMethodDesc {
-    private final SingleMethodDesc[] overloads;
+abstract class IsApplicableByArityNode extends Node {
+    static final int LIMIT = 3;
 
-    OverloadedMethodDesc(SingleMethodDesc[] overloads) {
-        this.overloads = overloads;
-        assert overloads.length >= 2;
+    IsApplicableByArityNode() {
     }
 
-    @Override
-    public SingleMethodDesc[] getOverloads() {
-        return overloads;
+    static IsApplicableByArityNode create() {
+        return IsApplicableByArityNodeGen.create();
     }
 
-    @Override
-    public String getName() {
-        return getOverloads()[0].getName();
+    public abstract boolean execute(JavaMethodDesc object, int argsLength);
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"argsLength == cachedArgsLength"}, limit = "LIMIT")
+    static boolean doCached(JavaMethodDesc method, int argsLength,
+                    @Cached("argsLength") int cachedArgsLength,
+                    @Cached("doUncached(method, argsLength)") boolean applicableByArity) {
+        assert applicableByArity == JavaInteropReflect.isApplicableByArity(method, argsLength);
+        return applicableByArity;
     }
 
-    public boolean isMethod() {
-        return getOverloads()[0].isMethod();
-    }
-
-    public boolean isConstructor() {
-        return getOverloads()[0].isConstructor();
-    }
-
-    @Override
-    public String toString() {
-        StringJoiner sj = new StringJoiner(", ", "Method[", "]");
-        for (SingleMethodDesc overload : getOverloads()) {
-            sj.add(overload.getReflectionMethod().toString());
-        }
-        return sj.toString();
-    }
-
-    @Override
-    public boolean isInternal() {
-        for (SingleMethodDesc overload : overloads) {
-            if (!overload.isInternal()) {
-                return false;
-            }
-        }
-        return true;
+    @Specialization(replaces = "doCached")
+    static boolean doUncached(JavaMethodDesc method, int argsLength) {
+        return JavaInteropReflect.isApplicableByArity(method, argsLength);
     }
 }
