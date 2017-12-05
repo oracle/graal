@@ -22,15 +22,15 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
 import java.util.ArrayList;
 
-import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.Variable;
