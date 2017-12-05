@@ -102,6 +102,10 @@ public final class TestRun {
         int res = 17;
         res = res * 31 + snippet.getKey().hashCode();
         res = res * 31 + snippet.getValue().getId().hashCode();
+        for (Entry<String, ? extends Snippet> argument : arguments) {
+            res = res * 31 + argument.getKey().hashCode();
+            res = res * 31 + argument.getValue().getId().hashCode();
+        }
         return res;
     }
 
