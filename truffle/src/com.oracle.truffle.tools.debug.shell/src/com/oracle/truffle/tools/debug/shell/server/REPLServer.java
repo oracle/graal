@@ -343,8 +343,8 @@ public final class REPLServer {
         return lang.getName() + "(" + lang.getVersion() + ")";
     }
 
-    BreakpointInfo setLineBreakpoint(int ignoreCount, com.oracle.truffle.api.source.LineLocation lineLocation, boolean oneShot) throws IOException {
-        final BreakpointInfo info = new LineBreakpointInfo(lineLocation, ignoreCount, oneShot);
+    BreakpointInfo setLineBreakpoint(int ignoreCount, boolean oneShot) throws IOException {
+        final BreakpointInfo info = new LineBreakpointInfo(ignoreCount, oneShot);
         info.activate();
         return info;
     }
@@ -372,8 +372,7 @@ public final class REPLServer {
 
     final class LineBreakpointInfo extends BreakpointInfo {
 
-        @SuppressWarnings("unused")
-        private LineBreakpointInfo(com.oracle.truffle.api.source.LineLocation lineLocation, int ignoreCount, boolean oneShot) {
+        private LineBreakpointInfo(int ignoreCount, boolean oneShot) {
             super(ignoreCount, oneShot);
         }
 
