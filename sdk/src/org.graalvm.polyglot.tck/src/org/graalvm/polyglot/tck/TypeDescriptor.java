@@ -44,6 +44,13 @@ import org.graalvm.polyglot.Value;
 public final class TypeDescriptor {
 
     /**
+     * Represents all types. It's an intersection of no type.
+     *
+     * @since 0.30
+     */
+    public static final TypeDescriptor ANY = new TypeDescriptor(new IntersectionImpl(Collections.emptySet()));
+
+    /**
      * The NULL type represents a type of null or undefined value.
      *
      * @see Value#isNull().
@@ -87,7 +94,7 @@ public final class TypeDescriptor {
      * @see Value#hasMembers().
      * @since 0.30
      */
-    public static final TypeDescriptor ARRAY = new TypeDescriptor(new ArrayImpl(null));
+    public static final TypeDescriptor ARRAY = new TypeDescriptor(new ArrayImpl(ANY.impl));
     /**
      * Represents a host object.
      *
@@ -107,23 +114,40 @@ public final class TypeDescriptor {
      * Represents an executable type returning any type and accepting any number of parameters of
      * any type. To create an executable type with concrete types use
      * {@link TypeDescriptor#executable(org.graalvm.polyglot.tck.TypeDescriptor, org.graalvm.polyglot.tck.TypeDescriptor...)}
-     * .
+     * . This type can be used for creating value constructors but should not be used for specifying
+     * expressions or statements parameter types as no other executable is assignable to it.
+     *
+     * <p>
+     * The JavaScript sample usage for no argument function constructor:
+     * {@codesnippet LanguageProviderSnippets#TypeDescriptorSnippets#createValueConstructors}
+     * <p>
      *
      * @see Value#canExecute().
      * @since 0.30
      */
-    public static final TypeDescriptor EXECUTABLE = new TypeDescriptor(new ExecutableImpl(null, Collections.emptyList()));
-
-    private static final TypeDescriptor[] PREDEFINED_TYPES = new TypeDescriptor[]{
-                    NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, NATIVE_POINTER, OBJECT, ARRAY, EXECUTABLE
-    };
+    public static final TypeDescriptor EXECUTABLE = new TypeDescriptor(new ExecutableImpl(ExecutableImpl.Kind.BOTTOM, ANY.impl, Collections.emptyList()));
 
     /**
-     * Represents all predefined types.
+     * Represents a raw executable type. Any executable can be assigned into the raw executable
+     * type, but the raw executable type cannot be assigned to any other executable. To create an
+     * executable type with concrete types use
+     * {@link TypeDescriptor#executable(org.graalvm.polyglot.tck.TypeDescriptor, org.graalvm.polyglot.tck.TypeDescriptor...)}
+     * . This type can be used for specifying expressions or statements parameter types when the
+     * passed executable is actually not invoked.
      *
-     * @since 0.30
+     * <p>
+     * The JavaScript sample usage for plus operator:
+     * {@codesnippet LanguageProviderSnippets#JsSnippets#createExpressions}
+     * <p>
+     *
+     * @see TypeDescriptor#EXECUTABLE
+     * @since 1.0
      */
-    public static final TypeDescriptor ANY = new TypeDescriptor(new IntersectionImpl(Collections.emptySet()));
+    public static final TypeDescriptor EXECUTABLE_ANY = new TypeDescriptor(new ExecutableImpl(ExecutableImpl.Kind.TOP, ANY.impl, Collections.emptyList()));
+
+    private static final TypeDescriptor[] PREDEFINED_TYPES = new TypeDescriptor[]{
+                    NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, NATIVE_POINTER, OBJECT, ARRAY, EXECUTABLE, EXECUTABLE_ANY, ANY
+    };
 
     private final TypeDescriptorImpl impl;
 
@@ -262,7 +286,7 @@ public final class TypeDescriptor {
                 final Set<TypeDescriptorImpl> contentTypes = new HashSet<>();
                 for (ArrayImpl array : arrays) {
                     final TypeDescriptorImpl contentType = array.contentType;
-                    if (contentType == null) {
+                    if (contentType.isAssignable(contentType, ANY.impl)) {
                         seenWildCard = true;
                         break;
                     }
@@ -405,29 +429,30 @@ public final class TypeDescriptor {
      * @since 0.30
      */
     public static TypeDescriptor array(TypeDescriptor componentType) {
-        return componentType == null || componentType.isAssignable(ANY) ? ARRAY : new TypeDescriptor(new ArrayImpl(componentType.impl));
+        Objects.requireNonNull(componentType, "Component type canot be null");
+        return componentType.isAssignable(ANY) ? ARRAY : new TypeDescriptor(new ArrayImpl(componentType.impl));
     }
 
     /**
      * Creates a new executable type with a given return type and parameter types.
      *
-     * @param returnType the required return type, use {@code null} literal as any type
+     * @param returnType the required return type, use ANY as any type
      * @param parameterTypes the required parameter types
      * @return an executable type
      * @since 0.30
      */
     public static TypeDescriptor executable(TypeDescriptor returnType, TypeDescriptor... parameterTypes) {
+        Objects.requireNonNull(returnType, "Return type cannot be null");
         Objects.requireNonNull(parameterTypes, "Parameter types cannot be null");
-        if ((returnType == null || returnType.isAssignable(ANY)) && parameterTypes.length == 0) {
+        if (returnType.isAssignable(ANY) && parameterTypes.length == 0) {
             return EXECUTABLE;
         }
-        final TypeDescriptorImpl retImpl = returnType == null ? null : returnType.impl;
         final List<TypeDescriptorImpl> paramTypeImpls = new ArrayList<>(parameterTypes.length);
         for (TypeDescriptor td : parameterTypes) {
             Objects.requireNonNull(td, "Parameter types cannot contain null");
             paramTypeImpls.add(td.impl);
         }
-        return new TypeDescriptor(new ExecutableImpl(retImpl, paramTypeImpls));
+        return new TypeDescriptor(new ExecutableImpl(ExecutableImpl.Kind.UNIT, returnType.impl, paramTypeImpls));
     }
 
     /**
@@ -464,7 +489,7 @@ public final class TypeDescriptor {
             }
             switch (contentTypes.size()) {
                 case 0:
-                    descs.add(intersection(PREDEFINED_TYPES));
+                    descs.add(intersection(NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, NATIVE_POINTER, OBJECT, ARRAY, EXECUTABLE));
                     break;
                 case 1:
                     descs.add(array(contentTypes.iterator().next()));
@@ -576,11 +601,25 @@ public final class TypeDescriptor {
     }
 
     private static final class ExecutableImpl extends TypeDescriptorImpl {
+        enum Kind {
+            TOP,
+            BOTTOM,
+            UNIT
+        }
+
+        private final Kind kind;
         private final TypeDescriptorImpl retType;
         private final List<? extends TypeDescriptorImpl> paramTypes;
 
-        ExecutableImpl(final TypeDescriptorImpl retType, final List<? extends TypeDescriptorImpl> paramTypes) {
+        ExecutableImpl(
+                        final Kind kind,
+                        final TypeDescriptorImpl retType,
+                        final List<? extends TypeDescriptorImpl> paramTypes) {
+            assert kind != null;
+            assert retType != null;
             assert paramTypes != null;
+            assert kind == Kind.UNIT || (retType.equals(ANY.impl) && paramTypes.isEmpty());
+            this.kind = kind;
             this.retType = retType;
             this.paramTypes = paramTypes;
         }
@@ -593,22 +632,27 @@ public final class TypeDescriptor {
                 return false;
             }
             if (otherClz == ExecutableImpl.class) {
-                ExecutableImpl otherExecutable = (ExecutableImpl) other;
-                if (retType != null && (otherExecutable.retType == null || !retType.isAssignable(retType, otherExecutable.retType))) {
+                final ExecutableImpl origExec = (ExecutableImpl) origType;
+                final ExecutableImpl byExec = (ExecutableImpl) byType;
+                if (origExec.kind == Kind.TOP) {
+                    return true;
+                }
+                if (byExec.kind == Kind.TOP) {
                     return false;
                 }
-                if (!otherExecutable.paramTypes.isEmpty()) {
-                    if (paramTypes.size() < otherExecutable.paramTypes.size()) {
+                if (!origExec.retType.isAssignable(origExec.retType, byExec.retType)) {
+                    return false;
+                }
+                if (!byExec.paramTypes.isEmpty()) {
+                    if (origExec.paramTypes.size() < byExec.paramTypes.size()) {
                         return false;
                     }
-                    final List<TypeDescriptorImpl> npts = new ArrayList<>(paramTypes.size());
-                    for (int i = 0; i < otherExecutable.paramTypes.size(); i++) {
-                        final TypeDescriptorImpl pt = paramTypes.get(i);
-                        final TypeDescriptorImpl opt = otherExecutable.paramTypes.get(i);
+                    for (int i = 0; i < byExec.paramTypes.size(); i++) {
+                        final TypeDescriptorImpl pt = origExec.paramTypes.get(i);
+                        final TypeDescriptorImpl opt = byExec.paramTypes.get(i);
                         if (!opt.isAssignable(opt, pt)) {
                             return false;
                         }
-                        npts.add(opt);
                     }
                 }
                 return true;
@@ -620,7 +664,8 @@ public final class TypeDescriptor {
         @Override
         public int hashCode() {
             int res = 17;
-            res = res + (retType == null ? 0 : retType.hashCode());
+            res = res * 31 + kind.hashCode();
+            res = res * 31 + retType.hashCode();
             for (TypeDescriptorImpl paramType : paramTypes) {
                 res = res * 31 + paramType.hashCode();
             }
@@ -636,23 +681,35 @@ public final class TypeDescriptor {
                 return false;
             }
             final ExecutableImpl other = (ExecutableImpl) obj;
-            return Objects.equals(retType, other.retType) && paramTypes.equals(other.paramTypes);
+            return kind == other.kind && retType.equals(other.retType) && paramTypes.equals(other.paramTypes);
         }
 
         @Override
         public String toString() {
             final StringBuilder sb = new StringBuilder("Executable(");
-            boolean first = true;
-            for (TypeDescriptorImpl paramType : paramTypes) {
-                if (first) {
-                    first = false;
-                } else {
-                    sb.append(", ");
-                }
-                sb.append(paramType);
+            switch (kind) {
+                case TOP:
+                    sb.append("? extends");
+                    break;
+                case BOTTOM:
+                    sb.append("? super");
+                    break;
+                case UNIT:
+                    boolean first = true;
+                    for (TypeDescriptorImpl paramType : paramTypes) {
+                        if (first) {
+                            first = false;
+                        } else {
+                            sb.append(", ");
+                        }
+                        sb.append(paramType);
+                    }
+                    break;
+                default:
+                    throw new IllegalStateException("Unknown kind: " + kind);
             }
             sb.append("):");
-            sb.append(retType == null ? "<any>" : retType);
+            sb.append(retType.isAssignable(retType, ANY.impl) ? "<any>" : retType);
             return sb.toString();
         }
     }
@@ -661,6 +718,7 @@ public final class TypeDescriptor {
         private final TypeDescriptorImpl contentType;
 
         ArrayImpl(final TypeDescriptorImpl contentType) {
+            assert contentType != null;
             this.contentType = contentType;
         }
 
@@ -673,13 +731,7 @@ public final class TypeDescriptor {
             } else if (otherClz == ArrayImpl.class) {
                 final ArrayImpl origArray = (ArrayImpl) origType;
                 final ArrayImpl byArray = (ArrayImpl) byType;
-                if (origArray.contentType == null) {
-                    return true;
-                } else if (byArray.contentType == null) {
-                    return false;
-                } else {
-                    return origArray.contentType.isAssignable(origArray.contentType, byArray.contentType);
-                }
+                return origArray.contentType.isAssignable(origArray.contentType, byArray.contentType);
             } else {
                 return other.isAssignable(origType, byType);
             }
@@ -687,7 +739,7 @@ public final class TypeDescriptor {
 
         @Override
         public int hashCode() {
-            return contentType == null ? 0 : contentType.hashCode();
+            return contentType.hashCode();
         }
 
         @Override
@@ -698,14 +750,14 @@ public final class TypeDescriptor {
             if (obj == null || obj.getClass() != ArrayImpl.class) {
                 return false;
             }
-            return Objects.equals(contentType, ((ArrayImpl) obj).contentType);
+            return contentType.equals(((ArrayImpl) obj).contentType);
         }
 
         @Override
         public String toString() {
             final StringBuilder sb = new StringBuilder("Array<");
-            if (contentType == null) {
-                sb.append('?');
+            if (contentType.isAssignable(contentType, ANY.impl)) {
+                sb.append("<any>");
             } else {
                 sb.append(contentType.toString());
             }
