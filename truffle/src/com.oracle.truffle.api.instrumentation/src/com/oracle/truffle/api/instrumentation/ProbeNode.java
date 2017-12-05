@@ -108,8 +108,8 @@ public final class ProbeNode extends Node {
     @Child private volatile ProbeNode.EventChainNode chain;
 
     /*
-     * We cache to ensure that the instrumented tags and source sections are always compilation final
-     * for listeners and factories.
+     * We cache to ensure that the instrumented tags and source sections are always compilation
+     * final for listeners and factories.
      */
     @CompilationFinal private volatile Assumption version;
 
@@ -324,11 +324,11 @@ public final class ProbeNode extends Node {
             if (localVersion != null && localVersion.isValid()) {
                 return this.chain;
             }
-            nextChain = handler.createBindings(ProbeNode.this);
+            nextChain = handler.createBindings(frame, ProbeNode.this);
             if (nextChain == null) {
                 // chain is null -> remove wrapper;
                 // Note: never set child nodes to null, can cause races
-                InstrumentationHandler.removeWrapper(frame, ProbeNode.this);
+                InstrumentationHandler.removeWrapper(ProbeNode.this);
                 return null;
             }
 
@@ -475,8 +475,8 @@ public final class ProbeNode extends Node {
                 throw t;
             } else {
                 /*
-                 * Client Instruments are not allowed to disrupt program execution by throwing exceptions into the
-                 * AST.
+                 * Client Instruments are not allowed to disrupt program execution by throwing
+                 * exceptions into the AST.
                  */
                 exceptionEventForClientInstrument(binding, "ProbeNodeFactory.create", t);
                 return null;
@@ -486,8 +486,8 @@ public final class ProbeNode extends Node {
     }
 
     /**
-     * Handles exceptions from non-language instrumentation code that must not be allowed to alter guest
-     * language execution semantics. Normal response is to log and continue.
+     * Handles exceptions from non-language instrumentation code that must not be allowed to alter
+     * guest language execution semantics. Normal response is to log and continue.
      */
     @TruffleBoundary
     static void exceptionEventForClientInstrument(EventBinding.Source<?> b, String eventName, Throwable t) {

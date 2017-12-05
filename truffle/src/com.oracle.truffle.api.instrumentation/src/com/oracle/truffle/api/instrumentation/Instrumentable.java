@@ -73,15 +73,15 @@ import com.oracle.truffle.api.source.SourceSection;
  * &#064;Instrumentable(factory = BaseNodeWrapper.class)
  * public abstract class BaseNode extends Node {
  *     private final String addtionalData;
- * 
+ *
  *     public BaseNode(String additonalData) {
  *         this.additionalData = additionalData;
  *     }
- * 
+ *
  *     public BaseNode(BaseNode delegate) {
  *         this.additionalData = delegate.additionalData;
  *     }
- * 
+ *
  *     public abstract Object execute(VirtualFrame frame);
  * }
  * </pre>
@@ -89,9 +89,11 @@ import com.oracle.truffle.api.source.SourceSection;
  * @see WrapperNode
  * @see ProbeNode
  * @since 0.12
+ * @deprecated use {@link GenerateWrapper} and {@link InstrumentableNode} instead.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
+@Deprecated
 public @interface Instrumentable {
 
     /**
@@ -106,9 +108,10 @@ public @interface Instrumentable {
      *     public abstract Object execute(VirtualFrame frame);
      * }
      * </pre>
-     * 
+     *
      * @since 0.12
      */
+    @SuppressWarnings("deprecation")
     Class<? extends InstrumentableFactory<? extends Node>> factory();
 
 }

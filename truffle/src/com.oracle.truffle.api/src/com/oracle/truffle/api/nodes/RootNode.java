@@ -111,13 +111,12 @@ public abstract class RootNode extends ExecutableNode {
 
     /*
      * Since languages were singletons in the past, we cannot use the Env instance stored in
-     * TruffleLanguage for languages that are not yet migrated. We use this env reference instead
-     * for compatibility.
+     * TruffleLanguage for languages that are not yet migrated. We use this sourceVM reference
+     * instead for compatibility.
      */
     final Object sourceVM;
     private RootCallTarget callTarget;
     @CompilationFinal private FrameDescriptor frameDescriptor;
-    private final SourceSection sourceSection;
     final ReentrantLock lock = new ReentrantLock();
 
     volatile byte instrumentationBits;
@@ -157,7 +156,6 @@ public abstract class RootNode extends ExecutableNode {
             this.sourceVM = getCurrentVM();
         }
         this.frameDescriptor = frameDescriptor == null ? new FrameDescriptor() : frameDescriptor;
-        this.sourceSection = null;
     }
 
     private static Object getCurrentVM() {
@@ -195,17 +193,6 @@ public abstract class RootNode extends ExecutableNode {
         RootNode root = (RootNode) super.copy();
         root.frameDescriptor = frameDescriptor;
         return root;
-    }
-
-    /**
-     * Returns the source section associated with this {@link RootNode}. Returns <code>null</code>
-     * if by default. Can be called on any thread and without a language context.
-     *
-     * @since 0.13
-     */
-    @Override
-    public SourceSection getSourceSection() {
-        return sourceSection;
     }
 
     /**
@@ -409,7 +396,9 @@ public abstract class RootNode extends ExecutableNode {
      * and without a language context.
      *
      * @since 0.8 or earlier
+     * @deprecated in 0.30 instrumentable must be controlled using the InstrumentableNode interface.
      */
+    @Deprecated
     protected boolean isInstrumentable() {
         return true;
     }

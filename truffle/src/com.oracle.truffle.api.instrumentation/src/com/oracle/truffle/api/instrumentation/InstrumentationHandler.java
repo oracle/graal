@@ -81,9 +81,9 @@ final class InstrumentationHandler {
 
     /*
      * The contract is the following: "sources" and "sourcesList" can only be accessed while
-     * synchronized on "sources". both will only be lazily initialized from "loadedRoots" when the first
-     * sourceBindings is added, by calling lazyInitializeSourcesList(). "sourcesList" will be null as
-     * long as the sources haven't been initialized.
+     * synchronized on "sources". both will only be lazily initialized from "loadedRoots" when the
+     * first sourceBindings is added, by calling lazyInitializeSourcesList(). "sourcesList" will be
+     * null as long as the sources haven't been initialized.
      */
     private final Map<Source, Void> sources = Collections.synchronizedMap(new WeakHashMap<Source, Void>());
     /* Load order needs to be preserved for sources, thats why we store sources again in a list. */
@@ -603,7 +603,7 @@ final class InstrumentationHandler {
         return newBindings;
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "deprecation"})
     private void insertWrapper(Node instrumentableNode, SourceSection sourceSection) {
         final Node node = instrumentableNode;
         final Node parent = node.getParent();
@@ -615,30 +615,38 @@ final class InstrumentationHandler {
         ProbeNode probe = new ProbeNode(InstrumentationHandler.this, sourceSection);
         WrapperNode wrapper;
         try {
-            Class<?> factory = null;
-            Class<?> currentClass = instrumentableNode.getClass();
-            while (currentClass != null) {
-                Instrumentable instrumentable = currentClass.getAnnotation(Instrumentable.class);
-                if (instrumentable != null) {
-                    factory = instrumentable.factory();
-                    break;
-                }
-                currentClass = currentClass.getSuperclass();
-            }
 
-            if (factory == null) {
+            if (instrumentableNode instanceof InstrumentableNode) {
+                wrapper = ((InstrumentableNode) instrumentableNode).createWrapper(probe);
+                if (wrapper == null) {
+                    throw new IllegalStateException("No wrapper returned for " + instrumentableNode);
+                }
+            } else {
+                Class<?> factory = null;
+                Class<?> currentClass = instrumentableNode.getClass();
+                while (currentClass != null) {
+                    Instrumentable instrumentable = currentClass.getAnnotation(Instrumentable.class);
+                    if (instrumentable != null) {
+                        factory = instrumentable.factory();
+                        break;
+                    }
+                    currentClass = currentClass.getSuperclass();
+                }
+
+                if (factory == null) {
+                    if (TRACE) {
+                        trace("No wrapper inserted for %s, section %s. Not annotated with @Instrumentable.%n", node, sourceSection);
+                    }
+                    // node or superclass is not annotated with @Instrumentable
+                    return;
+                }
+
                 if (TRACE) {
-                    trace("No wrapper inserted for %s, section %s. Not annotated with @Instrumentable.%n", node, sourceSection);
+                    trace("Insert wrapper for %s, section %s%n", node, sourceSection);
                 }
-                // node or superclass is not annotated with @Instrumentable
-                return;
+                wrapper = ((InstrumentableFactory<Node>) factory.newInstance()).createWrapper(instrumentableNode, probe);
             }
 
-            if (TRACE) {
-                trace("Insert wrapper for %s, section %s%n", node, sourceSection);
-            }
-
-            wrapper = ((InstrumentableFactory<Node>) factory.newInstance()).createWrapper(instrumentableNode, probe);
         } catch (Exception e) {
             throw new IllegalStateException("Failed to create wrapper node. ", e);
         }
@@ -766,8 +774,16 @@ final class InstrumentationHandler {
         return getProvidedTags(root.getRootNode().getLanguageInfo());
     }
 
+    @SuppressWarnings("deprecation")
     static boolean isInstrumentableNode(Node node, SourceSection sourceSection) {
-        return !(node instanceof WrapperNode) && !(node instanceof RootNode) && sourceSection != null;
+        if (node instanceof WrapperNode) {
+            return false;
+        }
+        if (node instanceof InstrumentableNode) {
+            return ((InstrumentableNode) node).isInstrumentable();
+        } else {
+            return !(node instanceof RootNode) && sourceSection != null;
+        }
     }
 
     private static void trace(String message, Object... args) {
@@ -810,6 +826,7 @@ final class InstrumentationHandler {
         }
     }
 
+    @SuppressWarnings("deprecation")
     static void removeWrapper(ProbeNode node) {
         if (TRACE) {
             trace("Remove wrapper for %s%n", node.getContext().getInstrumentedSourceSection());
@@ -818,6 +835,7 @@ final class InstrumentationHandler {
         ((Node) wrapperNode).replace(wrapperNode.getDelegateNode());
     }
 
+    @SuppressWarnings("deprecation")
     private static void invalidateWrapper(Node node) {
         Node parent = node.getParent();
         if (!(parent instanceof WrapperNode)) {
@@ -827,6 +845,7 @@ final class InstrumentationHandler {
         invalidateWrapperImpl((WrapperNode) parent, node);
     }
 
+    @SuppressWarnings("deprecation")
     private static void invalidateWrapperImpl(WrapperNode parent, Node node) {
         ProbeNode probeNode = parent.getProbeNode();
         if (TRACE) {
@@ -838,19 +857,16 @@ final class InstrumentationHandler {
         }
     }
 
+    @SuppressWarnings("unchecked")
     static boolean hasTagImpl(Set<Class<?>> providedTags, Node node, Class<?> tag) {
         if (providedTags.contains(tag)) {
-            return AccessorInstrumentHandler.nodesAccess().isTaggedWith(node, tag);
+            if (node instanceof InstrumentableNode) {
+                return ((InstrumentableNode) node).hasTag((Class<? extends Tag>) tag);
+            } else {
+                return AccessorInstrumentHandler.nodesAccess().isTaggedWith(node, tag);
+            }
         }
         return false;
-    }
-
-    static Instrumentable getInstrumentable(Node node) {
-        Instrumentable instrumentable = node.getClass().getAnnotation(Instrumentable.class);
-        if (instrumentable != null && !(node instanceof WrapperNode)) {
-            return instrumentable;
-        }
-        return null;
     }
 
     private <T> T lookup(Object key, Class<T> type) {
@@ -1257,7 +1273,8 @@ final class InstrumentationHandler {
     }
 
     /**
-     * Provider of instrumentation services for {@linkplain TruffleLanguage language implementations}.
+     * Provider of instrumentation services for {@linkplain TruffleLanguage language
+     * implementations}.
      */
     final class EngineInstrumenter extends AbstractInstrumenter {
 
@@ -1302,7 +1319,8 @@ final class InstrumentationHandler {
     }
 
     /**
-     * Provider of instrumentation services for {@linkplain TruffleLanguage language implementations}.
+     * Provider of instrumentation services for {@linkplain TruffleLanguage language
+     * implementations}.
      */
     final class LanguageClientInstrumenter<T> extends AbstractInstrumenter {
 
@@ -1387,8 +1405,8 @@ final class InstrumentationHandler {
     }
 
     /**
-     * Shared implementation of instrumentation services for clients whose requirements and privileges
-     * may vary.
+     * Shared implementation of instrumentation services for clients whose requirements and
+     * privileges may vary.
      */
     abstract class AbstractInstrumenter extends Instrumenter {
 
@@ -1492,15 +1510,15 @@ final class InstrumentationHandler {
 
     /**
      * A list collection data structure that is optimized for fast non-blocking traversals. There is
-     * adds and no explicit removal. Removals are based on a side effect of the element, by returning
-     * <code>null</code> in {@link AbstractAsyncCollection#unwrap(Object)}. It is not possible to
-     * reliably query the {@link AbstractAsyncCollection#size()} of the collection, therefore it throws
-     * an {@link UnsupportedOperationException}.
+     * adds and no explicit removal. Removals are based on a side effect of the element, by
+     * returning <code>null</code> in {@link AbstractAsyncCollection#unwrap(Object)}. It is not
+     * possible to reliably query the {@link AbstractAsyncCollection#size()} of the collection,
+     * therefore it throws an {@link UnsupportedOperationException}.
      */
     private abstract static class AbstractAsyncCollection<T, R> extends AbstractCollection<R> {
         /*
-         * We use an atomic reference list as we don't want to see holes in the array when appending to it.
-         * This allows us to use null as a safe terminator for the array.
+         * We use an atomic reference list as we don't want to see holes in the array when appending
+         * to it. This allows us to use null as a safe terminator for the array.
          */
         private volatile AtomicReferenceArray<T> values;
 
@@ -1562,8 +1580,8 @@ final class InstrumentationHandler {
             }
 
             /*
-             * We ensure that the capacity after compaction is always twice as big as the number of live
-             * elements. This can make the array grow or shrink as needed.
+             * We ensure that the capacity after compaction is always twice as big as the number of
+             * live elements. This can make the array grow or shrink as needed.
              */
             AtomicReferenceArray<T> newValues = new AtomicReferenceArray<>(Math.max(liveElements * 2, 8));
             int index = 0;
@@ -1582,17 +1600,17 @@ final class InstrumentationHandler {
         }
 
         /**
-         * Returns an iterator which can be traversed without a lock. The iterator that is constructed is
-         * not sequentially consistent. In other words, the user of the iterator may observe values that
-         * were added after the iterator was created.
+         * Returns an iterator which can be traversed without a lock. The iterator that is
+         * constructed is not sequentially consistent. In other words, the user of the iterator may
+         * observe values that were added after the iterator was created.
          */
         @Override
         public Iterator<R> iterator() {
             return new Iterator<R>() {
 
                 /*
-                 * We need to capture the values field in the iterator to have a consistent view on the data while
-                 * iterating.
+                 * We need to capture the values field in the iterator to have a consistent view on
+                 * the data while iterating.
                  */
                 private final AtomicReferenceArray<T> values = AbstractAsyncCollection.this.values;
                 private int index;

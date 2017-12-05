@@ -65,6 +65,24 @@ public final class EventContext {
         return probeNode;
     }
 
+    public boolean hasTag(Class<? extends Tag> tag) {
+        Node node = getInstrumentedNode();
+        if (node instanceof InstrumentableNode) {
+            return ((InstrumentableNode) node).hasTag(tag);
+        } else {
+            // legacy support
+            return AccessorInstrumentHandler.nodesAccess().isTaggedWith(node, tag);
+        }
+    }
+
+    public <T> T getTagAttribute(Tag.Attribute<T> attribute) {
+        if (!hasTag(attribute.getTag())) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalArgumentException("Instrumented node is not tagged with " + attribute.getTag() + ".");
+        }
+        return attribute.getValue(getInstrumentedNode());
+    }
+
     /**
      * Returns the {@link SourceSection} that is being instrumented. The returned source section is
      * final for each {@link EventContext} instance.

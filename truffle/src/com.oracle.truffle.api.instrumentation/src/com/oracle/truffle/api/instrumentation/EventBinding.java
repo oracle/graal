@@ -69,7 +69,8 @@ public class EventBinding<T> {
     }
 
     /**
-     * @return the subscriber: an {@link ExecutionEventNodeFactory} or {@link ExecutionEventListener}.
+     * @return the subscriber: an {@link ExecutionEventNodeFactory} or
+     *         {@link ExecutionEventListener}.
      *
      * @since 0.12
      */

@@ -1192,23 +1192,30 @@ public class ElementUtils {
         return true;
     }
 
-    public static boolean executableEquals(ExecutableElement var1, ExecutableElement var2) {
-        if (!var1.getSimpleName().equals(var2.getSimpleName())) {
+    public static boolean signatureEquals(ExecutableElement e1, ExecutableElement e2) {
+        if (!e1.getSimpleName().equals(e2.getSimpleName())) {
             return false;
         }
-        if (var1.getParameters().size() != var2.getParameters().size()) {
+        if (e1.getParameters().size() != e2.getParameters().size()) {
             return false;
         }
-        if (!ElementUtils.typeEquals(var1.asType(), var2.asType())) {
+        if (!ElementUtils.typeEquals(e1.asType(), e2.asType())) {
             return false;
         }
-        if (!ElementUtils.elementEquals(var1.getEnclosingElement(), var2.getEnclosingElement())) {
-            return false;
-        }
-        for (int i = 0; i < var1.getParameters().size(); i++) {
-            if (!typeEquals(var1.getParameters().get(i).asType(), var2.getParameters().get(i).asType())) {
+        for (int i = 0; i < e1.getParameters().size(); i++) {
+            if (!typeEquals(e1.getParameters().get(i).asType(), e2.getParameters().get(i).asType())) {
                 return false;
             }
+        }
+        return true;
+    }
+
+    public static boolean executableEquals(ExecutableElement e1, ExecutableElement e2) {
+        if (!signatureEquals(e1, e2)) {
+            return false;
+        }
+        if (!ElementUtils.elementEquals(e1.getEnclosingElement(), e2.getEnclosingElement())) {
+            return false;
         }
         return true;
     }

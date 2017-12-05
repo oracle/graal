@@ -24,8 +24,13 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
+
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
+import java.util.function.Function;
+
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Set of standard tags usable by language agnostic tools. Language should {@link ProvidedTags
@@ -56,7 +61,7 @@ public final class StandardTags {
      *
      * @since 0.12
      */
-    public final class StatementTag {
+    public static final class StatementTag extends Tag {
         private StatementTag() {
             /* No instances */
         }
@@ -75,7 +80,7 @@ public final class StandardTags {
      *
      * @since 0.12
      */
-    public final class CallTag {
+    public static final class CallTag extends Tag {
         private CallTag() {
             /* No instances */
         }
@@ -94,10 +99,27 @@ public final class StandardTags {
      *
      * @since 0.12
      */
-    public final class RootTag {
+    public static final class RootTag extends Tag {
+
+        /**
+         * The root name associated with this tagged node. Delegates to {@link RootNode#getName()}
+         * by default.
+         */
+        public static final Attribute<String> NAME = createAttribute(RootTag.class, "name", String.class, new DefaultName(), null);
 
         private RootTag() {
             /* No instances */
+        }
+
+        private static class DefaultName implements Function<Node, String> {
+
+            public String apply(Node node) {
+                RootNode root = node.getRootNode();
+                if (root != null) {
+                    return root.getName();
+                }
+                return null;
+            }
         }
     }
 
@@ -120,11 +142,12 @@ public final class StandardTags {
      *
      * @since 0.30
      */
-    public final class ExpressionTag {
+    public static final class ExpressionTag extends Tag {
 
         private ExpressionTag() {
             /* No instances */
         }
+
     }
 
 }

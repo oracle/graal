@@ -475,11 +475,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         }
 
         @Override
-        protected boolean isInstrumentable() {
-            return true;
-        }
-
-        @Override
         @ExplodeLoop
         public Object execute(VirtualFrame frame) {
             Object returnValue = Null.INSTANCE;

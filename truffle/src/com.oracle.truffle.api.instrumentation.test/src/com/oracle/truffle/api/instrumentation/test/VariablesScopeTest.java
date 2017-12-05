@@ -288,10 +288,6 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
                 return scopeNode.execute(frame);
             }
 
-            @Override
-            protected boolean isInstrumentable() {
-                return true;
-            }
         }
 
         @Instrumentable(factory = CustomScopeNodeWrapper.class)

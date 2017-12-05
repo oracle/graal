@@ -25,7 +25,9 @@
 package com.oracle.truffle.api.debug;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
@@ -54,7 +56,7 @@ public final class DebuggerTags {
      *
      * @since 0.14
      */
-    public final class AlwaysHalt {
+    public final class AlwaysHalt extends Tag {
         private AlwaysHalt() {
             /* No instances */
         }
@@ -64,21 +66,23 @@ public final class DebuggerTags {
 
 class DebuggerTagsSnippets {
 
+    @SuppressWarnings("unused")
     public static Node debuggerNode() {
         // @formatter:off
+        abstract
         // BEGIN: com.oracle.truffle.api.debug.DebuggerTagsSnippets#debuggerNode
-        class DebuggerNode extends Node {
-            @Override
-            protected boolean isTaggedWith(Class<?> tag) {
+        class DebuggerNode extends Node implements InstrumentableNode {
+
+            public boolean hasTag(Class<? extends Tag> tag) {
                 if (tag == DebuggerTags.AlwaysHalt.class) {
                     return true;
                 } else {
-                    return super.isTaggedWith(tag);
+                    return false;
                 }
             }
         }
         // END: com.oracle.truffle.api.debug.DebuggerTagsSnippets#debuggerNode
         // @formatter:on
-        return new DebuggerNode();
+        return null;
     }
 }

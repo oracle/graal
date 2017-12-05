@@ -52,8 +52,10 @@ import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.Instrumentable;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.Node.Child;
@@ -73,7 +75,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.transform.FixWarningsVisitor;
 import com.oracle.truffle.dsl.processor.java.transform.GenerateOverrideVisitor;
 
-@SupportedAnnotationTypes("com.oracle.truffle.api.instrumentation.Instrumentable")
+@SupportedAnnotationTypes({"com.oracle.truffle.api.instrumentation.Instrumentable", "com.oracle.truffle.api.instrumentation.GenerateWrapper"})
 public final class InstrumentableProcessor extends AbstractProcessor {
 
     // configuration
@@ -95,6 +97,8 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         return SourceVersion.latest();
     }
 
+    private static final String CREATE_WRAPPER_NAME = "createWrapper";
+
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (roundEnv.processingOver()) {
@@ -104,25 +108,100 @@ public final class InstrumentableProcessor extends AbstractProcessor {
             ProcessorContext context = new ProcessorContext(processingEnv, null);
             ProcessorContext.setThreadLocalInstance(context);
 
-            for (Element element : roundEnv.getElementsAnnotatedWith(Instrumentable.class)) {
+            DeclaredType instrumentableNode = context.getDeclaredType(InstrumentableNode.class);
+            ExecutableElement createWrapper = ElementUtils.findExecutableElement(instrumentableNode, CREATE_WRAPPER_NAME);
+
+            for (Element element : roundEnv.getElementsAnnotatedWith(GenerateWrapper.class)) {
                 if (!element.getKind().isClass() && !element.getKind().isInterface()) {
                     continue;
                 }
                 try {
                     if (element.getKind() != ElementKind.CLASS) {
-                        emitError(element, String.format("Only classes can be annotated with %s.", Instrumentable.class.getSimpleName()));
+                        emitError(element, String.format("Only classes can be annotated with %s.", GenerateWrapper.class.getSimpleName()));
                         continue;
                     }
 
-                    TypeMirror instrumentableType = context.getType(Instrumentable.class);
-                    AnnotationMirror instrumentable = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), instrumentableType);
-                    if (instrumentable == null) {
+                    if (createWrapper == null) {
+                        emitError(element, String.format("Fatal %s.%s not found.", InstrumentableNode.class.getSimpleName(), CREATE_WRAPPER_NAME));
                         continue;
                     }
 
+                    if (!ElementUtils.isAssignable(element.asType(), instrumentableNode)) {
+                        emitError(element, String.format("Classes annotated with @%s must extend %s.", GenerateWrapper.class.getSimpleName(), InstrumentableNode.class.getSimpleName()));
+                        // continue processing not a fatal error.
+                    } else {
+                        boolean createWrapperFound = false;
+                        for (ExecutableElement declaredMethod : ElementFilter.methodsIn(element.getEnclosedElements())) {
+                            if (ElementUtils.signatureEquals(declaredMethod, createWrapper)) {
+                                createWrapperFound = true;
+                                break;
+                            }
+                        }
+                        if (!createWrapperFound) {
+                            emitError(element, String.format("Classes annotated with @%s must declare/override %s.%s and return a new instance of the generated wrapper class called %s.",
+                                            GenerateWrapper.class.getSimpleName(), InstrumentableNode.class.getSimpleName(), CREATE_WRAPPER_NAME, createWrapperClassName((TypeElement) element)));
+                            // continue processing not a fatal error.
+                        }
+                    }
+
+                    AnnotationMirror generateWrapperMirror = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), context.getType(GenerateWrapper.class));
+                    if (generateWrapperMirror == null) {
+                        continue;
+                    }
+
+                    CodeTypeElement unit = generateWrapperOnly(context, element);
+
+                    if (unit == null) {
+                        continue;
+                    }
+                    DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
+                    DeclaredType unusedType = (DeclaredType) context.getType(SuppressWarnings.class);
+                    unit.accept(new GenerateOverrideVisitor(overrideType), null);
+                    unit.accept(new FixWarningsVisitor(context.getEnvironment(), unusedType, overrideType), null);
+                    unit.accept(new CodeWriter(context.getEnvironment(), element), null);
+                } catch (Throwable e) {
+                    // never throw annotation processor exceptions to the compiler
+                    // it might screw up its state.
+                    handleThrowable(e, element);
+                }
+            }
+
+            // remove with deprecations
+            processLegacyInstrumentable(roundEnv, context);
+
+            return true;
+        } finally {
+            ProcessorContext.setThreadLocalInstance(null);
+        }
+    }
+
+    /*
+     * TO BE REMOVED WITH DEPRECATIONS
+     */
+    private void processLegacyInstrumentable(RoundEnvironment roundEnv, ProcessorContext context) {
+        for (Element element : roundEnv.getElementsAnnotatedWith(Instrumentable.class)) {
+            if (!element.getKind().isClass() && !element.getKind().isInterface()) {
+                continue;
+            }
+            try {
+                if (element.getKind() != ElementKind.CLASS) {
+                    emitError(element, String.format("Only classes can be annotated with %s.", Instrumentable.class.getSimpleName()));
+                    continue;
+                }
+
+                AnnotationMirror generateWrapperMirror = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), context.getType(GenerateWrapper.class));
+                if (generateWrapperMirror != null) {
+                    continue;
+                }
+
+                TypeMirror instrumentableType = context.getType(Instrumentable.class);
+                AnnotationMirror instrumentable = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), instrumentableType);
+                if (instrumentable == null) {
+                    continue;
+                } else {
+                    final boolean generateWrapper;
                     TypeMirror factoryType = ElementUtils.getAnnotationValue(TypeMirror.class, instrumentable, "factory");
 
-                    final boolean generateWrapper;
                     if (factoryType == null || factoryType.getKind() == TypeKind.ERROR) {
                         // factory type is erroneous or null (can mean error in javac)
                         // generate it
@@ -140,25 +219,23 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                     if (!generateWrapper) {
                         continue;
                     }
-
-                    CodeTypeElement unit = generateWrapperAndFactory(context, element);
-                    if (unit == null) {
-                        continue;
-                    }
-                    DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
-                    DeclaredType unusedType = (DeclaredType) context.getType(SuppressWarnings.class);
-                    unit.accept(new GenerateOverrideVisitor(overrideType), null);
-                    unit.accept(new FixWarningsVisitor(context.getEnvironment(), unusedType, overrideType), null);
-                    unit.accept(new CodeWriter(context.getEnvironment(), element), null);
-                } catch (Throwable e) {
-                    // never throw annotation processor exceptions to the compiler
-                    // it might screw up its state.
-                    handleThrowable(e, element);
                 }
+
+                CodeTypeElement unit = generateWrapperAndFactory(context, element);
+
+                if (unit == null) {
+                    continue;
+                }
+                DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
+                DeclaredType unusedType = (DeclaredType) context.getType(SuppressWarnings.class);
+                unit.accept(new GenerateOverrideVisitor(overrideType), null);
+                unit.accept(new FixWarningsVisitor(context.getEnvironment(), unusedType, overrideType), null);
+                unit.accept(new CodeWriter(context.getEnvironment(), element), null);
+            } catch (Throwable e) {
+                // never throw annotation processor exceptions to the compiler
+                // it might screw up its state.
+                handleThrowable(e, element);
             }
-            return true;
-        } finally {
-            ProcessorContext.setThreadLocalInstance(null);
         }
     }
 
@@ -167,8 +244,17 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         ProcessorContext.getInstance().getEnvironment().getMessager().printMessage(Kind.ERROR, message + ": " + ElementUtils.printException(t), e);
     }
 
+    private CodeTypeElement generateWrapperOnly(ProcessorContext context, Element e) {
+        CodeTypeElement wrapper = generateWrapper(context, e, true);
+        if (wrapper == null) {
+            return null;
+        }
+        assertNoErrorExpected(e);
+        return wrapper;
+    }
+
     private CodeTypeElement generateWrapperAndFactory(ProcessorContext context, Element e) {
-        CodeTypeElement wrapper = generateWrapper(context, e);
+        CodeTypeElement wrapper = generateWrapper(context, e, false);
         if (wrapper == null) {
             return null;
         }
@@ -225,7 +311,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         return sourceType.getSimpleName().toString() + CLASS_SUFFIX;
     }
 
-    private CodeTypeElement generateWrapper(ProcessorContext context, Element e) {
+    private CodeTypeElement generateWrapper(ProcessorContext context, Element e, boolean topLevelClass) {
         if (!e.getKind().isClass()) {
             return null;
         }
@@ -295,18 +381,40 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         }
 
         PackageElement pack = context.getEnvironment().getElementUtils().getPackageOf(sourceType);
-        Set<Modifier> typeModifiers = ElementUtils.modifiers(Modifier.PRIVATE, Modifier.FINAL);
-        CodeTypeElement wrapperType = new CodeTypeElement(typeModifiers, ElementKind.CLASS, pack, sourceType.getSimpleName().toString() + CLASS_SUFFIX + "0");
+        Set<Modifier> typeModifiers;
+
+        String wrapperClassName = createWrapperClassName(sourceType);
+        if (topLevelClass) {
+            typeModifiers = ElementUtils.modifiers(Modifier.FINAL);
+        } else {
+            typeModifiers = ElementUtils.modifiers(Modifier.PRIVATE, Modifier.FINAL);
+            // add some suffix to avoid name clashes
+            wrapperClassName += "0";
+        }
+
+        CodeTypeElement wrapperType = new CodeTypeElement(typeModifiers, ElementKind.CLASS, pack, wrapperClassName);
         TypeMirror resolvedSuperType = sourceType.asType();
         wrapperType.setSuperClass(resolvedSuperType);
-        wrapperType.getImplements().add(context.getType(WrapperNode.class));
+        if (topLevelClass) {
+            wrapperType.getImplements().add(context.getType(InstrumentableNode.WrapperNode.class));
+        } else {
+            wrapperType.getImplements().add(context.getType(InstrumentableFactory.WrapperNode.class));
+        }
 
         addGeneratedBy(context, wrapperType, sourceType);
 
         wrapperType.add(createNodeChild(context, sourceType.asType(), FIELD_DELEGATE));
         wrapperType.add(createNodeChild(context, context.getType(ProbeNode.class), FIELD_PROBE));
 
-        CodeExecutableElement wrappedConstructor = GeneratorUtils.createConstructorUsingFields(ElementUtils.modifiers(Modifier.PRIVATE), wrapperType, constructor);
+        Set<Modifier> constructorModifiers;
+        if (topLevelClass) {
+            // package protected
+            constructorModifiers = ElementUtils.modifiers();
+        } else {
+            constructorModifiers = ElementUtils.modifiers(Modifier.PRIVATE);
+        }
+
+        CodeExecutableElement wrappedConstructor = GeneratorUtils.createConstructorUsingFields(constructorModifiers, wrapperType, constructor);
         wrapperType.add(wrappedConstructor);
 
         // generate getters

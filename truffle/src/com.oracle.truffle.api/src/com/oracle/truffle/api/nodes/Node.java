@@ -596,7 +596,9 @@ public abstract class Node implements NodeInterface, Cloneable {
      * @return <code>true</code> if the node should be considered tagged by a tag else
      *         <code>false</code>.
      * @since 0.12
+     * @deprecated implement InstrumentableNode#hasTag instead.
      */
+    @Deprecated
     protected boolean isTaggedWith(Class<?> tag) {
         return false;
     }
@@ -677,6 +679,7 @@ public abstract class Node implements NodeInterface, Cloneable {
 
         static final class AccessNodes extends Accessor.Nodes {
 
+            @SuppressWarnings("deprecation")
             @Override
             public boolean isInstrumentable(RootNode rootNode) {
                 return rootNode.isInstrumentable();
