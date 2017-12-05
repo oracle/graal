@@ -47,7 +47,7 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
 
     @Specialization
     protected Object doOp(VirtualFrame frame, LLVMGlobal address, LLVM80BitFloat value,
-                    @Cached(value = "toNative()") LLVMToNativeNode globalAccess,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         memory.put80BitFloat(globalAccess.executeWithTarget(frame, address), value);
         return null;

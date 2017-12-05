@@ -105,7 +105,7 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
 
         @Specialization
         public short doGlobal(VirtualFrame frame, LLVMGlobal from,
-                        @Cached("toNative()") LLVMToNativeNode access) {
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode access) {
             return (short) access.executeWithTarget(frame, from).getVal();
         }
 

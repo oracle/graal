@@ -123,8 +123,8 @@ public abstract class LLVMX86_64BitVACopy extends LLVMBuiltin {
 
     @Specialization
     protected Object doVoid(VirtualFrame frame, LLVMGlobal dest, LLVMGlobal source,
-                    @Cached("toNative()") LLVMToNativeNode globalAccess1,
-                    @Cached("toNative()") LLVMToNativeNode globalAccess2) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess1,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess2) {
         return doVoid(frame, globalAccess1.executeWithTarget(frame, dest), globalAccess2.executeWithTarget(frame, source));
     }
 

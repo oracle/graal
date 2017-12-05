@@ -44,8 +44,8 @@ public abstract class NativeProfiledMemMove extends LLVMMemMoveNode {
 
     @CompilationFinal private boolean inJava = true;
 
-    @Child private LLVMToNativeNode convert1 = LLVMToNativeNode.toNative();
-    @Child private LLVMToNativeNode convert2 = LLVMToNativeNode.toNative();
+    @Child private LLVMToNativeNode convert1 = LLVMToNativeNode.createToNativeWithTarget();
+    @Child private LLVMToNativeNode convert2 = LLVMToNativeNode.createToNativeWithTarget();
 
     @Specialization
     protected Object case1(VirtualFrame frame, Object target, Object source, int length,

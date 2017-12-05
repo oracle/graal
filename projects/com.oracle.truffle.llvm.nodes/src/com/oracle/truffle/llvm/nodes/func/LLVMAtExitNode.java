@@ -40,20 +40,19 @@ import com.oracle.truffle.llvm.runtime.LLVMContext.DestructorStackElement;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNodeGen;
 
 public final class LLVMAtExitNode extends LLVMExpressionNode {
 
     @CompilationFinal private LinkedList<DestructorStackElement> destructorStack;
     @Child private LLVMExpressionNode destructor;
-    @Child private LLVMExpressionNode thiz;
+    @Child private LLVMToNativeNode thiz;
     @Child private LLVMExpressionNode dsoHandle;
-    @Child private LLVMToNativeNode forceToAddress;
 
     public LLVMAtExitNode(LLVMExpressionNode destructor, LLVMExpressionNode thiz, LLVMExpressionNode dsoHandle) {
         this.destructor = destructor;
-        this.thiz = thiz;
+        this.thiz = LLVMToNativeNodeGen.create(thiz);
         this.dsoHandle = dsoHandle;
-        this.forceToAddress = LLVMToNativeNode.toNative();
     }
 
     public LinkedList<DestructorStackElement> getDestructorStack() {
@@ -68,8 +67,8 @@ public final class LLVMAtExitNode extends LLVMExpressionNode {
     public Object executeGeneric(VirtualFrame frame) {
         try {
             LLVMFunctionDescriptor d = destructor.executeLLVMFunctionDescriptor(frame);
-            LLVMAddress t = forceToAddress.executeWithTarget(frame, thiz.executeGeneric(frame));
-            LLVMAddress h = forceToAddress.executeWithTarget(frame, thiz.executeGeneric(frame));
+            LLVMAddress t = thiz.executeGeneric(frame);
+            LLVMAddress h = thiz.executeGeneric(frame);
             addDestructorStackElement(d, t, h);
         } catch (Throwable t) {
             CompilerDirectives.transferToInterpreter();

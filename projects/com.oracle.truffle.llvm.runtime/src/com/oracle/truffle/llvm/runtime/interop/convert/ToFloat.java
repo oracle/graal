@@ -96,7 +96,7 @@ abstract class ToFloat extends ForeignToLLVM {
 
     @Specialization
     protected float fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd,
-                    @Cached("toNative()") LLVMToNativeNode toNative) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         return toNative.executeWithTarget(frame, fd).getVal();
     }
 
@@ -107,7 +107,7 @@ abstract class ToFloat extends ForeignToLLVM {
 
     @Specialization
     protected float fromSharedDescriptor(VirtualFrame frame, LLVMSharedGlobalVariable shared,
-                    @Cached("toNative()") LLVMToNativeNode access) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode access) {
         return access.executeWithTarget(frame, shared.getDescriptor()).getVal();
     }
 

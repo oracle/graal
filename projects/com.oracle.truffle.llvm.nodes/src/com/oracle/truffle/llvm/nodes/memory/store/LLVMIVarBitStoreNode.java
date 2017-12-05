@@ -56,7 +56,7 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNode {
 
     @Specialization
     protected Object doOp(VirtualFrame frame, LLVMGlobal address, LLVMIVarBit value,
-                    @Cached(value = "toNative()") LLVMToNativeNode globalAccess,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         memory.putIVarBit(globalAccess.executeWithTarget(frame, address), value);
         return null;

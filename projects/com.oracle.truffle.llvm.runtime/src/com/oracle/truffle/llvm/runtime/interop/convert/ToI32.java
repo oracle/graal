@@ -111,13 +111,13 @@ abstract class ToI32 extends ForeignToLLVM {
 
     @Specialization
     protected int fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd,
-                    @Cached("toNative()") LLVMToNativeNode toNative) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         return (int) toNative.executeWithTarget(frame, fd).getVal();
     }
 
     @Specialization
     protected int fromSharedDescriptor(VirtualFrame frame, LLVMSharedGlobalVariable shared,
-                    @Cached("toNative()") LLVMToNativeNode access) {
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode access) {
         return (int) access.executeWithTarget(frame, shared.getDescriptor()).getVal();
     }
 

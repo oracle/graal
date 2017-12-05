@@ -62,7 +62,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
     @Specialization
     protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMDoubleVector value,
-                    @Cached("toNative()") LLVMToNativeNode globalAccess,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         memory.putVector(globalAccess.executeWithTarget(frame, address), value);
         return null;
@@ -77,7 +77,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
     @Specialization
     protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMFloatVector value,
-                    @Cached("toNative()") LLVMToNativeNode globalAccess,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         memory.putVector(globalAccess.executeWithTarget(frame, address), value);
         return null;
@@ -92,7 +92,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
     @Specialization
     protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMI16Vector value,
-                    @Cached("toNative()") LLVMToNativeNode globalAccess,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         memory.putVector(globalAccess.executeWithTarget(frame, address), value);
         return null;
@@ -107,7 +107,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
     @Specialization
     protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMI1Vector value,
-                    @Cached("toNative()") LLVMToNativeNode globalAccess,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         memory.putVector(globalAccess.executeWithTarget(frame, address), value);
         return null;
@@ -122,7 +122,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
     @Specialization
     protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMI32Vector value,
-                    @Cached("toNative()") LLVMToNativeNode globalAccess,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         memory.putVector(globalAccess.executeWithTarget(frame, address), value);
         return null;
@@ -137,7 +137,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
     @Specialization
     protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMI64Vector value,
-                    @Cached("toNative()") LLVMToNativeNode globalAccess,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         memory.putVector(globalAccess.executeWithTarget(frame, address), value);
         return null;
@@ -152,7 +152,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
     @Specialization
     protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMI8Vector value,
-                    @Cached("toNative()") LLVMToNativeNode globalAccess,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         memory.putVector(globalAccess.executeWithTarget(frame, address), value);
         return null;
@@ -167,7 +167,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
     @Specialization
     protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMAddressVector value,
-                    @Cached("toNative()") LLVMToNativeNode globalAccess,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         memory.putVector(globalAccess.executeWithTarget(frame, address), value);
         return null;
