@@ -239,13 +239,6 @@ public final class Runner {
     }
 
     public static void disposeContext(LLVMMemory memory, LLVMContext context) {
-        LLVMFunctionDescriptor atexitDescriptor = context.getGlobalScope().getFunctionDescriptor("@__sulong_funcs_on_exit");
-        if (atexitDescriptor != null) {
-            RootCallTarget atexit = atexitDescriptor.getLLVMIRFunction();
-            try (StackPointer stackPointer = context.getThreadingStack().getStack().newFrame()) {
-                atexit.call(stackPointer);
-            }
-        }
         for (RootCallTarget destructorFunction : context.getDestructorFunctions()) {
             try (StackPointer stackPointer = context.getThreadingStack().getStack().newFrame()) {
                 destructorFunction.call(stackPointer);

@@ -92,7 +92,6 @@ __attribute__((weak)) void exit(int status) {
 
 __attribute__((weak)) void _exit(int status) {
   int64_t result;
-  __clear_exit_handlers();
   __SYSCALL_1(result, SYS_exit_group, status);
   for (;;) { // this should never be executed
     __SYSCALL_1(result, SYS_exit_group, status);
