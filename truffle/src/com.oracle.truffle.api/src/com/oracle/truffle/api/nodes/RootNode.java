@@ -314,6 +314,17 @@ public abstract class RootNode extends Node {
     }
 
     /**
+     * Returns <code>true</code> if a TruffleException leaving this node should capture
+     * {@link Frame} objects in its stack trace in addition to the default information. This is
+     * false by default to avoid the attached overhead.
+     *
+     * @since 0.31
+     */
+    public boolean shouldCaptureFrames() {
+        return false;
+    }
+
+    /**
      * Returns <code>true</code> if this {@link RootNode} is allowed to be cloned. The runtime
      * system might decide to create deep copies of the {@link RootNode} in order to gather context
      * sensitive profiling feedback. The default implementation returns <code>false</code>. Guest
@@ -486,5 +497,4 @@ public abstract class RootNode extends Node {
             return value;
         }
     }
-
 }
