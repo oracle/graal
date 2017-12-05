@@ -86,7 +86,7 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
         @Override
         protected void onCreate(TruffleInstrument.Env env) {
             INSTANCE = this;
-            env.getInstrumenter().attachListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
                 @Override
                 public void onEnter(EventContext context, VirtualFrame frame) {
                     scopeTested = true;

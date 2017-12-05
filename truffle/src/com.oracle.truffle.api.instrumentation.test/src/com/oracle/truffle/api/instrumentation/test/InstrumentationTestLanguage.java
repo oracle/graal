@@ -57,7 +57,6 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTest.ReturnLanguageEnv;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.BlockNode;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.DefineNode;
-import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.ExpressionNode;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.FunctionsObject;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;

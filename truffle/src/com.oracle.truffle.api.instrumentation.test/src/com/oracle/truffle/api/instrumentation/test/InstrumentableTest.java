@@ -306,7 +306,7 @@ public class InstrumentableTest {
         @Override
         protected void onCreate(Env env) {
             env.registerService(this);
-            env.getInstrumenter().attachListener(SourceSectionFilter.ANY, this);
+            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, this);
         }
 
         @Override

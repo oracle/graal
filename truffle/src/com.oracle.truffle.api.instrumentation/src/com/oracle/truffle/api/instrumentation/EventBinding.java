@@ -69,8 +69,7 @@ public class EventBinding<T> {
     }
 
     /**
-     * @return the subscriber: an {@link ExecutionEventNodeFactory} or
-     *         {@link ExecutionEventListener}.
+     * @return the subscriber: an {@link ExecutionEventNodeFactory} or {@link ExecutionEventListener}.
      *
      * @since 0.12
      */
@@ -87,10 +86,6 @@ public class EventBinding<T> {
     @Deprecated
     public SourceSectionFilter getFilter() {
         return null;
-    }
-
-    SourceSectionFilter getInputFilter() {
-        return inputFilter;
     }
 
     /**
@@ -123,13 +118,19 @@ public class EventBinding<T> {
 
         private final AbstractInstrumenter instrumenter;
         private final SourceSectionFilter filterSourceSection;
+        private final SourceSectionFilter inputFilter;
         private final boolean isExecutionEvent;
 
-        Source(AbstractInstrumenter instrumenter, SourceSectionFilter query, T element, boolean isExecutionEvent) {
+        Source(AbstractInstrumenter instrumenter, SourceSectionFilter query, SourceSectionFilter inputFilter, T element, boolean isExecutionEvent) {
             super(instrumenter, element);
             this.instrumenter = instrumenter;
             this.filterSourceSection = query;
+            this.inputFilter = inputFilter;
             this.isExecutionEvent = isExecutionEvent;
+        }
+
+        SourceSectionFilter getInputFilter() {
+            return inputFilter;
         }
 
         @Override
@@ -148,51 +149,41 @@ public class EventBinding<T> {
             return false;
         }
 
-    /**
-     * Parent must match {@link #filterSourceSection} and child must match {@link #inputFilter}.
-     */
-    boolean isChildInstrumentedFull(Set<Class<?>> providedTags, RootNode rootNode,
-                    Node parent, SourceSection parentSourceSection,
-                    Node current, SourceSection currentSourceSection) {
-        if (inputFilter == null) {
-            return false;
-        }
-        if (rootNode == null) {
-            return false;
-        }
-        if (isInstrumentedLeaf(providedTags, parent, parentSourceSection) && inputFilter.isInstrumentedNode(providedTags, current, currentSourceSection)) {
-            return isInstrumentedRoot(providedTags, rootNode, rootNode.getSourceSection(), 0);
-        }
-        return false;
-    }
-
-    /**
-     * Parent must match {@link #filterSourceSection} and child must match {@link #inputFilter}.
-     */
-    boolean isChildInstrumentedLeaf(Set<Class<?>> providedTags, RootNode rootNode,
-                    Node parent, SourceSection parentSourceSection,
-                    Node current, SourceSection currentSourceSection) {
-        if (inputFilter == null) {
-            return false;
-        }
-        if (rootNode == null) {
-            return false;
-        }
-        if (isInstrumentedLeaf(providedTags, parent, parentSourceSection) && inputFilter.isInstrumentedNode(providedTags, current, currentSourceSection)) {
-            return true;
-        }
-        return false;
-    }
-
-    boolean isInstrumentedFull(Set<Class<?>> providedTags, RootNode rootNode, Node node, SourceSection nodeSourceSection) {
-        if (isInstrumentedLeaf(providedTags, node, nodeSourceSection)) {
+        /**
+         * Parent must match {@link #filterSourceSection} and child must match {@link #inputFilter}.
+         */
+        boolean isChildInstrumentedFull(Set<Class<?>> providedTags, RootNode rootNode,
+                        Node parent, SourceSection parentSourceSection,
+                        Node current, SourceSection currentSourceSection) {
+            if (inputFilter == null) {
+                return false;
+            }
             if (rootNode == null) {
                 return false;
             }
-            return isInstrumentedRoot(providedTags, rootNode, rootNode.getSourceSection(), 0);
+            if (isInstrumentedLeaf(providedTags, parent, parentSourceSection) && inputFilter.isInstrumentedNode(providedTags, current, currentSourceSection)) {
+                return isInstrumentedRoot(providedTags, rootNode, rootNode.getSourceSection(), 0);
+            }
+            return false;
         }
-        return false;
-    }
+
+        /**
+         * Parent must match {@link #filterSourceSection} and child must match {@link #inputFilter}.
+         */
+        boolean isChildInstrumentedLeaf(Set<Class<?>> providedTags, RootNode rootNode,
+                        Node parent, SourceSection parentSourceSection,
+                        Node current, SourceSection currentSourceSection) {
+            if (inputFilter == null) {
+                return false;
+            }
+            if (rootNode == null) {
+                return false;
+            }
+            if (isInstrumentedLeaf(providedTags, parent, parentSourceSection) && inputFilter.isInstrumentedNode(providedTags, current, currentSourceSection)) {
+                return true;
+            }
+            return false;
+        }
 
         boolean isInstrumentedRoot(Set<Class<?>> providedTags, RootNode rootNode, SourceSection rootSourceSection, int rootNodeBits) {
             return getInstrumenter().isInstrumentableRoot(rootNode) && getFilter().isInstrumentedRoot(providedTags, rootSourceSection, rootNode, rootNodeBits);

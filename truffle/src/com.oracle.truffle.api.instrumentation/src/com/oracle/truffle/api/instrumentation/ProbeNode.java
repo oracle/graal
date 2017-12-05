@@ -108,8 +108,8 @@ public final class ProbeNode extends Node {
     @Child private volatile ProbeNode.EventChainNode chain;
 
     /*
-     * We cache to ensure that the instrumented tags and source sections are always compilation
-     * final for listeners and factories.
+     * We cache to ensure that the instrumented tags and source sections are always compilation final
+     * for listeners and factories.
      */
     @CompilationFinal private volatile Assumption version;
 
@@ -362,7 +362,7 @@ public final class ProbeNode extends Node {
         return null;
     }
 
-    EventChainNode createParentEventChainCallback(VirtualFrame frame, EventBinding.Source<?>  binding, RootNode rootNode, Set<Class<?>> providedTags) {
+    EventChainNode createParentEventChainCallback(VirtualFrame frame, EventBinding.Source<?> binding, RootNode rootNode, Set<Class<?>> providedTags) {
         EventChainNode parent = findParentChain(frame, binding);
         if (!(parent instanceof EventProviderWithInputChainNode)) {
             // this event is unreachable because nobody is listening to it.
@@ -424,13 +424,14 @@ public final class ProbeNode extends Node {
         return next;
     }
 
-    private static int indexOfChild(EventBinding<?> binding, RootNode rootNode, Set<Class<?>> providedTags, Node instrumentedNode, SourceSection instrumentedNodeSourceSection, Node lookupChild) {
+    private static int indexOfChild(EventBinding.Source<?> binding, RootNode rootNode, Set<Class<?>> providedTags, Node instrumentedNode, SourceSection instrumentedNodeSourceSection,
+                    Node lookupChild) {
         InputChildIndexLookup visitor = new InputChildIndexLookup(binding, rootNode, providedTags, instrumentedNode, instrumentedNodeSourceSection, lookupChild);
         NodeUtil.forEachChild(instrumentedNode, visitor);
         return visitor.found ? visitor.index : -1;
     }
 
-    private static int countChildren(EventBinding<?> binding, RootNode rootNode, Set<Class<?>> providedTags, Node instrumentedNode, SourceSection instrumentedNodeSourceSection) {
+    private static int countChildren(EventBinding.Source<?> binding, RootNode rootNode, Set<Class<?>> providedTags, Node instrumentedNode, SourceSection instrumentedNodeSourceSection) {
         InputChildIndexLookup visitor = new InputChildIndexLookup(binding, rootNode, providedTags, instrumentedNode, instrumentedNodeSourceSection, null);
         NodeUtil.forEachChild(instrumentedNode, visitor);
         return visitor.index;
@@ -474,8 +475,8 @@ public final class ProbeNode extends Node {
                 throw t;
             } else {
                 /*
-                 * Client Instruments are not allowed to disrupt program execution by throwing
-                 * exceptions into the AST.
+                 * Client Instruments are not allowed to disrupt program execution by throwing exceptions into the
+                 * AST.
                  */
                 exceptionEventForClientInstrument(binding, "ProbeNodeFactory.create", t);
                 return null;
@@ -485,8 +486,8 @@ public final class ProbeNode extends Node {
     }
 
     /**
-     * Handles exceptions from non-language instrumentation code that must not be allowed to alter
-     * guest language execution semantics. Normal response is to log and continue.
+     * Handles exceptions from non-language instrumentation code that must not be allowed to alter guest
+     * language execution semantics. Normal response is to log and continue.
      */
     @TruffleBoundary
     static void exceptionEventForClientInstrument(EventBinding.Source<?> b, String eventName, Throwable t) {
@@ -558,7 +559,7 @@ public final class ProbeNode extends Node {
 
     private static class InputChildIndexLookup implements NodeVisitor {
 
-        private final EventBinding<?> binding;
+        private final EventBinding.Source<?> binding;
         private final Set<Class<?>> providedTags;
         private final RootNode rootNode;
         private final Node instrumentedNode;
@@ -569,7 +570,7 @@ public final class ProbeNode extends Node {
         boolean found = false;
         int index;
 
-        InputChildIndexLookup(EventBinding<?> binding, RootNode rootNode, Set<Class<?>> providedTags, Node instrumentedNode, SourceSection instrumentedNodeSourceSection, Node lookupNode) {
+        InputChildIndexLookup(EventBinding.Source<?> binding, RootNode rootNode, Set<Class<?>> providedTags, Node instrumentedNode, SourceSection instrumentedNodeSourceSection, Node lookupNode) {
             this.binding = binding;
             this.providedTags = providedTags;
             this.rootNode = rootNode;
@@ -987,7 +988,7 @@ public final class ProbeNode extends Node {
         final int inputBaseIndex;
         final int inputCount;
 
-        EventProviderWithInputChainNode(EventBinding<?> binding, ExecutionEventNode eventNode, int inputBaseIndex, int inputCount) {
+        EventProviderWithInputChainNode(EventBinding.Source<?> binding, ExecutionEventNode eventNode, int inputBaseIndex, int inputCount) {
             super(binding, eventNode);
             this.inputBaseIndex = inputBaseIndex;
             this.inputCount = inputCount;
@@ -1199,7 +1200,7 @@ public final class ProbeNode extends Node {
         private final int inputIndex;
         private final EventContext inputContext;
 
-        InputValueChainNode(EventBinding<?> binding, ProbeNode parentProbe, EventContext inputContext, int inputIndex) {
+        InputValueChainNode(EventBinding.Source<?> binding, ProbeNode parentProbe, EventContext inputContext, int inputIndex) {
             super(binding);
             this.targetBinding = binding;
             this.parentProbe = parentProbe;
