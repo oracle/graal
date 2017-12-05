@@ -31,9 +31,11 @@ package com.oracle.truffle.llvm.nodes.asm.syscall;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.IntValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
 public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMAMD64SyscallOperationNode {
     private final IntValueProfile profile = IntValueProfile.createIdentityProfile();
@@ -48,11 +50,20 @@ public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMAMD64SyscallOper
         tls.set(addr);
     }
 
+    @TruffleBoundary
+    private void getTLS(LLVMMemory memory, LLVMAddress addr) {
+        ThreadLocal<LLVMAddress> tls = getContextReference().get().getThreadLocalStorage();
+        memory.putAddress(addr, tls.get());
+    }
+
     @Specialization
-    protected long doOp(long code, LLVMAddress addr) {
+    protected long doOp(long code, LLVMAddress addr, @Cached("getLLVMMemory()") LLVMMemory memory) {
         switch (profile.profile((int) code)) {
             case LLVMAMD64ArchPrctl.ARCH_SET_FS:
                 setTLS(addr);
+                break;
+            case LLVMAMD64ArchPrctl.ARCH_GET_FS:
+                getTLS(memory, addr);
                 break;
             default:
                 CompilerDirectives.transferToInterpreter();
@@ -62,7 +73,7 @@ public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMAMD64SyscallOper
     }
 
     @Specialization
-    protected long doOp(long code, long addr) {
-        return doOp(code, LLVMAddress.fromLong(addr));
+    protected long doOp(long code, long addr, @Cached("getLLVMMemory()") LLVMMemory memory) {
+        return doOp(code, LLVMAddress.fromLong(addr), memory);
     }
 }

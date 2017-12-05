@@ -114,7 +114,7 @@ public abstract class LLVMToNativeNode extends LLVMExpressionNode {
     }
 
     protected boolean isNull(TruffleObject object) {
-        return ForeignAccess.sendIsNull(isNull, object);
+        return object == null || ForeignAccess.sendIsNull(isNull, object);
     }
 
 }

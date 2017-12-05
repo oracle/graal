@@ -1361,11 +1361,25 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
                 return wrap("@malloc", LLVMMallocNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
+        factories.put("@__sulong_malloc", new LLVMNativeIntrinsicFactory(true, false) {
+
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@__sulong_malloc", LLVMMallocNodeGen.create(LLVMArgNodeGen.create(1)));
+            }
+        });
         factories.put("@calloc", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
                 return wrap("@calloc", LLVMCallocNodeGen.create(factory.createMemSet(), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+            }
+        });
+        factories.put("@__sulong_calloc", new LLVMNativeIntrinsicFactory(true, false) {
+
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@__sulong_calloc", LLVMCallocNodeGen.create(factory.createMemSet(), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
         factories.put("@realloc", new LLVMNativeIntrinsicFactory(true, false) {
@@ -1375,11 +1389,25 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
                 return wrap("@realloc", LLVMReallocNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
+        factories.put("@__sulong_realloc", new LLVMNativeIntrinsicFactory(true, false) {
+
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@__sulong_realloc", LLVMReallocNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+            }
+        });
         factories.put("@free", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
                 return wrap("@free", LLVMFreeNodeGen.create(LLVMArgNodeGen.create(1)));
+            }
+        });
+        factories.put("@__sulong_free", new LLVMNativeIntrinsicFactory(true, false) {
+
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@__sulong_free", LLVMFreeNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@memset", new LLVMNativeIntrinsicFactory(true, false) {
