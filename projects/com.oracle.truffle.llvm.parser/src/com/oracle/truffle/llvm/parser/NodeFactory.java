@@ -188,7 +188,7 @@ public interface NodeFactory {
 
     RootNode createStaticInitsRootNode(LLVMParserRuntime visitor, LLVMExpressionNode[] deallocs);
 
-    LLVMExpressionNode createPhi(LLVMExpressionNode[] from, FrameSlot[] to, Type[] types);
+    LLVMExpressionNode createPhi(LLVMParserRuntime runtime, LLVMExpressionNode[] from, FrameSlot[] to, Type[] types);
 
     LLVMExpressionNode createCopyStructByValue(LLVMParserRuntime runtime, Type type, int length, int alignment, LLVMExpressionNode parameterNode);
 

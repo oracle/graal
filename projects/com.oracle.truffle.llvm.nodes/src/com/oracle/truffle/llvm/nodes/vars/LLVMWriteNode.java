@@ -47,6 +47,13 @@ import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 @NodeField(name = "slot", type = FrameSlot.class)
 @NodeField(name = "source", type = SourceSection.class)
@@ -56,6 +63,8 @@ public abstract class LLVMWriteNode extends LLVMExpressionNode {
     protected abstract FrameSlot getSlot();
 
     protected abstract SourceSection getSource();
+
+    public abstract Object executeWithTarget(VirtualFrame frame, Object value);
 
     @Override
     public SourceSection getSourceSection() {
@@ -196,6 +205,50 @@ public abstract class LLVMWriteNode extends LLVMExpressionNode {
 
         @Specialization
         protected Object writeTruffleObject(VirtualFrame frame, LLVMTruffleObject value) {
+            frame.setObject(getSlot(), value);
+            return null;
+        }
+    }
+
+    public abstract static class LLVMWriteVectorNode extends LLVMWriteNode {
+        @Specialization
+        protected Object writeVector(VirtualFrame frame, LLVMDoubleVector value) {
+            frame.setObject(getSlot(), value);
+            return null;
+        }
+
+        @Specialization
+        protected Object writeVector(VirtualFrame frame, LLVMFloatVector value) {
+            frame.setObject(getSlot(), value);
+            return null;
+        }
+
+        @Specialization
+        protected Object writeVector(VirtualFrame frame, LLVMI16Vector value) {
+            frame.setObject(getSlot(), value);
+            return null;
+        }
+
+        @Specialization
+        protected Object writeVector(VirtualFrame frame, LLVMI1Vector value) {
+            frame.setObject(getSlot(), value);
+            return null;
+        }
+
+        @Specialization
+        protected Object writeVector(VirtualFrame frame, LLVMI32Vector value) {
+            frame.setObject(getSlot(), value);
+            return null;
+        }
+
+        @Specialization
+        protected Object writeVector(VirtualFrame frame, LLVMI64Vector value) {
+            frame.setObject(getSlot(), value);
+            return null;
+        }
+
+        @Specialization
+        protected Object writeVector(VirtualFrame frame, LLVMI8Vector value) {
             frame.setObject(getSlot(), value);
             return null;
         }
