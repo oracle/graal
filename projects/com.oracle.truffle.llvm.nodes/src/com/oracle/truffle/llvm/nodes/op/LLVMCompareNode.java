@@ -37,6 +37,8 @@ import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
@@ -688,6 +690,10 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
 
         @Specialization
         protected boolean olt(double val1, double val2) {
+            return doubleCompare(val1, val2);
+        }
+
+        private static boolean doubleCompare(double val1, double val2) {
             if (val1 < val2) {
                 return true;
             } else {
@@ -697,12 +703,26 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
 
         @Specialization
         protected boolean olt(float val1, float val2) {
+            return floatCompare(val1, val2);
+        }
+
+        private static boolean floatCompare(float val1, float val2) {
             if (val1 < val2) {
                 assert areOrdered(val1, val2);
                 return true;
             } else {
                 return false;
             }
+        }
+
+        @Specialization
+        protected LLVMI1Vector oltDoubleVector(LLVMDoubleVector val1, LLVMDoubleVector val2) {
+            return LLVMDoubleVector.compare(val1, val2, (a, b) -> doubleCompare(a, b));
+        }
+
+        @Specialization
+        protected LLVMI1Vector oltFloatVector(LLVMFloatVector val1, LLVMFloatVector val2) {
+            return LLVMFloatVector.compare(val1, val2, (a, b) -> floatCompare(a, b));
         }
     }
 
@@ -714,6 +734,10 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
 
         @Specialization
         protected boolean ogt(double val1, double val2) {
+            return doubleCompare(val1, val2);
+        }
+
+        private static boolean doubleCompare(double val1, double val2) {
             if (val1 > val2) {
                 return true;
             } else {
@@ -723,12 +747,26 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
 
         @Specialization
         protected boolean ogt(float val1, float val2) {
+            return floatCompare(val1, val2);
+        }
+
+        private static boolean floatCompare(float val1, float val2) {
             if (val1 > val2) {
                 assert areOrdered(val1, val2);
                 return true;
             } else {
                 return false;
             }
+        }
+
+        @Specialization
+        protected LLVMI1Vector ogtDoubleVector(LLVMDoubleVector val1, LLVMDoubleVector val2) {
+            return LLVMDoubleVector.compare(val1, val2, (a, b) -> doubleCompare(a, b));
+        }
+
+        @Specialization
+        protected LLVMI1Vector ogtFloatVector(LLVMFloatVector val1, LLVMFloatVector val2) {
+            return LLVMFloatVector.compare(val1, val2, (a, b) -> floatCompare(a, b));
         }
     }
 
@@ -740,6 +778,10 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
 
         @Specialization
         protected boolean oge(double val1, double val2) {
+            return doubleCompare(val1, val2);
+        }
+
+        private static boolean doubleCompare(double val1, double val2) {
             if (val1 >= val2) {
                 return true;
             } else {
@@ -749,12 +791,26 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
 
         @Specialization
         protected boolean oge(float val1, float val2) {
+            return floatCompare(val1, val2);
+        }
+
+        private static boolean floatCompare(float val1, float val2) {
             if (val1 >= val2) {
                 assert areOrdered(val1, val2);
                 return true;
             } else {
                 return false;
             }
+        }
+
+        @Specialization
+        protected LLVMI1Vector ogeDoubleVector(LLVMDoubleVector val1, LLVMDoubleVector val2) {
+            return LLVMDoubleVector.compare(val1, val2, (a, b) -> doubleCompare(a, b));
+        }
+
+        @Specialization
+        protected LLVMI1Vector ogeFloatVector(LLVMFloatVector val1, LLVMFloatVector val2) {
+            return LLVMFloatVector.compare(val1, val2, (a, b) -> floatCompare(a, b));
         }
     }
 
@@ -765,7 +821,11 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected boolean ole(double val1, double val2) {
+        protected boolean oleDouble(double val1, double val2) {
+            return doubleCompare(val1, val2);
+        }
+
+        private static boolean doubleCompare(double val1, double val2) {
             if (val1 <= val2) {
                 return true;
             } else {
@@ -774,13 +834,27 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected boolean doI1(float val1, float val2) {
+        protected boolean oleFloat(float val1, float val2) {
+            return floatCompare(val1, val2);
+        }
+
+        private static boolean floatCompare(float val1, float val2) {
             if (val1 <= val2) {
                 assert areOrdered(val1, val2);
                 return true;
             } else {
                 return false;
             }
+        }
+
+        @Specialization
+        protected LLVMI1Vector oleDoubleVector(LLVMDoubleVector val1, LLVMDoubleVector val2) {
+            return LLVMDoubleVector.compare(val1, val2, (a, b) -> doubleCompare(a, b));
+        }
+
+        @Specialization
+        protected LLVMI1Vector oleFloatVector(LLVMFloatVector val1, LLVMFloatVector val2) {
+            return LLVMFloatVector.compare(val1, val2, (a, b) -> floatCompare(a, b));
         }
     }
 
@@ -792,6 +866,10 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
 
         @Specialization
         protected boolean oeq(double val1, double val2) {
+            return doubleCompare(val1, val2);
+        }
+
+        private static boolean doubleCompare(double val1, double val2) {
             if (val1 == val2) {
                 return true;
             } else {
@@ -801,12 +879,26 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
 
         @Specialization
         protected boolean oeq(float val1, float val2) {
+            return floatCompare(val1, val2);
+        }
+
+        private static boolean floatCompare(float val1, float val2) {
             if (val1 == val2) {
                 assert areOrdered(val1, val2);
                 return true;
             } else {
                 return false;
             }
+        }
+
+        @Specialization
+        protected LLVMI1Vector oeqDoubleVector(LLVMDoubleVector val1, LLVMDoubleVector val2) {
+            return LLVMDoubleVector.compare(val1, val2, (a, b) -> doubleCompare(a, b));
+        }
+
+        @Specialization
+        protected LLVMI1Vector oeqFloatVector(LLVMFloatVector val1, LLVMFloatVector val2) {
+            return LLVMFloatVector.compare(val1, val2, (a, b) -> floatCompare(a, b));
         }
     }
 
@@ -818,6 +910,10 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
 
         @Specialization
         protected boolean one(double val1, double val2) {
+            return doubleCompare(val1, val2);
+        }
+
+        private static boolean doubleCompare(double val1, double val2) {
             if (val1 != val2) {
                 return areOrdered(val1, val2);
             } else {
@@ -827,11 +923,25 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
 
         @Specialization
         protected boolean one(float val1, float val2) {
+            return floatCompare(val1, val2);
+        }
+
+        private static boolean floatCompare(float val1, float val2) {
             if (val1 != val2) {
                 return areOrdered(val1, val2);
             } else {
                 return false;
             }
+        }
+
+        @Specialization
+        protected LLVMI1Vector oneDoubleVector(LLVMDoubleVector val1, LLVMDoubleVector val2) {
+            return LLVMDoubleVector.compare(val1, val2, (a, b) -> doubleCompare(a, b));
+        }
+
+        @Specialization
+        protected LLVMI1Vector oneFloatVector(LLVMFloatVector val1, LLVMFloatVector val2) {
+            return LLVMFloatVector.compare(val1, val2, (a, b) -> floatCompare(a, b));
         }
     }
 
@@ -850,6 +960,16 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
         protected boolean ord(float val1, float val2) {
             return areOrdered(val1, val2);
         }
+
+        @Specialization
+        protected LLVMI1Vector ordDoubleVector(LLVMDoubleVector val1, LLVMDoubleVector val2) {
+            return LLVMDoubleVector.compare(val1, val2, (a, b) -> areOrdered(a, b));
+        }
+
+        @Specialization
+        protected LLVMI1Vector ordFloatVector(LLVMFloatVector val1, LLVMFloatVector val2) {
+            return LLVMFloatVector.compare(val1, val2, (a, b) -> areOrdered(a, b));
+        }
     }
 
     public abstract static class LLVMUeqNode extends LLVMCompareNode {
@@ -867,6 +987,16 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
         protected boolean ueq(float val1, float val2) {
             return !areOrdered(val1, val2) || val1 == val2;
         }
+
+        @Specialization
+        protected LLVMI1Vector ueqDoubleVector(LLVMDoubleVector val1, LLVMDoubleVector val2) {
+            return LLVMDoubleVector.compare(val1, val2, (a, b) -> !areOrdered(a, b));
+        }
+
+        @Specialization
+        protected LLVMI1Vector ueqFloatVector(LLVMFloatVector val1, LLVMFloatVector val2) {
+            return LLVMFloatVector.compare(val1, val2, (a, b) -> !areOrdered(a, b));
+        }
     }
 
     public abstract static class LLVMUneNode extends LLVMCompareNode {
@@ -877,12 +1007,30 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
 
         @Specialization
         protected boolean une(double val1, double val2) {
+            return doubleCompare(val1, val2);
+        }
+
+        private static boolean doubleCompare(double val1, double val2) {
             return !(val1 == val2);
         }
 
         @Specialization
         protected boolean une(float val1, float val2) {
+            return floatCompare(val1, val2);
+        }
+
+        private static boolean floatCompare(float val1, float val2) {
             return !(val1 == val2);
+        }
+
+        @Specialization
+        protected LLVMI1Vector uneDoubleVector(LLVMDoubleVector val1, LLVMDoubleVector val2) {
+            return LLVMDoubleVector.compare(val1, val2, (a, b) -> doubleCompare(a, b));
+        }
+
+        @Specialization
+        protected LLVMI1Vector uneFloatVector(LLVMFloatVector val1, LLVMFloatVector val2) {
+            return LLVMFloatVector.compare(val1, val2, (a, b) -> floatCompare(a, b));
         }
     }
 
@@ -900,6 +1048,16 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
         @Specialization
         protected boolean uno(float val1, float val2) {
             return !areOrdered(val1, val2);
+        }
+
+        @Specialization
+        protected LLVMI1Vector unoDoubleVector(LLVMDoubleVector val1, LLVMDoubleVector val2) {
+            return LLVMDoubleVector.compare(val1, val2, (a, b) -> !areOrdered(a, b));
+        }
+
+        @Specialization
+        protected LLVMI1Vector unoFloatVector(LLVMFloatVector val1, LLVMFloatVector val2) {
+            return LLVMFloatVector.compare(val1, val2, (a, b) -> !areOrdered(a, b));
         }
     }
 
