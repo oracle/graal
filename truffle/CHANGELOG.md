@@ -5,6 +5,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 0.31
 
 * Removed deprecated `com.oracle.truffle.api.source.LineLocation` class.
+* Added `RootNode#isCaptureFramesForTrace()` to allow subclasses to configure capturing of frames in `TruffleException` instances and `TruffleStackTraceElement#getFrame()` to access the captured frames.
 
 ## Version 0.30
 

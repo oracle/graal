@@ -173,7 +173,7 @@ public class RootNodeTest {
         }
 
         @Override
-        public boolean shouldCaptureFrames() {
+        public boolean isCaptureFramesForTrace() {
             return this.shouldCaptureFrames;
         }
 

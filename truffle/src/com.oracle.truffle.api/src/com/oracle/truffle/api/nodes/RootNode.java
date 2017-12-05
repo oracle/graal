@@ -31,17 +31,20 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerOptions;
+import com.oracle.truffle.api.ExecutionContext;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
+import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -316,11 +319,12 @@ public abstract class RootNode extends Node {
     /**
      * Returns <code>true</code> if a TruffleException leaving this node should capture
      * {@link Frame} objects in its stack trace in addition to the default information. This is
-     * false by default to avoid the attached overhead.
+     * <code>false</code> by default to avoid the attached overhead. The captured frames are then
+     * accessible through {@link TruffleStackTraceElement#getFrame()}
      *
      * @since 0.31
      */
-    public boolean shouldCaptureFrames() {
+    public boolean isCaptureFramesForTrace() {
         return false;
     }
 

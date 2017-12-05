@@ -28,6 +28,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Represents a guest stack trace element.
@@ -67,7 +68,8 @@ public final class TruffleStackTraceElement {
 
     /**
      * Returns the materialized frame. Returns <code>null</code> if the initial {@link RootNode}
-     * that filled in the stack trace did not request frames to be captured.
+     * that filled in the stack trace did not request frames to be captured by overriding
+     * {@link RootNode#isCaptureFramesForTrace()}.
      *
      * @since 0.31
      */
