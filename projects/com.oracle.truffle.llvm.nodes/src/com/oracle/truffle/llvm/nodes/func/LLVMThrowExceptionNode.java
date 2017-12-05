@@ -65,9 +65,9 @@ public final class LLVMThrowExceptionNode extends LLVMExpressionNode {
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        LLVMAddress thrownObject = exceptionInfo.executeGeneric(frame);
-        LLVMAddress thrownType = thrownTypeID.executeGeneric(frame);
-        LLVMAddress dest = destructor.executeGeneric(frame);
+        LLVMAddress thrownObject = exceptionInfo.execute(frame);
+        LLVMAddress thrownType = thrownTypeID.execute(frame);
+        LLVMAddress dest = destructor.execute(frame);
         getExceptionInitializaton().throvv(thrownObject, thrownType, dest, LLVMAddress.nullPointer(), LLVMAddress.nullPointer());
         throw new LLVMException(thrownObject);
     }

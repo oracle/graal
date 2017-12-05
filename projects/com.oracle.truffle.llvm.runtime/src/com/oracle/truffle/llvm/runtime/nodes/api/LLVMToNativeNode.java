@@ -43,11 +43,10 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 
-@NodeChild
-public abstract class LLVMToNativeNode extends LLVMExpressionNode {
+@NodeChild(type = LLVMExpressionNode.class)
+public abstract class LLVMToNativeNode extends LLVMNode {
 
-    @Override
-    public abstract LLVMAddress executeGeneric(VirtualFrame frame);
+    public abstract LLVMAddress execute(VirtualFrame frame);
 
     public abstract LLVMAddress executeWithTarget(VirtualFrame frame, Object object);
 

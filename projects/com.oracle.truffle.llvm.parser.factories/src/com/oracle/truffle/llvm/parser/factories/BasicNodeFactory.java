@@ -370,6 +370,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -1562,7 +1563,7 @@ public class BasicNodeFactory implements NodeFactory {
 
     private static LLVMLandingpadNode.LandingpadEntryNode getLandingpadFilterEntry(LLVMExpressionNode exp) {
         LLVMAddressArrayLiteralNode array = (LLVMAddressArrayLiteralNode) exp;
-        LLVMExpressionNode[] types = array == null ? new LLVMExpressionNode[]{} : array.getValues();
+        LLVMToNativeNode[] types = array == null ? new LLVMToNativeNode[]{} : array.getValues();
         return new LLVMLandingpadNode.LandingpadFilterEntryNode(types);
     }
 
