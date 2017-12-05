@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.vector;
 
 import java.util.Arrays;
+import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 
@@ -63,6 +64,15 @@ public final class LLVMDoubleVector {
 
         for (int i = 0; i < left.length; i++) {
             result[i] = op.eval(left[i], right[i]);
+        }
+        return create(result);
+    }
+
+    public LLVMDoubleVector apply(Function<Double, Double> function) {
+        double[] result = new double[vector.length];
+
+        for (int i = 0; i < vector.length; i++) {
+            result[i] = function.apply(vector[i]);
         }
         return create(result);
     }

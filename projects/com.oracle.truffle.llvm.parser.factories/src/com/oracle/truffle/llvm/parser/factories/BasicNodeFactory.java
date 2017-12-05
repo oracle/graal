@@ -1672,6 +1672,7 @@ public class BasicNodeFactory implements NodeFactory {
             case "@llvm.fabs.f32":
             case "@llvm.fabs.f64":
             case "@llvm.fabs.f80":
+            case "@llvm.fabs.v2f64":
                 return LLVMFAbsNodeGen.create(args[1], sourceSection);
             case "@llvm.returnaddress":
                 return LLVMReturnAddressNodeGen.create(args[1], sourceSection);

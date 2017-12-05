@@ -35,12 +35,13 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMBuiltin;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 
 /**
  * Implements the C functions from math.h.
@@ -135,8 +136,13 @@ public abstract class LLVMCMathsIntrinsics {
         }
 
         @Specialization
-        public LLVM80BitFloat executeIntrinsic(LLVM80BitFloat value) {
+        protected LLVM80BitFloat do80Float(LLVM80BitFloat value) {
             return value.abs();
+        }
+
+        @Specialization
+        protected LLVMDoubleVector doVector(LLVMDoubleVector value) {
+            return value.apply(f -> Math.abs(f));
         }
 
         @Override
