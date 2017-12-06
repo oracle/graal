@@ -52,8 +52,10 @@ public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
 
     private final int totalFrameSize;
     private final int maxOopMapStackOffset;
+    private final int uncompressedReferenceSize;
 
-    public HotSpotReferenceMapBuilder(int totalFrameSize, int maxOopMapStackOffset) {
+    public HotSpotReferenceMapBuilder(int totalFrameSize, int maxOopMapStackOffset, int uncompressedReferenceSize) {
+        this.uncompressedReferenceSize = uncompressedReferenceSize;
         this.objectValues = new ArrayList<>();
         this.objectCount = 0;
         this.maxOopMapStackOffset = maxOopMapStackOffset;
@@ -116,6 +118,7 @@ public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
 
                 for (int i = 0; i < kind.getPlatformKind().getVectorLength(); i++) {
                     if (kind.isReference(i)) {
+                        assert kind.isCompressedReference(i) ? (bytes < uncompressedReferenceSize) : (bytes == uncompressedReferenceSize);
                         objects[idx] = toLocation(obj, i * bytes);
                         derivedBase[idx] = base;
                         sizeInBytes[idx] = bytes;
