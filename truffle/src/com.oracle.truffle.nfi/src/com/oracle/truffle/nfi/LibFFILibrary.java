@@ -32,7 +32,7 @@ import java.util.Map;
 final class LibFFILibrary implements TruffleObject {
 
     protected final long handle;
-    private Map<String, LibFFIFunction> symbols;
+    private Map<String, TruffleObject> symbols;
 
     static LibFFILibrary createDefault() {
         return new LibFFILibrary(0);
@@ -54,7 +54,7 @@ final class LibFFILibrary implements TruffleObject {
         return LibFFILibraryMessageResolutionForeign.ACCESS;
     }
 
-    LibFFILibrary register(Map<String, LibFFIFunction> functions) {
+    LibFFILibrary register(Map<String, TruffleObject> functions) {
         assert this.symbols == null;
         this.symbols = functions;
         return this;
