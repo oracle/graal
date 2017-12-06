@@ -53,6 +53,6 @@ public final class LLVMTypeIdForExceptionNode extends LLVMExpressionNode {
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        return (int) thrownTypeID.executeGeneric(frame).getVal();
+        return (int) thrownTypeID.execute(frame).getVal();
     }
 }

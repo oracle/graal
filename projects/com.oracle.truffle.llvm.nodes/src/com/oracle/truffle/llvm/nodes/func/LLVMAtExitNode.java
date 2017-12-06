@@ -67,8 +67,8 @@ public final class LLVMAtExitNode extends LLVMExpressionNode {
     public Object executeGeneric(VirtualFrame frame) {
         try {
             LLVMFunctionDescriptor d = destructor.executeLLVMFunctionDescriptor(frame);
-            LLVMAddress t = thiz.executeGeneric(frame);
-            LLVMAddress h = thiz.executeGeneric(frame);
+            LLVMAddress t = thiz.execute(frame);
+            LLVMAddress h = thiz.execute(frame);
             addDestructorStackElement(d, t, h);
         } catch (Throwable t) {
             CompilerDirectives.transferToInterpreter();
