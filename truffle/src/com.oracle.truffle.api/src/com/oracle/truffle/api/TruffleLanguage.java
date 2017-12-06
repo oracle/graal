@@ -1758,7 +1758,7 @@ public abstract class TruffleLanguage<C> {
 
         @Override
         public void onThrowable(RootNode root, Throwable e) {
-            TruffleStackTrace.fillIn(e);
+            TruffleStackTrace.fillIn(e, root.isCaptureFramesForTrace());
         }
 
         @Override

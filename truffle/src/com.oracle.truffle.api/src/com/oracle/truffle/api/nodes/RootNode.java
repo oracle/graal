@@ -37,11 +37,13 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
+import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -314,6 +316,18 @@ public abstract class RootNode extends Node {
     }
 
     /**
+     * Returns <code>true</code> if a TruffleException leaving this node should capture
+     * {@link Frame} objects in its stack trace in addition to the default information. This is
+     * <code>false</code> by default to avoid the attached overhead. The captured frames are then
+     * accessible through {@link TruffleStackTraceElement#getFrame()}
+     *
+     * @since 0.31
+     */
+    public boolean isCaptureFramesForTrace() {
+        return false;
+    }
+
+    /**
      * Returns <code>true</code> if this {@link RootNode} is allowed to be cloned. The runtime
      * system might decide to create deep copies of the {@link RootNode} in order to gather context
      * sensitive profiling feedback. The default implementation returns <code>false</code>. Guest
@@ -486,5 +500,4 @@ public abstract class RootNode extends Node {
             return value;
         }
     }
-
 }

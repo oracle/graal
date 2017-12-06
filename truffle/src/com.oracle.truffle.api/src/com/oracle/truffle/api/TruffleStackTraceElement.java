@@ -26,7 +26,9 @@ package com.oracle.truffle.api;
 
 import java.util.List;
 
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Represents a guest stack trace element.
@@ -37,10 +39,12 @@ public final class TruffleStackTraceElement {
 
     private final Node location;
     private final RootCallTarget target;
+    private final Frame frame;
 
-    TruffleStackTraceElement(Node location, RootCallTarget target) {
+    TruffleStackTraceElement(Node location, RootCallTarget target, Frame frame) {
         this.location = location;
         this.target = target;
+        this.frame = frame;
     }
 
     /**
@@ -60,6 +64,17 @@ public final class TruffleStackTraceElement {
      **/
     public RootCallTarget getTarget() {
         return target;
+    }
+
+    /**
+     * Returns the materialized frame. Returns <code>null</code> if the initial {@link RootNode}
+     * that filled in the stack trace did not request frames to be captured by overriding
+     * {@link RootNode#isCaptureFramesForTrace()}.
+     *
+     * @since 0.31
+     */
+    public Frame getFrame() {
+        return frame;
     }
 
     /**
