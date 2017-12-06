@@ -83,78 +83,64 @@ public abstract class LLVMExpressionNode extends LLVMNode {
         return LLVMTypesGen.expectByteArray(executeGeneric(frame));
     }
 
-    public double executeDouble(VirtualFrame frame) {
-        // An UnexpectedResultException would be an error
-        return (double) executeGeneric(frame);
+    public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
+        return LLVMTypesGen.expectDouble(executeGeneric(frame));
     }
 
-    public float executeFloat(VirtualFrame frame) {
-        // An UnexpectedResultException would be an error
-        return (float) executeGeneric(frame);
+    public float executeFloat(VirtualFrame frame) throws UnexpectedResultException {
+        return LLVMTypesGen.expectFloat(executeGeneric(frame));
     }
 
-    public short executeI16(VirtualFrame frame) {
-        // An UnexpectedResultException would be an error
-        return (short) executeGeneric(frame);
+    public short executeI16(VirtualFrame frame) throws UnexpectedResultException {
+        return LLVMTypesGen.expectShort(executeGeneric(frame));
     }
 
-    public boolean executeI1(VirtualFrame frame) {
-        // An UnexpectedResultException would be an error
-        return (boolean) executeGeneric(frame);
+    public boolean executeI1(VirtualFrame frame) throws UnexpectedResultException {
+        return LLVMTypesGen.expectBoolean(executeGeneric(frame));
     }
 
-    public int executeI32(VirtualFrame frame) {
-        // An UnexpectedResultException would be an error
-        return (int) executeGeneric(frame);
+    public int executeI32(VirtualFrame frame) throws UnexpectedResultException {
+        return LLVMTypesGen.expectInteger(executeGeneric(frame));
     }
 
-    public long executeI64(VirtualFrame frame) {
-        // An UnexpectedResultException would be an error
-        return (long) executeGeneric(frame);
+    public long executeI64(VirtualFrame frame) throws UnexpectedResultException {
+        return LLVMTypesGen.expectLong(executeGeneric(frame));
     }
 
     public LLVMIVarBit executeLLVMIVarBit(VirtualFrame frame) throws UnexpectedResultException {
         return LLVMTypesGen.expectLLVMIVarBit(executeGeneric(frame));
     }
 
-    public byte executeI8(VirtualFrame frame) {
-        // An UnexpectedResultException would be an error
-        return (byte) executeGeneric(frame);
+    public byte executeI8(VirtualFrame frame) throws UnexpectedResultException {
+        return LLVMTypesGen.expectByte(executeGeneric(frame));
     }
 
-    public LLVMI8Vector executeLLVMI8Vector(VirtualFrame frame) {
-        // An UnexpectedResultException would be an error
-        return (LLVMI8Vector) executeGeneric(frame);
+    public LLVMI8Vector executeLLVMI8Vector(VirtualFrame frame) throws UnexpectedResultException {
+        return LLVMTypesGen.expectLLVMI8Vector(executeGeneric(frame));
     }
 
-    public LLVMI64Vector executeLLVMI64Vector(VirtualFrame frame) {
-        // An UnexpectedResultException would be an error
-        return (LLVMI64Vector) executeGeneric(frame);
+    public LLVMI64Vector executeLLVMI64Vector(VirtualFrame frame) throws UnexpectedResultException {
+        return LLVMTypesGen.expectLLVMI64Vector(executeGeneric(frame));
     }
 
-    public LLVMI32Vector executeLLVMI32Vector(VirtualFrame frame) {
-        // An UnexpectedResultException would be an error
-        return (LLVMI32Vector) executeGeneric(frame);
+    public LLVMI32Vector executeLLVMI32Vector(VirtualFrame frame) throws UnexpectedResultException {
+        return LLVMTypesGen.expectLLVMI32Vector(executeGeneric(frame));
     }
 
-    public LLVMI1Vector executeLLVMI1Vector(VirtualFrame frame) {
-        // An UnexpectedResultException would be an error
-        return (LLVMI1Vector) executeGeneric(frame);
+    public LLVMI1Vector executeLLVMI1Vector(VirtualFrame frame) throws UnexpectedResultException {
+        return LLVMTypesGen.expectLLVMI1Vector(executeGeneric(frame));
     }
 
-    public LLVMI16Vector executeLLVMI16Vector(VirtualFrame frame) {
-        // An UnexpectedResultException would be an error
-        return (LLVMI16Vector) executeGeneric(frame);
+    public LLVMI16Vector executeLLVMI16Vector(VirtualFrame frame) throws UnexpectedResultException {
+        return LLVMTypesGen.expectLLVMI16Vector(executeGeneric(frame));
     }
 
-    public LLVMFloatVector executeLLVMFloatVector(VirtualFrame frame) {
-        // An UnexpectedResultException would be an error
-        return (LLVMFloatVector) executeGeneric(frame);
+    public LLVMFloatVector executeLLVMFloatVector(VirtualFrame frame) throws UnexpectedResultException {
+        return LLVMTypesGen.expectLLVMFloatVector(executeGeneric(frame));
     }
 
-    public LLVMDoubleVector executeLLVMDoubleVector(VirtualFrame frame) {
-        // An UnexpectedResultException would be an error
-        return (LLVMDoubleVector) executeGeneric(frame);
+    public LLVMDoubleVector executeLLVMDoubleVector(VirtualFrame frame) throws UnexpectedResultException {
+        return LLVMTypesGen.expectLLVMDoubleVector(executeGeneric(frame));
     }
 
     public LLVMFunctionDescriptor executeLLVMFunctionDescriptor(VirtualFrame frame) throws UnexpectedResultException {

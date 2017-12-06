@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 
 public final class LLVMComplexDivSC extends LLVMExpressionNode {
 
@@ -74,10 +75,10 @@ public final class LLVMComplexDivSC extends LLVMExpressionNode {
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        float a = aNode.executeFloat(frame);
-        float b = bNode.executeFloat(frame);
-        float c = cNode.executeFloat(frame);
-        float d = dNode.executeFloat(frame);
+        float a = LLVMTypesGen.asFloat(aNode.executeGeneric(frame));
+        float b = LLVMTypesGen.asFloat(bNode.executeGeneric(frame));
+        float c = LLVMTypesGen.asFloat(cNode.executeGeneric(frame));
+        float d = LLVMTypesGen.asFloat(dNode.executeGeneric(frame));
 
         float denom = c * c + d * d;
         float zReal = (a * c + b * d) / denom;
