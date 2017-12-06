@@ -41,9 +41,8 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteObjectNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMGlobalVariableStoreNode extends LLVMExpressionNode {
@@ -58,57 +57,50 @@ public abstract class LLVMGlobalVariableStoreNode extends LLVMExpressionNode {
 
     @Specialization
     protected Object doNative(VirtualFrame frame, LLVMVirtualAllocationAddress value,
-                    @Cached("createWrite()") LLVMGlobalWriteNode globalAccess,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        globalAccess.put(frame, descriptor, value, toNative);
+                    @Cached("create()") WriteObjectNode globalAccess) {
+        globalAccess.execute(frame, descriptor, value);
         return null;
     }
 
     @Specialization
     protected Object doNative(VirtualFrame frame, LLVMAddress value,
-                    @Cached("createWrite()") LLVMGlobalWriteNode globalAccess,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        globalAccess.put(frame, descriptor, value, toNative);
+                    @Cached("create()") WriteObjectNode globalAccess) {
+        globalAccess.execute(frame, descriptor, value);
         return null;
     }
 
     @Specialization
     protected Object doNative(VirtualFrame frame, LLVMTruffleAddress value,
-                    @Cached("createWrite()") LLVMGlobalWriteNode globalAccess,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        globalAccess.put(frame, descriptor, value.getAddress(), toNative);
+                    @Cached("create()") WriteObjectNode globalAccess) {
+        globalAccess.execute(frame, descriptor, value.getAddress());
         return null;
     }
 
     @Specialization
     protected Object doNative(VirtualFrame frame, LLVMFunctionDescriptor value,
-                    @Cached("createWrite()") LLVMGlobalWriteNode globalAccess,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        globalAccess.put(frame, descriptor, value, toNative);
+                    @Cached("create()") WriteObjectNode globalAccess) {
+        globalAccess.execute(frame, descriptor, value);
         return null;
     }
 
     @Specialization
     protected Object doNative(VirtualFrame frame, LLVMGlobal value,
-                    @Cached("createWrite()") LLVMGlobalWriteNode globalAccess,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        globalAccess.put(frame, descriptor, value, toNative);
+                    @Cached("create()") WriteObjectNode globalAccess) {
+        globalAccess.execute(frame, descriptor, value);
         return null;
     }
 
     @Specialization
     protected Object doNative(VirtualFrame frame, LLVMTruffleObject value,
-                    @Cached("createWrite()") LLVMGlobalWriteNode globalAccess,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        globalAccess.put(frame, descriptor, value, toNative);
+                    @Cached("create()") WriteObjectNode globalAccess) {
+        globalAccess.execute(frame, descriptor, value);
         return null;
     }
 
     @Specialization
     protected Object doLLVMBoxedPrimitive(VirtualFrame frame, LLVMBoxedPrimitive value,
-                    @Cached("createWrite()") LLVMGlobalWriteNode globalAccess,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        globalAccess.put(frame, descriptor, value, toNative);
+                    @Cached("create()") WriteObjectNode globalAccess) {
+        globalAccess.execute(frame, descriptor, value);
         return null;
     }
 

@@ -41,7 +41,7 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadObjectNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -148,8 +148,8 @@ public abstract class LLVMDirectLoadNode {
 
         @Specialization
         protected Object doAddress(LLVMGlobal addr,
-                        @Cached("createRead()") LLVMGlobalReadNode globalAccess) {
-            return globalAccess.get(addr);
+                        @Cached("create()") ReadObjectNode globalAccess) {
+            return globalAccess.execute(addr);
         }
 
         @Specialization
@@ -177,7 +177,7 @@ public abstract class LLVMDirectLoadNode {
     public static final class LLVMGlobalDirectLoadNode extends LLVMExpressionNode {
 
         protected final LLVMGlobal descriptor;
-        @Child private LLVMGlobalReadNode access = LLVMGlobalReadNode.createRead();
+        @Child private ReadObjectNode access = ReadObjectNode.create();
 
         public LLVMGlobalDirectLoadNode(LLVMGlobal descriptor) {
             this.descriptor = descriptor;
@@ -185,7 +185,7 @@ public abstract class LLVMDirectLoadNode {
 
         @Override
         public Object executeGeneric(VirtualFrame frame) {
-            return access.get(descriptor);
+            return access.execute(descriptor);
         }
     }
 

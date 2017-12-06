@@ -89,9 +89,18 @@ public final class Sulong extends LLVMLanguage {
         return capability;
     }
 
+    private LLVMContext mainContext = null;
+
     @Override
     protected LLVMContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
-        return new LLVMContext(env, getContextExtensions(env));
+        LLVMContext newContext = new LLVMContext(env, getContextExtensions(env));
+        if (mainContext == null) {
+            mainContext = newContext;
+            return newContext;
+        }
+
+        LLVMLanguage.SINGLE_CONTEXT_ASSUMPTION.invalidate();
+        return newContext;
     }
 
     @Override

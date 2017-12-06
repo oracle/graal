@@ -38,7 +38,7 @@ import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteObjectNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeIntArrayAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
@@ -81,9 +81,8 @@ public abstract class LLVMAddressStoreNode extends LLVMStoreNode {
 
     @Specialization
     protected Object doGlobal(VirtualFrame frame, LLVMGlobal address, Object value,
-                    @Cached(value = "createWrite()") LLVMGlobalWriteNode globalAccess,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        globalAccess.put(frame, address, value, toNative);
+                    @Cached("create()") WriteObjectNode globalAccess) {
+        globalAccess.execute(frame, address, value);
         return null;
     }
 
