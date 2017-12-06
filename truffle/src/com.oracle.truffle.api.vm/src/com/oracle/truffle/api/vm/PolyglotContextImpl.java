@@ -993,7 +993,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                         Collections.emptyMap(),
                         Collections.emptyMap(),
                         engine.getLanguages().keySet());
-        final String optionValue = engine.engineOptionValues.get(PolyglotEngineImpl.PREINITIALIZE_CONTEXTS);
+        final String optionValue = engine.engineOptionValues.get(PolyglotEngineOptions.PreinitializeContexts);
         if (optionValue != null && !optionValue.isEmpty()) {
             final Set<String> languagesToPreinitialize = new HashSet<>();
             Collections.addAll(languagesToPreinitialize, optionValue.split(","));

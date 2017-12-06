@@ -49,7 +49,6 @@ import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
-import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -71,9 +70,6 @@ import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
-import org.graalvm.options.OptionCategory;
-import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionType;
 
 class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineImpl implements VMObject {
 
@@ -82,14 +78,12 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
      */
     static final int HOST_LANGUAGE_INDEX = 0;
     static final String HOST_LANGUAGE_ID = "host";
-    static final OptionKey<String> PREINITIALIZE_CONTEXTS = new OptionKey<>(null, OptionType.defaultType(String.class));
     private static final Set<String> RESERVED_IDS = new HashSet<>(
                     Arrays.asList(HOST_LANGUAGE_ID, "graal", "truffle", "engine", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm"));
 
     private static final Map<PolyglotEngineImpl, Void> ENGINES = Collections.synchronizedMap(new WeakHashMap<>());
     private static volatile boolean shutdownHookInitialized = false;
     private static final boolean DEBUG_MISSING_CLOSE = Boolean.getBoolean("polyglotimpl.DebugMissingClose");
-    private static volatile Map<String, String> systemPropertiesOptions;
 
     Engine api; // effectively final
     final Object instrumentationHandler;
@@ -163,7 +157,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             }
         }
 
-        this.engineOptions = OptionDescriptors.create(describeEngineOptions());
+        this.engineOptions = new PolyglotEngineOptionsOptionDescriptors();
         this.compilerOptions = VMAccessor.SPI.getCompilerOptions();
         this.allEngineOptions = OptionDescriptors.createUnion(engineOptions, compilerOptions);
         this.engineOptionValues = new OptionValuesImpl(this, this.engineOptions);
@@ -174,7 +168,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         Map<PolyglotLanguage, Map<String, String>> languagesOptions = new HashMap<>();
         Map<PolyglotInstrument, Map<String, String>> instrumentsOptions = new HashMap<>();
 
-        parseOptions(options, useSystemProperties, originalEngineOptions, originalCompilerOptions, languagesOptions, instrumentsOptions);
+        parseOptions(options, useSystemProperties, originalEngineOptions, originalCompilerOptions, languagesOptions, instrumentsOptions, preInitialization);
 
         this.engineOptionValues.putAll(originalEngineOptions);
         this.compilerOptionValues.putAll(originalCompilerOptions);
@@ -229,7 +223,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         Map<PolyglotLanguage, Map<String, String>> languagesOptions = new HashMap<>();
         Map<PolyglotInstrument, Map<String, String>> instrumentsOptions = new HashMap<>();
 
-        parseOptions(newOptions, newUseSystemProperties, originalEngineOptions, originalCompilerOptions, languagesOptions, instrumentsOptions);
+        parseOptions(newOptions, newUseSystemProperties, originalEngineOptions, originalCompilerOptions, languagesOptions, instrumentsOptions, false);
 
         this.engineOptionValues.putAll(originalEngineOptions);
         this.compilerOptionValues.putAll(originalCompilerOptions);
@@ -241,14 +235,6 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         createInstruments(instrumentsOptions);
         registerShutDownHook();
         return true;
-    }
-
-    List<OptionDescriptor> describeEngineOptions() {
-        List<OptionDescriptor> descriptors = new ArrayList<>();
-        descriptors.add(OptionDescriptor.newBuilder(
-                        PREINITIALIZE_CONTEXTS,
-                        PolyglotImpl.OPTION_GROUP_ENGINE + ".PreinitializeContexts").category(OptionCategory.EXPERT).help("Preinitialize language contexts for given languages.").build());
-        return descriptors;
     }
 
     private static void createInstruments(final Map<PolyglotInstrument, Map<String, String>> instrumentsOptions) {
@@ -275,10 +261,11 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     private void parseOptions(Map<String, String> options, boolean useSystemProperties,
                     Map<String, String> originalEngineOptions, Map<String, String> originalCompilerOptions,
-                    Map<PolyglotLanguage, Map<String, String>> languagesOptions, Map<PolyglotInstrument, Map<String, String>> instrumentsOptions) {
+                    Map<PolyglotLanguage, Map<String, String>> languagesOptions, Map<PolyglotInstrument, Map<String, String>> instrumentsOptions,
+                    boolean preInitialization) {
         // When changing this logic, make sure it is in synch with #findEngineOption()
         if (useSystemProperties) {
-            options.putAll(getSystemPropertiesOptions());
+            options.putAll(getSystemPropertiesOptions(preInitialization));
         }
         for (String key : options.keySet()) {
             String group = parseOptionGroup(key);
@@ -699,23 +686,19 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         return engine;
     }
 
-    private static Map<String, String> getSystemPropertiesOptions() {
-        Map<String, String> options = systemPropertiesOptions;
-        if (options == null) {
-            options = new HashMap<>();
-            Properties properties = System.getProperties();
-            synchronized (properties) {
-                for (Object systemKey : properties.keySet()) {
-                    String key = (String) systemKey;
-                    if (key.startsWith(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX)) {
-                        String engineKey = key.substring(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX.length(), key.length());
-                        if (!options.containsKey(engineKey)) {
-                            options.put(engineKey, System.getProperty(key));
-                        }
+    private static Map<String, String> getSystemPropertiesOptions(final boolean preInitialization) {
+        Map<String, String> options = new HashMap<>();
+        Properties properties = System.getProperties();
+        synchronized (properties) {
+            for (Object systemKey : properties.keySet()) {
+                String key = (String) systemKey;
+                if (key.startsWith(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX)) {
+                    String engineKey = key.substring(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX.length(), key.length());
+                    if (!options.containsKey(engineKey) && (!preInitialization || engineKey.equals(PolyglotImpl.OPTION_GROUP_ENGINE + '.' + PolyglotEngineOptions.PREINITIALIZE_CONTEXT_NAME))) {
+                        options.put(engineKey, System.getProperty(key));
                     }
                 }
             }
-            systemPropertiesOptions = options;
         }
         return options;
     }
