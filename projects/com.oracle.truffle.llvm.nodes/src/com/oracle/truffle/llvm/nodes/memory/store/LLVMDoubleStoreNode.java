@@ -38,7 +38,7 @@ import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteDoubleNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeIntArrayAccess;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -51,8 +51,8 @@ public abstract class LLVMDoubleStoreNode extends LLVMStoreNode {
 
     @Specialization
     protected Object doOp(LLVMGlobal address, double value,
-                    @Cached(value = "createWrite()") LLVMGlobalWriteNode globalAccess) {
-        globalAccess.putDouble(address, value);
+                    @Cached("create()") WriteDoubleNode globalAccess) {
+        globalAccess.execute(address, value);
         return null;
     }
 

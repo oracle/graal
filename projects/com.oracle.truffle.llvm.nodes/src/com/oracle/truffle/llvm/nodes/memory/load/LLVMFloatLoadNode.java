@@ -39,7 +39,7 @@ import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadFloatNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeIntArrayAccess;
@@ -50,8 +50,8 @@ public abstract class LLVMFloatLoadNode extends LLVMLoadNode {
 
     @Specialization
     protected float doFloat(LLVMGlobal addr,
-                    @Cached("createRead()") LLVMGlobalReadNode globalAccess) {
-        return profile.profile(globalAccess.getFloat(addr));
+                    @Cached("create()") ReadFloatNode globalAccess) {
+        return profile.profile(globalAccess.execute(addr));
     }
 
     @Specialization

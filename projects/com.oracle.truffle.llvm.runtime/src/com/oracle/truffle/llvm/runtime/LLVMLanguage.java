@@ -29,9 +29,14 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 
 public abstract class LLVMLanguage extends TruffleLanguage<LLVMContext> {
+
+    public static final Assumption SINGLE_CONTEXT_ASSUMPTION = Truffle.getRuntime().createAssumption("Single Context");
+
     public static final String LLVM_SULONG_TYPE = "application/x-sulong";
 
     public static final String LLVM_BITCODE_MIME_TYPE = "application/x-llvm-ir-bitcode";

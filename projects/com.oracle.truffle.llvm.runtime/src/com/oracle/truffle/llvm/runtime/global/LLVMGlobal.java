@@ -29,21 +29,30 @@
  */
 package com.oracle.truffle.llvm.runtime.global;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotTypeException;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.GetFrameNodeGen;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.GetNativePointerNodeGen;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.GetSlotNodeGen;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.IsNativeNodeGen;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -75,203 +84,15 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         return name;
     }
 
-    boolean isNative(LLVMContext context) {
-        Object value = context.getGlobalFrame().getValue(slot);
-        return value instanceof Native;
+    public FrameSlot getSlot() {
+        return slot;
     }
 
-    Object getFrame(LLVMContext context) {
-        Object value = context.getGlobalFrame().getValue(slot);
-        if (value == null) {
-            return LLVMAddress.nullPointer();
-        } else {
-            return value;
-        }
-    }
-
-    boolean getFrameI1(LLVMMemory memory, LLVMContext context) {
-        try {
-            return context.getGlobalFrame().getBoolean(slot);
-        } catch (FrameSlotTypeException e) {
-            CompilerDirectives.transferToInterpreter();
-            getAsNative(memory, context);
-            return getNativeI1(memory, context);
-        }
-    }
-
-    byte getFrameI8(LLVMMemory memory, LLVMContext context) {
-        try {
-            return context.getGlobalFrame().getByte(slot);
-        } catch (FrameSlotTypeException e) {
-            CompilerDirectives.transferToInterpreter();
-            getAsNative(memory, context);
-            return getNativeI8(memory, context);
-        }
-    }
-
-    short getFrameI16(LLVMMemory memory, LLVMContext context) {
-        try {
-            return (short) context.getGlobalFrame().getInt(slot);
-        } catch (FrameSlotTypeException e) {
-            CompilerDirectives.transferToInterpreter();
-            getAsNative(memory, context);
-            return getNativeI16(memory, context);
-        }
-    }
-
-    int getFrameI32(LLVMMemory memory, LLVMContext context) {
-        try {
-            return context.getGlobalFrame().getInt(slot);
-        } catch (FrameSlotTypeException e) {
-            CompilerDirectives.transferToInterpreter();
-            getAsNative(memory, context);
-            return getNativeI32(memory, context);
-        }
-    }
-
-    long getFrameI64(LLVMMemory memory, LLVMContext context) {
-        try {
-            return context.getGlobalFrame().getLong(slot);
-        } catch (FrameSlotTypeException e) {
-            CompilerDirectives.transferToInterpreter();
-            getAsNative(memory, context);
-            return getNativeI64(memory, context);
-        }
-    }
-
-    float getFrameFloat(LLVMMemory memory, LLVMContext context) {
-        try {
-            return context.getGlobalFrame().getFloat(slot);
-        } catch (FrameSlotTypeException e) {
-            CompilerDirectives.transferToInterpreter();
-            getAsNative(memory, context);
-            return getNativeFloat(memory, context);
-        }
-    }
-
-    double getFrameDouble(LLVMMemory memory, LLVMContext context) {
-        try {
-            return context.getGlobalFrame().getDouble(slot);
-        } catch (FrameSlotTypeException e) {
-            CompilerDirectives.transferToInterpreter();
-            getAsNative(memory, context);
-            return getNativeDouble(memory, context);
-        }
-    }
-
-    LLVMAddress getNative(LLVMMemory memory, LLVMContext context) {
-        Native value = (Native) context.getGlobalFrame().getValue(slot);
-        return memory.getAddress(value.getPointer());
-    }
-
-    boolean getNativeI1(LLVMMemory memory, LLVMContext context) {
-        Native value = (Native) context.getGlobalFrame().getValue(slot);
-        return memory.getI1(value.getPointer());
-    }
-
-    byte getNativeI8(LLVMMemory memory, LLVMContext context) {
-        Native value = (Native) context.getGlobalFrame().getValue(slot);
-        return memory.getI8(value.getPointer());
-    }
-
-    short getNativeI16(LLVMMemory memory, LLVMContext context) {
-        Native value = (Native) context.getGlobalFrame().getValue(slot);
-        return memory.getI16(value.getPointer());
-    }
-
-    int getNativeI32(LLVMMemory memory, LLVMContext context) {
-        Native value = (Native) context.getGlobalFrame().getValue(slot);
-        return memory.getI32(value.getPointer());
-    }
-
-    long getNativeI64(LLVMMemory memory, LLVMContext context) {
-        Native value = (Native) context.getGlobalFrame().getValue(slot);
-        return memory.getI64(value.getPointer());
-    }
-
-    float getNativeFloat(LLVMMemory memory, LLVMContext context) {
-        Native value = (Native) context.getGlobalFrame().getValue(slot);
-        return memory.getFloat(value.getPointer());
-    }
-
-    double getNativeDouble(LLVMMemory memory, LLVMContext context) {
-        Native value = (Native) context.getGlobalFrame().getValue(slot);
-        return memory.getDouble(value.getPointer());
-    }
-
-    void setFrame(LLVMContext context, Object object) {
+    private void setFrame(LLVMContext context, Object object) {
         context.getGlobalFrame().setObject(slot, object);
     }
 
-    void setNative(LLVMMemory memory, LLVMContext context, LLVMAddress address) {
-        Native value = (Native) context.getGlobalFrame().getValue(slot);
-        memory.putAddress(value.getPointer(), address);
-    }
-
-    void setFrameI1(LLVMContext context, boolean value) {
-        context.getGlobalFrame().setBoolean(slot, value);
-    }
-
-    void setNativeI1(LLVMMemory memory, LLVMContext context, boolean value) {
-        Native n = (Native) context.getGlobalFrame().getValue(slot);
-        memory.putI1(n.getPointer(), value);
-    }
-
-    void setNativeDouble(LLVMMemory memory, LLVMContext context, double value) {
-        Native n = (Native) context.getGlobalFrame().getValue(slot);
-        memory.putDouble(n.getPointer(), value);
-    }
-
-    void setFrameDouble(LLVMContext context, double value) {
-        context.getGlobalFrame().setDouble(slot, value);
-    }
-
-    void setNativeFloat(LLVMMemory memory, LLVMContext context, float value) {
-        Native n = (Native) context.getGlobalFrame().getValue(slot);
-        memory.putFloat(n.getPointer(), value);
-    }
-
-    void setFrameFloat(LLVMContext context, float value) {
-        context.getGlobalFrame().setFloat(slot, value);
-    }
-
-    void setNativeI64(LLVMMemory memory, LLVMContext context, long value) {
-        Native n = (Native) context.getGlobalFrame().getValue(slot);
-        memory.putI64(n.getPointer(), value);
-    }
-
-    void setFrameI64(LLVMContext context, long value) {
-        context.getGlobalFrame().setLong(slot, value);
-    }
-
-    void setNativeI32(LLVMMemory memory, LLVMContext context, int value) {
-        Native n = (Native) context.getGlobalFrame().getValue(slot);
-        memory.putI32(n.getPointer(), value);
-    }
-
-    void setFrameI32(LLVMContext context, int value) {
-        context.getGlobalFrame().setInt(slot, value);
-    }
-
-    void setNativeI16(LLVMMemory memory, LLVMContext context, short value) {
-        Native n = (Native) context.getGlobalFrame().getValue(slot);
-        memory.putI16(n.getPointer(), value);
-    }
-
-    void setFrameI16(LLVMContext context, short value) {
-        context.getGlobalFrame().setInt(slot, value);
-    }
-
-    void setNativeI8(LLVMMemory memory, LLVMContext context, byte value) {
-        Native n = (Native) context.getGlobalFrame().getValue(slot);
-        memory.putI8(n.getPointer(), value);
-    }
-
-    void setFrameI8(LLVMContext context, byte value) {
-        context.getGlobalFrame().setByte(slot, value);
-    }
-
-    private static final class Native {
+    static final class Native {
         private final long pointer;
 
         private Native(long pointer) {
@@ -283,12 +104,133 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         }
     }
 
+    @SuppressWarnings("unused")
+    abstract static class IsNative extends Node {
+        abstract boolean execute(LLVMContext context, LLVMGlobal global);
+
+        static IsNative create() {
+            return IsNativeNodeGen.create();
+        }
+
+        MaterializedFrame getFrame(LLVMContext context) {
+            return context.getGlobalFrame();
+        }
+
+        Assumption getSingleContextAsssumption() {
+            return LLVMLanguage.SINGLE_CONTEXT_ASSUMPTION;
+        }
+
+        @Specialization(assumptions = "getSingleContextAsssumption()", guards = {"global == cachedGlobal"})
+        boolean doCachedSingleThread(LLVMContext context, LLVMGlobal global,
+                        @Cached("global") LLVMGlobal cachedGlobal,
+                        @Cached("getFrame(context)") MaterializedFrame frame) {
+            return frame.getValue(cachedGlobal.slot) instanceof Native;
+        }
+
+        @Specialization(assumptions = "getSingleContextAsssumption()", replaces = "doCachedSingleThread")
+        boolean doSingleThread(LLVMContext context, LLVMGlobal global,
+                        @Cached("getFrame(context)") MaterializedFrame frame) {
+            return frame.getValue(global.slot) instanceof Native;
+        }
+
+        @Specialization(replaces = {"doCachedSingleThread", "doSingleThread"})
+        boolean generic(LLVMContext context, LLVMGlobal global) {
+            return getFrame(context).getValue(global.slot) instanceof Native;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    abstract static class GetNativePointer extends Node {
+        abstract long execute(LLVMContext context, LLVMGlobal global);
+
+        public static GetNativePointer create() {
+            return GetNativePointerNodeGen.create();
+        }
+
+        long getValue(LLVMContext context, LLVMGlobal global) {
+            return ((Native) context.getGlobalFrame().getValue(global.slot)).getPointer();
+        }
+
+        MaterializedFrame getFrame(LLVMContext context) {
+            return context.getGlobalFrame();
+        }
+
+        Assumption getSingleContextAsssumption() {
+            return LLVMLanguage.SINGLE_CONTEXT_ASSUMPTION;
+        }
+
+        @Specialization(assumptions = "getSingleContextAsssumption()", guards = {"global == cachedGlobal"})
+        long doCachedSingleThread(LLVMContext context, LLVMGlobal global, @Cached("global") LLVMGlobal cachedGlobal, @Cached("getValue(context, global)") long nativeValue) {
+            return nativeValue;
+        }
+
+        @Specialization(assumptions = "getSingleContextAsssumption()", replaces = "doCachedSingleThread")
+        long doSingleThread(LLVMContext context, LLVMGlobal global, @Cached("getFrame(context)") MaterializedFrame frame) {
+            return ((Native) frame.getValue(global.slot)).getPointer();
+        }
+
+        @Specialization(replaces = {"doCachedSingleThread", "doSingleThread"})
+        long generic(LLVMContext context, LLVMGlobal global) {
+            return ((Native) getFrame(context).getValue(global.slot)).getPointer();
+        }
+    }
+
+    @SuppressWarnings("unused")
+    abstract static class GetFrame extends Node {
+        abstract MaterializedFrame execute(LLVMContext context);
+
+        public static GetFrame create() {
+            return GetFrameNodeGen.create();
+        }
+
+        MaterializedFrame getFrame(LLVMContext context) {
+            return context.getGlobalFrame();
+        }
+
+        Assumption getSingleContextAsssumption() {
+            return LLVMLanguage.SINGLE_CONTEXT_ASSUMPTION;
+        }
+
+        @Specialization(assumptions = "getSingleContextAsssumption()")
+        MaterializedFrame doSingleThread(LLVMContext context, @Cached("getFrame(context)") MaterializedFrame frame) {
+            return frame;
+        }
+
+        @Specialization(replaces = {"doSingleThread"})
+        MaterializedFrame generic(LLVMContext context) {
+            return getFrame(context);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    abstract static class GetSlot extends Node {
+        abstract FrameSlot execute(LLVMGlobal global);
+
+        public static GetSlot create() {
+            return GetSlotNodeGen.create();
+        }
+
+        FrameSlot getSlot(LLVMGlobal global) {
+            return global.slot;
+        }
+
+        @Specialization(guards = {"global == cachedGlobal"})
+        FrameSlot doCached(LLVMGlobal global, @Cached("global") LLVMGlobal cachedGlobal, @Cached("getSlot(global)") FrameSlot slot) {
+            return slot;
+        }
+
+        @Specialization(replaces = {"doCached"})
+        FrameSlot generic(LLVMGlobal global) {
+            return getSlot(global);
+        }
+    }
+
     public static LLVMAddress toNative(LLVMContext context, LLVMMemory memory, LLVMGlobal global) {
         return LLVMAddress.fromLong(global.getAsNative(memory, context).getPointer());
     }
 
     public static void free(LLVMContext context, LLVMGlobal global) {
-        Object content = global.getFrame(context);
+        Object content = context.getGlobalFrame().getValue(global.slot);
         if (content instanceof Native) {
             global.setFrame(context, null);
         }
@@ -348,12 +290,13 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         }
     }
 
-    private Native getAsNative(LLVMMemory memory, LLVMContext context) {
+    Native getAsNative(LLVMMemory memory, LLVMContext context) {
         Object value = context.getGlobalFrame().getValue(slot);
         if (value instanceof Native) {
             return (Native) value;
         }
 
+        CompilerAsserts.neverPartOfCompilation();
         return transformToNative(memory, context, value);
     }
 

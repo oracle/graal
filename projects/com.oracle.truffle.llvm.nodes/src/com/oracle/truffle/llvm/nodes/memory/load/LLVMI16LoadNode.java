@@ -38,7 +38,7 @@ import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadI16Node;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeIntArrayAccess;
@@ -47,8 +47,8 @@ public abstract class LLVMI16LoadNode extends LLVMLoadNode {
 
     @Specialization
     protected short doShort(LLVMGlobal addr,
-                    @Cached("createRead()") LLVMGlobalReadNode globalAccess) {
-        return globalAccess.getI16(addr);
+                    @Cached("create()") ReadI16Node globalAccess) {
+        return globalAccess.execute(addr);
     }
 
     @Specialization

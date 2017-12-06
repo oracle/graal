@@ -32,21 +32,36 @@ package com.oracle.truffle.llvm.runtime.global;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal.GetFrame;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal.GetNativePointer;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal.GetSlot;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal.IsNative;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.GetNativePointerNodeGen;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNodeFactory.ReadDoubleNodeGen;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNodeFactory.ReadFloatNodeGen;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNodeFactory.ReadI16NodeGen;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNodeFactory.ReadI1NodeGen;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNodeFactory.ReadI32NodeGen;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNodeFactory.ReadI64NodeGen;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNodeFactory.ReadI8NodeGen;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNodeFactory.ReadObjectNodeGen;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
-public final class LLVMGlobalReadNode extends LLVMNode {
+public abstract class LLVMGlobalReadNode extends LLVMNode {
 
-    private final ConditionProfile condition = ConditionProfile.createBinaryProfile();
     @CompilationFinal private ContextReference<LLVMContext> contextRef;
 
     @CompilationFinal private LLVMMemory memory;
     @CompilationFinal private boolean memoryResolved = false;
 
-    private LLVMMemory getMemory() {
+    protected LLVMMemory getMemory() {
         if (!memoryResolved) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             memory = getLLVMMemory();
@@ -55,11 +70,7 @@ public final class LLVMGlobalReadNode extends LLVMNode {
         return memory;
     }
 
-    public static LLVMGlobalReadNode createRead() {
-        return new LLVMGlobalReadNode();
-    }
-
-    private LLVMContext getContext() {
+    protected LLVMContext getContext() {
         if (contextRef == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             contextRef = LLVMLanguage.getLLVMContextReference();
@@ -67,68 +78,224 @@ public final class LLVMGlobalReadNode extends LLVMNode {
         return contextRef.get();
     }
 
-    public Object get(LLVMGlobal global) {
-        if (condition.profile(global.isNative(getContext()))) {
-            return global.getNative(getMemory(), getContext());
-        } else {
-            return global.getFrame(getContext());
+    @Child private IsNative isNativeNode = IsNative.create();
+
+    protected boolean isNative(LLVMGlobal global) {
+        return isNativeNode.execute(getContext(), global);
+    }
+
+    public abstract static class ReadObjectNode extends LLVMGlobalReadNode {
+        public abstract Object execute(LLVMGlobal global);
+
+        public static ReadObjectNode create() {
+            return ReadObjectNodeGen.create();
+        }
+
+        @Specialization(guards = "!isNative(global)")
+        protected Object doFrame(LLVMGlobal global,
+                        @Cached("create()") GetFrame getFrame,
+                        @Cached("create()") GetSlot getSlot) {
+            Object value = getFrame.execute(getContext()).getValue(getSlot.execute(global));
+            if (value == null) {
+                return LLVMAddress.nullPointer();
+            } else {
+                return value;
+            }
+        }
+
+        @Specialization(guards = "isNative(global)")
+        protected Object doNative(LLVMGlobal global,
+                        @Cached("create()") GetNativePointer getPointer) {
+            return getMemory().getAddress(getPointer.execute(getContext(), global));
         }
     }
 
-    public boolean getI1(LLVMGlobal global) {
-        if (condition.profile(global.isNative(getContext()))) {
-            return global.getNativeI1(getMemory(), getContext());
-        } else {
-            return global.getFrameI1(getMemory(), getContext());
+    public abstract static class ReadI1Node extends LLVMGlobalReadNode {
+        public abstract boolean execute(LLVMGlobal global);
+
+        public static ReadI1Node create() {
+            return ReadI1NodeGen.create();
+        }
+
+        @Specialization(guards = "!isNative(global)")
+        protected boolean doFrame(LLVMGlobal global,
+                        @Cached("create()") GetFrame getFrame,
+                        @Cached("create()") GetSlot getSlot) {
+            try {
+                return getFrame.execute(getContext()).getBoolean(getSlot.execute(global));
+            } catch (FrameSlotTypeException e) {
+                CompilerDirectives.transferToInterpreter();
+                global.getAsNative(getMemory(), getContext());
+                return doNative(global, GetNativePointerNodeGen.create());
+            }
+        }
+
+        @Specialization(guards = "isNative(global)")
+        protected boolean doNative(LLVMGlobal global,
+                        @Cached("create()") GetNativePointer getPointer) {
+            return getMemory().getI1(getPointer.execute(getContext(), global));
         }
     }
 
-    public byte getI8(LLVMGlobal global) {
-        if (condition.profile(global.isNative(getContext()))) {
-            return global.getNativeI8(getMemory(), getContext());
-        } else {
-            return global.getFrameI8(getMemory(), getContext());
+    public abstract static class ReadI8Node extends LLVMGlobalReadNode {
+        public abstract byte execute(LLVMGlobal global);
+
+        public static ReadI8Node create() {
+            return ReadI8NodeGen.create();
+        }
+
+        @Specialization(guards = "!isNative(global)")
+        protected byte doFrame(LLVMGlobal global,
+                        @Cached("create()") GetFrame getFrame,
+                        @Cached("create()") GetSlot getSlot) {
+            try {
+                return getFrame.execute(getContext()).getByte(getSlot.execute(global));
+            } catch (FrameSlotTypeException e) {
+                CompilerDirectives.transferToInterpreter();
+                global.getAsNative(getMemory(), getContext());
+                return doNative(global, GetNativePointerNodeGen.create());
+            }
+        }
+
+        @Specialization(guards = "isNative(global)")
+        protected byte doNative(LLVMGlobal global,
+                        @Cached("create()") GetNativePointer getPointer) {
+            return getMemory().getI8(getPointer.execute(getContext(), global));
         }
     }
 
-    public short getI16(LLVMGlobal global) {
-        if (condition.profile(global.isNative(getContext()))) {
-            return global.getNativeI16(getMemory(), getContext());
-        } else {
-            return global.getFrameI16(getMemory(), getContext());
+    public abstract static class ReadI16Node extends LLVMGlobalReadNode {
+        public abstract short execute(LLVMGlobal global);
+
+        public static ReadI16Node create() {
+            return ReadI16NodeGen.create();
+        }
+
+        @Specialization(guards = "!isNative(global)")
+        protected short doFrame(LLVMGlobal global,
+                        @Cached("create()") GetFrame getFrame,
+                        @Cached("create()") GetSlot getSlot) {
+            try {
+                return (short) getFrame.execute(getContext()).getInt(getSlot.execute(global));
+            } catch (FrameSlotTypeException e) {
+                CompilerDirectives.transferToInterpreter();
+                global.getAsNative(getMemory(), getContext());
+                return doNative(global, GetNativePointerNodeGen.create());
+            }
+        }
+
+        @Specialization(guards = "isNative(global)")
+        protected short doNative(LLVMGlobal global,
+                        @Cached("create()") GetNativePointer getPointer) {
+            return getMemory().getI16(getPointer.execute(getContext(), global));
         }
     }
 
-    public int getI32(LLVMGlobal global) {
-        if (condition.profile(global.isNative(getContext()))) {
-            return global.getNativeI32(getMemory(), getContext());
-        } else {
-            return global.getFrameI32(getMemory(), getContext());
+    public abstract static class ReadI32Node extends LLVMGlobalReadNode {
+        public abstract int execute(LLVMGlobal global);
+
+        public static ReadI32Node create() {
+            return ReadI32NodeGen.create();
+        }
+
+        @Specialization(guards = "!isNative(global)")
+        protected int doFrame(LLVMGlobal global,
+                        @Cached("create()") GetFrame getFrame,
+                        @Cached("create()") GetSlot getSlot) {
+            try {
+                return getFrame.execute(getContext()).getInt(getSlot.execute(global));
+            } catch (FrameSlotTypeException e) {
+                CompilerDirectives.transferToInterpreter();
+                global.getAsNative(getMemory(), getContext());
+                return doNative(global, GetNativePointerNodeGen.create());
+            }
+        }
+
+        @Specialization(guards = "isNative(global)")
+        protected int doNative(LLVMGlobal global,
+                        @Cached("create()") GetNativePointer getPointer) {
+            return getMemory().getI32(getPointer.execute(getContext(), global));
         }
     }
 
-    public long getI64(LLVMGlobal global) {
-        if (condition.profile(global.isNative(getContext()))) {
-            return global.getNativeI64(getMemory(), getContext());
-        } else {
-            return global.getFrameI64(getMemory(), getContext());
+    public abstract static class ReadI64Node extends LLVMGlobalReadNode {
+        public abstract long execute(LLVMGlobal global);
+
+        public static ReadI64Node create() {
+            return ReadI64NodeGen.create();
+        }
+
+        @Specialization(guards = "!isNative(global)")
+        protected long doFrame(LLVMGlobal global,
+                        @Cached("create()") GetFrame getFrame,
+                        @Cached("create()") GetSlot getSlot) {
+            try {
+                return getFrame.execute(getContext()).getLong(getSlot.execute(global));
+            } catch (FrameSlotTypeException e) {
+                CompilerDirectives.transferToInterpreter();
+                global.getAsNative(getMemory(), getContext());
+                return doNative(global, GetNativePointerNodeGen.create());
+            }
+        }
+
+        @Specialization(guards = "isNative(global)")
+        protected long doNative(LLVMGlobal global,
+                        @Cached("create()") GetNativePointer getPointer) {
+            return getMemory().getI64(getPointer.execute(getContext(), global));
         }
     }
 
-    public float getFloat(LLVMGlobal global) {
-        if (condition.profile(global.isNative(getContext()))) {
-            return global.getNativeFloat(getMemory(), getContext());
-        } else {
-            return global.getFrameFloat(getMemory(), getContext());
+    public abstract static class ReadFloatNode extends LLVMGlobalReadNode {
+        public abstract float execute(LLVMGlobal global);
+
+        public static ReadFloatNode create() {
+            return ReadFloatNodeGen.create();
+        }
+
+        @Specialization(guards = "!isNative(global)")
+        protected float doFrame(LLVMGlobal global,
+                        @Cached("create()") GetFrame getFrame,
+                        @Cached("create()") GetSlot getSlot) {
+            try {
+                return getFrame.execute(getContext()).getFloat(getSlot.execute(global));
+            } catch (FrameSlotTypeException e) {
+                CompilerDirectives.transferToInterpreter();
+                global.getAsNative(getMemory(), getContext());
+                return doNative(global, GetNativePointerNodeGen.create());
+            }
+        }
+
+        @Specialization(guards = "isNative(global)")
+        protected float doNative(LLVMGlobal global,
+                        @Cached("create()") GetNativePointer getPointer) {
+            return getMemory().getFloat(getPointer.execute(getContext(), global));
         }
     }
 
-    public double getDouble(LLVMGlobal global) {
-        if (condition.profile(global.isNative(getContext()))) {
-            return global.getNativeDouble(getMemory(), getContext());
-        } else {
-            return global.getFrameDouble(getMemory(), getContext());
+    public abstract static class ReadDoubleNode extends LLVMGlobalReadNode {
+        public abstract double execute(LLVMGlobal global);
+
+        public static ReadDoubleNode create() {
+            return ReadDoubleNodeGen.create();
+        }
+
+        @Specialization(guards = "!isNative(global)")
+        protected double doFrame(LLVMGlobal global,
+                        @Cached("create()") GetFrame getFrame,
+                        @Cached("create()") GetSlot getSlot) {
+            try {
+                return getFrame.execute(getContext()).getDouble(getSlot.execute(global));
+            } catch (FrameSlotTypeException e) {
+                CompilerDirectives.transferToInterpreter();
+                global.getAsNative(getMemory(), getContext());
+                return doNative(global, GetNativePointerNodeGen.create());
+            }
+        }
+
+        @Specialization(guards = "isNative(global)")
+        protected double doNative(LLVMGlobal global,
+                        @Cached("create()") GetNativePointer getPointer) {
+            return getMemory().getDouble(getPointer.execute(getContext(), global));
         }
     }
-
 }
