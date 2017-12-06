@@ -239,6 +239,7 @@ public class ScopeTest extends AbstractInstrumentationTest {
             public CustomScopeNode() {
             }
 
+            @SuppressWarnings("all")
             public Object execute(VirtualFrame frame) {
                 return 1;
             }
