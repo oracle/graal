@@ -155,7 +155,7 @@ public class RootNodeTest {
     class TestException extends RuntimeException implements TruffleException {
         MaterializedFrame frame;
 
-        public TestException(VirtualFrame frame) {
+        TestException(VirtualFrame frame) {
             this.frame = frame.materialize();
         }
 
