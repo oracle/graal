@@ -528,9 +528,9 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                 }
             }
         }
-        LLVMExpressionNode normalPhi = nodeFactory.createPhi(normalValue.toArray(new LLVMExpressionNode[normalValue.size()]), normalTo.toArray(new FrameSlot[normalTo.size()]),
+        LLVMExpressionNode normalPhi = nodeFactory.createPhi(runtime, normalValue.toArray(new LLVMExpressionNode[normalValue.size()]), normalTo.toArray(new FrameSlot[normalTo.size()]),
                         normalType.toArray(new Type[normalType.size()]));
-        LLVMExpressionNode unwindPhi = nodeFactory.createPhi(unwindValue.toArray(new LLVMExpressionNode[unwindValue.size()]), unwindTo.toArray(new FrameSlot[unwindTo.size()]),
+        LLVMExpressionNode unwindPhi = nodeFactory.createPhi(runtime, unwindValue.toArray(new LLVMExpressionNode[unwindValue.size()]), unwindTo.toArray(new FrameSlot[unwindTo.size()]),
                         unwindType.toArray(new Type[unwindType.size()]));
 
         final SourceSection sourceSection = sourceFunction.getSourceSection(call);
@@ -593,9 +593,9 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                 }
             }
         }
-        LLVMExpressionNode normalPhi = nodeFactory.createPhi(normalValue.toArray(new LLVMExpressionNode[normalValue.size()]), normalTo.toArray(new FrameSlot[normalTo.size()]),
+        LLVMExpressionNode normalPhi = nodeFactory.createPhi(runtime, normalValue.toArray(new LLVMExpressionNode[normalValue.size()]), normalTo.toArray(new FrameSlot[normalTo.size()]),
                         normalType.toArray(new Type[normalType.size()]));
-        LLVMExpressionNode unwindPhi = nodeFactory.createPhi(unwindValue.toArray(new LLVMExpressionNode[unwindValue.size()]), unwindTo.toArray(new FrameSlot[unwindTo.size()]),
+        LLVMExpressionNode unwindPhi = nodeFactory.createPhi(runtime, unwindValue.toArray(new LLVMExpressionNode[unwindValue.size()]), unwindTo.toArray(new FrameSlot[unwindTo.size()]),
                         unwindType.toArray(new Type[unwindType.size()]));
 
         final SourceSection sourceSection = sourceFunction.getSourceSection(call);
@@ -879,7 +879,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                 from[j] = symbols.resolve(phi.getValue());
                 types[j] = phi.getValue().getType();
             }
-            result[i] = nodeFactory.createPhi(from, to, types);
+            result[i] = nodeFactory.createPhi(runtime, from, to, types);
         }
         return result;
     }
