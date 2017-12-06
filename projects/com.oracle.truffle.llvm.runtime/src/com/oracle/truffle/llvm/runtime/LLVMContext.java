@@ -42,6 +42,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -71,7 +72,7 @@ import sun.misc.Unsafe;
 public final class LLVMContext {
 
     private final List<Path> libraryPaths = new ArrayList<>();
-    private final List<Path> externalLibraries = new ArrayList<>();
+    private final List<ExternalLibrary> externalLibraries = new ArrayList<>();
 
     private DataSpecConverterImpl targetDataLayout;
 
@@ -223,9 +224,18 @@ public final class LLVMContext {
         this.environment = System.getenv();
 
         addLibraryPaths(SulongEngineOption.getPolyglotOptionSearchPaths(env));
-        addExternalLibrary("libsulong.bc");
+        addDefaultExternalLibraries();
         List<String> external = SulongEngineOption.getPolyglotOptionExternalLibraries(env);
         addExternalLibraries(external);
+    }
+
+    private void addDefaultExternalLibraries() {
+        if (SulongEngineOption.isTrue(env.getOptions().get(SulongEngineOption.USE_LIBC_BITCODE))) {
+            ExternalLibrary libc = addExternalLibrary("libc.bc");
+            addExternalLibrary("sulong-libc-extensions.bc", libc);
+        } else {
+            addExternalLibrary("libsulong.bc");
+        }
     }
 
     public LLVMGlobalsStack getGlobalsStack() {
@@ -278,16 +288,25 @@ public final class LLVMContext {
         return targetDataLayout;
     }
 
-    public void addExternalLibrary(String l) {
+    public ExternalLibrary addExternalLibrary(String lib, ExternalLibrary libraryToReplace) {
         CompilerAsserts.neverPartOfCompilation();
-        Path p = getExternalLibrary(l);
-        if (!externalLibraries.contains(p)) {
-            externalLibraries.add(p);
+        Path path = locateExternalLibrary(lib);
+        ExternalLibrary externalLib = new ExternalLibrary(path, libraryToReplace);
+        int index = externalLibraries.indexOf(externalLib);
+        if (index < 0) {
+            externalLibraries.add(externalLib);
+            return externalLib;
+        } else {
+            return externalLibraries.get(index);
         }
     }
 
-    public List<Path> getExternalLibraries(Predicate<Path> fileFilter) {
-        return externalLibraries.stream().filter(f -> fileFilter.test(f)).collect(Collectors.toList());
+    public ExternalLibrary addExternalLibrary(String lib) {
+        return addExternalLibrary(lib, null);
+    }
+
+    public List<ExternalLibrary> getExternalLibraries(Predicate<ExternalLibrary> filter) {
+        return externalLibraries.stream().filter(f -> filter.test(f)).collect(Collectors.toList());
     }
 
     public void addLibraryPaths(List<String> paths) {
@@ -306,7 +325,7 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    private Path getExternalLibrary(String lib) {
+    private Path locateExternalLibrary(String lib) {
         Path libPath = Paths.get(lib);
         if (libPath.isAbsolute()) {
             if (libPath.toFile().exists()) {
@@ -323,7 +342,7 @@ public final class LLVMContext {
             }
         }
 
-        return Paths.get(lib);
+        return libPath;
     }
 
     public Env getEnv() {
@@ -595,4 +614,58 @@ public final class LLVMContext {
         return frameSlot;
     }
 
+    public static class ExternalLibrary {
+        private final String name;
+        private final Path path;
+        private final ExternalLibrary libraryToReplace;
+
+        public ExternalLibrary(Path path, ExternalLibrary libraryToReplace) {
+            this.name = extractName(path);
+            this.path = path;
+            this.libraryToReplace = libraryToReplace;
+        }
+
+        public ExternalLibrary(String name) {
+            this.name = name;
+            this.path = null;
+            this.libraryToReplace = null;
+        }
+
+        public Path getPath() {
+            return path;
+        }
+
+        public ExternalLibrary getLibraryToReplace() {
+            return libraryToReplace;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == this) {
+                return true;
+            } else if (obj instanceof ExternalLibrary) {
+                ExternalLibrary other = (ExternalLibrary) obj;
+                return name.equals(other.name) && Objects.equals(path, other.path);
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return name.hashCode() ^ Objects.hashCode(path);
+        }
+
+        private static String extractName(Path path) {
+            String nameWithExt = path.getFileName().toString();
+            int lengthWithoutExt = nameWithExt.lastIndexOf(".");
+            if (lengthWithoutExt > 0) {
+                return nameWithExt.substring(0, lengthWithoutExt);
+            }
+            return nameWithExt;
+        }
+    }
 }
