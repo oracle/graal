@@ -49,9 +49,9 @@ final class LLVMSourceScopeVariables implements TruffleObject {
         return object instanceof LLVMSourceScopeVariables;
     }
 
-    private final Map<Object, LLVMDebugObject> vars;
+    private final Map<String, LLVMDebugObject> vars;
 
-    LLVMSourceScopeVariables(Map<Object, LLVMDebugObject> vars) {
+    LLVMSourceScopeVariables(Map<String, LLVMDebugObject> vars) {
         this.vars = vars;
     }
 
@@ -77,10 +77,10 @@ final class LLVMSourceScopeVariables implements TruffleObject {
 
             @TruffleBoundary
             public Object access(LLVMSourceScopeVariables vars, Object key) {
-                if (key == null || !vars.vars.containsKey(key)) {
-                    return 0;
-                } else {
+                if (key instanceof String && vars.vars.containsKey(key)) {
                     return 0b11;
+                } else {
+                    return 0;
                 }
             }
         }
@@ -89,11 +89,11 @@ final class LLVMSourceScopeVariables implements TruffleObject {
         abstract static class VariablesReadNode extends Node {
 
             @TruffleBoundary
-            public Object access(LLVMSourceScopeVariables vars, Object name) {
-                if (vars.vars.containsKey(name)) {
-                    return vars.vars.get(name);
+            public Object access(LLVMSourceScopeVariables vars, Object key) {
+                if (key instanceof String && vars.vars.containsKey(key)) {
+                    return vars.vars.get(key);
                 } else {
-                    throw UnknownIdentifierException.raise(String.valueOf(name));
+                    throw UnknownIdentifierException.raise(String.valueOf(key));
                 }
             }
         }
@@ -106,9 +106,9 @@ final class LLVMSourceScopeVariables implements TruffleObject {
             return object instanceof VariableNames;
         }
 
-        private final List<Object> names;
+        private final List<String> names;
 
-        VariableNames(Set<Object> names) {
+        VariableNames(Set<String> names) {
             this.names = new ArrayList<>(names);
         }
 
