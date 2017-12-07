@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
 public abstract class LLVMSourceLocation {
 
@@ -168,6 +169,45 @@ public abstract class LLVMSourceLocation {
             default:
                 return "<scope>";
         }
+    }
+
+    @Override
+    @TruffleBoundary
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+
+        if (o instanceof LLVMSourceLocation) {
+            final LLVMSourceLocation that = (LLVMSourceLocation) o;
+
+            if (hasSymbols() != that.hasSymbols()) {
+                return false;
+            }
+
+            if (getKind() != that.getKind()) {
+                return false;
+            }
+
+            if (!Objects.equals(describeFile(), that.describeFile())) {
+                return false;
+            }
+
+            if (!Objects.equals(describeLocation(), that.describeLocation())) {
+                return false;
+            }
+
+            return Objects.equals(getParent(), that.getParent());
+        }
+
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = getKind().hashCode();
+        result = 31 * result + (getName() != null ? getName().hashCode() : 0);
+        return result;
     }
 
     private static class LineScope extends LLVMSourceLocation {
