@@ -36,6 +36,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.wrappers.LLVMConditionalBranchNodeWrapper;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 
 @Instrumentable(factory = LLVMConditionalBranchNodeWrapper.class)
 public abstract class LLVMConditionalBranchNode extends LLVMControlFlowNode {
@@ -94,7 +95,7 @@ public abstract class LLVMConditionalBranchNode extends LLVMControlFlowNode {
 
         @Override
         public boolean executeCondition(VirtualFrame frame) {
-            return condition.executeI1(frame);
+            return LLVMTypesGen.asBoolean(condition.executeGeneric(frame));
         }
 
         @Override

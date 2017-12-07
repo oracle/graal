@@ -372,6 +372,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -1712,17 +1713,17 @@ public class BasicNodeFactory implements NodeFactory {
             case "@llvm.eh.typeid.for":
                 return new LLVMTypeIdForExceptionNode(args[1], sourceSection);
             case "@llvm.expect.i1": {
-                boolean expectedValue = args[2].executeI1(null);
+                boolean expectedValue = LLVMTypesGen.asBoolean(args[2].executeGeneric(null));
                 LLVMExpressionNode actualValueNode = args[1];
                 return LLVMExpectI1NodeGen.create(expectedValue, actualValueNode, sourceSection);
             }
             case "@llvm.expect.i32": {
-                int expectedValue = args[2].executeI32(null);
+                int expectedValue = LLVMTypesGen.asInteger(args[2].executeGeneric(null));
                 LLVMExpressionNode actualValueNode = args[1];
                 return LLVMExpectI32NodeGen.create(expectedValue, actualValueNode, sourceSection);
             }
             case "@llvm.expect.i64": {
-                long expectedValue = args[2].executeI64(null);
+                long expectedValue = LLVMTypesGen.asLong(args[2].executeGeneric(null));
                 LLVMExpressionNode actualValueNode = args[1];
                 return LLVMExpectI64NodeGen.create(expectedValue, actualValueNode, sourceSection);
             }
