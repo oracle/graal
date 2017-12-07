@@ -50,6 +50,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public final class LLVMSourceScope {
 
@@ -119,12 +121,15 @@ public final class LLVMSourceScope {
     }
 
     private static void copySymbols(LLVMSourceScope source, LLVMSourceScope target) {
-        if (!source.globals.isEmpty()) {
-            target.globals.putAll(source.globals);
+        // always exclude shadowed symbols
+        if (!source.locals.isEmpty()) {
+            final Set<String> names = target.locals.stream().map(LLVMSourceSymbol::getName).collect(Collectors.toSet());
+            source.locals.stream().filter(s -> !names.contains(s.getName())).forEach(target.locals::add);
         }
 
-        if (!source.locals.isEmpty()) {
-            target.locals.addAll(source.locals);
+        if (!source.globals.isEmpty()) {
+            final Set<String> names = target.globals.keySet().stream().map(LLVMSourceSymbol::getName).collect(Collectors.toSet());
+            source.globals.entrySet().stream().filter(s -> !names.contains(s.getKey().getName())).forEach(s -> target.globals.put(s.getKey(), s.getValue()));
         }
     }
 
@@ -212,7 +217,7 @@ public final class LLVMSourceScope {
 
     @TruffleBoundary
     protected Object getVariables(Frame frame) {
-        final Map<Object, LLVMDebugObject> vars = new HashMap<>();
+        final Map<String, LLVMDebugObject> vars = new HashMap<>();
 
         if (frame != null && !locals.isEmpty()) {
             for (FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
@@ -220,7 +225,7 @@ public final class LLVMSourceScope {
                     final LLVMSourceSymbol symbol = (LLVMSourceSymbol) slot.getIdentifier();
                     final LLVMDebugObject value = ((LLVMDebugValue) frame.getValue(slot)).getValue(symbol);
                     if (locals.contains(symbol)) {
-                        vars.put(symbol, value);
+                        vars.put(symbol.getName(), value);
                     }
                 }
             }
@@ -229,7 +234,7 @@ public final class LLVMSourceScope {
         for (Map.Entry<LLVMSourceSymbol, LLVMDebugValue> entry : globals.entrySet()) {
             final LLVMSourceSymbol symbol = entry.getKey();
             final LLVMDebugObject value = entry.getValue().getValue(symbol);
-            vars.put(symbol, value);
+            vars.put(symbol.getName(), value);
         }
 
         return new LLVMSourceScopeVariables(vars);
