@@ -115,8 +115,7 @@ public class BreakpointTest extends AbstractDebugTest {
 
         try (DebuggerSession session = startSession()) {
             Breakpoint breakpoint = session.install(Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(2).build());
-            breakpoint.setCondition("CONSTANT(true)");
-
+            // No condition initially:
             startEval(testSource);
             expectSuspended((SuspendedEvent event) -> {
                 assertSame(breakpoint, event.getBreakpoints().iterator().next());
@@ -125,9 +124,28 @@ public class BreakpointTest extends AbstractDebugTest {
             assertEquals(1, breakpoint.getHitCount());
             expectDone();
 
+            breakpoint.setCondition("CONSTANT(true)");
+
+            startEval(testSource);
+            expectSuspended((SuspendedEvent event) -> {
+                assertSame(breakpoint, event.getBreakpoints().iterator().next());
+                assertNull(event.getBreakpointConditionException(breakpoint));
+            });
+            assertEquals(2, breakpoint.getHitCount());
+            expectDone();
+
             breakpoint.setCondition("CONSTANT(false)");
             startEval(testSource);
-            assertEquals(1, breakpoint.getHitCount());
+            expectDone();
+            assertEquals(2, breakpoint.getHitCount());
+
+            breakpoint.setCondition(null); // remove the condition
+            startEval(testSource);
+            expectSuspended((SuspendedEvent event) -> {
+                assertSame(breakpoint, event.getBreakpoints().iterator().next());
+                assertNull(event.getBreakpointConditionException(breakpoint));
+            });
+            assertEquals(3, breakpoint.getHitCount());
             expectDone();
 
             breakpoint.setCondition("CONSTANT("); // error by parse exception
@@ -136,7 +154,7 @@ public class BreakpointTest extends AbstractDebugTest {
                 assertSame(breakpoint, event.getBreakpoints().iterator().next());
                 assertNotNull(event.getBreakpointConditionException(breakpoint));
             });
-            assertEquals(2, breakpoint.getHitCount());
+            assertEquals(4, breakpoint.getHitCount());
             expectDone();
         }
     }

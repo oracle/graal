@@ -126,6 +126,7 @@ public class Breakpoint {
     /* We use long instead of int in the implementation to avoid not hitting again on overflows. */
     private final AtomicLong hitCount = new AtomicLong();
     private volatile Assumption conditionUnchanged;
+    private volatile Assumption conditionExistsUnchanged;
 
     private EventBinding<? extends ExecutionEventNodeFactory> breakpointBinding;
     private EventBinding<?> sourceBinding;
@@ -230,11 +231,19 @@ public class Breakpoint {
      * @since 0.9
      */
     public synchronized void setCondition(String expression) {
+        boolean existsChanged = (this.condition == null) != (expression == null);
         this.condition = expression;
         Assumption assumption = conditionUnchanged;
         if (assumption != null) {
             this.conditionUnchanged = null;
             assumption.invalidate();
+        }
+        if (existsChanged) {
+            assumption = conditionExistsUnchanged;
+            if (assumption != null) {
+                this.conditionExistsUnchanged = null;
+                assumption.invalidate();
+            }
         }
     }
 
@@ -372,6 +381,13 @@ public class Breakpoint {
             conditionUnchanged = Truffle.getRuntime().createAssumption("Breakpoint condition unchanged.");
         }
         return conditionUnchanged;
+    }
+
+    private synchronized Assumption getConditionExistsUnchanged() {
+        if (conditionExistsUnchanged == null) {
+            conditionExistsUnchanged = Truffle.getRuntime().createAssumption("Breakpoint condition existence unchanged.");
+        }
+        return conditionExistsUnchanged;
     }
 
     synchronized void installGlobal(Debugger d) {
@@ -714,6 +730,7 @@ public class Breakpoint {
         private final BranchProfile breakBranch = BranchProfile.create();
 
         @Child private ConditionalBreakNode breakCondition;
+        @CompilationFinal private Assumption conditionExistsUnchanged;
         @CompilationFinal(dimensions = 1) private DebuggerSession[] sessions;
         @CompilationFinal private Assumption sessionsUnchanged;
 
@@ -721,6 +738,7 @@ public class Breakpoint {
             super(context);
             this.breakpoint = breakpoint;
             initializeSessions();
+            this.conditionExistsUnchanged = breakpoint.getConditionExistsUnchanged();
             if (breakpoint.condition != null) {
                 this.breakCondition = new ConditionalBreakNode(context, breakpoint);
             }
@@ -771,6 +789,15 @@ public class Breakpoint {
             }
             if (!active) {
                 return;
+            }
+            if (!conditionExistsUnchanged.isValid()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                if (breakpoint.condition != null) {
+                    this.breakCondition = insert(new ConditionalBreakNode(context, breakpoint));
+                } else {
+                    this.breakCondition = null;
+                }
+                conditionExistsUnchanged = breakpoint.getConditionExistsUnchanged();
             }
             BreakpointConditionFailure conditionError = null;
             try {
