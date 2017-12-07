@@ -1802,7 +1802,7 @@ class AsmFactory {
         LLVMExpressionNode stackPointer = LLVMArgNodeGen.create(0);
         FrameSlot stackSlot = frameDescriptor.addFrameSlot(LLVMStack.FRAME_ID);
         stackSlot.setKind(FrameSlotKind.Object);
-        arguments.add(LLVMWriteAddressNodeGen.create(stackPointer, frameDescriptor.findFrameSlot(LLVMStack.FRAME_ID), sourceSection));
+        arguments.add(LLVMWriteAddressNodeGen.create(stackPointer, frameDescriptor.findFrameSlot(LLVMStack.FRAME_ID), sourceLocation));
 
         arguments.add(LLVMWriteAddressNodeGen.create(stackPointer, getRegisterSlot("rsp"), null));
 
@@ -2125,7 +2125,7 @@ class AsmFactory {
                 LLVMExpressionNode register = LLVMAMD64ReadRegisterNodeGen.create(frame);
                 LLVMExpressionNode out = null;
                 if (type instanceof PointerType || info.getType() instanceof PointerType) {
-                    return LLVMAMD64WriteAddressRegisterNodeGen.create(from, frame);
+                    return LLVMAMD64WriteAddressRegisterNodeGen.create(sourceLocation, from, frame);
                 }
                 switch (((PrimitiveType) type).getPrimitiveKind()) {
                     case I8:
