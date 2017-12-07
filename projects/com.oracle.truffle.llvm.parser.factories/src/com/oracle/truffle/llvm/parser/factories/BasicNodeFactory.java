@@ -1924,7 +1924,7 @@ public class BasicNodeFactory implements NodeFactory {
     public LLVMExpressionNode createDebugWrite(boolean isDeclaration, LLVMExpressionNode valueRead, FrameSlot targetSlot, LLVMExpressionNode containerRead, int partIndex, int[] clearParts) {
         final LLVMDebugBuilder builder = getDebugBuilder(isDeclaration);
         if (partIndex < 0 || clearParts == null) {
-            return LLVMDebugWriteNodeFactory.SimpleWriteNodeGen.create(builder, containerRead, valueRead);
+            return LLVMDebugWriteNodeFactory.SimpleWriteNodeGen.create(builder, targetSlot, valueRead);
         } else {
             return LLVMDebugWriteNodeFactory.AggregateWriteNodeGen.create(builder, partIndex, clearParts, containerRead, valueRead);
         }
@@ -1933,7 +1933,7 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createDebugInit(FrameSlot targetSlot, int[] offsets, int[] lengths) {
         if (offsets == null || lengths == null) {
-            return LLVMDebugInitNodeFactory.SimpleInitNodeGen.create(targetSlot);
+            return null;
         } else {
             return LLVMDebugInitNodeFactory.AggregateInitNodeGen.create(targetSlot, offsets, lengths);
         }

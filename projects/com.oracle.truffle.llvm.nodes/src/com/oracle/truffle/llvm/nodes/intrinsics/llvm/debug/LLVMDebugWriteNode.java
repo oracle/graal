@@ -32,16 +32,14 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChildren({
-                @NodeChild(value = "containerRead", type = LLVMExpressionNode.class),
-                @NodeChild(value = "llvmValueRead", type = LLVMExpressionNode.class)
-})
+@NodeChild(value = "llvmValueRead", type = LLVMExpressionNode.class)
 public abstract class LLVMDebugWriteNode extends LLVMExpressionNode {
 
     private final LLVMDebugBuilder builder;
@@ -56,17 +54,21 @@ public abstract class LLVMDebugWriteNode extends LLVMExpressionNode {
 
     public abstract static class SimpleWriteNode extends LLVMDebugWriteNode {
 
-        protected SimpleWriteNode(LLVMDebugBuilder builder) {
+        private final FrameSlot slot;
+
+        protected SimpleWriteNode(LLVMDebugBuilder builder, FrameSlot slot) {
             super(builder);
+            this.slot = slot;
         }
 
         @Specialization
-        protected Object write(LLVMDebugSimpleValue container, Object llvmValue, @Cached("createBuilder()") LLVMDebugValueProvider.Builder valueProcessor) {
-            container.set(valueProcessor, llvmValue);
+        protected Object write(VirtualFrame frame, Object llvmValue, @Cached("createBuilder()") LLVMDebugValueProvider.Builder valueProcessor) {
+            frame.setObject(slot, new LLVMDebugSimpleValue(valueProcessor, llvmValue));
             return null;
         }
     }
 
+    @NodeChild(value = "containerRead", type = LLVMExpressionNode.class)
     public abstract static class AggregateWriteNode extends LLVMDebugWriteNode {
 
         private final int partIndex;

@@ -30,29 +30,24 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
+@ValueType
 public final class LLVMDebugSimpleValue extends LLVMDebugValue {
 
     public static LLVMDebugValue create(LLVMDebugValueProvider.Builder builder, Object value) {
-        final LLVMDebugSimpleValue dbgValue = new LLVMDebugSimpleValue();
-        dbgValue.set(builder, value);
-        return dbgValue;
+        return new LLVMDebugSimpleValue(builder, value);
     }
 
-    private LLVMDebugValueProvider.Builder builder;
-    private Object value;
+    private final LLVMDebugValueProvider.Builder builder;
+    private final Object value;
 
-    LLVMDebugSimpleValue() {
-        this.builder = null;
-        this.value = null;
-    }
-
-    void set(LLVMDebugValueProvider.Builder builder, Object value) {
+    LLVMDebugSimpleValue(LLVMDebugValueProvider.Builder builder, Object value) {
         this.builder = builder;
         this.value = value;
     }
@@ -67,5 +62,4 @@ public final class LLVMDebugSimpleValue extends LLVMDebugValue {
         final LLVMDebugValueProvider valueProvider = getProvider();
         return LLVMDebugObject.instantiate(type, 0L, valueProvider, declaration);
     }
-
 }
