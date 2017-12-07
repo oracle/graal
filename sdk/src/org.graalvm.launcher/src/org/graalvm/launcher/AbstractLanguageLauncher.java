@@ -159,15 +159,6 @@ public abstract class AbstractLanguageLauncher extends Launcher {
     }
 
     /**
-     * The return value specifies the default VM when none of --jvm, --native options is used.
-     *
-     * @return the default VMType
-     */
-    protected VMType getDefaultVMType() {
-        return VMType.Native;
-    }
-
-    /**
      * The return value specifies what languages should be available by default when not using
      * polyglot. E.g. Ruby needs llvm as well.
      *

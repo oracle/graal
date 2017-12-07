@@ -391,6 +391,15 @@ public abstract class Launcher {
     }
 
     /**
+     * The return value specifies the default VM when none of --jvm, --native options is used.
+     *
+     * @return the default VMType
+     */
+    protected VMType getDefaultVMType() {
+        return VMType.Native;
+    }
+
+    /**
      * Returns true if the current launcher was compiled ahead-of-time to native code.
      */
     protected static boolean isAOT() {
@@ -422,9 +431,9 @@ public abstract class Launcher {
             System.out.println();
             System.out.println("Runtime Options:");
             printOption("--polyglot",                   "Run with all other guest languages accessible.");
-            printOption("--native",                     "Run using the native launcher with limited Java access (default).");
+            printOption("--native",                     "Run using the native launcher with limited Java access" + (this.getDefaultVMType() == VMType.Native ? " (default)" : "") + ".");
             printOption("--native.[option]",            "Pass options to the native image. To see available options, use '--native.help'.");
-            printOption("--jvm",                        "Run on the Java Virtual Machine with Java access.");
+            printOption("--jvm",                        "Run on the Java Virtual Machine with Java access" + (this.getDefaultVMType() == VMType.JVM ? " (default)" : "") + ".");
             printOption("--jvm.[option]",               "Pass options to the JVM; for example, '--jvm.classpath=myapp.jar'. To see available options. use '--jvm.help'.");
             printOption("--help",                       "Print this help message.");
             printOption("--help:languages",             "Print options for all installed languages.");
