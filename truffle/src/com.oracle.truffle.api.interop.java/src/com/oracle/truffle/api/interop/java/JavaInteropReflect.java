@@ -235,7 +235,7 @@ final class JavaInteropReflect {
             } else {
                 ret = call(arguments, method);
             }
-            return toJava(ret, method);
+            return toJava(ret, method, languageContext);
         }
 
         private Object call(Object[] arguments, Method method) {
@@ -259,7 +259,7 @@ final class JavaInteropReflect {
                     arguments[i] = JavaInterop.toGuestValue(arg, languageContext);
                 }
             }
-            return target.call(symbol, args, getMethodReturnType(method), getMethodGenericReturnType(method));
+            return target.call(symbol, args, getMethodReturnType(method), getMethodGenericReturnType(method), languageContext);
         }
     }
 
@@ -512,8 +512,8 @@ final class JavaInteropReflect {
         return message;
     }
 
-    private static Object toJava(Object ret, Method method) {
-        return ToJavaNode.toJava(ret, getMethodReturnType(method), getMethodGenericReturnType(method));
+    private static Object toJava(Object ret, Method method, Object languageContext) {
+        return ToJavaNode.toJava(ret, getMethodReturnType(method), getMethodGenericReturnType(method), languageContext);
     }
 
     static Class<?> getMethodReturnType(Method method) {
