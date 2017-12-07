@@ -98,7 +98,7 @@ public final class LLVMSourceScope {
                 case NAMESPACE:
                 case FILE:
                 case BLOCK:
-                    if (!next.isEmpty()) {
+                    if (next.hasSymbols()) {
                         scopeList.add(next.toScope(frame));
                     }
                     break;
@@ -113,7 +113,7 @@ public final class LLVMSourceScope {
             }
         }
 
-        if (staticScope != null && !staticScope.isEmpty()) {
+        if (staticScope != null && staticScope.hasSymbols()) {
             scopeList.add(staticScope.toScope(frame));
         }
 
@@ -147,11 +147,9 @@ public final class LLVMSourceScope {
 
         for (LLVMSourceSymbol symbol : scope.getSymbols()) {
 
-            if (symbol.isGlobal()) {
+            if (symbol.isStatic()) {
                 final LLVMDebugValue value = context.getGlobal(symbol);
-                if (value != null) {
-                    globals.put(symbol, value);
-                }
+                globals.put(symbol, value);
             } else if (isDeclaredBefore(symbol, sourceSection)) {
                 locals.add(symbol);
             }
@@ -207,8 +205,8 @@ public final class LLVMSourceScope {
         this.name = name;
     }
 
-    private boolean isEmpty() {
-        return locals.isEmpty() && globals.isEmpty();
+    private boolean hasSymbols() {
+        return !locals.isEmpty() || !globals.isEmpty();
     }
 
     protected String getName() {
@@ -228,6 +226,12 @@ public final class LLVMSourceScope {
                         vars.put(symbol.getName(), value);
                     }
                 }
+            }
+        }
+
+        for (LLVMSourceSymbol local : locals) {
+            if (!vars.containsKey(local.getName())) {
+                vars.put(local.getName(), LLVMDebugValue.UNAVAILABLE.getValue(local));
             }
         }
 

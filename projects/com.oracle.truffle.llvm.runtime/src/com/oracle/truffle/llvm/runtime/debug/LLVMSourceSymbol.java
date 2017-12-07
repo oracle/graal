@@ -37,13 +37,13 @@ public final class LLVMSourceSymbol {
     private final String name;
     private final LLVMSourceLocation location;
     private final LLVMSourceType type;
-    private final boolean isGlobal;
+    private final boolean isStatic;
 
-    public LLVMSourceSymbol(String name, LLVMSourceLocation location, LLVMSourceType type, boolean isGlobal) {
+    public LLVMSourceSymbol(String name, LLVMSourceLocation location, LLVMSourceType type, boolean isStatic) {
         this.name = name;
         this.location = location;
         this.type = type;
-        this.isGlobal = isGlobal;
+        this.isStatic = isStatic;
     }
 
     public String getName() {
@@ -58,8 +58,8 @@ public final class LLVMSourceSymbol {
         return type;
     }
 
-    public boolean isGlobal() {
-        return isGlobal;
+    public boolean isStatic() {
+        return isStatic;
     }
 
     @Override
@@ -80,7 +80,7 @@ public final class LLVMSourceSymbol {
 
         final LLVMSourceSymbol symbol = (LLVMSourceSymbol) o;
 
-        if (isGlobal != symbol.isGlobal) {
+        if (isStatic != symbol.isStatic) {
             return false;
         }
 

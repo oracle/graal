@@ -1949,7 +1949,12 @@ public class BasicNodeFactory implements NodeFactory {
             // constant values should not need frame access
             value = null;
         }
-        return LLVMDebugSimpleValue.create(toDebugNode, value);
+
+        if (value != null) {
+            return LLVMDebugSimpleValue.create(toDebugNode, value);
+        } else {
+            return LLVMDebugValue.UNAVAILABLE;
+        }
     }
 
     @Override

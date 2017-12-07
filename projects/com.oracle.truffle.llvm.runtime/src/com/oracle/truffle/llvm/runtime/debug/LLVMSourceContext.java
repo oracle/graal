@@ -49,6 +49,6 @@ public final class LLVMSourceContext {
 
     @TruffleBoundary
     public LLVMDebugValue getGlobal(LLVMSourceSymbol symbol) {
-        return globals.get(symbol);
+        return globals.getOrDefault(symbol, LLVMDebugValue.UNAVAILABLE);
     }
 }

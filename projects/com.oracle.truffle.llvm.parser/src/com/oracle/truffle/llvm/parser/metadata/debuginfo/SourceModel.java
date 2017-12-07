@@ -38,6 +38,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
+import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDNamedNode;
 import com.oracle.truffle.llvm.parser.metadata.MDNode;
 import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
@@ -260,10 +261,11 @@ public final class SourceModel {
         irModel.accept(symbolParser);
 
         final MDBaseNode cuNode = metadata.getNamedNode(MDNamedNode.COMPILEUNIT_NAME);
+        final MetadataParser mdParser = new MetadataParser(cache);
         if (cuNode != null) {
-            final MetadataParser mdParser = new MetadataParser(cache);
             cuNode.accept(mdParser);
         }
+        metadata.localsAccept(mdParser);
     }
 
     public Map<LLVMSourceSymbol, SymbolImpl> getGlobals() {
@@ -288,7 +290,7 @@ public final class SourceModel {
             this.typeExtractor = new DITypeExtractor(scopeBuilder, metadata, sourceModel.staticMembers);
         }
 
-        LLVMSourceSymbol getSourceSymbol(MDBaseNode mdVariable, boolean isGlobal) {
+        LLVMSourceSymbol getSourceSymbol(MDBaseNode mdVariable, boolean isStatic) {
             if (parsedVariables.containsKey(mdVariable)) {
                 return parsedVariables.get(mdVariable);
             }
@@ -297,7 +299,7 @@ public final class SourceModel {
             final LLVMSourceType type = typeExtractor.parseType(mdVariable);
             final String varName = MDNameExtractor.getName(mdVariable);
 
-            final LLVMSourceSymbol symbol = new LLVMSourceSymbol(varName, location, type, isGlobal);
+            final LLVMSourceSymbol symbol = new LLVMSourceSymbol(varName, location, type, isStatic);
             parsedVariables.put(mdVariable, symbol);
 
             if (location != null) {
@@ -549,9 +551,9 @@ public final class SourceModel {
 
         @Override
         public void visit(MDGlobalVariableExpression md) {
+            final LLVMSourceSymbol symbol = cache.getSourceSymbol(md, true);
             final MDBaseNode var = md.getExpression();
             if (var instanceof MDExpression && !MDExpression.EMPTY.equals(var)) {
-                final LLVMSourceSymbol symbol = cache.getSourceSymbol(md, true);
                 SymbolImpl value = getSymbol((MDExpression) var, (int) symbol.getType().getSize());
                 if (value != null) {
                     cache.sourceModel.globals.put(symbol, value);
@@ -561,12 +563,8 @@ public final class SourceModel {
 
         @Override
         public void visit(MDGlobalVariable md) {
-            if (md.getVariable() == MDVoidNode.INSTANCE) {
-                return;
-            }
-
             final LLVMSourceSymbol symbol = cache.getSourceSymbol(md, true);
-            if (cache.sourceModel.globals.containsKey(symbol)) {
+            if (md.getVariable() == MDVoidNode.INSTANCE || cache.sourceModel.globals.containsKey(symbol)) {
                 return;
             }
 
@@ -574,6 +572,12 @@ public final class SourceModel {
             if (value != null) {
                 cache.sourceModel.globals.put(symbol, value);
             }
+        }
+
+        @Override
+        public void visit(MDLocalVariable md) {
+            // make sure the symbol is registered even if no value is available
+            cache.getSourceSymbol(md, false);
         }
 
         private static SymbolImpl getSymbol(MDExpression expr, int typeSize) {
