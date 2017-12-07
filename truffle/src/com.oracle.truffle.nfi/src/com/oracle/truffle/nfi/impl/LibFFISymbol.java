@@ -22,19 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.truffle.nfi.impl;
 
+final class LibFFISymbol extends NativePointer {
 
-/*
- * This is the umbrella file to include all generated native header at once
- * Please use it instead of including individual files
- */
+    protected final LibFFILibrary library;
 
-#ifndef __TRUFFLE_NATIVE_H
-#define __TRUFFLE_NATIVE_H
+    static LibFFISymbol create(LibFFILibrary library, long address) {
+        assert address != 0;
+        return new LibFFISymbol(library, address);
+    }
 
-#include "com_oracle_truffle_nfi_impl_NativeAllocation.h"
-#include "com_oracle_truffle_nfi_impl_NFIContext.h"
-#include "com_oracle_truffle_nfi_impl_ClosureNativePointer.h"
-#include "com_oracle_truffle_nfi_impl_NativeString.h"
-
-#endif
+    private LibFFISymbol(LibFFILibrary library, long address) {
+        super(address);
+        this.library = library;
+    }
+}

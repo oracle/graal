@@ -32,7 +32,7 @@
 #include <errno.h>
 #include "internal.h"
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NFIContext_loadLibrary(JNIEnv *env, jclass self, jlong context, jstring name, jint flags) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_loadLibrary(JNIEnv *env, jclass self, jlong context, jstring name, jint flags) {
     const char *utfName = (*env)->GetStringUTFChars(env, name, NULL);
     void *ret = dlopen(utfName, flags);
     if (ret == NULL) {
@@ -44,7 +44,7 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NFIContext_loadLibrary(JNIEn
     return (jlong) ret;
 }
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_NFIContext_freeLibrary(JNIEnv *env, jclass self, jlong handle) {
+JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_freeLibrary(JNIEnv *env, jclass self, jlong handle) {
     dlclose((void*) handle);
 }
 
@@ -65,7 +65,7 @@ static jlong lookup(JNIEnv *env, jlong context, void *handle, jstring name) {
     return (jlong) ret;
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NFIContext_lookup(JNIEnv *env, jclass self, jlong context, jlong library, jstring name) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_lookup(JNIEnv *env, jclass self, jlong context, jlong library, jstring name) {
     if (library == 0) {
         return lookup(env, context, RTLD_DEFAULT, name);
     } else {

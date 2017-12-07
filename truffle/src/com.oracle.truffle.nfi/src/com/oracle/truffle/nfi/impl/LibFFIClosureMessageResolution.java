@@ -22,19 +22,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.truffle.nfi.impl;
 
+import com.oracle.truffle.api.interop.CanResolve;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 
-/*
- * This is the umbrella file to include all generated native header at once
- * Please use it instead of including individual files
- */
+@MessageResolution(receiverType = LibFFIClosure.class)
+class LibFFIClosureMessageResolution {
 
-#ifndef __TRUFFLE_NATIVE_H
-#define __TRUFFLE_NATIVE_H
+    @Resolve(message = "IS_POINTER")
+    abstract static class IsNativeClosureNode extends Node {
 
-#include "com_oracle_truffle_nfi_impl_NativeAllocation.h"
-#include "com_oracle_truffle_nfi_impl_NFIContext.h"
-#include "com_oracle_truffle_nfi_impl_ClosureNativePointer.h"
-#include "com_oracle_truffle_nfi_impl_NativeString.h"
+        public boolean access(@SuppressWarnings("unused") LibFFIClosure receiver) {
+            return true;
+        }
+    }
 
-#endif
+    @Resolve(message = "AS_POINTER")
+    abstract static class AsNativeClosureNode extends Node {
+
+        public long access(LibFFIClosure receiver) {
+            return receiver.nativePointer.getCodePointer();
+        }
+    }
+
+    @CanResolve
+    abstract static class CanResolveLibFFIClosureNode extends Node {
+
+        public boolean test(TruffleObject receiver) {
+            return receiver instanceof LibFFIClosure;
+        }
+    }
+}

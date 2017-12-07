@@ -22,19 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.truffle.nfi.impl;
 
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.nfi.types.NativeSignature;
 
-/*
- * This is the umbrella file to include all generated native header at once
- * Please use it instead of including individual files
- */
+class NativePointer extends BindableNativeObject {
 
-#ifndef __TRUFFLE_NATIVE_H
-#define __TRUFFLE_NATIVE_H
+    final long nativePointer;
 
-#include "com_oracle_truffle_nfi_impl_NativeAllocation.h"
-#include "com_oracle_truffle_nfi_impl_NFIContext.h"
-#include "com_oracle_truffle_nfi_impl_ClosureNativePointer.h"
-#include "com_oracle_truffle_nfi_impl_NativeString.h"
+    NativePointer(long nativePointer) {
+        this.nativePointer = nativePointer;
+    }
 
-#endif
+    @Override
+    protected TruffleObject slowPathBindSignature(NFIContext ctx, NativeSignature signature) {
+        if (nativePointer == 0) {
+            // cannot bind null function
+            return this;
+        } else {
+            return new LibFFIFunction(this, LibFFISignature.create(ctx, signature));
+        }
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return NativePointerMessageResolutionForeign.ACCESS;
+    }
+
+    @Override
+    public String toString() {
+        return String.valueOf(nativePointer);
+    }
+}
