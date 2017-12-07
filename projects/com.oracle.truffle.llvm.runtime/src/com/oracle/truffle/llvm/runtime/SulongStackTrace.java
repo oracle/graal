@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+
 import java.util.LinkedList;
 import java.util.List;
 
@@ -43,49 +45,59 @@ public final class SulongStackTrace {
 
     public static final class Element {
 
-        private final String actualFunctionName;
-        private final String actualSourceName;
+        private final String sourceFunctionName;
+        private final LLVMSourceLocation sourceLocation;
 
         private final String irFunctionName;
         private final String irBlock;
         private final String irSourceName;
 
-        private final int lineNumber;
-        private final int columnNumber;
-
-        Element(String actualFunctionName, String actualSource, String irFunctionName, String llvmirSourceName, String irBlock, int lineNumber, int columnNumber) {
-            this.actualFunctionName = actualFunctionName;
+        Element(String sourceFunctionName, LLVMSourceLocation sourceLocation, String irFunctionName, String llvmirSourceName, String irBlock) {
+            this.sourceFunctionName = sourceFunctionName;
             this.irFunctionName = irFunctionName;
             this.irBlock = irBlock;
-            this.lineNumber = lineNumber;
-            this.columnNumber = columnNumber;
-            this.actualSourceName = actualSource;
+            this.sourceLocation = sourceLocation;
             this.irSourceName = llvmirSourceName;
         }
 
         Element(String irFunctionName, String llvmirSourceName, String irBlock) {
-            this(null, null, irFunctionName, llvmirSourceName, irBlock, -1, -1);
+            this(null, null, irFunctionName, llvmirSourceName, irBlock);
         }
 
         void appendToStackTrace(StringBuilder builder) {
             builder.append("\t ");
-            if (actualFunctionName != null) {
-                builder.append(actualFunctionName);
-                builder.append(" in ").append(actualSourceName);
-                if (lineNumber != -1) {
-                    builder.append(':').append(lineNumber);
-                    if (columnNumber != -1) {
-                        builder.append(':').append(columnNumber);
-                    }
-                }
+            boolean encloseIRScope = false;
+
+            if (sourceFunctionName != null) {
+                builder.append(sourceFunctionName);
+                encloseIRScope = true;
+
+            } else if (sourceLocation != null) {
+                builder.append("<unknown>");
+            }
+
+            if (sourceLocation != null) {
+                builder.append(" in ");
+                builder.append(sourceLocation.describeLocation());
+                encloseIRScope = true;
+            }
+
+            if (encloseIRScope) {
                 builder.append(" (");
             }
+
             builder.append("LLVM IR Function ").append(irFunctionName);
-            builder.append(" in ").append(irSourceName);
-            builder.append(" in Block {").append(irBlock).append('}');
-            if (actualSourceName != null) {
+            if (irSourceName != null) {
+                builder.append(" in ").append(irSourceName);
+            }
+            if (irBlock != null) {
+                builder.append(" in Block {").append(irBlock).append('}');
+            }
+
+            if (encloseIRScope) {
                 builder.append(')');
             }
+
             builder.append('\n');
         }
 
@@ -95,18 +107,10 @@ public final class SulongStackTrace {
             appendToStackTrace(sb);
             return sb.toString();
         }
-
-        public String getLineNumber() {
-            if (lineNumber == -1) {
-                return "N/A";
-            } else {
-                return String.valueOf(lineNumber);
-            }
-        }
     }
 
-    public void addStackTraceElement(String sourceFunctionName, String sourceFileName, String irFunctionName, String irSourceName, String irBlock, int line, int column) {
-        trace.addLast(new Element(sourceFunctionName, sourceFileName, irFunctionName, irSourceName, irBlock, line, column));
+    public void addStackTraceElement(String sourceFunctionName, LLVMSourceLocation sourceLocation, String irFunctionName, String irSourceName, String irBlock) {
+        trace.addLast(new Element(sourceFunctionName, sourceLocation, irFunctionName, irSourceName, irBlock));
     }
 
     public void addStackTraceElement(String irFunctionName, String irSourceName, String irBlock) {

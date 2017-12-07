@@ -32,10 +32,12 @@ package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDCompileUnit;
+import com.oracle.truffle.llvm.parser.metadata.MDFile;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
 import com.oracle.truffle.llvm.parser.metadata.MDNamedNode;
 import com.oracle.truffle.llvm.parser.metadata.MDNode;
+import com.oracle.truffle.llvm.parser.metadata.MDString;
 import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
 import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
@@ -45,7 +47,7 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
-final class MDSymbolLinkUpgrade implements MetadataVisitor {
+final class MDUpgrade implements MetadataVisitor {
 
     static void perform(MetadataValueList metadata) {
         final MDNamedNode cuNode = metadata.getNamedNode(MDNamedNode.COMPILEUNIT_NAME);
@@ -53,14 +55,14 @@ final class MDSymbolLinkUpgrade implements MetadataVisitor {
             return;
         }
         final MDKind dbgKind = metadata.findKind(MDKind.DBG_NAME);
-        cuNode.accept(new MDSymbolLinkUpgrade(dbgKind));
+        cuNode.accept(new MDUpgrade(dbgKind));
     }
 
     private final MDKind dbgKind;
 
     private MDCompileUnit currentCU;
 
-    private MDSymbolLinkUpgrade(MDKind dbgKind) {
+    private MDUpgrade(MDKind dbgKind) {
         this.dbgKind = dbgKind;
         this.currentCU = null;
     }
@@ -68,6 +70,12 @@ final class MDSymbolLinkUpgrade implements MetadataVisitor {
     @Override
     public void visit(MDCompileUnit md) {
         currentCU = md;
+
+        if (md.getFile() instanceof MDString) {
+            final MDFile fileRef = MDFile.create(md.getFile(), md.getDirectory());
+            md.replace(md.getFile(), fileRef);
+        }
+
         md.getSubprograms().accept(this);
         md.getGlobalVariables().accept(this);
         currentCU = null;

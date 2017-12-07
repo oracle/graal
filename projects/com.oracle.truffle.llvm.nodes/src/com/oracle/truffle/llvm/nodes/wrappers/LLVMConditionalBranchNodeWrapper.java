@@ -50,7 +50,7 @@ public class LLVMConditionalBranchNodeWrapper implements InstrumentableFactory<L
         @Child private LLVMConditionalBranchNode delegate;
 
         private LLVMConditionalBranchNodeWrapper0(ProbeNode probeNode, LLVMConditionalBranchNode delegate) {
-            super(delegate.getSourceSection());
+            super(delegate.getSourceLocation());
             this.probeNode = probeNode;
             this.delegate = delegate;
         }

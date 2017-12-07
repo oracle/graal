@@ -85,11 +85,11 @@ final class DITypeExtractor implements MetadataVisitor {
     private final Map<MDBaseNode, LLVMSourceType> parsedTypes = new HashMap<>();
     private final Map<LLVMSourceStaticMemberType, SymbolImpl> staticMembers;
 
-    private final DIScopeExtractor scopeExtractor;
+    private final DIScopeBuilder scopeBuilder;
     private final MetadataValueList metadata;
 
-    DITypeExtractor(DIScopeExtractor scopeExtractor, MetadataValueList metadata, Map<LLVMSourceStaticMemberType, SymbolImpl> staticMembers) {
-        this.scopeExtractor = scopeExtractor;
+    DITypeExtractor(DIScopeBuilder scopeBuilder, MetadataValueList metadata, Map<LLVMSourceStaticMemberType, SymbolImpl> staticMembers) {
+        this.scopeBuilder = scopeBuilder;
         this.metadata = metadata;
         this.staticMembers = staticMembers;
     }
@@ -154,7 +154,7 @@ final class DITypeExtractor implements MetadataVisitor {
                 break;
         }
 
-        final LLVMSourceLocation location = scopeExtractor.resolve(mdType);
+        final LLVMSourceLocation location = scopeBuilder.buildLocation(mdType);
         final LLVMSourceType type = new LLVMSourceBasicType(name, size, align, offset, kind, location);
         parsedTypes.put(mdType, type);
     }
@@ -168,7 +168,7 @@ final class DITypeExtractor implements MetadataVisitor {
         final long size = mdType.getSize();
         final long align = mdType.getAlign();
         final long offset = mdType.getOffset();
-        final LLVMSourceLocation location = scopeExtractor.resolve(mdType);
+        final LLVMSourceLocation location = scopeBuilder.buildLocation(mdType);
 
         switch (mdType.getTag()) {
 
@@ -270,7 +270,7 @@ final class DITypeExtractor implements MetadataVisitor {
             return;
         }
 
-        final LLVMSourceLocation location = scopeExtractor.resolve(mdSubroutine);
+        final LLVMSourceLocation location = scopeBuilder.buildLocation(mdSubroutine);
         final List<LLVMSourceType> members = new ArrayList<>();
         final LLVMSourceDecoratorType type = new LLVMSourceDecoratorType(0L, 0L, 0L, new Function<String, String>() {
             @Override
@@ -299,7 +299,7 @@ final class DITypeExtractor implements MetadataVisitor {
         final long size = mdType.getSize();
         final long align = mdType.getAlign();
         final long offset = mdType.getOffset();
-        final LLVMSourceLocation location = scopeExtractor.resolve(mdType);
+        final LLVMSourceLocation location = scopeBuilder.buildLocation(mdType);
 
         switch (mdType.getTag()) {
 

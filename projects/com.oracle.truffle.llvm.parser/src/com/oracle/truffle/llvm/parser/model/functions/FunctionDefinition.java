@@ -64,7 +64,7 @@ public final class FunctionDefinition implements Constant, ValueSymbol, Metadata
     private final Linkage linkage;
 
     private List<MDAttachment> mdAttachments = null;
-    private SourceModel.Function sourceFunction = null;
+    private SourceModel.Function sourceFunction = SourceModel.DEFAULT_FUNCTION;
 
     private InstructionBlock[] blocks = new InstructionBlock[0];
     private int currentBlock = 0;

@@ -38,7 +38,7 @@ import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-public final class LLVMDebugAggregateValue extends LLVMDebugValue {
+final class LLVMDebugAggregateValue extends LLVMDebugValue {
 
     @CompilationFinal(dimensions = 1) private final int[] offsets;
     @CompilationFinal(dimensions = 1) private final int[] lengths;
@@ -46,7 +46,7 @@ public final class LLVMDebugAggregateValue extends LLVMDebugValue {
     private final LLVMDebugValueProvider.Builder[] partBuilders;
     private final Object[] partValues;
 
-    public LLVMDebugAggregateValue(int[] offsets, int[] lengths) {
+    LLVMDebugAggregateValue(int[] offsets, int[] lengths) {
         super();
         this.offsets = offsets;
         this.lengths = lengths;
@@ -54,12 +54,12 @@ public final class LLVMDebugAggregateValue extends LLVMDebugValue {
         this.partValues = new Object[offsets.length];
     }
 
-    public void setPart(int partIndex, LLVMDebugValueProvider.Builder builder, Object value) {
+    void setPart(int partIndex, LLVMDebugValueProvider.Builder builder, Object value) {
         partBuilders[partIndex] = builder;
         partValues[partIndex] = value;
     }
 
-    public void clear(int partIndex) {
+    void clear(int partIndex) {
         partValues[partIndex] = null;
         partBuilders[partIndex] = null;
     }

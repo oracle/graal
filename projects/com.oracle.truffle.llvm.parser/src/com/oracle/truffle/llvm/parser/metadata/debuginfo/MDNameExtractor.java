@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
+import com.oracle.truffle.llvm.parser.metadata.MDBasicType;
 import com.oracle.truffle.llvm.parser.metadata.MDCompositeType;
 import com.oracle.truffle.llvm.parser.metadata.MDDerivedType;
 import com.oracle.truffle.llvm.parser.metadata.MDEnumerator;
@@ -105,6 +106,11 @@ final class MDNameExtractor implements MetadataVisitor {
         if (DEFAULT_STRING.equals(str)) {
             md.getLinkageName().accept(this);
         }
+    }
+
+    @Override
+    public void visit(MDBasicType md) {
+        md.getName().accept(this);
     }
 
     @Override

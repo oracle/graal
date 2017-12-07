@@ -61,21 +61,21 @@ import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFile;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public final class SourceModel {
+
+    public static final Function DEFAULT_FUNCTION = new Function(LLVMSourceLocation.createUnavailable(LLVMSourceLocation.Kind.FUNCTION, "<unavailable>", "<unavailable>", 0, 0));
 
     public static final int LLVM_DBG_INTRINSICS_VALUE_ARGINDEX = 0;
 
@@ -91,44 +91,22 @@ public final class SourceModel {
 
     public static final class Function {
 
-        private final Source bitcodeSource;
-
-        private final FunctionDefinition definition;
-
         private final Map<Instruction, LLVMSourceLocation> instructions = new HashMap<>();
 
         private final Map<LLVMSourceSymbol, Variable> locals = new HashMap<>();
 
-        private LLVMSourceLocation lexicalScope;
+        private final LLVMSourceLocation lexicalScope;
 
-        private Function(Source bitcodeSource, FunctionDefinition definition) {
-            this.bitcodeSource = bitcodeSource;
-            this.definition = definition;
-            this.lexicalScope = null;
-        }
-
-        public SourceSection getSourceSection() {
-            SourceSection section = null;
-            if (lexicalScope != null) {
-                section = lexicalScope.getSourceSection(true);
-            }
-
-            if (section == null) {
-                final String sourceText = String.format("%s:%s", bitcodeSource.getName(), definition.getName());
-                final Source irSource = Source.newBuilder(sourceText).mimeType(LLVMSourceFile.getMimeType(null)).name(sourceText).build();
-                section = irSource.createSection(1);
-            }
-
-            return section;
-        }
-
-        private void setLexicalScope(LLVMSourceLocation lexicalScope) {
+        private Function(LLVMSourceLocation lexicalScope) {
             this.lexicalScope = lexicalScope;
         }
 
-        public SourceSection getSourceSection(Instruction instruction) {
-            final LLVMSourceLocation scope = instructions.get(instruction);
-            return scope != null ? scope.getSourceSection() : null;
+        public SourceSection getSourceSection() {
+            return lexicalScope.getSourceSection();
+        }
+
+        public LLVMSourceLocation getSourceSection(Instruction instruction) {
+            return instructions.get(instruction);
         }
 
         public LLVMSourceLocation getLexicalScope() {
@@ -145,8 +123,8 @@ public final class SourceModel {
             return variable;
         }
 
-        public Set<Variable> getPartialValues() {
-            return locals.values().stream().filter(Variable::hasFragments).collect(Collectors.toSet());
+        public Collection<Variable> getVariables() {
+            return locals.values();
         }
     }
 
@@ -245,7 +223,7 @@ public final class SourceModel {
 
     public void process(ModelModule irModel, Source bitcodeSource, MetadataValueList metadata) {
         final Parser parser = new Parser(this, metadata, bitcodeSource);
-        MDSymbolLinkUpgrade.perform(metadata);
+        MDUpgrade.perform(metadata);
         irModel.accept(parser);
     }
 
@@ -273,7 +251,7 @@ public final class SourceModel {
         }
 
         private final Map<MDBaseNode, LLVMSourceSymbol> parsedVariables;
-        private final DIScopeExtractor scopeExtractor;
+        private final DIScopeBuilder scopeBuilder;
         private final DITypeExtractor typeExtractor;
         private final SourceModel sourceModel;
         private final Source bitcodeSource;
@@ -284,8 +262,8 @@ public final class SourceModel {
             this.bitcodeSource = bitcodeSource;
             this.sourceModel = sourceModel;
             this.parsedVariables = new HashMap<>();
-            this.scopeExtractor = new DIScopeExtractor(metadata);
-            this.typeExtractor = new DITypeExtractor(scopeExtractor, metadata, sourceModel.staticMembers);
+            this.scopeBuilder = new DIScopeBuilder(metadata);
+            this.typeExtractor = new DITypeExtractor(scopeBuilder, metadata, sourceModel.staticMembers);
         }
 
         private LLVMSourceSymbol getSourceSymbol(MDBaseNode mdVariable, boolean isGlobal) {
@@ -293,7 +271,7 @@ public final class SourceModel {
                 return parsedVariables.get(mdVariable);
             }
 
-            LLVMSourceLocation location = scopeExtractor.resolve(mdVariable);
+            LLVMSourceLocation location = scopeBuilder.buildLocation(mdVariable);
             final LLVMSourceType type = typeExtractor.parseType(mdVariable);
             final String varName = MDNameExtractor.getName(mdVariable);
 
@@ -319,13 +297,17 @@ public final class SourceModel {
 
         @Override
         public void visit(FunctionDefinition function) {
-            currentFunction = new Function(bitcodeSource, function);
-
             final MDBaseNode debugInfo = getDebugInfo(function);
-            if (debugInfo != null) {
-                final LLVMSourceLocation scope = scopeExtractor.resolve(debugInfo);
-                currentFunction.setLexicalScope(scope);
+            LLVMSourceLocation scope = debugInfo != null ? scopeBuilder.buildLocation(debugInfo) : null;
+
+            if (scope == null) {
+                final String sourceText = String.format("%s:%s", bitcodeSource.getName(), function.getName());
+                final Source irSource = Source.newBuilder(sourceText).mimeType(DIScopeBuilder.getMimeType(null)).name(sourceText).build();
+                final SourceSection simpleSection = irSource.createSection(1);
+                scope = LLVMSourceLocation.createBitcodeFunction(function.getName(), simpleSection);
             }
+
+            currentFunction = new Function(scope);
 
             function.accept((FunctionVisitor) this);
             function.setSourceFunction(currentFunction);
@@ -334,7 +316,7 @@ public final class SourceModel {
                 local.processFragments();
             }
 
-            scopeExtractor.clearLineScopes();
+            scopeBuilder.clearLocalScopes();
             currentFunction = null;
         }
 
@@ -386,7 +368,7 @@ public final class SourceModel {
         public void visitInstruction(Instruction instruction) {
             final MDLocation loc = instruction.getDebugLocation();
             if (loc != null) {
-                final LLVMSourceLocation scope = scopeExtractor.resolve(loc);
+                final LLVMSourceLocation scope = scopeBuilder.buildLocation(loc);
                 if (scope != null) {
                     currentFunction.instructions.put(instruction, scope);
                 }

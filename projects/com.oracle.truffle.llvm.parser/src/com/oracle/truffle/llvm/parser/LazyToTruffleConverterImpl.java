@@ -31,10 +31,10 @@ package com.oracle.truffle.llvm.parser;
 
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
@@ -43,7 +43,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.LLVMLivenessAnalysis.LLVMLivenessAnalysisResult;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
@@ -94,31 +93,26 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         CompilerAsserts.neverPartOfCompilation();
 
         final SourceModel.Function sourceFunction = method.getSourceFunction();
-        Set<SourceModel.Variable> initPartialValues = null;
+        Collection<SourceModel.Variable> initDebugValues;
         if (sourceFunction != null) {
-            initPartialValues = sourceFunction.getPartialValues();
+            initDebugValues = sourceFunction.getVariables();
         } else {
-            initPartialValues = Collections.emptySet();
+            initDebugValues = Collections.emptySet();
         }
 
         LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(frame, context, phis, method);
         LLVMBitcodeFunctionVisitor visitor = new LLVMBitcodeFunctionVisitor(runtime, frame, labels, phis, nodeFactory, method.getParameters().size(),
-                        new LLVMSymbolReadResolver(runtime, method, frame, labels), method, liveness, initPartialValues);
+                        new LLVMSymbolReadResolver(runtime, method, frame, labels), method, liveness, initDebugValues);
         method.accept(visitor);
         FrameSlot[][] nullableBeforeBlock = getNullableFrameSlots(liveness.getNullableBeforeBlock());
         FrameSlot[][] nullableAfterBlock = getNullableFrameSlots(liveness.getNullableAfterBlock());
-        SourceSection sourceSection = method.getSourceSection();
+        LLVMSourceLocation location = method.getLexicalScope();
         LLVMExpressionNode body = nodeFactory.createFunctionBlockNode(runtime, frame.findFrameSlot(LLVMException.FRAME_SLOT_ID), visitor.getBlocks(), nullableBeforeBlock, nullableAfterBlock,
-                        sourceSection);
+                        location);
 
         List<LLVMExpressionNode> copyArgumentsToFrame = copyArgumentsToFrame();
         LLVMExpressionNode[] copyArgumentsToFrameArray = copyArgumentsToFrame.toArray(new LLVMExpressionNode[copyArgumentsToFrame.size()]);
-        RootNode rootNode = nodeFactory.createFunctionStartNode(runtime, body, copyArgumentsToFrameArray, sourceSection, frame, method, source);
-
-        final LLVMSourceLocation sourceScope = method.getLexicalScope();
-        if (sourceScope != null) {
-            context.getSourceContext().registerSourceScope(rootNode.getName(), sourceScope);
-        }
+        RootNode rootNode = nodeFactory.createFunctionStartNode(runtime, body, copyArgumentsToFrameArray, method.getSourceSection(), frame, method, source, location);
 
         return Truffle.getRuntime().createCallTarget(rootNode);
     }

@@ -33,10 +33,6 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 public abstract class LLVMDebugValue {
 
-    public static LLVMDebugValue create(LLVMDebugValueProvider.Builder builder, Object value) {
-        return new DefaultImpl(builder, value);
-    }
-
     protected LLVMDebugValue() {
     }
 
@@ -49,22 +45,4 @@ public abstract class LLVMDebugValue {
     }
 
     public abstract LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration);
-
-    private static final class DefaultImpl extends LLVMDebugValue {
-
-        private final LLVMDebugValueProvider.Builder builder;
-        private final Object value;
-
-        private DefaultImpl(LLVMDebugValueProvider.Builder builder, Object value) {
-            super();
-            this.builder = builder;
-            this.value = value;
-        }
-
-        @Override
-        public LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration) {
-            final LLVMDebugValueProvider valueProvider = builder.build(value);
-            return LLVMDebugObject.instantiate(type, 0L, valueProvider, declaration);
-        }
-    }
 }

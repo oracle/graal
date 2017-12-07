@@ -49,7 +49,7 @@ public class LLVMSwitchNodeWrapper implements InstrumentableFactory<LLVMSwitchNo
         @Child private LLVMSwitchNode delegateNode;
 
         LLVMSwitchNodeWrapper0(ProbeNode probeNode, LLVMSwitchNode delegateNode) {
-            super(delegateNode.getSourceSection());
+            super(delegateNode.getSourceLocation());
             this.probeNode = probeNode;
             this.delegateNode = delegateNode;
         }

@@ -50,7 +50,7 @@ public class LLVMIndirectBranchNodeWrapper implements InstrumentableFactory<LLVM
         @Child private LLVMIndirectBranchNode delegate;
 
         private LLVMIndirectBranchNodeWrapper0(ProbeNode probeNode, LLVMIndirectBranchNode delegate) {
-            super(delegate.getSourceSection());
+            super(delegate.getSourceLocation());
             this.probeNode = probeNode;
             this.delegate = delegate;
         }

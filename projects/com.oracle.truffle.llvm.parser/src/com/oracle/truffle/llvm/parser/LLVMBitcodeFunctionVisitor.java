@@ -30,10 +30,10 @@
 package com.oracle.truffle.llvm.parser;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -63,11 +63,11 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
     private final int argCount;
     private final FunctionDefinition function;
     private final LLVMLivenessAnalysisResult liveness;
-    private final Set<SourceModel.Variable> initPartialValues;
+    private final Collection<SourceModel.Variable> initDebugValues;
 
     LLVMBitcodeFunctionVisitor(LLVMParserRuntime runtime, FrameDescriptor frame, Map<String, Integer> labels,
                     Map<InstructionBlock, List<Phi>> phis, NodeFactory nodeFactory, int argCount, LLVMSymbolReadResolver symbols, FunctionDefinition functionDefinition,
-                    LLVMLivenessAnalysisResult liveness, Set<SourceModel.Variable> initPartialValues) {
+                    LLVMLivenessAnalysisResult liveness, Collection<SourceModel.Variable> initDebugValues) {
         this.runtime = runtime;
         this.frame = frame;
         this.labels = labels;
@@ -77,7 +77,7 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         this.argCount = argCount;
         this.function = functionDefinition;
         this.liveness = liveness;
-        this.initPartialValues = initPartialValues;
+        this.initDebugValues = initDebugValues;
 
         this.blocks = new ArrayList<>();
     }
@@ -97,8 +97,8 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         LLVMBitcodeInstructionVisitor visitor = new LLVMBitcodeInstructionVisitor(frame, labels, blockPhis, nodeFactory, argCount, symbols, runtime, blockNullerInfos, function.getSourceFunction());
 
         if (runtime.getContext().getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
-            for (SourceModel.Variable variable : initPartialValues) {
-                initializeAggregateDebugValues(visitor, variable);
+            for (SourceModel.Variable variable : initDebugValues) {
+                initializeDebugValue(visitor, variable);
             }
         }
 
@@ -110,16 +110,27 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         blocks.add(nodeFactory.createBasicBlockNode(runtime, visitor.getInstructions(), visitor.getControlFlowNode(), block.getBlockIndex(), block.getName()));
     }
 
-    private void initializeAggregateDebugValues(LLVMBitcodeInstructionVisitor visitor, SourceModel.Variable variable) {
+    private void initializeDebugValue(LLVMBitcodeInstructionVisitor visitor, SourceModel.Variable variable) {
         final FrameSlot targetSlot = frame.findOrAddFrameSlot(variable.getSymbol(), MetaType.DEBUG, FrameSlotKind.Object);
-        final List<ValueFragment> fragments = variable.getFragments();
-        final int[] offsets = new int[fragments.size()];
-        final int[] lengths = new int[fragments.size()];
-        for (int i = 0; i < fragments.size(); i++) {
-            final ValueFragment fragment = fragments.get(i);
-            offsets[i] = fragment.getOffset();
-            lengths[i] = fragment.getLength();
+
+        int[] offsets = null;
+        int[] lengths = null;
+
+        if (variable.hasFragments()) {
+            final List<ValueFragment> fragments = variable.getFragments();
+            offsets = new int[fragments.size()];
+            lengths = new int[fragments.size()];
+
+            for (int i = 0; i < fragments.size(); i++) {
+                final ValueFragment fragment = fragments.get(i);
+                offsets[i] = fragment.getOffset();
+                lengths[i] = fragment.getLength();
+            }
         }
-        visitor.addInstructionUnchecked(nodeFactory.createDebugFragmentInit(targetSlot, offsets, lengths));
+
+        final LLVMExpressionNode init = nodeFactory.createDebugInit(targetSlot, offsets, lengths);
+        if (init != null) {
+            visitor.addInstructionUnchecked(init);
+        }
     }
 }

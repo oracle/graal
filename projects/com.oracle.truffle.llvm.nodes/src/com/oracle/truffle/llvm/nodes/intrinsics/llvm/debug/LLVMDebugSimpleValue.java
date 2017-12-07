@@ -27,46 +27,45 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
+package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
-import com.oracle.truffle.api.dsl.NodeField;
-import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNode.LLVMIncrementPointerNode;
-import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMI16StoreNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMI1StoreNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMStoreNode;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-@NodeField(name = "sourceLocation", type = LLVMSourceLocation.class)
-public abstract class LLVMBuiltin extends LLVMIntrinsic {
+public final class LLVMDebugSimpleValue extends LLVMDebugValue {
 
-    protected static LLVMStoreNode createStoreI1() {
-        return LLVMI1StoreNodeGen.create();
+    public static LLVMDebugValue create(LLVMDebugValueProvider.Builder builder, Object value) {
+        final LLVMDebugSimpleValue dbgValue = new LLVMDebugSimpleValue();
+        dbgValue.set(builder, value);
+        return dbgValue;
     }
 
-    protected static LLVMStoreNode createStoreI8() {
-        return LLVMI8StoreNodeGen.create();
+    private LLVMDebugValueProvider.Builder builder;
+    private Object value;
+
+    LLVMDebugSimpleValue() {
+        this.builder = null;
+        this.value = null;
     }
 
-    protected static LLVMStoreNode createStoreI16() {
-        return LLVMI16StoreNodeGen.create();
+    void set(LLVMDebugValueProvider.Builder builder, Object value) {
+        this.builder = builder;
+        this.value = value;
     }
 
-    protected static LLVMStoreNode createStoreI32() {
-        return LLVMI32StoreNodeGen.create();
-    }
-
-    protected static LLVMStoreNode createStoreI64() {
-        return LLVMI64StoreNodeGen.create();
-    }
-
-    protected LLVMIncrementPointerNode getIncrementPointerNode() {
-        return LLVMIncrementPointerNodeGen.create();
+    private LLVMDebugValueProvider getProvider() {
+        return builder != null ? builder.build(value) : LLVMDebugValueProvider.UNAVAILABLE;
     }
 
     @Override
-    public abstract LLVMSourceLocation getSourceLocation();
+    @TruffleBoundary
+    public LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration) {
+        final LLVMDebugValueProvider valueProvider = getProvider();
+        return LLVMDebugObject.instantiate(type, 0L, valueProvider, declaration);
+    }
+
 }

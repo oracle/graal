@@ -37,7 +37,6 @@ import java.util.Set;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AdcNodeFactory.LLVMAMD64AdcbNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AdcNodeFactory.LLVMAMD64AdclNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AdcNodeFactory.LLVMAMD64AdcqNodeGen;
@@ -237,6 +236,7 @@ import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI1NodeGe
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI64NodeGen;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -268,11 +268,11 @@ class AsmFactory {
     private String currentPrefix;
 
     private final LLVMLanguage language;
-    private final SourceSection sourceSection;
+    private final LLVMSourceLocation sourceLocation;
 
-    AsmFactory(LLVMLanguage language, SourceSection sourceSection, Type[] argTypes, String asmFlags, Type retType, Type[] retTypes, int[] retOffsets) {
+    AsmFactory(LLVMLanguage language, LLVMSourceLocation sourceLocation, Type[] argTypes, String asmFlags, Type retType, Type[] retTypes, int[] retOffsets) {
         this.language = language;
-        this.sourceSection = sourceSection;
+        this.sourceLocation = sourceLocation;
         this.argTypes = argTypes;
         this.asmFlags = asmFlags;
         this.frameDescriptor = new FrameDescriptor();
@@ -386,7 +386,7 @@ class AsmFactory {
 
     LLVMInlineAssemblyRootNode finishInline() {
         getArguments();
-        return new LLVMInlineAssemblyRootNode(language, sourceSection, frameDescriptor, statements.toArray(new LLVMExpressionNode[statements.size()]), arguments, result);
+        return new LLVMInlineAssemblyRootNode(language, sourceLocation, frameDescriptor, statements.toArray(new LLVMExpressionNode[statements.size()]), arguments, result);
     }
 
     void setPrefix(String prefix) {
@@ -396,9 +396,9 @@ class AsmFactory {
     void createInt(AsmImmediateOperand nr) {
         long id = nr.getValue();
         if (id == 3) {
-            statements.add(new LLVMAMD64BreakpointNode(sourceSection));
+            statements.add(new LLVMAMD64BreakpointNode(sourceLocation));
         } else {
-            statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceSection, "Unsupported interrupt " + nr));
+            statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "Unsupported interrupt " + nr));
         }
     }
 
@@ -408,7 +408,7 @@ class AsmFactory {
             case "cld":
             case "cli":
             case "cmc":
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceSection, "Unsupported operation: " + operation));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "Unsupported operation: " + operation));
                 break;
             case "lahf": {
                 LLVMExpressionNode lahf = LLVMAMD64LahfNodeGen.create(getFlag(LLVMAMD64Flags.CF), getFlag(LLVMAMD64Flags.PF), getFlag(LLVMAMD64Flags.AF), getFlag(LLVMAMD64Flags.ZF),
@@ -443,7 +443,7 @@ class AsmFactory {
             case "stc":
             case "std":
             case "sti":
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceSection, "Unsupported operation: " + operation));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "Unsupported operation: " + operation));
                 break;
             case "nop":
                 if ("rep".equals(currentPrefix)) {
@@ -490,7 +490,7 @@ class AsmFactory {
                 break;
             }
             default:
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceSection, "Unsupported operation: " + operation));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "Unsupported operation: " + operation));
                 return;
         }
     }
@@ -728,7 +728,7 @@ class AsmFactory {
                     throw new AsmParseException("invalid operand type: " + dstType);
                 }
             default:
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceSection, "Unsupported operation: " + operation));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "Unsupported operation: " + operation));
                 return;
         }
         if (dstType == null) {
@@ -927,7 +927,7 @@ class AsmFactory {
                 statements.add(LLVMAMD64PushqNodeGen.create(src));
                 return;
             default:
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceSection, "Unsupported operation: " + operation));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "Unsupported operation: " + operation));
                 return;
         }
         LLVMExpressionNode write = getOperandStore(dstType, dst, out);
@@ -1227,7 +1227,7 @@ class AsmFactory {
                 }
                 break;
             default:
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceSection, "Unsupported operation: " + operation));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "Unsupported operation: " + operation));
                 return;
         }
         LLVMExpressionNode write = getOperandStore(dstType, dst, out);
@@ -1606,7 +1606,7 @@ class AsmFactory {
                 out = LLVMAMD64BsfqNodeGen.create(getFlagWrite(LLVMAMD64Flags.ZF), srcA, srcB);
                 break;
             default:
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceSection, "Unsupported operation: " + operation));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "Unsupported operation: " + operation));
                 return;
         }
         LLVMExpressionNode write = getOperandStore(dstType, dst, out);
@@ -1640,7 +1640,7 @@ class AsmFactory {
                                 getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), srcA, srcB);
                 break;
             default:
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceSection, "Unsupported operation: " + operation));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "Unsupported operation: " + operation));
                 return;
         }
         LLVMExpressionNode write = getOperandStore(dstType, dst, out);
@@ -1737,7 +1737,7 @@ class AsmFactory {
                     assert arg.isMemory();
                     slot = getArgumentSlot(arg.getIndex(), argTypes[arg.getOutIndex()]);
                     LLVMExpressionNode argnode = LLVMArgNodeGen.create(arg.getOutIndex());
-                    arguments.add(LLVMWriteAddressNodeGen.create(argnode, slot, sourceSection));
+                    arguments.add(LLVMWriteAddressNodeGen.create(argnode, slot, sourceLocation));
                 }
             }
 
@@ -1791,18 +1791,18 @@ class AsmFactory {
 
         // initialize flags
         LLVMExpressionNode zero = LLVMAMD64I1NodeGen.create(false);
-        arguments.add(LLVMWriteI1NodeGen.create(zero, getFlagSlot(LLVMAMD64Flags.CF), sourceSection));
-        arguments.add(LLVMWriteI1NodeGen.create(zero, getFlagSlot(LLVMAMD64Flags.PF), sourceSection));
-        arguments.add(LLVMWriteI1NodeGen.create(zero, getFlagSlot(LLVMAMD64Flags.AF), sourceSection));
-        arguments.add(LLVMWriteI1NodeGen.create(zero, getFlagSlot(LLVMAMD64Flags.ZF), sourceSection));
-        arguments.add(LLVMWriteI1NodeGen.create(zero, getFlagSlot(LLVMAMD64Flags.SF), sourceSection));
-        arguments.add(LLVMWriteI1NodeGen.create(zero, getFlagSlot(LLVMAMD64Flags.OF), sourceSection));
+        arguments.add(LLVMWriteI1NodeGen.create(zero, getFlagSlot(LLVMAMD64Flags.CF), sourceLocation));
+        arguments.add(LLVMWriteI1NodeGen.create(zero, getFlagSlot(LLVMAMD64Flags.PF), sourceLocation));
+        arguments.add(LLVMWriteI1NodeGen.create(zero, getFlagSlot(LLVMAMD64Flags.AF), sourceLocation));
+        arguments.add(LLVMWriteI1NodeGen.create(zero, getFlagSlot(LLVMAMD64Flags.ZF), sourceLocation));
+        arguments.add(LLVMWriteI1NodeGen.create(zero, getFlagSlot(LLVMAMD64Flags.SF), sourceLocation));
+        arguments.add(LLVMWriteI1NodeGen.create(zero, getFlagSlot(LLVMAMD64Flags.OF), sourceLocation));
 
         // copy stack pointer
         LLVMExpressionNode stackPointer = LLVMArgNodeGen.create(0);
         FrameSlot stackSlot = frameDescriptor.addFrameSlot(LLVMStack.FRAME_ID);
         stackSlot.setKind(FrameSlotKind.Object);
-        arguments.add(LLVMWriteAddressNodeGen.create(stackPointer, frameDescriptor.findFrameSlot(LLVMStack.FRAME_ID), sourceSection));
+        arguments.add(LLVMWriteAddressNodeGen.create(stackPointer, frameDescriptor.findFrameSlot(LLVMStack.FRAME_ID), sourceLocation));
 
         arguments.add(LLVMWriteAddressNodeGen.create(stackPointer, getRegisterSlot("rsp"), null));
 
@@ -2125,7 +2125,7 @@ class AsmFactory {
                 LLVMExpressionNode register = LLVMAMD64ReadRegisterNodeGen.create(frame);
                 LLVMExpressionNode out = null;
                 if (type instanceof PointerType || info.getType() instanceof PointerType) {
-                    return LLVMAMD64WriteAddressRegisterNodeGen.create(from, frame);
+                    return LLVMAMD64WriteAddressRegisterNodeGen.create(sourceLocation, from, frame);
                 }
                 switch (((PrimitiveType) type).getPrimitiveKind()) {
                     case I8:

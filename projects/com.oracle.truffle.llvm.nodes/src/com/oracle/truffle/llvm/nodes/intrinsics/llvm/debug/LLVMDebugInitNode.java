@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,31 +27,55 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86;
+package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public final class LLVMX86_64BitVAEnd extends LLVMExpressionNode {
+public abstract class LLVMDebugInitNode extends LLVMExpressionNode {
 
-    private final LLVMSourceLocation source;
+    private final FrameSlot frameSlot;
 
-    @Child private LLVMExpressionNode target;
-
-    public LLVMX86_64BitVAEnd(LLVMExpressionNode target, LLVMSourceLocation source) {
-        this.target = target;
-        this.source = source;
+    protected LLVMDebugInitNode(FrameSlot frameSlot) {
+        this.frameSlot = frameSlot;
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        // nop
-        return null;
+    protected FrameSlot getFrameSlot() {
+        return frameSlot;
     }
 
-    @Override
-    public LLVMSourceLocation getSourceLocation() {
-        return source;
+    public abstract static class SimpleInitNode extends LLVMDebugInitNode {
+
+        protected SimpleInitNode(FrameSlot frameSlot) {
+            super(frameSlot);
+        }
+
+        @Specialization
+        protected Object init(VirtualFrame frame) {
+            frame.setObject(getFrameSlot(), new LLVMDebugSimpleValue());
+            return null;
+        }
     }
+
+    public abstract static class AggregateInitNode extends LLVMDebugInitNode {
+
+        @CompilationFinal(dimensions = 1) private int[] offsets;
+        @CompilationFinal(dimensions = 1) private int[] lengths;
+
+        protected AggregateInitNode(FrameSlot frameSlot, int[] offsets, int[] lengths) {
+            super(frameSlot);
+            this.offsets = offsets;
+            this.lengths = lengths;
+        }
+
+        @Specialization
+        protected Object init(VirtualFrame frame) {
+            frame.setObject(getFrameSlot(), new LLVMDebugAggregateValue(offsets, lengths));
+            return null;
+        }
+    }
+
 }

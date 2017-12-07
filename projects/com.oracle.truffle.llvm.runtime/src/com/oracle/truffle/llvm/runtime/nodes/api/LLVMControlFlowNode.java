@@ -29,14 +29,14 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 public abstract class LLVMControlFlowNode extends LLVMNode {
 
-    private final SourceSection sourceSection;
+    private final LLVMSourceLocation source;
 
-    public LLVMControlFlowNode(SourceSection sourceSection) {
-        this.sourceSection = sourceSection;
+    public LLVMControlFlowNode(LLVMSourceLocation source) {
+        this.source = source;
     }
 
     public abstract int getSuccessorCount();
@@ -48,7 +48,7 @@ public abstract class LLVMControlFlowNode extends LLVMNode {
     }
 
     @Override
-    public SourceSection getSourceSection() {
-        return sourceSection;
+    public LLVMSourceLocation getSourceLocation() {
+        return source;
     }
 }

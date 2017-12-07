@@ -35,10 +35,12 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeIntArrayAccess;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 public abstract class LLVMNode extends Node {
@@ -111,4 +113,17 @@ public abstract class LLVMNode extends Node {
         return tag == StandardTags.StatementTag.class || super.isTaggedWith(tag);
     }
 
+    public LLVMSourceLocation getSourceLocation() {
+        return null;
+    }
+
+    @Override
+    public SourceSection getSourceSection() {
+        final LLVMSourceLocation location = getSourceLocation();
+        if (location != null) {
+            return location.getSourceSection();
+        }
+
+        return null;
+    }
 }

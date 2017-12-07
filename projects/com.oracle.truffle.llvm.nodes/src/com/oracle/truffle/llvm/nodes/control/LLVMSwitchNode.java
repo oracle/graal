@@ -33,15 +33,15 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Instrumentable;
 import com.oracle.truffle.api.profiles.ValueProfile;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.wrappers.LLVMSwitchNodeWrapper;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @Instrumentable(factory = LLVMSwitchNodeWrapper.class)
 public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
 
-    public LLVMSwitchNode(SourceSection sourceSection) {
+    public LLVMSwitchNode(LLVMSourceLocation sourceSection) {
         super(sourceSection);
     }
 
@@ -59,7 +59,7 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
 
         private final ValueProfile conditionValueClass = ValueProfile.createClassProfile();
 
-        public LLVMSwitchNodeImpl(int[] successors, LLVMExpressionNode[] phiNodes, LLVMExpressionNode cond, LLVMExpressionNode[] cases, SourceSection sourceSection) {
+        public LLVMSwitchNodeImpl(int[] successors, LLVMExpressionNode[] phiNodes, LLVMExpressionNode cond, LLVMExpressionNode[] cases, LLVMSourceLocation sourceSection) {
             super(sourceSection);
             assert successors.length == cases.length + 1 : "the last entry of the successors array must be the default case";
             this.successors = successors;
