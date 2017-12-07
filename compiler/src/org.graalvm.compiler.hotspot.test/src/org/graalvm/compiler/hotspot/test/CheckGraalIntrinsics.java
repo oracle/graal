@@ -469,8 +469,8 @@ public class CheckGraalIntrinsics extends GraalTest {
         // CRC32C intrinsics
         if (!config.useCRC32CIntrinsics) {
             add(IGNORE,
-                            "java/util/zip/CRC32C.updateDirectByteBuffer(IJII)I",
-                            "java/util/zip/CRC32C.updateBytes(I[BII)I");
+                            "java/util/zip/CRC32C.updateBytes(I[BII)I",
+                            "java/util/zip/CRC32C.updateDirectByteBuffer(IJII)I");
         }
 
         // AES intrinsics
