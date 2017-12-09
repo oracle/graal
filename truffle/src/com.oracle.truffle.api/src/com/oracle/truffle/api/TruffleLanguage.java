@@ -48,7 +48,6 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
@@ -1809,110 +1808,7 @@ public abstract class TruffleLanguage<C> {
             }
 
             try {
-                // TODO find a better way to convert from materialized frame to virtual frame.
-                // maybe we should always use Frame everywhere?
-                return exec.execute(new VirtualFrame() {
-
-                    public void setObject(FrameSlot slot, Object value) {
-                        mFrame.setObject(slot, value);
-                    }
-
-                    public void setLong(FrameSlot slot, long value) {
-                        mFrame.setLong(slot, value);
-                    }
-
-                    public void setInt(FrameSlot slot, int value) {
-                        mFrame.setInt(slot, value);
-                    }
-
-                    public void setFloat(FrameSlot slot, float value) {
-                        mFrame.setFloat(slot, value);
-                    }
-
-                    public void setDouble(FrameSlot slot, double value) {
-                        mFrame.setDouble(slot, value);
-                    }
-
-                    public void setByte(FrameSlot slot, byte value) {
-                        mFrame.setByte(slot, value);
-                    }
-
-                    public void setBoolean(FrameSlot slot, boolean value) {
-                        mFrame.setBoolean(slot, value);
-                    }
-
-                    public MaterializedFrame materialize() {
-                        return mFrame;
-                    }
-
-                    public boolean isObject(FrameSlot slot) {
-                        return mFrame.isObject(slot);
-                    }
-
-                    public boolean isLong(FrameSlot slot) {
-                        return mFrame.isLong(slot);
-                    }
-
-                    public boolean isInt(FrameSlot slot) {
-                        return mFrame.isInt(slot);
-                    }
-
-                    public boolean isFloat(FrameSlot slot) {
-                        return mFrame.isFloat(slot);
-                    }
-
-                    public boolean isDouble(FrameSlot slot) {
-                        return mFrame.isDouble(slot);
-                    }
-
-                    public boolean isByte(FrameSlot slot) {
-                        return mFrame.isByte(slot);
-                    }
-
-                    public boolean isBoolean(FrameSlot slot) {
-                        return mFrame.isBoolean(slot);
-                    }
-
-                    public Object getValue(FrameSlot slot) {
-                        return mFrame.getValue(slot);
-                    }
-
-                    public Object getObject(FrameSlot slot) throws FrameSlotTypeException {
-                        return mFrame.getObject(slot);
-                    }
-
-                    public long getLong(FrameSlot slot) throws FrameSlotTypeException {
-                        return mFrame.getLong(slot);
-                    }
-
-                    public int getInt(FrameSlot slot) throws FrameSlotTypeException {
-                        return mFrame.getInt(slot);
-                    }
-
-                    public FrameDescriptor getFrameDescriptor() {
-                        return mFrame.getFrameDescriptor();
-                    }
-
-                    public float getFloat(FrameSlot slot) throws FrameSlotTypeException {
-                        return mFrame.getFloat(slot);
-                    }
-
-                    public double getDouble(FrameSlot slot) throws FrameSlotTypeException {
-                        return mFrame.getDouble(slot);
-                    }
-
-                    public byte getByte(FrameSlot slot) throws FrameSlotTypeException {
-                        return mFrame.getByte(slot);
-                    }
-
-                    public boolean getBoolean(FrameSlot slot) throws FrameSlotTypeException {
-                        return mFrame.getBoolean(slot);
-                    }
-
-                    public Object[] getArguments() {
-                        return mFrame.getArguments();
-                    }
-                });
+                return exec.execute(mFrame);
             } catch (Exception ex) {
                 if (ex instanceof RuntimeException) {
                     throw (RuntimeException) ex;

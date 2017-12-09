@@ -6,6 +6,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 * Removed deprecated `com.oracle.truffle.api.source.LineLocation` class.
 * Added `RootNode#isCaptureFramesForTrace()` to allow subclasses to configure capturing of frames in `TruffleException` instances and `TruffleStackTraceElement#getFrame()` to access the captured frames.
+* [MaterializedFrame](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/frame/MaterializedFrame.html) changed to extend [VirtualFrame](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/frame/VirtualFrame.html), to be able to call methods taking `VirtualFrame` from behind Truffle boundary.
 
 ## Version 0.30
 

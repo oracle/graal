@@ -292,19 +292,6 @@ public class ExecuteMethodTest {
 
     @TypeSystemReference(ExecuteMethodTypes.class)
     @NodeChild(value = "a", type = ChildNoFrame.class)
-    abstract static class ExecuteWithFrameError3 extends Node {
-
-        abstract Object executeFrame(VirtualFrame frame);
-
-        @Specialization
-        @ExpectError("Method signature (MaterializedFrame, int) does not match to the expected signature:%")
-        int doInt(@SuppressWarnings("unused") MaterializedFrame frame, int a) {
-            return a;
-        }
-    }
-
-    @TypeSystemReference(ExecuteMethodTypes.class)
-    @NodeChild(value = "a", type = ChildNoFrame.class)
     @ExpectError("Invalid inconsistent frame types [MaterializedFrame, VirtualFrame] found for the declared execute methods.%")
     abstract static class ExecuteWithFrameError4 extends Node {
 
