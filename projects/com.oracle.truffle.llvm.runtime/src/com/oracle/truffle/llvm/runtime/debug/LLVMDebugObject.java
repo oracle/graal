@@ -271,6 +271,9 @@ public abstract class LLVMDebugObject implements TruffleObject {
                 if (intRead instanceof BigInteger) {
                     byte byteVal = ((BigInteger) intRead).byteValue();
                     char ch = signed ? (char) byteVal : (char) Byte.toUnsignedInt(byteVal);
+                    if (ch == 0) {
+                        break;
+                    }
                     sb.append(ch);
                 } else {
                     sb.append("??");
