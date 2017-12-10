@@ -101,6 +101,9 @@ public class LLVMFunctionStartNode extends RootNode {
 
     @Override
     public String getName() {
+        if (debugInformation.originalName != null) {
+            return debugInformation.originalName;
+        }
         return name;
     }
 
