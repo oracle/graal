@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugLocalAllocation;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStringNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
@@ -200,6 +201,8 @@ public interface NodeFactory {
     LLVMExpressionNode createDebugInit(FrameSlot targetSlot, int[] offsets, int[] lengths);
 
     LLVMDebugValue createDebugConstantValue(LLVMExpressionNode valueNode);
+
+    LLVMDebugLocalAllocation createDebugLocalAllocation(FrameSlot slot);
 
     LLVMExpressionNode registerSourceType(FrameSlot valueSlot, LLVMSourceType type);
 

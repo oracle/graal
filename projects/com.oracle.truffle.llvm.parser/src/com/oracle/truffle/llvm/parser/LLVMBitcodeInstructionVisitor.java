@@ -121,6 +121,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     private final ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos;
     private final List<? extends FrameSlot> frameSlots;
     private final SourceModel.Function sourceFunction;
+    private final List<FrameSlot> notNullable;
 
     private final List<LLVMExpressionNode> blockInstructions;
     private int instructionIndex;
@@ -128,7 +129,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     LLVMBitcodeInstructionVisitor(FrameDescriptor frame, Map<String, Integer> labels,
                     List<Phi> blockPhis, NodeFactory nodeFactory, int argCount, LLVMSymbolReadResolver symbols, LLVMParserRuntime runtime,
-                    ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, SourceModel.Function sourceFunction) {
+                    ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, SourceModel.Function sourceFunction, List<FrameSlot> notNullable) {
         this.frame = frame;
         this.labels = labels;
         this.blockPhis = blockPhis;
@@ -139,6 +140,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         this.nullerInfos = nullerInfos;
         this.frameSlots = frame.getSlots();
         this.sourceFunction = sourceFunction;
+        this.notNullable = notNullable;
 
         this.blockInstructions = new ArrayList<>();
     }
@@ -335,7 +337,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             }
         }
 
-        if (!runtime.getContext().getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
+        if (!runtime.getContext().getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI) || var.hasStaticAllocation()) {
             handleNullerInfo();
             return;
         }
@@ -979,8 +981,10 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                 break;
             } else if (nuller.getInstructionIndex() == instructionIndex) {
                 FrameSlot frameSlot = frameSlots.get(nuller.getFrameSlotIndex());
-                LLVMExpressionNode nullerNode = nodeFactory.createFrameNuller(frameSlot);
-                blockInstructions.add(nullerNode);
+                if (!notNullable.contains(frameSlot)) {
+                    LLVMExpressionNode nullerNode = nodeFactory.createFrameNuller(frameSlot);
+                    blockInstructions.add(nullerNode);
+                }
                 nullerInfos.remove(i);
             } else {
                 assert false : "we either missed an instruction or the nuller information is not sorted correctly";

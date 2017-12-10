@@ -142,16 +142,20 @@ public final class SourceModel {
         private final LLVMSourceSymbol variable;
 
         private List<ValueFragment> fragments;
+
         private boolean hasFullDefinition;
-        private boolean hasDeclaration;
-        private boolean hasValue;
+        private boolean hasStaticAllocation;
+
+        private int declarations;
+        private int values;
 
         private Variable(LLVMSourceSymbol variable) {
             this.variable = variable;
             this.fragments = null;
             this.hasFullDefinition = false;
-            this.hasDeclaration = false;
-            this.hasValue = false;
+            this.hasStaticAllocation = false;
+            this.declarations = 0;
+            this.values = 0;
         }
 
         public LLVMSourceSymbol getSymbol() {
@@ -183,15 +187,27 @@ public final class SourceModel {
         }
 
         public boolean hasDeclaration() {
-            return hasDeclaration;
+            return declarations > 0;
         }
 
         public boolean hasValue() {
-            return hasValue;
+            return values > 0;
         }
 
         public List<ValueFragment> getFragments() {
             return fragments != null ? fragments : Collections.emptyList();
+        }
+
+        public boolean isSingleDeclaration() {
+            return declarations == 1 && values == 0;
+        }
+
+        public boolean hasStaticAllocation() {
+            return hasStaticAllocation;
+        }
+
+        public void addStaticAllocation() {
+            this.hasStaticAllocation = true;
         }
 
         private void addFragment(ValueFragment fragment) {
@@ -224,11 +240,11 @@ public final class SourceModel {
         }
 
         private void addDeclaration() {
-            hasDeclaration = true;
+            declarations++;
         }
 
         private void addValue() {
-            hasValue = true;
+            values++;
         }
 
         private void addFullDefinition() {

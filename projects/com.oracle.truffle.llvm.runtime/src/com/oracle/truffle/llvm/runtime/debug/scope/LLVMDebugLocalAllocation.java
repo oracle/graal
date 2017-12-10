@@ -27,41 +27,12 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.runtime.debug.scope;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugLocalAllocation;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 
-import java.util.HashMap;
+public interface LLVMDebugLocalAllocation {
 
-public final class LLVMSourceContext {
-
-    private final HashMap<LLVMSourceSymbol, LLVMDebugValue> globals;
-    private final HashMap<LLVMSourceSymbol, LLVMDebugLocalAllocation> localAllocations;
-
-    @TruffleBoundary
-    public LLVMSourceContext() {
-        globals = new HashMap<>();
-        localAllocations = new HashMap<>();
-    }
-
-    @TruffleBoundary
-    public void registerGlobal(LLVMSourceSymbol symbol, LLVMDebugValue value) {
-        globals.put(symbol, value);
-    }
-
-    @TruffleBoundary
-    public LLVMDebugValue getGlobal(LLVMSourceSymbol symbol) {
-        return globals.getOrDefault(symbol, LLVMDebugValue.UNAVAILABLE);
-    }
-
-    @TruffleBoundary
-    public void registerLocalAllocation(LLVMSourceSymbol symbol, LLVMDebugLocalAllocation value) {
-        localAllocations.put(symbol, value);
-    }
-
-    @TruffleBoundary
-    public LLVMDebugLocalAllocation getLocalAllocation(LLVMSourceSymbol symbol) {
-        return localAllocations.get(symbol);
-    }
+    LLVMDebugValue getValue(Frame frame);
 }

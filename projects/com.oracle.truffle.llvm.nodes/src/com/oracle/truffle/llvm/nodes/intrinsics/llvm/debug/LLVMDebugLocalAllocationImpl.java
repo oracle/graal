@@ -27,41 +27,29 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugLocalAllocation;
 
-import java.util.HashMap;
+public final class LLVMDebugLocalAllocationImpl implements LLVMDebugLocalAllocation {
 
-public final class LLVMSourceContext {
+    private final FrameSlot slot;
+    private final LLVMDebugValueProvider.Builder builder;
 
-    private final HashMap<LLVMSourceSymbol, LLVMDebugValue> globals;
-    private final HashMap<LLVMSourceSymbol, LLVMDebugLocalAllocation> localAllocations;
-
-    @TruffleBoundary
-    public LLVMSourceContext() {
-        globals = new HashMap<>();
-        localAllocations = new HashMap<>();
+    public LLVMDebugLocalAllocationImpl(FrameSlot slot, ContextReference<LLVMContext> contextRef) {
+        this.slot = slot;
+        this.builder = LLVMToDebugDeclarationNodeGen.create(contextRef);
     }
 
-    @TruffleBoundary
-    public void registerGlobal(LLVMSourceSymbol symbol, LLVMDebugValue value) {
-        globals.put(symbol, value);
-    }
-
-    @TruffleBoundary
-    public LLVMDebugValue getGlobal(LLVMSourceSymbol symbol) {
-        return globals.getOrDefault(symbol, LLVMDebugValue.UNAVAILABLE);
-    }
-
-    @TruffleBoundary
-    public void registerLocalAllocation(LLVMSourceSymbol symbol, LLVMDebugLocalAllocation value) {
-        localAllocations.put(symbol, value);
-    }
-
-    @TruffleBoundary
-    public LLVMDebugLocalAllocation getLocalAllocation(LLVMSourceSymbol symbol) {
-        return localAllocations.get(symbol);
+    @Override
+    public LLVMDebugValue getValue(Frame frame) {
+        final Object addr = frame.getValue(slot);
+        return LLVMDebugSimpleValue.create(builder, addr);
     }
 }

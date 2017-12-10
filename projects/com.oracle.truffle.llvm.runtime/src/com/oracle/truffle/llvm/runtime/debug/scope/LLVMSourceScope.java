@@ -57,20 +57,20 @@ public final class LLVMSourceScope {
 
     @TruffleBoundary
     public static Iterable<Scope> create(Node node, Frame frame, LLVMContext context) {
+        final LLVMSourceContext sourceContext = context.getSourceContext();
         final RootNode rootNode = node.getRootNode();
 
         if (rootNode == null || !(node instanceof LLVMNode)) {
-            return Collections.singleton(new LLVMSourceScope(node).toScope(frame));
+            return Collections.singleton(new LLVMSourceScope(sourceContext, node).toScope(frame));
         }
 
         LLVMSourceLocation scope = ((LLVMNode) node).getSourceLocation();
         if (scope == null) {
-            return Collections.singleton(new LLVMSourceScope(rootNode).toScope(frame));
+            return Collections.singleton(new LLVMSourceScope(sourceContext, rootNode).toScope(frame));
         }
         final SourceSection sourceSection = node.getSourceSection();
 
-        final LLVMSourceContext sourceContext = context.getSourceContext();
-        LLVMSourceScope baseScope = new LLVMSourceScope(new LinkedList<>(), new HashMap<>(), rootNode);
+        LLVMSourceScope baseScope = new LLVMSourceScope(sourceContext, new LinkedList<>(), new HashMap<>(), rootNode);
         LLVMSourceScope staticScope = null;
 
         for (boolean isLocalScope = true; isLocalScope && scope != null; scope = scope.getParent()) {
@@ -135,14 +135,14 @@ public final class LLVMSourceScope {
 
     private static LLVMSourceScope toScope(LLVMSourceLocation scope, LLVMSourceContext context, Node node, SourceSection sourceSection) {
         if (!scope.hasSymbols()) {
-            final LLVMSourceScope sourceScope = new LLVMSourceScope(node);
+            final LLVMSourceScope sourceScope = new LLVMSourceScope(context, node);
             sourceScope.setName(scope.getName());
             return sourceScope;
         }
 
         final List<LLVMSourceSymbol> locals = new LinkedList<>();
         final Map<LLVMSourceSymbol, LLVMDebugValue> globals = new HashMap<>();
-        final LLVMSourceScope sourceScope = new LLVMSourceScope(locals, globals, node);
+        final LLVMSourceScope sourceScope = new LLVMSourceScope(context, locals, globals, node);
         sourceScope.setName(scope.getName());
 
         for (LLVMSourceSymbol symbol : scope.getSymbols()) {
@@ -184,17 +184,19 @@ public final class LLVMSourceScope {
 
     private static final String DEFAULT_NAME = "<scope>";
 
+    private final LLVMSourceContext context;
     private final List<LLVMSourceSymbol> locals;
     private final Map<LLVMSourceSymbol, LLVMDebugValue> globals;
     private final Node node;
 
     private String name;
 
-    private LLVMSourceScope(Node node) {
-        this(Collections.emptyList(), Collections.emptyMap(), node);
+    private LLVMSourceScope(LLVMSourceContext context, Node node) {
+        this(context, Collections.emptyList(), Collections.emptyMap(), node);
     }
 
-    private LLVMSourceScope(List<LLVMSourceSymbol> locals, Map<LLVMSourceSymbol, LLVMDebugValue> globals, Node node) {
+    private LLVMSourceScope(LLVMSourceContext context, List<LLVMSourceSymbol> locals, Map<LLVMSourceSymbol, LLVMDebugValue> globals, Node node) {
+        this.context = context;
         this.locals = locals;
         this.globals = globals;
         this.node = node;
@@ -231,7 +233,18 @@ public final class LLVMSourceScope {
 
         for (LLVMSourceSymbol local : locals) {
             if (!vars.containsKey(local.getName())) {
-                vars.put(local.getName(), LLVMDebugValue.UNAVAILABLE.getValue(local));
+                LLVMDebugValue dbgVal = null;
+
+                LLVMDebugLocalAllocation allocation = context.getLocalAllocation(local);
+                if (allocation != null && frame != null) {
+                    dbgVal = allocation.getValue(frame);
+                }
+
+                if (dbgVal == null) {
+                    dbgVal = LLVMDebugValue.UNAVAILABLE;
+                }
+
+                vars.put(local.getName(), dbgVal.getValue(local));
             }
         }
 

@@ -63,11 +63,13 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
     private final int argCount;
     private final FunctionDefinition function;
     private final LLVMLivenessAnalysisResult liveness;
-    private final Collection<SourceModel.Variable> initDebugValues;
+    private final List<FrameSlot> notNullable;
+    private final Collection<SourceModel.Variable> debugValues;
+    private boolean initDebugValues;
 
     LLVMBitcodeFunctionVisitor(LLVMParserRuntime runtime, FrameDescriptor frame, Map<String, Integer> labels,
                     Map<InstructionBlock, List<Phi>> phis, NodeFactory nodeFactory, int argCount, LLVMSymbolReadResolver symbols, FunctionDefinition functionDefinition,
-                    LLVMLivenessAnalysisResult liveness, Collection<SourceModel.Variable> initDebugValues) {
+                    LLVMLivenessAnalysisResult liveness, Collection<SourceModel.Variable> initDebugValues, List<FrameSlot> notNullable) {
         this.runtime = runtime;
         this.frame = frame;
         this.labels = labels;
@@ -77,9 +79,10 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         this.argCount = argCount;
         this.function = functionDefinition;
         this.liveness = liveness;
-        this.initDebugValues = initDebugValues;
-
+        this.debugValues = initDebugValues;
+        this.notNullable = notNullable;
         this.blocks = new ArrayList<>();
+        this.initDebugValues = runtime.getContext().getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI) && !initDebugValues.isEmpty();
     }
 
     public List<LLVMExpressionNode> getBlocks() {
@@ -94,12 +97,14 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
     public void visit(InstructionBlock block) {
         List<Phi> blockPhis = phis.get(block);
         ArrayList<LLVMLivenessAnalysis.NullerInformation> blockNullerInfos = liveness.getNullableWithinBlock()[block.getBlockIndex()];
-        LLVMBitcodeInstructionVisitor visitor = new LLVMBitcodeInstructionVisitor(frame, labels, blockPhis, nodeFactory, argCount, symbols, runtime, blockNullerInfos, function.getSourceFunction());
+        LLVMBitcodeInstructionVisitor visitor = new LLVMBitcodeInstructionVisitor(frame, labels, blockPhis, nodeFactory, argCount, symbols, runtime, blockNullerInfos, function.getSourceFunction(),
+                        notNullable);
 
-        if (runtime.getContext().getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
-            for (SourceModel.Variable variable : initDebugValues) {
+        if (initDebugValues) {
+            for (SourceModel.Variable variable : debugValues) {
                 initializeDebugValue(visitor, variable);
             }
+            initDebugValues = false;
         }
 
         for (int i = 0; i < block.getInstructionCount(); i++) {
