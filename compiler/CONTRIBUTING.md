@@ -1,5 +1,5 @@
-To submit pull requests to graal-core, you need to sign the [Oracle Contributor
-Agreement][1].
+To submit pull requests to the Graal compiler, you need to sign the [Oracle
+Contributor Agreement][1].
 
 All pull requests should be given an [Assignee][2]. The assignee is responsible
 for adding the `accept` label to the pull request once they have completed a

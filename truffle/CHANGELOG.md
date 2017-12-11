@@ -260,7 +260,7 @@ constructed via its `newBuilder` methods. The other ways to construct or modify
 source objects are now deprecated.
 * [RootNode.getName](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#getName--)
 to provide name of a method or function it represents.
-* Instruments are now [loaded eagerly](https://github.com/graalvm/truffle/commit/81018616abb0d4ae68e98b7fcd6fda7c8d0393a2) -
+* Instruments are now [loaded eagerly](https://github.com/graalvm/graal/commit/81018616abb0d4ae68e98b7fcd6fda7c8d0393a2) -
 which has been reported as an observable behavioral change.
 * The [Instrumenter](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/instrumentation/Instrumenter.html)
 now allows one to observe when sources and source sections are being loaded via

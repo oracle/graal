@@ -82,7 +82,7 @@
  * Related information:
  * <ul>
  * <li>The Graal project home:  <a href="https://github.com/graalvm">https://github.com/graalvm</a></li>
- * <li><a href="https://github.com/graalvm/graal-core/blob/master/docs/Publications.md#graal-papers">Graal Publications</a></li>
+ * <li><a href="https://github.com/graalvm/graal/blob/master/docs/Publications.md#graal-papers">Graal Publications</a></li>
  * <li>{@linkplain com.oracle.truffle.tutorial Other Truffle Tutorials}
  * </ul>
 

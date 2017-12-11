@@ -4,7 +4,7 @@
 ## Introduction
 
 Truffle is a framework for implementing languages as simple interpreters.
-Together with the [Graal compiler](https://github.com/graalvm/graal-core/),
+Together with the [Graal compiler](https://github.com/graalvm/graal/tree/master/compiler),
 Truffle interpreters are automatically just-in-time compiled and programs
 running on top of them can reach performance of normal Java.
 
