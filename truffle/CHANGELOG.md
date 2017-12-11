@@ -6,6 +6,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 * Removed deprecated `com.oracle.truffle.api.source.LineLocation` class.
 * Added `RootNode#isCaptureFramesForTrace()` to allow subclasses to configure capturing of frames in `TruffleException` instances and `TruffleStackTraceElement#getFrame()` to access the captured frames.
+* Added a support for the TruffleLanguage context pre-initialization in a time of native compilation. To use the context pre-initialization a language has to implement the [patchContext](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage##patchContext-C-com.oracle.truffle.api.TruffleLanguage.Env-) method.
 
 ## Version 0.30
 
