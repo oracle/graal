@@ -163,7 +163,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     /**
      * Pre-initializes a polyglot engine instance.
      *
-     * @since 0.30
+     * @since 0.31
      */
     @Override
     public void preInitializeEngine() {

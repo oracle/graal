@@ -494,7 +494,7 @@ public abstract class TruffleLanguage<C> {
      *         a new environment return false to create a new context. By default it returns
      *         {@code false} to prevent an usage of pre-initialized context by a language which is
      *         not aware of context pre-initialization.
-     * @since 0.30
+     * @since 0.31
      */
     protected boolean patchContext(C context, Env newEnv) {
         return false;
