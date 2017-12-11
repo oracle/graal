@@ -48,7 +48,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 /**
  * A default frame slot based implementation of variables contained in the (default) frame scope.
  */
-@SuppressWarnings("deprecation")
+@SuppressWarnings({"deprecation", "all"})
 final class DefaultScopeVariables extends com.oracle.truffle.api.metadata.ScopeProvider.AbstractScope {
 
     private final RootNode root;
@@ -116,7 +116,7 @@ final class DefaultScopeVariables extends com.oracle.truffle.api.metadata.ScopeP
         } else {
             args = frame.getArguments();
         }
-        return new ArguentsArrayObject(args);
+        return new ArgumentsArrayObject(args);
     }
 
     @Override
@@ -253,30 +253,30 @@ final class DefaultScopeVariables extends com.oracle.truffle.api.metadata.ScopeP
         }
     }
 
-    static final class ArguentsArrayObject implements TruffleObject {
+    static final class ArgumentsArrayObject implements TruffleObject {
 
         final Object[] args;
 
-        ArguentsArrayObject(Object[] args) {
+        ArgumentsArrayObject(Object[] args) {
             this.args = args;
         }
 
         @Override
         public ForeignAccess getForeignAccess() {
-            return ArguentsArrayMessageResolutionForeign.ACCESS;
+            return ArgumentsArrayMessageResolutionForeign.ACCESS;
         }
 
         public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof ArguentsArrayObject;
+            return obj instanceof ArgumentsArrayObject;
         }
 
-        @MessageResolution(receiverType = ArguentsArrayObject.class)
-        static final class ArguentsArrayMessageResolution {
+        @MessageResolution(receiverType = ArgumentsArrayObject.class)
+        static final class ArgumentsArrayMessageResolution {
 
             @Resolve(message = "HAS_SIZE")
             abstract static class ArgsArrHasSizeNode extends Node {
 
-                public Object access(ArguentsArrayObject argsArr) {
+                public Object access(ArgumentsArrayObject argsArr) {
                     return true;
                 }
             }
@@ -284,7 +284,7 @@ final class DefaultScopeVariables extends com.oracle.truffle.api.metadata.ScopeP
             @Resolve(message = "GET_SIZE")
             abstract static class ArgsArrGetSizeNode extends Node {
 
-                public Object access(ArguentsArrayObject argsArr) {
+                public Object access(ArgumentsArrayObject argsArr) {
                     return argsArr.args.length;
                 }
             }
@@ -293,7 +293,7 @@ final class DefaultScopeVariables extends com.oracle.truffle.api.metadata.ScopeP
             abstract static class ArgsArrReadNode extends Node {
 
                 @TruffleBoundary
-                public Object access(ArguentsArrayObject argsArr, int index) {
+                public Object access(ArgumentsArrayObject argsArr, int index) {
                     try {
                         return argsArr.args[index];
                     } catch (IndexOutOfBoundsException ioob) {
@@ -306,7 +306,7 @@ final class DefaultScopeVariables extends com.oracle.truffle.api.metadata.ScopeP
             abstract static class ArgsArrWriteNode extends Node {
 
                 @TruffleBoundary
-                public Object access(ArguentsArrayObject argsArr, int index, Object value) {
+                public Object access(ArgumentsArrayObject argsArr, int index, Object value) {
                     try {
                         argsArr.args[index] = value;
                         return value;

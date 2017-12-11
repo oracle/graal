@@ -76,7 +76,7 @@ public class FrameTest {
         public abstract Object execute(Frame frame, Object arg);
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "cachedValue == value")
+        @Specialization(guards = "cachedValue == value", limit = "3")
         FrameDescriptor s1(VirtualFrame frame, int value,
                         @Cached("frame.getFrameDescriptor()") FrameDescriptor descriptor,
                         @Cached("value") int cachedValue) {

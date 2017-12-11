@@ -477,6 +477,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     xcompTests = [
         'BlackholeDirectiveTest',
         'OpaqueDirectiveTest',
+        'CompiledMethodTest',
         'ControlFlowAnchorDirectiveTest',
         'ConditionalElimination',
         'MarkUnsafeAccessTest',
@@ -581,7 +582,7 @@ graal_unit_test_runs = [
 _registers = 'o0,o1,o2,o3,f8,f9,d32,d34' if mx.get_arch() == 'sparcv9' else 'rbx,r11,r10,r14,xmm3,xmm11,xmm14'
 
 _defaultFlags = ['-Dgraal.CompilationWatchDogStartDelay=60.0D']
-_assertionFlags = ['-esa']
+_assertionFlags = ['-esa', '-Dgraal.DetailedAsserts=true']
 _graalErrorFlags = ['-Dgraal.CompilationFailureAction=ExitVM']
 _graalEconomyFlags = ['-Dgraal.CompilerConfiguration=economy']
 _verificationFlags = ['-Dgraal.VerifyGraalGraphs=true', '-Dgraal.VerifyGraalGraphEdges=true', '-Dgraal.VerifyGraalPhasesSize=true', '-Dgraal.VerifyPhases=true']

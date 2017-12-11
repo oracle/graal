@@ -105,6 +105,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
     }
 
     public static ValueNode canonicalizeRead(ValueNode read, AddressNode address, LocationIdentity locationIdentity, CanonicalizerTool tool) {
+        NodeView view = NodeView.from(tool);
         MetaAccessProvider metaAccess = tool.getMetaAccess();
         if (tool.canonicalizeReads() && address instanceof OffsetAddressNode) {
             OffsetAddressNode objAddress = (OffsetAddressNode) address;
@@ -113,10 +114,10 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
                 long displacement = objAddress.getOffset().asJavaConstant().asLong();
                 int stableDimension = ((ConstantNode) object).getStableDimension();
                 if (locationIdentity.isImmutable() || stableDimension > 0) {
-                    Constant constant = read.stamp(NodeView.DEFAULT).readConstant(tool.getConstantReflection().getMemoryAccessProvider(), object.asConstant(), displacement);
+                    Constant constant = read.stamp(view).readConstant(tool.getConstantReflection().getMemoryAccessProvider(), object.asConstant(), displacement);
                     boolean isDefaultStable = locationIdentity.isImmutable() || ((ConstantNode) object).isDefaultStable();
                     if (constant != null && (isDefaultStable || !constant.isDefaultForKind())) {
-                        return ConstantNode.forConstant(read.stamp(NodeView.DEFAULT), constant, Math.max(stableDimension - 1, 0), isDefaultStable, metaAccess);
+                        return ConstantNode.forConstant(read.stamp(view), constant, Math.max(stableDimension - 1, 0), isDefaultStable, metaAccess);
                     }
                 }
             }
@@ -129,7 +130,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
             if (locationIdentity instanceof CanonicalizableLocation) {
                 CanonicalizableLocation canonicalize = (CanonicalizableLocation) locationIdentity;
                 ValueNode result = canonicalize.canonicalizeRead(read, address, object, tool);
-                assert result != null && result.stamp(NodeView.DEFAULT).isCompatible(read.stamp(NodeView.DEFAULT));
+                assert result != null && result.stamp(view).isCompatible(read.stamp(view));
                 return result;
             }
 

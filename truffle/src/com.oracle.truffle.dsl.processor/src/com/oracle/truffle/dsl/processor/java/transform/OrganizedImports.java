@@ -39,12 +39,15 @@ import java.util.TreeSet;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.TypeVariable;
 import javax.lang.model.type.WildcardType;
 import javax.lang.model.util.AbstractAnnotationValueVisitor7;
 import javax.lang.model.util.ElementFilter;
@@ -98,10 +101,35 @@ public final class OrganizedImports {
             case WILDCARD:
                 return createWildcardName(enclosedElement, (WildcardType) type);
             case TYPEVAR:
-                return "?";
+                TypeVariable var = (TypeVariable) type;
+                String name;
+                if (isTypeVariableDeclared(enclosedElement, var.asElement().getSimpleName().toString())) {
+                    // can be resolved with parent element
+                    name = var.asElement().getSimpleName().toString();
+                } else {
+                    // cannot be resolved
+                    name = "?";
+                }
+                return name;
             default:
                 throw new RuntimeException("Unknown type specified " + type.getKind() + " mirror: " + type);
         }
+    }
+
+    private static boolean isTypeVariableDeclared(Element enclosedElement, String refName) {
+        Element element = enclosedElement;
+        while (element != null) {
+            if (element.getKind() == ElementKind.METHOD) {
+                for (TypeParameterElement typeParam : ((ExecutableElement) element).getTypeParameters()) {
+                    String paramName = typeParam.getSimpleName().toString();
+                    if (paramName.equals(refName)) {
+                        return true;
+                    }
+                }
+            }
+            element = element.getEnclosingElement();
+        }
+        return false;
     }
 
     public String createStaticFieldReference(Element enclosedElement, TypeMirror type, String fieldName) {

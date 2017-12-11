@@ -30,8 +30,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -65,10 +63,11 @@ import org.graalvm.util.EconomicMap;
 import org.graalvm.util.Equivalence;
 
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * The {@code IfNode} represents a branch that can go one of two directions depending on the outcome
@@ -238,7 +237,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             if (this.trueSuccessorProbability < probabilityB) {
                 // Reordering of those two if statements is beneficial from the point of view of
                 // their probabilities.
-                if (prepareForSwap(tool.getConstantReflection(), condition(), nextIf.condition())) {
+                if (prepareForSwap(tool, condition(), nextIf.condition())) {
                     // Reordering is allowed from (if1 => begin => if2) to (if2 => begin => if1).
                     assert intermediateBegin.next() == nextIf;
                     AbstractBeginNode bothFalseBegin = nextIf.falseSuccessor();
@@ -267,19 +266,19 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
     }
 
-    private boolean isUnboxedFrom(MetaAccessProvider meta, ValueNode x, ValueNode src) {
+    private boolean isUnboxedFrom(MetaAccessProvider meta, NodeView view, ValueNode x, ValueNode src) {
         if (x == src) {
             return true;
         } else if (x instanceof UnboxNode) {
-            return isUnboxedFrom(meta, ((UnboxNode) x).getValue(), src);
+            return isUnboxedFrom(meta, view, ((UnboxNode) x).getValue(), src);
         } else if (x instanceof PiNode) {
             PiNode pi = (PiNode) x;
-            return isUnboxedFrom(meta, pi.getOriginalNode(), src);
+            return isUnboxedFrom(meta, view, pi.getOriginalNode(), src);
         } else if (x instanceof LoadFieldNode) {
             LoadFieldNode load = (LoadFieldNode) x;
             ResolvedJavaType integerType = meta.lookupJavaType(Integer.class);
-            if (load.getValue().stamp(NodeView.DEFAULT).javaType(meta).equals(integerType)) {
-                return isUnboxedFrom(meta, load.getValue(), src);
+            if (load.getValue().stamp(view).javaType(meta).equals(integerType)) {
+                return isUnboxedFrom(meta, view, load.getValue(), src);
             } else {
                 return false;
             }
@@ -321,7 +320,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         ResolvedJavaType integerType = meta.lookupJavaType(Integer.class);
 
         // At least one argument for reference equal must be a boxed primitive.
-        if (!x.stamp(NodeView.DEFAULT).javaType(meta).equals(integerType) && !y.stamp(NodeView.DEFAULT).javaType(meta).equals(integerType)) {
+        NodeView view = NodeView.from(tool);
+        if (!x.stamp(view).javaType(meta).equals(integerType) && !y.stamp(view).javaType(meta).equals(integerType)) {
             return false;
         }
 
@@ -366,7 +366,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 continue;
             }
             IntegerEqualsNode equals = (IntegerEqualsNode) fixed.condition();
-            if ((isUnboxedFrom(meta, equals.getX(), x) && isUnboxedFrom(meta, equals.getY(), y)) || (isUnboxedFrom(meta, equals.getX(), y) && isUnboxedFrom(meta, equals.getY(), x))) {
+            if ((isUnboxedFrom(meta, view, equals.getX(), x) && isUnboxedFrom(meta, view, equals.getY(), y)) ||
+                            (isUnboxedFrom(meta, view, equals.getX(), y) && isUnboxedFrom(meta, view, equals.getY(), x))) {
                 unboxCheck = fixed;
             }
         }
@@ -406,7 +407,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             ValueNode falseValue = phi.valueAt(falseEnd);
             ValueNode trueValue = phi.valueAt(trueEnd);
 
-            ValueNode result = ConditionalNode.canonicalizeConditional(condition, trueValue, falseValue, phi.stamp(NodeView.DEFAULT), NodeView.DEFAULT);
+            NodeView view = NodeView.from(tool);
+            ValueNode result = ConditionalNode.canonicalizeConditional(condition, trueValue, falseValue, phi.stamp(view), view);
             if (result != null) {
                 /*
                  * canonicalizeConditional returns possibly new nodes so add them to the graph.
@@ -414,6 +416,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 if (result.graph() == null) {
                     result = graph().addOrUniqueWithInputs(result);
                 }
+                result = proxyReplacement(result);
                 /*
                  * This optimization can be performed even if multiple values merge at this phi
                  * since the two inputs get simplified into one.
@@ -477,8 +480,9 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     private boolean checkForUnsignedCompare(SimplifierTool tool) {
         assert trueSuccessor().hasNoUsages() && falseSuccessor().hasNoUsages();
         if (condition() instanceof IntegerLessThanNode) {
+            NodeView view = NodeView.from(tool);
             IntegerLessThanNode lessThan = (IntegerLessThanNode) condition();
-            Constant y = lessThan.getY().stamp(NodeView.DEFAULT).asConstant();
+            Constant y = lessThan.getY().stamp(view).asConstant();
             if (y instanceof PrimitiveConstant && ((PrimitiveConstant) y).asLong() == 0 && falseSuccessor().next() instanceof IfNode) {
                 IfNode ifNode2 = (IfNode) falseSuccessor().next();
                 if (ifNode2.condition() instanceof IntegerLessThanNode) {
@@ -490,8 +494,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                      * Convert x >= 0 && x < positive which is represented as !(x < 0) && x <
                      * <positive> into an unsigned compare.
                      */
-                    if (lessThan2.getX() == lessThan.getX() && lessThan2.getY().stamp(NodeView.DEFAULT) instanceof IntegerStamp &&
-                                    ((IntegerStamp) lessThan2.getY().stamp(NodeView.DEFAULT)).isPositive() &&
+                    if (lessThan2.getX() == lessThan.getX() && lessThan2.getY().stamp(view) instanceof IntegerStamp &&
+                                    ((IntegerStamp) lessThan2.getY().stamp(view)).isPositive() &&
                                     sameDestination(trueSuccessor(), ifNode2.falseSuccessor)) {
                         below = graph().unique(new IntegerBelowNode(lessThan2.getX(), lessThan2.getY()));
                         // swap direction
@@ -507,7 +511,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                          */
                         JavaConstant positive = lessThan2.getX().asJavaConstant();
                         if (positive != null && positive.asLong() > 0 && positive.asLong() < positive.getJavaKind().getMaxValue()) {
-                            ConstantNode newLimit = ConstantNode.forIntegerStamp(lessThan2.getX().stamp(NodeView.DEFAULT), positive.asLong() + 1, graph());
+                            ConstantNode newLimit = ConstantNode.forIntegerStamp(lessThan2.getX().stamp(view), positive.asLong() + 1, graph());
                             below = graph().unique(new IntegerBelowNode(lessThan.getX(), newLimit));
                         }
                     }
@@ -575,7 +579,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return false;
     }
 
-    private static boolean prepareForSwap(ConstantReflectionProvider constantReflection, LogicNode a, LogicNode b) {
+    private static boolean prepareForSwap(SimplifierTool tool, LogicNode a, LogicNode b) {
         DebugContext debug = a.getDebug();
         if (a instanceof InstanceOfNode) {
             InstanceOfNode instanceOfA = (InstanceOfNode) a;
@@ -626,13 +630,13 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     }
                 } else if (conditionA == Condition.EQ && conditionB == Condition.EQ) {
                     boolean canSwap = false;
-                    if ((compareA.getX() == compareB.getX() && valuesDistinct(constantReflection, compareA.getY(), compareB.getY()))) {
+                    if ((compareA.getX() == compareB.getX() && valuesDistinct(tool, compareA.getY(), compareB.getY()))) {
                         canSwap = true;
-                    } else if ((compareA.getX() == compareB.getY() && valuesDistinct(constantReflection, compareA.getY(), compareB.getX()))) {
+                    } else if ((compareA.getX() == compareB.getY() && valuesDistinct(tool, compareA.getY(), compareB.getX()))) {
                         canSwap = true;
-                    } else if ((compareA.getY() == compareB.getX() && valuesDistinct(constantReflection, compareA.getX(), compareB.getY()))) {
+                    } else if ((compareA.getY() == compareB.getX() && valuesDistinct(tool, compareA.getX(), compareB.getY()))) {
                         canSwap = true;
-                    } else if ((compareA.getY() == compareB.getY() && valuesDistinct(constantReflection, compareA.getX(), compareB.getX()))) {
+                    } else if ((compareA.getY() == compareB.getY() && valuesDistinct(tool, compareA.getX(), compareB.getX()))) {
                         canSwap = true;
                     }
 
@@ -647,16 +651,17 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return false;
     }
 
-    private static boolean valuesDistinct(ConstantReflectionProvider constantReflection, ValueNode a, ValueNode b) {
+    private static boolean valuesDistinct(SimplifierTool tool, ValueNode a, ValueNode b) {
         if (a.isConstant() && b.isConstant()) {
-            Boolean equal = constantReflection.constantEquals(a.asConstant(), b.asConstant());
+            Boolean equal = tool.getConstantReflection().constantEquals(a.asConstant(), b.asConstant());
             if (equal != null) {
                 return !equal.booleanValue();
             }
         }
 
-        Stamp stampA = a.stamp(NodeView.DEFAULT);
-        Stamp stampB = b.stamp(NodeView.DEFAULT);
+        NodeView view = NodeView.from(tool);
+        Stamp stampA = a.stamp(view);
+        Stamp stampB = b.stamp(view);
         return stampA.alwaysDistinct(stampB);
     }
 
@@ -692,8 +697,9 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 } else if (distinct == 1) {
                     ValueNode trueValue = singlePhi.valueAt(trueEnd);
                     ValueNode falseValue = singlePhi.valueAt(falseEnd);
-                    ValueNode conditional = canonicalizeConditionalCascade(trueValue, falseValue);
+                    ValueNode conditional = canonicalizeConditionalCascade(tool, trueValue, falseValue);
                     if (conditional != null) {
+                        conditional = proxyReplacement(conditional);
                         singlePhi.setValueAt(trueEnd, conditional);
                         removeThroughFalseBranch(tool, merge);
                         return true;
@@ -711,7 +717,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 if (trueValue == falseValue) {
                     value = trueValue;
                 } else {
-                    value = canonicalizeConditionalCascade(trueValue, falseValue);
+                    value = canonicalizeConditionalCascade(tool, trueValue, falseValue);
                     if (value == null) {
                         return false;
                     }
@@ -723,6 +729,36 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return true;
         }
         return false;
+    }
+
+    private ValueNode proxyReplacement(ValueNode replacement) {
+        /*
+         * Special case: Every empty diamond we collapse to a conditional node can potentially
+         * contain loop exit nodes on both branches. See the graph below: The two loop exits
+         * (instanceof begin node) exit the same loop. The resulting phi is defined outside the
+         * loop, but the resulting conditional node will be inside the loop, so we need to proxy the
+         * resulting conditional node. Callers of this method ensure that true and false successor
+         * have no usages, therefore a and b in the graph below can never be proxies themselves.
+         */
+        // @formatter:off
+        //              +--+
+        //              |If|
+        //              +--+      +-----+ +-----+
+        //         +----+  +----+ |  a  | |  b  |
+        //         |Lex |  |Lex | +----^+ +^----+
+        //         +----+  +----+      |   |
+        //           +-------+         +---+
+        //           | Merge +---------+Phi|
+        //           +-------+         +---+
+        // @formatter:on
+        if (this.graph().hasValueProxies()) {
+            if (trueSuccessor instanceof LoopExitNode && falseSuccessor instanceof LoopExitNode) {
+                assert ((LoopExitNode) trueSuccessor).loopBegin() == ((LoopExitNode) falseSuccessor).loopBegin();
+                assert trueSuccessor.usages().isEmpty() && falseSuccessor.usages().isEmpty();
+                return this.graph().addOrUnique(new ValueProxyNode(replacement, (LoopExitNode) trueSuccessor));
+            }
+        }
+        return replacement;
     }
 
     protected void removeThroughFalseBranch(SimplifierTool tool, AbstractMergeNode merge) {
@@ -746,7 +782,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
     }
 
-    private ValueNode canonicalizeConditionalCascade(ValueNode trueValue, ValueNode falseValue) {
+    private ValueNode canonicalizeConditionalCascade(SimplifierTool tool, ValueNode trueValue, ValueNode falseValue) {
         if (trueValue.getStackKind() != falseValue.getStackKind()) {
             return null;
         }
@@ -797,8 +833,9 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 }
                 if (lessThan != null) {
                     assert equals != null;
+                    NodeView view = NodeView.from(tool);
                     if ((lessThan.getX() == equals.getX() && lessThan.getY() == equals.getY()) || (lessThan.getX() == equals.getY() && lessThan.getY() == equals.getX())) {
-                        return graph().unique(new NormalizeCompareNode(lessThan.getX(), lessThan.getY(), conditional.trueValue().stamp(NodeView.DEFAULT).getStackKind(), false));
+                        return graph().unique(new NormalizeCompareNode(lessThan.getX(), lessThan.getY(), conditional.trueValue().stamp(view).getStackKind(), false));
                     }
                 }
             }
@@ -1288,10 +1325,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 GraphUtil.killCFG(end);
             } else {
                 // Need a new phi in case the frame state is used by more than the merge being
-                // removed
+                // removed.
+                NodeView view = NodeView.from(tool);
                 AbstractMergeNode newMerge = graph().add(new MergeNode());
                 PhiNode oldPhi = (PhiNode) oldMerge.usages().first();
-                PhiNode newPhi = graph().addWithoutUnique(new ValuePhiNode(oldPhi.stamp(NodeView.DEFAULT), newMerge));
+                PhiNode newPhi = graph().addWithoutUnique(new ValuePhiNode(oldPhi.stamp(view), newMerge));
 
                 for (EndNode end : ends) {
                     newPhi.addInput(phiValues.get(end));

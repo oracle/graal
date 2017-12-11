@@ -47,6 +47,7 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
     private final TypeAndClass<K> keyType;
     private final TypeAndClass<V> valueType;
     private final TruffleObject obj;
+    private final Object languageContext;
     private final CallTarget callKeyInfo;
     private final CallTarget callKeys;
     private final CallTarget callHasSize;
@@ -55,10 +56,11 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
     private final CallTarget callWrite;
     private boolean includeInternal = false;
 
-    private TruffleMap(TypeAndClass<K> keyType, TypeAndClass<V> valueType, TruffleObject obj) {
+    private TruffleMap(TypeAndClass<K> keyType, TypeAndClass<V> valueType, TruffleObject obj, Object languageContext) {
         this.keyType = keyType;
         this.valueType = valueType;
         this.obj = obj;
+        this.languageContext = languageContext;
         this.callKeyInfo = initializeMapCall(obj, Message.KEY_INFO);
         this.callKeys = initializeMapCall(obj, Message.KEYS);
         this.callHasSize = initializeMapCall(obj, Message.HAS_SIZE);
@@ -71,6 +73,7 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
         this.keyType = map.keyType;
         this.valueType = map.valueType;
         this.obj = map.obj;
+        this.languageContext = map.languageContext;
         this.callKeyInfo = map.callKeyInfo;
         this.callKeys = map.callKeys;
         this.callHasSize = map.callHasSize;
@@ -80,8 +83,8 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
         this.includeInternal = includeInternal;
     }
 
-    static <K, V> Map<K, V> create(TypeAndClass<K> keyType, TypeAndClass<V> valueType, TruffleObject foreignObject) {
-        return new TruffleMap<>(keyType, valueType, foreignObject);
+    static <K, V> Map<K, V> create(TypeAndClass<K> keyType, TypeAndClass<V> valueType, TruffleObject foreignObject, Object languageContext) {
+        return new TruffleMap<>(keyType, valueType, foreignObject, languageContext);
     }
 
     TruffleMap<K, V> cloneInternal(boolean includeInternalKeys) {
@@ -90,14 +93,14 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
 
     @Override
     public boolean containsKey(Object key) {
-        return ((Integer) callKeyInfo.call(null, obj, key)) != 0;
+        return ((Integer) callKeyInfo.call(obj, key)) != 0;
     }
 
     @Override
     public Set<Entry<K, V>> entrySet() {
-        Object props = callKeys.call(null, obj, includeInternal);
-        if (Boolean.TRUE.equals(callHasSize.call(null, props))) {
-            Number size = (Number) callGetSize.call(null, props);
+        Object props = callKeys.call(obj, includeInternal);
+        if (Boolean.TRUE.equals(callHasSize.call(props))) {
+            Number size = (Number) callGetSize.call(props);
             return new LazyEntries(props, size.intValue());
         }
         return Collections.emptySet();
@@ -106,7 +109,7 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
     @Override
     public V get(Object key) {
         keyType.cast(key);
-        final Object item = callRead.call(valueType, obj, key);
+        final Object item = callRead.call(obj, key, valueType, languageContext);
         return valueType.cast(item);
     }
 
@@ -115,7 +118,7 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
         keyType.cast(key);
         valueType.cast(value);
         V previous = get(key);
-        callWrite.call(valueType, obj, key, value);
+        callWrite.call(obj, key, value, valueType, languageContext);
         return previous;
     }
 
@@ -167,15 +170,9 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
 
             @Override
             public Entry<K, V> next() {
-                Object key = callRead.call(keyType, props, index++);
+                Object key = callRead.call(props, index++, keyType, languageContext);
                 return new TruffleEntry(keyType.cast(key));
             }
-
-            @Override
-            public void remove() {
-                throw new UnsupportedOperationException("remove not supported.");
-            }
-
         }
     }
 
@@ -193,15 +190,12 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
 
         @Override
         public V getValue() {
-            final Object value = callRead.call(valueType, obj, key);
-            return valueType.cast(value);
+            return get(key);
         }
 
         @Override
         public V setValue(V value) {
-            V prev = getValue();
-            callWrite.call(null, obj, key, value);
-            return prev;
+            return put(key, value);
         }
     }
 
@@ -220,8 +214,9 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
         @Override
         public Object execute(VirtualFrame frame) {
             final Object[] args = frame.getArguments();
-            TypeAndClass<?> type = (TypeAndClass<?>) args[0];
-            TruffleObject receiver = (TruffleObject) args[1];
+            TruffleObject receiver = (TruffleObject) args[0];
+            TypeAndClass<?> type = null;
+            Object languageContext = null;
 
             Object ret;
             try {
@@ -230,17 +225,26 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
                 } else if (msg == Message.GET_SIZE) {
                     ret = ForeignAccess.sendGetSize(node, receiver);
                 } else if (msg == Message.READ) {
+                    Object key = args[1];
+                    type = (TypeAndClass<?>) args[2];
+                    languageContext = args[3];
                     try {
-                        ret = ForeignAccess.sendRead(node, receiver, args[2]);
+                        ret = ForeignAccess.sendRead(node, receiver, key);
                     } catch (UnknownIdentifierException uiex) {
                         return null; // key not present in the map
                     }
                 } else if (msg == Message.WRITE) {
-                    ret = ForeignAccess.sendWrite(node, receiver, args[2], JavaInterop.asTruffleValue(args[3]));
+                    Object key = args[1];
+                    Object value = args[2];
+                    type = (TypeAndClass<?>) args[3];
+                    languageContext = args[4];
+                    ret = ForeignAccess.sendWrite(node, receiver, key, JavaInterop.asTruffleValue(value));
                 } else if (msg == Message.KEY_INFO) {
-                    ret = ForeignAccess.sendKeyInfo(node, receiver, args[2]);
+                    Object key = args[1];
+                    ret = ForeignAccess.sendKeyInfo(node, receiver, key);
                 } else if (msg == Message.KEYS) {
-                    ret = ForeignAccess.sendKeys(node, receiver, (boolean) args[2]);
+                    boolean includeInternal = (boolean) args[1];
+                    ret = ForeignAccess.sendKeys(node, receiver, includeInternal);
                 } else {
                     CompilerDirectives.transferToInterpreter();
                     throw UnsupportedMessageException.raise(msg);
@@ -251,7 +255,7 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
             }
 
             if (type != null) {
-                return toJavaNode.execute(ret, type);
+                return toJavaNode.execute(ret, type.clazz, type.type, languageContext);
             } else {
                 return ret;
             }

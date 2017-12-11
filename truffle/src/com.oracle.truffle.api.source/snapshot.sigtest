@@ -1,19 +1,6 @@
 #Signature file v4.1
 #Version 
 
-CLSS public final com.oracle.truffle.api.source.LineLocation
- anno 0 java.lang.Deprecated()
-intf java.lang.Comparable<com.oracle.truffle.api.source.LineLocation>
-meth public boolean equals(java.lang.Object)
-meth public com.oracle.truffle.api.source.Source getSource()
-meth public int compareTo(com.oracle.truffle.api.source.LineLocation)
-meth public int getLineNumber()
-meth public int hashCode()
-meth public java.lang.String getShortDescription()
-meth public java.lang.String toString()
-supr java.lang.Object
-hfds line,source
-
 CLSS public final com.oracle.truffle.api.source.MissingMIMETypeException
 supr java.lang.Exception
 hfds serialVersionUID
@@ -27,8 +14,6 @@ innr public final Builder
 meth public boolean isInteractive()
 meth public boolean isInternal()
 meth public com.oracle.truffle.api.source.Source subSource(int,int)
-meth public final com.oracle.truffle.api.source.LineLocation createLineLocation(int)
- anno 0 java.lang.Deprecated()
 meth public final com.oracle.truffle.api.source.SourceSection createSection(int)
 meth public final com.oracle.truffle.api.source.SourceSection createSection(int,int)
 meth public final com.oracle.truffle.api.source.SourceSection createSection(int,int,int)
@@ -71,8 +56,6 @@ hfds content,interactive,internal,mime,name,origin,path,uri
 CLSS public final com.oracle.truffle.api.source.SourceSection
 meth public boolean equals(java.lang.Object)
 meth public boolean isAvailable()
-meth public com.oracle.truffle.api.source.LineLocation getLineLocation()
- anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.source.Source getSource()
 meth public int getCharEndIndex()
 meth public int getCharIndex()
@@ -91,12 +74,6 @@ CLSS public abstract interface java.io.Serializable
 
 CLSS public abstract interface java.lang.Comparable<%0 extends java.lang.Object>
 meth public abstract int compareTo({java.lang.Comparable%0})
-
-CLSS public abstract interface !annotation java.lang.Deprecated
- anno 0 java.lang.annotation.Documented()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, PARAMETER, TYPE])
-intf java.lang.annotation.Annotation
 
 CLSS public java.lang.Exception
 cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)

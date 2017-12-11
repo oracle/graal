@@ -24,11 +24,11 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
+import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 
@@ -53,47 +53,18 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 final class JavaInteropReflect {
-    private static final Object[] EMPTY = {};
+    static final Object[] EMPTY = {};
 
-    @CompilerDirectives.TruffleBoundary
-    static Object readField(JavaObject object, String name) {
-        Object obj = object.obj;
-        final boolean onlyStatic = object.isClass();
-        JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
-        Field field = classDesc.lookupField(name, onlyStatic);
-        if (field != null) {
-            Object val = getField(obj, field);
-            return JavaInterop.toGuestValue(val, object.languageContext);
-        } else {
-            JavaMethodDesc method = classDesc.lookupMethod(name, onlyStatic);
-            if (method != null) {
-                return new JavaFunctionObject(method, obj, object.languageContext);
-            }
-
-            if (isJNIName(name)) {
-                method = classDesc.lookupMethodByJNIName(name, onlyStatic);
-                if (method != null) {
-                    return new JavaFunctionObject(method, obj, object.languageContext);
-                }
-            }
-
-            if (onlyStatic) {
-                Class<?> clazz = object.clazz;
-                JavaObject innerclass = lookupInnerClass(clazz, name);
-                if (innerclass != null) {
-                    return innerclass;
-                }
-            }
-            throw UnknownIdentifierException.raise(name);
-        }
+    private JavaInteropReflect() {
     }
 
-    static JavaObject lookupInnerClass(Class<?> clazz, String name) {
+    @CompilerDirectives.TruffleBoundary
+    static Class<?> findInnerClass(Class<?> clazz, String name) {
         if (Modifier.isPublic(clazz.getModifiers())) {
             for (Class<?> t : clazz.getClasses()) {
                 // no support for non-static type members now
                 if (isStaticTypeOrInterface(t) && t.getSimpleName().equals(name)) {
-                    return new JavaObject(null, t);
+                    return t;
                 }
             }
         }
@@ -141,17 +112,7 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static JavaMethodDesc findMethod(JavaObject object, String name, Object[] args) {
-        JavaMethodDesc method = findMethod(object, name);
-        if (method != null) {
-            if (!isApplicableByArity(method, args.length)) {
-                return null;
-            }
-        }
-        return method;
-    }
-
-    private static boolean isApplicableByArity(JavaMethodDesc method, int nArgs) {
+    static boolean isApplicableByArity(JavaMethodDesc method, int nArgs) {
         if (method instanceof SingleMethodDesc) {
             return nArgs == ((SingleMethodDesc) method).getParameterCount() ||
                             ((SingleMethodDesc) method).isVarArgs() && nArgs >= ((SingleMethodDesc) method).getParameterCount() - 1;
@@ -173,35 +134,18 @@ final class JavaInteropReflect {
         }
 
         JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
-        return classDesc.lookupMethod(name, object.isClass());
-    }
-
-    private JavaInteropReflect() {
+        JavaMethodDesc foundMethod = classDesc.lookupMethod(name, object.isClass());
+        if (foundMethod == null && isJNIName(name)) {
+            foundMethod = classDesc.lookupMethodByJNIName(name, object.isClass());
+        }
+        return foundMethod;
     }
 
     @CompilerDirectives.TruffleBoundary
-    static Field findField(JavaObject receiver, String name) {
+    static JavaFieldDesc findField(JavaObject receiver, String name) {
         JavaClassDesc classDesc = JavaClassDesc.forClass(receiver.clazz);
         final boolean onlyStatic = receiver.isClass();
         return classDesc.lookupField(name, onlyStatic);
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    static void setField(Object obj, Field field, Object value) {
-        try {
-            field.set(obj, value);
-        } catch (IllegalAccessException ex) {
-            throw new IllegalStateException(ex);
-        }
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    static Object getField(Object obj, Field field) {
-        try {
-            return field.get(obj);
-        } catch (IllegalAccessException e) {
-            throw new IllegalStateException(e);
-        }
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -258,6 +202,11 @@ final class JavaInteropReflect {
         throw ex.raise();
     }
 
+    @SuppressWarnings({"unchecked"})
+    static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
+        throw (E) ex;
+    }
+
     private static final class SingleHandler implements InvocationHandler {
 
         private final TruffleObject symbol;
@@ -286,7 +235,7 @@ final class JavaInteropReflect {
             } else {
                 ret = call(arguments, method);
             }
-            return toJava(ret, method);
+            return toJava(ret, method, languageContext);
         }
 
         private Object call(Object[] arguments, Method method) {
@@ -310,7 +259,7 @@ final class JavaInteropReflect {
                     arguments[i] = JavaInterop.toGuestValue(arg, languageContext);
                 }
             }
-            return target.call(symbol, TypeAndClass.forReturnType(method), args);
+            return target.call(symbol, args, getMethodReturnType(method), getMethodGenericReturnType(method), languageContext);
         }
     }
 
@@ -338,8 +287,7 @@ final class JavaInteropReflect {
             CallTarget call = JavaInterop.lookupOrRegisterComputation(obj, null, method);
             if (call == null) {
                 Message message = findMessage(method, method.getAnnotation(MethodMessage.class), args.length);
-                TypeAndClass<?> convertTo = TypeAndClass.forReturnType(method);
-                MethodNode methodNode = MethodNodeGen.create(method.getName(), message, convertTo);
+                MethodNode methodNode = MethodNodeGen.create(method.getName(), message, getMethodReturnType(method), getMethodGenericReturnType(method));
                 call = JavaInterop.lookupOrRegisterComputation(obj, methodNode, method);
             }
 
@@ -350,17 +298,19 @@ final class JavaInteropReflect {
 
     abstract static class MethodNode extends RootNode {
         private final String name;
-        private final TypeAndClass<?> returnType;
-        @CompilerDirectives.CompilationFinal private Message message;
+        private final Message message;
+        private final Class<?> returnType;
+        private final Type genericReturnType;
         @Child private ToJavaNode toJavaNode;
         @Child private Node node;
 
-        MethodNode(String name, Message message, TypeAndClass<?> returnType) {
+        MethodNode(String name, Message message, Class<?> returnType, Type genericReturnType) {
             super(null);
             this.name = name;
-            this.toJavaNode = ToJavaNode.create();
             this.message = message;
             this.returnType = returnType;
+            this.genericReturnType = genericReturnType;
+            this.toJavaNode = ToJavaNode.create();
         }
 
         @Override
@@ -369,10 +319,10 @@ final class JavaInteropReflect {
                 TruffleObject receiver = (TruffleObject) frame.getArguments()[0];
                 Object[] params = (Object[]) frame.getArguments()[1];
                 Object res = executeImpl(receiver, params);
-                if (!returnType.clazz.isInterface()) {
+                if (!returnType.isInterface()) {
                     res = JavaInterop.findOriginalObject(res);
                 }
-                return toJavaNode.execute(res, returnType);
+                return toJavaNode.execute(res, returnType, genericReturnType);
             } catch (InteropException ex) {
                 throw reraise(ex);
             }
@@ -484,14 +434,14 @@ final class JavaInteropReflect {
     }
 
     abstract static class InvokeAndReadExecNode extends Node {
-        private final TypeAndClass<?> returnType;
+        private final Class<?> returnType;
         @Child private Node invokeNode;
         @Child private Node isExecNode;
         @Child private ToPrimitiveNode primitive;
         @Child private Node readNode;
         @Child private Node execNode;
 
-        InvokeAndReadExecNode(TypeAndClass<?> returnType, int arity) {
+        InvokeAndReadExecNode(Class<?> returnType, int arity) {
             this.returnType = returnType;
             this.invokeNode = Message.createInvoke(arity).createNode();
         }
@@ -513,7 +463,7 @@ final class JavaInteropReflect {
                     isExecNode = insert(Message.IS_EXECUTABLE.createNode());
                 }
                 Object val = ForeignAccess.sendRead(readNode, obj, name);
-                Object primitiveVal = primitive.toPrimitive(val, returnType.clazz);
+                Object primitiveVal = primitive.toPrimitive(val, returnType);
                 if (primitiveVal != null) {
                     return primitiveVal;
                 }
@@ -562,8 +512,22 @@ final class JavaInteropReflect {
         return message;
     }
 
-    private static Object toJava(Object ret, Method method) {
-        return ToJavaNode.toJava(ret, TypeAndClass.forReturnType(method));
+    private static Object toJava(Object ret, Method method, Object languageContext) {
+        return ToJavaNode.toJava(ret, getMethodReturnType(method), getMethodGenericReturnType(method), languageContext);
+    }
+
+    static Class<?> getMethodReturnType(Method method) {
+        if (method == null || method.getReturnType() == void.class) {
+            return Object.class;
+        }
+        return method.getReturnType();
+    }
+
+    static Type getMethodGenericReturnType(Method method) {
+        if (method == null || method.getReturnType() == void.class) {
+            return Object.class;
+        }
+        return method.getGenericReturnType();
     }
 
     static String jniName(Method m) {

@@ -55,11 +55,13 @@ class MultiLanguageShell {
     private final Context context;
     private final InputStream in;
     private final OutputStream out;
+    private final String startLanguage;
 
-    MultiLanguageShell(Context context, InputStream in, OutputStream out) {
+    MultiLanguageShell(Context context, InputStream in, OutputStream out, String startLanguage) {
         this.context = context;
         this.in = in;
         this.out = out;
+        this.startLanguage = startLanguage;
     }
 
     public int readEvalPrint() throws IOException {
@@ -104,7 +106,12 @@ class MultiLanguageShell {
             maxNameLength = Math.max(maxNameLength, language.getName().length());
         }
 
-        Language currentLanguage = languages.iterator().next();
+        Language currentLanguage = context.getEngine().getLanguages().get(startLanguage);
+        if (currentLanguage == null) {
+            console.println("Error: could not find language '" + startLanguage + "'");
+            System.exit(1);
+        }
+        assert languages.indexOf(currentLanguage) >= 0;
         Source bufferSource = null;
         String id = currentLanguage.getId();
         // console.println("initialize time: " + (System.currentTimeMillis() - start));

@@ -44,26 +44,17 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
 
-    public abstract void executeWrite(Object receiver, Object name, Object value);
+    public abstract void executeWrite(DynamicObject receiver, Object name, Object value);
 
     /**
      * Polymorphic inline cache for writing a property that already exists (no shape change is
@@ -176,52 +167,25 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
      * polymorphic inline cache.
      */
     @TruffleBoundary
-    @Specialization(replaces = {"writeExistingPropertyCached", "writeNewPropertyCached"}, guards = {"isValidSLObject(receiver)"})
+    @Specialization(replaces = {"writeExistingPropertyCached", "writeNewPropertyCached"}, guards = {"receiver.getShape().isValid()"})
     protected static void writeUncached(DynamicObject receiver, Object name, Object value) {
         receiver.define(name, value);
     }
 
-    /**
-     * When no specialization fits, the receiver is either not an object (which is a type error), or
-     * the object has a shape that has been invalidated.
-     */
-    @Fallback
-    protected static void updateShape(Object r, Object name, Object value) {
+    @TruffleBoundary
+    @Specialization(guards = {"!receiver.getShape().isValid()"})
+    protected static void updateShape(DynamicObject receiver, Object name, Object value) {
         /*
          * Slow path that we do not handle in compiled code. But no need to invalidate compiled
          * code.
          */
         CompilerDirectives.transferToInterpreter();
-
-        if (!(r instanceof DynamicObject)) {
-            /* Non-object types do not have properties. */
-            throw SLUndefinedNameException.undefinedProperty(name);
-        }
-        DynamicObject receiver = (DynamicObject) r;
         receiver.updateShape();
         writeUncached(receiver, name, value);
     }
 
-    /**
-     * Language interoperability: If the receiver object is a foreign value we use Truffle's interop
-     * API to access the foreign data.
-     */
-    @Specialization(guards = "isForeignObject(receiver)")
-    protected static void writeForeign(TruffleObject receiver, Object name, Object value,
-                    // The child node to access the foreign object
-                    @Cached("createForeignWriteNode()") Node foreignWriteNode) {
-
-        try {
-            /* Perform the foreign object access. */
-            ForeignAccess.sendWrite(foreignWriteNode, receiver, name, value);
-
-        } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
-            /* Foreign access was not successful. */
-            throw SLUndefinedNameException.undefinedProperty(name);
-        }
+    public static SLWritePropertyCacheNode create() {
+        return SLWritePropertyCacheNodeGen.create();
     }
 
-    protected static Node createForeignWriteNode() {
-        return Message.WRITE.createNode();
-    }
 }

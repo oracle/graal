@@ -537,14 +537,15 @@ public final class DebuggerTester implements AutoCloseable {
                     if (closed) {
                         return;
                     }
+                    ExecutingSource s = source;
                     try {
                         trace("Start executing " + this);
-                        source.returnValue = context.eval(source.source).toString();
+                        s.returnValue = context.eval(s.source).toString();
                         trace("Done executing " + this);
                     } catch (Throwable e) {
-                        source.error = e;
+                        s.error = e;
                     } finally {
-                        putEvent(source);
+                        putEvent(s);
                     }
                 }
             } finally {

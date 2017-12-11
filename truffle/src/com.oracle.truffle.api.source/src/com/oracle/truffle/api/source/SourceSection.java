@@ -123,24 +123,6 @@ public final class SourceSection {
     }
 
     /**
-     * Gets a representation of the {@link #getStartLine() first line} of the section, suitable for
-     * a hash key. Please note that calling this method causes the {@link Source#getCharacters()
-     * code} of the {@link #getSource() source} to be loaded if it was not yet loaded.
-     *
-     * @return first line of the section
-     * @since 0.8 or earlier
-     * @deprecated without replacement
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    public LineLocation getLineLocation() {
-        if (!isValid()) {
-            return null;
-        }
-        return source.createLineLocation(getStartLine());
-    }
-
-    /**
      * Returns 1-based line number of the last character in this section (inclusive). Returns
      * <code>1</code> for out of bounds or {@link #isAvailable() unavailable} source sections.
      * Please note that calling this method causes the {@link Source#getCharacters() code} of the

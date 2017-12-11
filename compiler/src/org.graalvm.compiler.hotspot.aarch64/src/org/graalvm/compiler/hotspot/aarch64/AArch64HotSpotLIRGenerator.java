@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,8 +30,8 @@ import java.util.function.Function;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler.PrefetchMode;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler.PrefetchMode;
 import org.graalvm.compiler.core.aarch64.AArch64ArithmeticLIRGenerator;
 import org.graalvm.compiler.core.aarch64.AArch64LIRGenerator;
 import org.graalvm.compiler.core.aarch64.AArch64LIRKindTool;
@@ -202,7 +202,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         assert inputKind.getPlatformKind() == AArch64Kind.QWORD;
         if (inputKind.isReference(0)) {
             // oop
-            Variable result = newVariable(LIRKind.reference(AArch64Kind.DWORD));
+            Variable result = newVariable(LIRKind.compressedReference(AArch64Kind.DWORD));
             append(new AArch64HotSpotMove.CompressPointer(result, asAllocatable(pointer), getProviders().getRegisters().getHeapBaseRegister().asValue(), encoding, nonNull));
             return result;
         } else {
@@ -342,7 +342,8 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
             operand = resultOperandFor(kind, input.getValueKind());
             emitMove(operand, input);
         }
-        append(new AArch64HotSpotReturnOp(operand, getStub() != null, config));
+        Register thread = getProviders().getRegisters().getThreadRegister();
+        append(new AArch64HotSpotReturnOp(operand, getStub() != null, config, thread));
     }
 
     /**

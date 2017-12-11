@@ -103,7 +103,8 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements C
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        if (!(forValue.stamp(NodeView.DEFAULT) instanceof ObjectStamp)) {
+        NodeView view = NodeView.from(tool);
+        if (!(forValue.stamp(view) instanceof ObjectStamp)) {
             return this;
         }
         if (!mayHaveFinalizer(forValue, graph().getAssumptions())) {

@@ -59,8 +59,7 @@ abstract class ArrayWriteNode extends Node {
     private Object doArrayAccess(JavaObject receiver, int index, Object value) {
         Object obj = receiver.obj;
         assert receiver.isArray();
-        TypeAndClass<?> type = obj.getClass() == Object.class ? TypeAndClass.ANY : new TypeAndClass<>(null, obj.getClass().getComponentType());
-        final Object javaValue = toJavaNode.execute(value, type, receiver.languageContext);
+        final Object javaValue = toJavaNode.execute(value, obj.getClass().getComponentType(), null, receiver.languageContext);
         try {
             Array.set(obj, index, javaValue);
         } catch (ArrayIndexOutOfBoundsException outOfBounds) {

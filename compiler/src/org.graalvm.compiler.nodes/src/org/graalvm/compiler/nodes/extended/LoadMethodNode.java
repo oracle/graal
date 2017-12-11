@@ -97,8 +97,9 @@ public final class LoadMethodNode extends FixedWithNextNode implements Lowerable
                 Assumptions assumptions = graph().getAssumptions();
                 AssumptionResult<ResolvedJavaMethod> resolvedMethod = type.getType().findUniqueConcreteMethod(method);
                 if (resolvedMethod != null && resolvedMethod.canRecordTo(assumptions) && !type.getType().isInterface() && method.getDeclaringClass().isAssignableFrom(type.getType())) {
+                    NodeView view = NodeView.from(tool);
                     resolvedMethod.recordTo(assumptions);
-                    return ConstantNode.forConstant(stamp(NodeView.DEFAULT), resolvedMethod.getResult().getEncoding(), tool.getMetaAccess());
+                    return ConstantNode.forConstant(stamp(view), resolvedMethod.getResult().getEncoding(), tool.getMetaAccess());
                 }
             }
         }

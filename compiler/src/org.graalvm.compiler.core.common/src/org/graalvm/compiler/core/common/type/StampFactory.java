@@ -296,16 +296,28 @@ public class StampFactory {
         if (returnType.getJavaKind() == JavaKind.Object && returnType instanceof ResolvedJavaType) {
             ResolvedJavaType resolvedJavaType = (ResolvedJavaType) returnType;
             TypeReference reference = TypeReference.create(assumptions, resolvedJavaType);
-            if (resolvedJavaType.isInterface()) {
-                ResolvedJavaType implementor = resolvedJavaType.getSingleImplementor();
-                if (implementor != null && !resolvedJavaType.equals(implementor)) {
-                    TypeReference uncheckedType = TypeReference.createTrusted(assumptions, implementor);
-                    return StampPair.create(StampFactory.object(reference, nonNull), StampFactory.object(uncheckedType, nonNull));
+            ResolvedJavaType elementalType = resolvedJavaType.getElementalType();
+            if (elementalType.isInterface()) {
+                assert reference == null || !reference.getType().equals(resolvedJavaType);
+                TypeReference uncheckedType;
+                ResolvedJavaType elementalImplementor = elementalType.getSingleImplementor();
+                if (elementalImplementor != null && !elementalType.equals(elementalImplementor)) {
+                    ResolvedJavaType implementor = elementalImplementor;
+                    ResolvedJavaType t = resolvedJavaType;
+                    while (t.isArray()) {
+                        implementor = implementor.getArrayClass();
+                        t = t.getComponentType();
+                    }
+                    uncheckedType = TypeReference.createTrusted(assumptions, implementor);
+                } else {
+                    uncheckedType = TypeReference.createTrusted(assumptions, resolvedJavaType);
                 }
+                return StampPair.create(StampFactory.object(reference, nonNull), StampFactory.object(uncheckedType, nonNull));
             }
             return StampPair.createSingle(StampFactory.object(reference, nonNull));
         } else {
             return StampPair.createSingle(StampFactory.forKind(returnType.getJavaKind()));
         }
     }
+
 }

@@ -46,22 +46,24 @@ final class TruffleList<T> extends AbstractList<T> {
     private final CallTarget callRead;
     private final CallTarget callGetSize;
     private final CallTarget callWrite;
+    private final Object languageContext;
 
-    private TruffleList(TypeAndClass<T> elementType, TruffleObject array) {
+    private TruffleList(TypeAndClass<T> elementType, TruffleObject array, Object languageContext) {
         this.array = array;
         this.type = elementType;
+        this.languageContext = languageContext;
         this.callRead = initializeListCall(array, Message.READ);
         this.callWrite = initializeListCall(array, Message.WRITE);
         this.callGetSize = initializeListCall(array, Message.GET_SIZE);
     }
 
-    public static <T> List<T> create(TypeAndClass<T> elementType, TruffleObject array) {
-        return new TruffleList<>(elementType, array);
+    public static <T> List<T> create(TypeAndClass<T> elementType, TruffleObject array, Object languageContext) {
+        return new TruffleList<>(elementType, array, languageContext);
     }
 
     @Override
     public T get(int index) {
-        final Object item = callRead.call(type, array, index);
+        final Object item = callRead.call(array, index, type, languageContext);
         return type.cast(item);
     }
 
@@ -69,13 +71,13 @@ final class TruffleList<T> extends AbstractList<T> {
     public T set(int index, T element) {
         type.cast(element);
         T prev = get(index);
-        callWrite.call(null, array, index, element);
+        callWrite.call(array, index, element, null, languageContext);
         return prev;
     }
 
     @Override
     public int size() {
-        return (Integer) callGetSize.call(null, array);
+        return (Integer) callGetSize.call(array);
     }
 
     private static CallTarget initializeListCall(TruffleObject obj, Message msg) {
@@ -101,31 +103,46 @@ final class TruffleList<T> extends AbstractList<T> {
         @Override
         public Object execute(VirtualFrame frame) {
             final Object[] args = frame.getArguments();
-            TypeAndClass<?> type = (TypeAndClass<?>) args[0];
-            TruffleObject receiver = (TruffleObject) args[1];
+            TruffleObject receiver = (TruffleObject) args[0];
+            TypeAndClass<?> type = null;
+            Object languageContext = null;
 
             Object ret;
             try {
                 if (msg == Message.GET_SIZE) {
                     ret = ForeignAccess.sendGetSize(node, receiver);
                 } else if (msg == Message.READ) {
-                    ret = ForeignAccess.sendRead(node, receiver, args[2]);
+                    Object key = args[1];
+                    type = (TypeAndClass<?>) args[2];
+                    languageContext = args[3];
+                    try {
+                        ret = ForeignAccess.sendRead(node, receiver, key);
+                    } catch (UnknownIdentifierException ex) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw new IndexOutOfBoundsException(Objects.toString(key));
+                    }
                 } else if (msg == Message.WRITE) {
-                    ret = ForeignAccess.sendWrite(node, receiver, args[2], JavaInterop.asTruffleValue(args[3]));
+                    Object key = args[1];
+                    Object value = args[2];
+                    type = (TypeAndClass<?>) args[3];
+                    languageContext = args[4];
+                    try {
+                        ret = ForeignAccess.sendWrite(node, receiver, key, JavaInterop.asTruffleValue(value));
+                    } catch (UnknownIdentifierException ex) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw new IndexOutOfBoundsException(Objects.toString(key));
+                    }
                 } else {
                     CompilerDirectives.transferToInterpreter();
                     throw UnsupportedMessageException.raise(msg);
                 }
-            } catch (UnknownIdentifierException ex) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IndexOutOfBoundsException(Objects.toString(args[2]));
             } catch (InteropException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw ex.raise();
             }
 
             if (type != null) {
-                return toJavaNode.execute(ret, type);
+                return toJavaNode.execute(ret, type.clazz, type.type, languageContext);
             } else {
                 return ret;
             }

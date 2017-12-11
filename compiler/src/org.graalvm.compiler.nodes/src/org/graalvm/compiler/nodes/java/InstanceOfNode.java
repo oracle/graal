@@ -93,7 +93,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
     }
 
     public static LogicNode createHelper(ObjectStamp checkedStamp, ValueNode object, JavaTypeProfile profile, AnchoringNode anchor) {
-        LogicNode synonym = findSynonym(checkedStamp, object);
+        LogicNode synonym = findSynonym(checkedStamp, object, NodeView.DEFAULT);
         if (synonym != null) {
             return synonym;
         } else {
@@ -108,7 +108,8 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        LogicNode synonym = findSynonym(checkedStamp, forValue);
+        NodeView view = NodeView.from(tool);
+        LogicNode synonym = findSynonym(checkedStamp, forValue, view);
         if (synonym != null) {
             return synonym;
         } else {
@@ -116,8 +117,8 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
         }
     }
 
-    public static LogicNode findSynonym(ObjectStamp checkedStamp, ValueNode object) {
-        ObjectStamp inputStamp = (ObjectStamp) object.stamp(NodeView.DEFAULT);
+    public static LogicNode findSynonym(ObjectStamp checkedStamp, ValueNode object, NodeView view) {
+        ObjectStamp inputStamp = (ObjectStamp) object.stamp(view);
         ObjectStamp joinedStamp = (ObjectStamp) checkedStamp.join(inputStamp);
 
         if (joinedStamp.isEmpty()) {

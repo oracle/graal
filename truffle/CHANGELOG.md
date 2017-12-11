@@ -2,6 +2,11 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 0.31
+
+* Removed deprecated `com.oracle.truffle.api.source.LineLocation` class.
+* Added `RootNode#isCaptureFramesForTrace()` to allow subclasses to configure capturing of frames in `TruffleException` instances and `TruffleStackTraceElement#getFrame()` to access the captured frames.
+
 ## Version 0.30
 * Added a support for the TruffleLanguage context pre-initialization in a time of native compilation. To use the context pre-initialization a language has to implement the [patchContext](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage##patchContext-C-com.oracle.truffle.api.TruffleLanguage.Env-) method.
 * Truffle languages are being [finalized](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage##finalizeContext-C-) before disposal. This allows languages to run code with all languages still in a valid state. It is no longer allowed to access other languages during language disposal.

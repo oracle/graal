@@ -44,6 +44,14 @@ class OverloadedMethodDesc implements JavaMethodDesc {
         return getOverloads()[0].getName();
     }
 
+    public boolean isMethod() {
+        return getOverloads()[0].isMethod();
+    }
+
+    public boolean isConstructor() {
+        return getOverloads()[0].isConstructor();
+    }
+
     @Override
     public String toString() {
         StringJoiner sj = new StringJoiner(", ", "Method[", "]");

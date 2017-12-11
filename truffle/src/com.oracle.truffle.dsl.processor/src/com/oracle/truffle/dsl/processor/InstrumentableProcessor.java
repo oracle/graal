@@ -56,6 +56,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -389,6 +390,11 @@ public final class InstrumentableProcessor extends AbstractProcessor {
             builder.startStatement().startCall(FIELD_PROBE, METHOD_ON_RETURN_VALUE).string(frameParameterName).string(returnName).end().end();
             if (!ElementUtils.isVoid(executeMethod.getReturnType())) {
                 builder.startReturn().string(returnName).end();
+            }
+            if (wrappedExecute.getThrownTypes().contains(context.getType(UnexpectedResultException.class))) {
+                builder.end().startCatchBlock(context.getType(UnexpectedResultException.class), "e");
+                builder.startStatement().startCall(FIELD_PROBE, METHOD_ON_RETURN_VALUE).string(frameParameterName).string("e.getResult()").end().end();
+                builder.startThrow().string("e").end();
             }
             builder.end().startCatchBlock(context.getType(Throwable.class), "t");
             builder.startStatement().startCall(FIELD_PROBE, METHOD_ON_RETURN_EXCEPTIONAL).string(frameParameterName).string("t").end().end();

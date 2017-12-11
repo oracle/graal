@@ -617,29 +617,6 @@ public abstract class Source {
         return true;
     }
 
-    /**
-     * Creates a representation of a line number in this source, suitable for use as a hash table
-     * key with equality defined to mean equivalent location.
-     *
-     * @param lineNumber a 1-based line number in this source
-     * @return a representation of a line in this source
-     * @since 0.8 or earlier
-     * @deprecated without replacement
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    public final LineLocation createLineLocation(int lineNumber) {
-        return new LineLocation(this, lineNumber);
-    }
-
-    /**
-     * An object suitable for using as a key into a hashtable that defines equivalence between
-     * different source types.
-     */
-    Object getHashKey() {
-        return content().getHashKey();
-    }
-
     final TextMap getTextMap() {
         TextMap res = textMap;
         if (res == null) {
@@ -698,8 +675,11 @@ public abstract class Source {
 
     final boolean equalAttributes(Source other) {
         return Objects.equals(getMimeType(), other.getMimeType()) &&
+                        Objects.equals(getLanguage(), other.getLanguage()) &&
                         Objects.equals(getName(), other.getName()) &&
-                        Objects.equals(getPath(), other.getPath());
+                        Objects.equals(getPath(), other.getPath()) &&
+                        isInternal() == other.isInternal() &&
+                        isInteractive() == other.isInteractive();
     }
 
     @SuppressWarnings({"unchecked", "unused"})

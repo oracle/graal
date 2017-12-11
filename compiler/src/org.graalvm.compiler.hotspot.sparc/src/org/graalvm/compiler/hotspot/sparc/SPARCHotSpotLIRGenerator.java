@@ -190,7 +190,8 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
             operand = resultOperandFor(javaKind, input.getValueKind());
             emitMove(operand, input);
         }
-        append(new SPARCHotSpotReturnOp(operand, getStub() != null, config, getSafepointAddressValue()));
+        Register thread = getProviders().getRegisters().getThreadRegister();
+        append(new SPARCHotSpotReturnOp(operand, getStub() != null, config, thread, getSafepointAddressValue()));
     }
 
     @Override
@@ -306,7 +307,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         assert inputKind.getPlatformKind() == XWORD : inputKind;
         if (inputKind.isReference(0)) {
             // oop
-            Variable result = newVariable(LIRKind.reference(WORD));
+            Variable result = newVariable(LIRKind.compressedReference(WORD));
             append(new SPARCHotSpotMove.CompressPointer(result, asAllocatable(pointer), getProviders().getRegisters().getHeapBaseRegister().asValue(), encoding, nonNull));
             return result;
         } else {
@@ -383,7 +384,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
 
     public AllocatableValue getSafepointAddressValue() {
         if (this.safepointAddressValue == null) {
-            this.safepointAddressValue = newVariable(LIRKind.value(target().arch.getWordKind()));
+            this.safepointAddressValue = SPARCHotSpotSafepointOp.getSafepointAddressValue(this);
         }
         return this.safepointAddressValue;
     }

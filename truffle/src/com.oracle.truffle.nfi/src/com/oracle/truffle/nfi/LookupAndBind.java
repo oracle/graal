@@ -27,6 +27,7 @@ package com.oracle.truffle.nfi;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.types.NativeSignature;
 import java.util.HashMap;
@@ -59,12 +60,13 @@ final class LookupAndBind extends RootNode {
 
     @CompilerDirectives.TruffleBoundary
     private LibFFILibrary initializeLib(LibFFILibrary library) {
-        Map<String, LibFFIFunction> libraryWrapper = new HashMap<>();
+        Map<String, TruffleObject> libraryWrapper = new HashMap<>();
+        NFIContext ctx = ctxRef.get();
         for (Map.Entry<String, NativeSignature> entry : bindings.entrySet()) {
             String symbolName = entry.getKey();
             NativeSignature signature = entry.getValue();
-            LibFFISymbol symbol = ctxRef.get().lookupSymbol(library, symbolName);
-            LibFFIFunction fun = new LibFFIFunction(symbol, LibFFISignature.create(ctxRef.get(), signature));
+            BindableNativeObject symbol = ctx.lookupSymbol(library, symbolName);
+            TruffleObject fun = symbol.slowPathBindSignature(ctx, signature);
             libraryWrapper.put(symbolName, fun);
         }
         return library.register(libraryWrapper);
