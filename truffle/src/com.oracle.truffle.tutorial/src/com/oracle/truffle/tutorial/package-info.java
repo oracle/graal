@@ -51,10 +51,10 @@
  *
  * <div id="contents">
  *
- * Welcome to <a href="https://github.com/graalvm/truffle">Truffle</a>:
+ * Welcome to <a href="https://github.com/graalvm/graal/tree/master/truffle">Truffle</a>:
  * the Open Source framework for implementing programming languages with very high performance, Java embedding,
  * language interoperation, debugging, and general tooling support.  Truffle is part of the
- * <a href="https://github.com/graalvm/truffle">Graal Project</a>, developed and maintained by
+ * <a href="https://github.com/graalvm/graal">GraalVM Project</a>, developed and maintained by
  * <a href="http://labs.oracle.com/">Oracle Labs</a>
  * and the
  * <a href="http://www.jku.at/isse/content">Institute for System Software</a> of the
