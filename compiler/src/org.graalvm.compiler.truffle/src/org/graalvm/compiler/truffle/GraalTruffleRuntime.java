@@ -482,6 +482,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     @Override
     public RootCallTarget createCallTarget(RootNode rootNode) {
+        DefaultTruffleSplittingStrategy.increaseLimit();
         return createClonedCallTarget(null, rootNode);
     }
 

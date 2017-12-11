@@ -29,12 +29,24 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 import com.oracle.truffle.api.nodes.RootNode;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplitting;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplittingLimitGrowth;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplittingMaxCalleeSize;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplittingMaxNumberOfSplits;
 
 public final class DefaultTruffleSplittingStrategy implements TruffleSplittingStrategy {
 
     private final OptimizedDirectCallNode call;
+
+    private static AtomicInteger splitLimit = new AtomicInteger(TruffleCompilerOptions.getValue(TruffleSplittingLimitGrowth));
+    private static AtomicInteger splitCount = new AtomicInteger(0);
+
+    static void increaseLimit() {
+        final int newLimit = splitLimit.get() + TruffleCompilerOptions.getValue(TruffleSplittingLimitGrowth);
+        splitLimit.set(Math.min(newLimit, TruffleCompilerOptions.getValue(TruffleSplittingMaxNumberOfSplits)));
+    }
 
     public DefaultTruffleSplittingStrategy(OptimizedDirectCallNode call) {
         this.call = call;
@@ -44,6 +56,7 @@ public final class DefaultTruffleSplittingStrategy implements TruffleSplittingSt
     public void beforeCall(Object[] arguments) {
         if (call.getCallCount() == 2) {
             if (shouldSplit()) {
+                splitCount.incrementAndGet();
                 call.split();
             }
         }
@@ -54,6 +67,7 @@ public final class DefaultTruffleSplittingStrategy implements TruffleSplittingSt
         if (!canSplit()) {
             return;
         }
+        splitCount.incrementAndGet();
         call.split();
     }
 
@@ -97,10 +111,15 @@ public final class DefaultTruffleSplittingStrategy implements TruffleSplittingSt
             return false;
         }
 
+        if (splitCount.get() > splitLimit.get()) {
+            return false;
+        }
+
         // max one child call and callCount > 2 and kind of small number of nodes
         if (isMaxSingleCall(call)) {
             return true;
         }
+
         return countPolymorphic(call) >= 1;
     }
 
