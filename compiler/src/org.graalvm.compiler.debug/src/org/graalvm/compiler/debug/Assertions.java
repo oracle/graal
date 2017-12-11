@@ -55,7 +55,7 @@ public class Assertions {
     public static class Options {
 
         @Option(help = "Enable expensive assertions. (Require normal assertions enabled)", type = OptionType.Debug)
-        public static final OptionKey<Boolean> DetailedAsserts = new OptionKey<>(true);
+        public static final OptionKey<Boolean> DetailedAsserts = new OptionKey<>(false);
 
     }
     // @formatter:on
