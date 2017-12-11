@@ -574,6 +574,47 @@ public final class JavaInterop {
         }
     }
 
+    /**
+     * Tests whether an exception is a host exception thrown by a Java Interop method invocation.
+     *
+     * Host exceptions may be thrown by {@linkplain Message messages} sent to Java objects that
+     * involve the invocation of a Java method or constructor ({@code EXECUTE}, {@code INVOKE},
+     * {@code NEW}). The host exception may be unwrapped using {@link #asHostException(Throwable)}.
+     *
+     * @param exception the {@link Throwable} to test
+     * @return {@code true} if the {@code exception} is a host exception, {@code false} otherwise
+     * @see #asHostException(Throwable)
+     * @since 0.31
+     */
+    public static boolean isHostException(Throwable exception) {
+        EngineSupport engine = ACCESSOR.engine();
+        if (engine == null) {
+            return false;
+        }
+        return engine.isHostException(exception);
+    }
+
+    /**
+     * Unwraps a host exception thrown by a Java method invocation.
+     *
+     * Host exceptions may be thrown by {@linkplain Message messages} sent to Java objects that
+     * involve the invocation of a Java method or constructor ({@code EXECUTE}, {@code INVOKE},
+     * {@code NEW}). Host exceptions can be identified using {@link #isHostException(Throwable)}.
+     *
+     * @param exception the host exception to unwrap
+     * @return the original Java exception
+     * @throws IllegalArgumentException if the {@code exception} is not a host exception
+     * @see #isHostException(Throwable)
+     * @since 0.31
+     */
+    public static Throwable asHostException(Throwable exception) {
+        EngineSupport engine = ACCESSOR.engine();
+        if (engine != null && engine.isHostException(exception)) {
+            return engine.asHostException(exception);
+        }
+        throw new IllegalArgumentException("Not a HostException");
+    }
+
     private static <T> Method functionalInterfaceMethod(Class<T> functionalType) {
         if (!functionalType.isInterface()) {
             return null;

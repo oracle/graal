@@ -638,7 +638,7 @@ public class PolyglotEngine {
      * The general strategy is to {@linkplain #eval(Source) evaluate} guest language code that
      * produces the desired language element and then {@linkplain Value#as(Class) create} a Java
      * object of the appropriate type for Java <em>foreign</em> access to the result. The tutorial
-     * <a href= "{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html">"Embedding
+     * <a href="{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html">"Embedding
      * Truffle Languages in Java"</a> contains examples.
      *
      * @param source guest language code
@@ -1070,7 +1070,7 @@ public class PolyglotEngine {
          * evaluate} guest language code that produces the desired language element and then use
          * this method to create a Java object of the appropriate type for Java access to the
          * result. The tutorial <a href=
-         * "{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html" >
+         * "{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html">
          * "Embedding Truffle Languages in Java"</a> contains examples.
          *
          * @param <T> the type of the requested view
@@ -1156,7 +1156,7 @@ public class PolyglotEngine {
          * evaluate} guest language code that produces the desired language element. If that element
          * is a guest language function, this method allows direct execution without giving the
          * function a Java type. The tutorial <a href=
-         * "{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html" >
+         * "{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html">
          * "Embedding Truffle Languages in Java"</a> contains examples.
          *
          * @param args arguments to pass when executing the value
@@ -1871,6 +1871,16 @@ public class PolyglotEngine {
         @Override
         public RuntimeException wrapHostException(Throwable exception) {
             return PolyglotImpl.wrapHostException(exception);
+        }
+
+        @Override
+        public boolean isHostException(Throwable exception) {
+            return exception instanceof HostException;
+        }
+
+        @Override
+        public Throwable asHostException(Throwable exception) {
+            return ((HostException) exception).getOriginal();
         }
 
         @Override

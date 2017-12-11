@@ -711,6 +711,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
+        public boolean isHostException(Throwable exception) {
+            return exception instanceof HostException;
+        }
+
+        @Override
+        public Throwable asHostException(Throwable exception) {
+            return ((HostException) exception).getOriginal();
+        }
+
+        @Override
         public Object legacyTckEnter(Object vm) {
             throw new AssertionError("Should not reach here.");
         }

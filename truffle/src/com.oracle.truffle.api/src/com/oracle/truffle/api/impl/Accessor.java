@@ -221,6 +221,10 @@ public abstract class Accessor {
 
         public abstract RuntimeException wrapHostException(Throwable exception);
 
+        public abstract boolean isHostException(Throwable exception);
+
+        public abstract Throwable asHostException(Throwable exception);
+
         public abstract Object legacyTckEnter(Object vm);
 
         public abstract void legacyTckLeave(Object vm, Object prev);
