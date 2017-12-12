@@ -709,8 +709,7 @@ suite = {
       "distDependencies" : [
         "sdk:GRAAL_SDK"
       ],
-      "description" : """Truffle is a multi-language framework for executing dynamic languages
-        that achieves high performance when combined with Graal.""",
+      "description" : "Truffle is a multi-language framework for executing dynamic languages\nthat achieves high performance when combined with Graal.",
       "javadocType": "api",
     },
 
@@ -754,8 +753,7 @@ suite = {
         "sdk:POLYGLOT_TCK",
       ],
       "exclude" : ["mx:JUNIT"],
-      "description" : """A collection of tests that can certify language implementation to be compliant
-        with most recent requirements of the Truffle infrastructure and tooling.""",
+      "description" : "A collection of tests that can certify language implementation to be compliant\nwith most recent requirements of the Truffle infrastructure and tooling.",
       "allowsJavadocWarnings": True,
     },
 
