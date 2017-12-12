@@ -66,6 +66,8 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                 return LLVMAMD64SyscallFstatNodeGen.create();
             case LLVMAMD64Syscall.SYS_lstat:
                 return LLVMAMD64SyscallLstatNodeGen.create();
+            case LLVMAMD64Syscall.SYS_poll:
+                return LLVMAMD64SyscallPollNodeGen.create();
             case LLVMAMD64Syscall.SYS_lseek:
                 return new LLVMAMD64SyscallLseekNode();
             case LLVMAMD64Syscall.SYS_mmap:
@@ -135,6 +137,8 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                 return LLVMAMD64SyscallUnlinkNodeGen.create();
             case LLVMAMD64Syscall.SYS_getuid:
                 return new LLVMAMD64SyscallGetuidNode();
+            case LLVMAMD64Syscall.SYS_syslog:
+                return LLVMAMD64SyscallSyslogNodeGen.create();
             case LLVMAMD64Syscall.SYS_getgid:
                 return new LLVMAMD64SyscallGetgidNode();
             case LLVMAMD64Syscall.SYS_setuid:
@@ -147,12 +151,22 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                 return new LLVMAMD64SyscallGetegidNode();
             case LLVMAMD64Syscall.SYS_getppid:
                 return new LLVMAMD64SyscallGetPpidNode();
+            case LLVMAMD64Syscall.SYS_getgroups:
+                return LLVMAMD64SyscallGetgroupsNodeGen.create();
+            case LLVMAMD64Syscall.SYS_getpgid:
+                return new LLVMAMD64SyscallGetpgidNode();
+            case LLVMAMD64Syscall.SYS_statfs:
+                return LLVMAMD64SyscallStatfsNodeGen.create();
+            case LLVMAMD64Syscall.SYS_fstatfs:
+                return LLVMAMD64SyscallFstatfsNodeGen.create();
             case LLVMAMD64Syscall.SYS_arch_prctl:
                 return LLVMAMD64SyscallArchPrctlNodeGen.create();
             case LLVMAMD64Syscall.SYS_gettid:
                 return new LLVMAMD64SyscallGettidNode();
             case LLVMAMD64Syscall.SYS_futex:
                 return LLVMAMD64SyscallFutexNodeGen.create();
+            case LLVMAMD64Syscall.SYS_getdents64:
+                return LLVMAMD64SyscallGetdents64NodeGen.create();
             case LLVMAMD64Syscall.SYS_set_tid_address:
                 return LLVMAMD64SyscallSetTidAddressNodeGen.create();
             case LLVMAMD64Syscall.SYS_clock_gettime:
