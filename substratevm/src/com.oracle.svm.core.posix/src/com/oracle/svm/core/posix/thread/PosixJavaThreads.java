@@ -1,0 +1,370 @@
+/*
+ * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package com.oracle.svm.core.posix.thread;
+
+import static com.oracle.svm.core.posix.headers.Pthread.PTHREAD_STACK_MIN;
+import static com.oracle.svm.core.posix.headers.Pthread.pthread_attr_destroy;
+import static com.oracle.svm.core.posix.headers.Pthread.pthread_mutex_init;
+
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Isolate;
+import org.graalvm.nativeimage.ObjectHandle;
+import org.graalvm.nativeimage.ObjectHandles;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.UnmanagedMemory;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPointContext;
+import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordBase;
+import org.graalvm.word.WordFactory;
+
+import com.oracle.svm.core.UnsafeAccess;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Inject;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.c.function.CEntryPointActions;
+import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
+import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
+import com.oracle.svm.core.posix.PosixUtils;
+import com.oracle.svm.core.posix.headers.Errno;
+import com.oracle.svm.core.posix.headers.LibC;
+import com.oracle.svm.core.posix.headers.Pthread;
+import com.oracle.svm.core.posix.headers.Pthread.pthread_attr_t;
+import com.oracle.svm.core.posix.headers.Sched;
+import com.oracle.svm.core.posix.headers.Time;
+import com.oracle.svm.core.posix.pthread.PthreadConditionUtils;
+import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.ParkEvent;
+import com.oracle.svm.core.thread.ParkEvent.ParkEventFactory;
+import com.oracle.svm.core.util.VMError;
+
+public final class PosixJavaThreads extends JavaThreads {
+
+    @Fold
+    public static PosixJavaThreads singleton() {
+        return (PosixJavaThreads) JavaThreads.singleton();
+    }
+
+    @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
+    private static Target_java_lang_Thread toTarget(Thread thread) {
+        return Target_java_lang_Thread.class.cast(thread);
+    }
+
+    @Override
+    protected void start0(Thread thread, long stackSize) {
+        pthread_attr_t attributes = StackValue.get(SizeOf.get(pthread_attr_t.class));
+        PosixUtils.checkStatusIs0(
+                        Pthread.pthread_attr_init(attributes),
+                        "PosixJavaThreads.start0: pthread_attr_init");
+        PosixUtils.checkStatusIs0(
+                        Pthread.pthread_attr_setdetachstate(attributes, Pthread.PTHREAD_CREATE_DETACHED()),
+                        "PosixJavaThreads.start0: pthread_attr_init");
+        long threadStackSize = stackSize;
+        /* If there is a chosen stack size, use it as the stack size. */
+        if (threadStackSize != 0) {
+            /* Make sure the chosen stack size is large enough. */
+            if ((threadStackSize < 0) || (threadStackSize < PTHREAD_STACK_MIN())) {
+                threadStackSize = PTHREAD_STACK_MIN();
+            }
+            PosixUtils.checkStatusIs0(
+                            Pthread.pthread_attr_setstacksize(attributes, WordFactory.unsigned(threadStackSize)),
+                            "PosixJavaThreads.start0: pthread_attr_setstacksize");
+        }
+
+        PosixUtils.checkStatusIs0(
+                        Pthread.pthread_attr_setguardsize(attributes, WordFactory.unsigned(UnsafeAccess.UNSAFE.pageSize())),
+                        "PosixJavaThreads.start0: pthread_attr_setguardsize");
+
+        ThreadStartData startData = UnmanagedMemory.malloc(SizeOf.get(ThreadStartData.class));
+        startData.setVirtualMachine(CEntryPointContext.getCurrentIsolate());
+        startData.setThreadHandle(ObjectHandles.getGlobal().create(thread));
+
+        Pthread.pthread_tPointer newThread = StackValue.get(SizeOf.get(Pthread.pthread_tPointer.class));
+        PosixUtils.checkStatusIs0(
+                        Pthread.pthread_create(newThread, attributes, PosixJavaThreads.pthreadStartRoutine.getFunctionPointer(), startData),
+                        "PosixJavaThreads.start0: pthread_create");
+        setPthreadIdentifier(thread, newThread.read());
+        pthread_attr_destroy(attributes);
+    }
+
+    private static void setPthreadIdentifier(Thread thread, Pthread.pthread_t pthread) {
+        toTarget(thread).hasPthreadIdentifier = true;
+        toTarget(thread).pthreadIdentifier = pthread;
+    }
+
+    private static Pthread.pthread_t getPthreadIdentifier(Thread thread) {
+        return toTarget(thread).pthreadIdentifier;
+    }
+
+    private static boolean hasThreadIdentifier(Thread thread) {
+        return toTarget(thread).hasPthreadIdentifier;
+    }
+
+    @Override
+    protected void setNativeName(Thread thread, String name) {
+        if (hasThreadIdentifier(thread)) {
+            String pthreadName = name.substring(Math.max(0, name.length() - 15), name.length());
+            assert pthreadName.length() < 16 : "thread name for pthread has a maximum length of 16 characters including the terminating 0";
+            try (CCharPointerHolder threadNameHolder = CTypeConversion.toCString(pthreadName)) {
+                PosixUtils.checkStatusIs0(
+                                Pthread.pthread_setname_np(getPthreadIdentifier(thread), threadNameHolder.get()),
+                                "PosixJavaThreads.setNativeName: pthread_setname_np");
+            }
+        }
+    }
+
+    @Override
+    protected void yield() {
+        Sched.sched_yield();
+    }
+
+    @RawStructure
+    interface ThreadStartData extends PointerBase {
+
+        @RawField
+        ObjectHandle getThreadHandle();
+
+        @RawField
+        void setThreadHandle(ObjectHandle handle);
+
+        @RawField
+        Isolate getVirtualMachine();
+
+        @RawField
+        void setVirtualMachine(Isolate vm);
+    }
+
+    private static final CEntryPointLiteral<CFunctionPointer> pthreadStartRoutine = CEntryPointLiteral.create(PosixJavaThreads.class, "pthreadStartRoutine", ThreadStartData.class);
+
+    private static class PthreadStartRoutinePrologue {
+        @SuppressWarnings("unused")
+        static void enter(ThreadStartData data) {
+            CEntryPointActions.enterAttachThread(data.getVirtualMachine());
+        }
+    }
+
+    @CEntryPoint
+    @CEntryPointOptions(prologue = PthreadStartRoutinePrologue.class, epilogue = LeaveDetachThreadEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static WordBase pthreadStartRoutine(ThreadStartData data) {
+        ObjectHandle threadHandle = data.getThreadHandle();
+        UnmanagedMemory.free(data);
+
+        Thread thread = ObjectHandles.getGlobal().get(threadHandle);
+
+        boolean status = JavaThreads.currentThread.compareAndSet(null, thread);
+        VMError.guarantee(status, "currentThread already initialized");
+
+        /*
+         * Destroy the handle only after setting currentThread, since the lock used by destroy
+         * requires the current thread.
+         */
+        ObjectHandles.getGlobal().destroy(threadHandle);
+
+        /* Complete the initialization of the thread, now that it is (nearly) running. */
+        setPthreadIdentifier(thread, Pthread.pthread_self());
+        singleton().setNativeName(thread, thread.getName());
+
+        boolean daemon = thread.isDaemon();
+        if (!daemon) {
+            singleton().nonDaemonThreads.incrementAndGet();
+        }
+
+        try {
+            thread.run();
+        } catch (Throwable ex) {
+            SnippetRuntime.reportUnhandledExceptionJava(ex);
+        } finally {
+            exit(thread);
+            if (!daemon) {
+                singleton().nonDaemonThreads.decrementAndGet();
+            }
+        }
+
+        return WordFactory.nullPointer();
+    }
+}
+
+@TargetClass(Thread.class)
+final class Target_java_lang_Thread {
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    boolean hasPthreadIdentifier;
+
+    /** Every thread started by {@link PosixJavaThreads#start0} has an opaque pthread_t. */
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    Pthread.pthread_t pthreadIdentifier;
+}
+
+class PosixParkEvent extends ParkEvent {
+
+    /** A mutex: from the operating system. */
+    private final Pthread.pthread_mutex_t mutex;
+    /** A condition variable: from the operating system. */
+    private final Pthread.pthread_cond_t cond;
+
+    PosixParkEvent() {
+        /* Create a mutex. */
+        mutex = LibC.malloc(SizeOf.unsigned(Pthread.pthread_mutex_t.class));
+        VMError.guarantee(mutex.isNonNull(), "mutex allocation");
+        /* The attributes for the mutex. Can be null. */
+        final Pthread.pthread_mutexattr_t mutexAttr = WordFactory.nullPointer();
+        PosixUtils.checkStatusIs0(pthread_mutex_init(mutex, mutexAttr), "mutex initialization");
+
+        /* Create a condition variable. */
+        cond = LibC.malloc(SizeOf.unsigned(Pthread.pthread_cond_t.class));
+        VMError.guarantee(cond.isNonNull(), "condition variable allocation");
+        PosixUtils.checkStatusIs0(PthreadConditionUtils.initCondition(cond), "condition variable initialization");
+    }
+
+    @Override
+    protected WaitResult condWait() {
+        WaitResult result = WaitResult.UNPARKED;
+        /* Lock the mutex in preparation for waiting. */
+        PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "park(): mutex lock");
+        try {
+            if (resetEventBeforeWait) {
+                event = false;
+            }
+            /*
+             * Wait while the ticket is not available. Note that the ticket might already be
+             * available before we enter the loop the first time, in which case we do not want to
+             * wait at all.
+             */
+            while (!event) {
+                /* Before blocking, check if this thread has been interrupted. */
+                if (Thread.interrupted()) {
+                    result = WaitResult.INTERRUPTED;
+                    return result;
+                }
+                /* Wait on the condition variable and give up the mutex. */
+                final int status = Pthread.pthread_cond_wait(cond, mutex);
+                /*
+                 * For some reason, under 2.7 lwp_cond_wait() may return ETIME ... Treat this the
+                 * same as if the wait was interrupted
+                 */
+                if (status == Errno.EINTR() || status == Errno.ETIMEDOUT()) {
+                    result = WaitResult.INTERRUPTED;
+                    break;
+                }
+                PosixUtils.checkStatusIs0(status, "park(): condition variable wait");
+            }
+
+            if (event) {
+                /* If the ticket is available, then someone unparked me. */
+                event = false;
+                result = WaitResult.UNPARKED;
+            }
+        } finally {
+            /* Unlock the mutex. */
+            PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "park(): mutex unlock");
+        }
+        return result;
+    }
+
+    @Override
+    protected WaitResult condTimedWait(long delayNanos) {
+        /* Encode the delay as a deadline in a Time.timespec. */
+        Time.timespec deadlineTimespec = StackValue.get(SizeOf.get(Time.timespec.class));
+        PthreadConditionUtils.delayNanosToDeadlineTimespec(delayNanos, deadlineTimespec);
+
+        WaitResult result = WaitResult.UNPARKED;
+        /* Lock the mutex in preparation for waiting. */
+        PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "park(long): mutex lock");
+        try {
+            if (resetEventBeforeWait) {
+                event = false;
+            }
+            while (!event) {
+                /* Before blocking, check if this thread has been interrupted. */
+                if (Thread.interrupted()) {
+                    result = WaitResult.INTERRUPTED;
+                    return result;
+                }
+                final int status = Pthread.pthread_cond_timedwait(cond, mutex, deadlineTimespec);
+                /* If I was awakened because I ran out of time, then do not wait for the ticket. */
+                if (status == Errno.ETIMEDOUT()) {
+                    result = WaitResult.TIMED_OUT;
+                    break;
+                } else if (status == Errno.EINTR()) {
+                    result = WaitResult.INTERRUPTED;
+                    break;
+                }
+                PosixUtils.checkStatusIs0(status, "park(long): condition variable timed wait");
+            }
+
+            if (event) {
+                /* If the ticket is available, then someone unparked me. */
+                event = false;
+                result = WaitResult.UNPARKED;
+            }
+        } finally {
+            /* Unlock the mutex. */
+            PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "park(long): mutex unlock");
+        }
+
+        return result;
+    }
+
+    @Override
+    protected void unpark() {
+        /* Lock the mutex so threads trying to park do not miss my signal. */
+        PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "PosixParkEvent.unpark(): mutex lock");
+        try {
+            /* Re-establish the ticket. */
+            event = true;
+
+            /* Broadcast to any waiters. */
+            PosixUtils.checkStatusIs0(Pthread.pthread_cond_broadcast(cond), "PosixParkEvent.unpark(): condition variable broadcast");
+        } finally {
+            PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "PosixParkEvent.unpark(): mutex unlock");
+        }
+    }
+}
+
+class PosixParkEventFactory implements ParkEventFactory {
+    @Override
+    public ParkEvent create() {
+        return new PosixParkEvent();
+    }
+}
+
+@AutomaticFeature
+class PosixThreadsFeature implements Feature {
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(JavaThreads.class, new PosixJavaThreads());
+        ImageSingletons.add(ParkEventFactory.class, new PosixParkEventFactory());
+    }
+}

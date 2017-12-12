@@ -1,0 +1,32 @@
+
+GraalVM ${TOOL_NAME} building tool
+
+This tool can be used to generate an image that contains ahead-of-time compiled Java code.
+
+Usage: ${TOOL_NAME} [options] class
+           (to build an image for a class)
+   or  ${TOOL_NAME} [options] -jar jarfile
+           (to build an image for a jar file)
+where options include:
+    -cp <class search path of directories and zip/jar files>
+    -classpath <class search path of directories and zip/jar files>
+                  A : separated list of directories, JAR archives,
+                  and ZIP archives to search for class files.
+    -D<name>=<value>
+                  set a system property
+    -J<flag>      pass <flag> directly to the JVM running the image generator
+    -g            enable debuginfo generation
+    -O<level>     0 - no optimizations, 1 - basic optimizations.
+    -ea           enable assertions in the generated image
+    -verbose
+                  enable verbose output
+    -version      print product version and exit
+    -? -help      print this help message
+    -X            print help on non-standard options
+
+Truffle-language building options:
+
+    -nfi
+                  enable Truffle Native Interface support
+${TRUFFLE_HANDLER_OPTIONS}
+The image will automatically be built with polyglot-shell if more than one truffle-option is used.

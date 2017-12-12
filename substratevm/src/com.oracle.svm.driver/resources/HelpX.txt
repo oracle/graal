@@ -1,0 +1,8 @@
+   --debug-attach       attach to debugger during image building
+
+Raw image building options
+
+   -H:+PrintFlags       list possible HostedOptions
+   -R:+PrintFlags       list possible RuntimeOptions
+
+The non-standard options are subject to change without notice.

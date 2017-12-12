@@ -1,0 +1,39 @@
+Files containing JSON arrays describing program elements to be made available for reflection.
+The JSON object schema is:
+
+    Class {
+      String name; // fully qualified class name
+      boolean allDeclaredMethods; // Class.getDeclaredMethods() will be available
+      boolean allPublicMethods; // Class.getMethods() will be available
+      boolean allDeclaredFields; // Class.getDeclaredFields() will be available
+      boolean allPublicFields; // Class.getFields() will be available
+      {   
+        String name; // method name
+        String[] parameterTypes; // method sig (only required if name is ambiguous)
+      }[] methods;
+      {   
+        String name; // field name
+      }[] fields;
+    }
+
+For example:
+
+	[
+	  {
+	    "name" : "java.lang.Class",
+	    "allDeclaredMethods" : "true",
+	    "allPublicMethods" : "true"
+	  },
+	  {
+	    "name" : "java.util.HashMap",
+	    "fields" : [
+	      { "name" : "loadFactor" },
+	      { "name" : "threshold" }
+	    ],
+	    "methods" : [
+	      { "name" : "keySet" },
+	      { "name" : "<init>", "parameterTypes" : ["int"] },
+	    ]
+	  }
+	]
+

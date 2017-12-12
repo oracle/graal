@@ -1,0 +1,11 @@
+/*
+ * Automatically generated file.
+ */
+
+typedef void * graal_isolate_t;
+typedef void * graal_isolatethread_t;
+struct __graal_create_isolate_params_t {
+    /* for future use */
+};
+typedef struct __graal_create_isolate_params_t graal_create_isolate_params_t;
+
