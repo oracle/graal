@@ -31,8 +31,8 @@ import java.util.Map;
 /**
  * Parsed representation of library descriptors of the Truffle NFI.
  *
- * To load a native library, evaluate a library descriptor string with the mime-type
- * application/x-native. See {@link Parser} for the syntax of library descriptors.
+ * Implementors of a Truffle NFI backend must use this class (returned by
+ * {@link Parser#parseLibraryDescriptor(java.lang.CharSequence)}) to interpret their source string.
  */
 public final class NativeLibraryDescriptor {
 
@@ -59,9 +59,9 @@ public final class NativeLibraryDescriptor {
     }
 
     /**
-     * An optional array of implementation dependent flags. Implementors of the TruffleNFI should
-     * ignore unknown flags, and should always provide sensible default behavior if no flags are
-     * specified.
+     * An optional array of implementation dependent flags. Implementors of the TruffleNFI backends
+     * should ignore unknown flags, and should always provide sensible default behavior if no flags
+     * are specified.
      *
      * This can for example be used to specify the {@code RTLD_*} flags on posix compliant systems.
      */
@@ -74,12 +74,10 @@ public final class NativeLibraryDescriptor {
     }
 
     /**
-     * List of pre-bound functions in the library. If the library wishes to pre-bind some functions
-     * (see {@link Parser} for more details), then this map is non-empty and contains mappings
-     * between the name of symbols to pre-bind and their requested signatures.
+     * This function is deprecated, and will always return an empty map. Implementors of Truffle NFI
+     * backends don't need to support pre-bound symbols anymore, this is now done automatically.
      *
      * @deprecated
-     * @return empty or non-empty bindings for the descriptor
      */
     @Deprecated
     @SuppressWarnings("static-method")

@@ -32,28 +32,24 @@ import java.util.List;
 /**
  * Helper for implementors of the Truffle NFI.
  *
- * Implementors of the Truffle NFI must use {@link #parseLibraryDescriptor(java.lang.CharSequence)}
- * to parse the source string in {@link TruffleLanguage#parse}. The syntax of the source string is:
+ * The Truffle NFI can be used to call native libraries from other Truffle languages. To load a
+ * native library, the user should evaluate a source of the following syntax:
  *
  * <pre>
- * LibraryDescriptor ::= LibraryDefinition BindBlock?
- * 
- * LibraryDefinition ::= DefaultLibrary | LoadLibrary
+ * NativeSource ::= [ BackendSelector ] LibraryDescriptor [ BindBlock ]
+ *
+ * BackendSelector ::= 'with' ident
+ *
+ * BindBlock ::= '{' { BindDirective } '}'
+ *
+ * BindDirective ::= ident Signature ';'
+ *
+ * LibraryDescriptor ::= DefaultLibrary | LoadLibrary
  *
  * DefaultLibrary ::= 'default'
  *
  * LoadLibrary ::= 'load' [ '(' ident { '|' ident } ')' ] string
  *
- * BindBlock ::= '{' BindDirective* '}'
- *
- * BindDirective ::= ident Signature ';'
- * </pre>
- *
- * Implementors of the Truffle NFI must use {@link #parseSignature(java.lang.CharSequence)} to parse
- * the signature argument string of the {@code bind} method on native symbols. The syntax of a
- * native signature is:
- *
- * <pre>
  * Signature ::= '(' [ Type { ',' Type } ] [ '...' Type { ',' Type } ] ')' ':' Type
  *
  * Type ::= Signature | SimpleType | ArrayType | EnvType
@@ -64,6 +60,15 @@ import java.util.List;
  *
  * EnvType ::= 'env'
  * </pre>
+ *
+ * The BackendSelector ('with' ident) can be used to explicitly select an alternative backend for
+ * the Truffle NFI. If the BackendSelector is missing, the default backend (selector 'native') is
+ * used.
+ *
+ * Implementors of Truffle NFI backends must parse their source string using the
+ * {@link #parseLibraryDescriptor(java.lang.CharSequence)} function, and must use
+ * {@link #parseSignature(java.lang.CharSequence)} to parse the signature argument string of the
+ * {@code bind} method on native symbols.
  */
 public final class Parser {
 
