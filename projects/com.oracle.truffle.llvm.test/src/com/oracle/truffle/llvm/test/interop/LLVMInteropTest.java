@@ -1110,7 +1110,7 @@ public final class LLVMInteropTest {
         runner.load();
         Assert.assertEquals("construct\n", buf.toString());
         runner.close();
-        Assert.assertEquals("construct\ndestruct\n", buf.toString());
+        Assert.assertEquals("construct\natexit\ndestruct\n", buf.toString());
     }
 
     private static Map<String, Object> makeObjectA() {

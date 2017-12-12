@@ -81,9 +81,12 @@ static void caller(void *arg) {
 
 __attribute__((weak)) int atexit(void (*func)(void)) { return __cxa_atexit(caller, func, NULL); }
 
+void __sulong_destructor_functions();
+
 __attribute__((weak)) void exit(int status) {
   int64_t result;
   __sulong_funcs_on_exit();
+  __sulong_destructor_functions();
   __SYSCALL_1(result, SYS_exit_group, status);
   for (;;) { // this should never be executed
     __SYSCALL_1(result, SYS_exit_group, status);

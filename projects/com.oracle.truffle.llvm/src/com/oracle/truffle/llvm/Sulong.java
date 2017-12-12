@@ -42,14 +42,17 @@ import org.graalvm.polyglot.Value;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.Runner.SulongLibrary;
 import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -96,23 +99,23 @@ public final class Sulong extends LLVMLanguage {
         LLVMContext newContext = new LLVMContext(env, getContextExtensions(env));
         if (mainContext == null) {
             mainContext = newContext;
-            return newContext;
+        } else {
+            LLVMLanguage.SINGLE_CONTEXT_ASSUMPTION.invalidate();
         }
-
-        LLVMLanguage.SINGLE_CONTEXT_ASSUMPTION.invalidate();
         return newContext;
     }
 
     @Override
     protected void disposeContext(LLVMContext context) {
-        context.printNativeCallStatistic();
-        Runner.disposeContext(getCapability(LLVMMemory.class), context);
+        LLVMMemory memory = getCapability(LLVMMemory.class);
+        context.dispose(memory);
     }
 
     @Override
     protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
         Source source = request.getSource();
-        return (new Runner(getNodeFactory())).parse(this, findLLVMContext(), source);
+        LLVMContext context = findLLVMContext();
+        return (new Runner(getNodeFactory())).parse(this, context, source);
     }
 
     @Override

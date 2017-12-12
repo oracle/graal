@@ -40,6 +40,6 @@ public class LLVMAMD64SyscallExitNode extends LLVMAMD64SyscallOperationNode {
     @Override
     public long execute(VirtualFrame frame, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
         int code = (int) ((long) rdi);
-        throw new LLVMExitException(code);
+        throw LLVMExitException.exit(code);
     }
 }

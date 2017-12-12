@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
@@ -73,7 +74,12 @@ public final class BitcodeParserResult {
         return model.getLibraryPaths();
     }
 
-    public static BitcodeParserResult getFromSource(Source source, ByteBuffer bytes) {
+    public static BitcodeParserResult getFromSource(Source source, ByteBuffer bytes) throws IOException {
+        assert bytes != null;
+        if (!LLVMScanner.isSupportedFile(bytes)) {
+            throw new IOException("Unsupported file: " + source.toString());
+        }
+
         final ModelModule model = LLVMScanner.parse(source, bytes);
 
         final LLVMPhiManager phis = LLVMPhiManager.generate(model);

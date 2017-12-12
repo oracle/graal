@@ -152,7 +152,7 @@ public final class NFIContextExtension implements ContextExtension {
 
     private TruffleObject loadLibrary(ExternalLibrary lib) {
         CompilerAsserts.neverPartOfCompilation();
-        assert lib.getLibraryToReplace() == null;
+        assert lib.getLibrariesToReplace() == null;
         String libName = lib.getPath().toString();
         String loadExpression = String.format("load \"%s\"", libName);
         final Source source = Source.newBuilder(loadExpression).name("(load " + libName + ")").mimeType("application/x-native").build();

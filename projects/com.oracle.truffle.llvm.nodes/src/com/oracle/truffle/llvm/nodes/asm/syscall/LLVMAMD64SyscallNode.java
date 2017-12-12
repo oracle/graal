@@ -38,7 +38,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -46,10 +45,6 @@ import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 @NodeChildren({@NodeChild("rax"), @NodeChild("rdi"), @NodeChild("rsi"), @NodeChild("rdx"), @NodeChild("r10"), @NodeChild("r8"), @NodeChild("r9")})
 public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
     protected static final int NUM_SYSCALLS = 332;
-
-    protected static void exit(int code) {
-        throw new LLVMExitException(code);
-    }
 
     protected static LLVMAMD64SyscallOperationNode createNode(long rax) {
         switch ((int) rax) {

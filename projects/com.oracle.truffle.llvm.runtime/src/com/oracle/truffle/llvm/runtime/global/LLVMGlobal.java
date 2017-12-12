@@ -228,13 +228,6 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         return LLVMAddress.fromLong(global.getAsNative(memory, context).getPointer());
     }
 
-    public static void free(LLVMContext context, LLVMGlobal global) {
-        Object content = context.getGlobalFrame().getValue(global.slot);
-        if (content instanceof Native) {
-            global.setFrame(context, null);
-        }
-    }
-
     @Override
     public LLVMObjectNativeLibrary createLLVMObjectNativeLibrary() {
         return new LLVMGlobalNativeLibrary();
