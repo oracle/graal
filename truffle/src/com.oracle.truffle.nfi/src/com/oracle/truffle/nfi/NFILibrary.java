@@ -22,26 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.nfi.impl;
+package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
+import java.util.HashMap;
+import java.util.Map;
 
-class NativePointer implements TruffleObject {
+final class NFILibrary implements TruffleObject {
 
-    final long nativePointer;
+    private final TruffleObject library;
+    private final Map<String, TruffleObject> symbols;
 
-    NativePointer(long nativePointer) {
-        this.nativePointer = nativePointer;
+    NFILibrary(TruffleObject library) {
+        this.library = library;
+        this.symbols = new HashMap<>();
     }
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return NativePointerMessageResolutionForeign.ACCESS;
+        return NFILibraryMessageResolutionForeign.ACCESS;
     }
 
-    @Override
-    public String toString() {
-        return String.valueOf(nativePointer);
+    TruffleObject getLibrary() {
+        return library;
+    }
+
+    @TruffleBoundary
+    TruffleObject findSymbol(String name) {
+        return symbols.get(name);
+    }
+
+    @TruffleBoundary
+    void preBindSymbol(String name, TruffleObject symbol) {
+        symbols.put(name, symbol);
     }
 }

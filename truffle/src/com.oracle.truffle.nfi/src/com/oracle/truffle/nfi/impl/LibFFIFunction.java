@@ -27,9 +27,8 @@ package com.oracle.truffle.nfi.impl;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.nfi.impl.LibFFIType.Direction;
-import com.oracle.truffle.nfi.types.NativeSignature;
 
-final class LibFFIFunction extends BindableNativeObject {
+final class LibFFIFunction implements TruffleObject {
 
     private final NativePointer symbol;
     private final LibFFISignature signature;
@@ -52,11 +51,6 @@ final class LibFFIFunction extends BindableNativeObject {
 
     NativePointer getPointer() {
         return symbol;
-    }
-
-    @Override
-    protected TruffleObject slowPathBindSignature(NFIContext ctx, NativeSignature newSignature) {
-        return symbol.slowPathBindSignature(ctx, newSignature);
     }
 
     @Override

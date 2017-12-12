@@ -143,7 +143,7 @@ class NFIContext {
         return LibFFILibrary.create(loadLibrary(nativeContext, name, flags));
     }
 
-    BindableNativeObject lookupSymbol(LibFFILibrary library, String name) {
+    TruffleObject lookupSymbol(LibFFILibrary library, String name) {
         return LibFFISymbol.create(library, lookup(nativeContext, library.handle, name));
     }
 

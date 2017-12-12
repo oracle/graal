@@ -39,8 +39,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.nfi.impl.BindableNativeObject.BindSignatureNode;
-import com.oracle.truffle.nfi.impl.BindableNativeObjectFactory.ReBindSignatureNodeGen;
+import com.oracle.truffle.nfi.impl.BindSignatureNodeFactory.ReBindSignatureNodeGen;
 import com.oracle.truffle.nfi.impl.LibFFIFunctionMessageResolutionFactory.CachedExecuteNodeGen;
 import com.oracle.truffle.nfi.impl.TypeConversion.AsStringNode;
 import com.oracle.truffle.nfi.impl.TypeConversionFactory.AsStringNodeGen;
@@ -50,7 +49,7 @@ class LibFFIFunctionMessageResolution {
 
     abstract static class CachedExecuteNode extends Node {
 
-        private final ContextReference<NFIContext> ctxRef = NFILanguage.getCurrentContextReference();
+        private final ContextReference<NFIContext> ctxRef = NFILanguageImpl.getCurrentContextReference();
 
         public abstract Object execute(LibFFIFunction receiver, Object[] args);
 

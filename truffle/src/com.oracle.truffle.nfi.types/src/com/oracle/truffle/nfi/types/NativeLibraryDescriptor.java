@@ -25,7 +25,6 @@
 package com.oracle.truffle.nfi.types;
 
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -39,12 +38,10 @@ public final class NativeLibraryDescriptor {
 
     private final String filename;
     private final List<String> flags;
-    private final Map<String, NativeSignature> bindings;
 
     NativeLibraryDescriptor(String filename, List<String> flags) {
         this.filename = filename;
         this.flags = flags;
-        this.bindings = new LinkedHashMap<>();
     }
 
     /**
@@ -81,13 +78,12 @@ public final class NativeLibraryDescriptor {
      * (see {@link Parser} for more details), then this map is non-empty and contains mappings
      * between the name of symbols to pre-bind and their requested signatures.
      *
+     * @deprecated
      * @return empty or non-empty bindings for the descriptor
      */
+    @Deprecated
+    @SuppressWarnings("static-method")
     public Map<String, NativeSignature> getBindings() {
-        return Collections.unmodifiableMap(bindings);
-    }
-
-    void register(String ident, NativeSignature sig) {
-        this.bindings.put(ident, sig);
+        return Collections.emptyMap();
     }
 }

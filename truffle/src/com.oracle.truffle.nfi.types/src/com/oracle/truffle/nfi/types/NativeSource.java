@@ -22,26 +22,54 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.nfi.impl;
+package com.oracle.truffle.nfi.types;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
+import java.util.ArrayList;
+import java.util.List;
 
-class NativePointer implements TruffleObject {
+/**
+ */
+public final class NativeSource {
 
-    final long nativePointer;
+    private final String nfiId;
+    private final String libraryDescriptor;
 
-    NativePointer(long nativePointer) {
-        this.nativePointer = nativePointer;
+    private final List<String> preBoundSymbols;
+    private final List<String> preBoundSignatures;
+
+    NativeSource(String nfiId, String libraryDescriptor) {
+        this.nfiId = nfiId;
+        this.libraryDescriptor = libraryDescriptor;
+        this.preBoundSymbols = new ArrayList<>();
+        this.preBoundSignatures = new ArrayList<>();
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return NativePointerMessageResolutionForeign.ACCESS;
+    public boolean isDefaultBackend() {
+        return nfiId == null;
     }
 
-    @Override
-    public String toString() {
-        return String.valueOf(nativePointer);
+    public String getNFIBackendId() {
+        return nfiId;
+    }
+
+    public String getLibraryDescriptor() {
+        return libraryDescriptor;
+    }
+
+    public int preBoundSymbolsLength() {
+        return preBoundSymbols.size();
+    }
+
+    public String getPreBoundSymbol(int i) {
+        return preBoundSymbols.get(i);
+    }
+
+    public String getPreBoundSignature(int i) {
+        return preBoundSignatures.get(i);
+    }
+
+    void register(String symbol, String signature) {
+        preBoundSymbols.add(symbol);
+        preBoundSignatures.add(signature);
     }
 }

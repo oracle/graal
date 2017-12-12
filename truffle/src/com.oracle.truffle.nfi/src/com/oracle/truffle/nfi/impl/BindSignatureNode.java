@@ -30,25 +30,20 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.nfi.impl.BindSignatureNodeFactory.PointerBindSignatureNodeGen;
+import com.oracle.truffle.nfi.impl.BindSignatureNodeFactory.SignatureCacheNodeGen;
 import com.oracle.truffle.nfi.impl.TypeConversion.AsStringNode;
-import com.oracle.truffle.nfi.impl.BindableNativeObjectFactory.PointerBindSignatureNodeGen;
-import com.oracle.truffle.nfi.impl.BindableNativeObjectFactory.SignatureCacheNodeGen;
 import com.oracle.truffle.nfi.impl.TypeConversionFactory.AsStringNodeGen;
 import com.oracle.truffle.nfi.types.NativeSignature;
 import com.oracle.truffle.nfi.types.Parser;
 
-abstract class BindableNativeObject implements TruffleObject {
+abstract class BindSignatureNode extends Node {
 
-    abstract static class BindSignatureNode extends Node {
-
-        abstract TruffleObject execute(BindableNativeObject receiver, Object signature);
-    }
-
-    protected abstract TruffleObject slowPathBindSignature(NFIContext ctx, NativeSignature signature);
+    abstract TruffleObject execute(TruffleObject receiver, Object signature);
 
     abstract static class SignatureCacheNode extends Node {
 
-        private final ContextReference<NFIContext> ctxRef = NFILanguage.getCurrentContextReference();
+        private final ContextReference<NFIContext> ctxRef = NFILanguageImpl.getCurrentContextReference();
 
         protected abstract LibFFISignature execute(String signature);
 

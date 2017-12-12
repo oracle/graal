@@ -33,9 +33,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.nfi.impl.BindableNativeObject.BindSignatureNode;
+import com.oracle.truffle.nfi.impl.BindSignatureNodeFactory.PointerBindSignatureNodeGen;
 import com.oracle.truffle.nfi.impl.TypeConversion.AsStringNode;
-import com.oracle.truffle.nfi.impl.BindableNativeObjectFactory.PointerBindSignatureNodeGen;
 import com.oracle.truffle.nfi.impl.TypeConversionFactory.AsStringNodeGen;
 
 @MessageResolution(receiverType = NativePointer.class)

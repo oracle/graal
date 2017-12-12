@@ -34,10 +34,10 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.types.Parser;
 
-@TruffleLanguage.Registration(name = "TruffleNFI", version = "0.1", mimeType = NFILanguage.MIME_TYPE, internal = true)
-public class NFILanguage extends TruffleLanguage<NFIContext> {
+@TruffleLanguage.Registration(id = "native", name = "nfi-native", version = "0.1", mimeType = NFILanguageImpl.MIME_TYPE, internal = true)
+public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
 
-    public static final String MIME_TYPE = "application/x-native";
+    public static final String MIME_TYPE = "trufflenfi/native";
 
     @Override
     protected NFIContext createContext(Env env) {
@@ -74,7 +74,7 @@ public class NFILanguage extends TruffleLanguage<NFIContext> {
         @CompilationFinal private LibFFILibrary cached;
         private final ContextReference<NFIContext> ctxRef;
 
-        LoadLibraryNode(NFILanguage language, String name, int flags) {
+        LoadLibraryNode(NFILanguageImpl language, String name, int flags) {
             super(language);
             this.name = name;
             this.flags = flags;
@@ -142,15 +142,11 @@ public class NFILanguage extends TruffleLanguage<NFIContext> {
             root = new LoadLibraryNode(this, descriptor.getFilename(), flags);
         }
 
-        if (!descriptor.getBindings().isEmpty()) {
-            root = new LookupAndBind(this, root, descriptor.getBindings());
-        }
-
         return Truffle.getRuntime().createCallTarget(root);
     }
 
     static ContextReference<NFIContext> getCurrentContextReference() {
-        return getCurrentLanguage(NFILanguage.class).getContextReference();
+        return getCurrentLanguage(NFILanguageImpl.class).getContextReference();
     }
 
     @Override

@@ -49,7 +49,7 @@ final class LibFFIClosure implements TruffleObject {
 
     static LibFFIClosure createSlowPath(LibFFISignature signature, TruffleObject executable) {
         CompilerAsserts.neverPartOfCompilation();
-        NFIContext ctx = NFILanguage.getCurrentContextReference().get();
+        NFIContext ctx = NFILanguageImpl.getCurrentContextReference().get();
         return create(ctx, signature, executable);
     }
 

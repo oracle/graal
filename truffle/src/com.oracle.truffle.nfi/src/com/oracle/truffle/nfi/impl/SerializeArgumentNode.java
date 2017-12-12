@@ -278,7 +278,7 @@ abstract class SerializeArgumentNode extends Node {
         SerializeClosureArgumentNode(LibFFIType argType, LibFFISignature signature) {
             this.argType = argType;
             this.signature = signature;
-            this.ctxRef = NFILanguage.getCurrentContextReference();
+            this.ctxRef = NFILanguageImpl.getCurrentContextReference();
         }
 
         @Specialization

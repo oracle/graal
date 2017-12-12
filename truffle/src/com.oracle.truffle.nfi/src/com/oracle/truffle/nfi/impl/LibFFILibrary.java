@@ -24,15 +24,12 @@
  */
 package com.oracle.truffle.nfi.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
-import java.util.Map;
 
 final class LibFFILibrary implements TruffleObject {
 
     protected final long handle;
-    private Map<String, TruffleObject> symbols;
 
     static LibFFILibrary createDefault() {
         return new LibFFILibrary(0);
@@ -52,17 +49,6 @@ final class LibFFILibrary implements TruffleObject {
     @Override
     public ForeignAccess getForeignAccess() {
         return LibFFILibraryMessageResolutionForeign.ACCESS;
-    }
-
-    LibFFILibrary register(Map<String, TruffleObject> functions) {
-        assert this.symbols == null;
-        this.symbols = functions;
-        return this;
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    TruffleObject findSymbol(String name) {
-        return symbols == null ? null : symbols.get(name);
     }
 
     private static final class Destructor extends NativeAllocation.Destructor {
