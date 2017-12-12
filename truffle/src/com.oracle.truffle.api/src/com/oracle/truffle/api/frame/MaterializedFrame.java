@@ -31,6 +31,6 @@ package com.oracle.truffle.api.frame;
  * 
  * @since 0.8 or earlier
  */
-public interface MaterializedFrame extends Frame {
+public interface MaterializedFrame extends VirtualFrame {
 
 }
