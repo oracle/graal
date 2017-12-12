@@ -29,22 +29,12 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.support;
 
-import java.nio.ByteBuffer;
-
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
-import sun.misc.SharedSecrets;
-
-// All methods except getBuffer can be used without @TruffleBoundary
+// All methods can be used without @TruffleBoundary
 public class LLVMString {
-    public static ByteBuffer getBuffer(LLVMAddress address, int size) {
-        CompilerAsserts.neverPartOfCompilation();
-        return SharedSecrets.getJavaNioAccess().newDirectByteBuffer(address.getVal(), size, null);
-    }
-
     public static byte[] memcpy(LLVMMemory memory, LLVMAddress address, int size) {
         byte[] out = new byte[size];
         LLVMAddress ptr = address;
