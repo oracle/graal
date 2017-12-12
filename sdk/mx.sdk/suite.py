@@ -130,8 +130,7 @@ suite = {
         "artifactId" : "graal-sdk"
       },
       "javadocType": "api",
-      "description" : """GraalVM is an ecosystem for compiling and running applications written in multiple languages.
-GraalVM removes the isolation between programming languages and enables interoperability in a shared runtime.""",
+      "description" : "GraalVM is an ecosystem for compiling and running applications written in multiple languages.\nGraalVM removes the isolation between programming languages and enables interoperability in a shared runtime.",
     },
     "WORD_API" : {
       "subDir" : "src",
