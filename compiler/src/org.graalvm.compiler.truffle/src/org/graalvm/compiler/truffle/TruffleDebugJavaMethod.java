@@ -44,7 +44,7 @@ public class TruffleDebugJavaMethod implements JavaMethod, JavaMethodContext {
 
         @Override
         public String getName() {
-            return "LTruffle;";
+            return "LTruffleGraal;";
         }
 
         @Override
