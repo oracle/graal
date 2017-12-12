@@ -41,7 +41,7 @@ LLVM_GE_38 := $(shell expr ${LLVM_VERSION} \>= 308)
 LDFLAGS=-shared -g
 endif
 
-CFLAGS=-g -fPIC -DPIC -O0
+CFLAGS=-g -fPIC -DPIC -O3
 CXXFLAGS=${CFLAGS} -DLLVM_VERSION=${LLVM_VERSION}
 
 ifeq (${LLVM_GE_38},1)
