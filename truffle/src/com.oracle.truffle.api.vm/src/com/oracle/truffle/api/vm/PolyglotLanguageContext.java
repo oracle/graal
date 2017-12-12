@@ -66,7 +66,7 @@ final class PolyglotLanguageContext implements VMObject {
     volatile PolyglotValue defaultValueCache;
     volatile OptionValuesImpl optionValues;
     volatile Value nullValue;
-    String[] applicationArguments;    // effectively final
+    final String[] applicationArguments;
     final Set<PolyglotThread> activePolyglotThreads = new HashSet<>();
     volatile boolean creating; // true when context is currently being created.
     volatile boolean initialized;
@@ -78,8 +78,9 @@ final class PolyglotLanguageContext implements VMObject {
     PolyglotLanguageContext(PolyglotContextImpl context, PolyglotLanguage language, OptionValuesImpl optionValues, String[] applicationArguments, Map<String, Object> config) {
         this.context = context;
         this.language = language;
+        this.optionValues = optionValues;
+        this.applicationArguments = applicationArguments == null ? EMPTY_STRING_ARRAY : applicationArguments;
         this.config = config;
-        patchInstance(optionValues, applicationArguments);
     }
 
     /**
@@ -259,9 +260,7 @@ final class PolyglotLanguageContext implements VMObject {
                 if (!initialized) {
                     initialized = true; // Allow language use during initialization
                     try {
-                        if (!context.inContextPreInitialization) {
-                            LANGUAGE.initializeThread(env, Thread.currentThread());
-                        }
+                        LANGUAGE.initializeThread(env, Thread.currentThread());
 
                         LANGUAGE.postInitEnv(env);
 
@@ -339,32 +338,6 @@ final class PolyglotLanguageContext implements VMObject {
 
     ToGuestValuesNode createToGuestValues() {
         return new ToGuestValuesNode();
-    }
-
-    void preInitialize() {
-        ensureInitialized(null);
-    }
-
-    boolean patch(OptionValuesImpl newOptionValues, String[] newApplicationArguments) {
-        patchInstance(newOptionValues, newApplicationArguments);
-        try {
-            final Env newEnv = LANGUAGE.patchEnvContext(env, context.out, context.err, context.in, config, getOptionValues(), newApplicationArguments);
-            if (newEnv != null) {
-                env = newEnv;
-                return true;
-            }
-            return false;
-        } catch (Throwable t) {
-            if (t instanceof ThreadDeath) {
-                throw t;
-            }
-            return false;
-        }
-    }
-
-    private void patchInstance(OptionValuesImpl newOptionValues, String[] newApplicationArguments) {
-        this.optionValues = newOptionValues;
-        this.applicationArguments = newApplicationArguments == null ? EMPTY_STRING_ARRAY : newApplicationArguments;
     }
 
     final class ToGuestValuesNode {
