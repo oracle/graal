@@ -504,7 +504,7 @@ public final class LLVMMemory {
     public void putVector(LLVMAddress address, LLVMFunctionVector vector) {
         long currentPtr = address.getVal();
         for (int i = 0; i < vector.getLength(); i++) {
-            putAddress(currentPtr, vector.getValue(i));
+            putAddress(currentPtr, vector.getAddress(i));
             currentPtr += ADDRESS_LENGTH;
         }
     }

@@ -29,13 +29,10 @@
  */
 package com.oracle.truffle.llvm.nodes.literals;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNodeGen;
@@ -218,14 +215,9 @@ public class LLVMVectorLiteralNode {
         @ExplodeLoop
         @Specialization
         public LLVMFunctionVector executeFunctionVector(VirtualFrame frame) {
-            LLVMFunctionDescriptor[] vals = new LLVMFunctionDescriptor[values.length];
+            Object[] vals = new Object[values.length];
             for (int i = 0; i < values.length; i++) {
-                try {
-                    vals[i] = values[i].executeLLVMFunctionDescriptor(frame);
-                } catch (UnexpectedResultException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new IllegalStateException(e);
-                }
+                vals[i] = values[i].executeGeneric(frame);
             }
             return LLVMFunctionVector.create(vals);
         }
