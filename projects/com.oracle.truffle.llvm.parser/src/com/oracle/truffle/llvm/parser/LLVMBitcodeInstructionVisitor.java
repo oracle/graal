@@ -671,7 +671,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         final AggregateType aggregateType = (AggregateType) baseType;
 
-        int offset = runtime.getContext().getIndexOffset(targetIndex, aggregateType);
+        long offset = runtime.getContext().getIndexOffset(targetIndex, aggregateType);
 
         final Type targetType = aggregateType.getElementType(targetIndex);
         if (targetType != null && !((targetType instanceof StructureType) && (((StructureType) targetType).isPacked()))) {
@@ -737,7 +737,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         final LLVMExpressionNode resultAggregate = nodeFactory.createAlloca(runtime, sourceType, size, alignment);
 
-        final int offset = runtime.getContext().getIndexOffset(targetIndex, sourceType);
+        final long offset = runtime.getContext().getIndexOffset(targetIndex, sourceType);
         final LLVMExpressionNode result = nodeFactory.createInsertValue(runtime, resultAggregate, sourceAggregate,
                         runtime.getContext().getByteSize(sourceType), offset, valueToInsert, valueType);
 

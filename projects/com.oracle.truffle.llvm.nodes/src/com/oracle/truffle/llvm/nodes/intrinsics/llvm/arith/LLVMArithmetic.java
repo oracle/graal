@@ -456,11 +456,11 @@ public abstract class LLVMArithmetic extends LLVMBuiltin {
                     @NodeChild(value = "target", type = LLVMExpressionNode.class)})
     public abstract static class LLVMArithmeticWithOverflow extends LLVMArithmetic {
 
-        private final int secondValueOffset;
+        private final long secondValueOffset;
         private final Arithmetic arithmetic;
         @Child private LLVMStoreNode storeI8 = createStoreI1();
 
-        public LLVMArithmeticWithOverflow(Arithmetic arithmetic, int secondValueOffset) {
+        public LLVMArithmeticWithOverflow(Arithmetic arithmetic, long secondValueOffset) {
             this.secondValueOffset = secondValueOffset;
             this.arithmetic = arithmetic;
         }
