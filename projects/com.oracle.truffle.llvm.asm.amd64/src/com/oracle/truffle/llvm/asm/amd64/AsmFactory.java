@@ -127,6 +127,7 @@ import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RdSeedNodeFactory.LLVMAMD64RdS
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RdSeedNodeFactory.LLVMAMD64RdSeedqNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RdSeedNodeFactory.LLVMAMD64RdSeedwNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RdtscNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RepNode;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RolNodeFactory.LLVMAMD64RolbNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RolNodeFactory.LLVMAMD64RollNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RolNodeFactory.LLVMAMD64RolqNodeGen;
@@ -498,7 +499,15 @@ class AsmFactory {
                 LLVMExpressionNode rdi = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rdi"));
                 LLVMExpressionNode df = getFlag(LLVMAMD64Flags.DF);
                 LLVMAMD64WriteValueNode writeRDI = getStore(PrimitiveType.I64, new AsmRegisterOperand("rdi"));
-                statements.add(LLVMAMD64StosbNodeGen.create(writeRDI, al, rdi, df));
+                LLVMExpressionNode stosb = LLVMAMD64StosbNodeGen.create(writeRDI, al, rdi, df);
+                if ("rep".equals(currentPrefix)) {
+                    LLVMExpressionNode rcx = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rcx"));
+                    LLVMAMD64WriteValueNode writeRCX = getStore(PrimitiveType.I64, new AsmRegisterOperand("rcx"));
+                    LLVMExpressionNode rep = new LLVMAMD64RepNode(writeRCX, rcx, stosb);
+                    statements.add(rep);
+                } else {
+                    statements.add(stosb);
+                }
                 break;
             }
             default:
