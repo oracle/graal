@@ -408,6 +408,17 @@ class AsmFactory {
         }
     }
 
+    private void createRep(LLVMExpressionNode body) {
+        if ("rep".equals(currentPrefix)) {
+            LLVMExpressionNode rcx = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rcx"));
+            LLVMAMD64WriteValueNode writeRCX = getStore(PrimitiveType.I64, new AsmRegisterOperand("rcx"));
+            LLVMExpressionNode rep = new LLVMAMD64RepNode(writeRCX, rcx, body);
+            statements.add(rep);
+        } else {
+            statements.add(body);
+        }
+    }
+
     void createOperation(String operation) {
         switch (operation) {
             case "cld":
@@ -505,14 +516,7 @@ class AsmFactory {
                 LLVMExpressionNode df = getFlag(LLVMAMD64Flags.DF);
                 LLVMAMD64WriteValueNode writeRDI = getStore(PrimitiveType.I64, new AsmRegisterOperand("rdi"));
                 LLVMExpressionNode stosb = LLVMAMD64StosbNodeGen.create(writeRDI, al, rdi, df);
-                if ("rep".equals(currentPrefix)) {
-                    LLVMExpressionNode rcx = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rcx"));
-                    LLVMAMD64WriteValueNode writeRCX = getStore(PrimitiveType.I64, new AsmRegisterOperand("rcx"));
-                    LLVMExpressionNode rep = new LLVMAMD64RepNode(writeRCX, rcx, stosb);
-                    statements.add(rep);
-                } else {
-                    statements.add(stosb);
-                }
+                createRep(stosb);
                 break;
             }
             case "stosw": {
@@ -521,14 +525,7 @@ class AsmFactory {
                 LLVMExpressionNode df = getFlag(LLVMAMD64Flags.DF);
                 LLVMAMD64WriteValueNode writeRDI = getStore(PrimitiveType.I64, new AsmRegisterOperand("rdi"));
                 LLVMExpressionNode stosw = LLVMAMD64StoswNodeGen.create(writeRDI, ax, rdi, df);
-                if ("rep".equals(currentPrefix)) {
-                    LLVMExpressionNode rcx = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rcx"));
-                    LLVMAMD64WriteValueNode writeRCX = getStore(PrimitiveType.I64, new AsmRegisterOperand("rcx"));
-                    LLVMExpressionNode rep = new LLVMAMD64RepNode(writeRCX, rcx, stosw);
-                    statements.add(rep);
-                } else {
-                    statements.add(stosw);
-                }
+                createRep(stosw);
                 break;
             }
             case "stosd": {
@@ -537,14 +534,7 @@ class AsmFactory {
                 LLVMExpressionNode df = getFlag(LLVMAMD64Flags.DF);
                 LLVMAMD64WriteValueNode writeRDI = getStore(PrimitiveType.I64, new AsmRegisterOperand("rdi"));
                 LLVMExpressionNode stosd = LLVMAMD64StosdNodeGen.create(writeRDI, eax, rdi, df);
-                if ("rep".equals(currentPrefix)) {
-                    LLVMExpressionNode rcx = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rcx"));
-                    LLVMAMD64WriteValueNode writeRCX = getStore(PrimitiveType.I64, new AsmRegisterOperand("rcx"));
-                    LLVMExpressionNode rep = new LLVMAMD64RepNode(writeRCX, rcx, stosd);
-                    statements.add(rep);
-                } else {
-                    statements.add(stosd);
-                }
+                createRep(stosd);
                 break;
             }
             case "stosq": {
@@ -553,14 +543,7 @@ class AsmFactory {
                 LLVMExpressionNode df = getFlag(LLVMAMD64Flags.DF);
                 LLVMAMD64WriteValueNode writeRDI = getStore(PrimitiveType.I64, new AsmRegisterOperand("rdi"));
                 LLVMExpressionNode stosq = LLVMAMD64StosqNodeGen.create(writeRDI, rax, rdi, df);
-                if ("rep".equals(currentPrefix)) {
-                    LLVMExpressionNode rcx = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rcx"));
-                    LLVMAMD64WriteValueNode writeRCX = getStore(PrimitiveType.I64, new AsmRegisterOperand("rcx"));
-                    LLVMExpressionNode rep = new LLVMAMD64RepNode(writeRCX, rcx, stosq);
-                    statements.add(rep);
-                } else {
-                    statements.add(stosq);
-                }
+                createRep(stosq);
                 break;
             }
             default:
