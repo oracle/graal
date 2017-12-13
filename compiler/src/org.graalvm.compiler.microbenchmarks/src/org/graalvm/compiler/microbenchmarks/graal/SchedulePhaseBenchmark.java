@@ -26,6 +26,7 @@ import java.util.Arrays;
 
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Warmup;
 
 import org.graalvm.compiler.microbenchmarks.graal.util.MethodSpec;
@@ -33,7 +34,8 @@ import org.graalvm.compiler.microbenchmarks.graal.util.ScheduleState;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 
-@Warmup(iterations = 15)
+@Warmup(iterations = 20)
+@Measurement(iterations = 10)
 public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @MethodSpec(declaringClass = String.class, name = "equals")
@@ -133,51 +135,51 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
     // Checkstyle: resume method name check
 
     // Checkstyle: stop method name check
-    @MethodSpec(declaringClass = SchedulePhase.Instance.class, name = "processGuards")
-    public static class ProcessGuards_LATEST_OPTIMAL extends ScheduleState {
-        public ProcessGuards_LATEST_OPTIMAL() {
+    @MethodSpec(declaringClass = SchedulePhase.Instance.class, name = "scheduleEarliestIterative")
+    public static class ScheduleEarliestIterative_LATEST_OPTIMAL extends ScheduleState {
+        public ScheduleEarliestIterative_LATEST_OPTIMAL() {
             super(SchedulingStrategy.LATEST);
         }
     }
 
     @Benchmark
-    public void processGuards_LATEST_OPTIMAL(ProcessGuards_LATEST_OPTIMAL s) {
+    public void scheduleEarliestIterative_LATEST_OPTIMAL(ScheduleEarliestIterative_LATEST_OPTIMAL s) {
         s.schedule.apply(s.graph);
     }
 
-    @MethodSpec(declaringClass = SchedulePhase.Instance.class, name = "processGuards")
-    public static class ProcessGuard_LATEST_OUT_OF_LOOPS_OPTIMAL extends ScheduleState {
-        public ProcessGuard_LATEST_OUT_OF_LOOPS_OPTIMAL() {
+    @MethodSpec(declaringClass = SchedulePhase.Instance.class, name = "scheduleEarliestIterative")
+    public static class ScheduleEarliestIterative_LATEST_OUT_OF_LOOPS_OPTIMAL extends ScheduleState {
+        public ScheduleEarliestIterative_LATEST_OUT_OF_LOOPS_OPTIMAL() {
             super(SchedulingStrategy.LATEST_OUT_OF_LOOPS);
         }
     }
 
     @Benchmark
-    public void processGuard_LATEST_OUT_OF_LOOPS_OPTIMAL(ProcessGuard_LATEST_OUT_OF_LOOPS_OPTIMAL s) {
+    public void scheduleEarliestIterative_LATEST_OUT_OF_LOOPS_OPTIMAL(ScheduleEarliestIterative_LATEST_OUT_OF_LOOPS_OPTIMAL s) {
         s.schedule.apply(s.graph);
     }
 
-    @MethodSpec(declaringClass = SchedulePhase.Instance.class, name = "processGuards")
-    public static class ProcessGuard_EARLIEST_OPTIMAL extends ScheduleState {
-        public ProcessGuard_EARLIEST_OPTIMAL() {
+    @MethodSpec(declaringClass = SchedulePhase.Instance.class, name = "scheduleEarliestIterative")
+    public static class ScheduleEarliestIterative_EARLIEST_OPTIMAL extends ScheduleState {
+        public ScheduleEarliestIterative_EARLIEST_OPTIMAL() {
             super(SchedulingStrategy.EARLIEST);
         }
     }
 
     @Benchmark
-    public void processGuard_EARLIEST_OPTIMAL(ProcessGuard_EARLIEST_OPTIMAL s) {
+    public void scheduleEarliestIterative_EARLIEST_OPTIMAL(ScheduleEarliestIterative_EARLIEST_OPTIMAL s) {
         s.schedule.apply(s.graph);
     }
 
-    @MethodSpec(declaringClass = SchedulePhase.Instance.class, name = "processGuards")
-    public static class ProcessGuard_EARLIEST_WITH_GUARD_ORDER_OPTIMAL extends ScheduleState {
-        public ProcessGuard_EARLIEST_WITH_GUARD_ORDER_OPTIMAL() {
+    @MethodSpec(declaringClass = SchedulePhase.Instance.class, name = "scheduleEarliestIterative")
+    public static class ScheduleEarliestIterative_EARLIEST_WITH_GUARD_ORDER_OPTIMAL extends ScheduleState {
+        public ScheduleEarliestIterative_EARLIEST_WITH_GUARD_ORDER_OPTIMAL() {
             super(SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER);
         }
     }
 
     @Benchmark
-    public void processGuard_EARLIEST_WITH_GUARD_ORDER_OPTIMAL(ProcessGuard_EARLIEST_WITH_GUARD_ORDER_OPTIMAL s) {
+    public void scheduleEarliestIterative_EARLIEST_WITH_GUARD_ORDER_OPTIMAL(ScheduleEarliestIterative_EARLIEST_WITH_GUARD_ORDER_OPTIMAL s) {
         s.schedule.apply(s.graph);
     }
     // Checkstyle: resume method name check
