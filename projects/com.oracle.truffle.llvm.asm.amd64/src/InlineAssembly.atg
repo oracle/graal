@@ -182,6 +182,7 @@ ZeroOp<> =						(. String op; .)
   | "syscall"
   | "stosb"
   | "stosw"
+  | "stosd"
   | "stosq"
   )							(. op = t.val; .)
   							(. factory.createOperation(op); .)

@@ -34,6 +34,9 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteValueNode;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMI16StoreNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -65,6 +68,69 @@ public abstract class LLVMAMD64StosNode extends LLVMExpressionNode {
         protected Object executeI8(VirtualFrame frame, byte al, LLVMAddress rdi, boolean df) {
             store.executeWithTarget(frame, rdi, al);
             writeRDI.execute(frame, rdi.increment(df ? -1 : 1));
+            return null;
+        }
+    }
+
+    public abstract static class LLVMAMD64StoswNode extends LLVMAMD64StosNode {
+        public LLVMAMD64StoswNode(LLVMAMD64WriteValueNode writeRDI) {
+            super(writeRDI);
+            store = LLVMI16StoreNodeGen.create();
+        }
+
+        @Specialization
+        protected Object executeI8(VirtualFrame frame, short al, long rdi, boolean df) {
+            store.executeWithTarget(frame, LLVMAddress.fromLong(rdi), al);
+            writeRDI.execute(frame, rdi + (df ? -2 : 2));
+            return null;
+        }
+
+        @Specialization
+        protected Object executeI8(VirtualFrame frame, short al, LLVMAddress rdi, boolean df) {
+            store.executeWithTarget(frame, rdi, al);
+            writeRDI.execute(frame, rdi.increment(df ? -2 : 2));
+            return null;
+        }
+    }
+
+    public abstract static class LLVMAMD64StosdNode extends LLVMAMD64StosNode {
+        public LLVMAMD64StosdNode(LLVMAMD64WriteValueNode writeRDI) {
+            super(writeRDI);
+            store = LLVMI32StoreNodeGen.create();
+        }
+
+        @Specialization
+        protected Object executeI8(VirtualFrame frame, int al, long rdi, boolean df) {
+            store.executeWithTarget(frame, LLVMAddress.fromLong(rdi), al);
+            writeRDI.execute(frame, rdi + (df ? -4 : 4));
+            return null;
+        }
+
+        @Specialization
+        protected Object executeI8(VirtualFrame frame, int al, LLVMAddress rdi, boolean df) {
+            store.executeWithTarget(frame, rdi, al);
+            writeRDI.execute(frame, rdi.increment(df ? -4 : 4));
+            return null;
+        }
+    }
+
+    public abstract static class LLVMAMD64StosqNode extends LLVMAMD64StosNode {
+        public LLVMAMD64StosqNode(LLVMAMD64WriteValueNode writeRDI) {
+            super(writeRDI);
+            store = LLVMI64StoreNodeGen.create();
+        }
+
+        @Specialization
+        protected Object executeI8(VirtualFrame frame, long al, long rdi, boolean df) {
+            store.executeWithTarget(frame, LLVMAddress.fromLong(rdi), al);
+            writeRDI.execute(frame, rdi + (df ? -8 : 8));
+            return null;
+        }
+
+        @Specialization
+        protected Object executeI8(VirtualFrame frame, long al, LLVMAddress rdi, boolean df) {
+            store.executeWithTarget(frame, rdi, al);
+            writeRDI.execute(frame, rdi.increment(df ? -8 : 8));
             return null;
         }
     }

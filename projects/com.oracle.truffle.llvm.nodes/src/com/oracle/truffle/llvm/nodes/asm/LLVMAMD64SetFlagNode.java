@@ -33,16 +33,18 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteBooleanNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public class LLVMAMD64ClearFlagNode extends LLVMExpressionNode {
+public class LLVMAMD64SetFlagNode extends LLVMExpressionNode {
     @Child private LLVMAMD64WriteBooleanNode flag;
+    private final boolean value;
 
-    public LLVMAMD64ClearFlagNode(LLVMAMD64WriteBooleanNode flag) {
+    public LLVMAMD64SetFlagNode(LLVMAMD64WriteBooleanNode flag, boolean value) {
         this.flag = flag;
+        this.value = value;
     }
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        flag.execute(frame, false);
+        flag.execute(frame, value);
         return null;
     }
 }
