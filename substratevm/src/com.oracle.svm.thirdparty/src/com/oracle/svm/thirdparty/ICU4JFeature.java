@@ -166,6 +166,7 @@ final class Target_com_ibm_icu_impl_ICUResourceBundle_AvailEntry {
 // this whole class substitution was made to work around the original
 // locking on int[] m_utilIntBuffer array, as array locks are not supported in svm
 // the orginal copyright notice follows:
+// Checkstyle: stop
 // © 2016 and later: Unicode, Inc. and others.
 // License & terms of use: http://www.unicode.org/copyright.html#License
 /*
@@ -174,6 +175,7 @@ final class Target_com_ibm_icu_impl_ICUResourceBundle_AvailEntry {
  * Reserved.
  *******************************************************************************
  */
+// Checkstyle: resume
 @TargetClass(className = "com.ibm.icu.impl.UCharacterName$AlgorithmName", onlyWith = ICU4JFeature.IsEnabled.class)
 final class Target_com_ibm_icu_impl_UCharacterName_AlgorithmName {
 
