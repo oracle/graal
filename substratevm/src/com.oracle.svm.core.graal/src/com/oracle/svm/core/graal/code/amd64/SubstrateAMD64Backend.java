@@ -28,6 +28,7 @@ import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rdi;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
+import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
 
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
@@ -51,6 +52,7 @@ import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.core.gen.DebugInfoBuilder;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -58,6 +60,7 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
+import org.graalvm.compiler.lir.StandardOp.LoadConstantOp;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
 import org.graalvm.compiler.lir.amd64.AMD64BreakpointOp;
@@ -65,7 +68,10 @@ import org.graalvm.compiler.lir.amd64.AMD64Call;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.BranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64FrameMap;
 import org.graalvm.compiler.lir.amd64.AMD64FrameMapBuilder;
+import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
+import org.graalvm.compiler.lir.amd64.AMD64Move.MoveFromConstOp;
+import org.graalvm.compiler.lir.amd64.AMD64Move.UncompressPointerOp;
 import org.graalvm.compiler.lir.amd64.AMD64PrefetchOp;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
@@ -89,6 +95,7 @@ import org.graalvm.compiler.nodes.spi.NodeValueMap;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.util.EconomicSet;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -100,7 +107,9 @@ import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
 import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
+import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.SubstrateReferenceMapBuilder;
+import com.oracle.svm.core.meta.CompressedNullConstant;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -117,8 +126,10 @@ import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -132,6 +143,10 @@ public class SubstrateAMD64Backend extends Backend {
     public static final String MARK_EPILOGUE_START = "EPILOGUE_START";
     public static final String MARK_EPILOGUE_INCD_RSP = "EPILOGUE_INCD_RSP";
     public static final String MARK_EPILOGUE_END = "EPILOGUE_END";
+
+    protected static CompressEncoding getCompressEncoding() {
+        return ImageSingletons.lookup(CompressEncoding.class);
+    }
 
     public SubstrateAMD64Backend(Providers providers) {
         super(providers);
@@ -567,10 +582,14 @@ public class SubstrateAMD64Backend extends Backend {
     static class SubstrateAMD64MoveFactory extends AMD64MoveFactory {
 
         private final SharedMethod method;
+        private final LIRKindTool lirKindTool;
+        private final SubstrateAMD64RegisterConfig registerConfig;
 
-        SubstrateAMD64MoveFactory(BackupSlotProvider backupSlotProvider, SharedMethod method) {
+        SubstrateAMD64MoveFactory(BackupSlotProvider backupSlotProvider, SharedMethod method, LIRKindTool lirKindTool, SubstrateAMD64RegisterConfig registerConfig) {
             super(backupSlotProvider);
             this.method = method;
+            this.lirKindTool = lirKindTool;
+            this.registerConfig = registerConfig;
         }
 
         @Override
@@ -578,8 +597,52 @@ public class SubstrateAMD64Backend extends Backend {
             if (constant instanceof SubstrateObjectConstant && method.isDeoptTarget()) {
                 return false;
             }
-
             return true;
+        }
+
+        @Override
+        public AMD64LIRInstruction createLoad(AllocatableValue dst, Constant src) {
+            if (CompressedNullConstant.COMPRESSED_NULL.equals(src)) {
+                return super.createLoad(dst, JavaConstant.LONG_0);
+            } else if (src instanceof SubstrateObjectConstant) {
+                return loadObjectConstant(dst, (SubstrateObjectConstant) src);
+            }
+            return super.createLoad(dst, src);
+        }
+
+        @Override
+        public LIRInstruction createStackLoad(AllocatableValue dst, Constant src) {
+            if (CompressedNullConstant.COMPRESSED_NULL.equals(src)) {
+                return super.createStackLoad(dst, JavaConstant.LONG_0);
+            } else if (src instanceof SubstrateObjectConstant) {
+                return loadObjectConstant(dst, (SubstrateObjectConstant) src);
+            }
+            return super.createStackLoad(dst, src);
+        }
+
+        private AMD64LIRInstruction loadObjectConstant(AllocatableValue dst, SubstrateObjectConstant constant) {
+            if (!constant.isCompressed() && ReferenceAccess.singleton().haveCompressedReferences()) {
+                assert !constant.isNull();
+                Constant compressed = constant.compress();
+                ConstantValue input = new ConstantValue(lirKindTool.getNarrowOopKind(), compressed);
+                RegisterValue heapBase = registerConfig.getHeapBaseRegister().asValue();
+                return new LoadCompressedObjectConstantOp(dst, input, heapBase, getCompressEncoding(), lirKindTool);
+            }
+            return new MoveFromConstOp(dst, constant);
+        }
+
+        public static class LoadCompressedObjectConstantOp extends UncompressPointerOp implements LoadConstantOp {
+            public static final LIRInstructionClass<LoadCompressedObjectConstantOp> TYPE = LIRInstructionClass.create(LoadCompressedObjectConstantOp.class);
+
+            LoadCompressedObjectConstantOp(AllocatableValue result, ConstantValue input, AllocatableValue baseRegister, CompressEncoding encoding, LIRKindTool lirKindTool) {
+                super(TYPE, result, input, baseRegister, encoding, true, lirKindTool);
+                assert input.getJavaConstant().isNonNull() && SubstrateObjectConstant.isCompressed(input.getJavaConstant());
+            }
+
+            @Override
+            public Constant getConstant() {
+                return asConstantValue(getInput()).getConstant();
+            }
         }
     }
 
@@ -624,7 +687,9 @@ public class SubstrateAMD64Backend extends Backend {
     }
 
     protected AMD64MoveFactoryBase createMoveFactory(LIRGenerationResult lirGenRes, BackupSlotProvider backupSlotProvider) {
-        return new SubstrateAMD64MoveFactory(backupSlotProvider, ((SubstrateLIRGenerationResult) lirGenRes).getMethod());
+        SharedMethod method = ((SubstrateLIRGenerationResult) lirGenRes).getMethod();
+        SubstrateAMD64RegisterConfig registerConfig = (SubstrateAMD64RegisterConfig) lirGenRes.getRegisterConfig();
+        return new SubstrateAMD64MoveFactory(backupSlotProvider, method, createLirKindTool(), registerConfig);
     }
 
     protected static class SubstrateAMD64LIRKindTool extends AMD64LIRKindTool {
