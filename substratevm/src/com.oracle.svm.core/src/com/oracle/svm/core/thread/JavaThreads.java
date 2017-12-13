@@ -27,8 +27,6 @@ import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -45,8 +43,6 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -95,37 +91,28 @@ public abstract class JavaThreads {
 
     protected final AtomicLong nonDaemonThreads = new AtomicLong();
 
-    final ThreadGroup rootGroup;
+    /** The group we use for VM threads. */
+    final ThreadGroup rootGroup = Thread.currentThread().getThreadGroup();
+    /*
+     * By using the current thread group as the SVM root group we are preserving runtime environment
+     * of a generated image, which is necessary as the current thread group is available to static
+     * initializers and we are allowing ThreadGroups and unstarted Threads in the image heap.
+     *
+     * There are tests in place to make sure that we are using the JVM's "main" group during image
+     * generation and that we are not leaking any thread groups.
+     */
 
     /**
      * The single thread object we use when building a VM without
      * {@link SubstrateOptions#MultiThreaded thread support}.
      */
-    final Thread singleThread;
+    final Thread singleThread = new Thread("SVM");
 
     /** For Thread.nextThreadID(). */
     final AtomicLong threadSeqNumber = new AtomicLong();
 
     /** For Thread.nextThreadNum(). */
     final AtomicInteger threadInitNumber = new AtomicInteger();
-
-    @Platforms(HOSTED_ONLY.class)
-    protected JavaThreads() {
-        try {
-            Constructor<ThreadGroup> constructor = ThreadGroup.class.getDeclaredConstructor();
-            constructor.setAccessible(true);
-
-            /* The group and thread we use when the VM is single-threaded. */
-            ThreadGroup singleThreadGroup = constructor.newInstance();
-            singleThread = new Thread(singleThreadGroup, "SVM");
-
-            /* The group we use when the VM is multi-threaded. */
-            rootGroup = constructor.newInstance();
-
-        } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException | InstantiationException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
 
     /* Accessor functions for private fields of java.lang.Thread that we alias or inject. */
 
