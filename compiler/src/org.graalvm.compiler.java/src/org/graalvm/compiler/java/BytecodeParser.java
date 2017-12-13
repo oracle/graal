@@ -577,10 +577,11 @@ public class BytecodeParser implements GraphBuilderContext {
                             // value on the stack on entry to an exception handler,
                             // namely the exception object.
                             assert frameState.rethrowException();
-                            ExceptionObjectNode exceptionObject = (ExceptionObjectNode) frameState.stackAt(0);
+                            ValueNode exceptionValue = frameState.stackAt(0);
+                            ExceptionObjectNode exceptionObject = (ExceptionObjectNode) GraphUtil.unproxify(exceptionValue);
                             FrameStateBuilder dispatchState = parser.frameState.copy();
                             dispatchState.clearStack();
-                            dispatchState.push(JavaKind.Object, exceptionObject);
+                            dispatchState.push(JavaKind.Object, exceptionValue);
                             dispatchState.setRethrowException(true);
                             FrameState newFrameState = dispatchState.create(parser.bci(), exceptionObject);
                             frameState.replaceAndDelete(newFrameState);
@@ -2267,8 +2268,10 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected void parseAndInlineCallee(ResolvedJavaMethod targetMethod, ValueNode[] args, IntrinsicContext calleeIntrinsicContext) {
-        try (IntrinsicScope s = calleeIntrinsicContext != null && !parsingIntrinsic() ? new IntrinsicScope(this, targetMethod.getSignature().toParameterKinds(!targetMethod.isStatic()), args) : null) {
+        FixedWithNextNode calleeBeforeUnwindNode = null;
+        ValueNode calleeUnwindValue = null;
 
+        try (IntrinsicScope s = calleeIntrinsicContext != null && !parsingIntrinsic() ? new IntrinsicScope(this, targetMethod.getSignature().toParameterKinds(!targetMethod.isStatic()), args) : null) {
             BytecodeParser parser = graphBuilderInstance.createBytecodeParser(graph, this, targetMethod, INVOCATION_ENTRY_BCI, calleeIntrinsicContext);
             FrameStateBuilder startFrameState = new FrameStateBuilder(parser, parser.code, graph);
             if (!targetMethod.isStatic()) {
@@ -2315,12 +2318,24 @@ public class BytecodeParser implements GraphBuilderContext {
                 }
             }
 
-            FixedWithNextNode calleeBeforeUnwindNode = parser.getBeforeUnwindNode();
+            calleeBeforeUnwindNode = parser.getBeforeUnwindNode();
             if (calleeBeforeUnwindNode != null) {
-                ValueNode calleeUnwindValue = parser.getUnwindValue();
+                calleeUnwindValue = parser.getUnwindValue();
                 assert calleeUnwindValue != null;
-                calleeBeforeUnwindNode.setNext(handleException(calleeUnwindValue, bci(), false));
             }
+        }
+
+        /*
+         * Method handleException will call createTarget, which wires this exception edge to the
+         * corresponding exception dispatch block in the caller. In the case where it wires to the
+         * caller's unwind block, any FrameState created meanwhile, e.g., FrameState for
+         * LoopExitNode, would be instantiated with AFTER_EXCEPTION_BCI. Such frame states should
+         * not be fixed by IntrinsicScope.close, as they denote the states of the caller. Thus, the
+         * following code should be placed outside the IntrinsicScope, so that correctly created
+         * FrameStates are not replaced.
+         */
+        if (calleeBeforeUnwindNode != null) {
+            calleeBeforeUnwindNode.setNext(handleException(calleeUnwindValue, bci(), false));
         }
     }
 
