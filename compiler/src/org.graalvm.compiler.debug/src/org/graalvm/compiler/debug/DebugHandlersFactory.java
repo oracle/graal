@@ -35,7 +35,7 @@ public interface DebugHandlersFactory {
 
     /**
      * Creates {@link DebugHandler}s based on {@code options}.
-     * 
+     *
      * @param options options to control type and name of the channel
      * @return list of debug handers that have been created
      */
