@@ -116,7 +116,8 @@ public class GuardPrioritiesTest extends GraphScheduleTest {
                     if (withoutSpeculation.isNegated() && withoutSpeculation.getCondition() instanceof IsNullNode) {
                         IsNullNode isNullNode = (IsNullNode) withoutSpeculation.getCondition();
                         if (isNullNode.getValue() instanceof ParameterNode && ((ParameterNode) isNullNode.getValue()).index() == 1) {
-                            // this is the null check before the speculative guard, it's the only one that should be above
+                            // this is the null check before the speculative guard, it's the only
+                            // one that should be above
                             assertOrderedAfterLastSchedule(graph, withoutSpeculation, withSpeculation);
                             continue;
                         }

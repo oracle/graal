@@ -24,18 +24,17 @@ package org.graalvm.compiler.core.test;
 
 import java.util.List;
 
-import jdk.vm.ci.meta.SpeculationLog;
-import org.junit.Assert;
-
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
+import org.junit.Assert;
+
+import jdk.vm.ci.meta.SpeculationLog;
 
 public class GraphScheduleTest extends GraalCompilerTest {
-
 
     protected void assertOrderedAfterSchedule(StructuredGraph graph, Node a, Node b) {
         assertOrderedAfterSchedule(graph, SchedulePhase.SchedulingStrategy.LATEST, a, b);
@@ -58,7 +57,7 @@ public class GraphScheduleTest extends GraalCompilerTest {
 
         if (bBlock == aBlock) {
             List<Node> instructions = ibp.nodesFor(bBlock);
-            Assert.assertTrue(a + " should be before " + b,instructions.indexOf(b) > instructions.indexOf(a));
+            Assert.assertTrue(a + " should be before " + b, instructions.indexOf(b) > instructions.indexOf(a));
         } else {
             Block block = bBlock;
             while (block != null) {
