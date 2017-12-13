@@ -2325,6 +2325,15 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
 
+        /*
+         * Method handleException will call createTarget, which wires this exception edge to the
+         * corresponding exception dispatch block in the caller. In the case where it wires to the
+         * caller's unwind block, any FrameState created meanwhile, e.g., FrameState for
+         * LoopExitNode, would be instantiated with AFTER_EXCEPTION_BCI. Such frame states should
+         * not be fixed by IntrinsicScope.close, as they denote the states of the caller. Thus, the
+         * following code should be placed outside the IntrinsicScope, so that correctly created
+         * FrameStates are not replaced.
+         */
         if (calleeBeforeUnwindNode != null) {
             calleeBeforeUnwindNode.setNext(handleException(calleeUnwindValue, bci(), false));
         }
