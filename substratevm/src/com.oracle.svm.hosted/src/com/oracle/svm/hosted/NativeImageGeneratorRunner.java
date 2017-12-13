@@ -181,7 +181,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                 }
                 Class<?> mainClass;
                 try {
-                    mainClass = Class.forName(className, true, classLoader);
+                    mainClass = Class.forName(className, false, classLoader);
                 } catch (ClassNotFoundException ex) {
                     throw UserError.abort("Main entry point class '" + className + "' not found.");
                 }
