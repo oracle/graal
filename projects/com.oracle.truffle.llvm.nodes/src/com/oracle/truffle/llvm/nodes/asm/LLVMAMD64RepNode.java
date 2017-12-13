@@ -34,6 +34,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteValueNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -63,13 +64,17 @@ public class LLVMAMD64RepNode extends LLVMExpressionNode {
 
         @Override
         public boolean executeRepeating(VirtualFrame frame) {
-            long rcxValue = rcx.executeI64(frame);
-            if (rcxValue == 0) {
-                return false;
-            } else {
-                body.executeGeneric(frame);
-                writeRCX.execute(frame, rcxValue - 1);
-                return true;
+            try {
+                long rcxValue = rcx.executeI64(frame);
+                if (rcxValue == 0) {
+                    return false;
+                } else {
+                    body.executeGeneric(frame);
+                    writeRCX.execute(frame, rcxValue - 1);
+                    return true;
+                }
+            } catch (UnexpectedResultException e) {
+                throw new RuntimeException(e);
             }
         }
     }
