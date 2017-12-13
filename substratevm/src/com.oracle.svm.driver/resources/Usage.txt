@@ -1,0 +1,1 @@
+Please specify options for ${TOOL_NAME} building or use -help for more info.

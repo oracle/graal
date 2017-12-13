@@ -1,0 +1,37 @@
+svm-common-linux-gate: ${svm-common-linux} {
+  setup: [
+    ["cd", "./substratevm"]
+  ]
+}
+
+svm-common-darwin-gate: ${svm-common-darwin} {
+  setup: [
+    ["cd", "./substratevm"]
+  ]
+}
+
+svm-cmd-gate: ["mx", "--strict-compliance", "gate", "--strict-mode", "--tags"]
+
+gate-svm-js-ruby-sulong-python: ${svm-common-linux-gate} ${svm-common-sulong} {
+  run: [
+    ${svm-common-clone-benchmarks}
+    ${svm-cmd-gate} ["build,js,ruby,sulong,python"]
+  ]
+  timelimit: "35:00"
+  targets: [gate]
+}
+
+gate-svm-darwin-js: ${svm-common-darwin-gate} {
+  run: [
+    ${svm-common-clone-benchmarks}
+    ${svm-cmd-gate} ["build,js"]
+  ]
+  targets: [gate]
+}
+
+gate-svm-style-fullbuild: ${svm-common-linux-gate} ${eclipse} ${jdt} {
+  run: [
+    ${svm-cmd-gate} ["style,fullbuild,helloworld"]
+  ]
+  targets: [gate]
+}

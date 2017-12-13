@@ -9,6 +9,7 @@
 **/*.iml
 **/*.jar
 **/*.log
+**/*.o
 **/*.orig
 **/*.pdf
 **/*.pyc
@@ -29,11 +30,14 @@
 **/.settings/
 **/bin/
 **/build.xml
+**/clibraries/
+**/svmbuild/
 **/core.*
 **/eclipse-launches/
 **/env
 **/hs_err_pid*.log
 **/javadoc/**/*
+**/lib/
 **/mx.imports/
 **/mxbuild/
 **/nbproject/

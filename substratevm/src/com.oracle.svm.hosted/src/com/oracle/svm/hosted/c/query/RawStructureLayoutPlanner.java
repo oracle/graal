@@ -1,0 +1,207 @@
+/*
+ * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package com.oracle.svm.hosted.c.query;
+
+import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.c.CInterfaceError;
+import com.oracle.svm.hosted.c.info.AccessorInfo;
+import com.oracle.svm.hosted.c.info.ElementInfo;
+import com.oracle.svm.hosted.c.info.InfoTreeVisitor;
+import com.oracle.svm.hosted.c.info.NativeCodeInfo;
+import com.oracle.svm.hosted.c.info.RawStructureInfo;
+import com.oracle.svm.hosted.c.info.StructBitfieldInfo;
+import com.oracle.svm.hosted.c.info.StructFieldInfo;
+import com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind;
+import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
+import com.oracle.svm.hosted.c.info.SizableInfo.SignednessValue;
+
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+
+public final class RawStructureLayoutPlanner extends InfoTreeVisitor {
+
+    private final NativeLibraries nativeLibs;
+
+    private RawStructureLayoutPlanner(NativeLibraries nativeLibs) {
+        this.nativeLibs = nativeLibs;
+    }
+
+    public static void plan(NativeLibraries nativeLibs, NativeCodeInfo nativeCodeInfo) {
+        /*
+         * Raw structure types have no C header file. They are stored in the built-in NativeCodeInfo
+         * object. We can therefore skip all the others.
+         */
+        if (!nativeCodeInfo.isBuiltin()) {
+            return;
+        }
+
+        RawStructureLayoutPlanner planner = new RawStructureLayoutPlanner(nativeLibs);
+        nativeCodeInfo.accept(planner);
+    }
+
+    @Override
+    protected void visitRawStructureInfo(RawStructureInfo info) {
+        if (info.isPlanned()) {
+            return;
+        }
+
+        ResolvedJavaType type = (ResolvedJavaType) info.getAnnotatedElement();
+        for (ResolvedJavaType t : type.getInterfaces()) {
+            if (!nativeLibs.isPointerBase(t)) {
+                throw UserError.abort("Type " + type + " must not implement " + t);
+            }
+
+            if (t.equals(nativeLibs.getPointerBaseType())) {
+                continue;
+            }
+
+            ElementInfo einfo = nativeLibs.findElementInfo(t);
+            if (!(einfo instanceof RawStructureInfo)) {
+                throw UserError.abort(new CInterfaceError("Illegal super type " + t + " found", type).getMessage());
+            }
+
+            RawStructureInfo rinfo = (RawStructureInfo) einfo;
+            rinfo.accept(this);
+            assert rinfo.isPlanned();
+
+            if (info.getParentInfo() != null) {
+                throw UserError.abort(new CInterfaceError("Only single inheritance of RawStructure types is supported", type).getMessage());
+            }
+            info.setParentInfo(rinfo);
+        }
+
+        for (ElementInfo child : new ArrayList<>(info.getChildren())) {
+            if (child instanceof StructFieldInfo) {
+                StructFieldInfo fieldInfo = (StructFieldInfo) child;
+                StructFieldInfo parentFieldInfo = findParentFieldInfo(fieldInfo, info.getParentInfo());
+                if (parentFieldInfo != null) {
+                    fieldInfo.mergeChildrenAndDelete(parentFieldInfo);
+                } else {
+                    computeSize(fieldInfo);
+                }
+            }
+        }
+
+        planLayout(info);
+    }
+
+    private void computeSize(StructFieldInfo info) {
+        AccessorInfo ainfo = info.getAccessorInfo();
+
+        /**
+         * Resolve field size using the declared type in its accessors. Note that the field offsets
+         * are not calculated before visiting all StructFieldInfos and collecting all field types.
+         */
+        ResolvedJavaMethod accessor = (ResolvedJavaMethod) ainfo.getAnnotatedElement();
+        ResolvedJavaType fieldType;
+
+        if (ainfo.getAccessorKind() == AccessorKind.GETTER) {
+            fieldType = (ResolvedJavaType) accessor.getSignature().getReturnType(null);
+        } else if (ainfo.getAccessorKind() == AccessorKind.SETTER) {
+            fieldType = (ResolvedJavaType) accessor.getSignature().getParameterType(ainfo.valueParameterNumber(false), null);
+        } else {
+            throw shouldNotReachHere("Unexpected accessor kind " + ainfo.getAccessorKind());
+        }
+
+        TargetDescription target = nativeLibs.getTarget();
+        int declaredSize = target.arch.getPlatformKind(fieldType.getJavaKind()).getSizeInBytes();
+        info.getSizeInfo().setProperty(declaredSize);
+        if (info.getKind() == ElementKind.INTEGER) {
+            info.getSignednessInfo().setProperty(nativeLibs.isSigned(fieldType) ? SignednessValue.SIGNED : SignednessValue.UNSIGNED);
+        }
+    }
+
+    /**
+     * Compute the offsets of each field.
+     */
+    private void planLayout(RawStructureInfo info) {
+        /* Inherit from the parent type. */
+        int currentOffset = info.getParentInfo() != null ? info.getParentInfo().getSizeInfo().getProperty() : 0;
+
+        List<StructFieldInfo> fields = new ArrayList<>();
+        for (ElementInfo child : info.getChildren()) {
+            if (child instanceof StructFieldInfo) {
+                fields.add((StructFieldInfo) child);
+            } else if (child instanceof StructBitfieldInfo) {
+                throw UserError.abort("StructBitfield is currently not supported by RawStructures!");
+            }
+        }
+
+        /*
+         * Sort fields in field size descending order. Note that prior to this, the fields are
+         * already sorted in alphabetical order.
+         */
+        fields.sort((f1, f2) -> f2.getSizeInfo().getProperty() - f1.getSizeInfo().getProperty());
+
+        for (StructFieldInfo finfo : fields) {
+            assert findParentFieldInfo(finfo, info.getParentInfo()) == null;
+            int fieldSize = finfo.getSizeInfo().getProperty();
+            currentOffset = alignOffset(currentOffset, fieldSize);
+            assert currentOffset % fieldSize == 0;
+            finfo.getOffsetInfo().setProperty(currentOffset);
+            currentOffset += fieldSize;
+        }
+
+        info.getSizeInfo().setProperty(currentOffset);
+        info.setPlanned();
+    }
+
+    private StructFieldInfo findParentFieldInfo(StructFieldInfo fieldInfo, RawStructureInfo parentInfo) {
+        if (parentInfo == null) {
+            return null;
+        }
+        StructFieldInfo result;
+        if (parentInfo.getParentInfo() != null) {
+            result = findParentFieldInfo(fieldInfo, parentInfo.getParentInfo());
+            if (result != null) {
+                return result;
+            }
+        }
+
+        for (ElementInfo child : parentInfo.getChildren()) {
+            if (child instanceof StructFieldInfo) {
+                StructFieldInfo parentFieldInfo = (StructFieldInfo) child;
+                if (fieldInfo.getName().equals(parentFieldInfo.getName())) {
+                    return parentFieldInfo;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static int alignOffset(int offset, int fieldSize) {
+        if (offset % fieldSize == 0) {
+            return offset;
+        }
+
+        return (offset / fieldSize + 1) * fieldSize;
+    }
+}
