@@ -197,8 +197,8 @@ public final class SchedulePhase extends Phase {
 
                 this.blockToNodesMap = latestBlockToNodesMap;
 
-                cfg.setNodeToBlock(currentNodeMap);
             }
+            cfg.setNodeToBlock(currentNodeMap);
 
             graph.setLastSchedule(new ScheduleResult(this.cfg, this.nodeToBlockMap, this.blockToNodesMap));
         }
