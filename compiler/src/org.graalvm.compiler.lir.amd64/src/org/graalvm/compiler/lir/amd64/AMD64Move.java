@@ -25,6 +25,7 @@ package org.graalvm.compiler.lir.amd64;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Equal;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -761,10 +762,10 @@ public class AMD64Move {
         protected final boolean nonNull;
 
         @Def({REG, HINT}) private AllocatableValue result;
-        @Use({REG}) private AllocatableValue input;
+        @Use({REG, CONST}) private Value input;
         @Alive({REG, ILLEGAL}) private AllocatableValue baseRegister;
 
-        protected PointerCompressionOp(LIRInstructionClass<? extends PointerCompressionOp> type, AllocatableValue result, AllocatableValue input,
+        protected PointerCompressionOp(LIRInstructionClass<? extends PointerCompressionOp> type, AllocatableValue result, Value input,
                         AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
 
             super(type);
@@ -780,8 +781,12 @@ public class AMD64Move {
             return GeneratePIC.getValue(crb.getOptions()) || encoding.hasBase();
         }
 
-        protected final Register getResultRegister() {
-            return asRegister(result);
+        public final Value getInput() {
+            return input;
+        }
+
+        public final AllocatableValue getResult() {
+            return result;
         }
 
         protected final Register getBaseRegister() {
@@ -797,18 +802,24 @@ public class AMD64Move {
         }
     }
 
-    public static final class CompressPointerOp extends PointerCompressionOp {
+    public static class CompressPointerOp extends PointerCompressionOp {
         public static final LIRInstructionClass<CompressPointerOp> TYPE = LIRInstructionClass.create(CompressPointerOp.class);
 
-        public CompressPointerOp(AllocatableValue result, AllocatableValue input, AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
-            super(TYPE, result, input, baseRegister, encoding, nonNull, lirKindTool);
+        public CompressPointerOp(AllocatableValue result, Value input, AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
+            this(TYPE, result, input, baseRegister, encoding, nonNull, lirKindTool);
+        }
+
+        protected CompressPointerOp(LIRInstructionClass<? extends PointerCompressionOp> type, AllocatableValue result, Value input,
+                        AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
+
+            super(type, result, input, baseRegister, encoding, nonNull, lirKindTool);
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             move(lirKindTool.getObjectKind(), crb, masm);
 
-            Register resReg = getResultRegister();
+            Register resReg = asRegister(getResult());
             if (hasBase(crb)) {
                 Register baseReg = getBaseRegister();
                 if (!nonNull) {
@@ -825,18 +836,24 @@ public class AMD64Move {
         }
     }
 
-    public static final class UncompressPointerOp extends PointerCompressionOp {
+    public static class UncompressPointerOp extends PointerCompressionOp {
         public static final LIRInstructionClass<UncompressPointerOp> TYPE = LIRInstructionClass.create(UncompressPointerOp.class);
 
-        public UncompressPointerOp(AllocatableValue result, AllocatableValue input, AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
-            super(TYPE, result, input, baseRegister, encoding, nonNull, lirKindTool);
+        public UncompressPointerOp(AllocatableValue result, Value input, AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
+            this(TYPE, result, input, baseRegister, encoding, nonNull, lirKindTool);
+        }
+
+        protected UncompressPointerOp(LIRInstructionClass<? extends PointerCompressionOp> type, AllocatableValue result, Value input,
+                        AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
+
+            super(type, result, input, baseRegister, encoding, nonNull, lirKindTool);
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             move(lirKindTool.getNarrowOopKind(), crb, masm);
 
-            Register resReg = getResultRegister();
+            Register resReg = asRegister(getResult());
             int shift = getShift();
             if (shift != 0) {
                 masm.shlq(resReg, shift);
