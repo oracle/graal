@@ -142,7 +142,7 @@ Annotations
 Annotations of classes, methods, fields, ... that can be queried at run time.
 
 ### Support Status: Mostly supported
-Annotations on classes, i.e., `Class.getAnnotation()`, is fully supported. Annotations are objects in the native image heap, and annotation attributes are fields of these objects. Annotations on methods and fields are not supported, since the reflective `java.lang.reflect.Method` and `java.lang.reflect.Field` objects are not available.
+Annotations on classes, i.e., `Class.getAnnotation()`, is fully supported. Annotations are objects in the native image heap, and annotation attributes are fields of these objects. To use annotations on methods and fields, make them accessible (as `java.lang.reflect.Method` and `java.lang.reflect.Field`) via reflection configuration file (see [Reflection](#Reflection) above).
 
 Static Initializers
 -------------------
