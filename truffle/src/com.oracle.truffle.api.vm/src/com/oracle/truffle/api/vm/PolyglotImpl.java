@@ -40,6 +40,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
@@ -768,6 +769,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public void legacyTckLeave(Object vm, Object prev) {
             throw new AssertionError("Should not reach here.");
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public <T> T getOrCreateRuntimeData(Object sourceVM, Supplier<T> constructor) {
+            final PolyglotEngineImpl engine = getEngine(sourceVM);
+            if (engine.runtimeData == null) {
+                engine.runtimeData = constructor.get();
+            }
+            return (T) engine.runtimeData;
         }
 
     }

@@ -100,4 +100,17 @@ final class GraalTVMCI extends TVMCI {
     public boolean isCloneUninitializedSupported(RootNode root) {
         return super.isCloneUninitializedSupported(root);
     }
+
+    /**
+     * Class used to store data used by the compiler in the Engine.
+     * Enables "global" compiler state per engine.
+     */
+    static class EngineData {
+        int splitLimit;
+        int splitCount;
+    }
+
+    EngineData getEngineData(RootNode rootNode) {
+        return getOrCreateRuntimeData(rootNode, EngineData::new);
+    }
 }

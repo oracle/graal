@@ -48,6 +48,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.Executor;
+import java.util.function.Supplier;
 
 import org.graalvm.options.OptionValues;
 
@@ -1891,6 +1892,11 @@ public class PolyglotEngine {
         @Override
         public void legacyTckLeave(Object vm, Object prev) {
             ((PolyglotEngine) vm).leave(prev);
+        }
+
+        @Override
+        public <T> T getOrCreateRuntimeData(Object sourceVM, Supplier<T> constructor) {
+            throw new UnsupportedOperationException("Not supported in legacy engine.");
         }
 
         @Override

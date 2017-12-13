@@ -48,7 +48,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
         super(target);
         assert target.getSourceCallTarget() == null;
         this.runtime = runtime;
-        this.splittingStrategy = new DefaultTruffleSplittingStrategy(this);
+        this.splittingStrategy = new DefaultTruffleSplittingStrategy(this, runtime.getTvmci());
     }
 
     @Override

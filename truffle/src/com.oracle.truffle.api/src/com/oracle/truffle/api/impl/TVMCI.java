@@ -35,6 +35,8 @@ import com.oracle.truffle.api.impl.Accessor.InstrumentSupport;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
+import java.util.function.Supplier;
+
 /**
  * An interface between Truffle API and hosting virtual machine. Not interesting for regular Truffle
  * API users. Acronym for Truffle Virtual Machine Compiler Interface.
@@ -233,4 +235,17 @@ public abstract class TVMCI {
         }
     }
 
+    private static volatile Object fallbackEngineData;
+
+    @SuppressWarnings("unchecked")
+    protected final <T> T getOrCreateRuntimeData(RootNode rootNode, Supplier<T> constructor) {
+        Object sourceVM = Accessor.nodesAccess().getSourceVM(rootNode);
+        if (sourceVM == null) {
+            if (fallbackEngineData == null) {
+                fallbackEngineData = constructor.get();
+            }
+            return (T) fallbackEngineData;
+        }
+        return Accessor.engineAccess().getOrCreateRuntimeData(sourceVM, constructor);
+    }
 }
