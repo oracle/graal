@@ -56,6 +56,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
+import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
@@ -79,7 +80,8 @@ public final class LLVMParserRuntime {
     private static final Comparator<Pair<Integer, ?>> ASCENDING_PRIORITY = (p1, p2) -> p1.getFirst() >= p2.getFirst() ? 1 : -1;
     private static final Comparator<Pair<Integer, ?>> DESCENDING_PRIORITY = (p1, p2) -> p1.getFirst() < p2.getFirst() ? 1 : -1;
 
-    public static LLVMParserResult parse(Source source, String libraryName, BitcodeParserResult parserResult, LLVMLanguage language, LLVMContext context, NodeFactory nodeFactory) {
+    public static LLVMParserResult parse(Source source, ExternalLibrary library, BitcodeParserResult parserResult, LLVMLanguage language, LLVMContext context,
+                    NodeFactory nodeFactory) {
         ModelModule model = parserResult.getModel();
         StackAllocation stack = parserResult.getStackAllocation();
         LLVMPhiManager phiManager = parserResult.getPhis();
@@ -92,7 +94,7 @@ public final class LLVMParserRuntime {
 
         DataLayoutConverter.DataSpecConverterImpl targetDataLayout = DataLayoutConverter.getConverter(layout.getDataLayout());
         context.setDataLayoutConverter(targetDataLayout);
-        LLVMParserRuntime runtime = new LLVMParserRuntime(source, libraryName, language, context, stack, nodeFactory, module.getAliases());
+        LLVMParserRuntime runtime = new LLVMParserRuntime(source, library, language, context, stack, nodeFactory, module.getAliases());
 
         runtime.initializeFunctions(phiManager, labels, module.getFunctions());
 
@@ -140,7 +142,7 @@ public final class LLVMParserRuntime {
     }
 
     private final Source source;
-    private final String libraryName;
+    private final ExternalLibrary library;
     private final LLVMLanguage language;
     private final LLVMContext context;
     private final StackAllocation stack;
@@ -149,10 +151,10 @@ public final class LLVMParserRuntime {
     private final List<LLVMExpressionNode> deallocations;
     private final LLVMScope scope;
 
-    private LLVMParserRuntime(Source source, String libraryName, LLVMLanguage language, LLVMContext context, StackAllocation stack, NodeFactory nodeFactory,
+    private LLVMParserRuntime(Source source, ExternalLibrary library, LLVMLanguage language, LLVMContext context, StackAllocation stack, NodeFactory nodeFactory,
                     Map<GlobalAlias, SymbolImpl> aliases) {
         this.source = source;
-        this.libraryName = libraryName;
+        this.library = library;
         this.context = context;
         this.stack = stack;
         this.nodeFactory = nodeFactory;
@@ -162,19 +164,37 @@ public final class LLVMParserRuntime {
         this.scope = LLVMScope.createFileScope(context);
     }
 
-    public String getLibraryName() {
-        return libraryName;
+    public ExternalLibrary getLibrary() {
+        return library;
     }
 
     private void initializeFunctions(LLVMPhiManager phiManager, LLVMLabelList labels, List<FunctionDefinition> functions) {
         for (FunctionDefinition function : functions) {
             String functionName = function.getName();
             LLVMFunctionDescriptor functionDescriptor = scope.lookupOrCreateFunction(context, functionName, !Linkage.isFileLocal(function.getLinkage()),
-                            index -> LLVMFunctionDescriptor.createDescriptor(context, libraryName, functionName, function.getType(), index));
+                            index -> LLVMFunctionDescriptor.createDescriptor(context, library, functionName, function.getType(), index));
             LazyToTruffleConverterImpl lazyConverter = new LazyToTruffleConverterImpl(this, context, nodeFactory, function, source, stack.getFrame(functionName), phiManager.getPhiMap(functionName),
                             labels.labels(functionName));
-            functionDescriptor.declareInSulong(lazyConverter, Linkage.isWeak(function.getLinkage()));
+
+            boolean replaceExistingFunction = checkReplaceExistingFunction(functionName, functionDescriptor);
+            functionDescriptor.declareInSulong(lazyConverter, Linkage.isWeak(function.getLinkage()), replaceExistingFunction);
         }
+    }
+
+    private boolean checkReplaceExistingFunction(String functionName, LLVMFunctionDescriptor functionDescriptor) {
+        if (functionDescriptor.getLibrary().equals(library.getLibraryToReplace())) {
+            // We already have a symbol defined in another library but now we are overwriting it. We
+            // rename the already existing symbol by prefixing it with "__libName_", e.g.,
+            // "@__clock_gettime" would be renamed to "@__libc___clock_gettime".
+            assert functionName.charAt(0) == '@';
+            String newFunctionName = "@__" + functionDescriptor.getLibrary().getName() + "_" + functionName.substring(1);
+            LLVMFunctionDescriptor libcFunctionDescriptor = scope.lookupOrCreateFunction(functionDescriptor.getContext(), newFunctionName, true,
+                            index -> LLVMFunctionDescriptor.createDescriptor(functionDescriptor.getContext(), functionDescriptor.getLibrary(), newFunctionName, functionDescriptor.getType(),
+                                            index));
+            libcFunctionDescriptor.declareInSulong(functionDescriptor.getFunction(), false);
+            return true;
+        }
+        return false;
     }
 
     private LLVMExpressionNode[] createGlobalVariableInitializationNodes(LLVMSymbolReadResolver symbolResolver, List<GlobalValueSymbol> globals) {

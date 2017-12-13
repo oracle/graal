@@ -43,6 +43,7 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext.FunctionFactory;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
@@ -61,7 +62,8 @@ public final class LLVMScope implements TruffleObject {
     public static synchronized LLVMScope createGlobalScope(LLVMContext context) {
         LLVMScope scope = new LLVMScope(null);
         scope.lookupOrCreateFunction(context, "<zero function>", true,
-                        idx -> LLVMFunctionDescriptor.createDescriptor(context, "default", "<zero function>", new FunctionType(MetaType.UNKNOWN, new Type[0], false), idx));
+                        idx -> LLVMFunctionDescriptor.createDescriptor(context, new ExternalLibrary("default"), "<zero function>", new FunctionType(MetaType.UNKNOWN, new Type[0], false),
+                                        idx));
         return scope;
     }
 

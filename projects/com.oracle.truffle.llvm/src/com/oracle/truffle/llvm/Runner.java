@@ -39,7 +39,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.List;
-import java.util.function.Consumer;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -59,6 +58,7 @@ import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -74,11 +74,11 @@ public final class Runner {
     static final class SulongLibrary implements TruffleObject {
 
         private final LLVMContext context;
-        private final String libraryName;
+        private final ExternalLibrary library;
 
-        private SulongLibrary(LLVMContext context, String libraryName) {
+        private SulongLibrary(LLVMContext context, ExternalLibrary library) {
             this.context = context;
-            this.libraryName = libraryName;
+            this.library = library;
         }
 
         @Override
@@ -116,7 +116,7 @@ public final class Runner {
             LLVMContext context = boxed.context;
             if (context.getGlobalScope().functionExists(name)) {
                 LLVMFunctionDescriptor d = context.getGlobalScope().getFunctionDescriptor(name);
-                if (d.getLibraryName().equals(boxed.libraryName)) {
+                if (d.getLibrary().equals(boxed.library)) {
                     return d;
                 }
             }
@@ -136,31 +136,40 @@ public final class Runner {
         this.nodeFactory = nodeFactory;
     }
 
-    public CallTarget parse(LLVMLanguage language, LLVMContext context, Source code) throws IOException {
+    private CallTarget parse(LLVMLanguage language, LLVMContext context, ExternalLibrary library) throws IOException {
+        File libFile = library.getPath().toFile();
+        Source source = Source.newBuilder(libFile).build();
+        ByteBuffer bytes = read(library.getPath());
+        return parse(language, context, source, library, bytes);
+    }
+
+    public CallTarget parse(LLVMLanguage language, LLVMContext context, Source source) throws IOException {
+        ByteBuffer bytes;
+        ExternalLibrary library;
+        if (source.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE)) {
+            ByteBuffer buffer = Charset.forName("ascii").newEncoder().encode(CharBuffer.wrap(source.getCharacters()));
+            bytes = Base64.getDecoder().decode(buffer);
+            library = new ExternalLibrary("<STREAM>");
+        } else if (source.getMimeType().equals(LLVMLanguage.LLVM_SULONG_TYPE)) {
+            NativeLibraryDescriptor descriptor = Parser.parseLibraryDescriptor(source.getCharacters());
+            String filename = descriptor.getFilename();
+            bytes = read(filename);
+            library = new ExternalLibrary(Paths.get(filename), null);
+        } else if (source.getPath() != null) {
+            bytes = read(source.getPath());
+            library = new ExternalLibrary(Paths.get(source.getPath()), null);
+        } else {
+            throw new IllegalStateException();
+        }
+
+        return parse(language, context, source, library, bytes);
+    }
+
+    private CallTarget parse(LLVMLanguage language, LLVMContext context, Source code, ExternalLibrary library, ByteBuffer bytes) throws IOException {
         try {
-
-            CallTarget mainFunction = null;
-            ByteBuffer bytes;
-            String libraryName = null;
-
-            if (code.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE)) {
-                ByteBuffer buffer = Charset.forName("ascii").newEncoder().encode(CharBuffer.wrap(code.getCharacters()));
-                bytes = Base64.getDecoder().decode(buffer);
-                libraryName = "<STREAM>";
-            } else if (code.getMimeType().equals(LLVMLanguage.LLVM_SULONG_TYPE)) {
-                NativeLibraryDescriptor descriptor = Parser.parseLibraryDescriptor(code.getCharacters());
-                String filename = descriptor.getFilename();
-                libraryName = filename;
-                bytes = read(filename);
-            } else if (code.getPath() != null) {
-                libraryName = code.getPath();
-                bytes = read(code.getPath());
-            } else {
-                throw new IllegalStateException();
-            }
-
-            assert libraryName != null;
             assert bytes != null;
+            assert library != null;
+
             if (!LLVMScanner.isSupportedFile(bytes)) {
                 throw new IOException("Unsupported file: " + code.toString());
             }
@@ -169,12 +178,12 @@ public final class Runner {
             context.addLibraryPaths(bitcodeParserResult.getLibraryPaths());
             context.addExternalLibraries(bitcodeParserResult.getLibraries());
             parseDynamicBitcodeLibraries(language, context);
-            LLVMParserResult parserResult = parseBitcodeFile(code, libraryName, bitcodeParserResult, language, context);
-            mainFunction = parserResult.getMainCallTarget();
+            LLVMParserResult parserResult = parseBitcodeFile(code, library, bitcodeParserResult, language, context);
+            CallTarget mainFunction = parserResult.getMainCallTarget();
             if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
                 mainFunction = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
             } else if (mainFunction == null) {
-                mainFunction = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(new SulongLibrary(context, libraryName)));
+                mainFunction = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(new SulongLibrary(context, library)));
             }
             handleParserResult(context, parserResult);
             return mainFunction;
@@ -184,36 +193,28 @@ public final class Runner {
     }
 
     private static ByteBuffer read(String filename) {
+        return read(Paths.get(filename));
+    }
+
+    private static ByteBuffer read(Path path) {
         try {
-            return ByteBuffer.wrap(Files.readAllBytes(Paths.get(filename)));
+            return ByteBuffer.wrap(Files.readAllBytes(path));
         } catch (IOException ignore) {
             return ByteBuffer.allocate(0);
         }
     }
 
-    private static void visitBitcodeLibraries(LLVMContext context, Consumer<Source> sharedLibraryConsumer) throws IOException {
-        List<Path> externalLibraries = context.getExternalLibraries(p -> p.toString().endsWith(".bc"));
-        for (Path p : externalLibraries) {
-            addLibrary(p, sharedLibraryConsumer);
-        }
-    }
-
-    private static void addLibrary(Path s, Consumer<Source> sharedLibraryConsumer) throws IOException {
-        File lib = s.toFile();
-        Source source = Source.newBuilder(lib).build();
-        sharedLibraryConsumer.accept(source);
-    }
-
-    private void parseDynamicBitcodeLibraries(LLVMLanguage language, LLVMContext context) throws IOException {
+    private void parseDynamicBitcodeLibraries(LLVMLanguage language, LLVMContext context) {
         if (!context.bcLibrariesLoaded()) {
             context.setBcLibrariesLoaded();
-            visitBitcodeLibraries(context, source -> {
+            List<ExternalLibrary> externalLibraries = context.getExternalLibraries(lib -> lib.getPath().toString().endsWith(".bc"));
+            for (ExternalLibrary lib : externalLibraries) {
                 try {
-                    new Runner(nodeFactory).parse(language, context, source);
+                    new Runner(nodeFactory).parse(language, context, lib);
                 } catch (Throwable t) {
-                    throw new RuntimeException("Error while trying to parse dynamic library " + source.getName(), t);
+                    throw new RuntimeException("Error while trying to parse dynamic library " + lib.getName(), t);
                 }
-            });
+            }
         }
     }
 
@@ -253,7 +254,7 @@ public final class Runner {
         context.getGlobalsStack().free();
     }
 
-    private LLVMParserResult parseBitcodeFile(Source source, String libraryName, BitcodeParserResult bitcodeParserResult, LLVMLanguage language, LLVMContext context) {
-        return LLVMParserRuntime.parse(source, libraryName, bitcodeParserResult, language, context, nodeFactory);
+    private LLVMParserResult parseBitcodeFile(Source source, ExternalLibrary library, BitcodeParserResult bitcodeParserResult, LLVMLanguage language, LLVMContext context) {
+        return LLVMParserRuntime.parse(source, library, bitcodeParserResult, language, context, nodeFactory);
     }
 }
