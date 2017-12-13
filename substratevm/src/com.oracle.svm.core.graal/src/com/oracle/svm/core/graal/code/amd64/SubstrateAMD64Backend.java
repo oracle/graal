@@ -361,7 +361,7 @@ public class SubstrateAMD64Backend extends Backend {
         @Override
         public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
             Variable result = newVariable(getLIRKindTool().getNarrowOopKind());
-            append(new AMD64Move.CompressPointer(result, asAllocatable(pointer), getHeapBaseRegister().asValue(), encoding, nonNull, getLIRKindTool()));
+            append(new AMD64Move.CompressPointerOp(result, asAllocatable(pointer), getHeapBaseRegister().asValue(), encoding, nonNull, getLIRKindTool()));
             return result;
         }
 
@@ -369,7 +369,7 @@ public class SubstrateAMD64Backend extends Backend {
         public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
             assert pointer.getValueKind(LIRKind.class).getPlatformKind() == getLIRKindTool().getNarrowOopKind().getPlatformKind();
             Variable result = newVariable(getLIRKindTool().getObjectKind());
-            append(new AMD64Move.UncompressPointer(result, asAllocatable(pointer), getHeapBaseRegister().asValue(), encoding, nonNull, getLIRKindTool()));
+            append(new AMD64Move.UncompressPointerOp(result, asAllocatable(pointer), getHeapBaseRegister().asValue(), encoding, nonNull, getLIRKindTool()));
             return result;
         }
 

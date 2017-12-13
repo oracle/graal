@@ -755,7 +755,7 @@ public class AMD64Move {
         }
     }
 
-    public abstract static class Pointer extends AMD64LIRInstruction {
+    public abstract static class PointerCompressionOp extends AMD64LIRInstruction {
         protected final LIRKindTool lirKindTool;
         protected final CompressEncoding encoding;
         protected final boolean nonNull;
@@ -764,8 +764,9 @@ public class AMD64Move {
         @Use({REG}) private AllocatableValue input;
         @Alive({REG, ILLEGAL}) private AllocatableValue baseRegister;
 
-        protected Pointer(LIRInstructionClass<? extends Pointer> type, AllocatableValue result, AllocatableValue input, AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull,
-                        LIRKindTool lirKindTool) {
+        protected PointerCompressionOp(LIRInstructionClass<? extends PointerCompressionOp> type, AllocatableValue result, AllocatableValue input,
+                        AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
+
             super(type);
             this.result = result;
             this.input = input;
@@ -796,10 +797,10 @@ public class AMD64Move {
         }
     }
 
-    public static final class CompressPointer extends Pointer {
-        public static final LIRInstructionClass<CompressPointer> TYPE = LIRInstructionClass.create(CompressPointer.class);
+    public static final class CompressPointerOp extends PointerCompressionOp {
+        public static final LIRInstructionClass<CompressPointerOp> TYPE = LIRInstructionClass.create(CompressPointerOp.class);
 
-        public CompressPointer(AllocatableValue result, AllocatableValue input, AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
+        public CompressPointerOp(AllocatableValue result, AllocatableValue input, AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
             super(TYPE, result, input, baseRegister, encoding, nonNull, lirKindTool);
         }
 
@@ -824,10 +825,10 @@ public class AMD64Move {
         }
     }
 
-    public static final class UncompressPointer extends Pointer {
-        public static final LIRInstructionClass<UncompressPointer> TYPE = LIRInstructionClass.create(UncompressPointer.class);
+    public static final class UncompressPointerOp extends PointerCompressionOp {
+        public static final LIRInstructionClass<UncompressPointerOp> TYPE = LIRInstructionClass.create(UncompressPointerOp.class);
 
-        public UncompressPointer(AllocatableValue result, AllocatableValue input, AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
+        public UncompressPointerOp(AllocatableValue result, AllocatableValue input, AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
             super(TYPE, result, input, baseRegister, encoding, nonNull, lirKindTool);
         }
 
