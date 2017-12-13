@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.130.1",
+  "mxversion" : "5.133.0",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -273,7 +273,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.interop" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
-      "variants" : ['O0_MEM2REG'],
+      "variants" : ["O0_MEM2REG"],
       "buildRef" : False,
       "buildEnv" : {
         "CPPFLAGS" : "-I<sulong_include>",
@@ -282,7 +282,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.nfi" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
-      "variants" : ['O0_MEM2REG'],
+      "variants" : ["O0_MEM2REG"],
       "buildRef" : False,
       "buildEnv" : {
         "CPPFLAGS" : "-I<sulong_include>",
@@ -291,7 +291,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.sulong" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
-      "variants" : ['O0', 'O0_MISC_OPTS', 'O1', 'O2', 'O3', 'gcc_O0'],
+      "variants" : ["O0", "O0_MISC_OPTS", "O1", "O2", "O3", "gcc_O0"],
       "buildEnv" : {
         "LDFLAGS" : "-lm",
         "OS" : "<os>",
@@ -300,7 +300,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.sulongcpp" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
-      "variants" : ['O0', 'O0_MISC_OPTS'],
+      "variants" : ["O0", "O0_MISC_OPTS"],
       "buildEnv" : {
         "OS" : "<os>",
       },
@@ -308,7 +308,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.libc" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
-      "variants" : ['O0'],
+      "variants" : ["O0"],
       "buildEnv" : {
         "LDFLAGS" : "-lm",
         "OS" : "<os>",
