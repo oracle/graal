@@ -29,12 +29,8 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 import com.oracle.truffle.api.nodes.RootNode;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplitting;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplittingLimitGrowth;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplittingMaxCalleeSize;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplittingMaxNumberOfSplits;
 
 final class DefaultTruffleSplittingStrategy {
 
@@ -53,14 +49,14 @@ final class DefaultTruffleSplittingStrategy {
     }
 
     static void forceSplitting(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
-        if (!canSplit(call)) {
+        if (!canSplit(call, tvmci)) {
             return;
         }
         incrementSplitCout(tvmci, call);
         call.split();
     }
 
-    private static boolean canSplit(OptimizedDirectCallNode call) {
+    private static boolean canSplit(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
         if (call.isCallTargetCloned()) {
             return false;
         }
@@ -70,11 +66,15 @@ final class DefaultTruffleSplittingStrategy {
         if (!call.isCallTargetCloningAllowed()) {
             return false;
         }
+        final GraalTVMCI.EngineData engineData = tvmci.getEngineData(call.getRootNode());
+        if (engineData.splitCount > engineData.splitLimit) {
+            return false;
+        }
         return true;
     }
 
     private static boolean shouldSplit(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
-        if (!canSplit(call)) {
+        if (!canSplit(call, tvmci)) {
             return false;
         }
 
@@ -97,10 +97,6 @@ final class DefaultTruffleSplittingStrategy {
 
         // Disable splitting if it will cause a deep split-only recursion
         if (isRecursiveSplit(call)) {
-            return false;
-        }
-        final GraalTVMCI.EngineData engineData = tvmci.getEngineData(call.getRootNode());
-        if (engineData.splitCount > engineData.splitLimit) {
             return false;
         }
 
