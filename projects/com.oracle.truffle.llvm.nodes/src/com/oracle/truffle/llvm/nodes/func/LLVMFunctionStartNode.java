@@ -115,6 +115,10 @@ public class LLVMFunctionStartNode extends RootNode {
         return debugInformation.originalName;
     }
 
+    public String getBcName() {
+        return name;
+    }
+
     public Source getBcSource() {
         return debugInformation.bcSource;
     }

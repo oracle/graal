@@ -213,6 +213,7 @@ public final class SourceModel {
         private void addFragment(ValueFragment fragment) {
             if (fragments == null) {
                 fragments = new ArrayList<>();
+                addValue();
             }
 
             if (!fragments.contains(fragment)) {

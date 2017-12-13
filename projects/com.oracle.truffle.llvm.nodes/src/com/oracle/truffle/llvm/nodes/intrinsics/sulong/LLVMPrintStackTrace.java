@@ -104,7 +104,7 @@ public abstract class LLVMPrintStackTrace extends LLVMIntrinsic {
             location = block.getSourceLocation();
         }
         if (location != null) {
-            stackTrace.addStackTraceElement(f.getOriginalName(), location, f.getName(), f.getBcSource().getName(), blockName(block));
+            stackTrace.addStackTraceElement(f.getOriginalName(), location, f.getBcName(), f.getBcSource().getName(), blockName(block));
             return;
         }
 
@@ -114,10 +114,10 @@ public abstract class LLVMPrintStackTrace extends LLVMIntrinsic {
         }
 
         if (s == null) {
-            stackTrace.addStackTraceElement(f.getName(), f.getBcSource().getName(), blockName(block));
+            stackTrace.addStackTraceElement(f.getBcName(), f.getBcSource().getName(), blockName(block));
         } else {
             location = LLVMSourceLocation.createUnknown(s);
-            stackTrace.addStackTraceElement(f.getOriginalName(), location, f.getName(), f.getBcSource().getName(), blockName(block));
+            stackTrace.addStackTraceElement(f.getOriginalName(), location, f.getBcName(), f.getBcSource().getName(), blockName(block));
         }
     }
 
