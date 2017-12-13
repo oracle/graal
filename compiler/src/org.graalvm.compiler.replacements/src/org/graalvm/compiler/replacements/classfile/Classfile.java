@@ -47,7 +47,7 @@ public class Classfile {
     private final List<ClassfileBytecode> codeAttributes;
 
     private static final int MAJOR_VERSION_JAVA7 = 51;
-    private static final int MAJOR_VERSION_JAVA9 = 53;
+    private static final int MAJOR_VERSION_JAVA10 = 54;
     private static final int MAGIC = 0xCAFEBABE;
 
     /**
@@ -65,7 +65,7 @@ public class Classfile {
 
         int minor = stream.readUnsignedShort();
         int major = stream.readUnsignedShort();
-        if (major < MAJOR_VERSION_JAVA7 || major > MAJOR_VERSION_JAVA9) {
+        if (major < MAJOR_VERSION_JAVA7 || major > MAJOR_VERSION_JAVA10) {
             throw new UnsupportedClassVersionError("Unsupported class file version: " + major + "." + minor);
         }
 
