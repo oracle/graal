@@ -66,6 +66,7 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -209,6 +210,42 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         }
         RootCallTarget afterTarget = getContextReference().get().afterTarget;
         return Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(this, "", outer, afterTarget, node));
+    }
+
+    @Override
+    protected ExecutableNode parse(InlineParsingRequest request) throws Exception {
+        Source code = request.getSource();
+        Node location = request.getLocation();
+        if (location == null) {
+            throw new IllegalArgumentException("Location must not be null.");
+        }
+        BaseNode node;
+        try {
+            node = parse(code);
+        } catch (LanguageError e) {
+            throw new IOException(e);
+        }
+        return new InlineExecutableNode(this, node);
+    }
+
+    protected final ExecutableNode parseOriginal(InlineParsingRequest request) throws Exception {
+        return super.parse(request);
+    }
+
+    private static class InlineExecutableNode extends ExecutableNode {
+
+        @Child private BaseNode node;
+
+        InlineExecutableNode(TruffleLanguage<?> language, BaseNode node) {
+            super(language);
+            this.node = node;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return node.execute(frame);
+        }
+
     }
 
     public BaseNode parse(Source code) {

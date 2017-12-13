@@ -237,11 +237,36 @@ public abstract class Node implements NodeInterface, Cloneable {
         if (newChild == this) {
             throw new IllegalStateException("The parent of a node can never be the node itself.");
         }
+        assert checkSameLanguages(newChild);
         newChild.parent = this;
         if (TruffleOptions.TraceASTJSON) {
             dump(this, newChild, null);
         }
         NodeUtil.adoptChildrenHelper(newChild);
+    }
+
+    private boolean checkSameLanguages(final Node newChild) {
+        if (newChild instanceof ExecutableNode && !(newChild instanceof RootNode)) {
+            RootNode root = getRootNode();
+            if (root == null) {
+                throw new IllegalStateException("Cannot adopt ExecutableNode " + newChild + " as a child of node without a root.");
+            }
+            LanguageInfo pl = root.getLanguageInfo();
+            LanguageInfo cl = ((ExecutableNode) newChild).getLanguageInfo();
+            if (cl != pl) {
+                throw new IllegalArgumentException("Can not adopt ExecutableNode under a different language." +
+                                " Parent " + this + " is of " + langId(pl) + ", child " + newChild + " is of " + langId(cl));
+            }
+        }
+        return true;
+    }
+
+    private static String langId(LanguageInfo languageInfo) {
+        if (languageInfo == null) {
+            return null;
+        } else {
+            return languageInfo.getId();
+        }
     }
 
     private void adoptUnadoptedHelper(final Node newChild) {

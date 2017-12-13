@@ -47,6 +47,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -254,6 +255,8 @@ public abstract class Accessor {
         public abstract LanguageInfo getLegacyLanguageInfo(Object vm, @SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> languageClass);
 
         public abstract CallTarget parse(Env env, Source code, Node context, String... argumentNames);
+
+        public abstract ExecutableNode parseInline(Env env, Source code, Node context, MaterializedFrame frame);
 
         public abstract String toStringIfVisible(Env env, Object obj, boolean checkVisibility);
 

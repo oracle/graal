@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import java.io.IOException;
 import java.util.List;
 
 import org.graalvm.options.OptionDescriptor;
@@ -30,9 +29,7 @@ import org.graalvm.options.OptionDescriptors;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 
@@ -230,16 +227,6 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         }
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-        if (wrapper) {
-            return delegate.evalInContext(source, node, mFrame);
-        } else {
-            return super.evalInContext(source, node, mFrame);
-        }
-    }
-
     @Override
     protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
         if (wrapper) {
@@ -249,13 +236,12 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         }
     }
 
-    @SuppressWarnings("deprecation")
     @Override
-    protected CallTarget parse(Source code, Node context, String... argumentNames) throws Exception {
+    protected ExecutableNode parse(InlineParsingRequest request) throws Exception {
         if (wrapper) {
-            return delegate.parse(code, context, argumentNames);
+            return delegate.parse(request);
         } else {
-            return super.parse(code, context, argumentNames);
+            return super.parse(request);
         }
     }
 

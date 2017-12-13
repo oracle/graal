@@ -48,6 +48,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Truffle;
@@ -55,6 +56,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationEvent;
 import com.oracle.truffle.api.instrumentation.AllocationEventFilter;
+import com.oracle.truffle.api.instrumentation.AllocationListener;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
@@ -66,10 +68,11 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.instrumentation.AllocationListener;
+
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotException;
@@ -637,6 +640,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             // Not to get error: declares service, but doesn't register it
             env.registerService(new Object());
             env.getInstrumenter().attachFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventNodeFactory() {
+                @SuppressWarnings("deprecation")
                 public ExecutionEventNode create(EventContext context) {
 
                     final CallTarget target;
@@ -673,6 +677,213 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             });
 
         }
+    }
+
+    /*
+     * Test that inline parsing and executing works.
+     */
+    @Test
+    public void testEnvParseInline() throws IOException {
+        TestEnvParse1.onExpression = 0;
+        TestEnvParse1.onStatement = 0;
+
+        assureEnabled(engine.getInstruments().get("testEnvParseInline"));
+        run("STATEMENT");
+
+        Assert.assertEquals(1, TestEnvParseInline.onExpression);
+        Assert.assertEquals(1, TestEnvParseInline.onStatement);
+
+        run("STATEMENT");
+
+        Assert.assertEquals(2, TestEnvParseInline.onExpression);
+        Assert.assertEquals(2, TestEnvParseInline.onStatement);
+    }
+
+    @Registration(name = "", version = "", id = "testEnvParseInline", services = Object.class)
+    public static class TestEnvParseInline extends TruffleInstrument {
+
+        static int onExpression = 0;
+        static int onStatement = 0;
+
+        @Override
+        protected void onCreate(final Env env) {
+            // Not to get error: declares service, but doesn't register it
+            env.registerService(new Object());
+            env.getInstrumenter().attachFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventNodeFactory() {
+                @Override
+                public ExecutionEventNode create(EventContext context) {
+
+                    final ExecutableNode exec;
+                    final ExecutableNode execOtherLang;
+
+                    // Try to parse a buggy source:
+                    try {
+                        env.parseInline(
+                                        com.oracle.truffle.api.source.Source.newBuilder("some garbage").name("unknown").language(InstrumentationTestLanguage.ID).build(),
+                                        context.getInstrumentedNode(), null);
+                        Assert.fail("Should not be able to parse a garbage");
+                    } catch (Exception e) {
+                        // O.K.
+                        assertTrue(e.getMessage(), e.getMessage().contains("Illegal tag \"some\""));
+                    }
+                    boolean otherLangSuccess = false;
+                    // Try to parse a wrong language:
+                    try {
+                        env.parseInline(
+                                        com.oracle.truffle.api.source.Source.newBuilder("EXPRESSION").name("unknown").language(TestOtherLanguageParseInline.ID).build(),
+                                        context.getInstrumentedNode(), null);
+                        otherLangSuccess = true;
+                    } catch (AssertionError e) {
+                        // O.K.
+                    }
+                    assertFalse(otherLangSuccess);
+                    TruffleLanguage<?> fakeOtherLanguage;
+                    try {
+                        fakeOtherLanguage = (TruffleLanguage<?>) env.parse(
+                                        com.oracle.truffle.api.source.Source.newBuilder("EXPRESSION").name("unknown").language(TestOtherLanguageParseInline.ID).build()).call();
+                    } catch (IOException e) {
+                        throw new AssertionError(e.getLocalizedMessage(), e);
+                    }
+                    // Create an ExecutableNode of a wrong language:
+                    execOtherLang = new ExecutableNode(fakeOtherLanguage) {
+                        @Override
+                        public Object execute(VirtualFrame frame) {
+                            return "";
+                        }
+                    };
+                    // Do the correct inline parsing finally:
+                    try {
+                        exec = env.parseInline(
+                                        com.oracle.truffle.api.source.Source.newBuilder("EXPRESSION").name("unknown").language(InstrumentationTestLanguage.ID).build(),
+                                        context.getInstrumentedNode(), null);
+                    } catch (Exception e) {
+                        throw new AssertionError(e.getLocalizedMessage(), e);
+                    }
+
+                    return new ExecutionEventNode() {
+
+                        @Child private ExecutableNode exeNode;
+
+                        @Override
+                        public void onEnter(VirtualFrame frame) {
+                            onStatement++;
+                            if (exeNode == null) {
+                                CompilerDirectives.transferToInterpreterAndInvalidate();
+                                try {
+                                    insert(execOtherLang);
+                                    Assert.fail("Should not be able to insert an executable node of a different language!");
+                                } catch (IllegalArgumentException ex) {
+                                    // O.K.
+                                }
+                                exeNode = insert(exec);
+                                notifyInserted(exeNode);
+                            }
+                            exeNode.execute(frame);
+                        }
+
+                    };
+                }
+            });
+
+            env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
+
+                @Override
+                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                }
+
+                @Override
+                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+                }
+
+                @Override
+                public void onEnter(EventContext context, VirtualFrame frame) {
+                    onExpression++;
+                }
+            });
+
+        }
+    }
+
+    @TruffleLanguage.Registration(id = TestOtherLanguageParseInline.ID, name = "", version = "", mimeType = "testOtherLanguageParseInline")
+    public static class TestOtherLanguageParseInline extends InstrumentationTestLanguage {
+
+        static final String ID = "testOtherParseInline-lang";
+
+        @Override
+        protected ExecutableNode parse(InlineParsingRequest request) throws Exception {
+            return new ExecutableNode(this) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return "Parsed by " + ID;
+                }
+            };
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            return new CallTarget() {
+                @Override
+                public Object call(Object... arguments) {
+                    return TestOtherLanguageParseInline.this;
+                }
+            };
+        }
+
+    }
+
+    /*
+     * Test that inline parsing returns null by default.
+     */
+    @Test
+    public void testParseInlineDefault() throws IOException {
+        TestParseInlineDefault.executableNode = null;
+
+        assureEnabled(engine.getInstruments().get("testParseInlineDefault"));
+        Source source = Source.create(TestLanguageNoParseInline.ID, "STATEMENT");
+        run(source);
+
+        assertNull(TestParseInlineDefault.executableNode);
+
+        run(source);
+
+        assertNull(TestParseInlineDefault.executableNode);
+    }
+
+    @Registration(name = "", version = "", id = "testParseInlineDefault", services = Object.class)
+    public static class TestParseInlineDefault extends TruffleInstrument {
+
+        static ExecutableNode executableNode;
+
+        @Override
+        protected void onCreate(final Env env) {
+            // Not to get error: declares service, but doesn't register it
+            env.registerService(new Object());
+            env.getInstrumenter().attachFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventNodeFactory() {
+                @Override
+                public ExecutionEventNode create(EventContext context) {
+
+                    ExecutableNode parsedNode = env.parseInline(
+                                    com.oracle.truffle.api.source.Source.newBuilder("EXPRESSION").name("unknown").language(TestLanguageNoParseInline.ID).build(),
+                                    context.getInstrumentedNode(), null);
+                    executableNode = parsedNode;
+                    assertNull(parsedNode);
+                    return new ExecutionEventNode() {
+                    };
+                }
+            });
+        }
+    }
+
+    @TruffleLanguage.Registration(id = TestLanguageNoParseInline.ID, name = "", version = "", mimeType = "testLanguageNoParseInline")
+    public static class TestLanguageNoParseInline extends InstrumentationTestLanguage {
+
+        static final String ID = "testNoParseInline-lang";
+
+        @Override
+        protected ExecutableNode parse(InlineParsingRequest request) throws Exception {
+            return parseOriginal(request);
+        }
+
     }
 
     /*
