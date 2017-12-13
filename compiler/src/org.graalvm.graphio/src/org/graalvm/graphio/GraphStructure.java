@@ -118,7 +118,7 @@ public interface GraphStructure<G, N, C, P> {
 
     /**
      * Finds a node class for {@code node}.
-     * 
+     *
      * @param node an instance of node in this graph
      * @return the node's node class, never <code>null</code>
      */

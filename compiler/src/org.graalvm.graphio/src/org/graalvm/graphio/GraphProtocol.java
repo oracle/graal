@@ -142,7 +142,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
     /**
      * Attempts to recognize the provided object as a node. Used to encode it with
      * {@link #POOL_NODE} pool type.
-     * 
+     *
      * @param obj any object
      * @return <code>null</code> if it is not a node object, non-null otherwise
      */
@@ -159,7 +159,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
 
     /**
      * Returns the NodeClass for a given Node {@code obj}.
-     * 
+     *
      * @param obj instance of node
      * @return non-{@code null} instance of the node's class object
      */

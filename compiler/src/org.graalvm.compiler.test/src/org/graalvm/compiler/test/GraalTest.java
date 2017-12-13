@@ -400,7 +400,7 @@ public class GraalTest {
      * Gets a {@link DebugContext} object corresponding to {@code options}, creating a new one if
      * none currently exists.Debug contexts created by this method will have their
      * {@link DebugDumpHandler}s closed in {@link #afterTest()}.
-     * 
+     *
      * @param options currently active options
      * @param id identification of the compilation or {@code null}
      * @param method method to use for a proper description of the context or {@code null}
