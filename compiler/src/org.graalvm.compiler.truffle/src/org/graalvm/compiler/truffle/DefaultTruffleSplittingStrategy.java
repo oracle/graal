@@ -36,41 +36,31 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplitti
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplittingMaxCalleeSize;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplittingMaxNumberOfSplits;
 
-public final class DefaultTruffleSplittingStrategy implements TruffleSplittingStrategy {
-
-    private final OptimizedDirectCallNode call;
-    GraalTVMCI tvmci;
-
-    public DefaultTruffleSplittingStrategy(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
-        this.call = call;
-        this.tvmci = tvmci;
-    }
+final class DefaultTruffleSplittingStrategy {
 
     private static void incrementSplitCout(GraalTVMCI tvmci, OptimizedDirectCallNode call) {
         final GraalTVMCI.EngineData engineData = tvmci.getEngineData(call.getRootNode());
         engineData.splitCount++;
     }
 
-    @Override
-    public void beforeCall(Object[] arguments) {
+    static void beforeCall(OptimizedDirectCallNode call, Object[] arguments, GraalTVMCI tvmci) {
         if (call.getCallCount() == 2) {
-            if (shouldSplit()) {
+            if (shouldSplit(call, tvmci)) {
                 incrementSplitCout(tvmci, call);
                 call.split();
             }
         }
     }
 
-    @Override
-    public void forceSplitting() {
-        if (!canSplit()) {
+    static void forceSplitting(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
+        if (!canSplit(call)) {
             return;
         }
         incrementSplitCout(tvmci, call);
         call.split();
     }
 
-    private boolean canSplit() {
+    private static boolean canSplit(OptimizedDirectCallNode call) {
         if (call.isCallTargetCloned()) {
             return false;
         }
@@ -83,8 +73,8 @@ public final class DefaultTruffleSplittingStrategy implements TruffleSplittingSt
         return true;
     }
 
-    private boolean shouldSplit() {
-        if (!canSplit()) {
+    private static boolean shouldSplit(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
+        if (!canSplit(call)) {
             return false;
         }
 
