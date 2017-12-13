@@ -31,8 +31,6 @@ package com.oracle.truffle.llvm.parser;
 
 import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -45,29 +43,19 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.LLVMLivenessAnalysis.LLVMLivenessAnalysisResult;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
-import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute.Kind;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute.KnownAttribute;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.AllocateInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
-import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LazyToTruffleConverter;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugLocalAllocation;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
@@ -98,66 +86,18 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         this.labels = labels;
     }
 
-    private final class NotNullableVisitor implements InstructionVisitorAdapter, FunctionVisitor {
-
-        @Override
-        public void visit(InstructionBlock block) {
-            block.accept(this);
-        }
-
-        @Override
-        public void visit(VoidCallInstruction call) {
-            final SymbolImpl callTarget = call.getCallTarget();
-            if (callTarget instanceof FunctionDeclaration && "@llvm.dbg.declare".equals(((FunctionDeclaration) callTarget).getName())) {
-                if (call.getArgumentCount() < SourceModel.LLVM_DBG_DECLARE_ARGSIZE) {
-                    return;
-                }
-
-                FrameSlot frameSlot = null;
-                final SymbolImpl value = call.getArgument(SourceModel.LLVM_DBG_INTRINSICS_VALUE_ARGINDEX);
-                if (value instanceof AllocateInstruction) {
-                    frameSlot = frame.findFrameSlot(((AllocateInstruction) value).getName());
-                }
-
-                if (frameSlot == null) {
-                    return;
-                }
-
-                final SymbolImpl varDefSymbol = call.getArgument(SourceModel.LLVM_DBG_DECLARE_LOCALREF_ARGINDEX);
-                if (varDefSymbol instanceof SourceModel.Variable && ((SourceModel.Variable) varDefSymbol).isSingleDeclaration()) {
-                    final LLVMSourceSymbol symbol = ((SourceModel.Variable) varDefSymbol).getSymbol();
-                    final LLVMDebugLocalAllocation alloc = nodeFactory.createDebugLocalAllocation(frameSlot);
-                    notNullable.add(frameSlot);
-                    context.getSourceContext().registerLocalAllocation(symbol, alloc);
-                    ((SourceModel.Variable) varDefSymbol).addStaticAllocation();
-                }
-            }
-        }
-    }
-
-    private void updateNotNullable() {
-        if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
-            method.accept((FunctionVisitor) new NotNullableVisitor());
-        }
-    }
-
     @Override
     public RootCallTarget convert() {
         CompilerAsserts.neverPartOfCompilation();
 
-        final SourceModel.Function sourceFunction = method.getSourceFunction();
-        Collection<SourceModel.Variable> initDebugValues;
-        if (sourceFunction != null) {
-            initDebugValues = sourceFunction.getVariables();
-            updateNotNullable();
-
-        } else {
-            initDebugValues = Collections.emptySet();
-        }
-
         LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(frame, context, phis, method);
+        LLVMSymbolReadResolver symbols = new LLVMSymbolReadResolver(runtime, method, frame, labels);
+
+        LLVMRuntimeDebugInformation dbgInfoHandler = new LLVMRuntimeDebugInformation(frame, nodeFactory, context, notNullable, symbols, runtime);
+        dbgInfoHandler.registerStaticDebugSymbols(method);
+
         LLVMBitcodeFunctionVisitor visitor = new LLVMBitcodeFunctionVisitor(runtime, frame, labels, phis, nodeFactory, method.getParameters().size(),
-                        new LLVMSymbolReadResolver(runtime, method, frame, labels), method, liveness, initDebugValues, notNullable);
+                        symbols, method, liveness, notNullable, dbgInfoHandler);
         method.accept(visitor);
         FrameSlot[][] nullableBeforeBlock = getNullableFrameSlots(liveness.getNullableBeforeBlock());
         FrameSlot[][] nullableAfterBlock = getNullableFrameSlots(liveness.getNullableAfterBlock());

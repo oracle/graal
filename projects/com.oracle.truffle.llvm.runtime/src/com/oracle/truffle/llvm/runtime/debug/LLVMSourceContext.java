@@ -36,23 +36,23 @@ import java.util.HashMap;
 
 public final class LLVMSourceContext {
 
-    private final HashMap<LLVMSourceSymbol, LLVMDebugValue> globals;
+    private final HashMap<LLVMSourceSymbol, LLVMDebugValue> statics;
     private final HashMap<LLVMSourceSymbol, LLVMDebugLocalAllocation> localAllocations;
 
     @TruffleBoundary
     public LLVMSourceContext() {
-        globals = new HashMap<>();
+        statics = new HashMap<>();
         localAllocations = new HashMap<>();
     }
 
     @TruffleBoundary
-    public void registerGlobal(LLVMSourceSymbol symbol, LLVMDebugValue value) {
-        globals.put(symbol, value);
+    public void registerStatic(LLVMSourceSymbol symbol, LLVMDebugValue value) {
+        statics.put(symbol, value);
     }
 
     @TruffleBoundary
-    public LLVMDebugValue getGlobal(LLVMSourceSymbol symbol) {
-        return globals.getOrDefault(symbol, LLVMDebugValue.UNAVAILABLE);
+    public LLVMDebugValue getStatic(LLVMSourceSymbol symbol) {
+        return statics.get(symbol);
     }
 
     @TruffleBoundary

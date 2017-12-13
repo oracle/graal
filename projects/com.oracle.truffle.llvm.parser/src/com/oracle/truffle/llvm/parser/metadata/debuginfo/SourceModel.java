@@ -144,7 +144,7 @@ public final class SourceModel {
         private List<ValueFragment> fragments;
 
         private boolean hasFullDefinition;
-        private boolean hasStaticAllocation;
+        private boolean hasStaticValue;
 
         private int declarations;
         private int values;
@@ -153,7 +153,7 @@ public final class SourceModel {
             this.variable = variable;
             this.fragments = null;
             this.hasFullDefinition = false;
-            this.hasStaticAllocation = false;
+            this.hasStaticValue = false;
             this.declarations = 0;
             this.values = 0;
         }
@@ -202,12 +202,16 @@ public final class SourceModel {
             return declarations == 1 && values == 0;
         }
 
-        public boolean hasStaticAllocation() {
-            return hasStaticAllocation;
+        public boolean isSingleValue() {
+            return declarations == 0 && values == 1 && fragments == null;
         }
 
-        public void addStaticAllocation() {
-            this.hasStaticAllocation = true;
+        public boolean hasStaticAllocation() {
+            return hasStaticValue;
+        }
+
+        public void addStaticValue() {
+            this.hasStaticValue = true;
         }
 
         private void addFragment(ValueFragment fragment) {
@@ -307,7 +311,7 @@ public final class SourceModel {
             this.typeExtractor = new DITypeExtractor(scopeBuilder, metadata, sourceModel.staticMembers);
         }
 
-        LLVMSourceSymbol getSourceSymbol(MDBaseNode mdVariable, boolean isStatic) {
+        LLVMSourceSymbol getSourceSymbol(MDBaseNode mdVariable, boolean isGlobal) {
             if (parsedVariables.containsKey(mdVariable)) {
                 return parsedVariables.get(mdVariable);
             }
@@ -316,7 +320,7 @@ public final class SourceModel {
             final LLVMSourceType type = typeExtractor.parseType(mdVariable);
             final String varName = MDNameExtractor.getName(mdVariable);
 
-            final LLVMSourceSymbol symbol = new LLVMSourceSymbol(varName, location, type, isStatic);
+            final LLVMSourceSymbol symbol = new LLVMSourceSymbol(varName, location, type, isGlobal);
             parsedVariables.put(mdVariable, symbol);
 
             if (location != null) {
@@ -394,7 +398,8 @@ public final class SourceModel {
         private void visitGlobal(GlobalValueSymbol global) {
             MDBaseNode mdGlobal = getDebugInfo(global);
             if (mdGlobal != null) {
-                final LLVMSourceSymbol symbol = cache.getSourceSymbol(mdGlobal, true);
+                final boolean isGlobal = !(mdGlobal instanceof MDLocalVariable);
+                final LLVMSourceSymbol symbol = cache.getSourceSymbol(mdGlobal, isGlobal);
                 if (symbol != null) {
                     cache.sourceModel.globals.put(symbol, global);
                 }

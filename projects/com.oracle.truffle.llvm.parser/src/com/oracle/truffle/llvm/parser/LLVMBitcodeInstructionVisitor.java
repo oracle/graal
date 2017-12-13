@@ -35,16 +35,11 @@ import java.util.Map;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
-import com.oracle.truffle.llvm.parser.metadata.DwarfOpcode;
-import com.oracle.truffle.llvm.parser.metadata.MDExpression;
-import com.oracle.truffle.llvm.parser.metadata.MetadataSymbol;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
-import com.oracle.truffle.llvm.parser.metadata.debuginfo.ValueFragment;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.enums.AsmDialect;
@@ -52,9 +47,7 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.InlineAsmConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.UndefinedConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.AllocateInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.BinaryOperationInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.BranchInstruction;
@@ -91,16 +84,13 @@ import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMException;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
@@ -122,6 +112,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     private final List<? extends FrameSlot> frameSlots;
     private final SourceModel.Function sourceFunction;
     private final List<FrameSlot> notNullable;
+    private final LLVMRuntimeDebugInformation dbgInfoHandler;
 
     private final List<LLVMExpressionNode> blockInstructions;
     private int instructionIndex;
@@ -129,7 +120,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     LLVMBitcodeInstructionVisitor(FrameDescriptor frame, Map<String, Integer> labels,
                     List<Phi> blockPhis, NodeFactory nodeFactory, int argCount, LLVMSymbolReadResolver symbols, LLVMParserRuntime runtime,
-                    ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, SourceModel.Function sourceFunction, List<FrameSlot> notNullable) {
+                    ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, SourceModel.Function sourceFunction, List<FrameSlot> notNullable, LLVMRuntimeDebugInformation dbgInfoHandler) {
         this.frame = frame;
         this.labels = labels;
         this.blockPhis = blockPhis;
@@ -141,6 +132,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         this.frameSlots = frame.getSlots();
         this.sourceFunction = sourceFunction;
         this.notNullable = notNullable;
+        this.dbgInfoHandler = dbgInfoHandler;
 
         this.blockInstructions = new ArrayList<>();
     }
@@ -159,7 +151,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     @Override
     public void defaultAction(SymbolImpl symbol) {
-        throw new IllegalStateException("Unimplemented Instruction: " + symbol.getClass().getSimpleName());
+        throw new IllegalStateException("Instruction not implemented: " + symbol.getClass().getSimpleName());
     }
 
     @Override
@@ -303,8 +295,6 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         createFrameWrite(nodeFactory.createCompareExchangeInstruction(runtime, cmpxchg.getType(), elementType, ptrNode, cmpNode, newNode), cmpxchg);
     }
 
-    private static final int[] CLEAR_NONE = new int[0];
-
     private void visitDebugIntrinsic(VoidCallInstruction call, boolean isDeclaration) {
         final SymbolImpl sourceVariableSymbol;
         if (isDeclaration) {
@@ -337,101 +327,13 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             }
         }
 
-        if (!runtime.getContext().getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI) || var.hasStaticAllocation()) {
-            handleNullerInfo();
-            return;
+        final LLVMExpressionNode dbgIntrinsic = dbgInfoHandler.handleDebugIntrinsic(valueSymbol, isDeclaration, call, var);
+        if (dbgIntrinsic != null) {
+            addInstructionUnchecked(dbgIntrinsic);
         }
 
-        LLVMExpressionNode valueRead = null;
-        int exprIndex;
-        if (isDeclaration) {
-            if (valueSymbol instanceof UndefinedConstant) {
-                if (var.hasValue()) {
-                    // this declaration only tells us that the variable is not in memory, we already
-                    // know this from the presence of the value
-                    handleNullerInfo();
-                    return;
-                }
-                valueRead = symbols.resolve(new NullConstant(MetaType.DEBUG));
-
-            } else if (valueSymbol instanceof NullConstant) {
-                valueRead = symbols.resolve(new NullConstant(MetaType.DEBUG));
-
-            } else if (valueSymbol instanceof GlobalValueSymbol || valueSymbol.getType() instanceof PointerType) {
-                valueRead = symbols.resolve(valueSymbol);
-            }
-
-            exprIndex = SourceModel.LLVM_DBG_DECLARE_EXPR_ARGINDEX;
-
-        } else {
-            final SymbolImpl valueOffsetSymbol = call.getArgument(LLVM_DBG_VALUE_OFFSET_INDEX);
-            final Integer valueOffset = LLVMSymbolReadResolver.evaluateIntegerConstant(valueOffsetSymbol);
-            valueRead = symbols.resolve(valueSymbol);
-            exprIndex = SourceModel.LLVM_DBG_VALUE_EXPR_ARGINDEX;
-
-            if (valueOffset != null && valueOffset != 0) {
-                // this is unsupported, it doesn't appear in LLVM 3.8+
-                handleNullerInfo();
-                return;
-            }
-        }
-
-        if (valueRead == null) {
-            handleNullerInfo();
-            return;
-        }
-
-        boolean mustDereference = isDeclaration;
-        int partIndex = -1;
-        int[] clearParts = null;
-
-        final SymbolImpl exprSymbol = call.getArgument(exprIndex);
-        if (exprSymbol instanceof MetadataSymbol && ((MetadataSymbol) exprSymbol).getNode() instanceof MDExpression) {
-            final MDExpression expression = (MDExpression) ((MetadataSymbol) exprSymbol).getNode();
-            if (ValueFragment.describesFragment(expression)) {
-                final ValueFragment fragment = ValueFragment.parse(expression);
-                final List<ValueFragment> siblings = var.getFragments();
-                final List<Integer> clearSiblings = new ArrayList<>(siblings.size());
-                partIndex = ValueFragment.getPartIndex(fragment, siblings, clearSiblings);
-                if (clearSiblings.isEmpty()) {
-                    // this will be the case most of the time
-                    clearParts = CLEAR_NONE;
-                } else {
-                    clearParts = clearSiblings.stream().mapToInt(Integer::intValue).toArray();
-                }
-            }
-            if (DwarfOpcode.isDeref(expression)) {
-                mustDereference = true;
-            }
-        }
-
-        if (partIndex < 0 && var.hasFragments()) {
-            partIndex = var.getFragmentIndex(0, (int) var.getSymbol().getType().getSize());
-            if (partIndex < 0) {
-                throw new IllegalStateException("Cannot find index of value fragment!");
-            }
-
-            clearParts = new int[var.getFragments().size() - 1];
-            for (int i = 0; i < partIndex; i++) {
-                clearParts[i] = i;
-            }
-            for (int i = partIndex; i < clearParts.length; i++) {
-                clearParts[i] = i + 1;
-            }
-        }
-
-        final FrameSlot targetSlot = getDebugValueSlot(var.getSymbol());
-        final LLVMExpressionNode containerRead = nodeFactory.createFrameRead(runtime, MetaType.DEBUG, targetSlot);
-        final LLVMExpressionNode dbgWrite = nodeFactory.createDebugWrite(mustDereference, valueRead, targetSlot, containerRead, partIndex, clearParts);
-        addInstructionUnchecked(dbgWrite);
         handleNullerInfo();
     }
-
-    private FrameSlot getDebugValueSlot(LLVMSourceSymbol symbol) {
-        return frame.findOrAddFrameSlot(symbol, MetaType.DEBUG, FrameSlotKind.Object);
-    }
-
-    private static final int LLVM_DBG_VALUE_OFFSET_INDEX = 1;
 
     @Override
     public void visit(VoidCallInstruction call) {
