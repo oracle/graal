@@ -38,7 +38,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.LLVMLivenessAnalysis.LLVMLivenessAnalysisResult;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
-import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
+import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceVariable;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
@@ -96,7 +96,7 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
                         notNullable, dbgInfoHandler);
 
         if (initDebugValues) {
-            for (SourceModel.Variable variable : function.getSourceFunction().getVariables()) {
+            for (SourceVariable variable : function.getSourceFunction().getVariables()) {
                 final LLVMExpressionNode initNode = dbgInfoHandler.createInitializer(variable);
                 if (initNode != null) {
                     visitor.addInstructionUnchecked(initNode);

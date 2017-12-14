@@ -88,6 +88,22 @@ public final class InstructionBlock {
         return (TerminatingInstruction) instructions.get(instructions.size() - 1);
     }
 
+    public void replace(Instruction oldInst, Instruction newInst) {
+        for (int i = 0; i < instructions.size(); i++) {
+            if (instructions.get(i) == oldInst) {
+                instructions.set(i, newInst);
+            }
+        }
+    }
+
+    public void remove(Instruction inst) {
+        for (int i = 0; i < instructions.size(); i++) {
+            if (instructions.get(i) == inst) {
+                instructions.remove(i);
+            }
+        }
+    }
+
     @Override
     public String toString() {
         return String.format("Block (%d) %s", blockIndex, name);
