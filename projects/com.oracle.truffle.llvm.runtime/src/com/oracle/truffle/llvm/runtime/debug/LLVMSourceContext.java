@@ -30,38 +30,38 @@
 package com.oracle.truffle.llvm.runtime.debug;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugLocalAllocation;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMFrameValueAccess;
 
 import java.util.HashMap;
 
 public final class LLVMSourceContext {
 
-    private final HashMap<LLVMSourceSymbol, LLVMDebugValue> statics;
-    private final HashMap<LLVMSourceSymbol, LLVMDebugLocalAllocation> localAllocations;
+    private final HashMap<LLVMSourceSymbol, LLVMDebugValue> staticValues;
+    private final HashMap<LLVMSourceSymbol, LLVMFrameValueAccess> frameValues;
 
     @TruffleBoundary
     public LLVMSourceContext() {
-        statics = new HashMap<>();
-        localAllocations = new HashMap<>();
+        staticValues = new HashMap<>();
+        frameValues = new HashMap<>();
     }
 
     @TruffleBoundary
     public void registerStatic(LLVMSourceSymbol symbol, LLVMDebugValue value) {
-        statics.put(symbol, value);
+        staticValues.put(symbol, value);
     }
 
     @TruffleBoundary
     public LLVMDebugValue getStatic(LLVMSourceSymbol symbol) {
-        return statics.get(symbol);
+        return staticValues.get(symbol);
     }
 
     @TruffleBoundary
-    public void registerLocalAllocation(LLVMSourceSymbol symbol, LLVMDebugLocalAllocation value) {
-        localAllocations.put(symbol, value);
+    public void registerFrameValue(LLVMSourceSymbol symbol, LLVMFrameValueAccess value) {
+        frameValues.put(symbol, value);
     }
 
     @TruffleBoundary
-    public LLVMDebugLocalAllocation getLocalAllocation(LLVMSourceSymbol symbol) {
-        return localAllocations.get(symbol);
+    public LLVMFrameValueAccess getFrameValue(LLVMSourceSymbol symbol) {
+        return frameValues.get(symbol);
     }
 }

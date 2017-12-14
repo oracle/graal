@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.parser;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.parser.metadata.DwarfOpcode;
 import com.oracle.truffle.llvm.parser.metadata.MDExpression;
 import com.oracle.truffle.llvm.parser.metadata.MetadataSymbol;
@@ -43,6 +42,7 @@ import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.UndefinedConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.DoubleConstant;
@@ -54,72 +54,27 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.AllocateInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Call;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
-import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugLocalAllocation;
-import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMFrameValueAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 import java.util.ArrayList;
 import java.util.List;
 
 final class LLVMRuntimeDebugInformation {
-
-    private static final class SimpleObjectExtractor implements SymbolVisitor {
-
-        private Object obj;
-
-        Object extract(SymbolImpl sym) {
-            obj = null;
-            sym.accept(this);
-            return obj;
-        }
-
-        @Override
-        public void visit(BigIntegerConstant constant) {
-            obj = LLVMIVarBit.fromBigInteger(constant.getType().getBitSize(), constant.getValue());
-        }
-
-        @Override
-        public void visit(IntegerConstant constant) {
-            obj = constant.getValue();
-        }
-
-        @Override
-        public void visit(DoubleConstant constant) {
-            obj = constant.getValue();
-        }
-
-        @Override
-        public void visit(FloatConstant constant) {
-            obj = constant.getValue();
-        }
-
-        @Override
-        public void visit(X86FP80Constant constant) {
-            obj = LLVM80BitFloat.fromBytesBigEndian(constant.getValue());
-        }
-
-        @Override
-        public void visit(GlobalConstant global) {
-            final SymbolImpl value = global.getValue();
-            if (value != null) {
-                value.accept(this);
-            }
-        }
-    }
-
-    private static final SimpleObjectExtractor OBJECT_EXTRACTOR = new SimpleObjectExtractor();
 
     private final FrameDescriptor frame;
     private final NodeFactory factory;
@@ -128,6 +83,7 @@ final class LLVMRuntimeDebugInformation {
     private final LLVMSymbolReadResolver symbols;
     private final LLVMParserRuntime runtime;
     private final boolean isEnabled;
+    private final StaticValueAccessVisitor staticValueAccessVisitor;
 
     LLVMRuntimeDebugInformation(FrameDescriptor frame, NodeFactory factory, LLVMContext context, List<FrameSlot> notNullableSlots, LLVMSymbolReadResolver symbols, LLVMParserRuntime runtime) {
         this.frame = frame;
@@ -137,6 +93,90 @@ final class LLVMRuntimeDebugInformation {
         this.symbols = symbols;
         this.runtime = runtime;
         this.isEnabled = context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI);
+        this.staticValueAccessVisitor = new StaticValueAccessVisitor();
+    }
+
+    private final class StaticValueAccessVisitor extends ValueInstructionVisitor {
+
+        private Variable variable = null;
+        private LLVMSourceSymbol symbol = null;
+        private boolean isDeclaration = false;
+
+        void registerStaticAccess(Variable descriptor, SymbolImpl value, boolean mustDereference) {
+            this.variable = descriptor;
+            this.symbol = variable.getSymbol();
+            this.isDeclaration = mustDereference;
+
+            value.accept(this);
+
+            this.variable = null;
+            this.symbol = null;
+            this.isDeclaration = false;
+        }
+
+        private void visitFrameValue(String name) {
+            final FrameSlot slot = frame.findFrameSlot(name);
+            assert slot != null;
+            final LLVMFrameValueAccess valueAccess = factory.createDebugFrameValue(slot, isDeclaration);
+            context.getSourceContext().registerFrameValue(symbol, valueAccess);
+            notNullableSlots.add(slot);
+            variable.addStaticValue();
+        }
+
+        private void visitSimpleConstant(SymbolImpl constant) {
+            final LLVMExpressionNode node = symbols.resolve(constant);
+            assert node != null;
+            final LLVMDebugValue value = factory.createDebugStaticValue(node);
+            context.getSourceContext().registerStatic(symbol, value);
+            variable.addStaticValue();
+        }
+
+        @Override
+        public void visitValueInstruction(ValueInstruction inst) {
+            visitFrameValue(inst.getName());
+        }
+
+        @Override
+        public void visit(FunctionParameter param) {
+            visitFrameValue(param.getName());
+        }
+
+        @Override
+        public void visit(IntegerConstant constant) {
+            visitSimpleConstant(constant);
+        }
+
+        @Override
+        public void visit(BigIntegerConstant constant) {
+            visitSimpleConstant(constant);
+        }
+
+        @Override
+        public void visit(DoubleConstant constant) {
+            visitSimpleConstant(constant);
+        }
+
+        @Override
+        public void visit(FloatConstant constant) {
+            visitSimpleConstant(constant);
+        }
+
+        @Override
+        public void visit(X86FP80Constant constant) {
+            visitSimpleConstant(constant);
+        }
+
+        @Override
+        public void visit(GlobalConstant constant) {
+            visitSimpleConstant(constant);
+        }
+
+        @Override
+        public void visit(NullConstant constant) {
+            if (constant.getType() instanceof PrimitiveType || constant.getType() instanceof PointerType || constant.getType() instanceof FunctionType) {
+                visitSimpleConstant(constant);
+            }
+        }
     }
 
     public boolean isEnabled() {
@@ -174,9 +214,9 @@ final class LLVMRuntimeDebugInformation {
                 final SymbolImpl varDefSymbol = call.getArgument(SourceModel.LLVM_DBG_DECLARE_LOCALREF_ARGINDEX);
                 if (varDefSymbol instanceof Variable && ((Variable) varDefSymbol).isSingleDeclaration()) {
                     final LLVMSourceSymbol symbol = ((Variable) varDefSymbol).getSymbol();
-                    final LLVMDebugLocalAllocation alloc = factory.createDebugLocalAllocation(frameSlot);
+                    final LLVMFrameValueAccess alloc = factory.createDebugFrameValue(frameSlot, true);
                     notNullableSlots.add(frameSlot);
-                    context.getSourceContext().registerLocalAllocation(symbol, alloc);
+                    context.getSourceContext().registerFrameValue(symbol, alloc);
                     ((Variable) varDefSymbol).addStaticValue();
                 }
 
@@ -184,22 +224,22 @@ final class LLVMRuntimeDebugInformation {
 
                 final SymbolImpl varDefSymbol = call.getArgument(SourceModel.LLVM_DBG_VALUE_LOCALREF_ARGINDEX);
                 if (varDefSymbol instanceof Variable && ((Variable) varDefSymbol).isSingleValue()) {
-                    final LLVMSourceSymbol symbol = ((Variable) varDefSymbol).getSymbol();
 
-                    final Object obj = OBJECT_EXTRACTOR.extract(call.getArgument(SourceModel.LLVM_DBG_INTRINSICS_VALUE_ARGINDEX));
-                    if (obj != null) {
-                        final LLVMDebugValue val = factory.createDebugConstantValue(new LLVMExpressionNode() {
-                            @Override
-                            public Object executeGeneric(VirtualFrame nodeFrame) {
-                                return obj;
-                            }
-                        });
+                    boolean mustDereference = false;
 
-                        if (val != null) {
-                            context.getSourceContext().registerStatic(symbol, val);
-                            ((Variable) varDefSymbol).addStaticValue();
+                    final SymbolImpl exprSymbol = call.getArgument(SourceModel.LLVM_DBG_VALUE_EXPR_ARGINDEX);
+                    if (exprSymbol instanceof MetadataSymbol && ((MetadataSymbol) exprSymbol).getNode() instanceof MDExpression) {
+                        final MDExpression expression = (MDExpression) ((MetadataSymbol) exprSymbol).getNode();
+                        if (DwarfOpcode.isDeref(expression)) {
+                            mustDereference = true;
+
+                        } else if (expression.getElementCount() != 0) {
+                            return;
                         }
                     }
+
+                    final SymbolImpl value = call.getArgument(SourceModel.LLVM_DBG_INTRINSICS_VALUE_ARGINDEX);
+                    staticValueAccessVisitor.registerStaticAccess(((Variable) varDefSymbol), value, mustDereference);
                 }
             }
         }

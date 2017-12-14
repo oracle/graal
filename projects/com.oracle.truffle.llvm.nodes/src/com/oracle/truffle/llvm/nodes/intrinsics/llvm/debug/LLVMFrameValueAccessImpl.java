@@ -27,12 +27,27 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug.scope;
+package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMFrameValueAccess;
 
-public interface LLVMDebugLocalAllocation {
+public final class LLVMFrameValueAccessImpl implements LLVMFrameValueAccess {
 
-    LLVMDebugValue getValue(Frame frame);
+    private final FrameSlot slot;
+    private final LLVMDebugValueProvider.Builder builder;
+
+    public LLVMFrameValueAccessImpl(FrameSlot slot, LLVMDebugValueProvider.Builder builder) {
+        this.slot = slot;
+        this.builder = builder;
+    }
+
+    @Override
+    public LLVMDebugValue getValue(Frame frame) {
+        final Object addr = frame.getValue(slot);
+        return LLVMDebugSimpleValue.create(builder, addr);
+    }
 }

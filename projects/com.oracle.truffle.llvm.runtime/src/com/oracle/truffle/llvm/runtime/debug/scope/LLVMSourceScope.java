@@ -224,7 +224,7 @@ public final class LLVMSourceScope {
                 LLVMDebugValue dbgVal = context.getStatic(symbol);
 
                 if (dbgVal == null) {
-                    final LLVMDebugLocalAllocation allocation = context.getLocalAllocation(symbol);
+                    final LLVMFrameValueAccess allocation = context.getFrameValue(symbol);
                     if (allocation != null && frame != null) {
                         dbgVal = allocation.getValue(frame);
                     }
