@@ -120,7 +120,11 @@ public final class EventContext {
      * @return the call target representing the parsed result
      * @throws IOException if the parsing or evaluation fails for some reason
      * @since 0.12
+     * @deprecated Use
+     *             {@link TruffleInstrument.Env#parseInline(com.oracle.truffle.api.source.Source, com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.MaterializedFrame)}
+     *             with {@link #getInstrumentedNode()} instead.
      */
+    @Deprecated
     public CallTarget parseInContext(Source source, String... argumentNames) throws IOException {
         Node instrumentedNode = getInstrumentedNode();
         LanguageInfo languageInfo = instrumentedNode.getRootNode().getLanguageInfo();

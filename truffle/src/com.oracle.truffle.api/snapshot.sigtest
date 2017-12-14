@@ -117,8 +117,6 @@ innr public abstract interface static !annotation Registration
 innr public final static ContextReference
 innr public final static Env
 innr public final static ParsingRequest
-meth protected !varargs com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.api.source.Source,com.oracle.truffle.api.nodes.Node,java.lang.String[]) throws java.lang.Exception
- anno 0 java.lang.Deprecated()
 meth protected abstract boolean isObjectOfLanguage(java.lang.Object)
 meth protected abstract java.lang.Object findExportedSymbol({com.oracle.truffle.api.TruffleLanguage%0},java.lang.String,boolean)
 meth protected abstract java.lang.Object getLanguageGlobal({com.oracle.truffle.api.TruffleLanguage%0})
@@ -129,8 +127,6 @@ meth protected com.oracle.truffle.api.source.SourceSection findSourceLocation({c
 meth protected final com.oracle.truffle.api.nodes.Node createFindContextNode()
  anno 0 java.lang.Deprecated()
 meth protected final {com.oracle.truffle.api.TruffleLanguage%0} findContext(com.oracle.truffle.api.nodes.Node)
- anno 0 java.lang.Deprecated()
-meth protected java.lang.Object evalInContext(com.oracle.truffle.api.source.Source,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.MaterializedFrame) throws java.io.IOException
  anno 0 java.lang.Deprecated()
 meth protected java.lang.Object findMetaObject({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Object)
 meth protected java.lang.String toString({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Object)
@@ -681,8 +677,6 @@ meth public abstract boolean executeRepeating(com.oracle.truffle.api.frame.Virtu
 CLSS public abstract com.oracle.truffle.api.nodes.RootNode
 cons protected init(com.oracle.truffle.api.TruffleLanguage<?>)
 cons protected init(com.oracle.truffle.api.TruffleLanguage<?>,com.oracle.truffle.api.frame.FrameDescriptor)
-cons protected init(java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage>,com.oracle.truffle.api.source.SourceSection,com.oracle.truffle.api.frame.FrameDescriptor)
- anno 0 java.lang.Deprecated()
 meth protected boolean isCloneUninitializedSupported()
 meth protected boolean isInstrumentable()
 meth protected com.oracle.truffle.api.nodes.RootNode cloneUninitialized()
