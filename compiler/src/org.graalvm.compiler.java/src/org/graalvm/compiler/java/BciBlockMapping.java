@@ -415,9 +415,6 @@ public final class BciBlockMapping {
     }
 
     public static class ExceptionDispatchBlock extends BciBlock {
-
-        private EconomicMap<ExceptionHandler, ExceptionDispatchBlock> exceptionDispatch = EconomicMap.create(Equivalence.DEFAULT);
-
         public ExceptionHandler handler;
         public int deoptBci;
     }
@@ -748,15 +745,6 @@ public final class BciBlockMapping {
         }
     }
 
-    private EconomicMap<ExceptionHandler, ExceptionDispatchBlock> initialExceptionDispatch;
-
-    private EconomicMap<ExceptionHandler, ExceptionDispatchBlock> getInitialExceptionDispatch() {
-        if (initialExceptionDispatch == null) {
-            initialExceptionDispatch = EconomicMap.create(Equivalence.DEFAULT);
-        }
-        return initialExceptionDispatch;
-    }
-
     private ExceptionDispatchBlock handleExceptions(BciBlock[] blockMap, int bci) {
         ExceptionDispatchBlock lastHandler = null;
 
@@ -769,20 +757,17 @@ public final class BciBlockMapping {
                     lastHandler = null;
                 }
 
-                EconomicMap<ExceptionHandler, ExceptionDispatchBlock> exceptionDispatch = lastHandler != null ? lastHandler.exceptionDispatch : getInitialExceptionDispatch();
-                ExceptionDispatchBlock curHandler = exceptionDispatch.get(h);
-                if (curHandler == null) {
-                    curHandler = new ExceptionDispatchBlock();
-                    blocksNotYetAssignedId++;
-                    curHandler.startBci = -1;
-                    curHandler.endBci = -1;
-                    curHandler.deoptBci = bci;
-                    curHandler.handler = h;
-                    curHandler.addSuccessor(blockMap[h.getHandlerBCI()]);
-                    if (lastHandler != null) {
-                        curHandler.addSuccessor(lastHandler);
-                    }
-                    exceptionDispatch.put(h, curHandler);
+                // We do not reuse exception dispatch blocks, because nested exception handlers
+                // might have problems reasoning about the correct frame state.
+                ExceptionDispatchBlock curHandler = new ExceptionDispatchBlock();
+                blocksNotYetAssignedId++;
+                curHandler.startBci = -1;
+                curHandler.endBci = -1;
+                curHandler.deoptBci = bci;
+                curHandler.handler = h;
+                curHandler.addSuccessor(blockMap[h.getHandlerBCI()]);
+                if (lastHandler != null) {
+                    curHandler.addSuccessor(lastHandler);
                 }
                 lastHandler = curHandler;
             }

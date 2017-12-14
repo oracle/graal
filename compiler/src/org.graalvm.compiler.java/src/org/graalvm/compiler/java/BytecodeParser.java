@@ -2788,6 +2788,10 @@ public class BytecodeParser implements GraphBuilderContext {
             setCurrentFrameState(frameState);
             currentBlock = block;
 
+            if (block != blockMap.getUnwindBlock() && !(block instanceof ExceptionDispatchBlock)) {
+                frameState.setRethrowException(false);
+            }
+
             if (firstInstruction instanceof AbstractMergeNode) {
                 setMergeStateAfter(block, firstInstruction);
             }
@@ -2797,7 +2801,6 @@ public class BytecodeParser implements GraphBuilderContext {
             } else if (block instanceof ExceptionDispatchBlock) {
                 createExceptionDispatch((ExceptionDispatchBlock) block);
             } else {
-                frameState.setRethrowException(false);
                 iterateBytecodesForBlock(block);
             }
         }
