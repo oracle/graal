@@ -52,7 +52,7 @@ abstract class TruffleOptionHandler implements NativeImageOptionHandler {
                         "-Dcom.oracle.truffle.aot=true",
                         "-Dtruffle.TruffleRuntime=com.oracle.svm.truffle.api.SubstrateTruffleRuntime");
 
-        config.addImageBuilderSubstitutions("com/oracle/graalvm/tools/chromeinspector/aot/substitutions.json");
+        config.addImageBuilderSubstitutions("com/oracle/truffle/tools/chromeinspector/aot/substitutions.json");
         config.addImageBuilderFeatures(TruffleFeature.class.getName());
 
         applyTruffleLanguageOptions(config, config.getTruffleLanguageJars(this));

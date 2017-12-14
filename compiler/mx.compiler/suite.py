@@ -12,6 +12,13 @@ suite = {
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
          ]
       },
+      {
+        "name" : "tools",
+        "subdir": True,
+        "urls" : [
+          {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
+         ]
+      },
     ]
   },
 
@@ -1159,7 +1166,7 @@ suite = {
         "org.graalvm.compiler.core.test",
         "truffle:TRUFFLE_SL_TEST",
         "truffle:TRUFFLE_INSTRUMENT_TEST",
-        "truffle:TRUFFLE_PROFILER",
+        "tools:TRUFFLE_PROFILER",
       ],
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
@@ -1392,7 +1399,7 @@ suite = {
         "GRAAL_TRUFFLE_HOTSPOT",
         "truffle:TRUFFLE_SL_TEST",
         "truffle:TRUFFLE_INSTRUMENT_TEST",
-        "truffle:TRUFFLE_PROFILER",
+        "tools:TRUFFLE_PROFILER",
       ],
       "exclude" : [
         "mx:JUNIT",
