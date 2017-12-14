@@ -415,9 +415,6 @@ public final class BciBlockMapping {
     }
 
     public static class ExceptionDispatchBlock extends BciBlock {
-
-        private EconomicMap<ExceptionHandler, ExceptionDispatchBlock> exceptionDispatch = EconomicMap.create(Equivalence.DEFAULT);
-
         public ExceptionHandler handler;
         public int deoptBci;
     }
