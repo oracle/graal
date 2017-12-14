@@ -49,6 +49,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -370,7 +371,7 @@ public class TestMemberAccess {
         try {
             ForeignAccess.sendNew(newNode, testClass, 4.2);
             fail();
-        } catch (IllegalArgumentException e) {
+        } catch (UnsupportedTypeException e) {
         }
     }
 
