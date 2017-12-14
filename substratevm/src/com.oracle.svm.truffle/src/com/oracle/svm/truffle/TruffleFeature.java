@@ -657,28 +657,38 @@ final class Target_com_oracle_truffle_api_interop_java_JavaInteropReflect {
 }
 
 @Delete
-@TargetClass(className = "com.oracle.truffle.api.interop.java.JavaInteropReflect", innerClass = "MethodNode", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_api_interop_java_JavaInteropReflect_MethodNode {
+@TargetClass(className = "com.oracle.truffle.api.interop.java.FunctionProxyHandler", onlyWith = TruffleFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_api_interop_java_FunctionProxyHandler {
 }
 
 @Delete
-@TargetClass(className = "com.oracle.truffle.api.interop.java.JavaInteropReflectFactory", innerClass = "MethodNodeGen", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_api_interop_java_JavaInteropReflectFactory_MethodNodeGen {
+@TargetClass(className = "com.oracle.truffle.api.interop.java.ObjectProxyHandler", onlyWith = TruffleFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_api_interop_java_ObjectProxyHandler {
 }
 
 @Delete
-@TargetClass(className = "com.oracle.truffle.api.interop.java.JavaInteropReflectFactory$MethodNodeGen$CachedData", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_api_interop_java_JavaInteropReflectFactory_MethodNodeGen_CachedData {
+@TargetClass(className = "com.oracle.truffle.api.interop.java.ObjectProxyHandler", innerClass = "MethodNode", onlyWith = TruffleFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_api_interop_java_ObjectProxyHandler_MethodNodeGen {
 }
 
 @Delete
-@TargetClass(className = "com.oracle.truffle.api.interop.java.JavaInteropReflect", innerClass = "InvokeAndReadExecNode", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_api_interop_java_JavaInteropReflect_InvokeAndReadExecNode {
+@TargetClass(className = "com.oracle.truffle.api.interop.java.ObjectProxyHandlerFactory", innerClass = "MethodNodeGen", onlyWith = TruffleFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_api_interop_java_ObjectProxyHandlerFactory_MethodNodeGen {
 }
 
 @Delete
-@TargetClass(className = "com.oracle.truffle.api.interop.java.JavaInteropReflectFactory", innerClass = "InvokeAndReadExecNodeGen", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_api_interop_java_JavaInteropReflectFactory_InvokeAndReadExecNodeGen {
+@TargetClass(className = "com.oracle.truffle.api.interop.java.ObjectProxyHandlerFactory$MethodNodeGen$CachedData", onlyWith = TruffleFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_api_interop_java_ObjectProxyHandlerFactory_MethodNodeGen_CachedData {
+}
+
+@Delete
+@TargetClass(className = "com.oracle.truffle.api.interop.java.ObjectProxyHandler", innerClass = "InvokeAndReadExecNode", onlyWith = TruffleFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_api_interop_java_ObjectProxyHandler_InvokeAndReadExecNode {
+}
+
+@Delete
+@TargetClass(className = "com.oracle.truffle.api.interop.java.ObjectProxyHandlerFactory", innerClass = "InvokeAndReadExecNodeGen", onlyWith = TruffleFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_api_interop_java_ObjectProxyHandlerFactory_InvokeAndReadExecNodeGen {
 }
 
 @TargetClass(className = "org.graalvm.compiler.truffle.OptimizedCallTarget", onlyWith = TruffleFeature.IsEnabled.class)

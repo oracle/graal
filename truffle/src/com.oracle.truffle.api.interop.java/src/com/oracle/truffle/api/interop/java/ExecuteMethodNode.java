@@ -28,6 +28,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -38,6 +39,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -406,7 +408,7 @@ abstract class ExecuteMethodNode extends Node {
             }
         }
 
-        throw noApplicableOverloadsException();
+        throw noApplicableOverloadsException(overloads, args);
     }
 
     private static SingleMethodDesc findBestOverload(List<SingleMethodDesc> candidates, Object[] args, boolean varArgs) {
@@ -492,11 +494,13 @@ abstract class ExecuteMethodNode extends Node {
     }
 
     private static RuntimeException ambiguousOverloadsException(List<SingleMethodDesc> candidates, Object[] args) {
-        return new IllegalArgumentException(String.format("no single overload found (candidates: %s, arguments: %s)", candidates, arrayToStringWithTypes(args)));
+        String message = String.format("no single overload found (candidates: %s, arguments: %s)", candidates, arrayToStringWithTypes(args));
+        return UnsupportedTypeException.raise(new IllegalArgumentException(message), args);
     }
 
-    private static RuntimeException noApplicableOverloadsException() {
-        return new IllegalArgumentException("no applicable overload found");
+    private static RuntimeException noApplicableOverloadsException(SingleMethodDesc[] overloads, Object[] args) {
+        String message = String.format("no applicable overload found (overloads: %s, arguments: %s)", Arrays.toString(overloads), arrayToStringWithTypes(args));
+        return UnsupportedTypeException.raise(new IllegalArgumentException(message), args);
     }
 
     private static Type getGenericComponentType(Type type) {
@@ -526,7 +530,7 @@ abstract class ExecuteMethodNode extends Node {
         try {
             ret = method.invoke(obj, arguments);
         } catch (Throwable e) {
-            throw JavaInteropReflect.rethrow(e);
+            throw JavaInteropReflect.rethrow(JavaInterop.wrapHostException(e));
         }
         return JavaInterop.toGuestValue(ret, languageContext);
     }

@@ -36,12 +36,15 @@ import static org.junit.Assert.fail;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.concurrent.Callable;
 
+import org.graalvm.polyglot.Engine;
 import org.hamcrest.CoreMatchers;
 import org.junit.Before;
 import org.junit.Test;
@@ -58,6 +61,7 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -65,6 +69,11 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ReflectionUtils;
 
 public class JavaInteropTest {
+    static {
+        // ensure engine is initialized
+        Engine.newBuilder().build().close();
+    }
+
     public class Data {
         public int x;
         public double y;
@@ -853,6 +862,40 @@ public class JavaInteropTest {
         assertThat(longArray, CoreMatchers.instanceOf(TruffleObject.class));
         assertTrue(JavaInterop.isJavaObject(long[].class, (TruffleObject) longArray));
         assertEquals(4, message(Message.GET_SIZE, (TruffleObject) longArray));
+    }
+
+    @Test
+    public void testException() throws InteropException {
+        TruffleObject iterator = JavaInterop.asTruffleObject(Collections.emptyList().iterator());
+        try {
+            ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), iterator, "next");
+            fail("expected an exception but none was thrown");
+        } catch (InteropException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            assertTrue("expected HostException but was: " + ex.getClass(), JavaInterop.isHostException(ex));
+            assertThat(JavaInterop.asHostException(ex), CoreMatchers.instanceOf(NoSuchElementException.class));
+        }
+    }
+
+    @Test
+    public void testException2() throws InteropException {
+        TruffleObject hashMapClass = JavaInterop.asTruffleObject(HashMap.class);
+        try {
+            ForeignAccess.sendNew(Message.createNew(0).createNode(), hashMapClass, -1);
+            fail("expected an exception but none was thrown");
+        } catch (InteropException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            assertTrue("expected HostException but was: " + ex.getClass(), JavaInterop.isHostException(ex));
+            assertThat(JavaInterop.asHostException(ex), CoreMatchers.instanceOf(IllegalArgumentException.class));
+        }
+
+        try {
+            ForeignAccess.sendNew(Message.createNew(0).createNode(), hashMapClass, "");
+            fail("expected an exception but none was thrown");
+        } catch (UnsupportedTypeException ex) {
+        }
     }
 
     public static final class TestJavaObject {

@@ -26,17 +26,24 @@ package com.oracle.truffle.api.interop.java.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.List;
 
+import org.graalvm.polyglot.Engine;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
-import static org.junit.Assert.fail;
 
 public class PrimitiveRawArrayInteropTest {
+    static {
+        // ensure engine is initialized
+        Engine.newBuilder().build().close();
+    }
+
     private Object[] objArr;
     private byte[] byteArr;
     private short[] shortArr;
@@ -114,8 +121,10 @@ public class PrimitiveRawArrayInteropTest {
     public void exceptionIsPropagated() {
         try {
             assertNull(interop.arr(30));
-        } catch (WrongArgument ex) {
-            assertEquals(30, ex.type);
+        } catch (Exception hostException) {
+            assertTrue("Expected HostException but got: " + hostException.getClass(), JavaInterop.isHostException(hostException));
+            WrongArgument wrongArgument = (WrongArgument) JavaInterop.asHostException(hostException);
+            assertEquals(30, wrongArgument.type);
             return;
         }
         fail("WrongArgument should have been thrown");
