@@ -757,8 +757,8 @@ public final class BciBlockMapping {
                     lastHandler = null;
                 }
 
-                // We do not reuse exception dispatch blocks, because nested exception handler might
-                // have problem reasoning the correct frame state.
+                // We do not reuse exception dispatch blocks, because nested exception handlers
+                // might have problems reasoning about the correct frame state.
                 ExceptionDispatchBlock curHandler = new ExceptionDispatchBlock();
                 blocksNotYetAssignedId++;
                 curHandler.startBci = -1;
