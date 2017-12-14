@@ -76,15 +76,16 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
     protected Object read(DynamicObject receiver, Object name,
                     @Cached("create()") SLReadPropertyCacheNode readNode) {
         /**
-         * The polymorphic cache node that performs the actual read. This is a separate node so that it can
-         * be re-used in cases where the receiver and name are not nodes but already evaluated values.
+         * The polymorphic cache node that performs the actual read. This is a separate node so that
+         * it can be re-used in cases where the receiver and name are not nodes but already
+         * evaluated values.
          */
         return readNode.executeRead(receiver, name);
     }
 
     /**
-     * Language interoperability: if the receiver object is a foreign value we use Truffle's interop API
-     * to access the foreign data.
+     * Language interoperability: if the receiver object is a foreign value we use Truffle's interop
+     * API to access the foreign data.
      */
     @Specialization(guards = "!isSLObject(receiver)")
     protected Object readForeign(TruffleObject receiver, Object name,
@@ -106,8 +107,8 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
     }
 
     /**
-     * When no specialization fits, the receiver is either not an object (which is a type error), or the
-     * object has a shape that has been invalidated.
+     * When no specialization fits, the receiver is either not an object (which is a type error), or
+     * the object has a shape that has been invalidated.
      */
     @Fallback
     protected Object typeError(@SuppressWarnings("unused") Object r, Object name) {

@@ -78,17 +78,17 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
     protected Object write(DynamicObject receiver, Object name, Object value,
                     @Cached("create()") SLWritePropertyCacheNode writeNode) {
         /**
-         * The polymorphic cache node that performs the actual write. This is a separate node so that it can
-         * be re-used in cases where the receiver, name, and value are not nodes but already evaluated
-         * values.
+         * The polymorphic cache node that performs the actual write. This is a separate node so
+         * that it can be re-used in cases where the receiver, name, and value are not nodes but
+         * already evaluated values.
          */
         writeNode.executeWrite(receiver, name, value);
         return value;
     }
 
     /**
-     * Language interoperability: If the receiver object is a foreign value we use Truffle's interop API
-     * to access the foreign data.
+     * Language interoperability: If the receiver object is a foreign value we use Truffle's interop
+     * API to access the foreign data.
      */
     @Specialization(guards = "!isSLObject(receiver)")
     protected void writeForeign(TruffleObject receiver, Object name, Object value,
