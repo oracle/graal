@@ -74,14 +74,14 @@ public abstract class SLReadPropertyCacheNode extends SLPropertyCacheNode {
         return location.get(receiver, shape);
     }
 
-    protected static Location lookupLocation(Shape shape, Object name) {
+    protected Location lookupLocation(Shape shape, Object name) {
         /* Initialization of cached values always happens in a slow path. */
         CompilerAsserts.neverPartOfCompilation();
 
         Property property = shape.getProperty(name);
         if (property == null) {
             /* Property does not exist. */
-            throw SLUndefinedNameException.undefinedProperty(name);
+            throw SLUndefinedNameException.undefinedProperty(this, name);
         }
 
         return property.getLocation();
@@ -93,17 +93,17 @@ public abstract class SLReadPropertyCacheNode extends SLPropertyCacheNode {
      */
     @TruffleBoundary
     @Specialization(replaces = {"readCached"}, guards = "receiver.getShape().isValid()")
-    protected static Object readUncached(DynamicObject receiver, Object name) {
+    protected Object readUncached(DynamicObject receiver, Object name) {
         Object result = receiver.get(name);
         if (result == null) {
             /* Property does not exist. */
-            throw SLUndefinedNameException.undefinedProperty(name);
+            throw SLUndefinedNameException.undefinedProperty(this, name);
         }
         return result;
     }
 
     @Specialization(guards = "!receiver.getShape().isValid()")
-    protected static Object updateShape(DynamicObject receiver, Object name) {
+    protected Object updateShape(DynamicObject receiver, Object name) {
         CompilerDirectives.transferToInterpreter();
         receiver.updateShape();
         return readUncached(receiver, name);

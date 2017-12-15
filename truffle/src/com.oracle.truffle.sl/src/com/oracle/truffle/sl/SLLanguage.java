@@ -40,33 +40,156 @@
  */
 package com.oracle.truffle.sl;
 
+import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.debug.DebuggerTags;
+import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.sl.builtins.SLBuiltinNode;
+import com.oracle.truffle.sl.builtins.SLDefineFunctionBuiltin;
+import com.oracle.truffle.sl.builtins.SLNanoTimeBuiltin;
+import com.oracle.truffle.sl.builtins.SLPrintlnBuiltin;
+import com.oracle.truffle.sl.builtins.SLReadlnBuiltin;
+import com.oracle.truffle.sl.builtins.SLStackTraceBuiltin;
 import com.oracle.truffle.sl.nodes.SLEvalRootNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
+import com.oracle.truffle.sl.nodes.SLTypes;
+import com.oracle.truffle.sl.nodes.access.SLReadPropertyCacheNode;
+import com.oracle.truffle.sl.nodes.access.SLReadPropertyNode;
+import com.oracle.truffle.sl.nodes.access.SLWritePropertyCacheNode;
+import com.oracle.truffle.sl.nodes.access.SLWritePropertyNode;
+import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
+import com.oracle.truffle.sl.nodes.call.SLInvokeNode;
+import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
+import com.oracle.truffle.sl.nodes.controlflow.SLBreakNode;
+import com.oracle.truffle.sl.nodes.controlflow.SLContinueNode;
+import com.oracle.truffle.sl.nodes.controlflow.SLDebuggerNode;
+import com.oracle.truffle.sl.nodes.controlflow.SLIfNode;
+import com.oracle.truffle.sl.nodes.controlflow.SLReturnNode;
+import com.oracle.truffle.sl.nodes.controlflow.SLWhileNode;
+import com.oracle.truffle.sl.nodes.expression.SLAddNode;
+import com.oracle.truffle.sl.nodes.expression.SLBigIntegerLiteralNode;
+import com.oracle.truffle.sl.nodes.expression.SLDivNode;
+import com.oracle.truffle.sl.nodes.expression.SLEqualNode;
+import com.oracle.truffle.sl.nodes.expression.SLFunctionLiteralNode;
+import com.oracle.truffle.sl.nodes.expression.SLLessOrEqualNode;
+import com.oracle.truffle.sl.nodes.expression.SLLessThanNode;
+import com.oracle.truffle.sl.nodes.expression.SLLogicalAndNode;
+import com.oracle.truffle.sl.nodes.expression.SLLogicalOrNode;
+import com.oracle.truffle.sl.nodes.expression.SLMulNode;
+import com.oracle.truffle.sl.nodes.expression.SLStringLiteralNode;
+import com.oracle.truffle.sl.nodes.expression.SLSubNode;
 import com.oracle.truffle.sl.nodes.local.SLLexicalScope;
+import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
+import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 import com.oracle.truffle.sl.parser.Parser;
+import com.oracle.truffle.sl.parser.SLNodeFactory;
+import com.oracle.truffle.sl.parser.Scanner;
 import com.oracle.truffle.sl.runtime.SLBigNumber;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
 import com.oracle.truffle.sl.runtime.SLNull;
 
+/**
+ * SL is a simple language to demonstrate and showcase features of Truffle. The implementation is as
+ * simple and clean as possible in order to help understanding the ideas and concepts of Truffle.
+ * The language has first class functions, and objects are key-value stores.
+ * <p>
+ * SL is dynamically typed, i.e., there are no type names specified by the programmer. SL is
+ * strongly typed, i.e., there is no automatic conversion between types. If an operation is not
+ * available for the types encountered at run time, a type error is reported and execution is
+ * stopped. For example, {@code 4 - "2"} results in a type error because subtraction is only defined
+ * for numbers.
+ *
+ * <p>
+ * <b>Types:</b>
+ * <ul>
+ * <li>Number: arbitrary precision integer numbers. The implementation uses the Java primitive type
+ * {@code long} to represent numbers that fit into the 64 bit range, and {@link BigInteger} for
+ * numbers that exceed the range. Using a primitive type such as {@code long} is crucial for
+ * performance.
+ * <li>Boolean: implemented as the Java primitive type {@code boolean}.
+ * <li>String: implemented as the Java standard type {@link String}.
+ * <li>Function: implementation type {@link SLFunction}.
+ * <li>Object: efficient implementation using the object model provided by Truffle. The
+ * implementation type of objects is a subclass of {@link DynamicObject}.
+ * <li>Null (with only one value {@code null}): implemented as the singleton
+ * {@link SLNull#SINGLETON}.
+ * </ul>
+ * The class {@link SLTypes} lists these types for the Truffle DSL, i.e., for type-specialized
+ * operations that are specified using Truffle DSL annotations.
+ *
+ * <p>
+ * <b>Language concepts:</b>
+ * <ul>
+ * <li>Literals for {@link SLBigIntegerLiteralNode numbers} , {@link SLStringLiteralNode strings},
+ * and {@link SLFunctionLiteralNode functions}.
+ * <li>Basic arithmetic, logical, and comparison operations: {@link SLAddNode +}, {@link SLSubNode
+ * -}, {@link SLMulNode *}, {@link SLDivNode /}, {@link SLLogicalAndNode logical and},
+ * {@link SLLogicalOrNode logical or}, {@link SLEqualNode ==}, !=, {@link SLLessThanNode &lt;},
+ * {@link SLLessOrEqualNode &le;}, &gt;, &ge;.
+ * <li>Local variables: local variables must be defined (via a {@link SLWriteLocalVariableNode
+ * write}) before they can be used (by a {@link SLReadLocalVariableNode read}). Local variables are
+ * not visible outside of the block where they were first defined.
+ * <li>Basic control flow statements: {@link SLBlockNode blocks}, {@link SLIfNode if},
+ * {@link SLWhileNode while} with {@link SLBreakNode break} and {@link SLContinueNode continue},
+ * {@link SLReturnNode return}.
+ * <li>Debugging control: {@link SLDebuggerNode debugger} statement uses
+ * {@link DebuggerTags#AlwaysHalt} tag to halt the execution when run under the debugger.
+ * <li>Function calls: {@link SLInvokeNode invocations} are efficiently implemented with
+ * {@link SLDispatchNode polymorphic inline caches}.
+ * <li>Object access: {@link SLReadPropertyNode} uses {@link SLReadPropertyCacheNode} as the
+ * polymorphic inline cache for property reads. {@link SLWritePropertyNode} uses
+ * {@link SLWritePropertyCacheNode} as the polymorphic inline cache for property writes.
+ * </ul>
+ *
+ * <p>
+ * <b>Syntax and parsing:</b><br>
+ * The syntax is described as an attributed grammar. The {@link Parser} and {@link Scanner} are
+ * automatically generated by the parser generator Coco/R (available from
+ * <a href="http://ssw.jku.at/coco/">http://ssw.jku.at/coco/</a>). The grammar contains semantic
+ * actions that build the AST for a method. To keep these semantic actions short, they are mostly
+ * calls to the {@link SLNodeFactory} that performs the actual node creation. All functions found in
+ * the SL source are added to the {@link SLFunctionRegistry}, which is accessible from the
+ * {@link SLContext}.
+ *
+ * <p>
+ * <b>Builtin functions:</b><br>
+ * Library functions that are available to every SL source without prior definition are called
+ * builtin functions. They are added to the {@link SLFunctionRegistry} when the {@link SLContext} is
+ * created. Some of the current builtin functions are
+ * <ul>
+ * <li>{@link SLReadlnBuiltin readln}: Read a String from the {@link SLContext#getInput() standard
+ * input}.
+ * <li>{@link SLPrintlnBuiltin println}: Write a value to the {@link SLContext#getOutput() standard
+ * output}.
+ * <li>{@link SLNanoTimeBuiltin nanoTime}: Returns the value of a high-resolution time, in
+ * nanoseconds.
+ * <li>{@link SLDefineFunctionBuiltin defineFunction}: Parses the functions provided as a String
+ * argument and adds them to the function registry. Functions that are already defined are replaced
+ * with the new version.
+ * <li>{@link SLStackTraceBuiltin stckTrace}: Print all function activations with all local
+ * variables.
+ * </ul>
+ */
 @TruffleLanguage.Registration(id = SLLanguage.ID, name = "SL", version = "0.30", mimeType = SLLanguage.MIME_TYPE)
 @ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, StandardTags.RootTag.class, DebuggerTags.AlwaysHalt.class})
 public final class SLLanguage extends TruffleLanguage<SLContext> {
@@ -81,9 +204,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected SLContext createContext(Env env) {
-        SLFunctionRegistry functionRegistry = new SLFunctionRegistry(this);
-        Scope topScope = Scope.newBuilder("global", functionRegistry.getFunctionsObject()).build();
-        return new SLContext(this, env, functionRegistry, Collections.singleton(topScope));
+        return new SLContext(this, env, new ArrayList<>(EXTERNAL_BUILTINS));
     }
 
     @Override
@@ -242,6 +363,12 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     public static SLContext getCurrentContext() {
         return getCurrentContext(SLLanguage.class);
+    }
+
+    private static final List<NodeFactory<? extends SLBuiltinNode>> EXTERNAL_BUILTINS = Collections.synchronizedList(new ArrayList<>());
+
+    public static void installBuiltin(NodeFactory<? extends SLBuiltinNode> builtin) {
+        EXTERNAL_BUILTINS.add(builtin);
     }
 
 }

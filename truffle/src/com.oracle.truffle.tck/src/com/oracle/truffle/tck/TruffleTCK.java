@@ -138,6 +138,9 @@ import com.oracle.truffle.tck.impl.TestObject;
  * @since 0.8 or earlier
  */
 public abstract class TruffleTCK {
+
+    private static volatile PolyglotEngine previousVMReference;
+
     private static final Random RANDOM = new Random();
     private PolyglotEngine tckVM;
     private Object prev;
@@ -153,6 +156,10 @@ public abstract class TruffleTCK {
      */
     @AfterClass
     public static void disposePreviousVM() {
+        if (previousVMReference != null) {
+            previousVMReference.dispose();
+            previousVMReference = null;
+        }
     }
 
     /**
@@ -733,10 +740,11 @@ public abstract class TruffleTCK {
     }
 
     private PolyglotEngine vm() throws Exception {
-        if (tckVM == null) {
-            tckVM = prepareVM();
+        if (previousVMReference != null) {
+            return previousVMReference;
         }
-        return tckVM;
+        previousVMReference = prepareVM();
+        return previousVMReference;
     }
 
     //

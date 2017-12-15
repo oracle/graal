@@ -422,8 +422,8 @@ def processImageArguments(args):
 
         elif args[i] == '-sl':
             args.pop(i)
-            projects += ['truffle:TRUFFLE_SL']
-            extraNormalArgs += ['-H:Class=com.oracle.truffle.sl.SLMain', '-H:Name=sl']
+            projects += ['truffle:TRUFFLE_SL', 'truffle:TRUFFLE_SL_LAUNCHER']
+            extraNormalArgs += ['-H:Class=com.oracle.truffle.sl.launcher.SLMain', '-H:Name=sl']
             number_of_languages += 1
 
         elif args[i] == '-ruby':

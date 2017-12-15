@@ -88,7 +88,7 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
      * API to access the foreign data.
      */
     @Specialization(guards = "!isSLObject(receiver)")
-    protected static Object readForeign(TruffleObject receiver, Object name,
+    protected Object readForeign(TruffleObject receiver, Object name,
                     // The child node to access the foreign object
                     @Cached("READ.createNode()") Node foreignReadNode,
                     // The child node to convert the result of the foreign read to a SL value
@@ -102,7 +102,7 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
 
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             /* Foreign access was not successful. */
-            throw SLUndefinedNameException.undefinedProperty(name);
+            throw SLUndefinedNameException.undefinedProperty(this, name);
         }
     }
 
@@ -111,9 +111,9 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
      * the object has a shape that has been invalidated.
      */
     @Fallback
-    protected static Object typeError(@SuppressWarnings("unused") Object r, Object name) {
+    protected Object typeError(@SuppressWarnings("unused") Object r, Object name) {
         /* Non-object types do not have properties. */
-        throw SLUndefinedNameException.undefinedProperty(name);
+        throw SLUndefinedNameException.undefinedProperty(this, name);
     }
 
 }

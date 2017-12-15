@@ -22,27 +22,18 @@
  */
 package org.graalvm.compiler.truffle.test.builtins;
 
-import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.sl.SLException;
 
 /**
  * An implementation of an {@link AssertionError} also containing the guest language stack trace.
  */
-public class SLAssertionError extends AssertionError {
+public class SLAssertionError extends SLException {
 
     private static final long serialVersionUID = -9138475336963945873L;
 
-    public SLAssertionError(String message) {
-        super(message);
-        CompilerAsserts.neverPartOfCompilation();
-        initCause(new AssertionError("Java stack trace"));
-    }
-
-    @Override
-    @SuppressWarnings("sync-override")
-    public Throwable fillInStackTrace() {
-        CompilerAsserts.neverPartOfCompilation();
-        return SLException.fillInSLStackTrace(this);
+    public SLAssertionError(String message, Node node) {
+        super(message, node);
     }
 
 }

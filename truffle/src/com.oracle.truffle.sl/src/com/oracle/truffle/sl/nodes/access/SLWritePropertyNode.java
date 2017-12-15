@@ -91,7 +91,7 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
      * API to access the foreign data.
      */
     @Specialization(guards = "!isSLObject(receiver)")
-    protected static void writeForeign(TruffleObject receiver, Object name, Object value,
+    protected void writeForeign(TruffleObject receiver, Object name, Object value,
                     // The child node to access the foreign object
                     @Cached("WRITE.createNode()") Node foreignWriteNode) {
 
@@ -101,7 +101,7 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
 
         } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
             /* Foreign access was not successful. */
-            throw SLUndefinedNameException.undefinedProperty(name);
+            throw SLUndefinedNameException.undefinedProperty(this, name);
         }
     }
 
@@ -110,8 +110,8 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
      */
     @Fallback
     @SuppressWarnings("unused")
-    protected static void updateShape(Object r, Object name, Object value) {
-        throw SLUndefinedNameException.undefinedProperty(name);
+    protected void updateShape(Object r, Object name, Object value) {
+        throw SLUndefinedNameException.undefinedProperty(this, name);
     }
 
 }

@@ -174,7 +174,7 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
 
     @TruffleBoundary
     @Specialization(guards = {"!receiver.getShape().isValid()"})
-    protected static void updateShape(DynamicObject receiver, Object name, Object value) {
+    protected void updateShape(DynamicObject receiver, Object name, Object value) {
         /*
          * Slow path that we do not handle in compiled code. But no need to invalidate compiled
          * code.

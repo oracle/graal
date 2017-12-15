@@ -40,82 +40,87 @@
  */
 package com.oracle.truffle.sl;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.math.BigInteger;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.sl.nodes.SLRootNode;
+import com.oracle.truffle.sl.runtime.SLContext;
+import com.oracle.truffle.sl.runtime.SLFunction;
+import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
  * SL does not need a sophisticated error checking and reporting mechanism, so all unexpected
  * conditions just abort execution. This exception class is used when we abort from within the SL
  * implementation.
  */
-public class SLException extends RuntimeException {
+public class SLException extends RuntimeException implements TruffleException {
 
     private static final long serialVersionUID = -6799734410727348507L;
 
-    public SLException(String message) {
+    private final Node location;
+
+    @TruffleBoundary
+    public SLException(String message, Node location) {
         super(message);
-        CompilerAsserts.neverPartOfCompilation();
-        initCause(new Throwable("Java stack trace"));
+        this.location = location;
     }
 
-    @Override
-    @SuppressWarnings("sync-override")
-    public Throwable fillInStackTrace() {
-        CompilerAsserts.neverPartOfCompilation();
-        return fillInSLStackTrace(this);
+    public Node getLocation() {
+        return location;
     }
 
     /**
-     * Uses the Truffle API to iterate the stack frames and to create and set Java
-     * {@link StackTraceElement} elements based on the source sections of the call nodes on the
-     * stack.
+     * Provides a user-readable message for run-time type errors. SL is strongly typed, i.e., there
+     * are no automatic type conversions of values.
      */
-    public static Throwable fillInSLStackTrace(Throwable t) {
-        final List<StackTraceElement> stackTrace = new ArrayList<>();
-        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Void>() {
-            public Void visitFrame(FrameInstance frame) {
-                Node callNode = frame.getCallNode();
-                if (callNode == null) {
-                    return null;
-                }
-                RootNode root = callNode.getRootNode();
+    @TruffleBoundary
+    public static SLException typeError(Node operation, Object... values) {
+        StringBuilder result = new StringBuilder();
+        result.append("Type error");
 
-                /*
-                 * There should be no RootNodes other than SLRootNodes on the stack. Just for the
-                 * case if this would change.
-                 */
-                String methodName = "$unknownFunction";
-                if (root instanceof SLRootNode) {
-                    methodName = ((SLRootNode) root).getName();
-                }
-
-                SourceSection sourceSection = callNode.getEncapsulatingSourceSection();
-                Source source = sourceSection != null ? sourceSection.getSource() : null;
-                String sourceName = source != null ? source.getName() : null;
-                int lineNumber;
-                try {
-                    lineNumber = sourceSection != null ? sourceSection.getStartLine() : -1;
-                } catch (UnsupportedOperationException e) {
-                    /*
-                     * SourceSection#getLineLocation() may throw an UnsupportedOperationException.
-                     */
-                    lineNumber = -1;
-                }
-                stackTrace.add(new StackTraceElement("SL", methodName, sourceName, lineNumber));
-                return null;
+        if (operation != null) {
+            SourceSection ss = operation.getEncapsulatingSourceSection();
+            if (ss != null && ss.isAvailable()) {
+                result.append(" at ").append(ss.getSource().getName()).append(" line ").append(ss.getStartLine()).append(" col ").append(ss.getStartColumn());
             }
-        });
-        t.setStackTrace(stackTrace.toArray(new StackTraceElement[stackTrace.size()]));
-        return t;
+        }
+
+        result.append(": operation");
+        if (operation != null) {
+            NodeInfo nodeInfo = SLContext.lookupNodeInfo(operation.getClass());
+            if (nodeInfo != null) {
+                result.append(" \"").append(nodeInfo.shortName()).append("\"");
+            }
+        }
+
+        result.append(" not defined for");
+
+        String sep = " ";
+        for (int i = 0; i < values.length; i++) {
+            Object value = values[i];
+            result.append(sep);
+            sep = ", ";
+            if (value instanceof Long || value instanceof BigInteger) {
+                result.append("Number ").append(value);
+            } else if (value instanceof Boolean) {
+                result.append("Boolean ").append(value);
+            } else if (value instanceof String) {
+                result.append("String \"").append(value).append("\"");
+            } else if (value instanceof SLFunction) {
+                result.append("Function ").append(value);
+            } else if (value == SLNull.SINGLETON) {
+                result.append("NULL");
+            } else if (value == null) {
+                // value is not evaluated because of short circuit evaluation
+                result.append("ANY");
+            } else {
+                result.append(value);
+            }
+        }
+        return new SLException(result.toString(), operation);
     }
+
 }

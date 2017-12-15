@@ -45,7 +45,7 @@ public abstract class SLGetOptionBuiltin extends SLGraalRuntimeBuiltin {
                 return convertValue(TruffleCompilerOptions.getValue(option.getOptionKey()));
             }
         }
-        throw new SLAssertionError("No such option named \"" + name + "\" found in " + TruffleCompilerOptions.class.getName());
+        throw new SLAssertionError("No such option named \"" + name + "\" found in " + TruffleCompilerOptions.class.getName(), this);
     }
 
     private static Object convertValue(Object value) {
