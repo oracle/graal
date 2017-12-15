@@ -39,6 +39,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.word.WordBase;
 
@@ -65,7 +66,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class AnalysisType implements WrappedJavaType, Comparable<AnalysisType> {
+public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Comparable<AnalysisType> {
 
     @SuppressWarnings("rawtypes")//
     private static final AtomicReferenceFieldUpdater<AnalysisType, ConcurrentHashMap> UNSAFE_ACCESS_FIELDS_UPDATER = //
@@ -643,6 +644,11 @@ public class AnalysisType implements WrappedJavaType, Comparable<AnalysisType> {
     @Override
     public ResolvedJavaType getWrapped() {
         return universe.substitutions.resolve(wrapped);
+    }
+
+    @Override
+    public Class<?> getJavaClass() {
+        return OriginalClassProvider.getJavaClass(universe.getOriginalSnippetReflection(), wrapped);
     }
 
     @Override
