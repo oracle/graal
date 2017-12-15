@@ -41,8 +41,8 @@ import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.PinnedAllocator;
+import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.meta.CompressibleConstant;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
@@ -349,9 +349,6 @@ public class FrameInfoEncoder {
                     objectConstants.addObject(constant);
                 }
             }
-            if (constant instanceof CompressibleConstant) {
-                result.isCompressedReference = ((CompressibleConstant) constant).isCompressed();
-            }
             ImageSingletons.lookup(Counters.class).constantValueCount.inc();
 
         } else if (ValueUtil.isVirtualObject(value)) {
@@ -380,6 +377,9 @@ public class FrameInfoEncoder {
         /* Install a non-null value to support recursive VirtualObjects. */
         data.virtualObjects[id] = MARKER;
 
+        /* Objects must contain only compressed references when compression is enabled */
+        boolean compressedRefs = ReferenceAccess.singleton().haveCompressedReferences();
+
         List<ValueInfo> valueList = new ArrayList<>(virtualObject.getValues().length + 4);
         SharedType type = (SharedType) virtualObject.getType();
         /* The first element is the hub of the virtual object. */
@@ -396,7 +396,7 @@ public class FrameInfoEncoder {
             for (int i = 0; i < virtualObject.getValues().length; i++) {
                 JavaValue value = virtualObject.getValues()[i];
                 JavaKind valueKind = virtualObject.getSlotKind(i);
-                if (objectLayout.sizeInBytes(kind) == 4 && objectLayout.sizeInBytes(valueKind) == 8) {
+                if (objectLayout.sizeInBytes(kind, compressedRefs) == 4 && objectLayout.sizeInBytes(valueKind, compressedRefs) == 8) {
                     /*
                      * Truffle uses arrays in a non-standard way: it declares an int[] array and
                      * uses it to also store long and double values. These values span two array
@@ -407,13 +407,13 @@ public class FrameInfoEncoder {
                     length += 2;
 
                 } else {
-                    assert objectLayout.sizeInBytes(valueKind.getStackKind()) <= objectLayout.sizeInBytes(kind.getStackKind());
+                    assert objectLayout.sizeInBytes(valueKind.getStackKind(), compressedRefs) <= objectLayout.sizeInBytes(kind.getStackKind(), compressedRefs);
                     valueList.add(makeValueInfo(data, kind, value));
                     length++;
                 }
 
                 assert objectLayout.getArrayElementOffset(type.getComponentType().getJavaKind(), length) == objectLayout.getArrayBaseOffset(type.getComponentType().getJavaKind()) +
-                                computeOffset(valueList.subList(2, valueList.size()));
+                                computeOffset(valueList.subList(2, valueList.size()), compressedRefs);
             }
 
             assert valueList.get(1) == null;
@@ -437,7 +437,7 @@ public class FrameInfoEncoder {
                 valueIdx += 1;
 
                 JavaKind kind = field.getStorageKind();
-                if (objectLayout.sizeInBytes(kind) == 4 && objectLayout.sizeInBytes(valueKind) == 8) {
+                if (objectLayout.sizeInBytes(kind, compressedRefs) == 4 && objectLayout.sizeInBytes(valueKind, compressedRefs) == 8) {
                     /*
                      * Truffle uses fields in a non-standard way: it declares a couple of
                      * (consecutive) int fields, and uses them to also store long and double values.
@@ -467,10 +467,10 @@ public class FrameInfoEncoder {
                         curOffset += 1;
                     }
                     assert curOffset == field.getLocation();
-                    assert curOffset == computeOffset(valueList);
+                    assert curOffset == computeOffset(valueList, compressedRefs);
 
                     valueList.add(makeValueInfo(data, kind, value));
-                    curOffset += objectLayout.sizeInBytes(kind);
+                    curOffset += objectLayout.sizeInBytes(kind, compressedRefs);
                 }
             }
         }
@@ -479,10 +479,10 @@ public class FrameInfoEncoder {
         ImageSingletons.lookup(Counters.class).virtualObjectsCount.inc();
     }
 
-    private static int computeOffset(List<ValueInfo> valueInfos) {
+    private static int computeOffset(List<ValueInfo> valueInfos, boolean useCompressedReferences) {
         int result = 0;
         for (ValueInfo valueInfo : valueInfos) {
-            result += ConfigurationValues.getObjectLayout().sizeInBytes(valueInfo.kind, valueInfo.isCompressedReference);
+            result += ConfigurationValues.getObjectLayout().sizeInBytes(valueInfo.kind, useCompressedReferences);
         }
         return result;
     }

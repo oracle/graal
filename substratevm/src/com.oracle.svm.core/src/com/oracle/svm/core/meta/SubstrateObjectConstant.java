@@ -86,7 +86,7 @@ public final class SubstrateObjectConstant implements JavaConstant, Compressible
     }
 
     public static boolean isCompressed(JavaConstant constant) {
-        return constant instanceof SubstrateObjectConstant && ((SubstrateObjectConstant) constant).isCompressed();
+        return constant instanceof CompressibleConstant && ((CompressibleConstant) constant).isCompressed();
     }
 
     /** The raw object wrapped by this constant. */
