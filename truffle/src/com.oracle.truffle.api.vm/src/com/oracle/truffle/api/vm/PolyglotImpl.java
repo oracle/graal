@@ -192,6 +192,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             throw ((EngineException) e).e;
         } else if (e instanceof PolyglotUnsupportedException) {
             throw (PolyglotUnsupportedException) e;
+        } else if (e instanceof PolyglotClassCastException) {
+            throw (PolyglotClassCastException) e;
         } else if (e instanceof PolyglotIllegalStateException) {
             throw (PolyglotIllegalStateException) e;
         } else {

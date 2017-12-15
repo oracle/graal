@@ -32,6 +32,7 @@ import java.util.Set;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CallTarget;
@@ -102,9 +103,14 @@ public abstract class Accessor {
     }
 
     public abstract static class JavaInteropSupport {
+
         public abstract Node createToJavaNode();
 
-        public abstract Object toJava(Node toJavaNode, Class<?> type, Object value);
+        public abstract Node createToJavaTypeLiteralNode();
+
+        public abstract Object toJava(Node toJavaNode, Class<?> type, Object value, Object polyglotContext);
+
+        public abstract Object toJava(Node toJavaNode, TypeLiteral<?> type, Object value, Object polyglotContext);
 
         public abstract Object toJavaGuestObject(Object obj, Object languageContext);
     }

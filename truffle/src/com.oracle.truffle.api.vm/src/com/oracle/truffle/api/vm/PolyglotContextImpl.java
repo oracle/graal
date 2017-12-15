@@ -49,6 +49,7 @@ import java.util.function.Predicate;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 
 import com.oracle.truffle.api.Assumption;
@@ -71,8 +72,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
     private volatile PolyglotThreadInfo lastThread = PolyglotThreadInfo.NULL;
 
     /*
-     * While canceling the context can no longer be entered. The context goes from canceling into
-     * closed state.
+     * While canceling the context can no longer be entered. The context goes from canceling into closed
+     * state.
      */
     volatile boolean cancelling;
     private volatile Thread closingThread;
@@ -136,11 +137,12 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         this.engine = engine;
         Collection<PolyglotLanguage> languages = engine.idToLanguage.values();
         this.contexts = new PolyglotLanguageContext[languages.size() + 1];
-        this.contexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = new PolyglotLanguageContext(this, engine.hostLanguage, null, applicationArguments.get(PolyglotEngineImpl.HOST_LANGUAGE_ID),
-                        Collections.emptyMap());
+        PolyglotLanguageContext hostContext = new PolyglotLanguageContext(this, engine.hostLanguage, null, applicationArguments.get(PolyglotEngineImpl.HOST_LANGUAGE_ID),
+                        Collections.emptyMap(), false);
+        this.contexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = hostContext;
 
         for (PolyglotLanguage language : languages) {
-            PolyglotLanguageContext languageContext = new PolyglotLanguageContext(this, language, null, applicationArguments.get(language.getId()), Collections.emptyMap());
+            PolyglotLanguageContext languageContext = new PolyglotLanguageContext(this, language, null, applicationArguments.get(language.getId()), Collections.emptyMap(), true);
             this.contexts[language.index] = languageContext;
         }
 
@@ -167,6 +169,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         }
         this.truffleContext = VMAccessor.LANGUAGE.createTruffleContext(this);
         VMAccessor.INSTRUMENT.notifyContextCreated(engine, truffleContext);
+        hostContext.ensureInitialized(null);
     }
 
     /*
@@ -188,8 +191,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         this.engine = parent.engine;
         Collection<PolyglotLanguage> languages = engine.idToLanguage.values();
         this.contexts = new PolyglotLanguageContext[languages.size() + 1];
-        this.contexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = new PolyglotLanguageContext(this, engine.hostLanguage, null, applicationArguments.get(PolyglotEngineImpl.HOST_LANGUAGE_ID),
-                        Collections.emptyMap());
+        PolyglotLanguageContext hostContext = new PolyglotLanguageContext(this, engine.hostLanguage, null, applicationArguments.get(PolyglotEngineImpl.HOST_LANGUAGE_ID),
+                        Collections.emptyMap(), false);
+        this.contexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = hostContext;
 
         for (PolyglotLanguage language : languages) {
             OptionValuesImpl values = parent.contexts[language.index].optionValues;
@@ -203,11 +207,12 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                 languageConfig = new HashMap<>();
             }
 
-            PolyglotLanguageContext languageContext = new PolyglotLanguageContext(this, language, values, applicationArguments.get(language.getId()), languageConfig);
+            PolyglotLanguageContext languageContext = new PolyglotLanguageContext(this, language, values, applicationArguments.get(language.getId()), languageConfig, true);
             this.contexts[language.index] = languageContext;
         }
         this.parent.addChildContext(this);
         this.truffleContext = spiContext;
+        hostContext.ensureInitialized(null);
         // notifyContextCreated() is called after spiContext.impl is set to this.
     }
 
@@ -737,6 +742,16 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         }
     }
 
+    @Override
+    public Value asValue(Object hostValue) {
+        if (hostValue instanceof Value) {
+            return (Value) hostValue;
+        }
+        PolyglotLanguageContext hostContext = getHostContext();
+        hostContext.ensureInitialized(null);
+        return hostContext.toHostValue(hostContext.toGuestValue(hostValue));
+    }
+
     void waitForClose() {
         while (!closeImpl(false, true)) {
             try {
@@ -918,9 +933,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         for (PolyglotThreadInfo threadInfo : threads.values()) {
             if (!threadInfo.isCurrent() && threadInfo.isActive()) {
                 /*
-                 * We send an interrupt to the thread to wake up and to run some guest language code
-                 * in case they are waiting in some async primitive. The interrupt is then cleared
-                 * when the closed is performed.
+                 * We send an interrupt to the thread to wake up and to run some guest language code in case they
+                 * are waiting in some async primitive. The interrupt is then cleared when the closed is performed.
                  */
                 threadInfo.thread.interrupt();
             }

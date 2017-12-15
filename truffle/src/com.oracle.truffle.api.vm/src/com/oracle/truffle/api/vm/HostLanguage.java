@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -62,16 +63,17 @@ class HostLanguage extends TruffleLanguage<HostContext> {
     static final class HostContext {
 
         final Env env;
-        final PolyglotLanguageContext internalContext;
+        volatile PolyglotLanguageContext internalContext;
         final Map<String, Class<?>> classCache = new HashMap<>();
         private volatile Iterable<Scope> topScopes;
 
-        HostContext(Env env, PolyglotLanguageContext context) {
+        HostContext(Env env) {
             this.env = env;
-            this.internalContext = context;
         }
 
         Class<?> findClass(String className) {
+            lookupInternalContext();
+
             if (!internalContext.context.hostAccessAllowed) {
                 throw new HostLanguageException(String.format("Host class access is not allowed."));
             }
@@ -87,7 +89,14 @@ class HostLanguage extends TruffleLanguage<HostContext> {
             return loadedClass;
         }
 
+        private void lookupInternalContext() {
+            if (internalContext == null) {
+                internalContext = PolyglotContextImpl.current().getHostContext();
+            }
+        }
+
         Class<?> loadClass(String className) {
+            lookupInternalContext();
             Predicate<String> classFilter = internalContext.context.classFilter;
             if (classFilter != null && !classFilter.test(className)) {
                 throw new HostLanguageException(String.format("Access to host class %s is not allowed.", className));
@@ -171,7 +180,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
 
     @Override
     protected HostContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
-        return new HostContext(env, PolyglotContextImpl.current().getHostContext());
+        return new HostContext(env);
     }
 
     @Override
@@ -201,7 +210,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
             if (JavaInterop.isJavaObject(to)) {
                 Object javaObject = JavaInterop.asJavaObject(to);
                 try {
-                    return javaObject.toString();
+                    return Objects.toString(javaObject);
                 } catch (Throwable t) {
                     throw PolyglotImpl.wrapHostException(t);
                 }
@@ -226,7 +235,13 @@ class HostLanguage extends TruffleLanguage<HostContext> {
             TruffleObject to = (TruffleObject) value;
             if (JavaInterop.isJavaObject(to)) {
                 Object javaObject = JavaInterop.asJavaObject(to);
-                return JavaInterop.asTruffleValue(javaObject.getClass());
+                Class<?> javaType;
+                if (javaObject == null) {
+                    javaType = Void.class;
+                } else {
+                    javaType = javaObject.getClass();
+                }
+                return JavaInterop.asTruffleValue(javaType);
             } else if (PolyglotProxy.isProxyGuestObject(to)) {
                 Proxy proxy = PolyglotProxy.toProxyHostObject(to);
                 return JavaInterop.asTruffleValue(proxy.getClass());

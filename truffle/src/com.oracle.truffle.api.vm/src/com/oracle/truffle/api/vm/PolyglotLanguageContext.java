@@ -62,6 +62,7 @@ final class PolyglotLanguageContext implements VMObject {
     final PolyglotLanguage language;
     final Map<Object, CallTarget> sourceCache = new ConcurrentHashMap<>();
     final Map<String, Object> config;
+    final boolean eventsEnabled;
     volatile Map<Class<?>, PolyglotValue> valueCache;
     volatile PolyglotValue defaultValueCache;
     volatile OptionValuesImpl optionValues;
@@ -75,12 +76,13 @@ final class PolyglotLanguageContext implements VMObject {
     private final Node keyInfoNode = Message.KEY_INFO.createNode();
     private final Node readNode = Message.READ.createNode();
 
-    PolyglotLanguageContext(PolyglotContextImpl context, PolyglotLanguage language, OptionValuesImpl optionValues, String[] applicationArguments, Map<String, Object> config) {
+    PolyglotLanguageContext(PolyglotContextImpl context, PolyglotLanguage language, OptionValuesImpl optionValues, String[] applicationArguments, Map<String, Object> config, boolean eventsEnabled) {
         this.context = context;
         this.language = language;
         this.optionValues = optionValues;
         this.applicationArguments = applicationArguments == null ? EMPTY_STRING_ARRAY : applicationArguments;
         this.config = config;
+        this.eventsEnabled = eventsEnabled;
     }
 
     /**
@@ -134,7 +136,9 @@ final class PolyglotLanguageContext implements VMObject {
         if (localEnv != null && !finalized) {
             finalized = true;
             LANGUAGE.finalizeContext(localEnv);
-            VMAccessor.INSTRUMENT.notifyLanguageContextFinalized(context.engine, context.truffleContext, language.info);
+            if (eventsEnabled) {
+                VMAccessor.INSTRUMENT.notifyLanguageContextFinalized(context.engine, context.truffleContext, language.info);
+            }
             return true;
         }
         return false;
@@ -168,7 +172,9 @@ final class PolyglotLanguageContext implements VMObject {
     }
 
     void notifyDisposed() {
-        VMAccessor.INSTRUMENT.notifyLanguageContextDisposed(context.engine, context.truffleContext, language.info);
+        if (eventsEnabled) {
+            VMAccessor.INSTRUMENT.notifyLanguageContextDisposed(context.engine, context.truffleContext, language.info);
+        }
     }
 
     Object enterThread(PolyglotThread thread) {
@@ -247,7 +253,7 @@ final class PolyglotLanguageContext implements VMObject {
                 }
             }
         }
-        if (created) {
+        if (created && eventsEnabled) {
             VMAccessor.INSTRUMENT.notifyLanguageContextCreated(context.engine, context.truffleContext, language.info);
         }
     }
@@ -284,7 +290,7 @@ final class PolyglotLanguageContext implements VMObject {
                 }
             }
         }
-        if (wasInitialized) {
+        if (wasInitialized && eventsEnabled) {
             VMAccessor.INSTRUMENT.notifyLanguageContextInitialized(context.engine, context.truffleContext, language.info);
         }
         return wasInitialized;
