@@ -283,6 +283,22 @@ suite = {
             ],
         },
 
+        "com.oracle.svm.thirdparty": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.core",
+            ],
+            "checkstyle": "com.oracle.svm.truffle",
+            "javaCompliance": "1.8",
+            "annotationProcessors": [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
+
         "com.oracle.svm.truffle": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -423,6 +439,7 @@ suite = {
                 "com.oracle.svm.jni",
                 "com.oracle.svm.jline",
                 "com.oracle.svm.polyglot",
+                "com.oracle.svm.thirdparty",
             ],
             "distDependencies": [
                 "sdk:GRAAL_SDK",
