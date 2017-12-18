@@ -50,7 +50,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDTemplateValue;
 
 final class MDNameExtractor implements MetadataVisitor {
 
-    private static final String DEFAULT_STRING = "<unknown name>";
+    private static final String DEFAULT_STRING = "<anonymous>";
 
     static String getName(MDBaseNode container) {
         if (container == null) {

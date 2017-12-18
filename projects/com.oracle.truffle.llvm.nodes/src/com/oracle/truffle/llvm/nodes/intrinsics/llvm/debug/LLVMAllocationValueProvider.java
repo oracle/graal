@@ -51,7 +51,11 @@ final class LLVMAllocationValueProvider implements LLVMDebugValueProvider {
     @Override
     @TruffleBoundary
     public String describeValue(long bitOffset, int bitSize) {
-        return String.format("%s (%d bits at offset %d bits)", baseAddress, bitSize, bitOffset);
+        if (bitSize <= 0 && bitOffset <= 0) {
+            return baseAddress.toString();
+        } else {
+            return String.format("%s (%d bits at offset %d bits)", baseAddress, bitSize, bitOffset);
+        }
     }
 
     @Override

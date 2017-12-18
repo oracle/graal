@@ -52,6 +52,8 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.CastInstruction
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareExchangeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgDeclareInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.FenceInstruction;
@@ -704,6 +706,16 @@ public final class LLVMLivenessAnalysis {
 
         @Override
         public void visit(FenceInstruction fence) {
+        }
+
+        @Override
+        public void visit(DbgDeclareInstruction inst) {
+            visitLocalRead(inst.getValue());
+        }
+
+        @Override
+        public void visit(DbgValueInstruction inst) {
+            visitLocalRead(inst.getValue());
         }
 
         protected abstract void visitLocalRead(SymbolImpl symbol);

@@ -58,11 +58,13 @@ public final class MetadataValueList extends ValueList<MDBaseNode, MetadataVisit
     private final Map<String, MDNamedNode> namedNodes;
     private final Map<String, MDCompositeType> mdTypeRegistry = new HashMap<>();
     private final List<MDKind> kinds;
+    private final List<MDLocalVariable> locals;
 
     public MetadataValueList() {
         super(PLACEHOLDER_FACTORY);
         this.namedNodes = new HashMap<>();
         this.kinds = new ArrayList<>();
+        this.locals = new ArrayList<>();
     }
 
     public void addKind(MDKind newKind) {
@@ -127,5 +129,13 @@ public final class MetadataValueList extends ValueList<MDBaseNode, MetadataVisit
 
     public void registerType(String identifier, MDCompositeType type) {
         mdTypeRegistry.put(identifier, type);
+    }
+
+    public void registerLocal(MDLocalVariable mdLocal) {
+        locals.add(mdLocal);
+    }
+
+    public void localsAccept(MetadataVisitor visitor) {
+        locals.forEach(l -> l.accept(visitor));
     }
 }

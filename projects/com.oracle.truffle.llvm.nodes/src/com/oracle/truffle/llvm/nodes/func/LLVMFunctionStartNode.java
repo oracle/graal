@@ -101,6 +101,9 @@ public class LLVMFunctionStartNode extends RootNode {
 
     @Override
     public String getName() {
+        if (debugInformation.originalName != null) {
+            return debugInformation.originalName;
+        }
         return name;
     }
 
@@ -110,6 +113,10 @@ public class LLVMFunctionStartNode extends RootNode {
 
     public String getOriginalName() {
         return debugInformation.originalName;
+    }
+
+    public String getBcName() {
+        return name;
     }
 
     public Source getBcSource() {

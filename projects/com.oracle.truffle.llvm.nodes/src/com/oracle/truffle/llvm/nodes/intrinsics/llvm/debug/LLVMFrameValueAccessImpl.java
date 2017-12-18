@@ -27,41 +27,27 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMFrameValueAccess;
 
-import java.util.HashMap;
+public final class LLVMFrameValueAccessImpl implements LLVMFrameValueAccess {
 
-public final class LLVMSourceContext {
+    private final FrameSlot slot;
+    private final LLVMDebugValueProvider.Builder builder;
 
-    private final HashMap<LLVMSourceSymbol, LLVMDebugValue> staticValues;
-    private final HashMap<LLVMSourceSymbol, LLVMFrameValueAccess> frameValues;
-
-    @TruffleBoundary
-    public LLVMSourceContext() {
-        staticValues = new HashMap<>();
-        frameValues = new HashMap<>();
+    public LLVMFrameValueAccessImpl(FrameSlot slot, LLVMDebugValueProvider.Builder builder) {
+        this.slot = slot;
+        this.builder = builder;
     }
 
-    @TruffleBoundary
-    public void registerStatic(LLVMSourceSymbol symbol, LLVMDebugValue value) {
-        staticValues.put(symbol, value);
-    }
-
-    @TruffleBoundary
-    public LLVMDebugValue getStatic(LLVMSourceSymbol symbol) {
-        return staticValues.get(symbol);
-    }
-
-    @TruffleBoundary
-    public void registerFrameValue(LLVMSourceSymbol symbol, LLVMFrameValueAccess value) {
-        frameValues.put(symbol, value);
-    }
-
-    @TruffleBoundary
-    public LLVMFrameValueAccess getFrameValue(LLVMSourceSymbol symbol) {
-        return frameValues.get(symbol);
+    @Override
+    public LLVMDebugValue getValue(Frame frame) {
+        final Object addr = frame.getValue(slot);
+        return LLVMDebugSimpleValue.create(builder, addr);
     }
 }

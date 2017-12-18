@@ -47,19 +47,6 @@ public abstract class LLVMDebugInitNode extends LLVMExpressionNode {
         return frameSlot;
     }
 
-    public abstract static class SimpleInitNode extends LLVMDebugInitNode {
-
-        protected SimpleInitNode(FrameSlot frameSlot) {
-            super(frameSlot);
-        }
-
-        @Specialization
-        protected Object init(VirtualFrame frame) {
-            frame.setObject(getFrameSlot(), new LLVMDebugSimpleValue());
-            return null;
-        }
-    }
-
     public abstract static class AggregateInitNode extends LLVMDebugInitNode {
 
         @CompilationFinal(dimensions = 1) private int[] offsets;

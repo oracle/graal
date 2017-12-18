@@ -31,8 +31,6 @@ package com.oracle.truffle.llvm.parser;
 
 import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -45,7 +43,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.LLVMLivenessAnalysis.LLVMLivenessAnalysisResult;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
-import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute.Kind;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute.KnownAttribute;
@@ -74,6 +71,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     private final FrameDescriptor frame;
     private final Map<InstructionBlock, List<Phi>> phis;
     private final Map<String, Integer> labels;
+    private final List<FrameSlot> notNullable = new ArrayList<>();
 
     LazyToTruffleConverterImpl(LLVMParserRuntime runtime, LLVMContext context, NodeFactory nodeFactory, FunctionDefinition method, Source source, FrameDescriptor frame,
                     Map<InstructionBlock, List<Phi>> phis,
@@ -92,17 +90,14 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     public RootCallTarget convert() {
         CompilerAsserts.neverPartOfCompilation();
 
-        final SourceModel.Function sourceFunction = method.getSourceFunction();
-        Collection<SourceModel.Variable> initDebugValues;
-        if (sourceFunction != null) {
-            initDebugValues = sourceFunction.getVariables();
-        } else {
-            initDebugValues = Collections.emptySet();
-        }
-
         LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(frame, context, phis, method);
+        LLVMSymbolReadResolver symbols = new LLVMSymbolReadResolver(runtime, method, frame, labels);
+
+        LLVMRuntimeDebugInformation dbgInfoHandler = new LLVMRuntimeDebugInformation(frame, nodeFactory, context, notNullable, symbols, runtime);
+        dbgInfoHandler.registerStaticDebugSymbols(method);
+
         LLVMBitcodeFunctionVisitor visitor = new LLVMBitcodeFunctionVisitor(runtime, frame, labels, phis, nodeFactory, method.getParameters().size(),
-                        new LLVMSymbolReadResolver(runtime, method, frame, labels), method, liveness, initDebugValues);
+                        symbols, method, liveness, notNullable, dbgInfoHandler);
         method.accept(visitor);
         FrameSlot[][] nullableBeforeBlock = getNullableFrameSlots(liveness.getNullableBeforeBlock());
         FrameSlot[][] nullableAfterBlock = getNullableFrameSlots(liveness.getNullableAfterBlock());
@@ -120,6 +115,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     private FrameSlot[][] getNullableFrameSlots(BitSet[] nullableBeforeBlock) {
         List<? extends FrameSlot> frameSlots = frame.getSlots();
         FrameSlot[][] result = new FrameSlot[nullableBeforeBlock.length][];
+
         for (int i = 0; i < nullableBeforeBlock.length; i++) {
             BitSet nullable = nullableBeforeBlock[i];
             int bitIndex = -1;
@@ -127,9 +123,11 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             ArrayList<FrameSlot> nullableBefore = new ArrayList<>();
             while ((bitIndex = nullable.nextSetBit(bitIndex + 1)) >= 0) {
                 FrameSlot frameSlot = frameSlots.get(bitIndex);
-                nullableBefore.add(frameSlot);
+                if (!notNullable.contains(frameSlot)) {
+                    nullableBefore.add(frameSlot);
+                }
             }
-            result[i] = nullableBefore.toArray(new FrameSlot[0]);
+            result[i] = nullableBefore.toArray(new FrameSlot[nullableBefore.size()]);
         }
         return result;
     }

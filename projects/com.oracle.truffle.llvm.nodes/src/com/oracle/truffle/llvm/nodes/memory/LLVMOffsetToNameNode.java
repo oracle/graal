@@ -88,7 +88,7 @@ public abstract class LLVMOffsetToNameNode extends Node {
         }
 
         static boolean noTypeInfo(LLVMSourceType type) {
-            return type == null || type == LLVMSourceType.UNKNOWN_TYPE || type == LLVMSourceType.VOID_TYPE;
+            return type == null || type == LLVMSourceType.UNKNOWN || type == LLVMSourceType.VOID || type == LLVMSourceType.UNSUPPORTED;
         }
 
         @Specialization(guards = "noTypeInfo(type)")

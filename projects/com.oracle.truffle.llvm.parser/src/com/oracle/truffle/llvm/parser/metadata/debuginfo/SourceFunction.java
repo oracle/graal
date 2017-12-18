@@ -27,41 +27,56 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMFrameValueAccess;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.Map;
 
-public final class LLVMSourceContext {
+public final class SourceFunction {
 
-    private final HashMap<LLVMSourceSymbol, LLVMDebugValue> staticValues;
-    private final HashMap<LLVMSourceSymbol, LLVMFrameValueAccess> frameValues;
+    private final Map<Instruction, LLVMSourceLocation> instructions = new HashMap<>();
 
-    @TruffleBoundary
-    public LLVMSourceContext() {
-        staticValues = new HashMap<>();
-        frameValues = new HashMap<>();
+    private final Map<LLVMSourceSymbol, SourceVariable> locals = new HashMap<>();
+
+    private final LLVMSourceLocation lexicalScope;
+
+    SourceFunction(LLVMSourceLocation lexicalScope) {
+        this.lexicalScope = lexicalScope;
     }
 
-    @TruffleBoundary
-    public void registerStatic(LLVMSourceSymbol symbol, LLVMDebugValue value) {
-        staticValues.put(symbol, value);
+    public SourceSection getSourceSection() {
+        return lexicalScope.getSourceSection();
     }
 
-    @TruffleBoundary
-    public LLVMDebugValue getStatic(LLVMSourceSymbol symbol) {
-        return staticValues.get(symbol);
+    public LLVMSourceLocation getSourceLocation(Instruction instruction) {
+        return instructions.get(instruction);
     }
 
-    @TruffleBoundary
-    public void registerFrameValue(LLVMSourceSymbol symbol, LLVMFrameValueAccess value) {
-        frameValues.put(symbol, value);
+    public LLVMSourceLocation getLexicalScope() {
+        return lexicalScope;
     }
 
-    @TruffleBoundary
-    public LLVMFrameValueAccess getFrameValue(LLVMSourceSymbol symbol) {
-        return frameValues.get(symbol);
+    SourceVariable getLocal(LLVMSourceSymbol symbol) {
+        if (locals.containsKey(symbol)) {
+            return locals.get(symbol);
+        }
+
+        final SourceVariable variable = new SourceVariable(symbol);
+        locals.put(symbol, variable);
+        return variable;
+    }
+
+    void addInstruction(Instruction instruction, LLVMSourceLocation scope) {
+        instructions.put(instruction, scope);
+    }
+
+    public Collection<SourceVariable> getVariables() {
+        return locals.values();
     }
 }

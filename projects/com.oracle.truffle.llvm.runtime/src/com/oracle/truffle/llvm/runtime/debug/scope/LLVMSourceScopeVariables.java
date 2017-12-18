@@ -63,6 +63,15 @@ final class LLVMSourceScopeVariables implements TruffleObject {
     @MessageResolution(receiverType = LLVMSourceScopeVariables.class)
     static final class VariablesMessageResolution {
 
+        @Resolve(message = "HAS_KEYS")
+        abstract static class VariablesHasKeysNode extends Node {
+
+            public Object access(@SuppressWarnings("unused") LLVMSourceScopeVariables vars) {
+                return true;
+            }
+
+        }
+
         @Resolve(message = "KEYS")
         abstract static class VariablesKeyNode extends Node {
 

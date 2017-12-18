@@ -27,75 +27,81 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.parser.metadata.MDExpression;
+import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceVariable;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
-import java.util.Objects;
+public class DbgValueInstruction extends VoidInstruction {
 
-public final class LLVMSourceSymbol {
+    private final SymbolImpl value;
+    private final SourceVariable variable;
+    private final long index;
+    private final MDExpression expression;
 
-    private final String name;
-    private final LLVMSourceLocation location;
-    private final LLVMSourceType type;
-    private final boolean isGlobal;
-
-    public LLVMSourceSymbol(String name, LLVMSourceLocation location, LLVMSourceType type, boolean isGlobal) {
-        this.name = name;
-        this.location = location;
-        this.type = type;
-        this.isGlobal = isGlobal;
+    public DbgValueInstruction(SymbolImpl value, SourceVariable variable, long index, MDExpression expression) {
+        this.value = value;
+        this.variable = variable;
+        this.index = index;
+        this.expression = expression;
     }
 
-    public String getName() {
-        return name;
+    public SymbolImpl getValue() {
+        return value;
     }
 
-    public LLVMSourceLocation getLocation() {
-        return location;
+    public SourceVariable getVariable() {
+        return variable;
     }
 
-    public LLVMSourceType getType() {
-        return type;
+    public long getIndex() {
+        return index;
     }
 
-    public boolean isGlobal() {
-        return isGlobal;
-    }
-
-    @Override
-    public String toString() {
-        return name;
+    public MDExpression getExpression() {
+        return expression;
     }
 
     @Override
-    @TruffleBoundary
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
+    }
+
+    @Override
+    public void accept(SymbolVisitor visitor) {
+        visitor.visit(this);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
         }
-
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
 
-        final LLVMSourceSymbol symbol = (LLVMSourceSymbol) o;
+        final DbgValueInstruction that = (DbgValueInstruction) o;
 
-        if (isGlobal != symbol.isGlobal) {
+        if (!getValue().equals(that.getValue())) {
             return false;
         }
-
-        if (!name.equals(symbol.name)) {
+        if (!getVariable().equals(that.getVariable())) {
             return false;
         }
-
-        return Objects.equals(location, symbol.location);
+        if (!getExpression().equals(that.getExpression())) {
+            return false;
+        }
+        return getIndex() == that.getIndex();
     }
 
     @Override
-    @TruffleBoundary
     public int hashCode() {
-        return name.hashCode();
+        int result = getValue().hashCode();
+        result = 31 * result + getVariable().hashCode();
+        result = 31 * result + (int) (getIndex() ^ (getIndex() >>> 32));
+        result = 31 * result + getExpression().hashCode();
+        return result;
     }
 }

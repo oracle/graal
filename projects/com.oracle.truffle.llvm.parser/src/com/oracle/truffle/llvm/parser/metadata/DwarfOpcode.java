@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import java.math.BigInteger;
+import java.util.LinkedList;
+
 public final class DwarfOpcode {
 
     public static final long ADDR = 0x3;
@@ -199,6 +202,84 @@ public final class DwarfOpcode {
     public static final long GNU_ADDR_INDEX = 0xfb;
     public static final long GNU_CONST_INDEX = 0xfc;
     public static final long LLVM_FRAGMENT = 0x1000;
+
+    public static boolean isDeref(MDExpression expression) {
+        return expression.getElementCount() == 1 && expression.getOperand(0) == DEREF;
+    }
+
+    public static BigInteger toIntegerSymbol(MDExpression exp) {
+        final LinkedList<BigInteger> dwStack = new LinkedList<>();
+
+        int i = 0;
+        while (i < exp.getElementCount()) {
+            final long op = exp.getOperand(i++);
+
+            if (op >= LIT0 && op <= LIT31) {
+                dwStack.push(BigInteger.valueOf(op - LIT0));
+
+            } else if (op >= CONST1U && op <= CONSTS) {
+                if (i >= exp.getElementCount()) {
+                    return null;
+                }
+
+                long arg = exp.getOperand(i++);
+                BigInteger res = BigInteger.ZERO;
+                switch ((int) op) {
+                    case (int) CONST1S:
+                        res = BigInteger.valueOf((byte) arg);
+                        break;
+
+                    case (int) CONST1U:
+                        res = BigInteger.valueOf(arg & 0xff);
+                        break;
+
+                    case (int) CONST2S:
+                        res = BigInteger.valueOf((short) arg);
+                        break;
+
+                    case (int) CONST2U:
+                        res = BigInteger.valueOf(arg & 0xffff);
+                        break;
+
+                    case (int) CONST4S:
+                        res = BigInteger.valueOf((int) arg);
+                        break;
+
+                    case (int) CONST4U:
+                        res = BigInteger.valueOf(arg & 0xffffffffL);
+                        break;
+
+                    case (int) CONST8S:
+                        res = BigInteger.valueOf(arg);
+                        break;
+
+                    case (int) CONST8U:
+                        res = new BigInteger(Long.toUnsignedString(arg));
+                        break;
+
+                    case (int) CONSTS:
+                    case (int) CONSTU: {
+                        // in practice, CONSTU is used also for signed value and of max 64bit
+                        res = BigInteger.valueOf(arg);
+                    }
+                }
+
+                dwStack.push(res);
+
+            } else {
+
+                switch ((int) op) {
+
+                    case (int) STACK_VALUE:
+                        return !dwStack.isEmpty() ? dwStack.getFirst() : null;
+
+                }
+            }
+        }
+
+        return null;
+
+    }
 
     private DwarfOpcode() {
     }

@@ -183,9 +183,12 @@ public final class Metadata implements ParserListener {
                 metadata.add(MDLexicalBlockFile.create38(args, metadata));
                 break;
 
-            case LOCAL_VAR:
-                metadata.add(MDLocalVariable.create38(args, metadata));
+            case LOCAL_VAR: {
+                final MDLocalVariable md = MDLocalVariable.create38(args, metadata);
+                metadata.add(md);
+                metadata.registerLocal(md);
                 break;
+            }
 
             case NAMESPACE:
                 metadata.add(MDNamespace.create38(args, metadata));
@@ -367,9 +370,12 @@ public final class Metadata implements ParserListener {
 
                 case DW_TAG_AUTO_VARIABLE:
                 case DW_TAG_ARG_VARIABLE:
-                case DW_TAG_RETURN_VARIABLE:
-                    metadata.add(MDLocalVariable.create32(args, this));
+                case DW_TAG_RETURN_VARIABLE: {
+                    final MDLocalVariable md = MDLocalVariable.create32(args, this);
+                    metadata.registerLocal(md);
+                    metadata.add(md);
                     break;
+                }
 
                 case DW_TAG_UNKNOWN:
                     metadata.add(MDNode.create32(args, this));
