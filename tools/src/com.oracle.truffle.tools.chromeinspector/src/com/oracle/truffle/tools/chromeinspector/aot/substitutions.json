@@ -1,0 +1,12 @@
+[
+  {
+    "annotatedClass": "com.oracle.truffle.tools.chromeinspector.aot.Target_org_json_JSONObject",
+    "originalClass": "org.json.JSONObject",
+    "methods": [
+      {
+        "annotatedName": "wrap",
+        "substitute": true
+      },
+    ]
+  }
+]

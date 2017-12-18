@@ -510,30 +510,6 @@ suite = {
       "workingSets" : "Truffle,Tools",
     },
 
-    "com.oracle.truffle.tools.profiler" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : ["TRUFFLE_API"],
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
-      "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "1.8",
-      "workingSets" : "Truffle,Tools",
-    },
-
-    "com.oracle.truffle.tools.profiler.test" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-          "com.oracle.truffle.tools.profiler",
-          "com.oracle.truffle.api.instrumentation.test",
-          "mx:JUNIT"
-          ],
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
-      "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "1.8",
-      "workingSets" : "Truffle,Tools",
-    },
-
     "com.oracle.truffle.tools.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -542,19 +518,6 @@ suite = {
           "com.oracle.truffle.api.instrumentation.test",
           "mx:JUNIT"
           ],
-      "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "1.8",
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
-      "workingSets" : "Truffle,Tools",
-    },
-
-    "com.oracle.truffle.tools.debug.shell" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.api.vm",
-        "JLINE"
-      ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
@@ -868,14 +831,13 @@ suite = {
       "subDir" : "src",
       "javaCompliance" : "1.8",
       "dependencies" : [
-        "com.oracle.truffle.tools.debug.shell",
         "com.oracle.truffle.tools"
       ],
       "exclude" : ["JLINE"],
       "distDependencies" : [
           "TRUFFLE_API",
       ],
-      "description" : "Experimental REPL server to build your debugger console for your language.",
+      "description" : "Truffle Tools APIs.",
       "allowsJavadocWarnings": True,
      },
 
@@ -934,27 +896,5 @@ suite = {
       "maven" : False,
      },
 
-     "TRUFFLE_PROFILER": {
-       "dependencies": [
-         "com.oracle.truffle.tools.profiler",
-       ],
-       "distDependencies" : [
-         "TRUFFLE_API",
-       ],
-       "javadocType" : "api",
-       "description" : "The truffle profiler, supporting CPU sampling and tracing. Memory tracing support is experimental"
-     },
-
-     "TRUFFLE_PROFILER_TEST": {
-       "dependencies": [
-         "com.oracle.truffle.tools.profiler.test",
-       ],
-       "distDependencies" : [
-         "TRUFFLE_INSTRUMENT_TEST",
-         "TRUFFLE_PROFILER",
-       ],
-       "description" : "Tests for the truffle profiler.",
-       "maven" : False,
-     },
   },
 }
