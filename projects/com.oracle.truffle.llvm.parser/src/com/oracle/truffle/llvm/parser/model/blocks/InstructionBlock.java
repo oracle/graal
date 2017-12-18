@@ -96,12 +96,12 @@ public final class InstructionBlock {
         }
     }
 
-    public void remove(Instruction inst) {
-        for (int i = 0; i < instructions.size(); i++) {
-            if (instructions.get(i) == inst) {
-                instructions.remove(i);
-            }
-        }
+    public void set(int index, Instruction instruction) {
+        instructions.set(index, instruction);
+    }
+
+    public void remove(int index) {
+        instructions.remove(index);
     }
 
     @Override
