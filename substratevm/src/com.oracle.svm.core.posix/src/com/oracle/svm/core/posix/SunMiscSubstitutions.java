@@ -26,10 +26,6 @@ import java.io.Console;
 import java.nio.charset.Charset;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -38,21 +34,12 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
-import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
-import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.posix.headers.CSunMiscSignal;
 import com.oracle.svm.core.posix.headers.Errno;
-import com.oracle.svm.core.posix.headers.Fcntl;
-import com.oracle.svm.core.posix.headers.LibC;
-import com.oracle.svm.core.posix.headers.Semaphore;
 import com.oracle.svm.core.posix.headers.Signal;
-import com.oracle.svm.core.posix.headers.Signal.SignalDispatcher;
-import com.oracle.svm.core.posix.headers.Stat;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
@@ -152,6 +139,10 @@ final class Util_sun_misc_Signal {
     protected static long handle0(int sig, long nativeH) {
         ensureInitialized();
         final Signal.SignalDispatcher newDispatcher = nativeHToDispatcher(nativeH);
+        /* If the dispatcher is the CSunMiscSignal handler, then check if the signal is in range. */
+        if ((newDispatcher == CSunMiscSignal.countingHandlerFunctionPointer()) && (CSunMiscSignal.signalRangeCheck(sig) != 1)) {
+            return sunMiscSignalErrorHandler;
+        }
         updateDispatcher(sig, newDispatcher);
         final Signal.SignalDispatcher oldDispatcher = Signal.signal(sig, newDispatcher);
         final long result = dispatcherToNativeH(oldDispatcher);
@@ -175,7 +166,7 @@ final class Util_sun_misc_Signal {
      * Runtime initialization. This method is called every time someone registers a Java signal
      * handler.
      */
-    private static void ensureInitialized() {
+    private static void ensureInitialized() throws IllegalArgumentException {
         /* Ask if initialization is needed. */
         if (!initialized) {
             /*
@@ -186,8 +177,19 @@ final class Util_sun_misc_Signal {
             try {
                 /* Ask if initialization is *still* needed now that I have the lock. */
                 if (!initialized) {
-                    /* Initialize the semaphore for notifications. */
-                    SignalSemaphore.initialize();
+                    /* Open the C signal handling mechanism. */
+                    final int openResult = CSunMiscSignal.open();
+                    if (openResult != 0) {
+                        final int openErrno = Errno.errno();
+                        /* Check for the C signal handling mechanism already being open. */
+                        if (openErrno == Errno.EBUSY()) {
+                            throw new IllegalArgumentException("C signal handling mechanism is in use.");
+                        }
+                        /* Report other failure. */
+                        Log.log().string("Util_sun_misc_Signal.ensureInitialized: CSunMiscSignal.create() failed.")
+                                        .string("  errno: ").signed(openErrno).string("  ").string(Errno.strerror(openErrno)).newline();
+                        VMError.guarantee(false, "Util_sun_misc_Signal.ensureInitialized: CSunMiscSignal.open() failed.");
+                    }
 
                     /* Initialize the table of signal states. */
                     final Signal.SignalEnum[] valueArray = Signal.SignalEnum.values();
@@ -243,7 +245,7 @@ final class Util_sun_misc_Signal {
         } else if (nativeH == sunMiscSignalIgnoreHandler) {
             result = Signal.SIG_IGN();
         } else if (nativeH == sunMiscSignalDispatchHandler) {
-            result = signalDispatcher.getFunctionPointer();
+            result = CSunMiscSignal.countingHandlerFunctionPointer();
         } else if (nativeH == sunMiscSignalErrorHandler) {
             result = Signal.SIG_ERR();
         } else {
@@ -259,7 +261,7 @@ final class Util_sun_misc_Signal {
             result = sunMiscSignalDefaultHandler;
         } else if (handler == Signal.SIG_IGN()) {
             result = sunMiscSignalIgnoreHandler;
-        } else if (handler == signalDispatcher.getFunctionPointer()) {
+        } else if (handler == CSunMiscSignal.countingHandlerFunctionPointer()) {
             result = sunMiscSignalDispatchHandler;
         } else if (handler == Signal.SIG_ERR()) {
             result = sunMiscSignalErrorHandler;
@@ -267,145 +269,6 @@ final class Util_sun_misc_Signal {
             result = handler.rawValue();
         }
         return result;
-    }
-
-    /**
-     * This method is registered as a C signal handler for signals handled by Java code.
-     * <p>
-     * This method gets called on top of an existing thread when the corresponding signal is raised.
-     * An alternative would be to set up an alternate signal handler stack on which to run this
-     * signal handler. That seems not to be necessary. The given signal is normally blocked from
-     * being re-raised while this signal handler is running, but different signals arriving while
-     * this handler is running may run on top of the original handler.
-     * <p>
-     * This method only records that the signal was raised: it does not make the up-call to the Java
-     * signal handler. The address of this method, {@link #signalDispatcher}, is used in
-     * {@link DispatchThread#run()} to indicate that the up-call should be made the the Java signal
-     * handler.
-     * <p>
-     * This method is uninterruptible because it is running on a borrowed thread, does not have a
-     * VMThread pointer or any VMThreadLocal state.
-     * <p>
-     * Since this code may run while a garbage collection is in progress, it may not access anything
-     * that might be moved by a garbage collection.
-     */
-    @CEntryPoint
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
-    @Uninterruptible(reason = "Can not check for safepoints because I am running on a borrowed thread.")
-    private static void dispatch(int signalNumber) {
-        /* Good practice: Save errno around the signal handler. */
-        final int savedErrno = Errno.errno();
-        try {
-            boolean needBroadcast = false;
-            for (int index = 0; index < signalState.length; index += 1) {
-                final SignalState entry = signalState[index];
-                if (entry.getNumber() == signalNumber) {
-                    entry.incrementRaised();
-                    needBroadcast = true;
-                }
-            }
-            if (needBroadcast) {
-                SignalSemaphore.broadcast();
-            }
-        } finally {
-            /* Good practice: Restore errno around the signal handler. */
-            Errno.set_errno(savedErrno);
-        }
-    }
-
-    /**
-     * The address of the signal handler for signals handled by Java code. {@link #dispatch(int)}.
-     */
-    private static final CEntryPointLiteral<SignalDispatcher> signalDispatcher = CEntryPointLiteral.create(Util_sun_misc_Signal.class, "dispatch", int.class);
-
-    /** A wrapper around a Posix semaphore, for notification that a signal has been raised. */
-    protected static final class SignalSemaphore {
-
-        /**
-         * A Posix semaphore for notifications.
-         *
-         * Allocated by {@link Semaphore#sem_open} in native memory.
-         */
-        private static Semaphore.sem_t semaphore;
-
-        /* No instances. */
-        private SignalSemaphore() {
-        }
-
-        static void initialize() {
-            /*
-             * On Darwin, a semaphore name seems to be limited to 30 characters, including the
-             * leading '/'. 'UsmS.SS' stands for 'Util_sun_misc_Signal.SignalSemaphore' which is
-             * otherwise too long. I want the process identifier in there, too, to make the
-             * semaphore name process-specific, since the semaphore is for signals delivered to this
-             * process.
-             */
-            final String semaphoreName = "/UsmS.SS-" + Integer.toString(PosixUtils.getpid());
-            /*
-             * I would also use Fcntl.O_EXCL() to make sure the semaphore did not exist before,
-             * except that semaphores persist across calls to 'exec', so the semaphore for this
-             * process might already exist.
-             */
-            final int oflag = (Fcntl.O_CREAT());
-            final int mode = (Stat.S_IRUSR() | Stat.S_IWUSR());
-            try (CCharPointerHolder nameHolder = CTypeConversion.toCString(semaphoreName)) {
-                semaphore = Semaphore.sem_open(nameHolder.get(), oflag, mode, 0);
-                if (semaphore == Semaphore.SEM_FAILED()) {
-                    final int semOpenErrno = Errno.errno();
-                    Log.log().string("Util_sun_misc_Signal.SignalSemaphore.initialize: sem_open failed.")
-                                    .string("  errno: ").signed(semOpenErrno).string("  ").string(Errno.strerror(semOpenErrno)).newline();
-                    VMError.guarantee(false, "Util_sun_misc_Signal.SignalSemaphore.initialize: sem_open failed.");
-                }
-                /* Unlink the semaphore so it does not persist. */
-                final int unlinkResult = Semaphore.sem_unlink(nameHolder.get());
-                if (unlinkResult != 0) {
-                    final int semUnlinkErrno = Errno.errno();
-                    Log.log().string("Util_sun_misc_Signal.SignalSemaphore.initialize: sem_unlink failed.")
-                                    .string("  errno: ").signed(semUnlinkErrno).string("  ").string(Errno.strerror(semUnlinkErrno)).newline();
-                    VMError.guarantee(false, "Util_sun_misc_Signal.SignalSemaphore.initialize: sem_unlink failed.");
-                }
-            }
-        }
-
-        /** Clean up resources. */
-        static void destructor() {
-            if (isActive()) {
-                /* Do not bother to check the return status: What would I do if it failed? */
-                Semaphore.sem_close(semaphore);
-                semaphore = WordFactory.nullPointer();
-            }
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.")
-        static boolean isActive() {
-            return (semaphore.isNonNull() && (semaphore != Semaphore.SEM_FAILED()));
-        }
-
-        static void await() {
-            if (isActive()) {
-                final int status = Semaphore.sem_wait(semaphore);
-                /* Interrupt (by a signal handler) is treated like a notification. */
-                if (status == Errno.EINTR()) {
-                    return;
-                }
-                PosixUtils.checkStatusIs0(status, "Util_sun_misc_Signal.SignalSemaphore.awaitInNative(): sem_wait failed.");
-            }
-        }
-
-        /**
-         * Post that a signal is available. This is called from
-         * {@link Util_sun_misc_Signal#dispatch(int)}, on a borrowed thread, with no VMThread data.
-         */
-        @Uninterruptible(reason = "Can not check for safepoints because I am running on a borrowed thread.")
-        static void broadcast() {
-            if (isActive()) {
-                final int postResult = Semaphore.sem_post_no_transition(semaphore);
-                if (postResult != 0) {
-                    /* Not much I can do if the sem_post failed. */
-                    LibC.exit(postResult);
-                }
-            }
-        }
     }
 
     /** A runnable to notice when signals have been raised. */
@@ -416,9 +279,9 @@ final class Util_sun_misc_Signal {
         }
 
         /**
-         * Wait to be notified that a signal has been raised, then find any that were raised and
-         * dispatch to the Java signal handler. This method may race with
-         * {@link Util_sun_misc_Signal#dispatch(int)} which is why an AtomicInteger is used.
+         * Wait to be notified that a signal has been raised in the C signal handler, then find any
+         * that were raised and dispatch to the Java signal handler. The C signal handler increments
+         * the counts and this method decrements them.
          */
         @Override
         public void run() {
@@ -428,29 +291,29 @@ final class Util_sun_misc_Signal {
                     break;
                 }
                 /* Block waiting for one or more signals to be raised. Or a random wake up. */
-                SignalSemaphore.await();
+                SignalState.await();
+                /* Find any counters that are non-zero. */
                 for (int index = 0; index < signalState.length; index += 1) {
                     final SignalState entry = signalState[index];
-                    /* If there are signals to be raised ... */
-                    if (entry.getRaised() > 0) {
-                        final Signal.SignalDispatcher dispatcher = entry.getDispatcher();
-                        /* ... and if the dispatcher is the Java signal dispatcher. */
-                        if (dispatcher.equal(Util_sun_misc_Signal.signalDispatcher.getFunctionPointer())) {
-                            /* then up-call to the Java signal handler. */
+                    final Signal.SignalDispatcher dispatcher = entry.getDispatcher();
+                    /* If the handler is the Java signal handler ... */
+                    if (dispatcher.equal(CSunMiscSignal.countingHandlerFunctionPointer())) {
+                        /* ... and if there are outstanding signals to be dispatched. */
+                        if (entry.decrementCount() > 0L) {
                             Target_sun_misc_Signal.dispatch(entry.getNumber());
                         }
-                        entry.decrementRaised();
                     }
                 }
             }
-            /* If this thread is exiting, then the semaphore is no longer needed. */
-            SignalSemaphore.destructor();
+            /* If this thread is exiting, then the C signal handling mechanism can be closed. */
+            CSunMiscSignal.close();
         }
     }
 
     /**
-     * An entry in a table of signal numbers, handlers, and especially, whether a signal has been
-     * raised.
+     * An entry in a table of signal numbers and handlers. There is a parallel table of counts of
+     * outstanding signals maintained in C. There are convenience method here for accessing those
+     * counts.
      */
     private static final class SignalState {
 
@@ -458,12 +321,9 @@ final class Util_sun_misc_Signal {
         private int number;
         /** The C signal handler for this signal number. */
         private Signal.SignalDispatcher dispatcher;
-        /** A count of outstanding raises of this signal. */
-        private UninterruptibleUtils.AtomicInteger raised;
 
         /** This just allocates an entry. The entry is initialized at runtime. */
         protected SignalState() {
-            this.raised = new UninterruptibleUtils.AtomicInteger(0);
         }
 
         protected void initialize(int cValue) {
@@ -486,18 +346,22 @@ final class Util_sun_misc_Signal {
             dispatcher = value;
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.")
-        protected int getRaised() {
-            return raised.get();
+        /*
+         * Convenient access to C functions, with checks for success.
+         */
+
+        protected static void await() {
+            final int awaitResult = CSunMiscSignal.await();
+            PosixUtils.checkStatusIs0(awaitResult, "Util_sun_misc_Signal.SignalState.await(): CSunMiscSignal.await() failed.");
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.")
-        protected void incrementRaised() {
-            raised.incrementAndGet();
-        }
-
-        protected void decrementRaised() {
-            raised.decrementAndGet();
+        /*
+         * Decrement a counter towards zero. Returns the original value, or -1 if the signal number
+         * is out of range.
+         */
+        protected long decrementCount() {
+            /* Not checking the result. */
+            return CSunMiscSignal.decrementCount(number);
         }
     }
 }
