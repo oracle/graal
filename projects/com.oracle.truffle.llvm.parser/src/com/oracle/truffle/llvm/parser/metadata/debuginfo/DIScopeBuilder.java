@@ -219,7 +219,11 @@ final class DIScopeBuilder {
 
         @Override
         public void visit(MDLexicalBlock md) {
-            parent = buildLocation(md.getScope());
+            if (md.getScope() != MDVoidNode.INSTANCE) {
+                parent = buildLocation(md.getScope());
+            } else {
+                parent = buildLocation(md.getFile());
+            }
             kind = LLVMSourceLocation.Kind.BLOCK;
             file = fileExtractor.extractFile(md);
             line = md.getLine();
@@ -228,7 +232,11 @@ final class DIScopeBuilder {
 
         @Override
         public void visit(MDLexicalBlockFile md) {
-            parent = buildLocation(md.getFile());
+            if (md.getScope() != MDVoidNode.INSTANCE) {
+                parent = buildLocation(md.getScope());
+            } else {
+                parent = buildLocation(md.getFile());
+            }
             kind = LLVMSourceLocation.Kind.BLOCK;
             file = fileExtractor.extractFile(md);
         }
