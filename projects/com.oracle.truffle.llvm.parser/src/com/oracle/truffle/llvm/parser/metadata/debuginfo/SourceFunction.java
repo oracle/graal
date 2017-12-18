@@ -54,7 +54,7 @@ public final class SourceFunction {
         return lexicalScope.getSourceSection();
     }
 
-    public LLVMSourceLocation getSourceSection(Instruction instruction) {
+    public LLVMSourceLocation getSourceLocation(Instruction instruction) {
         return instructions.get(instruction);
     }
 
