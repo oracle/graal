@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.vector;
 
 import java.util.Arrays;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 
@@ -84,30 +83,8 @@ public final class LLVMFunctionVector {
         return vector;
     }
 
-    public LLVMAddress[] getAddresses() {
-        LLVMAddress[] addresses = new LLVMAddress[vector.length];
-        for (int i = 0; i < vector.length; i++) {
-            addresses[i] = getAddress(i);
-        }
-        return addresses;
-    }
-
     public Object getValue(int index) {
         return vector[index];
-    }
-
-    public LLVMAddress getAddress(int index) {
-        if (vector[index] instanceof LLVMAddress) {
-            return (LLVMAddress) vector[index];
-        } else if (vector[index] instanceof LLVMFunctionDescriptor) {
-            LLVMFunctionDescriptor fd = (LLVMFunctionDescriptor) vector[index];
-            LLVMAddress ptr = LLVMAddress.fromLong(fd.toNative().asPointer());
-            vector[index] = ptr; // cache native address
-            return ptr;
-        } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("unsupported type: " + (vector[index] != null ? vector[index].getClass() : "null"));
-        }
     }
 
     public LLVMFunctionVector insert(LLVMAddress element, int index) {

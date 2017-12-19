@@ -37,9 +37,11 @@ import java.util.function.LongBinaryOperator;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
@@ -501,10 +503,10 @@ public final class LLVMMemory {
         }
     }
 
-    public void putVector(LLVMAddress address, LLVMFunctionVector vector) {
+    public void putVector(LLVMAddress address, LLVMFunctionVector vector, LLVMToNativeNode toNative, VirtualFrame frame) {
         long currentPtr = address.getVal();
         for (int i = 0; i < vector.getLength(); i++) {
-            putAddress(currentPtr, vector.getAddress(i));
+            putAddress(currentPtr, toNative.executeWithTarget(frame, vector.getValue(i)));
             currentPtr += ADDRESS_LENGTH;
         }
     }
