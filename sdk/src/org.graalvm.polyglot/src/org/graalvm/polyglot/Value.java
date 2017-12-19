@@ -26,13 +26,10 @@ package org.graalvm.polyglot;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-
-import javax.script.Bindings;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 
@@ -64,9 +61,10 @@ public final class Value {
     }
 
     /**
-     * Returns <code>true</code> if this polyglot value has array elements. In this case array elements
-     * can be accessed using {@link #getArrayElement(long)}, {@link #setArrayElement(long, Object)} and
-     * the array size can be queried using {@link #getArraySize()}.
+     * Returns <code>true</code> if this polyglot value has array elements. In this case array
+     * elements can be accessed using {@link #getArrayElement(long)},
+     * {@link #setArrayElement(long, Object)} and the array size can be queried using
+     * {@link #getArraySize()}.
      *
      * @since 1.0
      */
@@ -372,8 +370,8 @@ public final class Value {
     }
 
     /**
-     * Returns <code>true</code> if the value originated form the host language Java. In such a case the
-     * value can be accessed using {@link #asHostObject()}.
+     * Returns <code>true</code> if the value originated form the host language Java. In such a case
+     * the value can be accessed using {@link #asHostObject()}.
      *
      * @since 1.0
      */
@@ -401,49 +399,51 @@ public final class Value {
      * <ul>
      * <li><code>{@link Value}.class</code> is always supported and returns this instance.
      * <li><code>{@link Object}.class</code> is always supported. See section Object mapping rules.
-     * <li>If the value represents a {@link #isHostObject() host object} then all classes implemented or
-     * extended by the host object can be used as target type.
-     * <li><code>{@link String}.class</code> is supported if the value is a {@link #isString() string}.
+     * <li>If the value represents a {@link #isHostObject() host object} then all classes
+     * implemented or extended by the host object can be used as target type.
+     * <li><code>{@link String}.class</code> is supported if the value is a {@link #isString()
+     * string}.
      * <li><code>{@link Character}.class</code> is supported if the value is a {@link #isString()
      * string} of length one.
-     * <li><code>{@link Number}.class</code> is supported if the value is a {@link #isNumber() number}.
-     * {@link Byte}, {@link Short}, {@link Integer}, {@link Long}, {@link Float} and {@link Double} are
-     * allowed if they fit without conversion.
+     * <li><code>{@link Number}.class</code> is supported if the value is a {@link #isNumber()
+     * number}. {@link Byte}, {@link Short}, {@link Integer}, {@link Long}, {@link Float} and
+     * {@link Double} are allowed if they fit without conversion.
      * <li><code>{@link Boolean}.class</code> is supported if the value is a {@link #isBoolean()
      * boolean}.
-     * <li><code>{@link Map}.class</code> is supported if the value has {@link #hasMembers() members} or
-     * {@link #hasArrayElements() array elements}. The returned map can be safely cast to Map<Object,
-     * Object>. The key type in such a case is either {@link String} or {@link Long}. It is recommended
-     * to use {@link #as(TypeLiteral) type literals} to specify the expected collection component types.
-     * With type literals the value type can be restricted, for example to
-     * <code>Map<String, String></code>. If the raw <code>{@link Map}.class</code> or an Object
-     * component type is used, then the return types of the the list are subject to Object mapping rules
-     * recursively.
+     * <li><code>{@link Map}.class</code> is supported if the value has {@link #hasMembers()
+     * members} or {@link #hasArrayElements() array elements}. The returned map can be safely cast
+     * to Map<Object, Object>. The key type in such a case is either {@link String} or {@link Long}.
+     * It is recommended to use {@link #as(TypeLiteral) type literals} to specify the expected
+     * collection component types. With type literals the value type can be restricted, for example
+     * to <code>Map<String, String></code>. If the raw <code>{@link Map}.class</code> or an Object
+     * component type is used, then the return types of the the list are subject to Object mapping
+     * rules recursively.
      * <li><code>{@link List}.class</code> is supported if the value has {@link #hasArrayElements()
      * array elements}. The returned list can be safely cast to <code>List<Object></code>. It is
-     * recommended to use {@link #as(TypeLiteral) type literals} to specify the expected component type.
-     * With type literals the value type can also be restricted to any supported target type, for
-     * example to <code>List<Integer></code>. If the raw <code>{@link List}.class</code> or an Object
-     * component type is used, then the return types of the the list are subject to Object mapping rules
-     * recursively.
+     * recommended to use {@link #as(TypeLiteral) type literals} to specify the expected component
+     * type. With type literals the value type can also be restricted to any supported target type,
+     * for example to <code>List<Integer></code>. If the raw <code>{@link List}.class</code> or an
+     * Object component type is used, then the return types of the the list are subject to Object
+     * mapping rules recursively.
      * <li>Any Java array type of a supported target type. The values of the value will be eagerly
      * coerced and copied into a new instance of the provided array type. This means that changes in
      * returned array will not be reflected in the original value. Since conversion to a Java array
-     * might be an expensive operation it is recommended to use the `List` or `Collection` target type
-     * if possible.
-     * <li>Any {@link FunctionalInterface functional} interface if the value can be {@link #canExecute()
-     * executed} or {@link #canInstantiate() instantiated}. In case a value can be executed and
-     * instantiated then the returned implementation of the interface will be {@link #execute(Object...)
-     * executed}. The coercion to parameter types of functional interface method is converted using the
-     * semantics as {@link #asHostValue(Class)}. If standard functional interface like {@link Function}
-     * are used, is recommended to use {@link #as(TypeLiteral) type literals} to specify the expected
-     * function arguments and return value.
+     * might be an expensive operation it is recommended to use the `List` or `Collection` target
+     * type if possible.
+     * <li>Any {@link FunctionalInterface functional} interface if the value can be
+     * {@link #canExecute() executed} or {@link #canInstantiate() instantiated}. In case a value can
+     * be executed and instantiated then the returned implementation of the interface will be
+     * {@link #execute(Object...) executed}. The coercion to parameter types of functional interface
+     * method is converted using the semantics as {@link #asHostValue(Class)}. If standard
+     * functional interface like {@link Function} are used, is recommended to use
+     * {@link #as(TypeLiteral) type literals} to specify the expected function arguments and return
+     * value.
      * <li>Any interface where each method name maps to one {@link #getMember(String) member} of the
-     * value. Whenever a method of the interface is executed a member with the method name must exist
-     * otherwise a {@link ClassCastException} is thrown. TODO more info needed.
+     * value. Whenever a method of the interface is executed a member with the method name must
+     * exist otherwise a {@link ClassCastException} is thrown. TODO more info needed.
      *
-     * <li>Any array type with a supported component type if the value {@link #hasArrayElements() has
-     * array elements} and every element can be converted to the array component type using
+     * <li>Any array type with a supported component type if the value {@link #hasArrayElements()
+     * has array elements} and every element can be converted to the array component type using
      * {@link #asHostValue(Class)}. TODO duplicate
      * </ul>
      * An {@link ClassCastException} is thrown for unsupported expected types.
@@ -475,35 +475,37 @@ public final class Value {
      * <li>If the value is a {@link #isHostObject() host object} then the value is coerced to
      * {@link #asHostObject() host object value}.
      * <li>If the value is a {@link #isString() string} then the value is coerced to {@link String}.
-     * <li>If the value is a {@link #isBoolean() boolean} then the value is coerced to {@link Boolean}.
-     * <li>If the value is a {@link #isNumber() number} then the value is coerced to {@link Number}. The
-     * specific sub type of the {@link Number} is not specified. Users need to be prepared for any
-     * Number subclass including {@link BigInteger} or {@link BigDecimal}. It is recommended to cast to
-     * {@link Number} and then convert to a Java primitive like with {@link Number#longValue()}.
+     * <li>If the value is a {@link #isBoolean() boolean} then the value is coerced to
+     * {@link Boolean}.
+     * <li>If the value is a {@link #isNumber() number} then the value is coerced to {@link Number}.
+     * The specific sub type of the {@link Number} is not specified. Users need to be prepared for
+     * any Number subclass including {@link BigInteger} or {@link BigDecimal}. It is recommended to
+     * cast to {@link Number} and then convert to a Java primitive like with
+     * {@link Number#longValue()}.
      * <li>If the value {@link #hasMembers() has members} or has {@link #hasArrayElements() array
-     * elements} then the result value will implement {@link Map}. If this value {@link #hasMembers()
-     * has members} then all members are accessible using {@link String} keys. If this value
-     * {@link #hasArrayElements() has array elements} then all members are accessible using {@link Long}
-     * keys. The {@link Map#size() size} of the returned {@link Map} will contain the sum of the count
-     * of members and array elements. The returned function may also implement {@link Function} if the
-     * value can be {@link #canExecute() executed}. The equality and hashCode contract of the returned
-     * map does not comply with the Map specification. Instead it uses the identity of the guest
-     * language value.
-     * <li>If the value can be {@link #canExecute() executed} or {@link #canInstantiate() instantiated}
-     * then the result value implements {@link Function Function}. By default the argument of the
-     * function will be used as single argument to the function when executed. If a value of type
-     * {@link Object Object[]} is provided then the function will executed with those arguments. The
-     * returned function may also implement {@link Map} if the value has {@link #hasArrayElements()
-     * array elements} or {@link #hasMembers() members}.
+     * elements} then the result value will implement {@link Map}. If this value
+     * {@link #hasMembers() has members} then all members are accessible using {@link String} keys.
+     * If this value {@link #hasArrayElements() has array elements} then all members are accessible
+     * using {@link Long} keys. The {@link Map#size() size} of the returned {@link Map} will contain
+     * the sum of the count of members and array elements. The returned function may also implement
+     * {@link Function} if the value can be {@link #canExecute() executed}. The equality and
+     * hashCode contract of the returned map does not comply with the Map specification. Instead it
+     * uses the identity of the guest language value.
+     * <li>If the value can be {@link #canExecute() executed} or {@link #canInstantiate()
+     * instantiated} then the result value implements {@link Function Function}. By default the
+     * argument of the function will be used as single argument to the function when executed. If a
+     * value of type {@link Object Object[]} is provided then the function will executed with those
+     * arguments. The returned function may also implement {@link Map} if the value has
+     * {@link #hasArrayElements() array elements} or {@link #hasMembers() members}.
      * <li>If none of the above rules apply then this {@link Value} instance is returned.
      * </ol>
-     * Returned {@link #isHostObject() host objects}, {@link String}, {@link Number}, {@link Boolean}
-     * and <code>null</code> values have unlimited lifetime. Other values will throw an
-     * {@link IllegalStateException} for any operation if their originating {@link Context context} was
-     * closed.
+     * Returned {@link #isHostObject() host objects}, {@link String}, {@link Number},
+     * {@link Boolean} and <code>null</code> values have unlimited lifetime. Other values will throw
+     * an {@link IllegalStateException} for any operation if their originating {@link Context
+     * context} was closed.
      * <p>
-     * If a {@link Map} element is modified, a {@link List} element is modified or a {@link Function}
-     * argument is provided then these values are interpreted according to the
+     * If a {@link Map} element is modified, a {@link List} element is modified or a
+     * {@link Function} argument is provided then these values are interpreted according to the
      * {@link Context#asValue(Object) host to polyglot value mapping rules}.
      * <p>
      * <b>JavaScript Usage Examples:</b>
@@ -542,14 +544,15 @@ public final class Value {
      * </pre>
      *
      * If the guest language value cannot be mapped to an {@link Integer} then a
-     * {@link ClassCastException} {@link PolyglotException#isHostException() host exception} is thrown.
+     * {@link ClassCastException} {@link PolyglotException#isHostException() host exception} is
+     * thrown.
      *
      * <h1>Identity preservation</h1>
      *
      * If polyglot values are mapped as Java primitives such as {@link Boolean}, <code>null</code>,
-     * {@link String}, {@link Character} or {@link Number}, then the identity of the polyglot value is
-     * not preserved. All other results can be converted back to a {@link Value polyglot value} using
-     * {@link Context#asValue(Object)}.
+     * {@link String}, {@link Character} or {@link Number}, then the identity of the polyglot value
+     * is not preserved. All other results can be converted back to a {@link Value polyglot value}
+     * using {@link Context#asValue(Object)}.
      *
      * @param targetType the target Java type to map
      * @throws ClassCastException if polyglot value could not be mapped to the target type.
