@@ -34,29 +34,26 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplitti
 
 final class DefaultTruffleSplittingStrategy {
 
-    private static void incrementSplitCout(GraalTVMCI tvmci, OptimizedDirectCallNode call) {
-        final GraalTVMCI.EngineData engineData = tvmci.getEngineData(call.getRootNode());
-        engineData.splitCount++;
-    }
-
     static void beforeCall(OptimizedDirectCallNode call, Object[] arguments, GraalTVMCI tvmci) {
         if (call.getCallCount() == 2) {
-            if (shouldSplit(call, tvmci)) {
-                incrementSplitCout(tvmci, call);
+            final GraalTVMCI.EngineData engineData = tvmci.getEngineData(call.getRootNode());
+            if (shouldSplit(call, engineData)) {
+                engineData.splitCount++;
                 call.split();
             }
         }
     }
 
     static void forceSplitting(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
-        if (!canSplit(call, tvmci)) {
+        final GraalTVMCI.EngineData engineData = tvmci.getEngineData(call.getRootNode());
+        if (!canSplit(call, engineData)) {
             return;
         }
-        incrementSplitCout(tvmci, call);
+        engineData.splitCount++;
         call.split();
     }
 
-    private static boolean canSplit(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
+    private static boolean canSplit(OptimizedDirectCallNode call, GraalTVMCI.EngineData engineData) {
         if (call.isCallTargetCloned()) {
             return false;
         }
@@ -66,15 +63,11 @@ final class DefaultTruffleSplittingStrategy {
         if (!call.isCallTargetCloningAllowed()) {
             return false;
         }
-        final GraalTVMCI.EngineData engineData = tvmci.getEngineData(call.getRootNode());
-        if (engineData.splitCount > engineData.splitLimit) {
-            return false;
-        }
-        return true;
+        return engineData.splitCount <= engineData.splitLimit;
     }
 
-    private static boolean shouldSplit(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
-        if (!canSplit(call, tvmci)) {
+    private static boolean shouldSplit(OptimizedDirectCallNode call, GraalTVMCI.EngineData engineData) {
+        if (!canSplit(call, engineData)) {
             return false;
         }
 
