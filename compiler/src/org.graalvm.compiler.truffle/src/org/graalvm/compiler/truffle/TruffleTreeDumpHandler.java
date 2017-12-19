@@ -73,14 +73,16 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         if (callTarget.getRootNode() != null) {
             final GraphPrintVisitor printer = new GraphPrintVisitor(debug);
 
-            printer.beginGroup(callTarget, callTarget.toString(), callTarget.getRootNode().getName());
+            printer.beginGroup(callTarget, "Truffle." + callTarget.toString(), callTarget.getRootNode().getName());
             printer.beginGraph(message).visit(callTarget.getRootNode());
             if (callTarget instanceof OptimizedCallTarget) {
+                printer.beginGroup(callTarget, "Inlining", "Inlining");
                 TruffleInlining inlining = new TruffleInlining((OptimizedCallTarget) callTarget, new DefaultInliningPolicy());
                 if (inlining.countInlinedCalls() > 0) {
                     dumpInlinedTrees(debug, printer, (OptimizedCallTarget) callTarget, inlining);
                     dumpInlinedCallGraph(printer, (OptimizedCallTarget) callTarget, inlining);
                 }
+                printer.endGroup();
             }
             printer.endGroup();
         }
