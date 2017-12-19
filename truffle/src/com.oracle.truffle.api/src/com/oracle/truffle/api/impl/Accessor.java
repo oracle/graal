@@ -231,6 +231,8 @@ public abstract class Accessor {
 
         public abstract Throwable asHostException(Throwable exception);
 
+        public abstract ClassCastException newClassCastException(String message, Throwable cause);
+
         public abstract Object legacyTckEnter(Object vm);
 
         public abstract void legacyTckLeave(Object vm, Object prev);

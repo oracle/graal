@@ -40,6 +40,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
@@ -101,9 +102,10 @@ abstract class ToJavaNode extends Node {
                 boolean isNull = primitive.isNull((TruffleObject) value);
                 convertedValue = asJavaObject(targetType, genericType, (TruffleObject) value, hasKeys, hasSize, isNull, languageContext);
             }
-        } else {
-            assert targetType.isAssignableFrom(value.getClass()) : value.getClass().getName() + " is not assignable to " + targetType;
+        } else if (targetType.isAssignableFrom(value.getClass())) {
             convertedValue = value;
+        } else {
+            throw newClassCastException(value, targetType);
         }
         return convertedValue;
     }
@@ -205,7 +207,7 @@ abstract class ToJavaNode extends Node {
                 obj = truffleObjectToArray(foreignObject, clazz, genericType, languageContext);
             } else {
                 if (!clazz.isInterface()) {
-                    throw new ClassCastException();
+                    throw newClassCastException(foreignObject, clazz);
                 }
                 if (!TruffleOptions.AOT) {
                     obj = JavaInteropReflect.newProxyInstance(clazz, foreignObject);
@@ -215,6 +217,13 @@ abstract class ToJavaNode extends Node {
             }
         }
         return clazz.cast(obj);
+    }
+
+    @TruffleBoundary
+    private static ClassCastException newClassCastException(Object value, Type targetType) {
+        String message = (value == null ? "null" : value.getClass().getName()) + " is not assignable to " + targetType;
+        EngineSupport engine = JavaInterop.ACCESSOR.engine();
+        return engine != null ? engine.newClassCastException(message, null) : new ClassCastException(message);
     }
 
     private static TypeAndClass<?> getGenericParameterType(Type genericType, int index) {

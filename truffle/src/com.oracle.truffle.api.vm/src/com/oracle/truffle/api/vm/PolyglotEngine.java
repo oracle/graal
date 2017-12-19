@@ -1884,6 +1884,11 @@ public class PolyglotEngine {
         }
 
         @Override
+        public ClassCastException newClassCastException(String message, Throwable cause) {
+            return cause == null ? new PolyglotClassCastException(message) : new PolyglotClassCastException(message, cause);
+        }
+
+        @Override
         public Object legacyTckEnter(Object vm) {
             return ((PolyglotEngine) vm).enter();
         }

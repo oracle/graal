@@ -723,6 +723,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
+        public ClassCastException newClassCastException(String message, Throwable cause) {
+            return cause == null ? new PolyglotClassCastException(message) : new PolyglotClassCastException(message, cause);
+        }
+
+        @Override
         public Object legacyTckEnter(Object vm) {
             throw new AssertionError("Should not reach here.");
         }
