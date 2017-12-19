@@ -215,14 +215,17 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Platforms(Platform.HOSTED_ONLY.class) private int hostedIdentityHashCode;
 
+    private GenericInfo genericInfo;
+
     @Platforms(Platform.HOSTED_ONLY.class)
-    public DynamicHub(String name, boolean isLocalClass, DynamicHub superHub, DynamicHub componentHub, String sourceFileName) {
+    public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName) {
         /* Class names must be interned strings according to the Java spec. */
         this.name = name.intern();
         this.isLocalClass = isLocalClass;
-        this.superHub = superHub;
+        this.superHub = superType;
         this.componentHub = componentHub;
         this.sourceFileName = sourceFileName;
+        this.genericInfo = GenericInfo.forEmpty();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -255,6 +258,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     public void setEnclosingClass(DynamicHub enclosingClass) {
         assert (this.enclosingClass == null || this.enclosingClass == enclosingClass) && enclosingClass != null;
         this.enclosingClass = enclosingClass;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setGenericInfo(GenericInfo genericInfo) {
+        this.genericInfo = genericInfo;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -824,22 +832,18 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     @Override
-    @SuppressWarnings("unchecked")
-    public TypeVariable<Class<?>>[] getTypeParameters() {
-        /* We are cheating: assume no generics are used. */
-        return (TypeVariable<Class<?>>[]) new TypeVariable<?>[0];
+    public TypeVariable<?>[] getTypeParameters() {
+        return genericInfo.getTypeParameters();
     }
 
     @Substitute
-    private Type[] getGenericInterfaces() {
-        /* We are cheating: assume no generics are used. */
-        return getInterfaces();
+    public Type[] getGenericInterfaces() {
+        return genericInfo.hasGenericInterfaces() ? genericInfo.getGenericInterfaces() : getInterfaces();
     }
 
     @Substitute
-    private Type getGenericSuperclass() {
-        /* We are cheating: assume no generics are used. */
-        return (Type) getSuperclass();
+    public Type getGenericSuperclass() {
+        return genericInfo.hasGenericSuperClass() ? genericInfo.getGenericSuperClass() : getSuperHub();
     }
 
     @Substitute

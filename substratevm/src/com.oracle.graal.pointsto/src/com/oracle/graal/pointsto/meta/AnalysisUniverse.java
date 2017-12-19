@@ -593,4 +593,8 @@ public class AnalysisUniverse implements Universe {
     public SnippetReflectionProvider getSnippetReflection() {
         return snippetReflection;
     }
+
+    public SnippetReflectionProvider getOriginalSnippetReflection() {
+        return originalSnippetReflection;
+    }
 }

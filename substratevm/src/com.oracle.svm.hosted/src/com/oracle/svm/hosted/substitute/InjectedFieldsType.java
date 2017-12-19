@@ -25,6 +25,9 @@ package com.oracle.svm.hosted.substitute;
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.svm.hosted.c.GraalAccess;
+
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
@@ -33,7 +36,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class InjectedFieldsType implements ResolvedJavaType {
+public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvider {
 
     private final ResolvedJavaType original;
 
@@ -255,6 +258,11 @@ public class InjectedFieldsType implements ResolvedJavaType {
     @Override
     public ResolvedJavaType getHostClass() {
         return original.getHostClass();
+    }
+
+    @Override
+    public Class<?> getJavaClass() {
+        return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), original);
     }
 
     @Override
