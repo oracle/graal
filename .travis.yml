@@ -55,27 +55,31 @@ install:
   - cd ..
   - export CPPFLAGS=-g
 script:
-  - $COMPILE_COMMAND && $TEST_COMMAND
+  - test -z "$COMPILE_COMMAND" || $COMPILE_COMMAND
+  - test -z "$GATE_TAGS" || mx gate --tags $GATE_TAGS
+  - test -z "$DOWNSTREAM_COMMAND" || mx testdownstream -R $DOWNSTREAM_REPO --suitedir $DOWNSTREAM_SUITE -C "$DOWNSTREAM_COMMAND"
 matrix:
   fast_finish: true
   include:
-  - env: TEST_COMMAND='mx gate --tags style' COMPILE_COMMAND=''
+  - env: GATE_TAGS='style'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx gate --tags fullbuild' COMPILE_COMMAND=''
+  - env: GATE_TAGS='fullbuild'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx gate --tags sulongBasic' COMPILE_COMMAND='mx build'
+  - env: GATE_TAGS='sulongBasic' COMPILE_COMMAND='mx build'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx gate --tags sulongMisc' COMPILE_COMMAND='mx build'
+  - env: GATE_TAGS='sulongMisc' COMPILE_COMMAND='mx build'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx gate --tags nwcc' COMPILE_COMMAND='mx build'
+  - env: GATE_TAGS='nwcc' COMPILE_COMMAND='mx build'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx gate --tags llvm' COMPILE_COMMAND='mx build'
+  - env: GATE_TAGS='llvm' COMPILE_COMMAND='mx build'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx gate --tags parser' COMPILE_COMMAND='mx build'
+  - env: GATE_TAGS='parser' COMPILE_COMMAND='mx build'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx gate --tags gcc_c' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
+  - env: GATE_TAGS='gcc_c' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx gate --tags gcc_cpp' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
+  - env: GATE_TAGS='gcc_cpp' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
+    jdk: oraclejdk8
+  - env: DOWNSTREAM_REPO='https://github.com/graalvm/graal.git' DOWNSTREAM_SUITE='substratevm' DOWNSTREAM_COMMAND='--dynamicimport sulong gate --tags build,sulong'
     jdk: oraclejdk8
 after_failure:
   - find . -iname "*.log" -print0 | xargs -0 cat
