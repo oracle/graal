@@ -63,7 +63,7 @@ final class DefaultTruffleSplittingStrategy {
         if (!call.isCallTargetCloningAllowed()) {
             return false;
         }
-        return engineData.splitCount <= engineData.splitLimit;
+        return engineData.splitCount < engineData.splitLimit;
     }
 
     private static boolean shouldSplit(OptimizedDirectCallNode call, GraalTVMCI.EngineData engineData) {
