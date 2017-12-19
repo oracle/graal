@@ -24,12 +24,15 @@
  */
 package com.oracle.truffle.tools.profiler;
 
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.tools.profiler.impl.CPUSamplerInstrument;
@@ -59,6 +62,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @since 0.30
  */
 public final class CPUSampler implements Closeable {
+
 
     /**
      * Wrapper for information on how many times an element was seen on the shadow stack. Used as a
@@ -206,8 +210,43 @@ public final class CPUSampler implements Closeable {
 
     private boolean gatherSelfHitTimes = false;
 
+    private boolean nonInternalLanguageContextInitialized = false;
+
     CPUSampler(Env env) {
         this.env = env;
+        env.getInstrumenter().attachContextsListener(new ContextsListener() {
+            @Override
+            public void onContextCreated(TruffleContext context) {
+
+            }
+
+            @Override
+            public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
+
+            }
+
+            @Override
+            public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
+                if (!language.isInternal()) {
+                    nonInternalLanguageContextInitialized = true;
+                }
+            }
+
+            @Override
+            public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
+
+            }
+
+            @Override
+            public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
+
+            }
+
+            @Override
+            public void onContextClosed(TruffleContext context) {
+
+            }
+        }, false);
     }
 
     /**
@@ -483,6 +522,9 @@ public final class CPUSampler implements Closeable {
         public void run() {
             runcount++;
             if (runcount < delay / period) {
+                return;
+            }
+            if (!nonInternalLanguageContextInitialized) {
                 return;
             }
             long timestamp = System.currentTimeMillis();
