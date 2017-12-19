@@ -24,9 +24,6 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-
 import org.graalvm.polyglot.TypeLiteral;
 
 import com.oracle.truffle.api.impl.Accessor;
@@ -58,18 +55,8 @@ final class JavaInteropAccessor extends Accessor {
             }
 
             @Override
-            public Object toJava(Node toJavaNode, TypeLiteral<?> type, Object value, Object polyglotContext) {
-                Type literal = type.getLiteral();
-                Class<?> rawType;
-                if (literal instanceof Class) {
-                    rawType = (Class<?>) literal;
-                } else if (literal instanceof ParameterizedType) {
-                    rawType = (Class<?>) ((ParameterizedType) literal).getRawType();
-                } else {
-                    throw new AssertionError("unsupported type");
-                }
-
-                return ((ToJavaNode) toJavaNode).execute(value, rawType, literal, polyglotContext);
+            public Object toJava(Node toJavaNode, TypeLiteral<?> typeLiteral, Object value, Object polyglotContext) {
+                return ((ToJavaNode) toJavaNode).execute(value, typeLiteral.getRawType(), typeLiteral.getType(), polyglotContext);
             }
 
             @Override
