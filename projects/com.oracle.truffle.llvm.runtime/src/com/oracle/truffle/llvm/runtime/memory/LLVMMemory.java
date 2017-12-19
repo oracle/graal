@@ -37,12 +37,15 @@ import java.util.function.LongBinaryOperator;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMFunctionVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
@@ -424,6 +427,16 @@ public final class LLVMMemory {
         return LLVMAddressVector.create(vector);
     }
 
+    public LLVMFunctionVector getFunctionVector(LLVMAddress address, int size) {
+        long[] vector = new long[size];
+        long currentPtr = address.getVal();
+        for (int i = 0; i < size; i++) {
+            vector[i] = getAddress(currentPtr).getVal();
+            currentPtr += ADDRESS_LENGTH;
+        }
+        return LLVMFunctionVector.create(vector);
+    }
+
     // watch out for casts such as I32* to I32Vector* when changing the way how vectors are
     // implemented
     public void putVector(LLVMAddress address, LLVMDoubleVector vector) {
@@ -486,6 +499,14 @@ public final class LLVMMemory {
         long currentPtr = address.getVal();
         for (int i = 0; i < vector.getLength(); i++) {
             putAddress(currentPtr, vector.getValue(i));
+            currentPtr += ADDRESS_LENGTH;
+        }
+    }
+
+    public void putVector(LLVMAddress address, LLVMFunctionVector vector, LLVMToNativeNode toNative, VirtualFrame frame) {
+        long currentPtr = address.getVal();
+        for (int i = 0; i < vector.getLength(); i++) {
+            putAddress(currentPtr, toNative.executeWithTarget(frame, vector.getValue(i)));
             currentPtr += ADDRESS_LENGTH;
         }
     }

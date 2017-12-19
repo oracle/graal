@@ -41,6 +41,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMFunctionVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
@@ -170,6 +171,21 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         memory.putVector(globalAccess.executeWithTarget(frame, address), value);
+        return null;
+    }
+
+    @Specialization
+    protected Object writeVector(VirtualFrame frame, LLVMAddress address, LLVMFunctionVector value, @Cached("getLLVMMemory()") LLVMMemory memory,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
+        memory.putVector(address, value, globalAccess, frame);
+        return null;
+    }
+
+    @Specialization
+    protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMFunctionVector value,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        memory.putVector(globalAccess.executeWithTarget(frame, address), value, globalAccess, frame);
         return null;
     }
 

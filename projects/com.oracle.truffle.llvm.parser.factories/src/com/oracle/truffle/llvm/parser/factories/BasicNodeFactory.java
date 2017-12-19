@@ -146,6 +146,7 @@ import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMTruffleO
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorAddressLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorDoubleLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorFloatLiteralNodeGen;
+import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorFunctionLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI16LiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI1LiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI32LiteralNodeGen;
@@ -746,7 +747,11 @@ public class BasicNodeFactory implements NodeFactory {
                     throw new AssertionError();
             }
         } else if (llvmType instanceof PointerType) {
-            return LLVMVectorAddressLiteralNodeGen.create(vals);
+            if (((PointerType) llvmType).getPointeeType() instanceof FunctionType) {
+                return LLVMVectorFunctionLiteralNodeGen.create(vals);
+            } else {
+                return LLVMVectorAddressLiteralNodeGen.create(vals);
+            }
         } else {
             throw new AssertionError(llvmType + " not yet supported");
         }
