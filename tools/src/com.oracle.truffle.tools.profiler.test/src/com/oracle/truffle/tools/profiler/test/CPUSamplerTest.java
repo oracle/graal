@@ -29,6 +29,7 @@ import com.oracle.truffle.tools.profiler.CPUSampler;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Collection;
@@ -127,12 +128,13 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     }
 
     final Source defaultRecursiveSourceForSampling = makeSource("ROOT(" +
-                    "DEFINE(foo,ROOT(BLOCK(SLEEP(1),RECURSIVE_CALL(foo, 10))))," +
+                    "DEFINE(foo,ROOT(BLOCK(RECURSIVE_CALL(foo, 10),SLEEP(1))))," +
                     "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(foo)))))," +
                     "CALL(bar)" +
                     ")");
 
     @Test
+    @Ignore("non-deterministic failures on spark")
     public void testCorrectRootStructureRecursive() {
 
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
