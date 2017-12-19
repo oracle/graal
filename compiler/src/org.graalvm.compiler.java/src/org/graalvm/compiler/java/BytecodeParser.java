@@ -1279,8 +1279,8 @@ public class BytecodeParser implements GraphBuilderContext {
         return graph.addOrUniqueWithInputs(x);
     }
 
-    protected ValueNode genIfNode(LogicNode condition, FixedNode falseSuccessor, FixedNode trueSuccessor, double d) {
-        return new IfNode(condition, falseSuccessor, trueSuccessor, d);
+    protected ValueNode genIfNode(LogicNode condition, FixedNode trueSuccessor, FixedNode falseSuccessor, double d) {
+        return new IfNode(condition, trueSuccessor, falseSuccessor, d);
     }
 
     protected void genThrow() {
@@ -3387,23 +3387,43 @@ public class BytecodeParser implements GraphBuilderContext {
             NodeSourcePosition currentPosition = graph.currentNodeSourcePosition();
             if (isNeverExecutedCode(probability)) {
                 NodeSourcePosition survivingSuccessorPosition = graph.trackNodeSourcePosition()
-                                ? new NodeSourcePosition(currentPosition.getCaller(), currentPosition.getMethod(), falseBlock.startBci)
-                                : null;
-                append(new FixedGuardNode(condition, UnreachedCode, InvalidateReprofile, true, survivingSuccessorPosition));
-                if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
-                    profilingPlugin.profileGoto(this, method, bci(), falseBlock.startBci, stateBefore);
+                        ? new NodeSourcePosition(currentPosition.getCaller(), currentPosition.getMethod(), falseBlock.startBci)
+                        : null;
+                if (!isPotentialCountedLoopExit(condition, trueBlock)) {
+                    if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
+                        profilingPlugin.profileGoto(this, method, bci(), falseBlock.startBci, stateBefore);
+                    }
+                    append(new FixedGuardNode(condition, UnreachedCode, InvalidateReprofile, true, survivingSuccessorPosition));
+                    appendGoto(falseBlock);
+                } else {
+                    this.controlFlowSplit = true;
+                    FixedNode falseSuccessor = createTarget(falseBlock, frameState, false, true);
+                    DeoptimizeNode deopt = graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+                    FixedNode trueSuccessor = checkLoopExit(deopt, trueBlock, frameState).fixed;
+                    ValueNode ifNode = genIfNode(condition, trueSuccessor, falseSuccessor, probability);
+                    postProcessIfNode(ifNode);
+                    append(ifNode);
                 }
-                appendGoto(falseBlock);
                 return;
             } else if (isNeverExecutedCode(1 - probability)) {
                 NodeSourcePosition survivingSuccessorPosition = graph.trackNodeSourcePosition()
-                                ? new NodeSourcePosition(currentPosition.getCaller(), currentPosition.getMethod(), trueBlock.startBci)
-                                : null;
-                append(new FixedGuardNode(condition, UnreachedCode, InvalidateReprofile, false, survivingSuccessorPosition));
-                if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
-                    profilingPlugin.profileGoto(this, method, bci(), trueBlock.startBci, stateBefore);
+                        ? new NodeSourcePosition(currentPosition.getCaller(), currentPosition.getMethod(), trueBlock.startBci)
+                        : null;
+                if (!isPotentialCountedLoopExit(condition, falseBlock)) {
+                    if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
+                        profilingPlugin.profileGoto(this, method, bci(), trueBlock.startBci, stateBefore);
+                    }
+                    append(new FixedGuardNode(condition, UnreachedCode, InvalidateReprofile, false, survivingSuccessorPosition));
+                    appendGoto(trueBlock);
+                } else {
+                    this.controlFlowSplit = true;
+                    FixedNode trueSuccessor = createTarget(trueBlock, frameState, false, false);
+                    DeoptimizeNode deopt = graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+                    FixedNode falseSuccessor = checkLoopExit(deopt, falseBlock, frameState).fixed;
+                    ValueNode ifNode = genIfNode(condition, trueSuccessor, falseSuccessor, probability);
+                    postProcessIfNode(ifNode);
+                    append(ifNode);
                 }
-                appendGoto(trueBlock);
                 return;
             }
 
@@ -3429,6 +3449,16 @@ public class BytecodeParser implements GraphBuilderContext {
             postProcessIfNode(ifNode);
             append(ifNode);
         }
+    }
+
+    public boolean isPotentialCountedLoopExit(LogicNode condition, BciBlock target) {
+        if (currentBlock != null) {
+            long exits = currentBlock.loops & ~target.loops;
+            if (exits != 0) {
+                return condition instanceof CompareNode;
+            }
+        }
+        return false;
     }
 
     /**
