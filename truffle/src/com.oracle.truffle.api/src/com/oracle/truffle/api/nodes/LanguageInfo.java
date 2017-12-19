@@ -42,13 +42,15 @@ public final class LanguageInfo {
     private final Set<String> mimeTypes;
     private final Object engineObject;
     volatile TruffleLanguage<?> spi;
+    private final boolean internal;
 
-    LanguageInfo(Object engineObject, String id, String name, String version, Set<String> mimeTypes) {
+    LanguageInfo(Object engineObject, String id, String name, String version, Set<String> mimeTypes, boolean internal) {
         this.engineObject = engineObject;
         this.id = id;
         this.name = name;
         this.version = version;
         this.mimeTypes = mimeTypes;
+        this.internal = internal;
     }
 
     /**
@@ -101,5 +103,13 @@ public final class LanguageInfo {
 
     TruffleLanguage<?> getSpi() {
         return spi;
+    }
+
+    /**
+     * @return {@code true} if the language is internal, {@code false} otherwise
+     * @since 0.31
+     */
+    public boolean isInternal() {
+        return internal;
     }
 }
