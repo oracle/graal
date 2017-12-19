@@ -561,6 +561,9 @@ public final class Value {
      * @see #as(TypeLiteral) to map to gerneric type signatures.
      */
     public <T> T as(Class<T> targetType) {
+        if (targetType == Value.class) {
+            return targetType.cast(this);
+        }
         return impl.as(receiver, targetType);
     }
 
