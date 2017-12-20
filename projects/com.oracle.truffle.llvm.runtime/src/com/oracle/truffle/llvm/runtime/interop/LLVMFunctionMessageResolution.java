@@ -54,7 +54,7 @@ public class LLVMFunctionMessageResolution {
 
         @SuppressWarnings("unused")
         protected Object access(VirtualFrame frame, LLVMFunctionDescriptor object) {
-            return true;
+            return !object.isNullFunction();
         }
     }
 
