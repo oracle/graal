@@ -31,6 +31,7 @@ import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.LinkedHashSet;
+import java.util.function.Function;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -158,6 +159,11 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
+    static Function<Object[], Object> asDefaultJavaFunction(TruffleObject function, Object languageContext) {
+        return new JavaFunction(function, languageContext);
+    }
+
+    @CompilerDirectives.TruffleBoundary
     static TruffleObject asTruffleViaReflection(Object obj, Object languageContext) {
         if (Proxy.isProxyClass(obj.getClass())) {
             InvocationHandler h = Proxy.getInvocationHandler(obj);
@@ -278,6 +284,40 @@ final class JavaInteropReflect {
     }
 }
 
+final class JavaFunction implements Function<Object[], Object> {
+    private final TruffleObject executable;
+    private CallTarget target;
+    private final Object languageContext;
+
+    JavaFunction(TruffleObject executable, Object languageContext) {
+        this.executable = executable;
+        this.languageContext = languageContext;
+    }
+
+    public Object apply(Object[] arguments) {
+        Object[] args = arguments == null ? JavaInteropReflect.EMPTY : arguments;
+        if (target == null) {
+            target = JavaInterop.lookupOrRegisterComputation(executable, null, JavaFunction.class);
+            if (target == null) {
+                Node executeMain = Message.createExecute(args.length).createNode();
+                RootNode symbolNode = new ToJavaNode.TemporaryRoot(executeMain);
+                target = JavaInterop.lookupOrRegisterComputation(executable, symbolNode, JavaFunction.class);
+            }
+        }
+        for (int i = 0; i < args.length; i++) {
+            Object arg = args[i];
+            if (arg instanceof TruffleObject) {
+                continue;
+            } else if (JavaInterop.isPrimitive(arg)) {
+                continue;
+            } else {
+                arguments[i] = JavaInterop.toGuestValue(arg, languageContext);
+            }
+        }
+        return target.call(executable, args, Object.class, null, languageContext);
+    }
+}
+
 final class FunctionProxyHandler implements InvocationHandler {
     private final TruffleObject symbol;
     private CallTarget target;
@@ -305,18 +345,18 @@ final class FunctionProxyHandler implements InvocationHandler {
         } else {
             ret = call(arguments, method);
         }
-        return toJava(ret, method, languageContext);
+        return ret;
     }
 
     private Object call(Object[] arguments, Method method) {
         CompilerAsserts.neverPartOfCompilation();
         Object[] args = arguments == null ? JavaInteropReflect.EMPTY : arguments;
         if (target == null) {
-            target = JavaInterop.lookupOrRegisterComputation(symbol, null, JavaInteropReflect.class);
+            target = JavaInterop.lookupOrRegisterComputation(symbol, null, FunctionProxyHandler.class);
             if (target == null) {
                 Node executeMain = Message.createExecute(args.length).createNode();
                 RootNode symbolNode = new ToJavaNode.TemporaryRoot(executeMain);
-                target = JavaInterop.lookupOrRegisterComputation(symbol, symbolNode, JavaInteropReflect.class);
+                target = JavaInterop.lookupOrRegisterComputation(symbol, symbolNode, FunctionProxyHandler.class);
             }
         }
         for (int i = 0; i < args.length; i++) {
@@ -330,10 +370,6 @@ final class FunctionProxyHandler implements InvocationHandler {
             }
         }
         return target.call(symbol, args, JavaInteropReflect.getMethodReturnType(method), JavaInteropReflect.getMethodGenericReturnType(method), languageContext);
-    }
-
-    private static Object toJava(Object ret, Method method, Object languageContext) {
-        return ToJavaNode.toJava(ret, JavaInteropReflect.getMethodReturnType(method), JavaInteropReflect.getMethodGenericReturnType(method), languageContext);
     }
 }
 
