@@ -50,7 +50,7 @@ public class HotSpotArraySubstitutions {
             // Exit the intrinsic here for the case where the array class does not exist
             return newInstance(componentType, length);
         }
-        return DynamicNewArrayNode.newArray(GraalDirectives.guardingNonNull(componentType), length, JavaKind.Object);
+        return DynamicNewArrayNode.newArray(GraalDirectives.guardingNonNull(componentType), length);
     }
 
 }
