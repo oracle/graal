@@ -395,6 +395,16 @@ abstract class PolyglotValue extends AbstractValueImpl {
         }
 
         @Override
+        public boolean fitsInShort(Object receiver) {
+            return true;
+        }
+
+        @Override
+        public short asShort(Object receiver) {
+            return (short) receiver;
+        }
+
+        @Override
         public boolean fitsInInt(Object receiver) {
             return true;
         }
@@ -555,6 +565,24 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 return super.asDouble(receiver);
             }
         }
+
+        @Override
+        public boolean fitsInShort(Object receiver) {
+            long originalReceiver = (long) receiver;
+            short castValue = (short) originalReceiver;
+            return originalReceiver == castValue;
+        }
+
+        @Override
+        public short asShort(Object receiver) {
+            long originalReceiver = (long) receiver;
+            short castValue = (short) originalReceiver;
+            if (originalReceiver == castValue) {
+                return castValue;
+            } else {
+                return super.asShort(receiver);
+            }
+        }
     }
 
     private static final class FloatValueCache extends PolyglotValue {
@@ -647,6 +675,23 @@ abstract class PolyglotValue extends AbstractValueImpl {
             return (float) receiver;
         }
 
+        @Override
+        public boolean fitsInShort(Object receiver) {
+            float originalReceiver = (float) receiver;
+            short castValue = (short) originalReceiver;
+            return originalReceiver == castValue;
+        }
+
+        @Override
+        public short asShort(Object receiver) {
+            float originalReceiver = (float) receiver;
+            short castValue = (short) originalReceiver;
+            if (originalReceiver == castValue) {
+                return castValue;
+            } else {
+                return super.asShort(receiver);
+            }
+        }
     }
 
     private static final class DoubleValueCache extends PolyglotValue {
@@ -749,6 +794,23 @@ abstract class PolyglotValue extends AbstractValueImpl {
             return (double) receiver;
         }
 
+        @Override
+        public boolean fitsInShort(Object receiver) {
+            double originalReceiver = (double) receiver;
+            short castValue = (short) originalReceiver;
+            return originalReceiver == castValue;
+        }
+
+        @Override
+        public short asShort(Object receiver) {
+            double originalReceiver = (double) receiver;
+            short castValue = (short) originalReceiver;
+            if (originalReceiver == castValue) {
+                return castValue;
+            } else {
+                return super.asShort(receiver);
+            }
+        }
     }
 
     private static final class IntValueCache extends PolyglotValue {
@@ -833,6 +895,23 @@ abstract class PolyglotValue extends AbstractValueImpl {
             }
         }
 
+        @Override
+        public boolean fitsInShort(Object receiver) {
+            int intReceiver = (int) receiver;
+            short castValue = (short) intReceiver;
+            return intReceiver == castValue;
+        }
+
+        @Override
+        public short asShort(Object receiver) {
+            int intReceiver = (int) receiver;
+            short castValue = (short) intReceiver;
+            if (intReceiver == castValue) {
+                return castValue;
+            } else {
+                return super.asShort(receiver);
+            }
+        }
     }
 
     static final class Default extends PolyglotValue {
@@ -1164,6 +1243,24 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 return super.asLong(receiver);
             }
             return getPrimitiveCache(primitive).asLong(primitive);
+        }
+
+        @Override
+        public boolean fitsInShort(Object receiver) {
+            Object primitive = asPrimitive(receiver);
+            if (primitive == null) {
+                return super.fitsInShort(receiver);
+            }
+            return getPrimitiveCache(primitive).fitsInShort(primitive);
+        }
+
+        @Override
+        public short asShort(Object receiver) {
+            Object primitive = asPrimitive(receiver);
+            if (primitive == null) {
+                return super.asShort(receiver);
+            }
+            return getPrimitiveCache(primitive).asShort(primitive);
         }
 
         private abstract static class PolyglotNode extends RootNode {
