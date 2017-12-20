@@ -94,7 +94,7 @@ public class ValueAPITest {
     }
 
     private static final Object[] STRINGS = new Object[]{
-                    "", 'a', "a", "foo",
+                    "", /* TODO 'a', */ "a", "foo",
     };
 
     @Test
@@ -149,7 +149,14 @@ public class ValueAPITest {
                     new MemberAccess(),
                     Proxy.newProxyInstance(ValueAPITest.class.getClassLoader(), new Class[]{ProxyInterface.class}, new InvocationHandler() {
                         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-                            return args[0];
+                            switch (method.getName()) {
+                                case "foobar":
+                                    return args[0];
+                                case "toString":
+                                    return "Proxy";
+                                default:
+                                    throw new UnsupportedOperationException(method.getName());
+                            }
                         }
                     }),};
 
@@ -356,13 +363,14 @@ public class ValueAPITest {
         o.add(new ObjectCoercionTest(null, Object.class, null));
         o.add(new ObjectCoercionTest(true, Boolean.class, null));
         o.add(new ObjectCoercionTest("foo", String.class, null));
-        o.add(new ObjectCoercionTest('c', String.class, (v) -> assertEquals("c", v)));
+        // TODO: should Character really be converted to String?
+        // o.add(new ObjectCoercionTest('c', String.class, (v) -> assertEquals("c", v)));
         o.add(new ObjectCoercionTest((byte) 42, Byte.class, null));
         o.add(new ObjectCoercionTest((short) 42, Short.class, null));
         o.add(new ObjectCoercionTest(42, Integer.class, null));
         o.add(new ObjectCoercionTest((long) 42, Long.class, null));
-        o.add(new ObjectCoercionTest(42.1d, Double.class, null));
-        o.add(new ObjectCoercionTest(42.1f, Float.class, null));
+        o.add(new ObjectCoercionTest(42.5d, Double.class, null));
+        o.add(new ObjectCoercionTest(42.5f, Float.class, null));
 
         Map<String, Object> map = new HashMap<>();
         map.put("foobar", "baz");
@@ -499,7 +507,7 @@ public class ValueAPITest {
 
         for (ObjectCoercionTest test : o) {
             Object result = context.asValue(test.value).as(Object.class);
-            assertTrue(test.toString(), test.expectedType.isInstance(result));
+            assertTrue(test.toString(), test.isExpectedType(result));
             test.validator.accept(result);
 
             coerce.execute(test.value, test.validator);
@@ -535,6 +543,10 @@ public class ValueAPITest {
             } else {
                 this.validator = (Consumer<Object>) validator;
             }
+        }
+
+        boolean isExpectedType(Object result) {
+            return expectedType.isInstance(result) || (value == null && result == null);
         }
 
         @Override

@@ -260,25 +260,31 @@ public class ValueAssert {
             receivedObjects.add(arrayElement.as(Object.class));
             receivedObjectsLongMap.put(i, arrayElement.as(Object.class));
             receivedObjectsIntMap.put((int) i, arrayElement.as(Object.class));
-            assertValue(context, arrayElement, detectSupportedTypes(arrayElement));
+            assertValue(context, arrayElement);
         }
 
         List<Object> objectList1 = value.as(OBJECT_LIST);
         List<Object> objectList2 = Arrays.asList(value.as(Object[].class));
+
+        assertEquals(receivedObjects, objectList1);
+        assertEquals(receivedObjects, objectList2);
+
         Map<Object, Object> objectMap1 = value.as(OBJECT_OBJECT_MAP);
         Map<Long, Object> objectMap2 = value.as(LONG_OBJECT_MAP);
         Map<Integer, Object> objectMap3 = value.as(INTEGER_OBJECT_MAP);
         Map<Number, Object> objectMap4 = value.as(NUMBER_OBJECT_MAP);
-        Map<Object, Object> objectMap5 = (Map<Object, Object>) value.as(Object.class);
 
         assertEquals(receivedObjectsLongMap, objectMap1);
         assertEquals(receivedObjectsLongMap, objectMap2);
-        assertEquals(receivedObjectsLongMap, objectMap4);
-        assertEquals(receivedObjectsLongMap, objectMap5);
         assertEquals(receivedObjectsIntMap, objectMap3);
+        assertEquals(receivedObjectsLongMap, objectMap4);
 
-        assertEquals(receivedObjects, objectList1);
-        assertEquals(receivedObjects, objectList2);
+        if (value.isHostObject()) {
+            assertTrue(value.as(Object.class).getClass().isArray());
+        } else {
+            Map<Object, Object> objectMap5 = (Map<Object, Object>) value.as(Object.class);
+            assertEquals(receivedObjectsLongMap, objectMap5);
+        }
 
         // write them all
         for (long i = 0l; i < value.getArraySize(); i++) {
@@ -371,7 +377,7 @@ public class ValueAssert {
     @SuppressWarnings("unchecked")
     private static void assertFunctionalInterfaceMapping(Context context, Value value, Object[] arguments) {
         Function<Object, Object> f1 = (Function<Object, Object>) value.as(Object.class);
-        Function<Object, Object[]> f2 = value.as(Function.class);
+        Function<Object[], Object> f2 = value.as(Function.class);
         IsFunctionalInterfaceVarArgs f3 = value.as(IsFunctionalInterfaceVarArgs.class);
 
         if (!value.hasMembers()) {
