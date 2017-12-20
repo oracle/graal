@@ -25,26 +25,28 @@ package com.oracle.svm.graal.meta;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import org.graalvm.compiler.word.BarrieredAccess;
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.graal.meta.SubstrateMemoryAccessProvider;
+import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
 
-public final class SubstrateMemoryAccessProvider implements MemoryAccessProvider {
+public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryAccessProvider {
 
-    public static final SubstrateMemoryAccessProvider SINGLETON = new SubstrateMemoryAccessProvider();
+    public static final SubstrateMemoryAccessProviderImpl SINGLETON = new SubstrateMemoryAccessProviderImpl();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private SubstrateMemoryAccessProvider() {
+    private SubstrateMemoryAccessProviderImpl() {
     }
 
     public JavaConstant readUnsafeConstant(JavaKind kind, JavaConstant base, long displacement) {
@@ -56,28 +58,40 @@ public final class SubstrateMemoryAccessProvider implements MemoryAccessProvider
 
     @Override
     public JavaConstant readObjectConstant(Constant baseConstant, long displacement) {
+        return readObjectConstant(baseConstant, displacement, false);
+    }
+
+    @Override
+    public JavaConstant readNarrowObjectConstant(Constant baseConstant, long displacement) {
+        return readObjectConstant(baseConstant, displacement, true);
+    }
+
+    private static JavaConstant readObjectConstant(Constant baseConstant, long displacement, boolean requireCompressed) {
         SignedWord offset = WordFactory.signed(displacement);
 
-        if (baseConstant instanceof SubstrateObjectConstant) {
+        if (baseConstant instanceof SubstrateObjectConstant) { // always compressed (if enabled)
+            assert !requireCompressed || ReferenceAccess.singleton().haveCompressedReferences();
+
             Object baseObject = ((SubstrateObjectConstant) baseConstant).getObject();
             assert baseObject != null : "SubstrateObjectConstant does not wrap null value";
 
             Object rawValue = BarrieredAccess.readObject(baseObject, offset);
-            return SubstrateObjectConstant.forObject(rawValue);
+            return SubstrateObjectConstant.forObject(rawValue, requireCompressed);
         }
-        if (baseConstant instanceof PrimitiveConstant) {
+        if (baseConstant instanceof PrimitiveConstant) { // never compressed
+            assert !requireCompressed;
+
             PrimitiveConstant prim = (PrimitiveConstant) baseConstant;
             if (!prim.getJavaKind().isNumericInteger()) {
                 return null;
             }
-
-            Pointer basePointer = WordFactory.unsigned(prim.asLong());
-            if (basePointer.equal(0)) {
+            Word baseAddress = WordFactory.unsigned(prim.asLong());
+            if (baseAddress.equal(0)) {
                 return null;
             }
-
-            Object rawValue = basePointer.readObject(offset);
-            return SubstrateObjectConstant.forObject(rawValue);
+            Word address = baseAddress.add(offset);
+            Object rawValue = ReferenceAccess.singleton().readObjectAt(address, false);
+            return SubstrateObjectConstant.forObject(rawValue, false);
         }
         return null;
     }
