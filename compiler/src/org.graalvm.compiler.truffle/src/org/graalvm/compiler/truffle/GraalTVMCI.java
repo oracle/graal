@@ -109,8 +109,8 @@ final class GraalTVMCI extends TVMCI {
     }
 
     /**
-     * Class used to store data used by the compiler in the Engine.
-     * Enables "global" compiler state per engine.
+     * Class used to store data used by the compiler in the Engine. Enables "global" compiler state
+     * per engine.
      */
     static class EngineData {
         int splitLimit;
