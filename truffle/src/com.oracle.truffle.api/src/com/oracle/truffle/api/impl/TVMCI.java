@@ -238,7 +238,7 @@ public abstract class TVMCI {
     private static volatile Object fallbackEngineData;
 
     @SuppressWarnings("unchecked")
-    protected final <T> T getOrCreateRuntimeData(RootNode rootNode, Supplier<T> constructor) {
+    protected <T> T getOrCreateRuntimeData(RootNode rootNode, Supplier<T> constructor) {
         Object sourceVM = Accessor.nodesAccess().getSourceVM(rootNode);
         if (sourceVM == null) {
             if (fallbackEngineData == null) {

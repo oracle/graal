@@ -31,6 +31,8 @@ import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
+import java.util.function.Supplier;
+
 final class GraalTVMCI extends TVMCI {
 
     @Override
@@ -99,6 +101,11 @@ final class GraalTVMCI extends TVMCI {
     @Override
     public boolean isCloneUninitializedSupported(RootNode root) {
         return super.isCloneUninitializedSupported(root);
+    }
+
+    @Override
+    protected <T> T getOrCreateRuntimeData(RootNode rootNode, Supplier<T> constructor) {
+        return super.getOrCreateRuntimeData(rootNode, constructor);
     }
 
     /**
