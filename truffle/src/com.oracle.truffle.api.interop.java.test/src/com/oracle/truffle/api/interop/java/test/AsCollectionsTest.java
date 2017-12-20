@@ -24,9 +24,11 @@
  */
 package com.oracle.truffle.api.interop.java.test;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -102,12 +104,11 @@ public class AsCollectionsTest {
         assertEquals("news", interopMap.get("new"));
 
         TruffleObject badMapObject = new JavaInteropTest.HasKeysObject(false);
-        interopMap = JavaInterop.asJavaObject(Map.class, badMapObject);
         try {
-            interopMap.get("isn't a map");
+            interopMap = JavaInterop.asJavaObject(Map.class, badMapObject);
             fail();
         } catch (Exception ex) {
-            assertFalse(ForeignAccess.sendHasKeys(Message.HAS_KEYS.createNode(), badMapObject));
+            assertThat(ex, instanceOf(ClassCastException.class));
         }
     }
 
