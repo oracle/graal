@@ -774,6 +774,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @SuppressWarnings("unchecked")
         @Override
         public <T> T getOrCreateRuntimeData(Object sourceVM, Supplier<T> constructor) {
+            if (!(sourceVM instanceof VMObject)) {
+                throw new IllegalArgumentException();
+            }
             final PolyglotEngineImpl engine = getEngine(sourceVM);
             if (engine.runtimeData == null) {
                 engine.runtimeData = constructor.get();

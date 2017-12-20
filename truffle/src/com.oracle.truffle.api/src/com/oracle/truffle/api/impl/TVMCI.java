@@ -239,13 +239,14 @@ public abstract class TVMCI {
 
     @SuppressWarnings("unchecked")
     protected <T> T getOrCreateRuntimeData(RootNode rootNode, Supplier<T> constructor) {
-        Object sourceVM = Accessor.nodesAccess().getSourceVM(rootNode);
-        if (sourceVM == null) {
+        try {
+            final Object sourceVM = Accessor.nodesAccess().getSourceVM(rootNode);
+            return Accessor.engineAccess().getOrCreateRuntimeData(sourceVM, constructor);
+        } catch (IllegalArgumentException | NullPointerException | UnsupportedOperationException e) {
             if (fallbackEngineData == null) {
                 fallbackEngineData = constructor.get();
             }
             return (T) fallbackEngineData;
         }
-        return Accessor.engineAccess().getOrCreateRuntimeData(sourceVM, constructor);
     }
 }
