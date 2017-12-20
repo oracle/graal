@@ -5,7 +5,7 @@ import mx
 import mx_unittest
 import mx_subst
 import os
-import mx_tools
+import mx_buildtools
 import shutil
 
 import mx_sulong
@@ -77,7 +77,7 @@ def runGCCSuite_fortran(vmArgs):
 
 def compileOtherTests():
     print("Compiling Other with clang -O0", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_otherDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude', '-lm'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC))
+    mx_buildtools.printProgress(mx_buildtools.multicompileFolder(_otherDir, _cacheDir, [mx_buildtools.Tool.CLANG], ['-Iinclude', '-lm'], [mx_buildtools.Optimization.O0], mx_buildtools.ProgrammingLanguage.LLVMBC))
 
 def runArgsTests(vmArgs):
     """runs the Sulong test suite"""
@@ -115,67 +115,67 @@ def runPipeTests(vmArgs):
 def compileLLVMSuite():
     deleteCachedTests('llvm')
     ensureLLVMSuiteExists()
-    excludes = mx_tools.collectExcludePattern(os.path.join(_llvmSuiteDir, "configs/"))
+    excludes = mx_buildtools.collectExcludePattern(os.path.join(_llvmSuiteDir, "configs/"))
     print("Compiling LLVM Suite reference executables ", end='')
-    mx_tools.printProgress(mx_tools.multicompileRefFolder(_llvmSuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude'], excludes=excludes))
+    mx_buildtools.printProgress(mx_buildtools.multicompileRefFolder(_llvmSuiteDir, _cacheDir, [mx_buildtools.Tool.CLANG], ['-Iinclude'], excludes=excludes))
     print("Compiling LLVM Suite with -O0 ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_llvmSuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
+    mx_buildtools.printProgress(mx_buildtools.multicompileFolder(_llvmSuiteDir, _cacheDir, [mx_buildtools.Tool.CLANG], ['-Iinclude'], [mx_buildtools.Optimization.O0], mx_buildtools.ProgrammingLanguage.LLVMBC, excludes=excludes))
 
 def compileInlineAssemblySuite():
     print("Compiling Assembly Suite reference executables ", end='')
-    mx_tools.printProgress(mx_tools.multicompileRefFolder(_assemblySuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude']))
+    mx_buildtools.printProgress(mx_buildtools.multicompileRefFolder(_assemblySuiteDir, _cacheDir, [mx_buildtools.Tool.CLANG], ['-Iinclude']))
     print("Compiling Assembly Suite with -O0 ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_assemblySuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC))
+    mx_buildtools.printProgress(mx_buildtools.multicompileFolder(_assemblySuiteDir, _cacheDir, [mx_buildtools.Tool.CLANG], ['-Iinclude'], [mx_buildtools.Optimization.O0], mx_buildtools.ProgrammingLanguage.LLVMBC))
 
 def compileGCCSuite_C_files():
     deleteCachedTests('gcc')
     ensureGCCSuiteExists()
-    excludes = mx_tools.collectExcludePattern(os.path.join(_gccSuiteDir, "configs/"))
+    excludes = mx_buildtools.collectExcludePattern(os.path.join(_gccSuiteDir, "configs/"))
     print("Compiling GCC Suite reference executables ", end='')
-    mx_tools.printProgress(mx_tools.multicompileRefFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_C], ['-Iinclude'], excludes=excludes))
+    mx_buildtools.printProgress(mx_buildtools.multicompileRefFolder(_gccSuiteDir, _cacheDir, [mx_buildtools.Tool.CLANG_C], ['-Iinclude'], excludes=excludes))
     print("Compiling GCC files with C ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_C], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, optimizers=[mx_tools.Tool.C_OPT], excludes=excludes))
+    mx_buildtools.printProgress(mx_buildtools.multicompileFolder(_gccSuiteDir, _cacheDir, [mx_buildtools.Tool.CLANG_C], ['-Iinclude'], [mx_buildtools.Optimization.O0], mx_buildtools.ProgrammingLanguage.LLVMBC, optimizers=[mx_buildtools.Tool.C_OPT], excludes=excludes))
 
 def compileGCCSuite_CPP_files():
     deleteCachedTests('gcc')
     ensureGCCSuiteExists()
-    excludes = mx_tools.collectExcludePattern(os.path.join(_gccSuiteDir, "configs/"))
+    excludes = mx_buildtools.collectExcludePattern(os.path.join(_gccSuiteDir, "configs/"))
     print("Compiling GCC Suite reference executables ", end='')
-    mx_tools.printProgress(mx_tools.multicompileRefFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_CPP], ['-Iinclude'], excludes=excludes))
+    mx_buildtools.printProgress(mx_buildtools.multicompileRefFolder(_gccSuiteDir, _cacheDir, [mx_buildtools.Tool.CLANG_CPP], ['-Iinclude'], excludes=excludes))
     print("Compiling GCC files with CPP ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_CPP], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, optimizers=[mx_tools.Tool.CPP_OPT], excludes=excludes))
+    mx_buildtools.printProgress(mx_buildtools.multicompileFolder(_gccSuiteDir, _cacheDir, [mx_buildtools.Tool.CLANG_CPP], ['-Iinclude'], [mx_buildtools.Optimization.O0], mx_buildtools.ProgrammingLanguage.LLVMBC, optimizers=[mx_buildtools.Tool.CPP_OPT], excludes=excludes))
 
 def compileGCCSuite_GFortran_files():
     deleteCachedTests('gcc')
     ensureGCCSuiteExists()
-    excludes = mx_tools.collectExcludePattern(os.path.join(_gccSuiteDir, "configs/"))
+    excludes = mx_buildtools.collectExcludePattern(os.path.join(_gccSuiteDir, "configs/"))
     print("Compiling GCC Suite reference executables ", end='')
-    mx_tools.printProgress(mx_tools.multicompileRefFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.GFORTRAN], ['-Iinclude'], excludes=excludes))
+    mx_buildtools.printProgress(mx_buildtools.multicompileRefFolder(_gccSuiteDir, _cacheDir, [mx_buildtools.Tool.GFORTRAN], ['-Iinclude'], excludes=excludes))
     print("Compiling GCC files with GFORTRAN ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.GFORTRAN], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
+    mx_buildtools.printProgress(mx_buildtools.multicompileFolder(_gccSuiteDir, _cacheDir, [mx_buildtools.Tool.GFORTRAN], ['-Iinclude'], [mx_buildtools.Optimization.O0], mx_buildtools.ProgrammingLanguage.LLVMBC, excludes=excludes))
 
 def compileParserTurtureSuite():
     ensureGCCSuiteExists()
-    excludes = mx_tools.collectExcludePattern(os.path.join(_gccSuiteDir, "configs/gcc.c-torture/compile/"))
+    excludes = mx_buildtools.collectExcludePattern(os.path.join(_gccSuiteDir, "configs/gcc.c-torture/compile/"))
     print("Compiling parser torture files with C ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_parserTortureSuiteDirRoot, _cacheDir, [mx_tools.Tool.CLANG_C], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
+    mx_buildtools.printProgress(mx_buildtools.multicompileFolder(_parserTortureSuiteDirRoot, _cacheDir, [mx_buildtools.Tool.CLANG_C], ['-Iinclude'], [mx_buildtools.Optimization.O0], mx_buildtools.ProgrammingLanguage.LLVMBC, excludes=excludes))
 
 def compileShootoutSuite():
     ensureShootoutsExist()
-    excludes = mx_tools.collectExcludePattern(os.path.join(_benchmarksgameSuiteDir, "configs/"))
+    excludes = mx_buildtools.collectExcludePattern(os.path.join(_benchmarksgameSuiteDir, "configs/"))
     print("Compiling Shootout Suite reference executables ", end='')
-    mx_tools.printProgress(mx_tools.multicompileRefFolder(_benchmarksgameSuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude', '-lm', '-lgmp'], excludes=excludes))
+    mx_buildtools.printProgress(mx_buildtools.multicompileRefFolder(_benchmarksgameSuiteDir, _cacheDir, [mx_buildtools.Tool.CLANG], ['-Iinclude', '-lm', '-lgmp'], excludes=excludes))
     print("Compiling Shootout Suite with -O1 ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_benchmarksgameSuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude', '-lm', '-lgmp'], [mx_tools.Optimization.O1], mx_tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
+    mx_buildtools.printProgress(mx_buildtools.multicompileFolder(_benchmarksgameSuiteDir, _cacheDir, [mx_buildtools.Tool.CLANG], ['-Iinclude', '-lm', '-lgmp'], [mx_buildtools.Optimization.O1], mx_buildtools.ProgrammingLanguage.LLVMBC, excludes=excludes))
 
 def compileNWCCSuite():
     ensureNWCCSuiteExists()
     deleteCachedTests('nwcc')
-    excludes = mx_tools.collectExcludePattern(os.path.join(_nwccSuiteDir, "configs/"))
+    excludes = mx_buildtools.collectExcludePattern(os.path.join(_nwccSuiteDir, "configs/"))
     print("Compiling NWCC Suite reference executables ", end='')
-    mx_tools.printProgress(mx_tools.multicompileRefFolder(_nwccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude'], excludes=excludes))
+    mx_buildtools.printProgress(mx_buildtools.multicompileRefFolder(_nwccSuiteDir, _cacheDir, [mx_buildtools.Tool.CLANG], ['-Iinclude'], excludes=excludes))
     print("Compiling NWCC Suite with -O0 ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_nwccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
+    mx_buildtools.printProgress(mx_buildtools.multicompileFolder(_nwccSuiteDir, _cacheDir, [mx_buildtools.Tool.CLANG], ['-Iinclude'], [mx_buildtools.Optimization.O0], mx_buildtools.ProgrammingLanguage.LLVMBC, excludes=excludes))
 
 testSuites = {
     'args' : (compileOtherTests, runArgsTests),
