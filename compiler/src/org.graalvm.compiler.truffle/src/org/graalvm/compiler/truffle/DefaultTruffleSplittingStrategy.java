@@ -34,7 +34,7 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplitti
 
 final class DefaultTruffleSplittingStrategy {
 
-    static void beforeCall(OptimizedDirectCallNode call, Object[] arguments, GraalTVMCI tvmci) {
+    static void beforeCall(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
         if (call.getCallCount() == 2) {
             final GraalTVMCI.EngineData engineData = tvmci.getEngineData(call.getRootNode());
             if (shouldSplit(call, engineData)) {

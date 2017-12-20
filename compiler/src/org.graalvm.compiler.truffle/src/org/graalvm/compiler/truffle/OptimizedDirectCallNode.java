@@ -52,7 +52,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
     @Override
     public Object call(Object[] arguments) {
         if (CompilerDirectives.inInterpreter()) {
-            onInterpreterCall(arguments);
+            onInterpreterCall();
         }
         return callProxy(this, getCurrentCallTarget(), arguments, true);
     }
@@ -109,12 +109,12 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
         return splitCallTarget;
     }
 
-    private void onInterpreterCall(Object[] arguments) {
+    private void onInterpreterCall() {
         int calls = ++callCount;
         if (calls == 1) {
             getCurrentCallTarget().incrementKnownCallSites();
         }
-        DefaultTruffleSplittingStrategy.beforeCall(this, arguments, runtime.getTvmci());
+        DefaultTruffleSplittingStrategy.beforeCall(this, runtime.getTvmci());
     }
 
     /** Used by the splitting strategy to install new targets. */
