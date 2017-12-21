@@ -61,13 +61,13 @@ import org.graalvm.compiler.replacements.nodes.ExplodeLoopNode;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.Feature.BeforeAnalysisAccess;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.RuntimeReflection;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.allocationprofile.AllocationCounter;
 import com.oracle.svm.core.allocationprofile.AllocationSite;
@@ -148,16 +148,16 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
     private static native void callCheckDynamicHub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> c);
 
     /* Must be computed during native image generation. */
-    private static final String beforeAnalysisAccessTypeName = BeforeAnalysisAccess.class.getTypeName();
+    private static final String runtimeReflectionTypeName = RuntimeReflection.class.getTypeName();
 
     /** Foreign call: {@link #CHECK_DYNAMIC_HUB}. */
     @SubstrateForeignCallTarget
     private static void checkDynamicHub(DynamicHub hub) {
         if (hub == null) {
-            throw new AssertionError("Allocation type is null.");
+            throw new NullPointerException("Allocation type is null.");
         } else if (!hub.isInstantiated()) {
-            throw new AssertionError("Class " + hub.asClass().getCanonicalName() +
-                            " is instantiated reflectively but was never registered. Register the class by using " + beforeAnalysisAccessTypeName + ".registerForReflectiveInstantiation.");
+            throw new IllegalArgumentException("Class " + hub.asClass().getCanonicalName() +
+                            " is instantiated reflectively but was never registered. Register the class by using " + runtimeReflectionTypeName);
         }
     }
 
