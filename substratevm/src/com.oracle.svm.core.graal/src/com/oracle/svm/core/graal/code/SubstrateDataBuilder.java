@@ -32,6 +32,7 @@ import org.graalvm.compiler.lir.asm.DataBuilder;
 
 import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
 import jdk.vm.ci.common.JVMCIError;
@@ -52,7 +53,6 @@ public class SubstrateDataBuilder extends DataBuilder {
         int size;
         if (constant instanceof VMConstant) {
             assert constant instanceof SubstrateObjectConstant : "should be only VMConstant";
-            size = FrameAccess.wordSize();
             return new ObjectData((SubstrateObjectConstant) constant);
         } else if (JavaConstant.isNull(constant)) {
             size = FrameAccess.wordSize();
@@ -70,6 +70,7 @@ public class SubstrateDataBuilder extends DataBuilder {
 
         protected ObjectData(SubstrateObjectConstant constant) {
             super(ConfigurationValues.getObjectLayout().getReferenceSize(), ConfigurationValues.getObjectLayout().getReferenceSize());
+            assert constant.isCompressed() == ReferenceAccess.singleton().haveCompressedReferences() : "Constant object references in compiled code must be compressed (base-relative)";
             this.constant = constant;
         }
 

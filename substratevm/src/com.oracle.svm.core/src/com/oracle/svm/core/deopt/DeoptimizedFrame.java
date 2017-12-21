@@ -148,9 +148,7 @@ public final class DeoptimizedFrame {
                 case Double:
                     return new EightByteConstantEntry(offset, constant, Double.doubleToLongBits(constant.asDouble()));
                 case Object:
-                    Object obj = SubstrateObjectConstant.asObject(constant);
-                    boolean isCompressed = SubstrateObjectConstant.isCompressed(constant);
-                    return new ObjectConstantEntry(offset, constant, obj, isCompressed);
+                    return new ObjectConstantEntry(offset, constant, SubstrateObjectConstant.asObject(constant));
                 default:
                     throw VMError.shouldNotReachHere(constant.getJavaKind().toString());
             }
@@ -201,18 +199,16 @@ public final class DeoptimizedFrame {
     static class ObjectConstantEntry extends ConstantEntry {
 
         protected final Object value;
-        protected final boolean isCompressed;
 
-        protected ObjectConstantEntry(int offset, JavaConstant constant, Object value, boolean isCompressed) {
+        protected ObjectConstantEntry(int offset, JavaConstant constant, Object value) {
             super(offset, constant);
             this.value = value;
-            this.isCompressed = isCompressed;
         }
 
         @Override
         @Uninterruptible(reason = "Writes pointers to unmanaged storage.")
         protected void write(Deoptimizer.TargetContent targetContent) {
-            targetContent.writeObject(offset, value, isCompressed);
+            targetContent.writeObject(offset, value);
         }
     }
 

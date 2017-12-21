@@ -49,7 +49,7 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
 
     @Override
     public MemoryAccessProvider getMemoryAccessProvider() {
-        return SubstrateMemoryAccessProvider.SINGLETON;
+        return SubstrateMemoryAccessProviderImpl.SINGLETON;
     }
 
     @Override
@@ -95,6 +95,6 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
         }
 
         assert SubstrateObjectConstant.asObject(base) != null;
-        return SubstrateMemoryAccessProvider.SINGLETON.readUnsafeConstant(field.type.getStorageKind(), base, field.location);
+        return SubstrateMemoryAccessProviderImpl.SINGLETON.readUnsafeConstant(field.type.getStorageKind(), base, field.location);
     }
 }
