@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -72,6 +73,26 @@ public class OverloadedTest {
         public void x(BigInteger value) {
             this.x = value;
             this.parameter = "BigInteger";
+        }
+
+        public void d(int value) {
+            this.x = value;
+            this.parameter = "int";
+        }
+
+        public void d(double value) {
+            this.x = value;
+            this.parameter = "double";
+        }
+
+        public void f(int value) {
+            this.x = value;
+            this.parameter = "int";
+        }
+
+        public void f(float value) {
+            this.x = value;
+            this.parameter = "float";
         }
     }
 
@@ -168,6 +189,41 @@ public class OverloadedTest {
     public void testGenericReturnTypeBridgeMethod() throws InteropException {
         TruffleObject thing = JavaInterop.asTruffleObject(new ActualRealThingWithIdentity());
         assertEquals(42, ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), thing, "getId"));
+    }
+
+    @Test
+    public void testWidening() throws InteropException {
+        Node n = Message.createInvoke(1).createNode();
+        Num num = new Num();
+        TruffleObject numobj = JavaInterop.asTruffleObject(num);
+        ForeignAccess.sendInvoke(n, numobj, "d", (byte) 42);
+        assertEquals("int", num.parameter);
+        ForeignAccess.sendInvoke(n, numobj, "d", (short) 42);
+        assertEquals("int", num.parameter);
+        ForeignAccess.sendInvoke(n, numobj, "d", 42);
+        assertEquals("int", num.parameter);
+
+        ForeignAccess.sendInvoke(n, numobj, "d", 42.1f);
+        assertEquals("double", num.parameter);
+        ForeignAccess.sendInvoke(n, numobj, "d", 42.1d);
+        assertEquals("double", num.parameter);
+        ForeignAccess.sendInvoke(n, numobj, "d", 42l);
+        assertEquals("double", num.parameter);
+
+        ForeignAccess.sendInvoke(n, numobj, "f", 42l);
+        assertEquals("float", num.parameter);
+    }
+
+    @Ignore
+    @Test
+    public void testNarrowing() throws InteropException {
+        Node n = Message.createInvoke(1).createNode();
+        Num num = new Num();
+        TruffleObject numobj = JavaInterop.asTruffleObject(num);
+        ForeignAccess.sendInvoke(n, numobj, "f", 42.1f);
+        assertEquals("float", num.parameter);
+        ForeignAccess.sendInvoke(n, numobj, "f", 42.1d);
+        assertEquals("float", num.parameter);
     }
 
     @MessageResolution(receiverType = UnboxableToInt.class)

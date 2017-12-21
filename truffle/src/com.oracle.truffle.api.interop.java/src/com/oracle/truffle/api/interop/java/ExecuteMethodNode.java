@@ -268,6 +268,28 @@ abstract class ExecuteMethodNode extends Node {
         }
     }
 
+    static Class<?> boxedTypeToPrimitiveType(Class<?> primitiveType) {
+        if (primitiveType == Boolean.class) {
+            return boolean.class;
+        } else if (primitiveType == Byte.class) {
+            return byte.class;
+        } else if (primitiveType == Short.class) {
+            return short.class;
+        } else if (primitiveType == Character.class) {
+            return char.class;
+        } else if (primitiveType == Integer.class) {
+            return int.class;
+        } else if (primitiveType == Long.class) {
+            return long.class;
+        } else if (primitiveType == Float.class) {
+            return float.class;
+        } else if (primitiveType == Double.class) {
+            return double.class;
+        } else {
+            return null;
+        }
+    }
+
     @TruffleBoundary
     static SingleMethodDesc selectOverload(OverloadedMethodDesc method, Object[] args, Object languageContext, ToJavaNode toJavaNode) {
         SingleMethodDesc[] overloads = method.getOverloads();
@@ -336,14 +358,14 @@ abstract class ExecuteMethodNode extends Node {
                 assert paramCount == args.length;
                 Class<?>[] parameterTypes = candidate.getParameterTypes();
                 Type[] genericParameterTypes = candidate.getGenericParameterTypes();
-                boolean loose = true;
+                boolean applicable = true;
                 for (int i = 0; i < paramCount; i++) {
                     if (!toJavaNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], languageContext)) {
-                        loose = false;
+                        applicable = false;
                         break;
                     }
                 }
-                if (loose) {
+                if (applicable) {
                     looseCandidates.add(candidate);
                 }
             }
@@ -450,9 +472,11 @@ abstract class ExecuteMethodNode extends Node {
 
     private static int compareOverloads(SingleMethodDesc m1, SingleMethodDesc m2, Object[] args, boolean varArgs) {
         int res = 0;
+        int maxParamCount = Math.max(m1.getParameterCount(), m2.getParameterCount());
         assert !varArgs || m1.isVarArgs() && m2.isVarArgs();
         assert varArgs || (m1.getParameterCount() == m2.getParameterCount() && args.length == m1.getParameterCount());
-        for (int i = 0; i < args.length; i++) {
+        assert maxParamCount <= args.length;
+        for (int i = 0; i < maxParamCount; i++) {
             Class<?> t1 = varArgs && i >= m1.getParameterCount() - 1 ? m1.getParameterTypes()[m1.getParameterCount() - 1].getComponentType() : m1.getParameterTypes()[i];
             Class<?> t2 = varArgs && i >= m2.getParameterCount() - 1 ? m2.getParameterTypes()[m2.getParameterCount() - 1].getComponentType() : m2.getParameterTypes()[i];
             if (t1 == t2) {
@@ -460,8 +484,10 @@ abstract class ExecuteMethodNode extends Node {
             }
             int r;
             if (isAssignableFrom(t1, t2)) {
+                // t1 > t2 (t2 more specific)
                 r = 1;
             } else if (isAssignableFrom(t2, t1)) {
+                // t1 < t2 (t1 more specific)
                 r = -1;
             } else {
                 continue;
@@ -478,7 +504,26 @@ abstract class ExecuteMethodNode extends Node {
     }
 
     private static boolean isAssignableFrom(Class<?> t1, Class<?> t2) {
-        return (t1.isAssignableFrom(t2)) || (t2.isPrimitive() && t1.isAssignableFrom(primitiveTypeToBoxedType(t2)));
+        if (t1.isAssignableFrom(t2)) {
+            return true;
+        }
+        if (t2.isPrimitive()) {
+            if (t1.isPrimitive()) {
+                if (isWideningPrimitiveConversion(t1, t2)) {
+                    return true;
+                }
+            } else if (t1.isAssignableFrom(primitiveTypeToBoxedType(t2))) {
+                // primitive <: boxed
+                return true;
+            }
+        } else if (t1.isPrimitive()) {
+            Class<?> boxedToPrimitive = boxedTypeToPrimitiveType(t2);
+            if (boxedToPrimitive != null && isWideningPrimitiveConversion(t1, boxedToPrimitive)) {
+                // boxed <: wider primitive
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean isSubtypeOf(Object argument, Class<?> parameterType) {
@@ -489,7 +534,32 @@ abstract class ExecuteMethodNode extends Node {
         if (!parameterType.isPrimitive()) {
             return value == null || parameterType.isInstance(value);
         } else {
-            return value != null && value.getClass() == primitiveTypeToBoxedType(parameterType);
+            if (value != null) {
+                Class<?> boxedToPrimitive = boxedTypeToPrimitiveType(value.getClass());
+                if (boxedToPrimitive != null) {
+                    return (boxedToPrimitive == parameterType || isWideningPrimitiveConversion(parameterType, boxedToPrimitive));
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean isWideningPrimitiveConversion(Class<?> toType, Class<?> fromType) {
+        assert toType.isPrimitive();
+        if (fromType == byte.class) {
+            return toType == short.class || toType == int.class || toType == long.class || toType == float.class || toType == double.class;
+        } else if (fromType == short.class) {
+            return toType == int.class || toType == long.class || toType == float.class || toType == double.class;
+        } else if (fromType == char.class) {
+            return toType == int.class || toType == long.class || toType == float.class || toType == double.class;
+        } else if (fromType == int.class) {
+            return toType == long.class || toType == float.class || toType == double.class;
+        } else if (fromType == long.class) {
+            return toType == float.class || toType == double.class;
+        } else if (fromType == float.class) {
+            return toType == double.class;
+        } else {
+            return false;
         }
     }
 

@@ -49,7 +49,6 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -367,12 +366,12 @@ public class TestMemberAccess {
     @Test
     public void testOverloadedConstructor2() throws InteropException {
         TruffleObject testClass = JavaInterop.asTruffleObject(TestConstructor.class);
-        // TODO support conversion from double to float (preferred over double to int)
-        try {
-            ForeignAccess.sendNew(newNode, testClass, 4.2);
-            fail();
-        } catch (UnsupportedTypeException e) {
-        }
+        TruffleObject testObj;
+        testObj = (TruffleObject) ForeignAccess.sendNew(newNode, testClass, (short) 42);
+        assertEquals(int.class.getName(), ForeignAccess.sendRead(readNode, testObj, "ctor"));
+        testObj = (TruffleObject) ForeignAccess.sendNew(newNode, testClass, 4.2d);
+        // TODO prioritize conversion from double to float over double to int
+        // assertEquals(float.class.getName(), ForeignAccess.sendRead(readNode, testObj, "ctor"));
     }
 
     @Test
