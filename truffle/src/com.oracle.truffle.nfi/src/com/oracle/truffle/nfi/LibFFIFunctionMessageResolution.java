@@ -143,10 +143,6 @@ class LibFFIFunctionMessageResolution {
             LibFFISignature signature = receiver.getSignature();
             LibFFIType[] argTypes = signature.getArgTypes();
 
-            if (argTypes.length != args.length) {
-                throw ArityException.raise(argTypes.length, args.length);
-            }
-
             NativeArgumentBuffer.Array buffer = signature.prepareBuffer();
             int argIdx = 0;
             for (int i = 0; i < argTypes.length; i++) {
