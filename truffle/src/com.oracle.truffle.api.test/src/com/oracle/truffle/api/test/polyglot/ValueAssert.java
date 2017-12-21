@@ -323,25 +323,25 @@ public class ValueAssert {
             assertFails(() -> value.asByte(), ClassCastException.class);
         }
         if (value.fitsInShort()) {
-            value.asShort();
-            assertTrue(value.fitsInByte());
+            short shortValue = value.asShort();
+            assertEquals((byte) shortValue == shortValue, value.fitsInByte());
         } else {
             assertFails(() -> value.asShort(), ClassCastException.class);
         }
 
         if (value.fitsInInt()) {
-            value.asInt();
-            assertTrue(value.fitsInByte());
-            assertTrue(value.fitsInShort());
+            int intValue = value.asInt();
+            assertEquals((byte) intValue == intValue, value.fitsInByte());
+            assertEquals((short) intValue == intValue, value.fitsInShort());
         } else {
             assertFails(() -> value.asInt(), ClassCastException.class);
         }
 
         if (value.fitsInLong()) {
-            value.asLong();
-            assertTrue(value.fitsInByte());
-            assertTrue(value.fitsInShort());
-            assertTrue(value.fitsInInt());
+            long longValue = value.asLong();
+            assertEquals((byte) longValue == longValue, value.fitsInByte());
+            assertEquals((short) longValue == longValue, value.fitsInShort());
+            assertEquals((int) longValue == longValue, value.fitsInInt());
         } else {
             assertFails(() -> value.asLong(), ClassCastException.class);
         }
@@ -353,8 +353,9 @@ public class ValueAssert {
         }
 
         if (value.fitsInDouble()) {
-            value.asDouble();
-            assertTrue(value.fitsInFloat());
+            double doubleValue = value.asDouble();
+            // 2147483647: fitsInFloat() is true, but (float)value.asDouble() != value.asDouble()
+            assertEquals(Double.compare((float) doubleValue, doubleValue) == 0 || value.fitsInInt(), value.fitsInFloat());
         } else {
             assertFails(() -> value.asDouble(), ClassCastException.class);
         }
