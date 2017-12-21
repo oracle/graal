@@ -31,6 +31,9 @@ package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.nodes.ControlFlowException;
 
+/**
+ * Used when exit or abort are called.
+ */
 public final class LLVMExitException extends ControlFlowException {
 
     private static final long serialVersionUID = 1L;

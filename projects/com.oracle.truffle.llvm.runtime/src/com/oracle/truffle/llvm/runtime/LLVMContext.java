@@ -56,7 +56,6 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayoutConverter.DataSpecConverterImpl;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -85,7 +84,6 @@ public final class LLVMContext {
     private final LLVMThreadingStack threadingStack;
     private final Object[] mainArguments;
     private final Map<String, String> environment;
-    private Source mainSourceFile;
     private boolean bcLibrariesLoaded;
     private final LinkedList<LLVMAddress> caughtExceptionStack = new LinkedList<>();
     private final LinkedList<DestructorStackElement> destructorStack = new LinkedList<>();
@@ -472,14 +470,6 @@ public final class LLVMContext {
 
     public Map<String, String> getEnvironment() {
         return environment;
-    }
-
-    public void setMainSourceFile(Source mainSourceFile) {
-        this.mainSourceFile = mainSourceFile;
-    }
-
-    public Source getMainSourceFile() {
-        return mainSourceFile;
     }
 
     public void registerGlobalVarDealloc(RootCallTarget globalVarDealloc) {

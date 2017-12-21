@@ -43,15 +43,15 @@ import com.oracle.truffle.llvm.nodes.func.LLVMLookupDispatchNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMLangStart extends LLVMIntrinsic {
-
     @Specialization(guards = "main.getVal() == cachedMain.getVal()")
     @SuppressWarnings("unused")
-    protected long doIntrinsic(VirtualFrame frame, long stackPointer, LLVMAddress main, long argc, LLVMAddress argv,
+    protected long doIntrinsic(VirtualFrame frame, StackPointer stackPointer, LLVMAddress main, long argc, LLVMAddress argv,
                     @Cached("main") LLVMAddress cachedMain,
                     @Cached("getMainDescriptor(cachedMain)") LLVMFunctionDescriptor mainDescriptor,
                     @Cached("getDispatchNode(mainDescriptor)") LLVMDispatchNode dispatchNode) {
@@ -61,7 +61,7 @@ public abstract class LLVMLangStart extends LLVMIntrinsic {
 
     @Specialization
     @SuppressWarnings("unused")
-    protected long doGeneric(VirtualFrame frame, long stackPointer, LLVMAddress main, long argc, LLVMAddress argv,
+    protected long doGeneric(VirtualFrame frame, StackPointer stackPointer, LLVMAddress main, long argc, LLVMAddress argv,
                     @Cached("getLookupDispatchNode(main)") LLVMLookupDispatchNode dispatchNode) {
         dispatchNode.executeDispatch(frame, main, new Object[]{stackPointer});
         return 0;
@@ -69,7 +69,7 @@ public abstract class LLVMLangStart extends LLVMIntrinsic {
 
     @Specialization(guards = "main == cachedMain")
     @SuppressWarnings("unused")
-    protected long doIntrinsic(VirtualFrame frame, long stackPointer, LLVMFunctionDescriptor main, long argc, LLVMAddress argv,
+    protected long doIntrinsic(VirtualFrame frame, StackPointer stackPointer, LLVMFunctionDescriptor main, long argc, LLVMAddress argv,
                     @Cached("main") LLVMFunctionDescriptor cachedMain,
                     @Cached("getDispatchNode(main)") LLVMDispatchNode dispatchNode) {
         dispatchNode.executeDispatch(frame, main, new Object[]{stackPointer});
@@ -78,7 +78,7 @@ public abstract class LLVMLangStart extends LLVMIntrinsic {
 
     @Specialization
     @SuppressWarnings("unused")
-    protected long doGeneric(VirtualFrame frame, long stackPointer, LLVMFunctionDescriptor main, long argc, LLVMAddress argv,
+    protected long doGeneric(VirtualFrame frame, StackPointer stackPointer, LLVMFunctionDescriptor main, long argc, LLVMAddress argv,
                     @Cached("getDispatchNode(main)") LLVMDispatchNode dispatchNode) {
         dispatchNode.executeDispatch(frame, main, new Object[]{stackPointer});
         return 0;
