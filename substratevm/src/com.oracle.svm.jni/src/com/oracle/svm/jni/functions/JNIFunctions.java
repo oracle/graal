@@ -55,7 +55,10 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.Utf8;
 import com.oracle.svm.core.util.Utf8Exception;
 import com.oracle.svm.core.util.VMError;
@@ -681,6 +684,19 @@ final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerVoid.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static void Throw(JNIEnvironment env, JNIObjectHandle handle) throws Throwable {
         throw (Throwable) JNIObjectHandles.getObject(handle);
+    }
+
+    /*
+     * void FatalError(JNIEnv *env, const char *msg);
+     */
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerVoid.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static void FatalError(JNIEnvironment env, CCharPointer message) {
+        Log log = Log.log().autoflush(true);
+        log.string("Fatal error reported via JNI: ").string(message).newline();
+        VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+        SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
+        ConfigurationValues.getOSInterface().abort();
     }
 
     /*
