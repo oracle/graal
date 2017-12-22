@@ -88,6 +88,7 @@ import com.oracle.svm.jni.nativeapi.JNIJavaVMPointer;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNINativeMethod;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.jni.nativeapi.JNIObjectRefType;
 
 import jdk.vm.ci.meta.MetaUtil;
 
@@ -284,6 +285,20 @@ final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerVoid.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static void DeleteWeakGlobalRef(JNIEnvironment env, JNIObjectHandle weak) {
         JNIGlobalHandles.singleton().destroyWeak(weak);
+    }
+
+    /*
+     * jobjectRefType GetObjectRefType(JNIEnv* env, jobject obj);
+     */
+
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static JNIObjectRefType GetObjectRefType(JNIEnvironment env, JNIObjectHandle handle) {
+        try {
+            return JNIObjectHandles.getHandleType(handle);
+        } catch (Throwable t) {
+            return JNIObjectRefType.Invalid;
+        }
     }
 
     /*
