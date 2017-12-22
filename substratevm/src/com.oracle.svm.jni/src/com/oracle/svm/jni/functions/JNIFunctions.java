@@ -211,6 +211,17 @@ final class JNIFunctions {
     }
 
     /*
+     * jclass GetSuperclass(JNIEnv *env, jclass clazz);
+     */
+
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static JNIObjectHandle GetSuperclass(JNIEnvironment env, JNIObjectHandle handle) {
+        Class<?> clazz = JNIObjectHandles.getObject(handle);
+        return JNIThreadLocalHandles.get().create(clazz.getSuperclass());
+    }
+
+    /*
      * jobject NewGlobalRef(JNIEnv *env, jobject obj);
      */
 
