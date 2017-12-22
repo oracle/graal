@@ -26,7 +26,11 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleAs
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleStackTraceLimit;
 
 import java.lang.ref.WeakReference;
+import java.util.concurrent.Future;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -37,10 +41,32 @@ import jdk.vm.ci.code.InstalledCode;
 
 public final class OptimizedAssumption extends AbstractAssumption {
 
-    private static class Entry {
+    private static class Entry implements Consumer<InstalledCode> {
         WeakReference<InstalledCode> installedCode;
         long version;
         Entry next;
+
+        @Override
+        public void accept(InstalledCode code) {
+            synchronized (this) {
+                version = code.getVersion();
+                installedCode = new WeakReference<>(code);
+                this.notifyAll();
+            }
+        }
+
+        public InstalledCode awaitInstalledCode() {
+            synchronized (this) {
+                try {
+                    while (installedCode == null) {
+                        this.wait();
+                    }
+                } catch (InterruptedException e) {
+                    throw GraalError.shouldNotReachHere(e);
+                }
+                return installedCode.get();
+            }
+        }
     }
 
     private Entry first;
@@ -77,7 +103,7 @@ public final class OptimizedAssumption extends AbstractAssumption {
         boolean invalidatedInstalledCode = false;
         Entry e = first;
         while (e != null) {
-            InstalledCode installedCode = e.installedCode.get();
+            InstalledCode installedCode = e.awaitInstalledCode();
             if (installedCode != null && installedCode.getVersion() == e.version) {
                 invalidateWithReason(installedCode, "assumption invalidated");
                 invalidatedInstalledCode = true;
@@ -101,19 +127,23 @@ public final class OptimizedAssumption extends AbstractAssumption {
         }
     }
 
-    public synchronized void registerInstalledCode(InstalledCode installedCode) {
+    public synchronized Consumer<InstalledCode> registerInstalledCodeEntry() {
         if (isValid) {
             Entry e = new Entry();
-            e.installedCode = new WeakReference<>(installedCode);
-            e.version = installedCode.getVersion();
             e.next = first;
             first = e;
+            return e;
         } else {
-            invalidateWithReason(installedCode, "assumption already invalidated when installing code");
-            if (TruffleCompilerOptions.getValue(TraceTruffleAssumptions)) {
-                logInvalidatedInstalledCode(installedCode);
-                logStackTrace();
-            }
+            return new Consumer<InstalledCode>() {
+                @Override
+                public void accept(InstalledCode installedCode) {
+                    invalidateWithReason(installedCode, "assumption already invalidated when installing code");
+                    if (TruffleCompilerOptions.getValue(TraceTruffleAssumptions)) {
+                        logInvalidatedInstalledCode(installedCode);
+                        logStackTrace();
+                    }
+                }
+            };
         }
     }
 

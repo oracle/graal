@@ -204,28 +204,36 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
         }
         try (DebugContext.Scope s2 = debug.scope("CodeInstall", debugContext);
                         DebugContext.Activation a = debug.activate()) {
-            for (CodeInstallationTask task : tasks) {
-                task.preProcess(compilationResult);
-            }
+            preCodeInstallationTasks(tasks, compilationResult);
 
             CompiledCode compiledCode = createCompiledCode(method, compilationRequest, compilationResult);
             InstalledCode installedCode = getProviders().getCodeCache().installCode(method, compiledCode, predefinedInstalledCode, speculationLog, isDefault);
 
-            // Run post-code installation tasks.
-            try {
-                for (CodeInstallationTask task : tasks) {
-                    task.postProcess(installedCode);
-                }
-                for (CodeInstallationTask task : tasks) {
-                    task.releaseInstallation(installedCode);
-                }
-            } catch (Throwable t) {
-                installedCode.invalidate();
-                throw t;
-            }
+            postCodeInstallationTasks(tasks, installedCode);
+
             return installedCode;
         } catch (Throwable e) {
             throw debug.handle(e);
+        }
+    }
+
+    protected void preCodeInstallationTasks(CodeInstallationTask[] tasks, CompilationResult compilationResult) {
+        for (CodeInstallationTask task : tasks) {
+            task.preProcess(compilationResult);
+        }
+    }
+
+    private void postCodeInstallationTasks(CodeInstallationTask[] tasks, InstalledCode installedCode) {
+        try {
+            for (CodeInstallationTask task : tasks) {
+                task.postProcess(installedCode);
+            }
+            for (CodeInstallationTask task : tasks) {
+                task.releaseInstallation(installedCode);
+            }
+        } catch (Throwable t) {
+            installedCode.invalidate();
+            throw t;
         }
     }
 
