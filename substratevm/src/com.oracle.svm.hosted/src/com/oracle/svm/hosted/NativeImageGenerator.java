@@ -125,7 +125,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.Timer;
@@ -697,7 +696,7 @@ public class NativeImageGenerator {
                 hUniverse = new HostedUniverse(bigbang, svmHost);
                 hMetaAccess = new HostedMetaAccess(hUniverse, aMetaAccess);
 
-                new UniverseBuilder(aUniverse, aMetaAccess, hUniverse, hMetaAccess, new StaticAnalysisResultsBuilder(bigbang, hUniverse),
+                new UniverseBuilder(aUniverse, aMetaAccess, hUniverse, hMetaAccess, HostedConfiguration.instance().createStaticAnalysisResultsBuilder(bigbang, hUniverse),
                                 bigbang.getUnsupportedFeatures()).build(debug);
 
                 runtime = new HostedRuntimeConfigurationBuilder(options, svmHost, hUniverse, hMetaAccess, aProviders).build();
