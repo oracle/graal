@@ -60,11 +60,23 @@ public final class JNINativeLinkage {
         this.descriptor = descriptor;
     }
 
+    public String getDeclaringClassName() {
+        return declaringClass;
+    }
+
     /**
      * Sets the native address for the {@code native} method represented by this object.
      */
     public void setEntryPoint(CFunctionPointer fnptr) {
         entryPoint = fnptr;
+    }
+
+    /**
+     * Resets the entry point stored for the native method represented by this object, triggering a
+     * symbol lookup when the method is called the next time.
+     */
+    public void unsetEntryPoint() {
+        entryPoint = WordFactory.nullPointer();
     }
 
     @Override

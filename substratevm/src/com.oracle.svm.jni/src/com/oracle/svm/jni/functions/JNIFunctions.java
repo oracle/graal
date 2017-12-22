@@ -331,6 +331,21 @@ final class JNIFunctions {
     }
 
     /*
+     * jint UnregisterNatives(JNIEnv *env, jclass clazz);
+     */
+
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnJniErr.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static int UnregisterNatives(JNIEnvironment env, JNIObjectHandle hclazz) {
+        Class<?> clazz = JNIObjectHandles.getObject(hclazz);
+        String internalName = MetaUtil.toInternalName(clazz.getName());
+        for (JNINativeLinkage linkage : JNIReflectionDictionary.singleton().getLinkages(internalName)) {
+            linkage.unsetEntryPoint();
+        }
+        return JNIErrors.JNI_OK();
+    }
+
+    /*
      * jmethodID GetMethodID(JNIEnv *env, jclass clazz, const char *name, const char *sig);
      *
      * jmethodID GetStaticMethodID(JNIEnv *env, jclass clazz, const char *name, const char *sig);
