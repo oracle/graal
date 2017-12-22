@@ -222,6 +222,18 @@ final class JNIFunctions {
     }
 
     /*
+     * jboolean IsAssignableFrom(JNIEnv *env, jclass clazz1, jclass clazz2);
+     */
+
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnFalse.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static boolean IsAssignableFrom(JNIEnvironment env, JNIObjectHandle handle1, JNIObjectHandle handle2) {
+        Class<?> clazz1 = JNIObjectHandles.getObject(handle1);
+        Class<?> clazz2 = JNIObjectHandles.getObject(handle2);
+        return clazz2.isAssignableFrom(clazz1);
+    }
+
+    /*
      * jobject NewGlobalRef(JNIEnv *env, jobject obj);
      */
 
