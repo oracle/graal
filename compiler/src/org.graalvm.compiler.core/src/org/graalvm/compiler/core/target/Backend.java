@@ -206,14 +206,26 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
                         DebugContext.Activation a = debug.activate()) {
             preCodeInstallationTasks(tasks, compilationResult);
 
-            CompiledCode compiledCode = createCompiledCode(method, compilationRequest, compilationResult);
-            InstalledCode installedCode = getProviders().getCodeCache().installCode(method, compiledCode, predefinedInstalledCode, speculationLog, isDefault);
+            InstalledCode installedCode = null;
+            try {
+                CompiledCode compiledCode = createCompiledCode(method, compilationRequest, compilationResult);
+                installedCode = getProviders().getCodeCache().installCode(method, compiledCode, predefinedInstalledCode, speculationLog, isDefault);
+            } catch (Throwable t) {
+                failCodeInstallationTasks(tasks, t);
+                throw t;
+            }
 
             postCodeInstallationTasks(tasks, installedCode);
 
             return installedCode;
         } catch (Throwable e) {
             throw debug.handle(e);
+        }
+    }
+
+    private void failCodeInstallationTasks(CodeInstallationTask[] tasks, Throwable t) {
+        for (CodeInstallationTask task : tasks) {
+            task.installFailed(t);
         }
     }
 
@@ -314,6 +326,12 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
          */
         @SuppressWarnings("unused")
         public void releaseInstallation(InstalledCode installedCode) {
+        }
+
+        /**
+         * Invoked after preProcess in the case that the code installation fails.
+         */
+        public void installFailed(Throwable t) {
         }
     }
 

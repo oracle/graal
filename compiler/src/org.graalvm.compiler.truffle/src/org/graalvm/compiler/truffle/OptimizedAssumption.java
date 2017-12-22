@@ -49,8 +49,10 @@ public final class OptimizedAssumption extends AbstractAssumption {
         @Override
         public void accept(InstalledCode code) {
             synchronized (this) {
-                version = code.getVersion();
                 installedCode = new WeakReference<>(code);
+                if (code != null) {
+                    version = code.getVersion();
+                }
                 this.notifyAll();
             }
         }
