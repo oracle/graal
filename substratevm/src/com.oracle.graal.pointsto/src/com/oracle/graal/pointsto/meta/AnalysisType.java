@@ -39,7 +39,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.word.WordBase;
 
@@ -53,6 +52,7 @@ import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.flow.context.object.ConstantContextSensitiveObject;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
@@ -961,6 +961,14 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     @Override
     public boolean equals(Object obj) {
         return this == obj;
+    }
+
+    /* Value copied from java.lang.Class. */
+    private static final int ANNOTATION = 0x00002000;
+
+    /* Method copied from java.lang.Class. */
+    public boolean isAnnotation() {
+        return (getModifiers() & ANNOTATION) != 0;
     }
 
 }

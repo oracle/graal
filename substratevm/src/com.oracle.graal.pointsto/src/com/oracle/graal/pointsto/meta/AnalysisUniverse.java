@@ -182,7 +182,7 @@ public class AnalysisUniverse implements Universe {
         if (!(rawType instanceof ResolvedJavaType)) {
             return rawType;
         }
-        assert !(rawType instanceof AnalysisType);
+        assert !(rawType instanceof AnalysisType) : "lookupAllowUnresolved does not support analysis types.";
 
         ResolvedJavaType type = (ResolvedJavaType) rawType;
         type = substitutions.lookup(type);
