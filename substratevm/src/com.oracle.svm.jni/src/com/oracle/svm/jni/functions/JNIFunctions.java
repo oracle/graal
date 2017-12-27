@@ -31,6 +31,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.Buffer;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import org.graalvm.compiler.word.Word;
@@ -447,6 +448,17 @@ final class JNIFunctions {
     }
 
     /*
+     * jsize GetStringUTFLength(JNIEnv *env, jstring string);
+     */
+
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnMinusOne.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static int GetStringUTFLength(JNIEnvironment env, JNIObjectHandle hstr) {
+        String str = JNIObjectHandles.getObject(hstr);
+        return Utf8.utf8Length(str);
+    }
+
+    /*
      * const jchar * GetStringChars(JNIEnv *env, jstring string, jboolean *isCopy);
      *
      * void ReleaseStringChars(JNIEnv *env, jstring string, const jchar *chars);
@@ -529,6 +541,28 @@ final class JNIFunctions {
             char c = str.charAt(start + i);
             buf.write(i, (short) c);
         }
+    }
+
+    /*
+     * void GetStringUTFRegion(JNIEnv *env, jstring str, jsize start, jsize len, char *buf);
+     */
+
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerVoid.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static void GetStringUTFRegion(JNIEnvironment env, JNIObjectHandle hstr, int start, int len, CCharPointer buf) {
+        String str = JNIObjectHandles.getObject(hstr);
+        if (start < 0) {
+            throw new StringIndexOutOfBoundsException(start);
+        }
+        if (start + len > str.length()) {
+            throw new StringIndexOutOfBoundsException(start + len);
+        }
+        if (len < 0) {
+            throw new StringIndexOutOfBoundsException(len);
+        }
+        int capacity = Utf8.maxByteLength(len, true); // estimate: caller must pre-allocate enough
+        ByteBuffer buffer = SubstrateUtil.wrapAsByteBuffer(buf, capacity);
+        Utf8.writeString(buffer, str, start, start + len, true);
     }
 
     /*
