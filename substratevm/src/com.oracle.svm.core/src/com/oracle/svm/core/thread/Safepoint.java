@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.Threading.RecurringCallbackException;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -300,6 +301,10 @@ public final class Safepoint {
              */
             slowPathSafepointCheck();
 
+        } catch (RecurringCallbackException rce) {
+            /* This exception is intended to be thrown from safepoint checks, at one's own risk */
+            throw rce;
+
         } catch (Throwable ex) {
             /*
              * The foreign call from snippets to this method does not have an exception edge. So we
@@ -340,8 +345,11 @@ public final class Safepoint {
     @Uninterruptible(reason = "Must not contain safepoint checks")
     private static void enterSlowPathNativeToJava() {
         Statistics.incSlowPathFrozen();
-        slowPathSafepointCheck();
-        Statistics.incSlowPathThawed();
+        try {
+            slowPathSafepointCheck();
+        } finally {
+            Statistics.incSlowPathThawed();
+        }
     }
 
     /** Methods for the thread that brings the system to a safepoint. */

@@ -28,6 +28,7 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Threading.RecurringCallbackException;
 import org.graalvm.nativeimage.impl.ThreadingSupport;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -95,7 +96,7 @@ class ThreadingSupportImpl implements ThreadingSupport {
         }
 
         @Uninterruptible(reason = "Must not contain safepoint checks.")
-        void onSafepointCheckSlowpath(long timestamp, int value) {
+        void onSafepointCheckSlowpath(long timestamp, int value) throws RecurringCallbackException {
             if (isExecuting) { // recursively entered safepoint in callback
                 return;
             }
@@ -130,6 +131,8 @@ class ThreadingSupportImpl implements ThreadingSupport {
                 requestedChecks = (checks > unsignedIntMax) ? unsignedIntMax : ((checks < 1L) ? 1L : (long) checks);
                 lastCapture = now;
                 Safepoint.setSafepointRequested((int) requestedChecks);
+            } catch (RecurringCallbackException rce) {
+                throw rce;
             } catch (Throwable t) {
                 Log.log().string("Exception caught in recurring callback (ignored): ").object(t).newline();
             } finally {
@@ -138,7 +141,7 @@ class ThreadingSupportImpl implements ThreadingSupport {
         }
 
         /**
-         * Separate method to invoke {@link #callback} so
+         * Separate method to invoke {@link #callback} so that
          * {@link #onSafepointCheckSlowpath(long, int)} can be strictly {@link Uninterruptible} and
          * allocation-free.
          */
