@@ -156,7 +156,9 @@ suite = {
       "dependencies" : [
         "org.graalvm.collections.test",
       ],
-      "distDependencies" : [],
+      "distDependencies" : [
+        "GRAAL_SDK",
+      ],
     },
     "WORD_API" : {
       "subDir" : "src",
