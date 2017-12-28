@@ -25,7 +25,8 @@ package com.oracle.svm.jni.hosted;
 // Checkstyle: allow reflection
 
 import java.lang.reflect.Modifier;
-import java.util.stream.Stream;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
@@ -78,10 +79,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
     private final ResolvedJavaField callWrapperField;
+    private final boolean nonVirtual;
 
-    public JNICallTrampolineMethod(ResolvedJavaMethod original, ResolvedJavaField callWrapperField) {
+    public JNICallTrampolineMethod(ResolvedJavaMethod original, ResolvedJavaField callWrapperField, boolean nonVirtual) {
         super(original);
         this.callWrapperField = callWrapperField;
+        this.nonVirtual = nonVirtual;
     }
 
     @Override
@@ -111,12 +114,17 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
 
             // Determine register for jmethodID argument
             HostedProviders providers = (HostedProviders) config.getProviders();
-            JavaType[] parameters = Stream.of(JNIEnvironment.class, JNIObjectHandle.class, JNIMethodId.class)
-                            .map(providers.getMetaAccess()::lookupJavaType).toArray(JavaType[]::new);
+            List<JavaType> parameters = new ArrayList<>();
+            parameters.add(providers.getMetaAccess().lookupJavaType(JNIEnvironment.class));
+            parameters.add(providers.getMetaAccess().lookupJavaType(JNIObjectHandle.class));
+            if (nonVirtual) {
+                parameters.add(providers.getMetaAccess().lookupJavaType(JNIObjectHandle.class));
+            }
+            parameters.add(providers.getMetaAccess().lookupJavaType(JNIMethodId.class));
             ResolvedJavaType returnType = providers.getWordTypes().getWordImplType();
             CallingConvention callingConvention = backend.getCodeCache().getRegisterConfig().getCallingConvention(
-                            SubstrateCallingConventionType.NativeCall, returnType, parameters, backend);
-            RegisterValue methodIdArg = (RegisterValue) callingConvention.getArgument(2);
+                            SubstrateCallingConventionType.NativeCall, returnType, parameters.toArray(new JavaType[0]), backend);
+            RegisterValue methodIdArg = (RegisterValue) callingConvention.getArgument(parameters.size() - 1);
 
             CompilationResult result = new CompilationResult(identifier);
             AMD64Assembler asm = new AMD64Assembler(backend.getTarget());
