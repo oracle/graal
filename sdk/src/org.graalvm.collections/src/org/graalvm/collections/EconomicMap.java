@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,21 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.util;
+package org.graalvm.collections;
 
 import java.util.Iterator;
 import java.util.Map;
 import java.util.function.BiFunction;
-
-import org.graalvm.util.impl.EconomicMapImpl;
 
 /**
  * Memory efficient map data structure.
  */
 public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
 
+    /**
+     * Associates the specified value with the specified key in this map. If the map previously
+     * contained a mapping for the key, the old value is replaced by the specified value.
+     *
+     * @return the previous value associated with {@code key}, or {@code null} if there was no
+     *         mapping for {@code key}.
+     */
     V put(K key, V value);
 
+    /**
+     * Copies all of the mappings from the specified EconomicMap to this map.
+     */
     default void putAll(EconomicMap<K, V> other) {
         MapCursor<K, V> e = other.getEntries();
         while (e.advance()) {
@@ -42,21 +52,39 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
         }
     }
 
-    void clear();
-
-    V removeKey(K key);
-
-    @Override
-    MapCursor<K, V> getEntries();
-
-    void replaceAll(BiFunction<? super K, ? super V, ? extends V> function);
-
+    /**
+     * Copies all of the mappings from the specified UnmodifiableEconomicMap to this map.
+     */
     default void putAll(UnmodifiableEconomicMap<? extends K, ? extends V> other) {
         UnmodifiableMapCursor<? extends K, ? extends V> entry = other.getEntries();
         while (entry.advance()) {
             put(entry.getKey(), entry.getValue());
         }
     }
+
+    /**
+     * Removes all of the mappings from this map. The map will be empty after this call returns.
+     */
+    void clear();
+
+    /**
+     * Removes the mapping for a key from this map if it is present. The map will not contain a
+     * mapping for the specified key once the call returns.
+     *
+     * @return the previous value associated with {@code key}, or {@code null} if there was no
+     *         mapping for {@code key}.
+     */
+    V removeKey(K key);
+
+    @Override
+    MapCursor<K, V> getEntries();
+
+    /**
+     * Replaces each entry's value with the result of invoking the given function on that entry
+     * until all entries have been processed or the function throws an exception. Exceptions thrown
+     * by the function are relayed to the caller.
+     */
+    void replaceAll(BiFunction<? super K, ? super V, ? extends V> function);
 
     /**
      * Creates a new map that guarantees insertion order on the key set with the default
@@ -109,7 +137,7 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
     }
 
     /**
-     * Wraps an existing {@link java.util.Map} as an {@link org.graalvm.util.EconomicMap}.
+     * Wraps an existing {@link java.util.Map} as an {@link org.graalvm.collections.EconomicMap}.
      */
     static <K, V> EconomicMap<K, V> wrapMap(Map<K, V> map) {
         return new EconomicMap<K, V>() {

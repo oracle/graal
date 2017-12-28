@@ -108,6 +108,24 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "API,SDK,Test",
     },
+    "org.graalvm.collections" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "1.8",
+      "workingSets" : "API,SDK",
+    },
+    "org.graalvm.collections.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "org.graalvm.collections",
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "1.8",
+      "workingSets" : "API,SDK,Test",
+    },
   },
   "licenses" : {
     "UPL" : {
@@ -123,6 +141,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.polyglot",
         "org.graalvm.nativeimage",
+        "org.graalvm.collections",
       ],
       "distDependencies" : [],
       "maven" : {
@@ -131,6 +150,13 @@ suite = {
       },
       "javadocType": "api",
       "description" : "GraalVM is an ecosystem for compiling and running applications written in multiple languages.\nGraalVM removes the isolation between programming languages and enables interoperability in a shared runtime.",
+    },
+    "SDK_TEST" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.collections.test",
+      ],
+      "distDependencies" : [],
     },
     "WORD_API" : {
       "subDir" : "src",

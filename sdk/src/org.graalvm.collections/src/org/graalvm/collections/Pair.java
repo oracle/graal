@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.util;
+package org.graalvm.collections;
 
 import java.util.Objects;
 
@@ -28,16 +30,26 @@ import java.util.Objects;
  * Utility class representing a pair of values.
  */
 public final class Pair<L, R> {
+
     private static final Pair<Object, Object> EMPTY = new Pair<>(null, null);
 
     private final L left;
     private final R right;
 
+    /**
+     * @return an empty pair.
+     */
     @SuppressWarnings("unchecked")
     public static <L, R> Pair<L, R> empty() {
         return (Pair<L, R>) EMPTY;
     }
 
+    /**
+     * Constructs a pair with its left value being the specified input, or returns an empty pair if
+     * the specified input is null.
+     *
+     * @return the constructed pair or an empty pair if the specified input is null.
+     */
     public static <L, R> Pair<L, R> createLeft(L left) {
         if (left == null) {
             return empty();
@@ -46,6 +58,12 @@ public final class Pair<L, R> {
         }
     }
 
+    /**
+     * Constructs a pair with its right value being the specified input, or returns an empty pair if
+     * the specified input is null.
+     *
+     * @return the constructed pair or an empty pair if the specified input is null.
+     */
     public static <L, R> Pair<L, R> createRight(R right) {
         if (right == null) {
             return empty();
@@ -54,6 +72,12 @@ public final class Pair<L, R> {
         }
     }
 
+    /**
+     * Constructs a pair with its left value being the specified left input, and its right value
+     * being the specified right input, or returns an empty pair if both inputs are null.
+     *
+     * @return the constructed pair or an empty pair if both inputs are null.
+     */
     public static <L, R> Pair<L, R> create(L left, R right) {
         if (right == null && left == null) {
             return empty();
@@ -67,10 +91,16 @@ public final class Pair<L, R> {
         this.right = right;
     }
 
+    /**
+     * @return the left value of this pair.
+     */
     public L getLeft() {
         return left;
     }
 
+    /**
+     * @return the right value of this pair.
+     */
     public R getRight() {
         return right;
     }

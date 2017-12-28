@@ -22,7 +22,13 @@
  */
 package org.graalvm.compiler.loop;
 
-import jdk.vm.ci.code.BytecodeFrame;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.Queue;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
@@ -67,13 +73,8 @@ import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.util.EconomicMap;
-import org.graalvm.util.EconomicSet;
-import org.graalvm.util.Equivalence;
 
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.Queue;
+import jdk.vm.ci.code.BytecodeFrame;
 
 public class LoopEx {
     private final Loop<Block> loop;

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,51 +22,87 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.util;
+package org.graalvm.collections;
 
 import java.util.Iterator;
-
-import org.graalvm.util.impl.EconomicMapImpl;
 
 /**
  * Memory efficient set data structure.
  */
 public interface EconomicSet<E> extends UnmodifiableEconomicSet<E> {
 
+    /**
+     * Adds the specified element to this set if it is not already present.
+     *
+     * @return {@code true} if this set did not already contain the specified element.
+     */
     boolean add(E element);
 
+    /**
+     * Removes the specified element from this set if it is present. This set will not contain the
+     * element once the call returns.
+     */
     void remove(E element);
 
+    /**
+     * Removes all of the elements from this set (optional operation). The set will be empty after
+     * this call returns.
+     */
     void clear();
 
+    /**
+     * Adds all of the elements in the specified EconomicSet to this set if they're not already
+     * present.
+     */
     default void addAll(EconomicSet<E> values) {
         addAll(values.iterator());
     }
 
+    /**
+     * Adds all of the elements in the specified Iterable to this set if they're not already
+     * present.
+     */
     default void addAll(Iterable<E> values) {
         addAll(values.iterator());
     }
 
+    /**
+     * Adds all of the elements enumerated by the specified Iterator to this set if they're not
+     * already present.
+     */
     default void addAll(Iterator<E> values) {
         while (values.hasNext()) {
             add(values.next());
         }
     }
 
+    /**
+     * Removes from this set all of its elements that are contained in the specified EconomicSet.
+     */
     default void removeAll(EconomicSet<E> values) {
         removeAll(values.iterator());
     }
 
+    /**
+     * Removes from this set all of its elements that are contained in the specified Iterable.
+     */
     default void removeAll(Iterable<E> values) {
         removeAll(values.iterator());
     }
 
+    /**
+     * Removes from this set all of its elements that are enumerated by the specified Iterator.
+     */
     default void removeAll(Iterator<E> values) {
         while (values.hasNext()) {
             remove(values.next());
         }
     }
 
+    /**
+     * Removes from this set all of its elements that are not contained in the specified
+     * EconomicSet.
+     */
     default void retainAll(EconomicSet<E> values) {
         Iterator<E> iterator = iterator();
         while (iterator.hasNext()) {

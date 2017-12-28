@@ -24,6 +24,7 @@ package org.graalvm.compiler.nodes;
 
 import java.util.Map;
 
+import org.graalvm.collections.CollectionsUtil;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
@@ -32,7 +33,6 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.util.CollectionsUtil;
 
 /**
  * Value {@link PhiNode}s merge data flow values at control flow merges.
