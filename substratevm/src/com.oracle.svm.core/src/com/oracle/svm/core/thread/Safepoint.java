@@ -38,7 +38,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.Threading.RecurringCallbackException;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -161,6 +160,16 @@ public final class Safepoint {
         /** Every exception needs a serialVersionUID. */
         private static final long serialVersionUID = -1924498867085800218L;
 
+    }
+
+    static class SafepointException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        final Throwable inner;
+
+        SafepointException(Throwable inner) {
+            this.inner = inner;
+        }
     }
 
     @Uninterruptible(reason = "Called during safepointing.")
@@ -293,7 +302,7 @@ public final class Safepoint {
     /** Foreign call: {@link #ENTER_SLOW_PATH_SAFEPOINT_CHECK}. */
     @SubstrateForeignCallTarget
     @Uninterruptible(reason = "Must not contain safepoint checks")
-    private static void enterSlowPathSafepointCheck() {
+    private static void enterSlowPathSafepointCheck() throws Throwable {
         try {
             /*
              * Block on mutex held by thread that requested safepoint, i.e., transition to native
@@ -301,9 +310,9 @@ public final class Safepoint {
              */
             slowPathSafepointCheck();
 
-        } catch (RecurringCallbackException rce) {
+        } catch (SafepointException se) {
             /* This exception is intended to be thrown from safepoint checks, at one's own risk */
-            throw rce;
+            throw se.inner;
 
         } catch (Throwable ex) {
             /*

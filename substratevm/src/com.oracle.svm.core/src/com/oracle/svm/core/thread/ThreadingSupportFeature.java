@@ -28,7 +28,8 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Threading.RecurringCallbackException;
+import org.graalvm.nativeimage.Threading.RecurringCallback;
+import org.graalvm.nativeimage.Threading.RecurringCallbackAccess;
 import org.graalvm.nativeimage.impl.ThreadingSupport;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -37,6 +38,7 @@ import com.oracle.svm.core.annotate.MustNotAllocate;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.thread.Safepoint.SafepointException;
 import com.oracle.svm.core.thread.Safepoint.SafepointRequestValues;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
@@ -66,6 +68,13 @@ class ThreadingSupportImpl implements ThreadingSupport {
      * adapt to a changing frequency of safepoint checks in the code that the thread executes.
      */
     static class RecurringCallbackTimer {
+        private static final RecurringCallbackAccess CALLBACK_ACCESS = new RecurringCallbackAccess() {
+            @Override
+            public void throwException(Throwable t) {
+                throw new SafepointException(t);
+            }
+        };
+
         /**
          * Weight of the newest sample in {@link #ewmaChecksPerNano}. Older samples have a total
          * weight of 1 - {@link #EWMA_LAMBDA}.
@@ -76,7 +85,7 @@ class ThreadingSupportImpl implements ThreadingSupport {
         private static final long MINIMUM_INTERVAL_NANOS = 1_000;
 
         private final long targetIntervalNanos;
-        private final Runnable callback;
+        private final RecurringCallback callback;
 
         private long requestedChecks;
         private double ewmaChecksPerNano;
@@ -85,7 +94,7 @@ class ThreadingSupportImpl implements ThreadingSupport {
 
         private volatile boolean isExecuting = false;
 
-        RecurringCallbackTimer(long targetIntervalNanos, Runnable callback) {
+        RecurringCallbackTimer(long targetIntervalNanos, RecurringCallback callback) {
             this.targetIntervalNanos = Math.max(MINIMUM_INTERVAL_NANOS, targetIntervalNanos);
             this.callback = callback;
 
@@ -96,7 +105,7 @@ class ThreadingSupportImpl implements ThreadingSupport {
         }
 
         @Uninterruptible(reason = "Must not contain safepoint checks.")
-        void onSafepointCheckSlowpath(long timestamp, int value) throws RecurringCallbackException {
+        void onSafepointCheckSlowpath(long timestamp, int value) {
             if (isExecuting) { // recursively entered safepoint in callback
                 return;
             }
@@ -131,8 +140,8 @@ class ThreadingSupportImpl implements ThreadingSupport {
                 requestedChecks = (checks > unsignedIntMax) ? unsignedIntMax : ((checks < 1L) ? 1L : (long) checks);
                 lastCapture = now;
                 Safepoint.setSafepointRequested((int) requestedChecks);
-            } catch (RecurringCallbackException rce) {
-                throw rce;
+            } catch (SafepointException se) {
+                throw se;
             } catch (Throwable t) {
                 Log.log().string("Exception caught in recurring callback (ignored): ").object(t).newline();
             } finally {
@@ -149,14 +158,14 @@ class ThreadingSupportImpl implements ThreadingSupport {
         @MustNotAllocate(reason = "Callee may allocate", list = MustNotAllocate.WHITELIST)
         private void invokeCallback() {
             Safepoint.setSafepointRequested(SafepointRequestValues.RESET);
-            callback.run();
+            callback.run(CALLBACK_ACCESS);
         }
     }
 
     private static final FastThreadLocalObject<RecurringCallbackTimer> activeTimer = FastThreadLocalFactory.createObject(RecurringCallbackTimer.class);
 
     @Override
-    public void registerRecurringCallback(long interval, TimeUnit unit, Runnable callback) {
+    public void registerRecurringCallback(long interval, TimeUnit unit, RecurringCallback callback) {
         if (callback != null) {
             UserError.guarantee(SubstrateOptions.MultiThreaded.getValue(), "Recurring callbacks are only supported in multi-threaded mode.");
             long intervalNanos = unit.toNanos(interval);
@@ -173,7 +182,7 @@ class ThreadingSupportImpl implements ThreadingSupport {
 
     /**
      * Callback from the safepoint check slow path.
-     * 
+     *
      * @param timestamp Time when the slow path was entered (before the execution of safepoint
      *            operations, if any), as reported by {@link System#nanoTime}.
      * @param value The value of {@code Safepoint.safepointRequested} when the slow path was entered
