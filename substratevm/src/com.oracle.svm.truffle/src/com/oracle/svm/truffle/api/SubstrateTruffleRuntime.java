@@ -59,6 +59,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.stack.SubstrateStackIntrospection;
 import com.oracle.svm.graal.GraalSupport;
+import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.truffle.SubstrateTruffleCompilationIdentifier;
 import com.oracle.svm.truffle.TruffleFeature;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -72,7 +73,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     private BackgroundCompileQueue compileQueue;
-
+    private CallMethods hostedCallMethods;
     private boolean initialized;
 
     @Override
@@ -142,8 +143,26 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void lookupCallMethods(MetaAccessProvider metaAccess) {
         super.lookupCallMethods(metaAccess);
+        hostedCallMethods = CallMethods.lookup(GraalAccess.getOriginalProviders().getMetaAccess());
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected void clearState() {
+        super.clearState();
+        hostedCallMethods = null;
+    }
+
+    @Override
+    protected CallMethods getCallMethods() {
+        if (SubstrateUtil.HOSTED) {
+            return hostedCallMethods;
+        } else {
+            return callMethods;
+        }
     }
 
     @Override

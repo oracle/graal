@@ -41,7 +41,6 @@ import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.util.UserError;
 
 import jdk.vm.ci.code.stack.InspectedFrame;
 import jdk.vm.ci.code.stack.InspectedFrameVisitor;
@@ -49,6 +48,7 @@ import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.runtime.JVMCI;
 
 public class SubstrateStackIntrospection implements StackIntrospection {
 
@@ -59,11 +59,12 @@ public class SubstrateStackIntrospection implements StackIntrospection {
     public <T> T iterateFrames(ResolvedJavaMethod[] initialMethods, ResolvedJavaMethod[] matchingMethods, int initialSkip, InspectedFrameVisitor<T> visitor) {
         if (SubstrateUtil.HOSTED) {
             /*
-             * The usage of KnownIntrinsics below would lead to an UnsatisfiedLinkError because no
-             * implementation exits during native image generation.
+             * During native-image generation we use HotSpotStackIntrospection to iterate frames.
+             * `initialMethods` and `matchingMethods` are hosted versions of `ResolvedJavaMethod`
+             * that we provide them in `SubstrateTruffleRuntime`.
              */
-            throw UserError.abort("Using frame iteration methods of TruffleRuntime during native image generation is currently not supported. " +
-                            "If you run Truffle language code during native image generation (which is allowed), make sure that your language code does not iterate frames, e.g., to produce language-level exeception stack traces.");
+            StackIntrospection hostedStackIntrospection = JVMCI.getRuntime().getHostJVMCIBackend().getStackIntrospection();
+            return hostedStackIntrospection.iterateFrames(initialMethods, matchingMethods, initialSkip, visitor);
         }
 
         /* Stack walking starts at the physical caller frame of this method. */
