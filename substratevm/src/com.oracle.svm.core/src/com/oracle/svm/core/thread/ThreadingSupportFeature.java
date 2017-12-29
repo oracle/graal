@@ -110,9 +110,10 @@ class ThreadingSupportImpl implements ThreadingSupport {
                 return;
             }
             assert VMThreads.StatusSupport.isStatusJava();
+            final long unsignedIntMax = 0xffffffffL;
             isExecuting = true;
+            long now = 0;
             try {
-                final long unsignedIntMax = 0xffffffffL;
                 long elapsedNanos = timestamp - lastCapture;
                 long skippedChecks = value & unsignedIntMax; // interpret as unsigned
                 if (elapsedNanos > 0 && skippedChecks < requestedChecks) { // basic sanity
@@ -123,28 +124,30 @@ class ThreadingSupportImpl implements ThreadingSupport {
                         ewmaChecksPerNano = EWMA_LAMBDA * checksPerNano + (1 - EWMA_LAMBDA) * ewmaChecksPerNano;
                     }
                 }
-                long now = 0;
                 boolean expired = (timestamp >= nextDeadline); // avoid one nanoTime() call if true
                 if (!expired) {
                     now = System.nanoTime();
                     expired = (now >= nextDeadline);
                 }
                 if (expired) {
-                    invokeCallback();
-                    now = System.nanoTime();
-                    nextDeadline = now + targetIntervalNanos;
+                    try {
+                        invokeCallback();
+                    } finally {
+                        now = System.nanoTime();
+                        nextDeadline = now + targetIntervalNanos;
+                    }
                 }
+            } catch (SafepointException se) {
+                throw se;
+            } catch (Throwable t) {
+                Log.log().string("Exception caught in recurring callback (ignored): ").object(t).newline();
+            } finally {
                 long remainingNanos = nextDeadline - now;
                 remainingNanos = (remainingNanos < MINIMUM_INTERVAL_NANOS) ? MINIMUM_INTERVAL_NANOS : remainingNanos;
                 double checks = ewmaChecksPerNano * remainingNanos;
                 requestedChecks = (checks > unsignedIntMax) ? unsignedIntMax : ((checks < 1L) ? 1L : (long) checks);
                 lastCapture = now;
                 Safepoint.setSafepointRequested((int) requestedChecks);
-            } catch (SafepointException se) {
-                throw se;
-            } catch (Throwable t) {
-                Log.log().string("Exception caught in recurring callback (ignored): ").object(t).newline();
-            } finally {
                 isExecuting = false;
             }
         }
