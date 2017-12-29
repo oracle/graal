@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
@@ -766,6 +767,25 @@ final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerVoid.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static void Throw(JNIEnvironment env, JNIObjectHandle handle) throws Throwable {
         throw (Throwable) JNIObjectHandles.getObject(handle);
+    }
+
+    interface NewObjectWithObjectArgFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId ctor, JNIObjectHandle arg);
+    }
+
+    /*
+     * jint ThrowNew(JNIEnv *env, jclass clazz, const char *message);
+     */
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerVoid.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static void ThrowNew(JNIEnvironment env, JNIObjectHandle clazzHandle, CCharPointer message) throws Throwable {
+        Class<?> clazz = JNIObjectHandles.getObject(clazzHandle);
+        JNIMethodId ctor = JNIReflectionDictionary.singleton().getMethodID(clazz, "<init>", "(Ljava/lang/String;)V", false);
+        JNIObjectHandle messageHandle = NewStringUTF(env, message);
+        NewObjectWithObjectArgFunctionPointer newObject = (NewObjectWithObjectArgFunctionPointer) env.getFunctions().getNewObject();
+        JNIObjectHandle exception = newObject.invoke(env, clazzHandle, ctor, messageHandle);
+        throw (Throwable) JNIObjectHandles.getObject(exception);
     }
 
     /*
