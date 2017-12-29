@@ -27,25 +27,31 @@ package com.oracle.svm.jni.hosted;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
+import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
+import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
+import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -72,6 +78,7 @@ import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 import com.oracle.svm.jni.nativeapi.JNIValue;
 
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -146,7 +153,8 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             throw VMError.shouldNotReachHere();
         }
         JavaType returnType = targetSignature.getReturnType(null);
-        if (returnType.getJavaKind().isObject()) {
+        if (returnType.getJavaKind().isObject() || targetMethod.isConstructor()) {
+            // Constructor: returns `this` to implement NewObject
             returnType = objectHandle;
         }
         return new JNISignature(args, returnType);
@@ -167,11 +175,15 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         ResolvedJavaMethod invokeMethod = providers.getMetaAccess().lookupJavaMethod(reflectMethod);
         Signature invokeSignature = invokeMethod.getSignature();
         ValueNode[] args = loadAndUnboxArguments(kit, providers, invokeMethod, invokeSignature);
-        InvokeKind kind = invokeMethod.isStatic() ? InvokeKind.Static : (nonVirtual ? InvokeKind.Special : InvokeKind.Virtual);
+        InvokeKind kind = invokeMethod.isStatic() ? InvokeKind.Static : //
+                        ((nonVirtual || invokeMethod.isConstructor()) ? InvokeKind.Special : InvokeKind.Virtual);
         ValueNode returnValue = createInvoke(kit, invokeMethod, kind, state, kit.bci(), args);
         JavaKind returnKind = getSignature().getReturnKind();
         if (invokeSignature.getReturnKind().isObject()) {
             returnValue = kit.boxObjectInLocalHandle(returnValue);
+        } else if (invokeMethod.isConstructor()) { // to implement NewObject: return `this`
+            ValueNode receiver = args[0];
+            returnValue = kit.boxObjectInLocalHandle(receiver);
         }
         kit.append(new CEntryPointLeaveNode(LeaveAction.Leave));
         kit.createReturn(returnValue, returnKind);
@@ -214,9 +226,33 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         javaIndex += metaAccess.lookupJavaType(JNIEnvironment.class).getJavaKind().getSlotCount();
         if (!invokeMethod.isStatic()) {
             JavaKind kind = metaAccess.lookupJavaType(JNIObjectHandle.class).getJavaKind();
-            ValueNode receiverHandle = kit.loadLocal(javaIndex, kind);
-            ValueNode receiver = kit.unboxHandle(receiverHandle);
-            receiver = kit.castObject(receiver, invokeMethod.getDeclaringClass());
+            ValueNode handle = kit.loadLocal(javaIndex, kind);
+            ValueNode unboxed = kit.unboxHandle(handle);
+            ValueNode receiver;
+            ResolvedJavaType receiverClass = invokeMethod.getDeclaringClass();
+            if (invokeMethod.isConstructor()) {
+                /*
+                 * Our target method is a constructor and we might be called via `NewObject`, in
+                 * which case we need to allocate the object before calling the constructor. We can
+                 * detect when this is the case because unlike with `Call<Type>Method`, we are
+                 * passed the object hub of our target class in place of the receiver object.
+                 */
+                Constant hub = providers.getConstantReflection().asObjectHub(receiverClass);
+                ConstantNode hubNode = kit.createConstant(hub, JavaKind.Object);
+                kit.startIf(kit.unique(new ObjectEqualsNode(unboxed, hubNode)), BranchProbabilityNode.FAST_PATH_PROBABILITY);
+                kit.thenPart();
+                ValueNode created = kit.append(new NewInstanceNode(receiverClass, true));
+                kit.elsePart(); // initialize an existing object (permitted)
+                ValueNode existing = kit.castObject(unboxed, receiverClass);
+                Mark preMergeMark = kit.getGraph().getMark();
+                kit.endIf();
+                Iterator<MergeNode> mergeNodes = kit.getGraph().getNewNodes(preMergeMark).filter(MergeNode.class).iterator();
+                MergeNode merge = mergeNodes.next();
+                VMError.guarantee(!mergeNodes.hasNext(), "must have exactly one merge");
+                receiver = kit.unique(new ValuePhiNode(StampFactory.object(), merge, new ValueNode[]{created, existing}));
+            } else {
+                receiver = kit.castObject(unboxed, receiverClass);
+            }
             args.add(receiver);
         }
         javaIndex += metaAccess.lookupJavaType(JNIObjectHandle.class).getJavaKind().getSlotCount();
