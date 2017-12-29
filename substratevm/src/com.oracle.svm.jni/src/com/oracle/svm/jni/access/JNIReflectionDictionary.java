@@ -104,6 +104,10 @@ public final class JNIReflectionDictionary {
         return nativeLinkages.get(key);
     }
 
+    public Iterable<JNINativeLinkage> getLinkages(String declaringClass) {
+        return () -> nativeLinkages.keySet().stream().filter(l -> declaringClass.equals(l.getDeclaringClassName())).iterator();
+    }
+
     public JNIMethodId getMethodID(Class<?> classObject, JNIAccessibleMethodDescriptor descriptor, boolean isStatic) {
         JNIMethodId methodID = WordFactory.nullPointer();
         JNIAccessibleClass clazz = classesByClassObject.get(classObject);
@@ -167,4 +171,5 @@ public final class JNIReflectionDictionary {
         }
         return null;
     }
+
 }

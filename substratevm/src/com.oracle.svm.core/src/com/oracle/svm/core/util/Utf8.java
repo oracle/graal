@@ -38,8 +38,20 @@ public final class Utf8 {
      * @return the length in bytes of the UTF8 representation of the string
      */
     public static int utf8Length(String string) {
+        return utf8Length(string, 0, string.length());
+    }
+
+    /**
+     * @param beginIndex first index that is part of the region, inclusive
+     * @param endIndex index at the end of the region, exclusive
+     * @return the length in bytes of the UTF8 representation of the string region
+     */
+    public static int utf8Length(String string, int beginIndex, int endIndex) {
+        if (beginIndex < 0 || endIndex > string.length() || beginIndex > endIndex) {
+            throw new StringIndexOutOfBoundsException();
+        }
         int result = 0;
-        for (int i = 0; i < string.length(); i++) {
+        for (int i = beginIndex; i < endIndex; i++) {
             final int ch = string.charAt(i);
             if ((ch >= 0x0001) && (ch <= 0x007F)) {
                 result++;
@@ -52,24 +64,49 @@ public final class Utf8 {
         return result;
     }
 
-    public static byte[] stringToUtf8(String string, boolean zeroTerminate) {
-        int length = utf8Length(string) + (zeroTerminate ? 1 : 0);
-        final byte[] result = new byte[length];
-        int index = 0;
-        for (int i = 0; i < string.length(); i++) {
+    /**
+     * @return maximum number of bytes needed to represent the specified number of characters.
+     */
+    public static int maxByteLength(int charCount, boolean zeroTerminate) {
+        return 3 * charCount + (zeroTerminate ? 1 : 0);
+    }
+
+    /**
+     * Writes an UTF8-encoded string region to a given byte buffer.
+     * 
+     * @param bb the byte buffer to write to
+     * @param string the String to be written
+     * @param beginIndex first index that is part of the region, inclusive
+     * @param endIndex index at the end of the region, exclusive
+     * @param zeroTerminate whether to write a final zero byte
+     */
+    public static void writeString(ByteBuffer bb, String string, int beginIndex, int endIndex, boolean zeroTerminate) {
+        if (beginIndex < 0 || endIndex > string.length() || beginIndex > endIndex) {
+            throw new StringIndexOutOfBoundsException();
+        }
+        for (int i = beginIndex; i < endIndex; i++) {
             final char ch = string.charAt(i);
             if ((ch >= 0x0001) && (ch <= 0x007F)) {
-                result[index++] = (byte) ch;
+                bb.put((byte) ch);
             } else if (ch > 0x07FF) {
-                result[index++] = (byte) (0xe0 | (byte) (ch >> 12));
-                result[index++] = (byte) (0x80 | ((ch & 0xfc0) >> 6));
-                result[index++] = (byte) (0x80 | (ch & 0x3f));
+                bb.put((byte) (0xe0 | (byte) (ch >> 12)));
+                bb.put((byte) (0x80 | ((ch & 0xfc0) >> 6)));
+                bb.put((byte) (0x80 | (ch & 0x3f)));
             } else {
-                result[index++] = (byte) (0xc0 | (byte) (ch >> 6));
-                result[index++] = (byte) (0x80 | (ch & 0x3f));
+                bb.put((byte) (0xc0 | (byte) (ch >> 6)));
+                bb.put((byte) (0x80 | (ch & 0x3f)));
             }
         }
-        return result;
+        if (zeroTerminate) {
+            bb.put((byte) 0);
+        }
+    }
+
+    public static byte[] stringToUtf8(String string, boolean zeroTerminate) {
+        int length = utf8Length(string) + (zeroTerminate ? 1 : 0);
+        ByteBuffer buffer = ByteBuffer.allocate(length);
+        writeString(buffer, string, 0, string.length(), zeroTerminate);
+        return buffer.array();
     }
 
     /**
@@ -212,14 +249,4 @@ public final class Utf8 {
         outputStream.write((byte) 0);
     }
 
-    /**
-     * Writes a 0-terminated UTF8 encoded string to a given byte buffer.
-     *
-     * @param bb the byte buffer to write to
-     * @param string the String to be written
-     */
-    public static void writeString(ByteBuffer bb, String string) {
-        bb.put(stringToUtf8(string, false));
-        bb.put((byte) 0);
-    }
 }
