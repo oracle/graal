@@ -420,7 +420,7 @@ final class JNIFunctions {
      */
 
     @CEntryPoint
-    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnNullWord.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIObjectHandle NewString(JNIEnvironment env, CShortPointer unicode, int len) {
         String str;
         char[] chars = new char[len];
@@ -437,7 +437,7 @@ final class JNIFunctions {
      */
 
     @CEntryPoint
-    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnNullWord.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIObjectHandle NewStringUTF(JNIEnvironment env, CCharPointer bytes) {
         String str = null;
         if (bytes.isNonNull()) {
