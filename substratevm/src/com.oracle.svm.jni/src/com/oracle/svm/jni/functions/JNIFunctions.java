@@ -24,6 +24,7 @@ package com.oracle.svm.jni.functions;
 
 // Checkstyle: allow reflection
 
+import java.io.CharConversionException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
@@ -47,7 +48,6 @@ import org.graalvm.nativeimage.c.type.CShortPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
@@ -63,7 +63,6 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.Utf8;
-import com.oracle.svm.core.util.Utf8Exception;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jni.JNIGlobalHandles;
 import com.oracle.svm.jni.JNIObjectHandles;
@@ -442,14 +441,10 @@ final class JNIFunctions {
     static JNIObjectHandle NewStringUTF(JNIEnvironment env, CCharPointer bytes) {
         String str = null;
         if (bytes.isNonNull()) {
-            UnsignedWord len = SubstrateUtil.strlen(bytes);
-            byte[] array = new byte[(int) len.rawValue()];
-            for (int i = 0; i < array.length; i++) {
-                array[i] = ((Pointer) bytes).readByte(i);
-            }
+            ByteBuffer buffer = SubstrateUtil.wrapAsByteBuffer(bytes, Integer.MAX_VALUE);
             try {
-                str = Utf8.utf8ToString(true, array);
-            } catch (Utf8Exception ignore) {
+                str = Utf8.utf8ToString(true, buffer);
+            } catch (CharConversionException ignore) {
             }
         }
         return JNIThreadLocalHandles.get().create(str);
@@ -579,9 +574,10 @@ final class JNIFunctions {
         if (len < 0) {
             throw new StringIndexOutOfBoundsException(len);
         }
-        int capacity = Utf8.maxByteLength(len, true); // estimate: caller must pre-allocate enough
+        int capacity = Utf8.maxUtf8ByteLength(len, true); // estimate: caller must pre-allocate
+                                                          // enough
         ByteBuffer buffer = SubstrateUtil.wrapAsByteBuffer(buf, capacity);
-        Utf8.writeString(buffer, str, start, start + len, true);
+        Utf8.substringToUtf8(buffer, str, start, start + len, true);
     }
 
     /*
