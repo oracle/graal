@@ -51,6 +51,7 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -395,6 +396,23 @@ final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnNullWord.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIFieldId GetStaticFieldID(JNIEnvironment env, JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig) {
         return Support.getFieldID(hclazz, cname, csig, true);
+    }
+
+    /*
+     * jobject AllocObject(JNIEnv *env, jclass clazz);
+     */
+
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static JNIObjectHandle AllocObject(JNIEnvironment env, JNIObjectHandle classHandle) {
+        Class<?> clazz = JNIObjectHandles.getObject(classHandle);
+        Object instance;
+        try {
+            instance = UnsafeAccess.UNSAFE.allocateInstance(clazz);
+        } catch (InstantiationException e) {
+            instance = null;
+        }
+        return JNIThreadLocalHandles.get().create(instance);
     }
 
     /*
