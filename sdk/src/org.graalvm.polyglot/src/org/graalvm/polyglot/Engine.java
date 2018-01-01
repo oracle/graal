@@ -498,8 +498,8 @@ public final class Engine implements AutoCloseable {
 
                 if (engine != null) {
                     engine.setConstructors(new APIAccessImpl());
+                    engine.preInitializeEngine();
                 }
-
                 return engine;
             }
         });
@@ -561,6 +561,10 @@ public final class Engine implements AutoCloseable {
         @Override
         public Class<?> loadLanguageClass(String className) {
             return null;
+        }
+
+        @Override
+        public void preInitializeEngine() {
         }
 
         static class EmptySource extends AbstractSourceImpl {
