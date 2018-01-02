@@ -211,14 +211,14 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         @Override
         protected Object executeImpl(Object receiver, Object[] args) {
-            return VMAccessor.JAVAINTEROP.toJava(toJava, (Class<?>) args[1], args[0], polyglot.languageContext);
+            return VMAccessor.JAVAINTEROP.toJava(toJava, (Class<?>) args[1], null, args[0], polyglot.languageContext);
         }
 
     }
 
     private static class AsTypeLiteralNode extends Interop.PolyglotNode {
 
-        @Child Node toJava = VMAccessor.JAVAINTEROP.createToJavaTypeLiteralNode();
+        @Child Node toJava = VMAccessor.JAVAINTEROP.createToJavaNode();
 
         protected AsTypeLiteralNode(PolyglotValue interop) {
             super(interop);
@@ -231,7 +231,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         @Override
         protected Object executeImpl(Object receiver, Object[] args) {
-            return VMAccessor.JAVAINTEROP.toJava(toJava, (TypeLiteral<?>) args[1], args[0], polyglot.languageContext);
+            TypeLiteral<?> typeLiteral = (TypeLiteral<?>) args[1];
+            return VMAccessor.JAVAINTEROP.toJava(toJava, typeLiteral.getRawType(), typeLiteral.getType(), args[0], polyglot.languageContext);
         }
 
     }

@@ -167,7 +167,7 @@ abstract class PolyglotRootNode extends RootNode {
             final Class<?> targetType = (Class<?>) args[1];
             if (receiverType.isInstance(args[0])) {
                 final TruffleObject value = receiverType.cast(args[0]);
-                return JAVAINTEROP.toJava(toJavaNode, targetType, value, null);
+                return JAVAINTEROP.toJava(toJavaNode, targetType, null, value, null);
             } else {
                 throw new ClassCastException();
             }

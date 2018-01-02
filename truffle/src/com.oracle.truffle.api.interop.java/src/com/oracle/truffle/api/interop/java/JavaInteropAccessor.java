@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import org.graalvm.polyglot.TypeLiteral;
+import java.lang.reflect.Type;
 
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.Node;
@@ -44,19 +44,9 @@ final class JavaInteropAccessor extends Accessor {
             }
 
             @Override
-            public Object toJava(Node javaNode, Class<?> type, Object value, Object polyglotContext) {
+            public Object toJava(Node javaNode, Class<?> rawType, Type genericType, Object value, Object polyglotContext) {
                 ToJavaNode toJavaNode = (ToJavaNode) javaNode;
-                return toJavaNode.execute(value, type, null, polyglotContext);
-            }
-
-            @Override
-            public Node createToJavaTypeLiteralNode() {
-                return ToJavaNode.create();
-            }
-
-            @Override
-            public Object toJava(Node toJavaNode, TypeLiteral<?> typeLiteral, Object value, Object polyglotContext) {
-                return ((ToJavaNode) toJavaNode).execute(value, typeLiteral.getRawType(), typeLiteral.getType(), polyglotContext);
+                return toJavaNode.execute(value, rawType, genericType, polyglotContext);
             }
 
             @Override

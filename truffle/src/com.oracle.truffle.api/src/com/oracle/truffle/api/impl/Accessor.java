@@ -26,13 +26,13 @@ package com.oracle.truffle.api.impl;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
-import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CallTarget;
@@ -106,11 +106,7 @@ public abstract class Accessor {
 
         public abstract Node createToJavaNode();
 
-        public abstract Node createToJavaTypeLiteralNode();
-
-        public abstract Object toJava(Node toJavaNode, Class<?> type, Object value, Object polyglotContext);
-
-        public abstract Object toJava(Node toJavaNode, TypeLiteral<?> type, Object value, Object polyglotContext);
+        public abstract Object toJava(Node toJavaNode, Class<?> rawType, Type genericType, Object value, Object polyglotContext);
 
         public abstract Object toJavaGuestObject(Object obj, Object languageContext);
     }
