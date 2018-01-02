@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,6 +51,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.MonitorUtils;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.Alias;
@@ -897,6 +898,43 @@ final class JNIFunctions {
             }
         }
         return JNIThreadLocalHandles.get().create(result);
+    }
+
+    /*
+     * jint MonitorEnter(JNIEnv *env, jobject obj);
+     */
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnJniErr.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static int MonitorEnter(JNIEnvironment env, JNIObjectHandle handle) {
+        Object obj = JNIObjectHandles.getObject(handle);
+        if (obj == null) {
+            throw new NullPointerException();
+        }
+        if (obj instanceof Class) {
+            throw VMError.unsupportedFeature("Using JNI MonitorEnter and MonitorExit on java.lang.Class objects is currently not supported");
+        }
+        MonitorUtils.monitorEnter(obj);
+        return JNIErrors.JNI_OK();
+    }
+
+    /*
+     * jint MonitorExit(JNIEnv *env, jobject obj);
+     */
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnJniErr.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static int MonitorExit(JNIEnvironment env, JNIObjectHandle handle) {
+        Object obj = JNIObjectHandles.getObject(handle);
+        if (obj == null) {
+            throw new NullPointerException();
+        }
+        if (obj instanceof Class) {
+            throw VMError.unsupportedFeature("Using JNI MonitorEnter and MonitorExit on java.lang.Class objects is currently not supported");
+        }
+        if (!Thread.holdsLock(obj)) {
+            throw new IllegalMonitorStateException();
+        }
+        MonitorUtils.monitorExit(obj);
+        return JNIErrors.JNI_OK();
     }
 
     // Checkstyle: resume
