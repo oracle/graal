@@ -79,7 +79,8 @@ final class PolyglotLanguageContext implements VMObject {
         this.context = context;
         this.language = language;
         this.config = config;
-        patchInstance(optionValues, applicationArguments);
+        this.optionValues = optionValues;
+        setApplicationArguments(applicationArguments);
     }
 
     /**
@@ -345,25 +346,36 @@ final class PolyglotLanguageContext implements VMObject {
         ensureInitialized(null);
     }
 
-    boolean patch(OptionValuesImpl newOptionValues, String[] newApplicationArguments) {
-        patchInstance(newOptionValues, newApplicationArguments);
-        try {
-            final Env newEnv = LANGUAGE.patchEnvContext(env, context.out, context.err, context.in, config, getOptionValues(), newApplicationArguments);
-            if (newEnv != null) {
-                env = newEnv;
-                return true;
+    boolean patch(Map<String, String> newOptions, String[] newApplicationArguments) {
+        final boolean preInitialized = isInitialized();
+        if (preInitialized) {
+            // Reset options from image generation time
+            optionValues = null;
+        }
+        if (newOptions != null) {
+            getOptionValues().putAll(newOptions);
+        }
+        setApplicationArguments(newApplicationArguments);
+        if (preInitialized) {
+            try {
+                final Env newEnv = LANGUAGE.patchEnvContext(env, context.out, context.err, context.in, config, getOptionValues(), newApplicationArguments);
+                if (newEnv != null) {
+                    env = newEnv;
+                    return true;
+                }
+                return false;
+            } catch (Throwable t) {
+                if (t instanceof ThreadDeath) {
+                    throw t;
+                }
+                return false;
             }
-            return false;
-        } catch (Throwable t) {
-            if (t instanceof ThreadDeath) {
-                throw t;
-            }
-            return false;
+        } else {
+            return true;
         }
     }
 
-    private void patchInstance(OptionValuesImpl newOptionValues, String[] newApplicationArguments) {
-        this.optionValues = newOptionValues;
+    private void setApplicationArguments(String[] newApplicationArguments) {
         this.applicationArguments = newApplicationArguments == null ? EMPTY_STRING_ARRAY : newApplicationArguments;
     }
 

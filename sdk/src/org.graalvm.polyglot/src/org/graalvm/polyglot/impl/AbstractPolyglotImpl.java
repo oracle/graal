@@ -114,6 +114,8 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract void preInitializeEngine();
 
+    public abstract void resetPreInitializedEngine();
+
     public abstract AbstractSourceImpl getSourceImpl();
 
     public abstract AbstractSourceSectionImpl getSourceSectionImpl();

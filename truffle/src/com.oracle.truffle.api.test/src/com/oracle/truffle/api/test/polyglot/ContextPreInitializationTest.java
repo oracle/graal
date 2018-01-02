@@ -23,13 +23,18 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.lang.reflect.Field;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -44,7 +49,6 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -76,9 +80,106 @@ public class ContextPreInitializationTest {
         ContextPreInitializationTestFirstLanguage.callDependentLanguage = false;
         ContextPreInitializationTestSecondLanguage.callDependentLanguage = false;
         ContextPreInitializationTestFirstLanguage.patchException = null;
+        BaseLanguage.parseStdOutOutput.clear();
+        BaseLanguage.parseStdErrOutput.clear();
         resetSystemPropertiesOptions();
         patchableLanguages.clear();
         emittedContexts.clear();
+    }
+
+    @Test
+    public void testOutputNoLanguagePreInitialization() throws Exception {
+        setPatchable();
+        final String stdOutContent = "output";
+        final String stdErrContent = "error";
+        BaseLanguage.parseStdOutOutput.put(FIRST, stdOutContent);
+        BaseLanguage.parseStdErrOutput.put(FIRST, stdErrContent);
+        doContextPreinitialize();
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(0, contexts.size());
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        final ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try (Context ctx = Context.newBuilder().out(out).err(err).build()) {
+            final Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            assertEquals(stdOutContent, new String(out.toByteArray(), "UTF-8"));
+            assertEquals(stdErrContent, new String(err.toByteArray(), "UTF-8"));
+        }
+    }
+
+    @Test
+    public void testOutputSingleLanguagePreInitialization() throws Exception {
+        setPatchable(FIRST);
+        final String firstStdOutContent = "first-output";
+        final String firstStdErrContent = "first-error";
+        final String secondStdOutContent = "second-output";
+        final String secondStdErrContent = "second-error";
+        BaseLanguage.parseStdOutOutput.put(FIRST, firstStdOutContent);
+        BaseLanguage.parseStdErrOutput.put(FIRST, firstStdErrContent);
+        BaseLanguage.parseStdOutOutput.put(SECOND, secondStdOutContent);
+        BaseLanguage.parseStdErrOutput.put(SECOND, secondStdErrContent);
+        doContextPreinitialize(FIRST);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        final ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try (Context ctx = Context.newBuilder().out(out).err(err).build()) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            assertEquals(firstStdOutContent, new String(out.toByteArray(), "UTF-8"));
+            assertEquals(firstStdErrContent, new String(err.toByteArray(), "UTF-8"));
+            out.reset();
+            err.reset();
+            res = ctx.eval(Source.create(SECOND, "test"));
+            assertEquals("test", res.asString());
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(2, contexts.size());
+            assertEquals(secondStdOutContent, new String(out.toByteArray(), "UTF-8"));
+            assertEquals(secondStdErrContent, new String(err.toByteArray(), "UTF-8"));
+        }
+    }
+
+    @Test
+    public void testArgumentsSingleLanguagePreInitialization() throws Exception {
+        setPatchable();
+        doContextPreinitialize();
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(0, contexts.size());
+        try (Context ctx = Context.newBuilder().arguments(FIRST, new String[]{"a", "b"}).build()) {
+            final Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            final CountingContext context = findContext(FIRST, contexts);
+            assertNotNull(context);
+            assertEquals(Arrays.asList("a", "b"), context.arguments);
+        }
+    }
+
+    @Test
+    public void testArgumentsSingleLanguPreInitialization() throws Exception {
+        setPatchable(FIRST);
+        doContextPreinitialize(FIRST);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        try (Context ctx = Context.newBuilder().arguments(FIRST, new String[]{"a", "b"}).arguments(SECOND, new String[]{"c", "d"}).build()) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            CountingContext context = findContext(FIRST, contexts);
+            assertNotNull(context);
+            assertEquals(Arrays.asList("a", "b"), context.arguments);
+            res = ctx.eval(Source.create(SECOND, "test"));
+            assertEquals("test", res.asString());
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(2, contexts.size());
+            context = findContext(SECOND, contexts);
+            assertNotNull(context);
+            assertEquals(Arrays.asList("c", "d"), context.arguments);
+        }
     }
 
     @Test
@@ -365,6 +466,42 @@ public class ContextPreInitializationTest {
         assertTrue(firstLangCtx2.optionValues.get(ContextPreInitializationTestFirstLanguage.Option2));
         ctx.close();
 
+    }
+
+    @Test
+    public void testContextOptionsNoLanguagePreInitialization() throws Exception {
+        setPatchable();
+        doContextPreinitialize();
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(0, contexts.size());
+        final Context ctx = Context.newBuilder().option(FIRST + ".Option1", "true").build();
+        final Value res = ctx.eval(Source.create(FIRST, "test"));
+        assertEquals("test", res.asString());
+        contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        CountingContext context = findContext(FIRST, contexts);
+        assertNotNull(context);
+        assertTrue(context.optionValues.get(ContextPreInitializationTestFirstLanguage.Option1));
+        assertFalse(context.optionValues.get(ContextPreInitializationTestFirstLanguage.Option2));
+        ctx.close();
+    }
+
+    @Test
+    public void testContextOptionsSingleLanguagePreInitialization() throws Exception {
+        setPatchable(FIRST);
+        doContextPreinitialize(FIRST);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        final CountingContext context = findContext(FIRST, contexts);
+        assertNotNull(context);
+        final Context ctx = Context.newBuilder().option(FIRST + ".Option1", "true").build();
+        final Value res = ctx.eval(Source.create(FIRST, "test"));
+        assertEquals("test", res.asString());
+        contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        assertTrue(context.optionValues.get(ContextPreInitializationTestFirstLanguage.Option1));
+        assertFalse(context.optionValues.get(ContextPreInitializationTestFirstLanguage.Option2));
+        ctx.close();
     }
 
     @Test
@@ -707,10 +844,6 @@ public class ContextPreInitializationTest {
 
     private static void doContextPreinitialize(String... languages) throws ReflectiveOperationException {
         final Class<?> holderClz = Class.forName("org.graalvm.polyglot.Engine$ImplHolder", true, ContextPreInitializationTest.class.getClassLoader());
-        final Field implFld = holderClz.getDeclaredField("IMPL");
-        implFld.setAccessible(true);
-        final AbstractPolyglotImpl polyglot = (AbstractPolyglotImpl) implFld.get(null);
-        assertNotNull(polyglot);
         final StringBuilder languagesOptionValue = new StringBuilder();
         for (String language : languages) {
             languagesOptionValue.append(language).append(',');
@@ -721,7 +854,9 @@ public class ContextPreInitializationTest {
                             "polyglot.engine.PreinitializeContexts",
                             languagesOptionValue.toString());
         }
-        polyglot.preInitializeEngine();
+        final Method preInitMethod = holderClz.getDeclaredMethod("preInitializeEngine");
+        preInitMethod.setAccessible(true);
+        preInitMethod.invoke(null);
     }
 
     private static Collection<? extends CountingContext> findContexts(
@@ -755,7 +890,7 @@ public class ContextPreInitializationTest {
 
     static class CountingContext {
         private final String id;
-        private final TruffleLanguage.Env env;
+        private TruffleLanguage.Env env;
         int createContextCount = 0;
         int createContextOrder = -1;
         int initializeContextCount = 0;
@@ -769,15 +904,21 @@ public class ContextPreInitializationTest {
         int disposeThreadCount = 0;
         int disposeThreadOrder = -1;
         final Map<OptionKey<Boolean>, Boolean> optionValues;
+        final List<String> arguments;
 
         CountingContext(final String id, final TruffleLanguage.Env env) {
             this.id = id;
             this.env = env;
             this.optionValues = new HashMap<>();
+            this.arguments = new ArrayList<>();
         }
 
         String getLanguageId() {
             return id;
+        }
+
+        void environment(TruffleLanguage.Env newEnv) {
+            this.env = newEnv;
         }
 
         TruffleLanguage.Env environment() {
@@ -786,6 +927,8 @@ public class ContextPreInitializationTest {
     }
 
     static class BaseLanguage extends TruffleLanguage<CountingContext> {
+        static Map<String, String> parseStdOutOutput = new HashMap<>();
+        static Map<String, String> parseStdErrOutput = new HashMap<>();
 
         @Override
         protected CountingContext createContext(TruffleLanguage.Env env) {
@@ -798,6 +941,7 @@ public class ContextPreInitializationTest {
             final CountingContext ctx = new CountingContext(languageId, env);
             ctx.createContextCount++;
             ctx.createContextOrder = nextId();
+            Collections.addAll(ctx.arguments, env.getApplicationArguments());
             emittedContexts.add(ctx);
             return ctx;
         }
@@ -813,6 +957,9 @@ public class ContextPreInitializationTest {
         protected boolean patchContext(CountingContext context, TruffleLanguage.Env newEnv) {
             context.patchContextCount++;
             context.patchContextOrder = nextId();
+            context.environment(newEnv);
+            context.arguments.clear();
+            Collections.addAll(context.arguments, newEnv.getApplicationArguments());
             return patchableLanguages.contains(context.getLanguageId());
         }
 
@@ -850,6 +997,14 @@ public class ContextPreInitializationTest {
             return Truffle.getRuntime().createCallTarget(new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
+                    String msg = parseStdOutOutput.get(getLanguageInfo().getId());
+                    if (msg != null) {
+                        write(getContextReference().get().environment().out(), msg);
+                    }
+                    msg = parseStdErrOutput.get(getLanguageInfo().getId());
+                    if (msg != null) {
+                        write(getContextReference().get().environment().err(), msg);
+                    }
                     return result;
                 }
             });
@@ -858,6 +1013,16 @@ public class ContextPreInitializationTest {
         protected void useLanguage(CountingContext context, String id) {
             com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder("").language(id).name("").build();
             context.environment().parse(source);
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private static void write(final OutputStream out, final String content) {
+            try {
+                out.write(content.getBytes("UTF-8"));
+                out.flush();
+            } catch (IOException ioe) {
+                throw new RuntimeException(ioe);
+            }
         }
     }
 

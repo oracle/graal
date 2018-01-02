@@ -482,7 +482,23 @@ public abstract class TruffleLanguage<C> {
      * context pre-initialization can be used to perform expensive builtin creation in the time of
      * native compilation. The context pre-initialization is enabled by setting the system property
      * {@code polyglot.engine.PreinitializeContexts} to a comma separated list of language ids which
-     * should be pre-initialized.
+     * should be pre-initialized, for example:
+     * {@code -Dpolyglot.engine.PreinitializeContexts=js,python}
+     * <p>
+     * During the pre-initialization (in the native compilation time) the
+     * {@link TruffleLanguage#createContext(com.oracle.truffle.api.TruffleLanguage.Env)} and
+     * {@link TruffleLanguage#initializeContext(java.lang.Object)} methods are called. In the image
+     * execution time the
+     * {@link TruffleLanguage#patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)}
+     * is called as a consequence of
+     * {@link org.graalvm.polyglot.Context#create(java.lang.String...)} invocation. If the
+     * {@link TruffleLanguage#patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)}
+     * is successful for all pre-initialized languages the pre-initialized context is used,
+     * otherwise a new context is created. Typical implementation of the
+     * {@link TruffleLanguage#patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)}
+     * looks like:
+     *
+     * {@link TruffleLanguageSnippets.PreInitializedLanguage#patchContext}
      *
      * @param context the context created by
      *            {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)} during
@@ -2028,9 +2044,12 @@ public abstract class TruffleLanguage<C> {
 
 class TruffleLanguageSnippets {
     class Context {
-        final String[] args;
-        final Env env;
+        String[] args;
+        Env env;
         CallTarget mul;
+        InputStream in;
+        OutputStream out;
+        OutputStream err;
 
         Context(String[] args) {
             this.args = args;
@@ -2082,6 +2101,30 @@ class TruffleLanguageSnippets {
         }
     }
     // END: TruffleLanguageSnippets.PostInitLanguage#createContext
+
+    abstract
+    class PreInitializedLanguage extends TruffleLanguage<Context> {
+
+        // BEGIN: TruffleLanguageSnippets.PreInitializedLanguage#patchContext
+        @Override
+        protected boolean patchContext(Context context, Env newEnv) {
+            if (!optionsAllowPreInitializedContext(newEnv.getOptions())) {
+                //Incompatible options - cannot use pre-initialed context
+                return false;
+            }
+            context.env = newEnv;
+            context.args = newEnv.getApplicationArguments();
+            context.in = newEnv.in();
+            context.out = newEnv.out();
+            context.err = newEnv.err();
+            return true;
+        }
+        // END: TruffleLanguageSnippets.PreInitializedLanguage#patchContext
+
+        private boolean optionsAllowPreInitializedContext(@SuppressWarnings("unused") OptionValues optionValues) {
+            return true;
+        }
+    }
 
     // BEGIN: TruffleLanguageSnippets#parseWithParams
     public void parseWithParams(Env env) {

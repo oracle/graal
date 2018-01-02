@@ -146,7 +146,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         PolyglotEngineImpl impl = preInitializedEngineRef.getAndSet(null);
         if (impl != null) {
-            if (!impl.patch(dispatchErr, dispatchErr, resolvedIn, arguments, timeout, timeoutUnit, sandbox, useSystemProperties, contextClassLoader, boundEngine)) {
+            if (!impl.patch(dispatchOut, dispatchErr, resolvedIn, arguments, timeout, timeoutUnit, sandbox, useSystemProperties, contextClassLoader, boundEngine)) {
                 impl.ensureClosed(false, true);
                 impl = null;
             }
@@ -175,6 +175,17 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                         System.in,
                         TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader());
         preInitializedEngineRef.set(preInitializedEngine);
+    }
+
+    /**
+     * Cleans the pre-initialized polyglot engine instance.
+     *
+     * @since 0.31
+     */
+    @Override
+    public void resetPreInitializedEngine() {
+        preInitializedEngineRef.set(null);
+        PolyglotEngineImpl.resetPreInitializedEngine();
     }
 
     /**

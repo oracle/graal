@@ -265,7 +265,18 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                     boolean preInitialization) {
         // When changing this logic, make sure it is in synch with #findEngineOption()
         if (useSystemProperties) {
-            options.putAll(getSystemPropertiesOptions(preInitialization));
+            Properties properties = System.getProperties();
+            synchronized (properties) {
+                for (Object systemKey : properties.keySet()) {
+                    String key = (String) systemKey;
+                    if (key.startsWith(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX)) {
+                        String engineKey = key.substring(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX.length(), key.length());
+                        if (!options.containsKey(engineKey) && (!preInitialization || engineKey.equals(PolyglotImpl.OPTION_GROUP_ENGINE + '.' + PolyglotEngineOptions.PREINITIALIZE_CONTEXT_NAME))) {
+                            options.put(engineKey, System.getProperty(key));
+                        }
+                    }
+                }
+            }
         }
         for (String key : options.keySet()) {
             String group = parseOptionGroup(key);
@@ -686,21 +697,12 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         return engine;
     }
 
-    private static Map<String, String> getSystemPropertiesOptions(final boolean preInitialization) {
-        Map<String, String> options = new HashMap<>();
-        Properties properties = System.getProperties();
-        synchronized (properties) {
-            for (Object systemKey : properties.keySet()) {
-                String key = (String) systemKey;
-                if (key.startsWith(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX)) {
-                    String engineKey = key.substring(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX.length(), key.length());
-                    if (!options.containsKey(engineKey) && (!preInitialization || engineKey.equals(PolyglotImpl.OPTION_GROUP_ENGINE + '.' + PolyglotEngineOptions.PREINITIALIZE_CONTEXT_NAME))) {
-                        options.put(engineKey, System.getProperty(key));
-                    }
-                }
-            }
-        }
-        return options;
+    /**
+     * Clears the pre-initialized engines. The TruffleFeature needs to clean emitted engines during
+     * Feature.cleanup.
+     */
+    static void resetPreInitializedEngine() {
+        ENGINES.clear();
     }
 
     private static final class PolyglotShutDownHook implements Runnable {

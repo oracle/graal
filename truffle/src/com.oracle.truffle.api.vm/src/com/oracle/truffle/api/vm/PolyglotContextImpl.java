@@ -132,23 +132,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
 
         // process language specific options
         for (String optionKey : options.keySet()) {
-            String group = PolyglotEngineImpl.parseOptionGroup(optionKey);
-            PolyglotLanguage language = engine.idToLanguage.get(group);
-            if (language == null) {
-                if (engine.isEngineGroup(group)) {
-                    // Test that "engine options" are not present among the options designated for
-                    // this context
-                    if (engine.getAllOptions().get(optionKey) != null) {
-                        throw new IllegalArgumentException("Option " + optionKey + " is an engine option. Engine level options can only be configured for contexts without a shared engine set." +
-                                        " To resolve this, configure the option when creating the Engine or create a context without a shared engine.");
-                    }
-                }
-                throw OptionValuesImpl.failNotFound(engine.getAllOptions(), optionKey);
-            } else {
-                // there should not be any overlaps -> engine creation should already fail
-                assert !engine.isEngineGroup(group);
-            }
-
+            final PolyglotLanguage language = findLanguageForOption(optionKey);
             this.contexts[language.index].getOptionValues().put(optionKey, options.get(optionKey));
         }
         this.truffleContext = VMAccessor.LANGUAGE.createTruffleContext(this);
@@ -946,14 +930,20 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                     Map<String, String> newOptions, Map<String, String[]> newApplicationArguments, Set<String> newAllowedPublicLanguages) {
         CompilerAsserts.neverPartOfCompilation();
         patchInstance(newOut, newErr, newIn, newHostAccessAllowed, newCreateThreadAllowed, newClassFilter, newApplicationArguments, newAllowedPublicLanguages);
+        final Map<String, Map<String, String>> optionsByLanguage = new HashMap<>();
+        for (String optionKey : newOptions.keySet()) {
+            final PolyglotLanguage language = findLanguageForOption(optionKey);
+            Map<String, String> languageOptions = optionsByLanguage.get(language.getId());
+            if (languageOptions == null) {
+                languageOptions = new HashMap<>();
+                optionsByLanguage.put(language.getId(), languageOptions);
+            }
+            languageOptions.put(optionKey, newOptions.get(optionKey));
+        }
         for (int i = 1; i < this.contexts.length; i++) {
             final PolyglotLanguageContext context = this.contexts[i];
-            if (context.isInitialized()) {
-                OptionValuesImpl values = context.language.getOptionValues().copy();
-                values.putAll(newOptions);
-                if (!context.patch(values, newApplicationArguments.get(context.language.getId()))) {
-                    return false;
-                }
+            if (!context.patch(optionsByLanguage.get(context.language.getId()), newApplicationArguments.get(context.language.getId()))) {
+                return false;
             }
         }
         return true;
@@ -979,6 +969,26 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         }
         this.in = newIn == null ? engine.in : newIn;
         this.allowedPublicLanguages = newAllowedPublicLanguages;
+    }
+
+    private PolyglotLanguage findLanguageForOption(final String optionKey) {
+        String group = PolyglotEngineImpl.parseOptionGroup(optionKey);
+        PolyglotLanguage language = engine.idToLanguage.get(group);
+        if (language == null) {
+            if (engine.isEngineGroup(group)) {
+                // Test that "engine options" are not present among the options designated for
+                // this context
+                if (engine.getAllOptions().get(optionKey) != null) {
+                    throw new IllegalArgumentException("Option " + optionKey + " is an engine option. Engine level options can only be configured for contexts without a shared engine set." +
+                                    " To resolve this, configure the option when creating the Engine or create a context without a shared engine.");
+                }
+            }
+            throw OptionValuesImpl.failNotFound(engine.getAllOptions(), optionKey);
+        } else {
+            // there should not be any overlaps -> engine creation should already fail
+            assert !engine.isEngineGroup(group);
+        }
+        return language;
     }
 
     static PolyglotContextImpl preInitialize(final PolyglotEngineImpl engine) {
