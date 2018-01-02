@@ -29,15 +29,11 @@ import com.oracle.truffle.api.interop.TruffleObject;
 
 final class JavaObject implements TruffleObject {
 
-    static final JavaObject NULL = new JavaObject(null, Object.class);
+    static final JavaObject NULL = new JavaObject(null, Object.class, null);
 
     final Object obj;
     final Class<?> clazz;
     final Object languageContext;
-
-    JavaObject(Object obj, Class<?> clazz) {
-        this(obj, clazz, null);
-    }
 
     JavaObject(Object obj, Class<?> clazz, Object languageContext) {
         this.obj = obj;

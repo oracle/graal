@@ -32,10 +32,6 @@ final class JavaFunctionObject implements TruffleObject {
     final Object obj;
     final Object languageContext;
 
-    JavaFunctionObject(JavaMethodDesc method, Object obj) {
-        this(method, obj, null);
-    }
-
     JavaFunctionObject(JavaMethodDesc method, Object obj, Object languageContext) {
         this.method = method;
         this.obj = obj;
@@ -50,5 +46,4 @@ final class JavaFunctionObject implements TruffleObject {
     public ForeignAccess getForeignAccess() {
         return JavaFunctionMessageResolutionForeign.ACCESS;
     }
-
 }
