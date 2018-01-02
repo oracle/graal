@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.interop.java;
 
+import java.lang.reflect.Type;
 import java.util.AbstractList;
 import java.util.List;
 import java.util.Objects;
@@ -42,36 +43,38 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 final class TruffleList<T> extends AbstractList<T> {
     private final TruffleObject array;
-    private final TypeAndClass<T> type;
+    private final Class<T> elementClass;
+    private final Type elementType;
     private final CallTarget callRead;
     private final CallTarget callGetSize;
     private final CallTarget callWrite;
     private final Object languageContext;
 
-    private TruffleList(TypeAndClass<T> elementType, TruffleObject array, Object languageContext) {
+    private TruffleList(Class<T> elementClass, Type elementType, TruffleObject array, Object languageContext) {
         this.array = array;
-        this.type = elementType;
+        this.elementClass = elementClass;
+        this.elementType = elementType;
         this.languageContext = languageContext;
         this.callRead = initializeListCall(array, Message.READ);
         this.callWrite = initializeListCall(array, Message.WRITE);
         this.callGetSize = initializeListCall(array, Message.GET_SIZE);
     }
 
-    public static <T> List<T> create(TypeAndClass<T> elementType, TruffleObject array, Object languageContext) {
-        return new TruffleList<>(elementType, array, languageContext);
+    public static <T> List<T> create(Class<T> elementClass, Type elementType, TruffleObject array, Object languageContext) {
+        return new TruffleList<>(elementClass, elementType, array, languageContext);
     }
 
     @Override
     public T get(int index) {
-        final Object item = callRead.call(array, index, type, languageContext);
-        return type.cast(item);
+        final Object element = callRead.call(array, index, elementClass, elementType, languageContext);
+        return elementClass.cast(element);
     }
 
     @Override
     public T set(int index, T element) {
-        type.cast(element);
+        elementClass.cast(element);
         T prev = get(index);
-        callWrite.call(array, index, element, null, languageContext);
+        callWrite.call(array, index, element, elementClass, elementType, languageContext);
         return prev;
     }
 
@@ -104,7 +107,8 @@ final class TruffleList<T> extends AbstractList<T> {
         public Object execute(VirtualFrame frame) {
             final Object[] args = frame.getArguments();
             TruffleObject receiver = (TruffleObject) args[0];
-            TypeAndClass<?> type = null;
+            Class<?> clazz = null;
+            Type type = null;
             Object languageContext = null;
 
             Object ret;
@@ -113,8 +117,9 @@ final class TruffleList<T> extends AbstractList<T> {
                     ret = ForeignAccess.sendGetSize(node, receiver);
                 } else if (msg == Message.READ) {
                     Object key = args[1];
-                    type = (TypeAndClass<?>) args[2];
-                    languageContext = args[3];
+                    clazz = (Class<?>) args[2];
+                    type = (Type) args[3];
+                    languageContext = args[4];
                     try {
                         ret = ForeignAccess.sendRead(node, receiver, key);
                     } catch (UnknownIdentifierException ex) {
@@ -124,8 +129,9 @@ final class TruffleList<T> extends AbstractList<T> {
                 } else if (msg == Message.WRITE) {
                     Object key = args[1];
                     Object value = args[2];
-                    type = (TypeAndClass<?>) args[3];
-                    languageContext = args[4];
+                    clazz = (Class<?>) args[3];
+                    type = (Type) args[4];
+                    languageContext = args[5];
                     try {
                         ret = ForeignAccess.sendWrite(node, receiver, key, JavaInterop.asTruffleValue(value));
                     } catch (UnknownIdentifierException ex) {
@@ -141,8 +147,8 @@ final class TruffleList<T> extends AbstractList<T> {
                 throw ex.raise();
             }
 
-            if (type != null) {
-                return toJavaNode.execute(ret, type.clazz, type.type, languageContext);
+            if (clazz != null) {
+                return toJavaNode.execute(ret, clazz, type, languageContext);
             } else {
                 return ret;
             }
