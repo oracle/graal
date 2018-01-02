@@ -414,7 +414,7 @@ public class ValueAPITest {
 
         o.add(new ObjectCoercionTest(mapAndArray, Map.class, (v) -> {
             assertEquals(42, v.get(0L));
-            assertEquals("bar", v.get("bar"));
+            assertEquals("bar", v.get("foo"));
             assertEquals(2, v.size());
             assertFalse(v instanceof Function);
 
@@ -430,7 +430,7 @@ public class ValueAPITest {
         membersAndInstantiable.instantiableResult = "foobarbaz";
 
         o.add(new ObjectCoercionTest(membersAndInstantiable, Map.class, (v) -> {
-            assertEquals("bar", v.get("bar"));
+            assertEquals("bar", v.get("foo"));
             assertEquals(1, v.size());
             assertTrue(v instanceof Function);
             assertEquals("foobarbaz", ((Function<Object, Object>) v).apply(new Object[0]));
@@ -447,7 +447,7 @@ public class ValueAPITest {
         membersAndExecutable.executableResult = "foobarbaz";
 
         o.add(new ObjectCoercionTest(membersAndExecutable, Map.class, (v) -> {
-            assertEquals("bar", v.get("bar"));
+            assertEquals("bar", v.get("foo"));
             assertEquals(1, v.size());
             assertTrue(v instanceof Function);
             assertEquals("foobarbaz", ((Function<Object, Object>) v).apply(new Object[0]));
@@ -466,7 +466,7 @@ public class ValueAPITest {
 
         o.add(new ObjectCoercionTest(mapAndArrayAndExecutable, Map.class, (v) -> {
             assertEquals(42, v.get(0L));
-            assertEquals("bar", v.get("bar"));
+            assertEquals("bar", v.get("foo"));
             assertEquals(2, v.size());
             assertTrue(v instanceof Function);
             assertEquals("foobarbaz", ((Function<Object, Object>) v).apply(new Object[0]));
@@ -485,7 +485,7 @@ public class ValueAPITest {
 
         o.add(new ObjectCoercionTest(mapAndArrayAndInstantiable, Map.class, (v) -> {
             assertEquals(42, v.get(0L));
-            assertEquals("bar", v.get("bar"));
+            assertEquals("bar", v.get("foo"));
             assertEquals(2, v.size());
             assertTrue(v instanceof Function);
             assertEquals("foobarbaz", ((Function<Object, Object>) v).apply(new Object[0]));
@@ -504,7 +504,7 @@ public class ValueAPITest {
 
         o.add(new ObjectCoercionTest(mapAndArrayAndInstantiable, Map.class, (v) -> {
             assertEquals(42, v.get(0L));
-            assertEquals("bar", v.get("bar"));
+            assertEquals("bar", v.get("foo"));
             assertEquals(2, v.size());
             assertTrue(v instanceof Function);
             assertEquals("foobarbaz", ((Function<Object, Object>) v).apply(new Object[0]));
