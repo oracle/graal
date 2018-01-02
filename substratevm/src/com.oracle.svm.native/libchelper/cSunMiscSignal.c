@@ -23,6 +23,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <semaphore.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -99,27 +100,25 @@ int cSunMiscSignal_open() {
 	int const previousState = cSunMiscSignal_atomicCompareAndSwap_int(&cSunMiscSignal_state, cSunMiscSignal_CLOSED, cSunMiscSignal_OPEN);
 	if (previousState == cSunMiscSignal_CLOSED) {
 		/* Get a process-specific name for the semaphore. */
-		char* cSunMiscSignal_semaphoreName;
+		char cSunMiscSignal_semaphoreName[NAME_MAX];
 		const char* const nameFormat = "/cSunMiscSignal-%d";
 		int const pid = getpid();
-		int const asprintfResult = asprintf(&cSunMiscSignal_semaphoreName, nameFormat, pid);
-		if ((asprintfResult < 0) || (cSunMiscSignal_semaphoreName == NULL)) {
-			return asprintfResult;
+		int const snprintfResult = snprintf(cSunMiscSignal_semaphoreName, NAME_MAX, nameFormat, pid);
+		if ((snprintfResult <= 0) || (snprintfResult >= NAME_MAX))  {
+			return -1;
 		}
 		/* Initialize the semaphore. */
 		int const oflag = O_CREAT;
 		int const mode = (S_IRUSR | S_IWUSR);
 		cSunMiscSignal_semaphore = sem_open(cSunMiscSignal_semaphoreName, oflag, mode, 0);
 		if (cSunMiscSignal_semaphore == SEM_FAILED) {
-			free(cSunMiscSignal_semaphoreName);
 			return -1;
 		}
+		/* Unlink the semaphore so it can be destroyed when it is closed. */
 		int const unlinkResult = sem_unlink(cSunMiscSignal_semaphoreName);
 		if (unlinkResult != 0) {
-			free (cSunMiscSignal_semaphoreName);
 			return unlinkResult;
 		}
-		free(cSunMiscSignal_semaphoreName);
 		return 0;
 	}
 	errno = EBUSY;
