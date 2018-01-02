@@ -162,6 +162,16 @@ public final class Safepoint {
 
     }
 
+    static class SafepointException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        final Throwable inner;
+
+        SafepointException(Throwable inner) {
+            this.inner = inner;
+        }
+    }
+
     @Uninterruptible(reason = "Called during safepointing.")
     protected static VMMutex getMutex() {
         return VMThreads.THREAD_MUTEX;
@@ -292,13 +302,17 @@ public final class Safepoint {
     /** Foreign call: {@link #ENTER_SLOW_PATH_SAFEPOINT_CHECK}. */
     @SubstrateForeignCallTarget
     @Uninterruptible(reason = "Must not contain safepoint checks")
-    private static void enterSlowPathSafepointCheck() {
+    private static void enterSlowPathSafepointCheck() throws Throwable {
         try {
             /*
              * Block on mutex held by thread that requested safepoint, i.e., transition to native
              * code.
              */
             slowPathSafepointCheck();
+
+        } catch (SafepointException se) {
+            /* This exception is intended to be thrown from safepoint checks, at one's own risk */
+            throw se.inner;
 
         } catch (Throwable ex) {
             /*
@@ -340,8 +354,11 @@ public final class Safepoint {
     @Uninterruptible(reason = "Must not contain safepoint checks")
     private static void enterSlowPathNativeToJava() {
         Statistics.incSlowPathFrozen();
-        slowPathSafepointCheck();
-        Statistics.incSlowPathThawed();
+        try {
+            slowPathSafepointCheck();
+        } finally {
+            Statistics.incSlowPathThawed();
+        }
     }
 
     /** Methods for the thread that brings the system to a safepoint. */

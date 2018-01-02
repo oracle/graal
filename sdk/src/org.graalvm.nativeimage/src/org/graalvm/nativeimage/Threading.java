@@ -33,14 +33,33 @@ import org.graalvm.nativeimage.impl.ThreadingSupport;
  */
 public final class Threading {
     /**
-     * Registers a callback handler that is called by the current thread approximately at the
-     * provided interval. Only one callback can be active per thread. Every thread can have its own
-     * (or no) callback with a different interval. No guarantees are made about the actual interval.
-     * For example, when the thread is waiting for a lock or executing native code, no callback can
-     * be done. Specifying {@code null} for the callback clears the thread's current callback (in
-     * this case, the values of {@code interval} and {@code unit} are ignored).
+     * Registers a {@link RecurringCallback callback handler} that is called by the current thread
+     * approximately at the provided interval. Only one callback can be active per thread. Each
+     * thread can have its own callback with a different interval (or none at all). No guarantees
+     * are made about the actual interval. For example, when the thread is waiting for a lock or
+     * executing native code, no callback can be done. Exceptions that are thrown during the
+     * execution of the callback are caught and ignored, unless they are thrown via a call to
+     * {@link RecurringCallbackAccess#throwException(Throwable)}. Specifying {@code null} for
+     * {@code callback} clears the current thread's callback (in which case, the values of
+     * {@code interval} and {@code unit} are ignored).
      */
-    public static void registerRecurringCallback(long interval, TimeUnit unit, Runnable callback) {
+    public static void registerRecurringCallback(long interval, TimeUnit unit, RecurringCallback callback) {
         ImageSingletons.lookup(ThreadingSupport.class).registerRecurringCallback(interval, unit, callback);
+    }
+
+    @FunctionalInterface
+    public interface RecurringCallback {
+        void run(RecurringCallbackAccess access);
+    }
+
+    /**
+     * Provides methods that are available during the execution of a {@link RecurringCallback}.
+     */
+    public interface RecurringCallbackAccess {
+        /**
+         * Throws an exception from the recurring callback to the code that is regularly executing
+         * in the thread.
+         */
+        void throwException(Throwable t);
     }
 }
