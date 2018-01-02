@@ -24,6 +24,9 @@
  */
 package com.oracle.truffle.api.interop.java;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -153,7 +156,8 @@ final class JavaInteropReflect {
     @CompilerDirectives.TruffleBoundary
     static <T> T asJavaFunction(Class<T> functionalType, TruffleObject function, Object languageContext) {
         assert JavaInterop.isJavaFunctionInterface(functionalType);
-        final FunctionProxyHandler handler = new FunctionProxyHandler(function, languageContext);
+        Method functionalInterfaceMethod = JavaInterop.functionalInterfaceMethod(functionalType);
+        final FunctionProxyHandler handler = new FunctionProxyHandler(function, functionalInterfaceMethod, languageContext);
         Object obj = Proxy.newProxyInstance(functionalType.getClassLoader(), new Class<?>[]{functionalType}, handler);
         return functionalType.cast(obj);
     }
@@ -353,37 +357,31 @@ final class JavaFunction implements Function<Object[], Object> {
 
 final class FunctionProxyHandler implements InvocationHandler {
     private final TruffleObject symbol;
-    private CallTarget target;
+    private final Method functionMethod;
     private final Object languageContext;
+    private CallTarget target;
 
-    FunctionProxyHandler(TruffleObject obj, Object languageContext) {
+    FunctionProxyHandler(TruffleObject obj, Method functionMethod, Object languageContext) {
         this.symbol = obj;
+        this.functionMethod = functionMethod;
         this.languageContext = languageContext;
     }
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
-        Object ret;
-        if (method.isVarArgs()) {
-            if (arguments.length == 1) {
-                ret = call((Object[]) arguments[0], method);
-            } else {
-                final int allButOne = arguments.length - 1;
-                Object[] last = (Object[]) arguments[allButOne];
-                Object[] merge = new Object[allButOne + last.length];
-                System.arraycopy(arguments, 0, merge, 0, allButOne);
-                System.arraycopy(last, 0, merge, allButOne, last.length);
-                ret = call(merge, method);
-            }
+        CompilerAsserts.neverPartOfCompilation();
+        if (method.equals(functionMethod)) {
+            return call(arguments);
         } else {
-            ret = call(arguments, method);
+            return invokeDefault(proxy, method, arguments);
         }
-        return ret;
     }
 
-    private Object call(Object[] arguments, Method method) {
-        CompilerAsserts.neverPartOfCompilation();
+    private Object call(Object[] arguments) {
         Object[] args = arguments == null ? JavaInteropReflect.EMPTY : arguments;
+        if (functionMethod.isVarArgs()) {
+            args = spreadVarArgsArray(args);
+        }
         if (target == null) {
             target = JavaInterop.lookupOrRegisterComputation(symbol, null, ExecuteFunctionFromJava.class);
             if (target == null) {
@@ -391,7 +389,45 @@ final class FunctionProxyHandler implements InvocationHandler {
                 target = JavaInterop.lookupOrRegisterComputation(symbol, symbolNode, ExecuteFunctionFromJava.class);
             }
         }
-        return target.call(symbol, args, JavaInteropReflect.getMethodReturnType(method), JavaInteropReflect.getMethodGenericReturnType(method), languageContext);
+        return target.call(symbol, args, JavaInteropReflect.getMethodReturnType(functionMethod), JavaInteropReflect.getMethodGenericReturnType(functionMethod), languageContext);
+    }
+
+    private static Object[] spreadVarArgsArray(Object[] arguments) {
+        if (arguments.length == 1) {
+            return (Object[]) arguments[0];
+        } else {
+            final int allButOne = arguments.length - 1;
+            Object[] last = (Object[]) arguments[allButOne];
+            Object[] merge = new Object[allButOne + last.length];
+            System.arraycopy(arguments, 0, merge, 0, allButOne);
+            System.arraycopy(last, 0, merge, allButOne, last.length);
+            return merge;
+        }
+    }
+
+    private static Object invokeDefault(Object proxy, Method method, Object[] arguments) throws Throwable {
+        if (method.getDeclaringClass() == Object.class) {
+            switch (method.getName()) {
+                case "equals":
+                    return proxy == arguments[0];
+                case "hashCode":
+                    return System.identityHashCode(proxy);
+                case "toString":
+                    return proxy.getClass().getName() + "@" + Integer.toHexString(System.identityHashCode(proxy));
+                default:
+                    throw new UnsupportedOperationException(method.getName());
+            }
+        }
+        // default method; requires Java 9 (JEP 274)
+        Class<?> declaringClass = method.getDeclaringClass();
+        assert declaringClass.isInterface() : declaringClass;
+        MethodHandle mh;
+        try {
+            mh = MethodHandles.lookup().findSpecial(declaringClass, method.getName(), MethodType.methodType(method.getReturnType(), method.getParameterTypes()), declaringClass);
+        } catch (IllegalAccessException e) {
+            throw new UnsupportedOperationException(method.getName(), e);
+        }
+        return mh.bindTo(proxy).invokeWithArguments(arguments);
     }
 }
 

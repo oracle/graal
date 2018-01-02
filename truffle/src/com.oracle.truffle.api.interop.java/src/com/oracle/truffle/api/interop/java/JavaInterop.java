@@ -615,7 +615,7 @@ public final class JavaInterop {
         throw new IllegalArgumentException("Not a HostException");
     }
 
-    private static <T> Method functionalInterfaceMethod(Class<T> functionalType) {
+    static <T> Method functionalInterfaceMethod(Class<T> functionalType) {
         if (!functionalType.isInterface()) {
             return null;
         }
