@@ -169,17 +169,21 @@ final class JavaInteropReflect {
 
     @CompilerDirectives.TruffleBoundary
     static TruffleObject asTruffleViaReflection(Object obj, Object languageContext) {
-        if (Proxy.isProxyClass(obj.getClass())) {
+        if (obj instanceof JavaFunction) {
+            return ((JavaFunction) obj).functionObj;
+        } else if (Proxy.isProxyClass(obj.getClass())) {
             InvocationHandler h = Proxy.getInvocationHandler(obj);
-            if (h instanceof ObjectProxyHandler) {
+            if (h instanceof FunctionProxyHandler) {
+                return ((FunctionProxyHandler) h).functionObj;
+            } else if (h instanceof ObjectProxyHandler) {
                 return ((ObjectProxyHandler) h).obj;
             }
         }
         return new JavaObject(obj, obj.getClass(), languageContext);
     }
 
-    static Object newProxyInstance(Class<?> clazz, TruffleObject obj) throws IllegalArgumentException {
-        return Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[]{clazz}, new ObjectProxyHandler(obj));
+    static Object newProxyInstance(Class<?> clazz, TruffleObject obj, Object languageContext) throws IllegalArgumentException {
+        return Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[]{clazz}, new ObjectProxyHandler(obj, languageContext));
     }
 
     static boolean isStaticTypeOrInterface(Class<?> t) {
@@ -333,36 +337,36 @@ final class ExecuteFunctionFromJava extends RootNode {
 }
 
 final class JavaFunction implements Function<Object[], Object> {
-    private final TruffleObject executable;
+    final TruffleObject functionObj;
+    final Object languageContext;
     private CallTarget target;
-    private final Object languageContext;
 
     JavaFunction(TruffleObject executable, Object languageContext) {
-        this.executable = executable;
+        this.functionObj = executable;
         this.languageContext = languageContext;
     }
 
     public Object apply(Object[] arguments) {
         Object[] args = arguments == null ? JavaInteropReflect.EMPTY : arguments;
         if (target == null) {
-            target = JavaInterop.lookupOrRegisterComputation(executable, null, ExecuteFunctionFromJava.class);
+            target = JavaInterop.lookupOrRegisterComputation(functionObj, null, ExecuteFunctionFromJava.class);
             if (target == null) {
                 RootNode symbolNode = new ExecuteFunctionFromJava();
-                target = JavaInterop.lookupOrRegisterComputation(executable, symbolNode, ExecuteFunctionFromJava.class);
+                target = JavaInterop.lookupOrRegisterComputation(functionObj, symbolNode, ExecuteFunctionFromJava.class);
             }
         }
-        return target.call(executable, args, Object.class, null, languageContext);
+        return target.call(functionObj, args, Object.class, null, languageContext);
     }
 }
 
 final class FunctionProxyHandler implements InvocationHandler {
-    private final TruffleObject symbol;
+    final TruffleObject functionObj;
+    final Object languageContext;
     private final Method functionMethod;
-    private final Object languageContext;
     private CallTarget target;
 
     FunctionProxyHandler(TruffleObject obj, Method functionMethod, Object languageContext) {
-        this.symbol = obj;
+        this.functionObj = obj;
         this.functionMethod = functionMethod;
         this.languageContext = languageContext;
     }
@@ -383,13 +387,13 @@ final class FunctionProxyHandler implements InvocationHandler {
             args = spreadVarArgsArray(args);
         }
         if (target == null) {
-            target = JavaInterop.lookupOrRegisterComputation(symbol, null, ExecuteFunctionFromJava.class);
+            target = JavaInterop.lookupOrRegisterComputation(functionObj, null, ExecuteFunctionFromJava.class);
             if (target == null) {
                 RootNode symbolNode = new ExecuteFunctionFromJava();
-                target = JavaInterop.lookupOrRegisterComputation(symbol, symbolNode, ExecuteFunctionFromJava.class);
+                target = JavaInterop.lookupOrRegisterComputation(functionObj, symbolNode, ExecuteFunctionFromJava.class);
             }
         }
-        return target.call(symbol, args, JavaInteropReflect.getMethodReturnType(functionMethod), JavaInteropReflect.getMethodGenericReturnType(functionMethod), languageContext);
+        return target.call(functionObj, args, JavaInteropReflect.getMethodReturnType(functionMethod), JavaInteropReflect.getMethodGenericReturnType(functionMethod), languageContext);
     }
 
     private static Object[] spreadVarArgsArray(Object[] arguments) {
@@ -433,9 +437,11 @@ final class FunctionProxyHandler implements InvocationHandler {
 
 final class ObjectProxyHandler implements InvocationHandler {
     final TruffleObject obj;
+    final Object languageContext;
 
-    ObjectProxyHandler(TruffleObject obj) {
+    ObjectProxyHandler(TruffleObject obj, Object languageContext) {
         this.obj = obj;
+        this.languageContext = languageContext;
     }
 
     @Override
@@ -458,7 +464,7 @@ final class ObjectProxyHandler implements InvocationHandler {
             call = JavaInterop.lookupOrRegisterComputation(obj, methodNode, method);
         }
 
-        return call.call(obj, args);
+        return call.call(obj, args, languageContext);
     }
 
     private static Message findMessage(Method method, MethodMessage mm, int arity) {
@@ -495,11 +501,12 @@ final class ObjectProxyHandler implements InvocationHandler {
             try {
                 TruffleObject receiver = (TruffleObject) frame.getArguments()[0];
                 Object[] params = (Object[]) frame.getArguments()[1];
+                Object languageContext = frame.getArguments()[2];
                 Object res = executeImpl(receiver, params);
                 if (!returnType.isInterface()) {
                     res = JavaInterop.findOriginalObject(res);
                 }
-                return toJavaNode.execute(res, returnType, genericReturnType);
+                return toJavaNode.execute(res, returnType, genericReturnType, languageContext);
             } catch (InteropException ex) {
                 throw ex.raise();
             }
