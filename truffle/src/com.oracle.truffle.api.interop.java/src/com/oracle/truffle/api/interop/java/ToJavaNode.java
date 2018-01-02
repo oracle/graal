@@ -34,19 +34,15 @@ import java.util.Objects;
 
 import org.graalvm.polyglot.Value;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 
 abstract class ToJavaNode extends Node {
     static final int LIMIT = 3;
@@ -287,40 +283,6 @@ abstract class ToJavaNode extends Node {
             Array.set(array, i, list.get(i));
         }
         return array;
-    }
-
-    static final class TemporaryRoot extends RootNode {
-
-        @Child private Node foreignAccess;
-        @Child private ToJavaNode toJava;
-
-        TemporaryRoot(Node foreignAccess) {
-            super(null);
-            this.foreignAccess = foreignAccess;
-            this.toJava = ToJavaNode.create();
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            TruffleObject function = (TruffleObject) frame.getArguments()[0];
-            Object[] args = (Object[]) frame.getArguments()[1];
-            Class<?> type = (Class<?>) frame.getArguments()[2];
-            Type genericType = (Type) frame.getArguments()[3];
-            Object languageContext = frame.getArguments()[4];
-
-            Object raw;
-            try {
-                raw = ForeignAccess.send(foreignAccess, function, args);
-            } catch (InteropException ex) {
-                CompilerDirectives.transferToInterpreter();
-                throw ex.raise();
-            }
-            if (type == null) {
-                return raw;
-            }
-            Object real = JavaInterop.findOriginalObject(raw);
-            return toJava.execute(real, type, genericType, languageContext);
-        }
     }
 
     public static ToJavaNode create() {

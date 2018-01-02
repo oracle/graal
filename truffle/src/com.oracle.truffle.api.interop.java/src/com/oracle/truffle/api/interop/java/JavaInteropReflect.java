@@ -284,6 +284,50 @@ final class JavaInteropReflect {
     }
 }
 
+final class ExecuteFunctionFromJava extends RootNode {
+    @Child private Node executeNode;
+    @Child private ToJavaNode toJava;
+
+    ExecuteFunctionFromJava() {
+        super(null);
+        this.executeNode = Message.createExecute(0).createNode();
+        this.toJava = ToJavaNode.create();
+    }
+
+    @Override
+    public Object execute(VirtualFrame frame) {
+        TruffleObject function = (TruffleObject) frame.getArguments()[0];
+        Object[] args = (Object[]) frame.getArguments()[1];
+        Class<?> type = (Class<?>) frame.getArguments()[2];
+        Type genericType = (Type) frame.getArguments()[3];
+        Object languageContext = frame.getArguments()[4];
+
+        for (int i = 0; i < args.length; i++) {
+            Object arg = args[i];
+            if (arg instanceof TruffleObject) {
+                continue;
+            } else if (JavaInterop.isPrimitive(arg)) {
+                continue;
+            } else {
+                args[i] = JavaInterop.toGuestValue(arg, languageContext);
+            }
+        }
+
+        Object raw;
+        try {
+            raw = ForeignAccess.send(executeNode, function, args);
+        } catch (InteropException ex) {
+            CompilerDirectives.transferToInterpreter();
+            throw ex.raise();
+        }
+        if (type == null) {
+            return raw;
+        }
+        Object real = JavaInterop.findOriginalObject(raw);
+        return toJava.execute(real, type, genericType, languageContext);
+    }
+}
+
 final class JavaFunction implements Function<Object[], Object> {
     private final TruffleObject executable;
     private CallTarget target;
@@ -297,21 +341,10 @@ final class JavaFunction implements Function<Object[], Object> {
     public Object apply(Object[] arguments) {
         Object[] args = arguments == null ? JavaInteropReflect.EMPTY : arguments;
         if (target == null) {
-            target = JavaInterop.lookupOrRegisterComputation(executable, null, JavaFunction.class);
+            target = JavaInterop.lookupOrRegisterComputation(executable, null, ExecuteFunctionFromJava.class);
             if (target == null) {
-                Node executeMain = Message.createExecute(args.length).createNode();
-                RootNode symbolNode = new ToJavaNode.TemporaryRoot(executeMain);
-                target = JavaInterop.lookupOrRegisterComputation(executable, symbolNode, JavaFunction.class);
-            }
-        }
-        for (int i = 0; i < args.length; i++) {
-            Object arg = args[i];
-            if (arg instanceof TruffleObject) {
-                continue;
-            } else if (JavaInterop.isPrimitive(arg)) {
-                continue;
-            } else {
-                arguments[i] = JavaInterop.toGuestValue(arg, languageContext);
+                RootNode symbolNode = new ExecuteFunctionFromJava();
+                target = JavaInterop.lookupOrRegisterComputation(executable, symbolNode, ExecuteFunctionFromJava.class);
             }
         }
         return target.call(executable, args, Object.class, null, languageContext);
@@ -352,21 +385,10 @@ final class FunctionProxyHandler implements InvocationHandler {
         CompilerAsserts.neverPartOfCompilation();
         Object[] args = arguments == null ? JavaInteropReflect.EMPTY : arguments;
         if (target == null) {
-            target = JavaInterop.lookupOrRegisterComputation(symbol, null, FunctionProxyHandler.class);
+            target = JavaInterop.lookupOrRegisterComputation(symbol, null, ExecuteFunctionFromJava.class);
             if (target == null) {
-                Node executeMain = Message.createExecute(args.length).createNode();
-                RootNode symbolNode = new ToJavaNode.TemporaryRoot(executeMain);
-                target = JavaInterop.lookupOrRegisterComputation(symbol, symbolNode, FunctionProxyHandler.class);
-            }
-        }
-        for (int i = 0; i < args.length; i++) {
-            Object arg = args[i];
-            if (arg instanceof TruffleObject) {
-                continue;
-            } else if (JavaInterop.isPrimitive(arg)) {
-                continue;
-            } else {
-                arguments[i] = JavaInterop.toGuestValue(arg, languageContext);
+                RootNode symbolNode = new ExecuteFunctionFromJava();
+                target = JavaInterop.lookupOrRegisterComputation(symbol, symbolNode, ExecuteFunctionFromJava.class);
             }
         }
         return target.call(symbol, args, JavaInteropReflect.getMethodReturnType(method), JavaInteropReflect.getMethodGenericReturnType(method), languageContext);
