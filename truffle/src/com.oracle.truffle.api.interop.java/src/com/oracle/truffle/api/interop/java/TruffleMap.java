@@ -24,11 +24,12 @@
  */
 package com.oracle.truffle.api.interop.java;
 
+import java.lang.reflect.Type;
 import java.util.AbstractMap;
 import java.util.AbstractSet;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
@@ -44,8 +45,9 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 final class TruffleMap<K, V> extends AbstractMap<K, V> {
-    private final TypeAndClass<K> keyType;
-    private final TypeAndClass<V> valueType;
+    private final Class<K> keyClass;
+    private final Class<V> valueClass;
+    private final Type valueType;
     private final TruffleObject obj;
     private final Object languageContext;
     private final CallTarget callKeyInfo;
@@ -54,13 +56,18 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
     private final CallTarget callGetSize;
     private final CallTarget callRead;
     private final CallTarget callWrite;
+    private final boolean hasKeys;
+    private final boolean hasSize;
     private boolean includeInternal = false;
 
-    private TruffleMap(TypeAndClass<K> keyType, TypeAndClass<V> valueType, TruffleObject obj, Object languageContext) {
-        this.keyType = keyType;
+    private TruffleMap(Class<K> keyClass, Class<V> valueClass, Type valueType, TruffleObject obj, Object languageContext, boolean hasKeys, boolean hasSize) {
+        this.keyClass = keyClass;
+        this.valueClass = valueClass;
         this.valueType = valueType;
         this.obj = obj;
         this.languageContext = languageContext;
+        this.hasKeys = hasKeys;
+        this.hasSize = hasSize;
         this.callKeyInfo = initializeMapCall(obj, Message.KEY_INFO);
         this.callKeys = initializeMapCall(obj, Message.KEYS);
         this.callHasSize = initializeMapCall(obj, Message.HAS_SIZE);
@@ -70,7 +77,8 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
     }
 
     private TruffleMap(TruffleMap<K, V> map, boolean includeInternal) {
-        this.keyType = map.keyType;
+        this.keyClass = map.keyClass;
+        this.valueClass = map.valueClass;
         this.valueType = map.valueType;
         this.obj = map.obj;
         this.languageContext = map.languageContext;
@@ -80,11 +88,13 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
         this.callGetSize = map.callGetSize;
         this.callRead = map.callRead;
         this.callWrite = map.callWrite;
+        this.hasKeys = map.hasKeys;
+        this.hasSize = map.hasSize;
         this.includeInternal = includeInternal;
     }
 
-    static <K, V> Map<K, V> create(TypeAndClass<K> keyType, TypeAndClass<V> valueType, TruffleObject foreignObject, Object languageContext) {
-        return new TruffleMap<>(keyType, valueType, foreignObject, languageContext);
+    static <K, V> Map<K, V> create(Class<K> keyClass, Class<V> valueClass, Type valueType, TruffleObject foreignObject, Object languageContext, boolean hasKeys, boolean hasSize) {
+        return new TruffleMap<>(keyClass, valueClass, valueType, foreignObject, languageContext, hasKeys, hasSize);
     }
 
     TruffleMap<K, V> cloneInternal(boolean includeInternalKeys) {
@@ -93,32 +103,46 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
 
     @Override
     public boolean containsKey(Object key) {
-        return ((Integer) callKeyInfo.call(obj, key)) != 0;
+        if (hasKeys && ((Integer) callKeyInfo.call(obj, key)) != 0) {
+            return true;
+        } else if (hasSize && key instanceof Number) {
+            int index = ((Integer) key).intValue();
+            int size = ((Number) callGetSize.call(obj)).intValue();
+            return index >= 0 && index < size;
+        }
+        return false;
     }
 
     @Override
     public Set<Entry<K, V>> entrySet() {
-        Object props = callKeys.call(obj, includeInternal);
-        if (Boolean.TRUE.equals(callHasSize.call(props))) {
-            Number size = (Number) callGetSize.call(props);
-            return new LazyEntries(props, size.intValue());
+        Object keys = null;
+        int keysSize = 0;
+        int elemSize = 0;
+        if (hasKeys) {
+            keys = callKeys.call(obj, includeInternal);
+            if (Boolean.TRUE.equals(callHasSize.call(keys))) {
+                keysSize = ((Number) callGetSize.call(keys)).intValue();
+            }
         }
-        return Collections.emptySet();
+        if (hasSize) {
+            elemSize = ((Number) callGetSize.call(obj)).intValue();
+        }
+        return new LazyEntries(keys, keysSize, elemSize);
     }
 
     @Override
     public V get(Object key) {
-        keyType.cast(key);
-        final Object item = callRead.call(obj, key, valueType, languageContext);
-        return valueType.cast(item);
+        keyClass.cast(key);
+        final Object item = callRead.call(obj, key, valueClass, valueType, languageContext);
+        return valueClass.cast(item);
     }
 
     @Override
     public V put(K key, V value) {
-        keyType.cast(key);
-        valueType.cast(value);
+        keyClass.cast(key);
+        valueClass.cast(value);
         V previous = get(key);
-        callWrite.call(obj, key, value, valueType, languageContext);
+        callWrite.call(obj, key, value, valueClass, valueType, languageContext);
         return previous;
     }
 
@@ -133,21 +157,30 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
     private final class LazyEntries extends AbstractSet<Entry<K, V>> {
 
         private final Object props;
-        private final int size;
+        private final int keysSize;
+        private final int elemSize;
 
-        LazyEntries(Object props, int size) {
-            this.props = props;
-            this.size = size;
+        LazyEntries(Object keys, int keysSize, int elemSize) {
+            assert keys != null || keysSize == 0;
+            this.props = keys;
+            this.keysSize = keysSize;
+            this.elemSize = elemSize;
         }
 
         @Override
         public Iterator<Entry<K, V>> iterator() {
-            return new LazyIterator();
+            if (keysSize > 0 && elemSize > 0) {
+                return new CombinedIterator();
+            } else if (keysSize > 0) {
+                return new LazyKeysIterator();
+            } else {
+                return new ElementsIterator();
+            }
         }
 
         @Override
         public int size() {
-            return size;
+            return keysSize + elemSize;
         }
 
         @Override
@@ -155,23 +188,68 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
             return containsKey(o);
         }
 
-        private final class LazyIterator implements Iterator<Entry<K, V>> {
-
+        private final class LazyKeysIterator implements Iterator<Entry<K, V>> {
             private int index;
 
-            LazyIterator() {
+            LazyKeysIterator() {
                 index = 0;
             }
 
             @Override
             public boolean hasNext() {
-                return index < size;
+                return index < keysSize;
             }
 
             @Override
             public Entry<K, V> next() {
-                Object key = callRead.call(props, index++, keyType, languageContext);
-                return new TruffleEntry(keyType.cast(key));
+                if (hasNext()) {
+                    Object key = callRead.call(props, index++, keyClass, null, languageContext);
+                    return new TruffleEntry(keyClass.cast(key));
+                } else {
+                    throw new NoSuchElementException();
+                }
+            }
+        }
+
+        private final class ElementsIterator implements Iterator<Entry<K, V>> {
+            private int index;
+
+            ElementsIterator() {
+                index = 0;
+            }
+
+            @Override
+            public boolean hasNext() {
+                return index < elemSize;
+            }
+
+            @Override
+            public Entry<K, V> next() {
+                if (hasNext()) {
+                    Object key = keyClass == Integer.class ? (Integer) index : (Long) (long) index;
+                    index++;
+                    return new TruffleEntry(keyClass.cast(key));
+                } else {
+                    throw new NoSuchElementException();
+                }
+            }
+        }
+
+        private final class CombinedIterator implements Iterator<Map.Entry<K, V>> {
+            private final Iterator<Map.Entry<K, V>> elemIter = new ElementsIterator();
+            private final Iterator<Map.Entry<K, V>> keysIter = new LazyKeysIterator();
+
+            public boolean hasNext() {
+                return elemIter.hasNext() || keysIter.hasNext();
+            }
+
+            public Entry<K, V> next() {
+                if (elemIter.hasNext()) {
+                    return elemIter.next();
+                } else if (keysIter.hasNext()) {
+                    return keysIter.next();
+                }
+                throw new NoSuchElementException();
             }
         }
     }
@@ -215,7 +293,8 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
         public Object execute(VirtualFrame frame) {
             final Object[] args = frame.getArguments();
             TruffleObject receiver = (TruffleObject) args[0];
-            TypeAndClass<?> type = null;
+            Class<?> clazz = null;
+            Type type = null;
             Object languageContext = null;
 
             Object ret;
@@ -226,8 +305,9 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
                     ret = ForeignAccess.sendGetSize(node, receiver);
                 } else if (msg == Message.READ) {
                     Object key = args[1];
-                    type = (TypeAndClass<?>) args[2];
-                    languageContext = args[3];
+                    clazz = (Class<?>) args[2];
+                    type = (Type) args[3];
+                    languageContext = args[4];
                     try {
                         ret = ForeignAccess.sendRead(node, receiver, key);
                     } catch (UnknownIdentifierException uiex) {
@@ -236,8 +316,9 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
                 } else if (msg == Message.WRITE) {
                     Object key = args[1];
                     Object value = args[2];
-                    type = (TypeAndClass<?>) args[3];
-                    languageContext = args[4];
+                    clazz = (Class<?>) args[3];
+                    type = (Type) args[4];
+                    languageContext = args[5];
                     ret = ForeignAccess.sendWrite(node, receiver, key, JavaInterop.asTruffleValue(value));
                 } else if (msg == Message.KEY_INFO) {
                     Object key = args[1];
@@ -254,8 +335,8 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
                 throw ex.raise();
             }
 
-            if (type != null) {
-                return toJavaNode.execute(ret, type.clazz, type.type, languageContext);
+            if (clazz != null) {
+                return toJavaNode.execute(ret, clazz, type, languageContext);
             } else {
                 return ret;
             }
