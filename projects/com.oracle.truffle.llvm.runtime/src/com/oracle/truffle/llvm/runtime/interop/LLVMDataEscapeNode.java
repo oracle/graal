@@ -58,7 +58,6 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 /**
  * Values that escape Sulong and flow to other languages must be primitive or TruffleObject. This
  * node ensures that.
- *
  */
 @SuppressWarnings("unused")
 public abstract class LLVMDataEscapeNode extends Node {

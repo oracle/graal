@@ -44,7 +44,7 @@ public abstract class LLVMGetStackNode extends LLVMNode {
 
     public abstract LLVMStack executeWithTarget(LLVMThreadingStack threadingStack, Thread currentThread);
 
-    protected synchronized LLVMStack getStack(LLVMThreadingStack threadingStack, Thread cachedThread) {
+    protected LLVMStack getStack(LLVMThreadingStack threadingStack, Thread cachedThread) {
         if (Thread.currentThread() == cachedThread) {
             return threadingStack.getStack();
         }

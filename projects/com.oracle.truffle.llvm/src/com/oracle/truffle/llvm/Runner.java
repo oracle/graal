@@ -71,6 +71,9 @@ public final class Runner {
 
     private final NodeFactory nodeFactory;
 
+    /**
+     * Object that is returned when a bitcode library is loaded via the Truffle NFI API.
+     */
     static final class SulongLibrary implements TruffleObject {
 
         private final LLVMContext context;
@@ -143,6 +146,9 @@ public final class Runner {
         return parse(language, context, source, library, bytes);
     }
 
+    /**
+     * Parse bitcode data and do first initializations to prepare bitcode execution.
+     */
     public CallTarget parse(LLVMLanguage language, LLVMContext context, Source source) throws IOException {
         ByteBuffer bytes;
         ExternalLibrary library;

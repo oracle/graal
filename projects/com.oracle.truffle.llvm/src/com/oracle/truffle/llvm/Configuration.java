@@ -46,7 +46,15 @@ public interface Configuration {
 
     NodeFactory getNodeFactory(LLVMContext context);
 
+    /**
+     * Context extensions encapsulate optional functionality that has a state and which therefore
+     * needs to live on the context-level.
+     */
     List<ContextExtension> createContextExtensions(com.oracle.truffle.api.TruffleLanguage.Env env, TruffleLanguage<?> language);
 
+    /**
+     * Capabilities encapsulate functionality that is stateless so that it can live on the
+     * language-level.
+     */
     <E> E getCapability(Class<E> type);
 }
