@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime.global;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -296,7 +295,6 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
             return (Native) value;
         }
 
-        CompilerAsserts.neverPartOfCompilation();
         return transformToNative(memory, context, value);
     }
 
@@ -345,6 +343,7 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         return n;
     }
 
+    @TruffleBoundary
     private static void putOther(LLVMMemory memory, LLVMContext context, long address, Object managedValue) {
         if (managedValue instanceof LLVMFunctionDescriptor) {
             long pointer = ((LLVMFunctionDescriptor) managedValue).toNative().asPointer();
