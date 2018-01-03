@@ -674,11 +674,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         listeners.onCompilationStarted(callTarget);
         TruffleCompiler compiler = getTruffleCompiler();
         TruffleInlining inlining = new TruffleInlining(callTarget, new DefaultInliningPolicy());
-
         CompilationIdentifier compilationId = compiler.getCompilationIdentifier(callTarget);
         DebugContext debug = compilationId != null ? compiler.openDebugContext(options, compilationId, callTarget) : null;
         try (Scope s = debug != null ? debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget)) : null) {
-            maybeDumpTruffleTree(debug, options, callTarget);
+            maybeDumpTruffleTree(debug, options, callTarget, inlining);
             compiler.doCompile(debug, compilationId, options, callTarget, inlining, task, listeners.isEmpty() ? null : listeners);
         } catch (RuntimeException | Error e) {
             throw e;
@@ -689,7 +688,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @SuppressWarnings("try")
-    private static void maybeDumpTruffleTree(DebugContext inDebug, OptionValues options, OptimizedCallTarget callTarget) {
+    private static void maybeDumpTruffleTree(DebugContext inDebug, OptionValues options, OptimizedCallTarget callTarget, TruffleInlining inlining) {
         DebugContext debug = inDebug;
         if (debug == null) {
             Description description = new Description(callTarget, "TruffleTree:" + callTarget.getName());
@@ -700,7 +699,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
                 output = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE));
                 output.beginGroup(null, callTarget.toString(), callTarget.toString(), null, 0, DebugContext.addVersionProperties(null));
-                debug.dump(DebugContext.BASIC_LEVEL, new TruffleTreeDumpHandler.TruffleTreeDump(callTarget), "TruffleTree");
+                debug.dump(DebugContext.BASIC_LEVEL, new TruffleTreeDumpHandler.TruffleTreeDump(callTarget, inlining), "TruffleTree");
             }
         } catch (Throwable e) {
             if (output != null) {
