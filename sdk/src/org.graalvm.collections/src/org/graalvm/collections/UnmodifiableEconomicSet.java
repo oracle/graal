@@ -26,32 +26,41 @@ package org.graalvm.collections;
 
 /**
  * Unmodifiable memory efficient set data structure.
+ *
+ * @since 1.0
  */
 public interface UnmodifiableEconomicSet<E> extends Iterable<E> {
 
     /**
-     * @return {@code true} if this set contains a mapping for the {@code element}.
+     * Returns {@code true} if this set contains a mapping for the {@code element}.
+     *
+     * @since 1.0
      */
     boolean contains(E element);
 
     /**
-     * @return the number of elements in this set.
+     * Returns the number of elements in this set.
+     *
+     * @since 1.0
      */
     int size();
 
     /**
-     * @return {@code true} if this set contains no elements.
+     * Returns {@code true} if this set contains no elements.
+     *
+     * @since 1.0
      */
     boolean isEmpty();
 
     /**
      * Stores all of the elements in this set into {@code target}. An
-     * {@Code UnsupportedOperationException} will be thrown if the length of {@code target} does not
+     * {@link UnsupportedOperationException} will be thrown if the length of {@code target} does not
      * match the size of this set.
      *
      * @return an array containing all the elements in this set.
      * @throws UnsupportedOperationException if the length of {@code target} does not equal the size
      *             of this set.
+     * @since 1.0
      */
     default E[] toArray(E[] target) {
         if (target.length != size()) {
