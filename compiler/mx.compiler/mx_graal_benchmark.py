@@ -116,7 +116,7 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
         if tag and tag != mx_compiler._JVMCI_JDK_TAG:
             mx.abort("The '{0}/{1}' VM requires '--jdk={2}'".format(
                 self.name(), self.config_name(), mx_compiler._JVMCI_JDK_TAG))
-        mx.get_jdk(tag=mx_compiler._JVMCI_JDK_TAG).run_java(
+        return mx.get_jdk(tag=mx_compiler._JVMCI_JDK_TAG).run_java(
             args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
 
 
