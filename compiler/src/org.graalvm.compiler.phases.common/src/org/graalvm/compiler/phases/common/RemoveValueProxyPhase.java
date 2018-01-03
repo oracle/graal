@@ -39,11 +39,13 @@ public class RemoveValueProxyPhase extends Phase {
             for (ProxyNode vpn : exit.proxies().snapshot()) {
                 vpn.replaceAtUsagesAndDelete(vpn.value());
             }
-            FrameState stateAfter = exit.stateAfter();
-            if (stateAfter != null) {
-                exit.setStateAfter(null);
-                if (stateAfter.hasNoUsages()) {
-                    GraphUtil.killWithUnusedFloatingInputs(stateAfter);
+            if (!exit.loopBegin().isOsrLoop()) {
+                FrameState stateAfter = exit.stateAfter();
+                if (stateAfter != null) {
+                    exit.setStateAfter(null);
+                    if (stateAfter.hasNoUsages()) {
+                        GraphUtil.killWithUnusedFloatingInputs(stateAfter);
+                    }
                 }
             }
         }
