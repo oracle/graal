@@ -26,9 +26,11 @@ import static org.junit.Assert.assertEquals;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.test.AddExports;
 import org.graalvm.util.ObjectSizeEstimate;
 import org.junit.Test;
 
+@AddExports("org.graalvm.graal_sdk/org.graalvm.collections")
 public class CollectionSizeTest {
 
     /**
