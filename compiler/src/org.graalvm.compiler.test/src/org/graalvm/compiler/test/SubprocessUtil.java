@@ -35,7 +35,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.graalvm.collections.CollectionsUtil;
+import org.graalvm.util.CollectionsUtil;
 
 /**
  * Utility methods for spawning a VM in a subprocess during unit tests.

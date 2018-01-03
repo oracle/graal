@@ -28,7 +28,9 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Function;
 
-import org.graalvm.collections.CollectionsUtil;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaKind;
+
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Add;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.And;
@@ -50,9 +52,7 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Abs;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Neg;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Not;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Sqrt;
-
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.util.CollectionsUtil;
 
 /**
  * Information about arithmetic operations.

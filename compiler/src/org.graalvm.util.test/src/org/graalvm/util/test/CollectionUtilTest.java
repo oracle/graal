@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.collections.test;
+package org.graalvm.util.test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,7 +31,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import org.graalvm.collections.CollectionsUtil;
+import org.graalvm.util.CollectionsUtil;
 import org.junit.Assert;
 import org.junit.Test;
 

@@ -30,7 +30,7 @@ package org.graalvm.collections;
 public interface UnmodifiableEconomicSet<E> extends Iterable<E> {
 
     /**
-     * @return {@code true} if this set contains a mapping for the specified key.
+     * @return {@code true} if this set contains a mapping for the {@code element}.
      */
     boolean contains(E element);
 
@@ -45,13 +45,13 @@ public interface UnmodifiableEconomicSet<E> extends Iterable<E> {
     boolean isEmpty();
 
     /**
-     * Stores all of the elements in this set into the specified array. An
-     * {@Code UnsupportedOperationException} will be thrown if the length of the given array does
-     * not match the size of this set.
+     * Stores all of the elements in this set into {@code target}. An
+     * {@Code UnsupportedOperationException} will be thrown if the length of {@code target} does not
+     * match the size of this set.
      *
      * @return an array containing all the elements in this set.
-     * @throws UnsupportedOperationException if the length of the given array does not equal the
-     *             size of this set.
+     * @throws UnsupportedOperationException if the length of {@code target} does not equal the size
+     *             of this set.
      */
     default E[] toArray(E[] target) {
         if (target.length != size()) {

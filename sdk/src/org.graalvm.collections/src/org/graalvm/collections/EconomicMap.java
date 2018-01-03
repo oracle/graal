@@ -34,8 +34,8 @@ import java.util.function.BiFunction;
 public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
 
     /**
-     * Associates the specified value with the specified key in this map. If the map previously
-     * contained a mapping for the key, the old value is replaced by the specified value.
+     * Associates {@code value} with {@code key} in this map. If the map previously contained a
+     * mapping for {@code key}, the old value is replaced by {@code value}.
      *
      * @return the previous value associated with {@code key}, or {@code null} if there was no
      *         mapping for {@code key}.
@@ -43,7 +43,7 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
     V put(K key, V value);
 
     /**
-     * Copies all of the mappings from the specified EconomicMap to this map.
+     * Copies all of the mappings from {@code other} to this map.
      */
     default void putAll(EconomicMap<K, V> other) {
         MapCursor<K, V> e = other.getEntries();
@@ -53,7 +53,7 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
     }
 
     /**
-     * Copies all of the mappings from the specified UnmodifiableEconomicMap to this map.
+     * Copies all of the mappings from {@code other} to this map.
      */
     default void putAll(UnmodifiableEconomicMap<? extends K, ? extends V> other) {
         UnmodifiableMapCursor<? extends K, ? extends V> entry = other.getEntries();
@@ -68,8 +68,8 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
     void clear();
 
     /**
-     * Removes the mapping for a key from this map if it is present. The map will not contain a
-     * mapping for the specified key once the call returns.
+     * Removes the mapping for {@code key} from this map if it is present. The map will not contain
+     * a mapping for {@code key} once the call returns.
      *
      * @return the previous value associated with {@code key}, or {@code null} if there was no
      *         mapping for {@code key}.
@@ -80,9 +80,9 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
     MapCursor<K, V> getEntries();
 
     /**
-     * Replaces each entry's value with the result of invoking the given function on that entry
-     * until all entries have been processed or the function throws an exception. Exceptions thrown
-     * by the function are relayed to the caller.
+     * Replaces each entry's value with the result of invoking {@code function} on that entry until
+     * all entries have been processed or the function throws an exception. Exceptions thrown by the
+     * function are relayed to the caller.
      */
     void replaceAll(BiFunction<? super K, ? super V, ? extends V> function);
 
@@ -137,7 +137,7 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
     }
 
     /**
-     * Wraps an existing {@link java.util.Map} as an {@link org.graalvm.collections.EconomicMap}.
+     * Wraps an existing {@link Map} as an {@link EconomicMap}.
      */
     static <K, V> EconomicMap<K, V> wrapMap(Map<K, V> map) {
         return new EconomicMap<K, V>() {

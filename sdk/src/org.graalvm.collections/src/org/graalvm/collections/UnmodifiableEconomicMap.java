@@ -30,14 +30,14 @@ package org.graalvm.collections;
 public interface UnmodifiableEconomicMap<K, V> {
 
     /**
-     * @return the value to which the specified key is mapped, or {@code null} if this map contains
-     *         no mapping for the key.
+     * @return the value to which {@code key} is mapped, or {@code null} if this map contains no
+     *         mapping for {@code key}.
      */
     V get(K key);
 
     /**
-     * @return the value to which the specified key is mapped, or {@code defaultValue} if this map
-     *         contains no mapping for the key.
+     * @return the value to which {@code key} is mapped, or {@code defaultValue} if this map
+     *         contains no mapping for {@code key}.
      */
     default V get(K key, V defaultValue) {
         V v = get(key);
@@ -48,7 +48,7 @@ public interface UnmodifiableEconomicMap<K, V> {
     }
 
     /**
-     * @return {@code true} if this map contains a mapping for the specified key.
+     * @return {@code true} if this map contains a mapping for {@code key}.
      */
     boolean containsKey(K key);
 
@@ -63,17 +63,17 @@ public interface UnmodifiableEconomicMap<K, V> {
     boolean isEmpty();
 
     /**
-     * @return a {@Code Iterable} view of the values contained in this map.
+     * @return a {@link Iterable} view of the values contained in this map.
      */
     Iterable<V> getValues();
 
     /**
-     * @return a {@Code Iterable} view of the keys contained in this map.
+     * @return a {@link Iterable} view of the keys contained in this map.
      */
     Iterable<K> getKeys();
 
     /**
-     * @return a {@Code Iterable} view of the mappings contained in this map.
+     * @return a {@link Iterable} view of the mappings contained in this map.
      */
     UnmodifiableMapCursor<K, V> getEntries();
 }

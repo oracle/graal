@@ -45,10 +45,10 @@ public final class Pair<L, R> {
     }
 
     /**
-     * Constructs a pair with its left value being the specified input, or returns an empty pair if
-     * the specified input is null.
+     * Constructs a pair with its left value being {@code left}, or returns an empty pair if
+     * {@code left} is null.
      *
-     * @return the constructed pair or an empty pair if the specified input is null.
+     * @return the constructed pair or an empty pair if {@code left} is null.
      */
     public static <L, R> Pair<L, R> createLeft(L left) {
         if (left == null) {
@@ -59,10 +59,10 @@ public final class Pair<L, R> {
     }
 
     /**
-     * Constructs a pair with its right value being the specified input, or returns an empty pair if
-     * the specified input is null.
+     * Constructs a pair with its right value being {@code right}, or returns an empty pair if
+     * {@code right} is null.
      *
-     * @return the constructed pair or an empty pair if the specified input is null.
+     * @return the constructed pair or an empty pair if {@code right} is null.
      */
     public static <L, R> Pair<L, R> createRight(R right) {
         if (right == null) {
@@ -73,8 +73,8 @@ public final class Pair<L, R> {
     }
 
     /**
-     * Constructs a pair with its left value being the specified left input, and its right value
-     * being the specified right input, or returns an empty pair if both inputs are null.
+     * Constructs a pair with its left value being {@code left}, and its right value being
+     * {@code right}, or returns an empty pair if both inputs are null.
      *
      * @return the constructed pair or an empty pair if both inputs are null.
      */

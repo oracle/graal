@@ -32,82 +32,78 @@ import java.util.Iterator;
 public interface EconomicSet<E> extends UnmodifiableEconomicSet<E> {
 
     /**
-     * Adds the specified element to this set if it is not already present.
+     * Adds {@code element} to this set if it is not already present.
      *
-     * @return {@code true} if this set did not already contain the specified element.
+     * @return {@code true} if this set did not already contain {@code element}.
      */
     boolean add(E element);
 
     /**
-     * Removes the specified element from this set if it is present. This set will not contain the
-     * element once the call returns.
+     * Removes {@code element} from this set if it is present. This set will not contain
+     * {@code element} once the call returns.
      */
     void remove(E element);
 
     /**
-     * Removes all of the elements from this set (optional operation). The set will be empty after
-     * this call returns.
+     * Removes all of the elements from this set. The set will be empty after this call returns.
      */
     void clear();
 
     /**
-     * Adds all of the elements in the specified EconomicSet to this set if they're not already
-     * present.
+     * Adds all of the elements in {@code other} to this set if they're not already present.
      */
-    default void addAll(EconomicSet<E> values) {
-        addAll(values.iterator());
+    default void addAll(EconomicSet<E> other) {
+        addAll(other.iterator());
     }
 
     /**
-     * Adds all of the elements in the specified Iterable to this set if they're not already
-     * present.
+     * Adds all of the elements in {@code values} to this set if they're not already present.
      */
     default void addAll(Iterable<E> values) {
         addAll(values.iterator());
     }
 
     /**
-     * Adds all of the elements enumerated by the specified Iterator to this set if they're not
-     * already present.
+     * Adds all of the elements enumerated by {@code iterator} to this set if they're not already
+     * present.
      */
-    default void addAll(Iterator<E> values) {
-        while (values.hasNext()) {
-            add(values.next());
+    default void addAll(Iterator<E> iterator) {
+        while (iterator.hasNext()) {
+            add(iterator.next());
         }
     }
 
     /**
-     * Removes from this set all of its elements that are contained in the specified EconomicSet.
+     * Removes from this set all of its elements that are contained in {@code other}.
      */
-    default void removeAll(EconomicSet<E> values) {
-        removeAll(values.iterator());
+    default void removeAll(EconomicSet<E> other) {
+        removeAll(other.iterator());
     }
 
     /**
-     * Removes from this set all of its elements that are contained in the specified Iterable.
+     * Removes from this set all of its elements that are contained in {@code values}.
      */
     default void removeAll(Iterable<E> values) {
         removeAll(values.iterator());
     }
 
     /**
-     * Removes from this set all of its elements that are enumerated by the specified Iterator.
+     * Removes from this set all of its elements that are enumerated by {@code iterator}.
      */
-    default void removeAll(Iterator<E> values) {
-        while (values.hasNext()) {
-            remove(values.next());
+    default void removeAll(Iterator<E> iterator) {
+        while (iterator.hasNext()) {
+            remove(iterator.next());
         }
     }
 
     /**
-     * Removes from this set all of its elements that are not contained in the specified
-     * EconomicSet.
+     * Removes from this set all of its elements that are not contained in {@code other}.
      */
-    default void retainAll(EconomicSet<E> values) {
+    default void retainAll(EconomicSet<E> other) {
         Iterator<E> iterator = iterator();
         while (iterator.hasNext()) {
             E key = iterator.next();
-            if (!values.contains(key)) {
+            if (!other.contains(key)) {
                 iterator.remove();
             }
         }
