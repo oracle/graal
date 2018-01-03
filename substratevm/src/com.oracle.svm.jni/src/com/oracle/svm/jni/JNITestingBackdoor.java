@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,5 +44,9 @@ public final class JNITestingBackdoor {
 
     public static long getMethodID(Class<?> clazz, String name, String signature, boolean isStatic) {
         return JNIReflectionDictionary.singleton().getMethodID(clazz, name, signature, isStatic).rawValue();
+    }
+
+    public static int getThreadLocalOwnedMonitorsCount() {
+        return JNIThreadOwnedMonitors.ownedMonitorsCount();
     }
 }
