@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ package com.oracle.svm.core.handles;
 // Checkstyle: stop
 
 import java.lang.ref.WeakReference;
-import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
@@ -50,13 +49,13 @@ import sun.misc.Unsafe;
  * handles must also be {@link #destroyWeak(ObjectHandle) explicitly destroyed} to reclaim their
  * handle value.
  * <p>
- * The implementation uses a variable number of {@link AtomicReferenceArray arrays}, in which each
- * array element represents a handle. The array element's index determines the handle's integer
- * value, and the element's stored value is the referenced object. Creating a handle entails finding
- * a {@code null} array element and using compare-and-set to write the referenced object into it,
- * avoiding a heavy-weight lock. If there are no {@code null} elements in the existing arrays, an
- * additional array is created. This array has twice the capacity of the previous array, which plays
- * a significant role in how indexing is implemented.
+ * The implementation uses a variable number of object arrays, in which each array element
+ * represents a handle. The array element's index determines the handle's integer value, and the
+ * element's stored value is the referenced object. Creating a handle entails finding a {@code null}
+ * array element and using compare-and-set to write the referenced object into it, avoiding a
+ * heavy-weight lock. If there are no {@code null} elements in the existing arrays, an additional
+ * array is created. This array has twice the capacity of the previous array, which plays a
+ * significant role in how indexing is implemented.
  */
 public final class ObjectHandlesImpl extends ObjectHandles {
     /**
