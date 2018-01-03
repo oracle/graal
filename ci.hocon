@@ -13,6 +13,9 @@ include "truffle/ci.hocon"
 compiler-suite-root = "./compiler"
 logPatterns = ["*.bgv"]
 
+#Tools
+include "tools/ci.hocon"
+
 #Examples
 #Examples gate also disabled.
 #include "examples/ci.hocon"
