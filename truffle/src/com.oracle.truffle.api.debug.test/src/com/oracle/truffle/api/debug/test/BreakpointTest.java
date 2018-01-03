@@ -160,6 +160,47 @@ public class BreakpointTest extends AbstractDebugTest {
     }
 
     @Test
+    public void testNotStepIntoBreakpointCondition() {
+        Source defineSource = testSource("ROOT(DEFINE(test, ROOT(\n" +
+                        "STATEMENT(EXPRESSION),\n" +
+                        "CONSTANT(true))))");
+        Source testSource = testSource("ROOT(\n" +
+                        "STATEMENT,\n" +
+                        "STATEMENT,\n" +
+                        "STATEMENT)");
+        try (DebuggerSession session = startSession()) {
+            startEval(defineSource);
+            expectDone();
+            Breakpoint breakpoint = session.install(Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(3).build());
+            breakpoint.setCondition("CALL(test)");
+            session.suspendNextExecution();
+            startEval(testSource);
+            expectSuspended((SuspendedEvent event) -> {
+                assertEquals("STATEMENT", event.getSourceSection().getCharacters());
+                assertEquals(2, event.getSourceSection().getStartLine());
+                assertEquals(0, event.getBreakpoints().size());
+                event.prepareStepInto(1);
+            });
+            assertEquals(0, breakpoint.getHitCount());
+            expectSuspended((SuspendedEvent event) -> {
+                assertEquals("STATEMENT", event.getSourceSection().getCharacters());
+                assertEquals(3, event.getSourceSection().getStartLine());
+                assertEquals(1, event.getBreakpoints().size());
+                event.prepareStepInto(1);
+            });
+            assertEquals(1, breakpoint.getHitCount());
+            expectSuspended((SuspendedEvent event) -> {
+                assertEquals("STATEMENT", event.getSourceSection().getCharacters());
+                assertEquals(4, event.getSourceSection().getStartLine());
+                assertEquals(0, event.getBreakpoints().size());
+                event.prepareStepInto(1);
+            });
+            expectDone();
+            assertEquals(1, breakpoint.getHitCount());
+        }
+    }
+
+    @Test
     public void testBreakURI1() throws Throwable {
         final Source source = testSource("ROOT(\n" +
                         "  STATEMENT,\n" +
