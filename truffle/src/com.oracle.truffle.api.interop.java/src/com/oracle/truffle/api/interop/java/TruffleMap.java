@@ -31,6 +31,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.function.Function;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -44,23 +45,23 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-final class TruffleMap<K, V> extends AbstractMap<K, V> {
+class TruffleMap<K, V> extends AbstractMap<K, V> {
     private final Class<K> keyClass;
     private final Class<V> valueClass;
     private final Type valueType;
-    private final TruffleObject obj;
-    private final Object languageContext;
+    final TruffleObject obj;
+    final Object languageContext;
+    private final boolean hasKeys;
+    private final boolean hasSize;
+    private final boolean includeInternal;
     private final CallTarget callKeyInfo;
     private final CallTarget callKeys;
     private final CallTarget callHasSize;
     private final CallTarget callGetSize;
     private final CallTarget callRead;
     private final CallTarget callWrite;
-    private final boolean hasKeys;
-    private final boolean hasSize;
-    private boolean includeInternal = false;
 
-    private TruffleMap(Class<K> keyClass, Class<V> valueClass, Type valueType, TruffleObject obj, Object languageContext, boolean hasKeys, boolean hasSize) {
+    TruffleMap(Class<K> keyClass, Class<V> valueClass, Type valueType, TruffleObject obj, Object languageContext, boolean hasKeys, boolean hasSize) {
         this.keyClass = keyClass;
         this.valueClass = valueClass;
         this.valueType = valueType;
@@ -68,6 +69,7 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
         this.languageContext = languageContext;
         this.hasKeys = hasKeys;
         this.hasSize = hasSize;
+        this.includeInternal = false;
         this.callKeyInfo = initializeMapCall(obj, Message.KEY_INFO);
         this.callKeys = initializeMapCall(obj, Message.KEYS);
         this.callHasSize = initializeMapCall(obj, Message.HAS_SIZE);
@@ -82,19 +84,23 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
         this.valueType = map.valueType;
         this.obj = map.obj;
         this.languageContext = map.languageContext;
+        this.hasKeys = map.hasKeys;
+        this.hasSize = map.hasSize;
+        this.includeInternal = includeInternal;
         this.callKeyInfo = map.callKeyInfo;
         this.callKeys = map.callKeys;
         this.callHasSize = map.callHasSize;
         this.callGetSize = map.callGetSize;
         this.callRead = map.callRead;
         this.callWrite = map.callWrite;
-        this.hasKeys = map.hasKeys;
-        this.hasSize = map.hasSize;
-        this.includeInternal = includeInternal;
     }
 
-    static <K, V> Map<K, V> create(Class<K> keyClass, Class<V> valueClass, Type valueType, TruffleObject foreignObject, Object languageContext, boolean hasKeys, boolean hasSize) {
-        return new TruffleMap<>(keyClass, valueClass, valueType, foreignObject, languageContext, hasKeys, hasSize);
+    static <K, V> Map<K, V> create(Class<K> keyClass, Class<V> valueClass, Type valueType, TruffleObject foreignObject, Object languageContext, boolean hasKeys, boolean hasSize, boolean executable) {
+        if (executable) {
+            return new ExecutableTruffleMap<>(keyClass, valueClass, valueType, foreignObject, languageContext, hasKeys, hasSize);
+        } else {
+            return new TruffleMap<>(keyClass, valueClass, valueType, foreignObject, languageContext, hasKeys, hasSize);
+        }
     }
 
     TruffleMap<K, V> cloneInternal(boolean includeInternalKeys) {
@@ -277,6 +283,27 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
         }
     }
 
+    static final class ExecutableTruffleMap<K, V> extends TruffleMap<K, V> implements Function<Object[], Object> {
+        private CallTarget callExecute;
+
+        ExecutableTruffleMap(Class<K> keyClass, Class<V> valueClass, Type valueType, TruffleObject obj, Object languageContext, boolean hasKeys, boolean hasSize) {
+            super(keyClass, valueClass, valueType, obj, languageContext, hasKeys, hasSize);
+        }
+
+        @Override
+        public Object apply(Object[] arguments) {
+            Object[] args = arguments == null ? JavaInteropReflect.EMPTY : arguments;
+            if (callExecute == null) {
+                callExecute = JavaInterop.lookupOrRegisterComputation(obj, null, ExecuteFunctionFromJava.class);
+                if (callExecute == null) {
+                    RootNode symbolNode = new ExecuteFunctionFromJava();
+                    callExecute = JavaInterop.lookupOrRegisterComputation(obj, symbolNode, ExecuteFunctionFromJava.class);
+                }
+            }
+            return callExecute.call(obj, args, Object.class, null, languageContext);
+        }
+    }
+
     private static final class MapNode extends RootNode {
         private final Message msg;
         @Child private Node node;
@@ -341,6 +368,5 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
                 return ret;
             }
         }
-
     }
 }
