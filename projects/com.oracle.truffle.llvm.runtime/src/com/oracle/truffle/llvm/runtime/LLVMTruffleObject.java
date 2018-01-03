@@ -65,7 +65,11 @@ public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider
     }
 
     public static LLVMTruffleObject createNullPointer() {
-        return new LLVMTruffleObject(null, 0, null, null);
+        return createPointer(0L);
+    }
+
+    public static LLVMTruffleObject createPointer(long ptr) {
+        return new LLVMTruffleObject(null, ptr, null, null);
     }
 
     public LLVMTruffleObject(LLVMTruffleObject orig, Type type) {
