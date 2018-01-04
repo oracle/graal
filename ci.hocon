@@ -47,3 +47,6 @@ include "compiler/ci_includes/m7_eighth-c2.hocon"
 include "substratevm/ci_includes/svm-gate.hocon"
 include "substratevm/ci_includes/svm-gate-tasks.hocon"
 
+# Publish Javadoc
+include "ci_includes/publish-javadoc.hocon"
+
