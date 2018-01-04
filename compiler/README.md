@@ -99,4 +99,4 @@ If you run into build problems, send a message to the [Graal mailing list](http:
 
 ## License
 
-The Graal compiler is licensed under the [GPL 2](https://github.com/graalvm/graal/blob/master/compiler/LICENSE.md).
+The Graal compiler is licensed under the [GPL 2](LICENSE.md).

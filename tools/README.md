@@ -48,5 +48,4 @@ Detailed info can be found in the [contributing document](CONTRIBUTING.md).
 
 ## License
 
-The Tools are is licensed under the [GPL 2 with Classpath exception](https://github.com/graalvm/graal/blob/master/tools/LICENSE.GPL.md).
-
+The Tools are is licensed under the [GPL 2 with Classpath exception](LICENSE.GPL.md).

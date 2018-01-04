@@ -145,4 +145,4 @@ If you pull a changeset which adds or removes checkstyle XML files, you may get 
 
 ## License
 
-The Substrate VM is licensed under the [GPL 2](https://github.com/graalvm/graal/blob/master/substratevm/LICENSE.md).
+The Substrate VM is licensed under the [GPL 2](LICENSE.md).
