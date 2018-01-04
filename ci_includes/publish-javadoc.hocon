@@ -27,7 +27,7 @@ builds += [
         ["git", "add", "sdk/javadoc", "truffle/javadoc", "tools/javadoc"],
         ["git", "config", "user.name", "Javadoc Publisher"],
         ["git", "config", "user.email", "graal-dev@openjdk.java.net"],
-        ["git", "commit", "-m", [ "echo", "Javadoc as of", [ "date", "+%Y/%m/%d" ] ], "javadoc" ],
+        ["git", "commit", "-m", [ "echo", "Javadoc as of", [ "date", "+%Y/%m/%d" ] ] ],
         ["git", "push", "origin", "gh-pages"],
     ],
     targets : [post-merge],
