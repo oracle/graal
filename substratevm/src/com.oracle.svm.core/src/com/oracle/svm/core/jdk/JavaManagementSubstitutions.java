@@ -22,6 +22,7 @@
  */
 package com.oracle.svm.core.jdk;
 
+import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.RuntimeMXBean;
@@ -102,6 +103,11 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
     @Override
     public List<String> getInputArguments() {
+        if (ImageSingletons.contains(JavaMainSupport.class)) {
+            JavaMainSupport support = ImageSingletons.lookup(JavaMainSupport.class);
+
+            return support.getInputArguments();
+        }
         return Collections.emptyList();
     }
 

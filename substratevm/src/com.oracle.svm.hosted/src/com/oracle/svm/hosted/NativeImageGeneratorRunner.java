@@ -26,7 +26,6 @@ import static com.oracle.svm.hosted.NativeImageGenerator.defaultPlatform;
 import static com.oracle.svm.hosted.server.NativeImageBuildServer.IMAGE_CLASSPATH_PREFIX;
 
 import java.io.File;
-import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.MalformedURLException;
@@ -214,7 +213,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                         if (!Modifier.isPublic(mainMethodModifiers)) {
                             throw UserError.abort("Method '" + mainClass.getName() + "." + mainEntryPointName + "(String[])' is not accessible.  Please make it 'public'.");
                         }
-                        javaMainSupport = new JavaMainSupport(MethodHandles.lookup().unreflect(javaMainMethod));
+                        javaMainSupport = new JavaMainSupport(javaMainMethod);
                         mainEntryPoint = JavaMainWrapper.class.getDeclaredMethod("run", int.class, CCharPointerPointer.class);
                     } catch (NoSuchMethodException ex) {
                         throw UserError.abort("Method '" + mainClass.getName() + "." + mainEntryPointName + "' is declared as the main entry point but it can not be found. " +

@@ -28,12 +28,14 @@ import static com.oracle.svm.core.option.SubstrateOptionsParser.BooleanOptionFor
 import static com.oracle.svm.core.option.SubstrateOptionsParser.BooleanOptionFormat.PLUS_MINUS;
 
 import java.lang.invoke.MethodHandle;
+//Checkstyle: allow reflection
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.Collections;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -81,6 +83,8 @@ public class JavaMainWrapper {
     }
     private static UnsignedWord argvLength = WordFactory.zero();
 
+    private static String[] mainArgs;
+
     public static class JavaMainSupport {
 
         public static void executeStartupHooks() {
@@ -113,17 +117,42 @@ public class JavaMainWrapper {
             }
         }
 
-        private final MethodHandle javaMainHandle;
+        private final Method javaMainMethod;
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        public JavaMainSupport(MethodHandle javaMainHandle) {
-            this.javaMainHandle = javaMainHandle;
+        public JavaMainSupport(Method javaMainMethod) {
+            this.javaMainMethod = javaMainMethod;
         }
 
-        @Fold
-        public MethodHandle getJavaMainHandle() {
-            assert javaMainHandle != null;
-            return javaMainHandle;
+        private Method getJavaMainMethod() {
+            assert javaMainMethod != null;
+            return javaMainMethod;
+        }
+
+        public String getJavaCommand() {
+            if (javaMainMethod != null && mainArgs != null) {
+                StringBuilder commandLine = new StringBuilder(javaMainMethod.getDeclaringClass().getName());
+
+                for (String arg : mainArgs) {
+                    commandLine.append(' ');
+                    commandLine.append(arg);
+                }
+                return commandLine.toString();
+            }
+            return null;
+        }
+
+        public List<String> getInputArguments() {
+            if (argv.isNonNull() && argc > 0) {
+                String[] unmodifiedArgs = SubstrateUtil.getArgs(argc, argv);
+                List<String> inputArgs = new ArrayList<>(Arrays.asList(unmodifiedArgs));
+
+                if (mainArgs != null) {
+                    inputArgs.removeAll(Arrays.asList(mainArgs));
+                }
+                return Collections.unmodifiableList(inputArgs);
+            }
+            return Collections.emptyList();
         }
     }
 
@@ -157,6 +186,7 @@ public class JavaMainWrapper {
             args = XOptions.singleton().parse(args);
             args = RuntimePropertyParser.parse(args);
         }
+        mainArgs = args;
         try {
             final RuntimeSupport rs = RuntimeSupport.getRuntimeSupport();
             if (AllocationSite.Options.AllocationProfiling.getValue()) {
@@ -167,7 +197,7 @@ public class JavaMainWrapper {
             }
             try {
                 JavaMainSupport.executeStartupHooks();
-                ImageSingletons.lookup(JavaMainSupport.class).getJavaMainHandle().invokeExact(args);
+                ImageSingletons.lookup(JavaMainSupport.class).getJavaMainMethod().invoke(null, (Object) mainArgs);
             } finally { // always execute the shutdown hooks
                 JavaMainSupport.executeShutdownHooks();
             }
