@@ -40,6 +40,14 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 
+/**
+ * Each LLVM bitcode file contains a data layout header, that determines which data types are
+ * available and which alignment is used for each datatype. At the moment, this is mainly used to
+ * determine the size of variable bit width integer values.
+ *
+ * Besides that, this class is hardly used and most other Sulong code parts contain hard-coded
+ * assumptions regarding sizes/alignments...
+ */
 public final class DataLayoutConverter {
 
     public static final class DataSpecConverterImpl implements DataSpecConverter {
@@ -90,11 +98,8 @@ public final class DataLayoutConverter {
                 PrimitiveType primitiveType = (PrimitiveType) baseType;
                 switch (primitiveType.getPrimitiveKind()) {
                     case I1:
-                        return locateDataTypeSpecification(DataLayoutType.INTEGER, 8); // 1 is
-                                                                                       // rounded
-                                                                                       // up to
-                                                                                       // 8
                     case I8:
+                        // 1 is rounded up to 8 as well
                         return locateDataTypeSpecification(DataLayoutType.INTEGER, 8);
                     case I16:
                         return locateDataTypeSpecification(DataLayoutType.INTEGER, 16);
