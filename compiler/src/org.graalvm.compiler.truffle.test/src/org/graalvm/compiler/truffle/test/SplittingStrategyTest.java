@@ -449,16 +449,16 @@ public class SplittingStrategyTest {
         for (int i = 0; i < 100; i++) {
             c1.eval("SplitTestLanguage", "exec");
         }
-        final int c1BseSplitCount = listener.splitCount;
+        final int c1BaseSplitCount = listener.splitCount;
         // Try to split some more in c1
         for (int i = 0; i < 10; i++) {
             c1.eval("SplitTestLanguage", "exec");
         }
-        Assert.assertEquals("Splitting over budget!", c1BseSplitCount, listener.splitCount);
+        Assert.assertEquals("Splitting over budget!", c1BaseSplitCount, listener.splitCount);
         // Try to split in c2
         for (int i = 0; i < 10; i++) {
             c2.eval("SplitTestLanguage", "exec");
         }
-        Assert.assertTrue("No splitting in different context", c1BseSplitCount < listener.splitCount);
+        Assert.assertTrue("No splitting in different context", c1BaseSplitCount < listener.splitCount);
     }
 }
