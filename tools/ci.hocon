@@ -5,7 +5,7 @@ toolsCommon: {
   timelimit : "30:00"
 }
 
-gateLite : ${toolsCommon} {
+toolsGateLite : ${toolsCommon} {
   run : [
     ["mx", "build" ],
     ["mx", "unittest", "--verbose" ]
@@ -23,39 +23,20 @@ builds += [
     targets : [gate],
     name: "gate-tools-javadoc"
   },
-  ${solaris-sparcv9} ${labsjdk8} ${gateLite} {
+  ${solaris-sparcv9} ${labsjdk8} ${toolsGateLite} {
     targets : [ weekly ],
     name: "gate-tools-solaris-lite-8"
   }
-  ${solaris-sparcv9} ${labsjdk9} ${gateLite} {
+  ${solaris-sparcv9} ${labsjdk9} ${toolsGateLite} {
     targets : [ weekly ],
     name: "gate-tools-solaris-lite-9"
   }
-  ${darwin-amd64} ${labsjdk8} ${gateLite} {
+  ${darwin-amd64} ${labsjdk8} ${toolsGateLite} {
     targets : [ weekly ],
     name: "gate-tools-mac-lite-8"
   }
-  ${darwin-amd64} ${labsjdk9} ${gateLite} {
+  ${darwin-amd64} ${labsjdk9} ${toolsGateLite} {
     targets : [ weekly ],
     name: "gate-tools-mac-lite-9"
-  }
-  ${linux-amd64} ${labsjdk8} ${toolsCommon} {
-    run : [
-        ["mx", "build"],
-        ["mx", "javadoc"],
-        ["zip", "-r", "javadoc.zip", "javadoc"],
-        ["git", "fetch", "origin", "gh-pages"],
-        ["git", "checkout", "-f", "FETCH_HEAD", "-B", "gh-pages"],
-        ["rm", "-rf", "javadoc"],
-        ["git", "status" ],
-        ["unzip", "-o", "javadoc.zip"],
-        ["git", "add", "javadoc"],
-        ["git", "config", "user.name", "Javadoc Publisher"],
-        ["git", "config", "user.email", "graal-dev@openjdk.java.net"],
-        ["git", "commit", "-m", [ "echo", "Javadoc as of", [ "date", "+%Y/%m/%d" ] ], "javadoc" ],
-        ["git", "push", "origin", "gh-pages"],
-    ],
-    targets : [post-merge],
-    name: "tools-publish-javadoc"
   }
 ]
