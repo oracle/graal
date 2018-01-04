@@ -23,6 +23,7 @@
 package org.graalvm.compiler.truffle.test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -168,6 +169,7 @@ public class SplittingStrategyTest {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     if (callNode1 == null) {
                         callNode1 = runtime.createDirectCallNode(target);
                         adoptChildren();
@@ -206,6 +208,7 @@ public class SplittingStrategyTest {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     if (callNode == null) {
                         callNode = runtime.createDirectCallNode(inner);
                         adoptChildren();
@@ -229,6 +232,7 @@ public class SplittingStrategyTest {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     // Emulates builtin i.e. Split immediately
                     if (outsideCallNode == null) {
                         outsideCallNode = runtime.createDirectCallNode(mid);
@@ -313,6 +317,7 @@ public class SplittingStrategyTest {
 
         @Override
         public Object execute(VirtualFrame frame) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             if (callNode == null || callNode.isCallTargetCloned() || callNode.getCallCount() > 2) {
                 callNode = (OptimizedDirectCallNode) runtime.createDirectCallNode(toCall);
                 adoptChildren();
