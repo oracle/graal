@@ -106,7 +106,8 @@ public final class LanguageInfo {
     }
 
     /**
-     * @return {@code true} if the language is internal, {@code false} otherwise
+     * @return {@code true} if the language is {@link Registration#internal() internal},
+     *         {@code false} otherwise
      * @since 0.31
      */
     public boolean isInternal() {
