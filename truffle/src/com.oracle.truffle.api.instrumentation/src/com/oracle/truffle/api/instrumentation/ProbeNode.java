@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.instrumentation;
 
 import java.io.PrintStream;
+import java.util.concurrent.locks.Lock;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -163,19 +164,28 @@ public final class ProbeNode extends Node {
     }
 
     private EventChainNode lazyUpdatedImpl(VirtualFrame frame) {
-        EventChainNode nextChain = handler.createBindings(ProbeNode.this);
-        if (nextChain == null) {
-            // chain is null -> remove wrapper;
-            // Note: never set child nodes to null, can cause races
-            InstrumentationHandler.removeWrapper(ProbeNode.this);
-            return null;
-        }
-
         EventChainNode oldChain;
-        synchronized (this) {
+        EventChainNode nextChain;
+        Lock lock = getLock();
+        lock.lock();
+        try {
+            Assumption localVersion = this.version;
+            if (localVersion != null && localVersion.isValid()) {
+                return this.chain;
+            }
+            nextChain = handler.createBindings(ProbeNode.this);
+            if (nextChain == null) {
+                // chain is null -> remove wrapper;
+                // Note: never set child nodes to null, can cause races
+                InstrumentationHandler.removeWrapper(ProbeNode.this);
+                return null;
+            }
+
             oldChain = this.chain;
             this.chain = insert(nextChain);
             this.version = Truffle.getRuntime().createAssumption("Instruments unchanged");
+        } finally {
+            lock.unlock();
         }
 
         if (oldChain != null) {
