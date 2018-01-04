@@ -406,7 +406,7 @@ public class SplittingStrategyTest {
     public void testHardSplitLimitInContext() {
         final int expectedNumberOfSplits = 20;
         try (TruffleCompilerOptions.TruffleOptionsOverrideScope s = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleSplittingMaxNumberOfSplits, expectedNumberOfSplits)) {
-            Context c = Context.newBuilder().build();
+            Context c = Context.create();
             for (int i = 0; i < 100; i++) {
                 c.eval("SplitTestLanguage", "exec");
             }
@@ -416,7 +416,7 @@ public class SplittingStrategyTest {
 
     @Test
     public void testGrowingSplitLimitInContext() {
-        Context c = Context.newBuilder().build();
+        Context c = Context.create();
         // Eval a lot to fill out budget
         for (int i = 0; i < 100; i++) {
             c.eval("SplitTestLanguage", "exec");
@@ -443,8 +443,8 @@ public class SplittingStrategyTest {
 
     @Test
     public void testSplitLimitIsContextSpecific() {
-        Context c1 = Context.newBuilder().build();
-        Context c2 = Context.newBuilder().build();
+        Context c1 = Context.create();
+        Context c2 = Context.create();
         // Use up the c1 budget
         for (int i = 0; i < 100; i++) {
             c1.eval("SplitTestLanguage", "exec");
