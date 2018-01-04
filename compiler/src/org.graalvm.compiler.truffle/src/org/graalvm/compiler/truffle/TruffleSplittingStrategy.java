@@ -32,7 +32,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplitting;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplittingMaxCalleeSize;
 
-final class DefaultTruffleSplittingStrategy {
+final class TruffleSplittingStrategy {
 
     static void beforeCall(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
         if (call.getCallCount() == 2) {

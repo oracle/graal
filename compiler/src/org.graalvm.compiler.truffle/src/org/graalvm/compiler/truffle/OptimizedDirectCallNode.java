@@ -114,7 +114,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
         if (calls == 1) {
             getCurrentCallTarget().incrementKnownCallSites();
         }
-        DefaultTruffleSplittingStrategy.beforeCall(this, runtime.getTvmci());
+        TruffleSplittingStrategy.beforeCall(this, runtime.getTvmci());
     }
 
     /** Used by the splitting strategy to install new targets. */
@@ -149,7 +149,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
 
     @Override
     public boolean cloneCallTarget() {
-        DefaultTruffleSplittingStrategy.forceSplitting(this, runtime.getTvmci());
+        TruffleSplittingStrategy.forceSplitting(this, runtime.getTvmci());
         return true;
     }
 
