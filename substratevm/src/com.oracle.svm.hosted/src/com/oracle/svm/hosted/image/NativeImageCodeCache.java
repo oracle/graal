@@ -449,8 +449,7 @@ public class NativeImageCodeCache {
         ByteBuffer bb = buffer.getBuffer();
         dataSection.buildDataSection(bb, constant -> {
             int bbOffset = bb.position();
-            String label = "";
-            WriteUtils.writeReference(buffer, bbOffset, SubstrateObjectConstant.asObject(constant), imageHeap, label, "VMConstant: " + constant);
+            WriteUtils.writeReference(buffer, bbOffset, SubstrateObjectConstant.asObject(constant), imageHeap, "VMConstant: " + constant);
         });
     }
 

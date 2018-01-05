@@ -67,9 +67,6 @@ public class NativeImageOptions {
     @Option(help = "Print information about classes, methods, and fields that are present in the native image")//
     public static final HostedOptionKey<Boolean> PrintUniverse = new HostedOptionKey<>(false);
 
-    @Option(help = "Print .dot files to visualize the native image")//
-    public static final HostedOptionKey<Boolean> PrintDotFiles = new HostedOptionKey<>(false);
-
     @Option(help = "Print logging information during compilation")//
     public static final HostedOptionKey<Boolean> PrintAOTCompilation = new HostedOptionKey<>(false);
 
