@@ -223,19 +223,19 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
         }
     }
 
-    private void failCodeInstallationTasks(CodeInstallationTask[] tasks, Throwable t) {
+    private static void failCodeInstallationTasks(CodeInstallationTask[] tasks, Throwable t) {
         for (CodeInstallationTask task : tasks) {
             task.installFailed(t);
         }
     }
 
-    protected void preCodeInstallationTasks(CodeInstallationTask[] tasks, CompilationResult compilationResult) {
+    private static void preCodeInstallationTasks(CodeInstallationTask[] tasks, CompilationResult compilationResult) {
         for (CodeInstallationTask task : tasks) {
             task.preProcess(compilationResult);
         }
     }
 
-    private void postCodeInstallationTasks(CodeInstallationTask[] tasks, InstalledCode installedCode) {
+    private static void postCodeInstallationTasks(CodeInstallationTask[] tasks, InstalledCode installedCode) {
         try {
             for (CodeInstallationTask task : tasks) {
                 task.postProcess(installedCode);
@@ -320,6 +320,7 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
         /**
          * Invoked after preProcess in the case that the code installation fails.
          */
+        @SuppressWarnings("unused")
         public void installFailed(Throwable t) {
         }
     }

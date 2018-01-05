@@ -26,11 +26,8 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleAs
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleStackTraceLimit;
 
 import java.lang.ref.WeakReference;
-import java.util.concurrent.Future;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
