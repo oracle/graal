@@ -130,45 +130,46 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
         return map;
     }
 
-    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy) {
-        return intercept(new EconomicMapImpl<>(strategy));
+    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, boolean isSet) {
+        return intercept(new EconomicMapImpl<>(strategy, isSet));
     }
 
-    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, int initialCapacity) {
-        return intercept(new EconomicMapImpl<>(strategy, initialCapacity));
+    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, int initialCapacity, boolean isSet) {
+        return intercept(new EconomicMapImpl<>(strategy, initialCapacity, isSet));
     }
 
-    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, UnmodifiableEconomicMap<K, V> other) {
-        return intercept(new EconomicMapImpl<>(strategy, other));
+    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, UnmodifiableEconomicMap<K, V> other, boolean isSet) {
+        return intercept(new EconomicMapImpl<>(strategy, other, isSet));
     }
 
-    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, UnmodifiableEconomicSet<K> other) {
-        return intercept(new EconomicMapImpl<>(strategy, other));
+    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, UnmodifiableEconomicSet<K> other, boolean isSet) {
+        return intercept(new EconomicMapImpl<>(strategy, other, isSet));
     }
 
-    private EconomicMapImpl(Equivalence strategy) {
+    private EconomicMapImpl(Equivalence strategy, boolean isSet) {
         if (strategy == Equivalence.IDENTITY) {
             this.strategy = null;
         } else {
             this.strategy = strategy;
         }
+        this.isSet = isSet;
     }
 
-    private EconomicMapImpl(Equivalence strategy, int initialCapacity) {
-        this(strategy);
+    private EconomicMapImpl(Equivalence strategy, int initialCapacity, boolean isSet) {
+        this(strategy, isSet);
         init(initialCapacity);
     }
 
-    private EconomicMapImpl(Equivalence strategy, UnmodifiableEconomicMap<K, V> other) {
-        this(strategy);
+    private EconomicMapImpl(Equivalence strategy, UnmodifiableEconomicMap<K, V> other, boolean isSet) {
+        this(strategy, isSet);
         if (!initFrom(other)) {
             init(other.size());
             putAll(other);
         }
     }
 
-    private EconomicMapImpl(Equivalence strategy, UnmodifiableEconomicSet<K> other) {
-        this(strategy);
+    private EconomicMapImpl(Equivalence strategy, UnmodifiableEconomicSet<K> other, boolean isSet) {
+        this(strategy, isSet);
         if (!initFrom(other)) {
             init(other.size());
             addAll(other);
@@ -802,13 +803,22 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
         return object;
     }
 
+    private final boolean isSet;
+
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append("map(size=").append(size()).append(", {");
+        builder.append(isSet ? "set(size=" : "map(size=").append(size()).append(", {");
+        String sep = "";
         MapCursor<K, V> cursor = getEntries();
         while (cursor.advance()) {
-            builder.append("(").append(cursor.getKey()).append(",").append(cursor.getValue()).append("),");
+            builder.append(sep);
+            if (isSet) {
+                builder.append(cursor.getKey());
+            } else {
+                builder.append("(").append(cursor.getKey()).append(",").append(cursor.getValue()).append(")");
+            }
+            sep = ",";
         }
         builder.append("})");
         return builder.toString();

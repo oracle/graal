@@ -100,7 +100,7 @@ public class EconomicSetTest {
     public void testToString() {
         EconomicSet<Integer> set = EconomicSet.create();
         set.addAll(Arrays.asList(0, 1));
-        Assert.assertEquals(set.toString(), "map(size=2, {(0,0),(1,1),})");
+        Assert.assertEquals(set.toString(), "set(size=2, {0,1})");
     }
 
     @Test(expected = UnsupportedOperationException.class)

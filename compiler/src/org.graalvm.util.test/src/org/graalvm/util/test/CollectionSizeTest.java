@@ -39,15 +39,15 @@ public class CollectionSizeTest {
     @Test
     public void testSize() {
         EconomicMap<Object, Object> map = EconomicMap.create(Equivalence.IDENTITY);
-        assertEquals(48, ObjectSizeEstimate.forObject(map).getTotalBytes());
+        assertEquals(49, ObjectSizeEstimate.forObject(map).getTotalBytes());
 
         Integer value = 1;
         map.put(value, value);
-        assertEquals(152, ObjectSizeEstimate.forObject(map).getTotalBytes());
+        assertEquals(153, ObjectSizeEstimate.forObject(map).getTotalBytes());
 
         Integer secondValue = 2;
         map.put(secondValue, secondValue);
-        assertEquals(152 + 20, ObjectSizeEstimate.forObject(map).getTotalBytes());
+        assertEquals(153 + 20, ObjectSizeEstimate.forObject(map).getTotalBytes());
     }
 
     /**

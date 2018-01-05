@@ -24,12 +24,12 @@
  */
 package org.graalvm.collections.test;
 
+import java.util.LinkedHashMap;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.junit.Assert;
 import org.junit.Test;
-
-import java.util.LinkedHashMap;
 
 public class EconomicMapTest {
 
@@ -59,6 +59,14 @@ public class EconomicMapTest {
         map.putAll(unmodifiableEconomicMap);
         Assert.assertEquals(map.size(), 3);
         Assert.assertEquals(map.get(2), Integer.valueOf(4));
+    }
+
+    @Test
+    public void testToString() {
+        EconomicMap<Integer, Integer> map = EconomicMap.create();
+        map.put(0, 0);
+        map.put(1, 1);
+        Assert.assertEquals(map.toString(), "map(size=2, {(0,0),(1,1)})");
     }
 
 }
