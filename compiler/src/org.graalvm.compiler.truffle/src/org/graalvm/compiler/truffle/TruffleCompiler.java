@@ -295,13 +295,6 @@ public abstract class TruffleCompiler {
                 entry.accept(null);
             }
         }
-
-        @Override
-        public void releaseInstallation(InstalledCode installedCode) {
-            if (installedCode instanceof OptimizedCallTarget) {
-                ((OptimizedCallTarget) installedCode).releaseEntryPoint();
-            }
-        }
     }
 
     private class TrufflePostCodeInstallationTaskFactory extends Backend.CodeInstallationTaskFactory {
