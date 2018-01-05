@@ -518,8 +518,16 @@ public abstract class AbstractPolyglotImpl {
             return false;
         }
 
+        public boolean isProxyObject(Object receiver) {
+            return false;
+        }
+
         public Object asHostObject(Object receiver) {
             throw classcast(receiver, "asHostObject()", "isHostObject()");
+        }
+
+        public Object asProxyObject(Object receiver) {
+            throw classcast(receiver, "asProxyObject()", "isProxyObject()");
         }
 
         protected abstract RuntimeException unsupported(Object receiver, String message, String useToCheck);

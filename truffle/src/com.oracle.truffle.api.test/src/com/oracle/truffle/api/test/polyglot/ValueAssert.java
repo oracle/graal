@@ -1,3 +1,25 @@
+/*
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package com.oracle.truffle.api.test.polyglot;
 
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.ARRAY_ELEMENTS;
@@ -25,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.graalvm.polyglot.Context;
@@ -74,9 +97,7 @@ public class ValueAssert {
 
         assertSame(value, value.as(Value.class));
 
-        Set<Trait> supported = new HashSet<>();
         for (Trait supportedType : expectedTypes) {
-            supported.add(supportedType);
             switch (supportedType) {
                 case NULL:
                     assertTrue(value.isNull());
@@ -129,6 +150,11 @@ public class ValueAssert {
                     assertTrue(!(hostObject instanceof Proxy));
                     // TODO assert mapping to interfaces
                     break;
+                case PROXY_OBJECT:
+                    assertTrue(value.isProxyObject());
+                    Object proxyObject = value.asProxyObject();
+                    assertTrue(proxyObject instanceof Proxy);
+                    break;
                 case MEMBERS:
                     assertTrue(value.hasMembers());
 
@@ -142,12 +168,26 @@ public class ValueAssert {
                     assertTrue(value.isNativePointer());
                     value.asNativePointer();
                     break;
-
             }
         }
 
+        assertUnsupported(value, expectedTypes);
+
+        if ((!value.isHostObject() || !(value.asHostObject() instanceof Map)) && !value.isNull()) {
+            for (TypeLiteral<?> literal : NEVER_SUPPORTED_MAPS) {
+                try {
+                    value.as(literal);
+                    fail(literal.toString());
+                } catch (ClassCastException e) {
+                }
+            }
+        }
+    }
+
+    static void assertUnsupported(Value value, Trait... supported) {
+        Set<Trait> supportedSet = new HashSet<>(Arrays.asList(supported));
         for (Trait unsupportedType : Trait.values()) {
-            if (supported.contains(unsupportedType)) {
+            if (supportedSet.contains(unsupportedType)) {
                 continue;
             }
 
@@ -228,6 +268,10 @@ public class ValueAssert {
                     assertFalse(value.isHostObject());
                     assertFails(() -> value.asHostObject(), ClassCastException.class);
                     break;
+                case PROXY_OBJECT:
+                    assertFalse(value.isProxyObject());
+                    assertFails(() -> value.asProxyObject(), ClassCastException.class);
+                    break;
                 case NATIVE:
                     assertFalse(value.isNativePointer());
                     assertFails(() -> value.asNativePointer(), ClassCastException.class);
@@ -235,16 +279,6 @@ public class ValueAssert {
 
             }
 
-        }
-
-        if ((!value.isHostObject() || !(value.asHostObject() instanceof Map)) && !value.isNull()) {
-            for (TypeLiteral<?> literal : NEVER_SUPPORTED_MAPS) {
-                try {
-                    value.as(literal);
-                    fail(literal.toString());
-                } catch (ClassCastException e) {
-                }
-            }
         }
     }
 
@@ -297,14 +331,36 @@ public class ValueAssert {
         }
     }
 
-    private static void assertFails(Runnable runnable, Class<? extends Throwable> exceptionType) {
+    static void assertFails(Runnable runnable, Class<? extends Throwable> exceptionType) {
         assertFails(() -> {
             runnable.run();
             return null;
         }, exceptionType);
     }
 
-    private static void assertFails(Callable<?> callable, Class<? extends Throwable> exceptionType) {
+    static <T extends Throwable> void assertFails(Callable<?> callable, Class<T> exceptionType, Consumer<T> verfier) {
+        try {
+            callable.call();
+        } catch (Throwable t) {
+            if (!exceptionType.isInstance(t)) {
+                throw new AssertionError("expected instanceof " + exceptionType + " was " + t.getClass(), t);
+            }
+            verfier.accept(exceptionType.cast(t));
+        }
+    }
+
+    static <T extends Throwable> void assertFails(Runnable run, Class<T> exceptionType, Consumer<T> verfier) {
+        try {
+            run.run();
+        } catch (Throwable t) {
+            if (!exceptionType.isInstance(t)) {
+                throw new AssertionError("expected instanceof " + exceptionType + " was " + t.getClass(), t);
+            }
+            verfier.accept(exceptionType.cast(t));
+        }
+    }
+
+    static void assertFails(Callable<?> callable, Class<? extends Throwable> exceptionType) {
         try {
             callable.call();
         } catch (Throwable t) {
@@ -436,6 +492,7 @@ public class ValueAssert {
 
         NULL,
         HOST_OBJECT,
+        PROXY_OBJECT,
         NUMBER,
         STRING,
         BOOLEAN,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -348,6 +348,23 @@ public class ValueAPITest {
         assertEquals("baz", value.get(0).get("foo").get("bar")[0]);
     }
 
+    public static class MemberAccess {
+
+        public Object execute(@SuppressWarnings("unused") int value) {
+            return "int";
+        }
+
+        public Object execute(@SuppressWarnings("unused") double value) {
+            return "double";
+        }
+
+        @SuppressWarnings("unused")
+        public Object execute(Object... o) {
+            return "varArgs";
+        }
+
+    }
+
     @Test
     public void testNumberCoercion() {
         Value memberAccess = context.asValue(new MemberAccess());
@@ -375,8 +392,7 @@ public class ValueAPITest {
         o.add(new ObjectCoercionTest(null, Object.class, null));
         o.add(new ObjectCoercionTest(true, Boolean.class, null));
         o.add(new ObjectCoercionTest("foo", String.class, null));
-        // TODO: should Character really be converted to String?
-        // o.add(new ObjectCoercionTest('c', String.class, (v) -> assertEquals("c", v)));
+        o.add(new ObjectCoercionTest('c', String.class, (v) -> assertEquals("c", v)));
         o.add(new ObjectCoercionTest((byte) 42, Byte.class, null));
         o.add(new ObjectCoercionTest((short) 42, Short.class, null));
         o.add(new ObjectCoercionTest(42, Integer.class, null));
@@ -576,22 +592,6 @@ public class ValueAPITest {
 
     private static class FieldAccess {
         @SuppressWarnings("unused") public EmptyObject member;
-    }
-
-    public static class MemberAccess {
-
-        public Object execute(@SuppressWarnings("unused") int value) {
-            return "int";
-        }
-
-        public Object execute(@SuppressWarnings("unused") double value) {
-            return "double";
-        }
-
-        @SuppressWarnings("unused")
-        public Object execute(Object... o) {
-            return "varArgs";
-        }
     }
 
     private static interface ProxyInterface {

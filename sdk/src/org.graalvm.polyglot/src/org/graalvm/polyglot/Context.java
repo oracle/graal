@@ -26,13 +26,11 @@ package org.graalvm.polyglot;
 
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Predicate;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
@@ -133,18 +131,16 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Evaluates guest language code, using the Graal {@linkplain Language language} that matches
-     * the code's {@linkplain Source#getLanguage() language}. The language needs to be specified
-     * when the source is created. The result is accessible using the language agnostic {@link Value
-     * value} API.
+     * Evaluates guest language code, using the Graal {@linkplain Language language} that matches the
+     * code's {@linkplain Source#getLanguage() language}. The language needs to be specified when the
+     * source is created. The result is accessible using the language agnostic {@link Value value} API.
      *
      * @param source a source object to evaluate
-     * @return result of the evaluation. The returned instance is is never <code>null</code>, but
-     *         the result might represent a {@link Value#isNull() null} guest language value.
+     * @return result of the evaluation. The returned instance is is never <code>null</code>, but the
+     *         result might represent a {@link Value#isNull() null} guest language value.
      * @throws PolyglotException in case parsing or evaluation of the guest language code failed.
-     * @throws IllegalStateException if the context is already closed, the current thread is not
-     *             allowed to access this context or if the language of the given source is not
-     *             installed.
+     * @throws IllegalStateException if the context is already closed, the current thread is not allowed
+     *             to access this context or if the language of the given source is not installed.
      * @since 1.0
      */
     public Value eval(Source source) {
@@ -152,15 +148,15 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Evaluates a guest language code literal, using a specified Graal {@linkplain Language
-     * language}. The result is accessible using the language agnostic {@link Value value} API.
+     * Evaluates a guest language code literal, using a specified Graal {@linkplain Language language}.
+     * The result is accessible using the language agnostic {@link Value value} API.
      *
      * @param languageId the id of the language evaluate the code in, eg <code>"js"</code>.
      * @param source textual source code
      * @return result of the evaluation wrapped in a non-null {@link Value}
      * @throws PolyglotException in case parsing or evaluation of the guest language code failed.
-     * @throws IllegalStateException if the context is already closed, the current thread is not
-     *             allowed to access this context or if the given language is not installed.
+     * @throws IllegalStateException if the context is already closed, the current thread is not allowed
+     *             to access this context or if the given language is not installed.
      * @since 1.0
      */
     public Value eval(String languageId, CharSequence source) {
@@ -168,15 +164,15 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Looks a symbol up in the top-most scope of a specified language. The result is accessible
-     * using the language agnostic {@link Value value} API.
+     * Looks a symbol up in the top-most scope of a specified language. The result is accessible using
+     * the language agnostic {@link Value value} API.
      *
      * @param languageId
      * @param symbol name of a symbol
      * @return result of the evaluation wrapped in a non-null {@link Value}
      * @throws PolyglotException in case the lookup failed due to a guest language error.
-     * @throws IllegalStateException if the context is already closed, the current thread is not
-     *             allowed to access this context or if the given language is not installed.
+     * @throws IllegalStateException if the context is already closed, the current thread is not allowed
+     *             to access this context or if the given language is not installed.
      * @since 1.0
      */
     public Value lookup(String languageId, String symbol) {
@@ -184,11 +180,11 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Imports a symbol from the polyglot scope or <code>null</code> if the symbol is not defined.
-     * The polyglot scope is used to exchange symbols between guest languages and also the host
-     * language. Guest languages can put and get symbols through language specific APIs. For
-     * example, in JavaScript symbols of the polyglot scope can be get using
-     * <code>Interop.import("name")</code> and set using <code>Interop.export("name", value)</code>.
+     * Imports a symbol from the polyglot scope or <code>null</code> if the symbol is not defined. The
+     * polyglot scope is used to exchange symbols between guest languages and also the host language.
+     * Guest languages can put and get symbols through language specific APIs. For example, in
+     * JavaScript symbols of the polyglot scope can be get using <code>Interop.import("name")</code> and
+     * set using <code>Interop.export("name", value)</code>.
      *
      * @param name the name of the symbol to import.
      * @return the symbol value or <code>null</code> if no symbol was registered with that name. The
@@ -203,12 +199,11 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Exports a symbol into the polyglot scope. The polyglot scope is used to exchange symbols
-     * between guest languages and the host language. Guest languages can put and get symbols
-     * through language specific APIs. For example, in JavaScript symbols of the polyglot scope can
-     * be accessed using <code>Interop.import("name")</code> and set using
-     * <code>Interop.put("name", value)</code>. Any Java value or {@link Value} instance is allowed
-     * to be passed as value.
+     * Exports a symbol into the polyglot scope. The polyglot scope is used to exchange symbols between
+     * guest languages and the host language. Guest languages can put and get symbols through language
+     * specific APIs. For example, in JavaScript symbols of the polyglot scope can be accessed using
+     * <code>Interop.import("name")</code> and set using <code>Interop.put("name", value)</code>. Any
+     * Java value or {@link Value} instance is allowed to be passed as value.
      *
      * @param name the name of the symbol to export.
      * @param value the value to export to the language, any Java interpreted using the semantics
@@ -222,16 +217,16 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Forces the initialization of a language. It is not necessary to explicitly initialize a
-     * language, it will be initialized the first time it is used.
+     * Forces the initialization of a language. It is not necessary to explicitly initialize a language,
+     * it will be initialized the first time it is used.
      *
      * @param languageId the identifier of the language to initialize.
      * @throws IllegalArgumentException if the language does not exist.
-     * @return <code>true</code> if the language was initialized. Returns <code>false</code> if it
-     *         was already initialized.
+     * @return <code>true</code> if the language was initialized. Returns <code>false</code> if it was
+     *         already initialized.
      * @throws PolyglotException in case the initialization failed due to a guest language error.
-     * @throws IllegalStateException if the context is already closed, the current thread is not
-     *             allowed to access this context or if the given language is not installed.
+     * @throws IllegalStateException if the context is already closed, the current thread is not allowed
+     *             to access this context or if the given language is not installed.
      * @since 1.0
      */
     public boolean initialize(String languageId) {
@@ -239,53 +234,51 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Converts a host value to a polyglot value representation. This conversion is applied
-     * implicitly whenever values are {@link #exportSymbol(String, Object) exported},
-     * {@link Value#execute(Object...) execution} or {@link Value#newInstance(Object...)
-     * instantiation} arguments are provided, {@link Value#putMember(String, Object) members} and
-     * {@link Value#setArrayElement(long, Object) array elements} are set or when a value is
-     * returned by a {@link Proxy polyglot proxy}. It is not required nor efficient to explicitly
-     * convert to polyglot values before performing these operations. This method is useful to
-     * convert a {@link Value#as(Class) mapped} host value back to a polyglot value while preserving
-     * the identity.
+     * Converts a host value to a polyglot value representation. This conversion is applied implicitly
+     * whenever values are {@link #exportSymbol(String, Object) exported},
+     * {@link Value#execute(Object...) execution} or {@link Value#newInstance(Object...) instantiation}
+     * arguments are provided, {@link Value#putMember(String, Object) members} and
+     * {@link Value#setArrayElement(long, Object) array elements} are set or when a value is returned by
+     * a {@link Proxy polyglot proxy}. It is not required nor efficient to explicitly convert to
+     * polyglot values before performing these operations. This method is useful to convert a
+     * {@link Value#as(Class) mapped} host value back to a polyglot value while preserving the identity.
      * <p>
      * When a host value is converted to a polyglot value the following rules apply:
+     * <p>
+     * When the <code>hostValue</code> represents a {@link Class}, then the created
+     * {@link TruffleObject} will allow access to <b>public</b> and <b>static</b> fields and methods
+     * from the class.
+     *
      * <ol>
-     * <li>If the host value is <code>null</code> then it will be interpreted as polyglot
+     * <li>If the <code>hostValue</code> is <code>null</code> then it will be interpreted as polyglot
      * {@link Value#isNull() null}.
-     * <li>If the host value is already a {@link Value polyglot value} then it will be cast to
-     * {@link Value}.
-     * <li>If the host value is an instance of {@link Byte}, {@link Short}, {@link Integer},
+     * <li>If the <code>hostValue</code> is already a {@link Value polyglot value} then it will be cast
+     * to {@link Value}.
+     * <li>If the <code>hostValue</code> is an instance of {@link Byte}, {@link Short}, {@link Integer},
      * {@link Long}, {@link Float} or {@link Double} then it will be interpreted as polyglot
      * {@link Value#isNumber() number}.
-     * <li>If the host value is an instance of {@link Character} or {@link String} then it will be
-     * interpreted as polyglot {@link Value#isString() string}.
-     * <li>If the host value is an instance of {@link Boolean} then it will be interpreted as
-     * polyglot {@link Value#isBoolean() boolean}.
-     * <li>If the host value is a {@link Proxy polyglot proxy} then it will be interpreted according
-     * to the behavior specified by the proxy. See the javadoc of the proxy subclass for further
-     * details.
-     * <li>If the host value is a non-primitive {@link Value#as(Class) mapped Java value} then the
-     * it will be interpreted according to the original value. For example if a guest language
-     * object was mapped to {@link Map} then the original guest language object will be preserved
-     * when converting to a polyglot value.
-     * <li>TODO do we want to support Map here?
-     * <li>If the host value is of type {@link List}, {@link Set}, {@link Collection} or
-     * {@link Iterable} then it will be interpreted as value with {@link Value#hasArrayElements()
-     * array elements}. The value will also be treated as {@link Value#isHostObject() host object}.
-     * <li>If the host value is an array then it will be interpreted as value with
-     * {@link Value#hasArrayElements() array elements}. The value will also be treated as
-     * {@link Value#isHostObject() host object}.
-     * <li>Any other, not explicitly mentioned, Java type will be interpreted as
-     * {@link Value#isHostObject() host object}. Host objects expose all their public java fields
-     * and methods as {@link Value#getMember(String) members}. Each member is
-     * {@link Value#canExecute() executable}.
+     * <li>If the <code>hostValue</code> is an instance of {@link Character} or {@link String} then it
+     * will be interpreted as polyglot {@link Value#isString() string}.
+     * <li>If the <code>hostValue</code> is an instance of {@link Boolean} then it will be interpreted
+     * as polyglot {@link Value#isBoolean() boolean}.
+     * <li>If the <code>hostValue</code> is a {@link Proxy polyglot proxy} then it will be interpreted
+     * according to the behavior specified by the proxy. See the javadoc of the proxy subclass for
+     * further details.
+     * <li>If the <code>hostValue</code> is a non-primitive {@link Value#as(Class) mapped Java value}
+     * then the original value will be restored. For example if a guest language object was mapped to
+     * {@link Map} then the original object identity will be preserved when converting back to a
+     * polyglot value.
+     * <li>Any other <code>hostValue</code> will be interpreted as {@link Value#isHostObject() host
+     * object}. Host objects expose all their public java fields and methods as
+     * {@link Value#getMember(String) members}. In addition, Java arrays and subtypes of {@link List}
+     * will be interpreted as value with {@link Value#hasArrayElements() array elements} and single
+     * method interfaces annotated with {@link FunctionalInterface} are {@link Value#execute(Object...)
+     * executable} directly.
      * </ol>
      * <p>
-     *
      * <b>Basic Examples:</b>
      *
-     * The following assertion statements always hold.
+     * The following assertion statements always hold:
      *
      * <pre>
      * Context context = Context.create();
@@ -295,54 +288,69 @@ public final class Context implements AutoCloseable {
      * assert context.asValue('c').isString();
      * assert context.asValue(new String[0]).hasArrayElements();
      * assert context.asValue(new ArrayList<>()).isHostObject();
+     * assert context.asValue(new ArrayList<>()).hasArrayElements();
+     * assert context.asValue((Provider) () -> 42).execute().asInt() == 42;
      * </pre>
      *
-     * <b>Host Object Example:</b>
+     * <h1>Mapping to Java methods and fields</h1>
      *
-     * This example first creates a new instance of the Java class <code>Foo</code> and inspects it
-     * first using the polyglot value API and later using JavaScript.
+     * When Java host objects are passed to guest languages, their public methods and fields are
+     * provided as {@link #getMember(String) members}. Methods and fields are grouped by name, so only
+     * one member is exposed for each name.
      *
-     * The JavaScript examples pass
+     * When an argument value needs to be mapped to match a required Java method parameter type then the
+     * semantics of {@link #as(Class) host value mapping} is used. The result of the mapping is
+     * equivalent of calling {@link Value#as(Class)} with the parameter type. Therefore a
+     * {@link ClassCastException} is thrown if a parameter value cannot be cast to the required
+     * parameter type.
+     * <p>
+     * Overloaded java methods are selected based on the arguments that are provided. In case multiple
+     * mapped Java methods with the same name are applicable for {@link Value#execute(Object...)
+     * executions} or {@link Value#newInstance(Object...) instantiations} then the method with the most
+     * concrete method with applicable arguments will be used used.
+     * <p>
+     * The following parameter type hierarchy is used for method resolution. Left-most parameter types
+     * are prioritized over types to their right.
+     * <ul>
+     * <li>{@link #isBoolean() Boolean} values: boolean, Boolean, Object
+     * <li>String values: char, Character, String, CharSequence, Object
+     * <li>Number values: byte, Byte, short, Short, int, Integer, long, Long, float, Float, double,
+     * Double, Number, Object
+     * <li>Other values are resolved based on their Java type hierarchy.
+     * </ul>
+     * If there are multiple most concrete methods or too many arguments were provided then a
+     * {@link IllegalArgumentException} will be thrown.
+     * <p>
+     * <b>Advanced Example:</b>
+     *
+     * This example first creates a new instance of the Java class <code>Record</code> and inspects it
+     * first using the polyglot value API and later using the JavaScript guest language.
+     * <p>
+     * In the following examples all assertions hold.
      *
      * <pre>
-     * public static class Foo {
-     *     public String bar = "barField";
-     *
-     *     public String bar(int value) {
-     *         return "barInt";
-     *     }
-     *
-     *     public String bar(String stringValue) {
-     *         return "barString";
-     *     }
+     * <b>class</b> JavaRecord {
+     *   <b>public int</b> x = 42;
+     *   <b>public double</b> y = 42.0;
+     *   <b>public</b> String name() {
+     *     <b>return</b> "foo";
+     *   }
      * }
-     *
      * Context context = Context.create();
-     * Value foo = context.asValue(new Foo());
-     * assert foo.isHostObject();
-     * assert foo.getMember("bar").execute(42).asString().equals("barInt");
-     * assert foo.getMember("bar").execute("").asString().equals("barString");
-     * assert foo.getMember("bar").execute().asString().equals("barField");
+     * Value record = context.asValue(new JavaRecord());
+     * assert record.getMember("x").asInt() == 42;
+     * assert record.getMember("y").asDouble() == 42.0d;
+     * assert record.getMember("name").execute().equals("foo");
      *
-     * assert context.eval("js", "function(foo) foo.bar(42)")
-     *               .execute(foo).asString().equals("barInt");
-     * assert context.eval("js", "function(foo) foo.bar("")")
-     *               .execute(foo).asString().equals("barString");
-     * assert context.eval("js", "function(foo) foo.bar")
-     *               .execute(foo).asString().equals("barField");
+     * assert context.eval("js", "(function(record) record.x)")
+     *               .execute(record).asInt() == 42;
+     * assert context.eval("js", "(function(record) record.y)")
+     *               .execute(record).asDouble() == 42.0d;
+     * assert context.eval("js", "(function(record) record.name())")
+     *               .execute(record).asString().equals("foo");
      * </pre>
      *
-     * <b>Mapping Example using JavaScript:</b> This example first creates a new JavaScript object
-     * and maps it to a {@link Map}. Using the {@link #asValue(Object)} it is possible to recreate
-     * the {@link Value polyglot value} from the Java map. The JavaScript object identity is
-     * preserved in the process.
-     *
-     * <pre>
-     * Context context = Context.create();
-     * Map<Object, Object> javaMap = context.eval("js", "{}").as(Map.class);
-     * Value polyglotValue = context.asValue(javaMap);
-     * </pre>
-     *
+     * @see Value#as(Class)
      * @throws IllegalStateException if the context is already closed
      * @param hostValue the host value to convert to a polyglot value.
      * @return the polyglot value.
@@ -353,18 +361,18 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Closes this context and frees up potentially allocated native resources. A context cannot
-     * free all native resources allocated automatically. For this reason it is necessary to close
-     * contexts after use. If a context is cancelled then the currently executing thread will throw
-     * a {@link PolyglotException}. The exception indicates that it was
-     * {@link PolyglotException#isCancelled() cancelled}. Please note that canceling a single
-     * context can negatively affect the performance of other executing contexts constructed with
-     * the same engine.
+     * Closes this context and frees up potentially allocated native resources. A context cannot free
+     * all native resources allocated automatically. For this reason it is necessary to close contexts
+     * after use. If a context is cancelled then the currently executing thread will throw a
+     * {@link PolyglotException}. The exception indicates that it was
+     * {@link PolyglotException#isCancelled() cancelled}. Please note that canceling a single context
+     * can negatively affect the performance of other executing contexts constructed with the same
+     * engine.
      * <p>
-     * If internal errors occur during closing of the language then they are printed to the
-     * configured {@link Builder#err(OutputStream) error output stream}. If a context was closed
-     * then all its methods will throw an {@link IllegalStateException} when invoked. If an attempt
-     * to close a context was successful then consecutive calls to close have no effect.
+     * If internal errors occur during closing of the language then they are printed to the configured
+     * {@link Builder#err(OutputStream) error output stream}. If a context was closed then all its
+     * methods will throw an {@link IllegalStateException} when invoked. If an attempt to close a
+     * context was successful then consecutive calls to close have no effect.
      *
      * @param cancelIfExecuting if <code>true</code> then currently executing contexts will be
      *            cancelled, else an {@link IllegalStateException} is thrown.
@@ -379,16 +387,16 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Closes this context and frees up potentially allocated native resources. Languages might not
-     * be able to free all native resources allocated by a context automatically. For this reason it
-     * is recommended to close contexts after use. If the context is currently being executed on
-     * another thread then an {@link IllegalStateException} is thrown. To close concurrently
-     * executing contexts see {@link #close(boolean)}.
+     * Closes this context and frees up potentially allocated native resources. Languages might not be
+     * able to free all native resources allocated by a context automatically. For this reason it is
+     * recommended to close contexts after use. If the context is currently being executed on another
+     * thread then an {@link IllegalStateException} is thrown. To close concurrently executing contexts
+     * see {@link #close(boolean)}.
      * <p>
-     * If internal errors occur during closing of the language then they are printed to the
-     * configured {@link Builder#err(OutputStream) error output stream}. If a context was closed
-     * then all its methods will throw an {@link IllegalStateException} when invoked. If an attempt
-     * to close a context was successful then consecutive calls to close have no effect.
+     * If internal errors occur during closing of the language then they are printed to the configured
+     * {@link Builder#err(OutputStream) error output stream}. If a context was closed then all its
+     * methods will throw an {@link IllegalStateException} when invoked. If an attempt to close a
+     * context was successful then consecutive calls to close have no effect.
      *
      * @throws PolyglotException in case the close failed due to a guest language error.
      * @throws IllegalStateException if the context is currently executing on another thread.
@@ -402,8 +410,8 @@ public final class Context implements AutoCloseable {
     /**
      * Creates a context with default configuration.
      *
-     * @param onlyLanguages names of languages permitted in this context, {@code null} if all
-     *            languages are permitted
+     * @param onlyLanguages names of languages permitted in this context, {@code null} if all languages
+     *            are permitted
      * @return a new context
      * @since 1.0
      */
@@ -414,8 +422,8 @@ public final class Context implements AutoCloseable {
     /**
      * Creates a builder for constructing a context with custom configuration.
      *
-     * @param onlyLanguages names of languages permitted in this context, {@code null} if all
-     *            languages are permitted
+     * @param onlyLanguages names of languages permitted in this context, {@code null} if all languages
+     *            are permitted
      * @return a builder that can create a context
      * @since 1.0
      */
@@ -466,9 +474,8 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Sets the standard output stream to be used for this context. If not set then the standard
-         * output stream configured for the {@link #engine(Engine) engine} is used or standard error
-         * stream.
+         * Sets the standard output stream to be used for this context. If not set then the standard output
+         * stream configured for the {@link #engine(Engine) engine} is used or standard error stream.
          *
          * @since 1.0
          */
@@ -479,9 +486,8 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Sets the error output stream to be used for this context. If not set then either the
-         * error stream configured for the {@link #engine(Engine) engine} is used or standard error
-         * stream.
+         * Sets the error output stream to be used for this context. If not set then either the error stream
+         * configured for the {@link #engine(Engine) engine} is used or standard error stream.
          *
          * @since 1.0
          */
@@ -492,8 +498,8 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Sets the input stream to be used for this context. If not set then either the input
-         * stream configured for the {@link #engine(Engine) engine} is used or standard in stream.
+         * Sets the input stream to be used for this context. If not set then either the input stream
+         * configured for the {@link #engine(Engine) engine} is used or standard in stream.
          *
          * @since 1.0
          */
@@ -515,8 +521,8 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Allows guest languages to create new threads. Default is <code>false</code>. Threads
-         * created by guest languages are closed when the context is {@link Context#close() closed}.
+         * Allows guest languages to create new threads. Default is <code>false</code>. Threads created by
+         * guest languages are closed when the context is {@link Context#close() closed}.
          *
          * @since 1.0
          */
@@ -537,13 +543,13 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Sets a class filter that allows to limit the classes that are allowed to be loaded by
-         * guest languages. If the filter returns <code>true</code> then the class is accessible,
-         * else it is not accessible and throws an guest language error when accessed. In order to
-         * have an effect {@link #allowHostAccess(boolean)} needs to be set to <code>true</code>.
+         * Sets a class filter that allows to limit the classes that are allowed to be loaded by guest
+         * languages. If the filter returns <code>true</code> then the class is accessible, else it is not
+         * accessible and throws an guest language error when accessed. In order to have an effect
+         * {@link #allowHostAccess(boolean)} needs to be set to <code>true</code>.
          *
-         * @param classFilter a predicate that returns <code>true</code> or <code>false</code> for a
-         *            java qualified class name.
+         * @param classFilter a predicate that returns <code>true</code> or <code>false</code> for a java
+         *            qualified class name.
          *
          * @since 1.0
          */
@@ -556,15 +562,14 @@ public final class Context implements AutoCloseable {
         /**
          * Set an option for this {@link Context context}. By default any options for the
          * {@link Engine#getOptions() engine}, {@link Language#getOptions() language} or
-         * {@link Instrument#getOptions() instrument} can be set for a context. If an
-         * {@link #engine(Engine) explicit engine} is set for this context then only language
-         * options can be set. Instrument and engine options can be set exclusively on the explicit
-         * engine instance. If a language option was set for the context and the engine then the
-         * option of the context is going to take precedence.
+         * {@link Instrument#getOptions() instrument} can be set for a context. If an {@link #engine(Engine)
+         * explicit engine} is set for this context then only language options can be set. Instrument and
+         * engine options can be set exclusively on the explicit engine instance. If a language option was
+         * set for the context and the engine then the option of the context is going to take precedence.
          * <p>
-         * If one of the set option keys or values is invalid then an
-         * {@link IllegalArgumentException} is thrown when the context is {@link #build() built}.
-         * The given key and value must not be <code>null</code>.
+         * If one of the set option keys or values is invalid then an {@link IllegalArgumentException} is
+         * thrown when the context is {@link #build() built}. The given key and value must not be
+         * <code>null</code>.
          *
          * @see Engine.Builder#option(String, String) To specify an option for the engine.
          * @since 1.0
@@ -580,8 +585,8 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Shortcut for setting multiple {@link #option(String, String) options} using a map. All
-         * values of the provided map must be non-null.
+         * Shortcut for setting multiple {@link #option(String, String) options} using a map. All values of
+         * the provided map must be non-null.
          *
          * @param options a map options.
          * @see #option(String, String) To set a single option.
@@ -595,11 +600,11 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Sets the guest language application arguments for a language {@link Context context}.
-         * Application arguments are typically made available to guest language implementations. It
-         * depends on the language if and how they are accessible within the
-         * {@link Context#eval(Source) evaluated} guest language scripts. Passing no arguments to a
-         * language is equivalent to providing an empty arguments array.
+         * Sets the guest language application arguments for a language {@link Context context}. Application
+         * arguments are typically made available to guest language implementations. It depends on the
+         * language if and how they are accessible within the {@link Context#eval(Source) evaluated} guest
+         * language scripts. Passing no arguments to a language is equivalent to providing an empty
+         * arguments array.
          *
          * @param language the language id of the primary language.
          * @param args an array of arguments passed to the guest language program.
