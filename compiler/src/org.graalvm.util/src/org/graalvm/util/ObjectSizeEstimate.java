@@ -196,8 +196,8 @@ public final class ObjectSizeEstimate {
                             } else {
                                 size.recordPointer();
                                 if (maxDepth > 1) {
-                                    f.setAccessible(true);
                                     try {
+                                        f.setAccessible(true);
                                         Object inner = f.get(o);
                                         if (inner != null) {
                                             if (depth < maxDepth && !identityHashMap.containsKey(inner)) {
@@ -208,6 +208,14 @@ public final class ObjectSizeEstimate {
                                         }
                                     } catch (IllegalArgumentException | IllegalAccessException e) {
                                         throw new UnsupportedOperationException("Must have access privileges to traverse object graph");
+                                    } catch (RuntimeException e) {
+                                        if ("java.lang.reflect.InaccessibleObjectException".equals(e.getClass().getName())) {
+                                            // This is a newly introduced exception in JDK9 and thus
+                                            // cannot be declared in the catch clause.
+                                            throw new UnsupportedOperationException("Target class is not exported to the current module.", e);
+                                        } else {
+                                            throw e;
+                                        }
                                     }
                                 }
                             }
