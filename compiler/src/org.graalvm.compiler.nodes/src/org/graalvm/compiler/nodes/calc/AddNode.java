@@ -35,7 +35,6 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.Constant;
@@ -70,7 +69,7 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
 
     private static boolean isLoopIncrement(AddNode self) {
         return self.getX() instanceof PhiNode && ((PhiNode) self.getX()).isLoopPhi() ||
-            self.getY() instanceof PhiNode && ((PhiNode) self.getY()).isLoopPhi();
+                    self.getY() instanceof PhiNode && ((PhiNode) self.getY()).isLoopPhi();
     }
 
     private static ValueNode canonical(AddNode addNode, BinaryOp<Add> op, ValueNode forX, ValueNode forY, NodeView view) {
@@ -104,7 +103,8 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
                     return sub.getX();
                 }
             }
-            /* Attempt to reassociate to push down constants.
+            /*
+             * Attempt to reassociate to push down constants.
              * We must check that self != null because
              * 1. If this add has not yet been created and as of the form (x + C1) + C2,
              * the constant reassociate() call has not yet happened and so we would infinitely recurse.
