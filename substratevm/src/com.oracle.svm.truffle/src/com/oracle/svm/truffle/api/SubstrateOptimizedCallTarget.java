@@ -71,14 +71,6 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
     }
 
     @Override
-    public void releaseEntryPoint() {
-        // Since Substrate does not currently know how to remove the release bit from the entry
-        // point address, SubstrateOptimizedCallTarget does not set the release bit after
-        // Truffle installs the assumptions. Until this is fixed, this leaves Substrate with
-        // the same data race that existed in Truffle before GR-4454 was fixed.
-    }
-
-    @Override
     public Object doInvoke(Object[] args) {
         /*
          * We have to be very careful that the calling code is uninterruptible, i.e., has no
