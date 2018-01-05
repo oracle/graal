@@ -47,6 +47,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
@@ -125,7 +126,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.Timer;
@@ -354,26 +354,50 @@ public class NativeImageGenerator {
         optionProvider.getHostedValues().put(GraalOptions.EagerSnippets, true);
         optionProvider.getRuntimeValues().put(GraalOptions.EagerSnippets, true);
 
-        ImageSingletonsSupportImpl.HostedManagement.installInThread(new ImageSingletonsSupportImpl.HostedManagement());
-        try {
-            ImageSingletons.add(HostedOptionValues.class, new HostedOptionValues(optionProvider.getHostedValues()));
-            ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
-
-            doRun(optionProvider, entryPoints, mainEntryPoint, javaMainSupport, imageName, k, harnessSubstitutions, compilationExecutor, analysisExecutor);
-        } finally {
+        int maxConcurrentThreads = NativeImageOptions.getMaximumNumberOfConcurrentThreads(new OptionValues(optionProvider.getHostedValues()));
+        createForkJoinPool(maxConcurrentThreads).submit(() -> {
             try {
-                /* Make sure we clean up after ourselves even in the case of an exception. */
-                if (deleteTempDirectory) {
-                    deleteAll(tempDirectory());
+                ImageSingletons.add(HostedOptionValues.class, new HostedOptionValues(optionProvider.getHostedValues()));
+                ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
+
+                doRun(optionProvider, entryPoints, mainEntryPoint, javaMainSupport, imageName, k, harnessSubstitutions, compilationExecutor, analysisExecutor);
+            } finally {
+                try {
+                    /* Make sure we clean up after ourselves even in the case of an exception. */
+                    if (deleteTempDirectory) {
+                        deleteAll(tempDirectory());
+                    }
+                    featureHandler.forEachFeature(Feature::cleanup);
+                } catch (Throwable e) {
+                    /*
+                     * Suppress subsequent errors so that we unwind the original error brought us
+                     * here.
+                     */
                 }
-                featureHandler.forEachFeature(Feature::cleanup);
-                ImageSingletonsSupportImpl.HostedManagement.clearInThread();
-            } catch (Throwable e) {
-                /*
-                 * Suppress subsequent errors so that we unwind the original error brought us here.
-                 */
             }
-        }
+        }).join();
+    }
+
+    private ForkJoinPool createForkJoinPool(int maxConcurrentThreads) {
+        ImageSingletonsSupportImpl.HostedManagement vmConfig = new ImageSingletonsSupportImpl.HostedManagement();
+        return new ForkJoinPool(
+                        maxConcurrentThreads,
+                        pool -> new ForkJoinWorkerThread(pool) {
+                            @Override
+                            protected void onStart() {
+                                super.onStart();
+                                ImageSingletonsSupportImpl.HostedManagement.installInThread(vmConfig);
+                                assert loader.getClassLoader().equals(getContextClassLoader());
+                            }
+
+                            @Override
+                            protected void onTermination(Throwable exception) {
+                                ImageSingletonsSupportImpl.HostedManagement.clearInThread();
+                                super.onTermination(exception);
+                            }
+                        },
+                        Thread.getDefaultUncaughtExceptionHandler(),
+                        false);
     }
 
     @SuppressWarnings("try")
@@ -697,7 +721,7 @@ public class NativeImageGenerator {
                 hUniverse = new HostedUniverse(bigbang, svmHost);
                 hMetaAccess = new HostedMetaAccess(hUniverse, aMetaAccess);
 
-                new UniverseBuilder(aUniverse, aMetaAccess, hUniverse, hMetaAccess, new StaticAnalysisResultsBuilder(bigbang, hUniverse),
+                new UniverseBuilder(aUniverse, aMetaAccess, hUniverse, hMetaAccess, HostedConfiguration.instance().createStaticAnalysisResultsBuilder(bigbang, hUniverse),
                                 bigbang.getUnsupportedFeatures()).build(debug);
 
                 runtime = new HostedRuntimeConfigurationBuilder(options, svmHost, hUniverse, hMetaAccess, aProviders).build();

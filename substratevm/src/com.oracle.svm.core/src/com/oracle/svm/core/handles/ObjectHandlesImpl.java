@@ -228,6 +228,14 @@ public final class ObjectHandlesImpl extends ObjectHandles {
     @SuppressWarnings("unchecked")
     @Override
     public <T> T get(ObjectHandle handle) {
+        Object obj = doGet(handle);
+        if (obj instanceof WeakHandleReference) {
+            obj = ((WeakHandleReference<T>) obj).get();
+        }
+        return (T) obj;
+    }
+
+    private Object doGet(ObjectHandle handle) {
         if (handle.equal(nullHandle)) {
             return null;
         }
@@ -240,11 +248,11 @@ public final class ObjectHandlesImpl extends ObjectHandles {
             throw new IllegalArgumentException("Invalid handle");
         }
         int indexInBucket = getIndexInBucket(index);
-        Object obj = UnsafeAccess.UNSAFE.getObjectVolatile(bucket, getObjectArrayByteOffset(indexInBucket));
-        if (obj instanceof WeakHandleReference) {
-            obj = ((WeakHandleReference<T>) obj).get();
-        }
-        return (T) obj;
+        return UnsafeAccess.UNSAFE.getObjectVolatile(bucket, getObjectArrayByteOffset(indexInBucket));
+    }
+
+    public boolean isWeak(ObjectHandle handle) {
+        return (doGet(handle) instanceof WeakHandleReference);
     }
 
     @Override

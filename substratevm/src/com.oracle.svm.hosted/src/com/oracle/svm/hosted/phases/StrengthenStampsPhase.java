@@ -81,6 +81,13 @@ public class StrengthenStampsPhase extends Phase {
                  * need to improve them.
                  */
                 ValueNode node = (ValueNode) n;
+
+                /*
+                 * First ask the node to improve the stamp itself, to incorporate already improved
+                 * input stamps.
+                 */
+                node.inferStamp();
+
                 Stamp newStamp = strengthen(node.stamp(NodeView.DEFAULT));
                 if (newStamp != null) {
                     node.setStamp(newStamp);

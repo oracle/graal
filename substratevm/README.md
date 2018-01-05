@@ -143,3 +143,6 @@ to the project. The format is one directory name per line, with directories name
 
 If you pull a changeset which adds or removes checkstyle XML files, you may get inappropriate style warnings/errors in Eclipse until you 'mx eclipseinit' and then Clean the affected projects. (This can be particularly confusing because you'll see Checkstyle behaviour which is inconsistent with the contents of the on-disk checkstyle XML files.)
 
+## License
+
+The Substrate VM is licensed under the [GPL 2](LICENSE.md).

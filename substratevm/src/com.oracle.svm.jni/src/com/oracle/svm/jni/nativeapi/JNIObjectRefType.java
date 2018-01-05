@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.util;
+package com.oracle.svm.jni.nativeapi;
 
-/**
- * Signals that something went wrong regarding UTF8 encoding or decoding.
- */
-public class Utf8Exception extends Exception {
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CEnum;
+import org.graalvm.nativeimage.c.constant.CEnumConstant;
+import org.graalvm.nativeimage.c.constant.CEnumValue;
 
-    private static final long serialVersionUID = 5982621155136696282L;
+@CContext(JNIHeaderDirectives.class)
+@CEnum("jobjectRefType")
+public enum JNIObjectRefType {
+    @CEnumConstant("JNIInvalidRefType") //
+    Invalid,
 
-    Utf8Exception() {
-        super();
-    }
+    @CEnumConstant("JNILocalRefType") //
+    Local,
 
-    Utf8Exception(String message) {
-        super(message);
-    }
+    @CEnumConstant("JNIGlobalRefType") //
+    Global,
 
-    Utf8Exception(String message, Throwable cause) {
-        super(message, cause);
-    }
+    @CEnumConstant("JNIWeakGlobalRefType") //
+    WeakGlobal;
 
-    Utf8Exception(Throwable cause) {
-        super(cause);
-    }
+    @CEnumValue
+    public native int getCValue();
 }

@@ -33,6 +33,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
+import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -81,6 +83,10 @@ public final class PosixJavaThreads extends JavaThreads {
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
     private static Target_java_lang_Thread toTarget(Thread thread) {
         return Target_java_lang_Thread.class.cast(thread);
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    PosixJavaThreads() {
     }
 
     @Override

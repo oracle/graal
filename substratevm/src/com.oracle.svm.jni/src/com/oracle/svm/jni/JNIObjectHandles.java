@@ -26,6 +26,7 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.jni.nativeapi.JNIObjectRefType;
 
 /**
  * Manages accesses to both {@link JNIThreadLocalHandles local} and {@link JNIGlobalHandles global}
@@ -48,5 +49,18 @@ public final class JNIObjectHandles {
             return JNIGlobalHandles.singleton().get(handle);
         }
         throw new RuntimeException("Invalid object handle");
+    }
+
+    public static JNIObjectRefType getHandleType(JNIObjectHandle handle) {
+        if (JNIThreadLocalHandles.isInRange(handle)) {
+            return JNIObjectRefType.Local;
+        }
+        if (JNIGlobalHandles.singleton().isInRange(handle)) {
+            if (JNIGlobalHandles.singleton().isWeak(handle)) {
+                return JNIObjectRefType.WeakGlobal;
+            }
+            return JNIObjectRefType.Global;
+        }
+        return JNIObjectRefType.Invalid; // intentionally includes the null handle
     }
 }

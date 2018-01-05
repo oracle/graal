@@ -10,7 +10,7 @@ svm-common-darwin-gate: ${svm-common-darwin} {
   ]
 }
 
-svm-cmd-gate: ["mx", "--strict-compliance", "gate", "--strict-mode", "--tags"]
+svm-cmd-gate: ["mx", "--kill-with-sigquit", "--strict-compliance", "gate", "--strict-mode", "--tags"]
 
 gate-svm-js-ruby-sulong-python: ${svm-common-linux-gate} ${svm-common-sulong} {
   run: [

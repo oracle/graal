@@ -1,5 +1,5 @@
 #
-# commands.py - the GraalVM specific commands
+# mx_tools.py - the GraalVM specific commands
 #
 # ----------------------------------------------------------------------------------------------------
 #
@@ -59,9 +59,15 @@ class JMHRunnerToolsBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite):
 mx_benchmark.add_bm_suite(JMHRunnerToolsBenchmarkSuite())
 
 
-def javadoc(args, vm=None):
+def javadoc(args):
     """build the Javadoc for all packages"""
-    mx.javadoc(['--unified'] + args)
+    if not args:
+        projectNames = []
+        for p in mx.projects(True, True):
+            projectNames.append(p.name)
+        mx.javadoc(['--unified', '--projects', ','.join(projectNames)], includeDeps=False)
+    else:
+        mx.javadoc(['--unified'] + args)
     javadocDir = os.sep.join([_suite.dir, 'javadoc'])
     index = os.sep.join([javadocDir, 'index.html'])
     if exists(index):
@@ -140,6 +146,7 @@ def _tools_gate_runner(args, tasks):
 mx_gate.add_gate_runner(_suite, _tools_gate_runner)
 
 mx.update_commands(_suite, {
+    'javadoc' : [javadoc, ''],
     'gate' : [mx_gate.gate, ''],
 })
 

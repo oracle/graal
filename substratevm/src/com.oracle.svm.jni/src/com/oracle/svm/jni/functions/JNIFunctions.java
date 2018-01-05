@@ -24,6 +24,7 @@ package com.oracle.svm.jni.functions;
 
 // Checkstyle: allow reflection
 
+import java.io.CharConversionException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
@@ -31,6 +32,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.Buffer;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import org.graalvm.compiler.word.Word;
@@ -38,6 +40,7 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
@@ -45,19 +48,21 @@ import org.graalvm.nativeimage.c.type.CShortPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.Utf8;
-import com.oracle.svm.core.util.Utf8Exception;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jni.JNIGlobalHandles;
 import com.oracle.svm.jni.JNIObjectHandles;
@@ -85,6 +90,7 @@ import com.oracle.svm.jni.nativeapi.JNIJavaVMPointer;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNINativeMethod;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.jni.nativeapi.JNIObjectRefType;
 
 import jdk.vm.ci.meta.MetaUtil;
 
@@ -211,6 +217,29 @@ final class JNIFunctions {
     }
 
     /*
+     * jclass GetSuperclass(JNIEnv *env, jclass clazz);
+     */
+
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static JNIObjectHandle GetSuperclass(JNIEnvironment env, JNIObjectHandle handle) {
+        Class<?> clazz = JNIObjectHandles.getObject(handle);
+        return JNIThreadLocalHandles.get().create(clazz.getSuperclass());
+    }
+
+    /*
+     * jboolean IsAssignableFrom(JNIEnv *env, jclass clazz1, jclass clazz2);
+     */
+
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnFalse.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static boolean IsAssignableFrom(JNIEnvironment env, JNIObjectHandle handle1, JNIObjectHandle handle2) {
+        Class<?> clazz1 = JNIObjectHandles.getObject(handle1);
+        Class<?> clazz2 = JNIObjectHandles.getObject(handle2);
+        return clazz2.isAssignableFrom(clazz1);
+    }
+
+    /*
      * jobject NewGlobalRef(JNIEnv *env, jobject obj);
      */
 
@@ -261,6 +290,20 @@ final class JNIFunctions {
     }
 
     /*
+     * jobjectRefType GetObjectRefType(JNIEnv* env, jobject obj);
+     */
+
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static JNIObjectRefType GetObjectRefType(JNIEnvironment env, JNIObjectHandle handle) {
+        try {
+            return JNIObjectHandles.getHandleType(handle);
+        } catch (Throwable t) {
+            return JNIObjectRefType.Invalid;
+        }
+    }
+
+    /*
      * jclass FindClass(JNIEnv *env, const char *name);
      */
 
@@ -305,6 +348,21 @@ final class JNIFunctions {
     }
 
     /*
+     * jint UnregisterNatives(JNIEnv *env, jclass clazz);
+     */
+
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnJniErr.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static int UnregisterNatives(JNIEnvironment env, JNIObjectHandle hclazz) {
+        Class<?> clazz = JNIObjectHandles.getObject(hclazz);
+        String internalName = MetaUtil.toInternalName(clazz.getName());
+        for (JNINativeLinkage linkage : JNIReflectionDictionary.singleton().getLinkages(internalName)) {
+            linkage.unsetEntryPoint();
+        }
+        return JNIErrors.JNI_OK();
+    }
+
+    /*
      * jmethodID GetMethodID(JNIEnv *env, jclass clazz, const char *name, const char *sig);
      *
      * jmethodID GetStaticMethodID(JNIEnv *env, jclass clazz, const char *name, const char *sig);
@@ -341,11 +399,28 @@ final class JNIFunctions {
     }
 
     /*
+     * jobject AllocObject(JNIEnv *env, jclass clazz);
+     */
+
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static JNIObjectHandle AllocObject(JNIEnvironment env, JNIObjectHandle classHandle) {
+        Class<?> clazz = JNIObjectHandles.getObject(classHandle);
+        Object instance;
+        try {
+            instance = UnsafeAccess.UNSAFE.allocateInstance(clazz);
+        } catch (InstantiationException e) {
+            instance = null;
+        }
+        return JNIThreadLocalHandles.get().create(instance);
+    }
+
+    /*
      * jstring NewString(JNIEnv *env, const jchar *unicodeChars, jsize len);
      */
 
     @CEntryPoint
-    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnNullWord.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIObjectHandle NewString(JNIEnvironment env, CShortPointer unicode, int len) {
         String str;
         char[] chars = new char[len];
@@ -362,18 +437,14 @@ final class JNIFunctions {
      */
 
     @CEntryPoint
-    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnNullWord.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIObjectHandle NewStringUTF(JNIEnvironment env, CCharPointer bytes) {
         String str = null;
         if (bytes.isNonNull()) {
-            UnsignedWord len = SubstrateUtil.strlen(bytes);
-            byte[] array = new byte[(int) len.rawValue()];
-            for (int i = 0; i < array.length; i++) {
-                array[i] = ((Pointer) bytes).readByte(i);
-            }
+            ByteBuffer buffer = SubstrateUtil.wrapAsByteBuffer(bytes, Integer.MAX_VALUE);
             try {
-                str = Utf8.utf8ToString(true, array);
-            } catch (Utf8Exception ignore) {
+                str = Utf8.utf8ToString(true, buffer);
+            } catch (CharConversionException ignore) {
             }
         }
         return JNIThreadLocalHandles.get().create(str);
@@ -388,6 +459,17 @@ final class JNIFunctions {
     static int GetStringLength(JNIEnvironment env, JNIObjectHandle hstr) {
         String str = JNIObjectHandles.getObject(hstr);
         return (str != null) ? str.length() : 0;
+    }
+
+    /*
+     * jsize GetStringUTFLength(JNIEnv *env, jstring string);
+     */
+
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnMinusOne.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static int GetStringUTFLength(JNIEnvironment env, JNIObjectHandle hstr) {
+        String str = JNIObjectHandles.getObject(hstr);
+        return Utf8.utf8Length(str);
     }
 
     /*
@@ -473,6 +555,29 @@ final class JNIFunctions {
             char c = str.charAt(start + i);
             buf.write(i, (short) c);
         }
+    }
+
+    /*
+     * void GetStringUTFRegion(JNIEnv *env, jstring str, jsize start, jsize len, char *buf);
+     */
+
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerVoid.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static void GetStringUTFRegion(JNIEnvironment env, JNIObjectHandle hstr, int start, int len, CCharPointer buf) {
+        String str = JNIObjectHandles.getObject(hstr);
+        if (start < 0) {
+            throw new StringIndexOutOfBoundsException(start);
+        }
+        if (start + len > str.length()) {
+            throw new StringIndexOutOfBoundsException(start + len);
+        }
+        if (len < 0) {
+            throw new StringIndexOutOfBoundsException(len);
+        }
+        int capacity = Utf8.maxUtf8ByteLength(len, true); // estimate: caller must pre-allocate
+                                                          // enough
+        ByteBuffer buffer = SubstrateUtil.wrapAsByteBuffer(buf, capacity);
+        Utf8.substringToUtf8(buffer, str, start, start + len, true);
     }
 
     /*
@@ -658,6 +763,38 @@ final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerVoid.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static void Throw(JNIEnvironment env, JNIObjectHandle handle) throws Throwable {
         throw (Throwable) JNIObjectHandles.getObject(handle);
+    }
+
+    interface NewObjectWithObjectArgFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId ctor, JNIObjectHandle arg);
+    }
+
+    /*
+     * jint ThrowNew(JNIEnv *env, jclass clazz, const char *message);
+     */
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerVoid.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static void ThrowNew(JNIEnvironment env, JNIObjectHandle clazzHandle, CCharPointer message) throws Throwable {
+        Class<?> clazz = JNIObjectHandles.getObject(clazzHandle);
+        JNIMethodId ctor = JNIReflectionDictionary.singleton().getMethodID(clazz, "<init>", "(Ljava/lang/String;)V", false);
+        JNIObjectHandle messageHandle = NewStringUTF(env, message);
+        NewObjectWithObjectArgFunctionPointer newObject = (NewObjectWithObjectArgFunctionPointer) env.getFunctions().getNewObject();
+        JNIObjectHandle exception = newObject.invoke(env, clazzHandle, ctor, messageHandle);
+        throw (Throwable) JNIObjectHandles.getObject(exception);
+    }
+
+    /*
+     * void FatalError(JNIEnv *env, const char *msg);
+     */
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerVoid.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static void FatalError(JNIEnvironment env, CCharPointer message) {
+        Log log = Log.log().autoflush(true);
+        log.string("Fatal error reported via JNI: ").string(message).newline();
+        VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+        SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
+        ConfigurationValues.getOSInterface().abort();
     }
 
     /*
