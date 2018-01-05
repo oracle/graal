@@ -286,7 +286,7 @@ public final class JavaInterop {
      * @since 0.9
      */
     public static TruffleObject asTruffleObject(Object obj) {
-        return asTruffleObject(obj, null);
+        return asTruffleObject(obj, currentPolyglotContext());
     }
 
     /**
@@ -402,7 +402,7 @@ public final class JavaInterop {
      * @since 0.9
      */
     public static <T> TruffleObject asTruffleFunction(Class<T> functionalType, T implementation) {
-        return asTruffleFunction(functionalType, implementation, null);
+        return asTruffleFunction(functionalType, implementation, currentPolyglotContext());
     }
 
     static <T> TruffleObject asTruffleFunction(Class<T> functionalType, T implementation, Object languageContext) {
@@ -656,7 +656,7 @@ public final class JavaInterop {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return node.execute(value, type, null);
+            return node.execute(value, type, null, currentPolyglotContext());
         }
     }
 
@@ -721,6 +721,14 @@ public final class JavaInterop {
             return exception;
         }
         return engine.wrapHostException(exception);
+    }
+
+    static Object currentPolyglotContext() {
+        EngineSupport engine = ACCESSOR.engine();
+        if (engine == null) {
+            return null;
+        }
+        return engine.getCurrentHostContext();
     }
 
     static final JavaInteropAccessor ACCESSOR = new JavaInteropAccessor();

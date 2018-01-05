@@ -229,6 +229,8 @@ public abstract class Accessor {
 
         public abstract ClassCastException newClassCastException(String message, Throwable cause);
 
+        public abstract Object getCurrentHostContext();
+
         public abstract Object legacyTckEnter(Object vm);
 
         public abstract void legacyTckLeave(Object vm, Object prev);

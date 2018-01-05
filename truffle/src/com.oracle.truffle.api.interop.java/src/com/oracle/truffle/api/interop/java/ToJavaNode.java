@@ -49,10 +49,6 @@ abstract class ToJavaNode extends Node {
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
     @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
 
-    public final Object execute(Object value, Class<?> targetType, Type genericType) {
-        return execute(value, targetType, genericType, null);
-    }
-
     public abstract Object execute(Object value, Class<?> targetType, Type genericType, Object languageContext);
 
     @SuppressWarnings("unused")
