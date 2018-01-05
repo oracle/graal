@@ -91,13 +91,13 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport {
         <T> void doAdd(Class<T> key, T value) {
             checkKey(key);
             if (value == null) {
-                throw UserError.abort("ImageSingletons do not allow null value");
+                throw UserError.abort("ImageSingletons do not allow null value for key " + key.getTypeName());
             }
 
             Object prevValue = configObjects.putIfAbsent(key, value);
 
             if (prevValue != null) {
-                throw UserError.abort("ImageSingletons.add must not overwrite existing key");
+                throw UserError.abort("ImageSingletons.add must not overwrite existing key " + key.getTypeName() + "\nExisting value: " + prevValue + "\nNew value: " + value);
             }
         }
 
