@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,18 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.util.impl;
+package org.graalvm.collections;
 
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.function.BiFunction;
-
-import org.graalvm.util.Equivalence;
-import org.graalvm.util.EconomicMap;
-import org.graalvm.util.EconomicSet;
-import org.graalvm.util.UnmodifiableEconomicMap;
-import org.graalvm.util.UnmodifiableEconomicSet;
-import org.graalvm.util.MapCursor;
 
 /**
  * Implementation of a map with a memory-efficient structure that always preserves insertion order
@@ -58,7 +53,7 @@ import org.graalvm.util.MapCursor;
  * map falls below a specific threshold, the map will be compressed via the
  * {@link #maybeCompress(int)} method.
  */
-public final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
+final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
 
     /**
      * Initial number of key/value pair entries that is allocated in the first entries array.
@@ -135,45 +130,46 @@ public final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicS
         return map;
     }
 
-    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy) {
-        return intercept(new EconomicMapImpl<>(strategy));
+    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, boolean isSet) {
+        return intercept(new EconomicMapImpl<>(strategy, isSet));
     }
 
-    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, int initialCapacity) {
-        return intercept(new EconomicMapImpl<>(strategy, initialCapacity));
+    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, int initialCapacity, boolean isSet) {
+        return intercept(new EconomicMapImpl<>(strategy, initialCapacity, isSet));
     }
 
-    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, UnmodifiableEconomicMap<K, V> other) {
-        return intercept(new EconomicMapImpl<>(strategy, other));
+    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, UnmodifiableEconomicMap<K, V> other, boolean isSet) {
+        return intercept(new EconomicMapImpl<>(strategy, other, isSet));
     }
 
-    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, UnmodifiableEconomicSet<K> other) {
-        return intercept(new EconomicMapImpl<>(strategy, other));
+    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, UnmodifiableEconomicSet<K> other, boolean isSet) {
+        return intercept(new EconomicMapImpl<>(strategy, other, isSet));
     }
 
-    private EconomicMapImpl(Equivalence strategy) {
+    private EconomicMapImpl(Equivalence strategy, boolean isSet) {
         if (strategy == Equivalence.IDENTITY) {
             this.strategy = null;
         } else {
             this.strategy = strategy;
         }
+        this.isSet = isSet;
     }
 
-    private EconomicMapImpl(Equivalence strategy, int initialCapacity) {
-        this(strategy);
+    private EconomicMapImpl(Equivalence strategy, int initialCapacity, boolean isSet) {
+        this(strategy, isSet);
         init(initialCapacity);
     }
 
-    private EconomicMapImpl(Equivalence strategy, UnmodifiableEconomicMap<K, V> other) {
-        this(strategy);
+    private EconomicMapImpl(Equivalence strategy, UnmodifiableEconomicMap<K, V> other, boolean isSet) {
+        this(strategy, isSet);
         if (!initFrom(other)) {
             init(other.size());
             putAll(other);
         }
     }
 
-    private EconomicMapImpl(Equivalence strategy, UnmodifiableEconomicSet<K> other) {
-        this(strategy);
+    private EconomicMapImpl(Equivalence strategy, UnmodifiableEconomicSet<K> other, boolean isSet) {
+        this(strategy, isSet);
         if (!initFrom(other)) {
             init(other.size());
             addAll(other);
@@ -807,13 +803,22 @@ public final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicS
         return object;
     }
 
+    private final boolean isSet;
+
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append("map(size=").append(size()).append(", {");
+        builder.append(isSet ? "set(size=" : "map(size=").append(size()).append(", {");
+        String sep = "";
         MapCursor<K, V> cursor = getEntries();
         while (cursor.advance()) {
-            builder.append("(").append(cursor.getKey()).append(",").append(cursor.getValue()).append("),");
+            builder.append(sep);
+            if (isSet) {
+                builder.append(cursor.getKey());
+            } else {
+                builder.append("(").append(cursor.getKey()).append(",").append(cursor.getValue()).append(")");
+            }
+            sep = ",";
         }
         builder.append("})");
         return builder.toString();
