@@ -93,6 +93,7 @@ import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNINativeMethod;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 import com.oracle.svm.jni.nativeapi.JNIObjectRefType;
+import com.oracle.svm.jni.nativeapi.JNIVersion;
 
 import jdk.vm.ci.meta.MetaUtil;
 
@@ -115,7 +116,7 @@ final class JNIFunctions {
     @CEntryPoint
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static int GetVersion(JNIEnvironment env) {
-        return 0x00010008;
+        return JNIVersion.JNI_VERSION_1_8();
     }
 
     /*

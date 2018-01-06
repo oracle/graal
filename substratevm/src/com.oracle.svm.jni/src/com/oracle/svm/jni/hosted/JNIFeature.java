@@ -29,6 +29,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.Feature;
 
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.jni.JNILibraryLoadFeature;
 import com.oracle.svm.jni.functions.JNIFunctionTablesFeature;
 
 /**
@@ -54,6 +55,6 @@ public class JNIFeature implements Feature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(JNIFunctionTablesFeature.class, JNICallWrapperFeature.class);
+        return Arrays.asList(JNIFunctionTablesFeature.class, JNICallWrapperFeature.class, JNILibraryLoadFeature.class);
     }
 }

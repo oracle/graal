@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.jni.nativeapi;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.word.PointerBase;
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CConstant;
 
-public interface PlatformNativeLibrarySupport {
+@CContext(JNIHeaderDirectives.class)
+public class JNIVersion {
+    // Checkstyle: stop
 
-    static PlatformNativeLibrarySupport singleton() {
-        return ImageSingletons.lookup(PlatformNativeLibrarySupport.class);
-    }
+    @CConstant
+    public static native int JNI_VERSION_1_1();
 
-    interface NativeLibrary {
-        String getCanonicalIdentifier();
+    @CConstant
+    public static native int JNI_VERSION_1_2();
 
-        boolean isBuiltin();
+    @CConstant
+    public static native int JNI_VERSION_1_4();
 
-        void load() throws UnsatisfiedLinkError;
+    @CConstant
+    public static native int JNI_VERSION_1_6();
 
-        PointerBase findSymbol(String name);
-    }
+    @CConstant
+    public static native int JNI_VERSION_1_8();
 
-    NativeLibrary createLibrary(String canonical, boolean builtIn);
-
-    PointerBase findBuiltinSymbol(String name);
+    // Checkstyle: resume
 }
