@@ -78,7 +78,7 @@ final class Target_com_oracle_svm_core_util_VMError {
          */
         Log log = Log.log();
         log.autoflush(true);
-        String detailMessage = KnownIntrinsics.unsafeCast(ex, Target_java_lang_Throwable.class).detailMessage;
+        String detailMessage = JDKUtils.getRawMessage(ex);
         log.string("VMError.shouldNotReachHere: ").string(ex.getClass().getName()).string(": ").string(detailMessage).newline();
         VMThreads.StatusSupport.setStatusIgnoreSafepoints();
         SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
