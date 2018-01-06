@@ -15,7 +15,7 @@ mx build
 
 mkdir svmbuild
 echo "public class HelloWorld { public static void main(String[] args) { System.out.println(\"Hello World\"); } }" > svmbuild/HelloWorld.java
-$JAVA_HOME/javac svmbuild/HelloWorld.java
+$JAVA_HOME/bin/javac svmbuild/HelloWorld.java
 mx image -cp $PWD/svmbuild -H:Class=HelloWorld -H:Name=helloworld
 svmbuild/helloworld
 ```
