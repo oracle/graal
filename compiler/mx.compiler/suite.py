@@ -1478,11 +1478,6 @@ suite = {
     "GRAAL" : {
       # This distribution defines a module.
       "moduleName" : "jdk.internal.vm.compiler",
-      "addExports" : [
-        # All other internal packages are exported dynamically -
-        # see org.graalvm.compiler.hotspot.HotSpotGraalJVMCIServiceLocator
-        "java.base/jdk.internal.module",
-      ],
       "subDir" : "src",
       "overlaps" : [
         "GRAAL_GRAPHIO",
