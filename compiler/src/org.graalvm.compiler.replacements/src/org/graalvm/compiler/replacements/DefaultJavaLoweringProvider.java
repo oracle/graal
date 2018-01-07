@@ -67,6 +67,7 @@ import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
@@ -476,7 +477,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         Stamp loadStamp = loadStamp(loadIndexed.stamp(NodeView.DEFAULT), elementKind);
 
         GuardingNode boundsCheck = getBoundsCheck(loadIndexed, array, tool);
-        AddressNode address = createArrayIndexAddress(graph, array, elementKind, loadIndexed.index(), boundsCheck);
+        AddressNode address = createArrayIndexAddress(graph, array, elementKind,
+                        proxyIndex(loadIndexed, loadIndexed.index(), array, tool), boundsCheck);
+
         ReadNode memoryRead = graph.add(new ReadNode(address, NamedLocationIdentity.getArrayLocation(elementKind), loadStamp, BarrierType.NONE));
         memoryRead.setGuard(boundsCheck);
         ValueNode readValue = implicitLoadConvert(graph, elementKind, memoryRead);
@@ -1110,24 +1113,39 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected abstract ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, FixedNode anchor);
 
+    protected ValueNode proxyIndex(AccessIndexedNode n, ValueNode index, ValueNode array, LoweringTool tool) {
+        StructuredGraph graph = index.graph();
+        ValueNode arrayLength = readOrCreateArrayLength(n, array, tool, graph);
+        ValueNode lengthMinusOne = SubNode.create(arrayLength, ConstantNode.forInt(1), NodeView.DEFAULT);
+        ValueNode indexMinusLength = SubNode.create(lengthMinusOne, index, NodeView.DEFAULT);
+        ValueNode mask = RightShiftNode.create(indexMinusLength, ConstantNode.forInt(31), NodeView.DEFAULT);
+        ValueNode offset = AndNode.create(indexMinusLength, mask, NodeView.DEFAULT);
+        return graph.addOrUniqueWithInputs(AddNode.create(index, offset, NodeView.DEFAULT));
+    }
+
     protected GuardingNode getBoundsCheck(AccessIndexedNode n, ValueNode array, LoweringTool tool) {
         if (n.getBoundsCheck() != null) {
             return n.getBoundsCheck();
         }
 
         StructuredGraph graph = n.graph();
-        ValueNode arrayLength = readArrayLength(array, tool.getConstantReflection());
-        if (arrayLength == null) {
-            arrayLength = createReadArrayLength(array, n, tool);
-        } else {
-            arrayLength = arrayLength.isAlive() ? arrayLength : graph.addOrUniqueWithInputs(arrayLength);
-        }
+        ValueNode arrayLength = readOrCreateArrayLength(n, array, tool, graph);
 
         LogicNode boundsCheck = IntegerBelowNode.create(n.index(), arrayLength, NodeView.DEFAULT);
         if (boundsCheck.isTautology()) {
             return null;
         }
         return tool.createGuard(n, graph.addOrUniqueWithInputs(boundsCheck), BoundsCheckException, InvalidateReprofile);
+    }
+
+    private ValueNode readOrCreateArrayLength(AccessIndexedNode n, ValueNode array, LoweringTool tool, StructuredGraph graph) {
+        ValueNode arrayLength = readArrayLength(array, tool.getConstantReflection());
+        if (arrayLength == null) {
+            arrayLength = createReadArrayLength(array, n, tool);
+        } else {
+            arrayLength = arrayLength.isAlive() ? arrayLength : graph.addOrUniqueWithInputs(arrayLength);
+        }
+        return arrayLength;
     }
 
     protected GuardingNode createNullCheck(ValueNode object, FixedNode before, LoweringTool tool) {
