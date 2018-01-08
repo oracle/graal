@@ -26,6 +26,7 @@ import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.ARRAY_ELEME
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.BOOLEAN;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.EXECUTABLE;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.HOST_OBJECT;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.PROXY_OBJECT;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.INSTANTIABLE;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.MEMBERS;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NATIVE;
@@ -292,14 +293,21 @@ public class ValueAssert {
         assertTrue(value.hasArrayElements());
 
         List<Object> receivedObjects = new ArrayList<>();
+        Map<Object, Object> receivedObjectsObjectMap = new HashMap<>();
         Map<Long, Object> receivedObjectsLongMap = new HashMap<>();
         Map<Integer, Object> receivedObjectsIntMap = new HashMap<>();
         for (long i = 0l; i < value.getArraySize(); i++) {
             Value arrayElement = value.getArrayElement(i);
             receivedObjects.add(arrayElement.as(Object.class));
+            receivedObjectsObjectMap.put(i, arrayElement.as(Object.class));
             receivedObjectsLongMap.put(i, arrayElement.as(Object.class));
             receivedObjectsIntMap.put((int) i, arrayElement.as(Object.class));
             assertValue(context, arrayElement);
+        }
+        if (value.hasMembers()) {
+            for (String key : value.getMemberKeys()) {
+                receivedObjectsObjectMap.put(key, value.getMember(key).as(Object.class));
+            }
         }
 
         List<Object> objectList1 = value.as(OBJECT_LIST);
@@ -313,7 +321,7 @@ public class ValueAssert {
         Map<Integer, Object> objectMap3 = value.as(INTEGER_OBJECT_MAP);
         Map<Number, Object> objectMap4 = value.as(NUMBER_OBJECT_MAP);
 
-        assertEquals(receivedObjectsLongMap, objectMap1);
+        assertEquals(receivedObjectsObjectMap, objectMap1);
         assertEquals(receivedObjectsLongMap, objectMap2);
         assertEquals(receivedObjectsIntMap, objectMap3);
         assertEquals(receivedObjectsLongMap, objectMap4);
@@ -322,7 +330,7 @@ public class ValueAssert {
             assertTrue(value.as(Object.class).getClass().isArray());
         } else {
             Map<Object, Object> objectMap5 = (Map<Object, Object>) value.as(Object.class);
-            assertEquals(receivedObjectsLongMap, objectMap5);
+            assertEquals(receivedObjectsObjectMap, objectMap5);
         }
 
         // write them all
@@ -495,6 +503,9 @@ public class ValueAssert {
         }
         if (value.isNull()) {
             valueTypes.add(NULL);
+        }
+        if (value.isProxyObject()) {
+            valueTypes.add(PROXY_OBJECT);
         }
         return valueTypes.toArray(new Trait[0]);
     }
