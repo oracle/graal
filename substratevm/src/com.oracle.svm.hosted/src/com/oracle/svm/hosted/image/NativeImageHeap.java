@@ -170,9 +170,9 @@ public class NativeImageHeap {
      * The native image heap is parceled out (segment/section names from MacOS)
      * <ul>
      * <li>read-only primitives go in a read-only section of the image (__DATA,__const).</li>
-     * <li>read-only primitives go in a relocatable section of the image (__DATA,__const).</li>
+     * <li>read-only references go in a relocatable section of the image (__DATA,__const).</li>
      * <li>writable primitives go in a writable section of the image (__DATA,__data).</li>
-     * <li>writable primitives go in a writable section of the image (__DATA,__data).</li>
+     * <li>writable references go in a writable section of the image (__DATA,__data).</li>
      * </ul>
      * Make no assumptions about the partitions being adjacent in memory.
      */

@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2007, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,28 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.util;
+package org.graalvm.collections;
 
 /**
- * Signals that something went wrong regarding UTF8 encoding or decoding.
+ * Cursor to iterate over a mutable map.
+ *
+ * @since 1.0
  */
-public class Utf8Exception extends Exception {
-
-    private static final long serialVersionUID = 5982621155136696282L;
-
-    Utf8Exception() {
-        super();
-    }
-
-    Utf8Exception(String message) {
-        super(message);
-    }
-
-    Utf8Exception(String message, Throwable cause) {
-        super(message, cause);
-    }
-
-    Utf8Exception(Throwable cause) {
-        super(cause);
-    }
+public interface MapCursor<K, V> extends UnmodifiableMapCursor<K, V> {
+    /**
+     * Remove the current entry from the map. May only be called once. After calling
+     * {@link #remove()}, it is no longer valid to call {@link #getKey()} or {@link #getValue()} on
+     * the current entry.
+     *
+     * @since 1.0
+     */
+    void remove();
 }

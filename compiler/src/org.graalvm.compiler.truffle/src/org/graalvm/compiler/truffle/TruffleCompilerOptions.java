@@ -22,11 +22,11 @@
  */
 package org.graalvm.compiler.truffle;
 
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.util.UnmodifiableEconomicMap;
 
 import com.oracle.truffle.api.Truffle;
 

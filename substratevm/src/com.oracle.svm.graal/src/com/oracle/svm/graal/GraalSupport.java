@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.gen.NodeMatchRules;
@@ -62,7 +63,6 @@ import org.graalvm.nativeimage.Feature.CompilationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.util.EconomicMap;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.config.ConfigurationValues;

@@ -22,10 +22,10 @@
  */
 package com.oracle.svm.core.option;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.util.EconomicMap;
 
 /**
  * The singleton holder of hosted options.

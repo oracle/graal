@@ -816,14 +816,23 @@ public class Breakpoint {
         boolean shouldBreak(VirtualFrame frame) throws BreakpointConditionFailure {
             if (breakCondition != null) {
                 try {
+                    setThreadSuspendEnabled(false);
                     return breakCondition.shouldBreak(frame);
                 } catch (Throwable e) {
                     CompilerDirectives.transferToInterpreter();
                     throw new BreakpointConditionFailure(breakpoint, e);
-                    // fallthrough to true
+                } finally {
+                    setThreadSuspendEnabled(true);
                 }
             }
             return true;
+        }
+
+        @ExplodeLoop
+        private void setThreadSuspendEnabled(boolean enabled) {
+            for (DebuggerSession session : sessions) {
+                session.setThreadSuspendEnabled(enabled);
+            }
         }
 
     }

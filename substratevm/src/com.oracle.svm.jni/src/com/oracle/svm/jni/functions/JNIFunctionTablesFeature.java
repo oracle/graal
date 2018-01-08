@@ -204,8 +204,9 @@ public class JNIFunctionTablesFeature implements Feature {
         HostedMethod[] methods = functions.getDeclaredMethods();
         int index = 0;
         int count = methods.length + generatedMethods.length;
-        // per kind: Call, CallStatic, and CallNonvirtual: varargs, array, and va_list
-        count += jniKinds.size() * 3 * 3;
+        // Call, CallStatic, CallNonvirtual: for each return value kind: array, va_list, varargs
+        // NewObject: array, va_list, varargs
+        count += (jniKinds.size() * 3 + 1) * 3;
         int[] offsets = new int[count];
         CFunctionPointer[] pointers = new CFunctionPointer[offsets.length];
         for (HostedMethod method : methods) {
@@ -242,6 +243,10 @@ public class JNIFunctionTablesFeature implements Feature {
                 pointers[index] = nonvirtualTrampoline;
                 index++;
             }
+            StructFieldInfo field = findFieldFor(functionTableMetadata, "NewObject" + suffix);
+            offsets[index] = field.getOffsetInfo().getProperty();
+            pointers[index] = trampoline;
+            index++;
         }
         VMError.guarantee(index == offsets.length && index == pointers.length);
         return new JNIStructFunctionsInitializer<>(JNINativeInterface.class, offsets, pointers, unimplemented);

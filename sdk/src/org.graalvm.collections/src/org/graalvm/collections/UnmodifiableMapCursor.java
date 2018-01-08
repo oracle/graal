@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,32 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.util;
+package org.graalvm.collections;
 
 /**
- * Unmodifiable memory efficient map data structure.
+ * Cursor to iterate over a map without changing its contents.
+ *
+ * @since 1.0
  */
-public interface UnmodifiableEconomicMap<K, V> {
+public interface UnmodifiableMapCursor<K, V> {
+    /**
+     * Advances to the next entry.
+     *
+     * @return {@code true} if a next entry exists, {@code false} if there is no next entry.
+     * @since 1.0
+     */
+    boolean advance();
 
-    V get(K key);
+    /**
+     * The key of the current entry.
+     *
+     * @since 1.0
+     */
+    K getKey();
 
-    default V get(K key, V defaultValue) {
-        V v = get(key);
-        if (v == null) {
-            return defaultValue;
-        }
-        return v;
-    }
-
-    boolean containsKey(K key);
-
-    int size();
-
-    boolean isEmpty();
-
-    Iterable<V> getValues();
-
-    Iterable<K> getKeys();
-
-    UnmodifiableMapCursor<K, V> getEntries();
+    /**
+     * The value of the current entry.
+     *
+     * @since 1.0
+     */
+    V getValue();
 }

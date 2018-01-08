@@ -58,7 +58,7 @@ import java.util.function.Supplier;
 import java.util.logging.LogManager;
 import java.util.stream.Collectors;
 
-import org.graalvm.util.EconomicSet;
+import org.graalvm.collections.EconomicSet;
 
 import com.oracle.shadowed.com.google.gson.Gson;
 import com.oracle.svm.core.util.UserError;
