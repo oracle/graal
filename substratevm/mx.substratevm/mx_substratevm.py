@@ -614,7 +614,7 @@ def image_server_start(args, dumpArgs=False, timeout=None):
         vmArgs, normalArgs = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
         noTruffleRuntimeVmArgs = [arg for arg in vmArgs + extraVmArgs if not arg.startswith('-Dtruffle.TruffleRuntime=')]
 
-        run_java(['-Xss10m', '-Xms2G'] + GRAAL_COMPILER_FLAGS + ['-cp', classpath] + noTruffleRuntimeVmArgs + [
+        run_java(['-Xss10m', '-Xms4G'] + GRAAL_COMPILER_FLAGS + ['-cp', classpath] + noTruffleRuntimeVmArgs + [
                 'com.oracle.svm.hosted.server.NativeImageBuildServer', PORT_PREFIX + str(port)] + normalArgs + extraNormalArgs, timeout=timeout)
 
 
