@@ -36,6 +36,12 @@ public interface StaticDeoptimizingNode extends ValueNodeInterface {
 
     JavaConstant getSpeculation();
 
+    /**
+     * Describes how much information is gathered when deoptimization triggers.
+     *
+     * This enum is {@link Comparable} and orders its element from highest priority to lowest
+     * priority.
+     */
     enum GuardPriority {
         Speculation,
         Profile,

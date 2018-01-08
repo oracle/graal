@@ -64,6 +64,7 @@ import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StartNode;
+import org.graalvm.compiler.nodes.StaticDeoptimizingNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
@@ -943,6 +944,13 @@ public final class SchedulePhase extends Phase {
         }
 
         private static class GuardOrder {
+            /**
+             * After an earliest schedule, this will re-sort guards to honor their
+             * {@linkplain StaticDeoptimizingNode#computePriority() priority}.
+             *
+             * Note that this only changes the order of nodes within {@linkplain MicroBlock
+             * micro-blocks}, nodes will not be moved from one micro-block to another.
+             */
             private static void resortGuards(StructuredGraph graph, NodeMap<MicroBlock> entries, NodeStack stack) {
                 assert stack.isEmpty();
                 EconomicSet<MicroBlock> blocksWithGuards = EconomicSet.create(IDENTITY);
@@ -966,6 +974,13 @@ public final class SchedulePhase extends Phase {
                 }
             }
 
+            /**
+             * This resorts guards within one micro-block.
+             *
+             * {@code stack}, {@code blockNodes} and {@code priorities} are just temporary
+             * data-structures which are allocated once by the callers of this method. They should
+             * be in their "initial"/"empty" state when calling this method and when it returns.
+             */
             private static MicroBlock resortGuards(MicroBlock block, NodeStack stack, NodeBitMap blockNodes, NodeMap<GuardNode.GuardPriority> priorities) {
                 if (!propagatePriority(block, stack, priorities, blockNodes)) {
                     return null;
@@ -998,6 +1013,10 @@ public final class SchedulePhase extends Phase {
                 return newBlock;
             }
 
+            /**
+             * This checks if {@code n} can be scheduled, if it is the case, it schedules it now by
+             * calling {@link #addNodeToResort(Node, NodeStack, NodeBitMap, MicroBlock, boolean)}.
+             */
             private static void checkIfAvailable(Node n, NodeStack stack, NodeBitMap sorted, Instance.MicroBlock newBlock, SortedSet<GuardNode> availableGuardNodes, boolean pushUsages) {
                 if (sorted.isMarked(n)) {
                     return;
@@ -1014,6 +1033,10 @@ public final class SchedulePhase extends Phase {
                 }
             }
 
+            /**
+             * Add a node to the re-sorted micro-block. This also pushes nodes that need to be
+             * (re-)examined on the stack.
+             */
             private static void addNodeToResort(Node n, NodeStack stack, NodeBitMap sorted, MicroBlock newBlock, boolean pushUsages) {
                 sorted.mark(n);
                 newBlock.add(n);
@@ -1026,6 +1049,15 @@ public final class SchedulePhase extends Phase {
                 }
             }
 
+            /**
+             * This fills in a map of transitive priorities ({@code priorities}). It also marks the
+             * nodes from this micro-block in {@code blockNodes}.
+             *
+             * The transitive priority of a guard is the highest of its priority and the priority of
+             * the guards that depend on it (transitively).
+             *
+             * This method returns {@code false} if no re-ordering is necessary in this micro-block.
+             */
             private static boolean propagatePriority(MicroBlock block, NodeStack stack, NodeMap<GuardNode.GuardPriority> priorities, NodeBitMap blockNodes) {
                 assert stack.isEmpty();
                 assert blockNodes.isEmpty();
@@ -1060,7 +1092,7 @@ public final class SchedulePhase extends Phase {
                             continue;
                         }
                         GuardNode.GuardPriority inputPriority = priorities.get(input);
-                        if (inputPriority == null || inputPriority.ordinal() > priority.ordinal()) {
+                        if (inputPriority == null || inputPriority.compareTo(priority) > 0) {
                             priorities.set(input, priority);
                             stack.push(input);
                         }
