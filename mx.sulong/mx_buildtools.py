@@ -104,8 +104,7 @@ class ClangCompiler(Tool):
         if tool == 'clang' or tool == 'clang++':
             llvmVersion = mx_sulong.getLLVMVersion(program)
             # prevent clang 5 from adding the 'optnone' attribute which would stop us from using opt
-            if llvmVersion and llvmVersion.startswith('5'):
-                return ['-Xclang', '-disable-O0-optnone']
+            return mx_sulong.getLLVMExplicitArgs(llvmVersion)
 
         return []
 
