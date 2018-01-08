@@ -51,6 +51,11 @@ public abstract class LLVMCMathsIntrinsics {
     public abstract static class LLVMSqrt extends LLVMBuiltin {
 
         @Specialization
+        protected float doIntrinsic(float value) {
+            return (float) Math.sqrt(value);
+        }
+
+        @Specialization
         protected double doIntrinsic(double value) {
             return Math.sqrt(value);
         }
@@ -58,6 +63,11 @@ public abstract class LLVMCMathsIntrinsics {
 
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMLog extends LLVMBuiltin {
+
+        @Specialization
+        protected float doIntrinsic(float value) {
+            return (float) Math.log(value);
+        }
 
         @Specialization
         protected double doIntrinsic(double value) {
@@ -71,6 +81,11 @@ public abstract class LLVMCMathsIntrinsics {
         private static final double LOG_2 = Math.log(2);
 
         @Specialization
+        protected float doIntrinsic(float value) {
+            return (float) (Math.log(value) / LOG_2);
+        }
+
+        @Specialization
         protected double doIntrinsic(double value) {
             return Math.log(value) / LOG_2;
         }
@@ -78,6 +93,11 @@ public abstract class LLVMCMathsIntrinsics {
 
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMLog10 extends LLVMBuiltin {
+
+        @Specialization
+        protected float doIntrinsic(float value) {
+            return (float) Math.log10(value);
+        }
 
         @Specialization
         protected double doIntrinsic(double value) {
@@ -89,6 +109,11 @@ public abstract class LLVMCMathsIntrinsics {
     public abstract static class LLVMRint extends LLVMBuiltin {
 
         @Specialization
+        protected float doIntrinsic(float value) {
+            return (float) Math.rint(value);
+        }
+
+        @Specialization
         protected double doIntrinsic(double value) {
             return Math.rint(value);
         }
@@ -98,6 +123,11 @@ public abstract class LLVMCMathsIntrinsics {
     public abstract static class LLVMCeil extends LLVMBuiltin {
 
         @Specialization
+        protected float doIntrinsic(float value) {
+            return (float) Math.ceil(value);
+        }
+
+        @Specialization
         protected double doIntrinsic(double value) {
             return Math.ceil(value);
         }
@@ -105,6 +135,11 @@ public abstract class LLVMCMathsIntrinsics {
 
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMFloor extends LLVMBuiltin {
+
+        @Specialization
+        protected float doIntrinsic(float value) {
+            return (float) Math.floor(value);
+        }
 
         @Specialization
         protected double doIntrinsic(double value) {
@@ -150,6 +185,11 @@ public abstract class LLVMCMathsIntrinsics {
     public abstract static class LLVMExp extends LLVMBuiltin {
 
         @Specialization
+        protected float doIntrinsic(float value) {
+            return (float) Math.exp(value);
+        }
+
+        @Specialization
         protected double doIntrinsic(double value) {
             return Math.exp(value);
         }
@@ -157,6 +197,11 @@ public abstract class LLVMCMathsIntrinsics {
 
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMExp2 extends LLVMBuiltin {
+
+        @Specialization
+        protected float doIntrinsic(float value) {
+            return (float) Math.pow(2, value);
+        }
 
         @Specialization
         protected double doIntrinsic(double value) {
