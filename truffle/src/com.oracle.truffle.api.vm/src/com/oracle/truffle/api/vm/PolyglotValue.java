@@ -1738,7 +1738,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     throw handleInvalidArity(e);
                 } catch (UnsupportedMessageException e) {
                     CompilerDirectives.transferToInterpreter();
-                    return polyglot.executeUnsupported(receiver);
+                    return polyglot.newInstanceUnsupported(receiver);
                 }
             }
 
