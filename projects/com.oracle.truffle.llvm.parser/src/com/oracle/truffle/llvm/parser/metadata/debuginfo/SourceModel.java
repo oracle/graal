@@ -92,9 +92,15 @@ public final class SourceModel {
     private static final int LLVM_DBG_DECLARE_EXPR_ARGINDEX = 2;
 
     private static final String LLVM_DBG_VALUE_NAME = "@llvm.dbg.value";
-    private static final int LLVM_DBG_VALUE_INDEX_ARGINDEX = 1;
-    private static final int LLVM_DBG_VALUE_LOCALREF_ARGINDEX = 2;
-    private static final int LLVM_DBG_VALUE_EXPR_ARGINDEX = 3;
+
+    private static final int LLVM_DBG_VALUE_INDEX_ARGINDEX_OLD = 1;
+    private static final int LLVM_DBG_VALUE_LOCALREF_ARGINDEX_OLD = 2;
+    private static final int LLVM_DBG_VALUE_EXPR_ARGINDEX_OLD = 3;
+    private static final int LLVM_DBG_VALUE_LOCALREF_ARGSIZE_OLD = 4;
+
+    private static final int LLVM_DBG_VALUE_LOCALREF_ARGINDEX_NEW = 1;
+    private static final int LLVM_DBG_VALUE_EXPR_ARGINDEX_NEW = 2;
+    private static final int LLVM_DBG_VALUE_LOCALREF_ARGSIZE_NEW = 3;
 
     private final Map<LLVMSourceSymbol, SymbolImpl> globals;
     private final Map<LLVMSourceStaticMemberType, SymbolImpl> staticMembers;
@@ -300,25 +306,14 @@ public final class SourceModel {
         public void visit(VoidCallInstruction call) {
             final SymbolImpl callTarget = call.getCallTarget();
             if (callTarget instanceof FunctionDeclaration) {
-
-                int mdlocalArgIndex = -1;
-                int mdExprArgIndex = -1;
-                boolean isDeclaration = false;
                 switch (((FunctionDeclaration) callTarget).getName()) {
                     case LLVM_DBG_DECLARE_NAME:
-                        mdlocalArgIndex = LLVM_DBG_DECLARE_LOCALREF_ARGINDEX;
-                        mdExprArgIndex = LLVM_DBG_DECLARE_EXPR_ARGINDEX;
-                        isDeclaration = true;
-                        break;
+                        handleDebugIntrinsic(call, true);
+                        return;
 
                     case LLVM_DBG_VALUE_NAME:
-                        mdlocalArgIndex = LLVM_DBG_VALUE_LOCALREF_ARGINDEX;
-                        mdExprArgIndex = LLVM_DBG_VALUE_EXPR_ARGINDEX;
-                        break;
-                }
-
-                if (mdlocalArgIndex >= 0) {
-                    handleDebugIntrinsic(call, mdlocalArgIndex, mdExprArgIndex, isDeclaration);
+                        handleDebugIntrinsic(call, false);
+                        return;
                 }
             }
 
@@ -352,7 +347,7 @@ public final class SourceModel {
             return MDExpression.EMPTY;
         }
 
-        private void handleDebugIntrinsic(VoidCallInstruction call, int mdlocalArgIndex, int mdExprArgIndex, boolean isDeclaration) {
+        private void handleDebugIntrinsic(VoidCallInstruction call, boolean isDeclaration) {
             SymbolImpl value = getArg(call, LLVM_DBG_INTRINSICS_VALUE_ARGINDEX);
             if (value instanceof MetadataSymbol) {
                 value = MDSymbolExtractor.getSymbol(((MetadataSymbol) value).getNode());
@@ -369,7 +364,25 @@ public final class SourceModel {
                 ((FunctionParameter) value).setSourceVariable(true);
             }
 
-            final SourceVariable variable = getVariable(call, mdlocalArgIndex);
+            int mdLocalArgIndex;
+            int mdExprArgIndex;
+            if (isDeclaration) {
+                mdLocalArgIndex = LLVM_DBG_DECLARE_LOCALREF_ARGINDEX;
+                mdExprArgIndex = LLVM_DBG_DECLARE_EXPR_ARGINDEX;
+
+            } else if (call.getArgumentCount() == LLVM_DBG_VALUE_LOCALREF_ARGSIZE_NEW) {
+                mdLocalArgIndex = LLVM_DBG_VALUE_LOCALREF_ARGINDEX_NEW;
+                mdExprArgIndex = LLVM_DBG_VALUE_EXPR_ARGINDEX_NEW;
+
+            } else if (call.getArgumentCount() == LLVM_DBG_VALUE_LOCALREF_ARGSIZE_OLD) {
+                mdLocalArgIndex = LLVM_DBG_VALUE_LOCALREF_ARGINDEX_OLD;
+                mdExprArgIndex = LLVM_DBG_VALUE_EXPR_ARGINDEX_OLD;
+
+            } else {
+                return;
+            }
+
+            final SourceVariable variable = getVariable(call, mdLocalArgIndex);
             if (variable == null) {
                 // invalid or unsupported debug information
                 // remove upper indices so we do not need to update the later ones
@@ -391,10 +404,12 @@ public final class SourceModel {
 
             } else {
                 long index = 0;
-                final SymbolImpl indexSymbol = call.getArgument(LLVM_DBG_VALUE_INDEX_ARGINDEX);
-                final Long l = LLVMSymbolReadResolver.evaluateLongIntegerConstant(indexSymbol);
-                if (l != null) {
-                    index = l;
+                if (call.getArgumentCount() == LLVM_DBG_VALUE_LOCALREF_ARGSIZE_OLD) {
+                    final SymbolImpl indexSymbol = call.getArgument(LLVM_DBG_VALUE_INDEX_ARGINDEX_OLD);
+                    final Long l = LLVMSymbolReadResolver.evaluateLongIntegerConstant(indexSymbol);
+                    if (l != null) {
+                        index = l;
+                    }
                 }
                 final DbgValueInstruction dbgValue = new DbgValueInstruction(value, variable, index, expression);
 
