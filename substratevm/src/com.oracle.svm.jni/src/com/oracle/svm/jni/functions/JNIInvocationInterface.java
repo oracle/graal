@@ -22,9 +22,18 @@
  */
 package com.oracle.svm.jni.functions;
 
+import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_1;
+import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_2;
+import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_4;
+import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_6;
+import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_8;
+
 import java.util.ArrayList;
 
+import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
@@ -33,6 +42,7 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.MonitorSupport;
+import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.CEntryPointSetup.EnterCreateIsolatePrologue;
@@ -42,6 +52,7 @@ import com.oracle.svm.core.properties.RuntimePropertyParser;
 import com.oracle.svm.jni.JNIThreadLocalEnvironment;
 import com.oracle.svm.jni.JNIThreadOwnedMonitors;
 import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIJavaVMEnterAttachThreadPrologue;
+import com.oracle.svm.jni.functions.JNIInvocationInterface.Support.JNIGetEnvPrologue;
 import com.oracle.svm.jni.hosted.JNIFeature;
 import com.oracle.svm.jni.nativeapi.JNIEnvironmentPointer;
 import com.oracle.svm.jni.nativeapi.JNIErrors;
@@ -162,6 +173,16 @@ final class JNIInvocationInterface {
         return result;
     }
 
+    /*
+     * jint GetEnv(JavaVM *vm, void **env, jint version);
+     */
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIGetEnvPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static int GetEnv(JNIJavaVM vm, WordPointer env, int version) {
+        env.write(JNIThreadLocalEnvironment.getAddress());
+        return JNIErrors.JNI_OK();
+    }
+
     // Checkstyle: resume
 
     /**
@@ -170,6 +191,25 @@ final class JNIInvocationInterface {
      */
     static class Support {
         // This inner class exists because all outer methods must match API functions
+
+        static class JNIGetEnvPrologue {
+            static void enter(JNIJavaVM vm, WordPointer env, int version) {
+                if (vm.isNull() || env.isNull()) {
+                    CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_ERR());
+                }
+                if (version != JNI_VERSION_1_8() && version != JNI_VERSION_1_6() && version != JNI_VERSION_1_4() && version != JNI_VERSION_1_2() && version != JNI_VERSION_1_1()) {
+                    env.write(Word.nullPointer());
+                    CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_EVERSION());
+                }
+                if (!CEntryPointContext.isCurrentThreadAttachedTo((Isolate) vm)) {
+                    env.write(Word.nullPointer());
+                    CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_EDETACHED());
+                }
+                if (CEntryPointActions.enterIsolate((Isolate) vm) != 0) {
+                    CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_ERR());
+                }
+            }
+        }
 
         static int attachCurrentThread(JNIJavaVM vm, JNIEnvironmentPointer penv, boolean daemon) {
             if (vm.equal(JNIFunctionTables.singleton().getGlobalJavaVM())) {

@@ -40,4 +40,7 @@ public interface JNIInvokeInterface extends PointerBase {
 
     @CField("DetachCurrentThread")
     void setDetachCurrentThread(CFunctionPointer p);
+
+    @CField("GetEnv")
+    void setGetEnv(CFunctionPointer p);
 }
