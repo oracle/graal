@@ -274,7 +274,7 @@ public class GCImpl implements GC {
                 HeapImpl.getHeapImpl().verifyBeforeGC(cause, getCollectionEpoch());
             }
 
-            getAccounting().beforeCollection(mutatorTimer);
+            getAccounting().beforeCollection();
 
             try (Timer ct = collectionTimer.open()) {
 
@@ -378,7 +378,7 @@ public class GCImpl implements GC {
                 printGCLog.unsigned(sizeBefore.unsignedDivide(1024));
                 printGCLog.string("K->");
                 printGCLog.unsigned(sizeAfter.unsignedDivide(1024)).string("K, ");
-                printGCLog.rational(collectionTimer.getNanos(), TimeUtils.nanosPerSecond, DECIMALS_IN_TIME_PRINTING).string(" secs");
+                printGCLog.rational(collectionTimer.getCollectedNanos(), TimeUtils.nanosPerSecond, DECIMALS_IN_TIME_PRINTING).string(" secs");
 
                 printGCLog.string("]").newline();
             }
@@ -399,7 +399,7 @@ public class GCImpl implements GC {
                 }
                 if (!HeapOptions.PrintGCTimes.getValue()) {
                     verboseGCLog.newline();
-                    verboseGCLog.string("  collection time: ").unsigned(collectionTimer.getNanos()).string(" nanoSeconds");
+                    verboseGCLog.string("  collection time: ").unsigned(collectionTimer.getCollectedNanos()).string(" nanoSeconds");
                 } else {
                     logGCTimers(verboseGCLog);
                 }
@@ -1066,9 +1066,9 @@ public class GCImpl implements GC {
     }
 
     private static void logOneTimer(final Log log, final String prefix, final Timer timer) {
-        /* If the timer has been started, and has recorded some time, then print it. */
-        if ((timer.getStart() > 0) && (timer.getNanos() > 0)) {
-            log.newline().string(prefix).string(timer.getName()).string(": ").signed(timer.getNanos());
+        /* If the timer has recorded some time, then print it. */
+        if (timer.getCollectedNanos() > 0) {
+            log.newline().string(prefix).string(timer.getName()).string(": ").signed(timer.getCollectedNanos());
         }
     }
 
@@ -1078,9 +1078,9 @@ public class GCImpl implements GC {
      * not take in to account that the collector is single-threaded, while the mutator might be
      * multi-threaded.
      */
-    private void logGCLoad(Log log, String prefix, String label, Timer cTimer, Timer mTimer) {
-        final long collectionNanos = cTimer.getNanos();
-        final long mutatorNanos = getAccounting().getMutatorIntervalNanos(mTimer);
+    private static void logGCLoad(Log log, String prefix, String label, Timer cTimer, Timer mTimer) {
+        final long collectionNanos = cTimer.getLastIntervalNanos();
+        final long mutatorNanos = mTimer.getLastIntervalNanos();
         /* Compute a rounded percentage, since I can only log integers. */
         final long intervalNanos = mutatorNanos + collectionNanos;
         final long intervalGCPercent = (((100 * collectionNanos) + (intervalNanos / 2)) / intervalNanos);
@@ -1099,7 +1099,6 @@ public class GCImpl implements GC {
         private long completeCollectionCount;
         private long completeCollectionTotalNanos;
         private UnsignedWord collectedTotalChunkBytes;
-        private long mutatorTotalNanos;
         private UnsignedWord pinnedChunkBytes;
         private UnsignedWord normalChunkBytes;
         private UnsignedWord promotedTotalChunkBytes;
@@ -1135,7 +1134,6 @@ public class GCImpl implements GC {
             this.incrementalCollectionTotalNanos = 0L;
             this.completeCollectionCount = 0L;
             this.completeCollectionTotalNanos = 0L;
-            this.mutatorTotalNanos = 0L;
             this.pinnedChunkBytes = WordFactory.zero();
             this.normalChunkBytes = WordFactory.zero();
             this.promotedTotalChunkBytes = WordFactory.zero();
@@ -1200,10 +1198,6 @@ public class GCImpl implements GC {
             return completeCollectionTotalNanos;
         }
 
-        long getMutatorTotalNanos() {
-            return mutatorTotalNanos;
-        }
-
         UnsignedWord getCopiedTotalChunkBytes() {
             return copiedTotalChunkBytes;
         }
@@ -1245,13 +1239,6 @@ public class GCImpl implements GC {
         /** Average promoted pinned chunk bytes. */
         UnsignedWord averagePromotedPinnedChunkBytes() {
             return averageOfHistory(promotedPinnedChunkBytes);
-        }
-
-        /* Nanoseconds in the last mutator interval. */
-        long getMutatorIntervalNanos(Timer mutatorTimer) {
-            final long mutuatorStartNanos = (0 < mutatorTimer.getStart() ? mutatorTimer.getStart() : HeapChunkProvider.getFirstAllocationTime());
-            final long mutatorFinishNanos = mutatorTimer.getFinish();
-            return mutatorFinishNanos - mutuatorStartNanos;
         }
 
         /* History methods. */
@@ -1320,7 +1307,7 @@ public class GCImpl implements GC {
          * Methods for collectors.
          */
 
-        void beforeCollection(Timer mutatorTimer) {
+        void beforeCollection() {
             final Log trace = Log.noopLog().string("[GCImpl.Accounting.beforeCollection:").newline();
             /* Gather some space statistics. */
             incrementHistory();
@@ -1342,7 +1329,6 @@ public class GCImpl implements GC {
             setHistoryOf(promotedPinnedChunkBytes, allocatedPinnedChunkBytes);
             pinnedChunkBytes = pinnedChunkBytes.add(allocatedPinnedChunkBytes);
             /* Keep some aggregate metrics. */
-            mutatorTotalNanos += getMutatorIntervalNanos(mutatorTimer);
             if (SubstrateOptions.PrintGCSummary.getValue()) {
                 youngObjectBytesBefore = youngSpace.getObjectBytes();
                 oldObjectBytesBefore = oldSpace.getObjectBytes();
@@ -1376,7 +1362,7 @@ public class GCImpl implements GC {
             /* Incremental collections only promote. */
             setHistoryOf(promotedUnpinnedChunkBytes, oldChunkBytesAfter.subtract(oldChunkBytesBefore));
             promotedTotalChunkBytes = promotedTotalChunkBytes.add(getHistoryOf(promotedUnpinnedChunkBytes)).add(getHistoryOf(promotedPinnedChunkBytes));
-            incrementalCollectionTotalNanos += collectionTimer.getNanos();
+            incrementalCollectionTotalNanos += collectionTimer.getCollectedNanos();
         }
 
         private void afterCompleteCollection(Timer collectionTimer) {
@@ -1386,7 +1372,7 @@ public class GCImpl implements GC {
             setHistoryOf(copiedUnpinnedChunkBytes, oldChunkBytesAfter);
             setHistoryOf(copiedPinnedChunkBytes, pinnedChunkBytesAfter);
             copiedTotalChunkBytes = copiedTotalChunkBytes.add(oldChunkBytesAfter).add(pinnedChunkBytesAfter);
-            completeCollectionTotalNanos += collectionTimer.getNanos();
+            completeCollectionTotalNanos += collectionTimer.getCollectedNanos();
         }
 
         /** Shared after collection processing. */
@@ -1426,12 +1412,18 @@ public class GCImpl implements GC {
 
         @Override
         public void close() {
+            /* If a timer was not opened, pretend it was opened at the start of the VM. */
+            if (openNanos == 0L) {
+                openNanos = HeapChunkProvider.getFirstAllocationTime();
+            }
             closeNanos = System.nanoTime();
+            collectedNanos += closeNanos - openNanos;
         }
 
         public void reset() {
             openNanos = 0L;
             closeNanos = 0L;
+            collectedNanos = 0L;
         }
 
         public String getName() {
@@ -1443,12 +1435,19 @@ public class GCImpl implements GC {
         }
 
         public long getFinish() {
+            assert closeNanos > 0L : "Should have closed timer";
             return closeNanos;
         }
 
-        long getNanos() {
-            assert openNanos > 0L : "Should have opened counter";
-            assert closeNanos > 0L : "Should have closed counter.";
+        /** Get all the nanoseconds collected between open/close pairs since the last reset. */
+        long getCollectedNanos() {
+            return collectedNanos;
+        }
+
+        /** Get the nanoseconds collected by the most recent open/close pair. */
+        long getLastIntervalNanos() {
+            assert openNanos > 0L : "Should have opened timer";
+            assert closeNanos > 0L : "Should have closed timer";
             return closeNanos - openNanos;
         }
 
@@ -1464,6 +1463,7 @@ public class GCImpl implements GC {
         final String name;
         long openNanos;
         long closeNanos;
+        long collectedNanos;
     }
 
     /** A constructor of remembered sets. */
@@ -1616,7 +1616,7 @@ public class GCImpl implements GC {
         log.string(prefix).string("CompleteGCNanos: ").signed(completeNanos).newline();
         /* Compute a GC load percent. */
         final long gcNanos = incrementalNanos + completeNanos;
-        final long mutatorNanos = accounting.getMutatorTotalNanos();
+        final long mutatorNanos = mutatorTimer.getCollectedNanos();
         final long totalNanos = gcNanos + mutatorNanos;
         final long roundedGCLoad = (0 < totalNanos ? TimeUtils.roundedDivide(100 * gcNanos, totalNanos) : 0);
         log.string(prefix).string("GCNanos: ").signed(gcNanos).newline();
