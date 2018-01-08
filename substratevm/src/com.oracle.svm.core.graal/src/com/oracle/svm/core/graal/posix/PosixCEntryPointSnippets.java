@@ -38,9 +38,6 @@ import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FullInfopointNode;
-import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -62,14 +59,11 @@ import com.oracle.svm.core.annotate.MustNotAllocate;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
-import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
-import com.oracle.svm.core.graal.nodes.DeadEndNode;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
@@ -84,7 +78,6 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.util.UserError;
 
 /**
  * Snippets for calling from C to Java. This is the inverse of {@link CFunctionSnippets}.
@@ -471,31 +464,6 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
         }
     }
 
-    private static void checkEntryBeforeLowering(CEntryPointEnterNode node) {
-        if (node.graph().method().getAnnotation(Uninterruptible.class) != null) {
-            return;
-        }
-        /* only struct accesses may come before an CEntryPointActions entry call. */
-        Node predecessor = node.predecessor();
-        while (predecessor.getClass() == CInterfaceReadNode.class || predecessor.getClass() == FullInfopointNode.class) {
-            predecessor = predecessor.predecessor();
-        }
-        UserError.guarantee(predecessor == node.graph().start(), CEntryPointActions.class.getSimpleName() +
-                        " entry method call must be the first statement in the method: " + node.graph().method().format("%H.%n(%p)"));
-    }
-
-    private static void checkExitBeforeLowering(CEntryPointLeaveNode node) {
-        if (node.graph().method().getAnnotation(Uninterruptible.class) != null) {
-            return;
-        }
-        FixedNode successor = node.next();
-        while (successor instanceof FullInfopointNode) {
-            successor = ((FullInfopointNode) successor).next();
-        }
-        UserError.guarantee(successor.getClass() == ReturnNode.class || successor.getClass() == DeadEndNode.class,
-                        "Calls to " + CEntryPointActions.class.getSimpleName() + " exit methods must immediately precede a return: " + node.graph().method().format("%H.%n(%p)"));
-    }
-
     protected class EnterMTLowering implements NodeLoweringProvider<CEntryPointEnterNode> {
 
         private final SnippetInfo createIsolate = snippet(PosixCEntryPointSnippets.class, "createIsolateSnippet");
@@ -505,8 +473,6 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
 
         @Override
         public void lower(CEntryPointEnterNode node, LoweringTool tool) {
-            checkEntryBeforeLowering(node);
-
             Arguments args;
             switch (node.getEnterAction()) {
                 case CreateIsolate:
@@ -540,8 +506,6 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
 
         @Override
         public void lower(CEntryPointEnterNode node, LoweringTool tool) {
-            checkEntryBeforeLowering(node);
-
             Arguments args;
             switch (node.getEnterAction()) {
                 case CreateIsolate:
@@ -565,8 +529,6 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
 
         @Override
         public void lower(CEntryPointLeaveNode node, LoweringTool tool) {
-            checkExitBeforeLowering(node);
-
             Arguments args;
             switch (node.getLeaveAction()) {
                 case Leave:
@@ -601,8 +563,6 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
 
         @Override
         public void lower(CEntryPointLeaveNode node, LoweringTool tool) {
-            checkExitBeforeLowering(node);
-
             Arguments args;
             switch (node.getLeaveAction()) {
                 case ExceptionAbort:
