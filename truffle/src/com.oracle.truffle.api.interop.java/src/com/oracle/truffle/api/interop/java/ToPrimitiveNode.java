@@ -74,51 +74,186 @@ final class ToPrimitiveNode extends Node {
         } else {
             attr = value;
         }
+
         if (attr instanceof Number) {
-            if (requestedType != null) {
-                Number n = (Number) attr;
+            Number n = (Number) attr;
+            if (requestedType == Number.class) {
+                return n;
+            }
+            if (n instanceof Byte) {
                 if (requestedType == byte.class || requestedType == Byte.class) {
-                    return byteValue(n);
-                }
-                if (requestedType == short.class || requestedType == Short.class) {
-                    return shortValue(n);
-                }
-                if (requestedType == int.class || requestedType == Integer.class) {
-                    return intValue(n);
-                }
-                if (requestedType == long.class || requestedType == Long.class) {
-                    return longValue(n);
-                }
-                if (requestedType == float.class || requestedType == Float.class) {
-                    return floatValue(n);
-                }
-                if (requestedType == double.class || requestedType == Double.class) {
-                    return doubleValue(n);
-                }
-                if (requestedType == char.class || requestedType == Character.class) {
-                    return (char) intValue(n);
+                    return n;
+                } else {
+                    byte byteValue = n.byteValue();
+                    if (requestedType == short.class || requestedType == Short.class) {
+                        return (short) byteValue;
+                    } else if (requestedType == int.class || requestedType == Integer.class) {
+                        return (int) byteValue;
+                    } else if (requestedType == long.class || requestedType == Long.class) {
+                        return (long) byteValue;
+                    } else if (requestedType == float.class || requestedType == Float.class) {
+                        return (float) byteValue;
+                    } else if (requestedType == double.class || requestedType == Double.class) {
+                        return (double) byteValue;
+                    }
                 }
             }
-            if (JavaInterop.isPrimitive(attr)) {
+            if (n instanceof Short) {
+                if (requestedType == short.class || requestedType == Short.class) {
+                    return n;
+                } else {
+                    short shortValue = n.shortValue();
+                    if (requestedType == byte.class || requestedType == Byte.class) {
+                        if (shortValue == (byte) shortValue) {
+                            return (byte) shortValue;
+                        }
+                    } else if (requestedType == int.class || requestedType == Integer.class) {
+                        return (int) shortValue;
+                    } else if (requestedType == long.class || requestedType == Long.class) {
+                        return (long) shortValue;
+                    } else if (requestedType == float.class || requestedType == Float.class) {
+                        return (float) shortValue;
+                    } else if (requestedType == double.class || requestedType == Double.class) {
+                        return (double) shortValue;
+                    }
+                }
+            }
+            if (n instanceof Integer) {
+                if (requestedType == int.class || requestedType == Integer.class) {
+                    return n;
+                } else {
+                    int intValue = n.intValue();
+                    if (requestedType == byte.class || requestedType == Byte.class) {
+                        if (intValue == (byte) intValue) {
+                            return (byte) intValue;
+                        }
+                    } else if (requestedType == short.class || requestedType == Short.class) {
+                        if (intValue == (short) intValue) {
+                            return (short) intValue;
+                        }
+                    } else if (requestedType == long.class || requestedType == Long.class) {
+                        return (long) intValue;
+                    } else if (requestedType == float.class || requestedType == Float.class) {
+                        if (intValue == (float) intValue) {
+                            return (float) intValue;
+                        }
+                    } else if (requestedType == double.class || requestedType == Double.class) {
+                        return (double) intValue;
+                    }
+                }
+            }
+            if (n instanceof Long) {
+                if (requestedType == long.class || requestedType == Long.class) {
+                    return n;
+                } else {
+                    long longValue = n.longValue();
+                    if (requestedType == byte.class || requestedType == Byte.class) {
+                        if (longValue == (byte) longValue) {
+                            return (byte) longValue;
+                        }
+                    } else if (requestedType == short.class || requestedType == Short.class) {
+                        if (longValue == (short) longValue) {
+                            return (short) longValue;
+                        }
+                    } else if (requestedType == int.class || requestedType == Integer.class) {
+                        if (longValue == (int) longValue) {
+                            return (int) longValue;
+                        }
+                    } else if (requestedType == float.class || requestedType == Float.class) {
+                        if (longValue == (float) longValue) {
+                            return (float) longValue;
+                        }
+                    } else if (requestedType == double.class || requestedType == Double.class) {
+                        if (longValue == (double) longValue) {
+                            return (double) longValue;
+                        }
+                    }
+                }
+
+            }
+            if (n instanceof Float) {
+                if (requestedType == float.class || requestedType == Float.class) {
+                    return n;
+                } else {
+                    float floatValue = n.floatValue();
+                    if (requestedType == byte.class || requestedType == Byte.class) {
+                        if (floatValue == (byte) floatValue) {
+                            return (byte) floatValue;
+                        }
+                    } else if (requestedType == short.class || requestedType == Short.class) {
+                        if (floatValue == (short) floatValue) {
+                            return (short) floatValue;
+                        }
+                    } else if (requestedType == int.class || requestedType == Integer.class) {
+                        if (floatValue == (int) floatValue) {
+                            return (int) floatValue;
+                        }
+                    } else if (requestedType == long.class || requestedType == Long.class) {
+                        if (floatValue == (long) floatValue) {
+                            return (long) floatValue;
+                        }
+                    } else if (requestedType == double.class || requestedType == Double.class) {
+                        double castDouble = floatValue;
+                        if (floatValue == castDouble ||
+                                        (Double.isNaN(castDouble) && Float.isNaN(floatValue))) {
+                            return castDouble;
+                        }
+                    }
+                }
+            }
+            if (n instanceof Double) {
+                if (requestedType == double.class || requestedType == Double.class) {
+                    return n;
+                } else {
+                    double doubleValue = n.doubleValue();
+                    if (requestedType == byte.class || requestedType == Byte.class) {
+                        if (doubleValue == (byte) doubleValue) {
+                            return (byte) doubleValue;
+                        }
+                    } else if (requestedType == short.class || requestedType == Short.class) {
+                        if (doubleValue == (short) doubleValue) {
+                            return (short) doubleValue;
+                        }
+                    } else if (requestedType == int.class || requestedType == Integer.class) {
+                        if (doubleValue == (int) doubleValue) {
+                            return (int) doubleValue;
+                        }
+                    } else if (requestedType == long.class || requestedType == Long.class) {
+                        if (doubleValue == (long) doubleValue) {
+                            return (long) doubleValue;
+                        }
+                    } else if (requestedType == float.class || requestedType == Float.class) {
+                        float castFloat = (float) doubleValue;
+                        if (doubleValue == castFloat ||
+                                        (Float.isNaN(castFloat) && Double.isNaN(doubleValue))) {
+                            return castFloat;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+        if (attr instanceof Character) {
+            if (requestedType == char.class || requestedType == Character.class) {
                 return attr;
-            } else {
-                return null;
+            } else if (requestedType == String.class || requestedType == CharSequence.class) {
+                return String.valueOf((char) attr);
             }
         }
         if (attr instanceof String) {
             String str = (String) attr;
-            if (requestedType == char.class || requestedType == Character.class) {
+            if (requestedType == String.class || requestedType == CharSequence.class) {
+                return str;
+            } else if (requestedType == char.class || requestedType == Character.class) {
                 if (str.length() == 1) {
                     return str.charAt(0);
                 }
             }
-            return str;
-        }
-        if (attr instanceof Character) {
-            return attr;
         }
         if (attr instanceof Boolean) {
-            return attr;
+            if (requestedType == Boolean.class || requestedType == boolean.class) {
+                return attr;
+            }
         }
         return null;
     }
