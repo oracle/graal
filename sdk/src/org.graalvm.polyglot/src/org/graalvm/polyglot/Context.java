@@ -108,6 +108,26 @@ import org.graalvm.polyglot.proxy.Proxy;
  * currently executing code. If a context is currently executing code, a different thread can kill
  * the execution and close the context using {@link #close(boolean)} .
  *
+ * <h4>Pre-Initialization</h4>
+ *
+ * The Context pre-initialization can be used to perform expensive builtin creation in the time of
+ * native compilation.
+ * <p>
+ * The context pre-initialization is enabled by setting the system property
+ * {@code polyglot.engine.PreinitializeContexts} to a comma separated list of language ids which
+ * should be pre-initialized, for example: {@code -Dpolyglot.engine.PreinitializeContexts=js,python}
+ * <p>
+ * During the pre-initialization (in the native compilation time) the
+ * {@link com.oracle.truffle.api.TruffleLanguage#createContext(com.oracle.truffle.api.TruffleLanguage.Env)}
+ * and {@link com.oracle.truffle.api.TruffleLanguage#initializeContext(java.lang.Object)} methods
+ * are called. In the image execution time the
+ * {@link com.oracle.truffle.api.TruffleLanguage#patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)}
+ * is called as a consequence of {@link org.graalvm.polyglot.Context#create(java.lang.String...)}
+ * invocation. If the
+ * {@link com.oracle.truffle.api.TruffleLanguage#patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)}
+ * is successful for all pre-initialized languages the pre-initialized context is used, otherwise a
+ * new context is created.
+ *
  * @since 1.0
  */
 // TODO document that the current context class loader is captured when the engine is created.

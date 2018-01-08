@@ -478,25 +478,10 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Notifies the language with pre-initialized context about {@link Env} change. The language
-     * context pre-initialization can be used to perform expensive builtin creation in the time of
-     * native compilation. The context pre-initialization is enabled by setting the system property
-     * {@code polyglot.engine.PreinitializeContexts} to a comma separated list of language ids which
-     * should be pre-initialized, for example:
-     * {@code -Dpolyglot.engine.PreinitializeContexts=js,python}
+     * Notifies the language with pre-initialized context about {@link Env} change. See
+     * {@link org.graalvm.polyglot.Context} for pre-initialization details.
      * <p>
-     * During the pre-initialization (in the native compilation time) the
-     * {@link TruffleLanguage#createContext(com.oracle.truffle.api.TruffleLanguage.Env)} and
-     * {@link TruffleLanguage#initializeContext(java.lang.Object)} methods are called. In the image
-     * execution time the
-     * {@link TruffleLanguage#patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)}
-     * is called as a consequence of
-     * {@link org.graalvm.polyglot.Context#create(java.lang.String...)} invocation. If the
-     * {@link TruffleLanguage#patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)}
-     * is successful for all pre-initialized languages the pre-initialized context is used,
-     * otherwise a new context is created. Typical implementation of the
-     * {@link TruffleLanguage#patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)}
-     * looks like:
+     * Typical implementation looks like:
      *
      * {@link TruffleLanguageSnippets.PreInitializedLanguage#patchContext}
      *
