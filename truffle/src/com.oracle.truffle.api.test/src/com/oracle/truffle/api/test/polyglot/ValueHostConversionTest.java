@@ -38,6 +38,9 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -54,6 +57,9 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
 
+/**
+ * Tests class for {@link Context#asValue(Object)}
+ */
 public class ValueHostConversionTest {
 
     private Context context;
@@ -91,7 +97,6 @@ public class ValueHostConversionTest {
         assertOnlyNumber(context.asValue(42L));
         assertOnlyNumber(context.asValue(42f));
         assertOnlyNumber(context.asValue(42d));
-
     }
 
     private static void assertOnlyNumber(Value v) {
@@ -326,6 +331,89 @@ public class ValueHostConversionTest {
         proxy.invocationCounter = 0;
 
         assertValue(context, value, null, traits);
+    }
+
+    // TODO test for ProxyExecutable, ProxyObject, ProxyInstantiable, ProxyNativeObject
+
+    /**
+     * Tests basic examples from {@link Context#asValue(Object)}
+     */
+    @Test
+    public void testBasicExamples() {
+        assertTrue(context.asValue(null).isNull());
+        assertTrue(context.asValue(42).isNumber());
+        assertTrue(context.asValue("42").isString());
+        assertTrue(context.asValue('c').isString());
+        assertTrue(context.asValue(new String[0]).hasArrayElements());
+        assertTrue(context.asValue(new ArrayList<>()).isHostObject());
+        assertTrue(context.asValue(new ArrayList<>()).hasArrayElements());
+        assertTrue(context.asValue((Supplier<Integer>) () -> 42).execute().asInt() == 42);
+    }
+
+    public static class JavaRecord {
+        public int x = 42;
+        public double y = 42.0;
+
+        public String name() {
+            return "foo";
+        }
+    }
+
+    /**
+     * Tests advanced examples from {@link Context#asValue(Object)}
+     */
+    @Test
+    public void testAdvancedExamples() {
+        Value record = context.asValue(new JavaRecord());
+        assertTrue(record.getMember("x").asInt() == 42);
+        assertTrue(record.getMember("y").asDouble() == 42.0d);
+        assertTrue(record.getMember("name").execute().asString().equals("foo"));
+    }
+
+    @Test
+    public void testClassProperties() {
+        Value recordClass = context.asValue(JavaRecord.class);
+        assertTrue(recordClass.getMemberKeys().isEmpty());
+        assertTrue(recordClass.canInstantiate());
+
+        Value newInstance = recordClass.newInstance();
+        assertTrue(newInstance.isHostObject());
+        assertTrue(newInstance.asHostObject() instanceof JavaRecord);
+
+        assertTrue(newInstance.hasMember("getClass"));
+        assertTrue(newInstance.getMember("getClass").newInstance().asHostObject() instanceof JavaRecord);
+        assertTrue(newInstance.getMetaObject().newInstance().asHostObject() instanceof JavaRecord);
+        assertTrue(newInstance.getMetaObject().asHostObject() == JavaRecord.class);
+
+        assertValue(context, recordClass, Trait.INSTANTIABLE, Trait.MEMBERS);
+    }
+
+    @Test
+    public void testObjectProperties() {
+        Value record = context.asValue(new JavaRecord());
+
+        String[] publicKeys = new String[]{"x", "y", "name"};
+
+        assertEquals(new HashSet<>(Arrays.asList(publicKeys)), record.getMemberKeys());
+
+        assertTrue(record.hasMember("hashCode"));
+        assertTrue(record.hasMember("equals"));
+        assertTrue(record.hasMember("toString"));
+        assertTrue(record.hasMember("getClass"));
+        assertFalse(record.hasMember("clone"));
+        assertTrue(record.hasMember("notify"));
+        assertTrue(record.hasMember("wait"));
+        assertTrue(record.hasMember("notifyAll"));
+
+        assertValue(context, record, Trait.MEMBERS, Trait.HOST_OBJECT);
+        assertValue(context, record.getMetaObject(), Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
+    }
+
+    @Test
+    public void testStringInstantiaion() {
+        Value stringClass = context.asValue(String.class);
+        assertEquals("", stringClass.newInstance().asString());
+        assertEquals("foo", stringClass.newInstance("foo").asString());
     }
 
     @SuppressWarnings("unused")

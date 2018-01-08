@@ -90,6 +90,10 @@ public class ValueAssert {
         assertValue(context, value, null, detectSupportedTypes(value));
     }
 
+    public static void assertValue(Context context, Value value, Trait... expectedTypes) {
+        assertValue(context, value, null, expectedTypes);
+    }
+
     public static void assertValue(Context context, Value value, Object[] arguments, Trait... expectedTypes) {
         assertNotNull(value.toString());
         assertNotNull(value.getMetaObject());
@@ -100,16 +104,16 @@ public class ValueAssert {
         for (Trait supportedType : expectedTypes) {
             switch (supportedType) {
                 case NULL:
-                    assertTrue(value.isNull());
+                    assertTrue("expected " + supportedType.name(), value.isNull());
                     break;
                 case BOOLEAN:
-                    assertTrue(value.isBoolean());
+                    assertTrue("expected " + supportedType.name(), value.isBoolean());
                     boolean booleanValue = value.asBoolean();
                     assertEquals(booleanValue, value.as(Boolean.class));
                     assertEquals(booleanValue, value.as(boolean.class));
                     break;
                 case STRING:
-                    assertTrue(value.isString());
+                    assertTrue("expected " + supportedType.name(), value.isString());
                     String stringValue = value.asString();
                     assertEquals(stringValue, value.as(String.class));
                     if (stringValue.length() == 1) {
@@ -121,10 +125,11 @@ public class ValueAssert {
                     assertValueNumber(value);
                     break;
                 case ARRAY_ELEMENTS:
+                    assertTrue("expected " + supportedType.name(), value.hasArrayElements());
                     assertValueArrayElements(context, value);
                     break;
                 case EXECUTABLE:
-                    assertTrue(value.canExecute());
+                    assertTrue("expected " + supportedType.name(), value.canExecute());
                     assertFunctionalInterfaceMapping(context, value, arguments);
                     if (arguments != null) {
                         Value result = value.execute(arguments);
@@ -132,11 +137,11 @@ public class ValueAssert {
                     }
                     break;
                 case INSTANTIABLE:
-                    assertTrue(value.canInstantiate());
+                    assertTrue("expected " + supportedType.name(), value.canInstantiate());
                     value.as(Function.class);
                     if (arguments != null) {
                         Value result = value.newInstance(arguments);
-                        assertValue(context, result, null);
+                        assertValue(context, result);
                     }
                     // otherwise its ambiguous with the executable semantics.
                     if (!value.canExecute()) {
@@ -145,18 +150,18 @@ public class ValueAssert {
                     break;
 
                 case HOST_OBJECT:
-                    assertTrue(value.isHostObject());
+                    assertTrue("expected " + supportedType.name(), value.isHostObject());
                     Object hostObject = value.asHostObject();
                     assertTrue(!(hostObject instanceof Proxy));
                     // TODO assert mapping to interfaces
                     break;
                 case PROXY_OBJECT:
-                    assertTrue(value.isProxyObject());
+                    assertTrue("expected " + supportedType.name(), value.isProxyObject());
                     Object proxyObject = value.asProxyObject();
                     assertTrue(proxyObject instanceof Proxy);
                     break;
                 case MEMBERS:
-                    assertTrue(value.hasMembers());
+                    assertTrue("expected " + supportedType.name(), value.hasMembers());
 
                     for (String key : value.getMemberKeys()) {
                         assertValue(context, value.getMember(key));
@@ -165,7 +170,7 @@ public class ValueAssert {
                     // TODO virify setting and getting
                     break;
                 case NATIVE:
-                    assertTrue(value.isNativePointer());
+                    assertTrue("expected " + supportedType.name(), value.isNativePointer());
                     value.asNativePointer();
                     break;
             }
@@ -433,7 +438,13 @@ public class ValueAssert {
 
     @SuppressWarnings("unchecked")
     private static void assertFunctionalInterfaceMapping(Context context, Value value, Object[] arguments) {
-        Function<Object, Object> f1 = (Function<Object, Object>) value.as(Object.class);
+        Function<Object, Object> f1;
+        if (value.isHostObject()) {
+            f1 = value.as(Function.class);
+        } else {
+            f1 = (Function<Object, Object>) value.as(Object.class);
+        }
+
         Function<Object[], Object> f2 = value.as(Function.class);
         IsFunctionalInterfaceVarArgs f3 = value.as(IsFunctionalInterfaceVarArgs.class);
 
