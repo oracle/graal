@@ -311,6 +311,7 @@ public final class Deoptimizer {
      * @param ignoreNonDeoptimizable if set to true, a frame that cannot be deoptimized is ignored
      *            instead of raising an error (use for deoptimzation testing only).
      */
+    @NeverInline("Inlining of this method would require that we have deopt targets for callees of this method (SVM internals).")
     public static void deoptimizeFrame(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation) {
         DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sourceSp);
         if (deoptFrame != null) {

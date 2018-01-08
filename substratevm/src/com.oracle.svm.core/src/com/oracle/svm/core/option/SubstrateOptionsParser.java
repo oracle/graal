@@ -29,11 +29,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
-import org.graalvm.util.EconomicMap;
 
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;

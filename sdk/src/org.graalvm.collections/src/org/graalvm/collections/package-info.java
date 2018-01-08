@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,26 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.util;
-
 /**
- * Cursor to iterate over a map without changing its contents.
+ * The Graal-SDK collections package contains memory efficient data structures.
+ *
+ * @see org.graalvm.collections.EconomicMap
+ * @see org.graalvm.collections.EconomicSet
+ *
+ * @since 1.0
  */
-public interface UnmodifiableMapCursor<K, V> {
-    /**
-     * Advances to the next entry.
-     *
-     * @return {@code true} if a next entry exists, {@code false} if there is no next entry.
-     */
-    boolean advance();
-
-    /**
-     * The key of the current entry.
-     */
-    K getKey();
-
-    /**
-     * The value of the current entry.
-     */
-    V getValue();
-}
+package org.graalvm.collections;

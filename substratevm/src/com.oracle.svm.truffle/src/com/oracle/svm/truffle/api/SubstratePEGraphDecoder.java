@@ -24,6 +24,7 @@ package com.oracle.svm.truffle.api;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.nodes.EncodedGraph;
@@ -35,7 +36,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
-import org.graalvm.util.EconomicMap;
 
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.graal.GraalSupport;

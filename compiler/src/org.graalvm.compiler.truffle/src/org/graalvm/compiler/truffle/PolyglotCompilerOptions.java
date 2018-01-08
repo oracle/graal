@@ -22,13 +22,13 @@
  */
 package org.graalvm.compiler.truffle;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
-import org.graalvm.util.EconomicMap;
-import org.graalvm.util.Equivalence;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.nodes.RootNode;

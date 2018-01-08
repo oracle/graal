@@ -30,6 +30,7 @@ import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
@@ -96,7 +97,6 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.util.EconomicSet;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.amd64.FrameAccess;

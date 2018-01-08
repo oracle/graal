@@ -24,13 +24,13 @@ package com.oracle.svm.core.code;
 
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.util.FrequencyEncoder;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.util.EconomicMap;
-import org.graalvm.util.EconomicSet;
-import org.graalvm.util.Equivalence;
 
 import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
