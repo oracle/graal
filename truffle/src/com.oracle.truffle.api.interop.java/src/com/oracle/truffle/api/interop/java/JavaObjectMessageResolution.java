@@ -390,7 +390,7 @@ class JavaObjectMessageResolution {
             if (receiver.obj instanceof Map) {
                 return true;
             } else {
-                return !TruffleOptions.AOT && receiver.obj != null;
+                return !TruffleOptions.AOT && receiver.obj != null || receiver.isClass();
             }
         }
     }
