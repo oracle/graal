@@ -29,6 +29,7 @@ import static com.oracle.truffle.api.vm.PolyglotImpl.isGuestInteropValue;
 import static com.oracle.truffle.api.vm.VMAccessor.JAVAINTEROP;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 
+import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
@@ -74,6 +75,7 @@ final class PolyglotLanguageContext implements VMObject {
     volatile Env env;
     private final Node keyInfoNode = Message.KEY_INFO.createNode();
     private final Node readNode = Message.READ.createNode();
+    final Thread.UncaughtExceptionHandler uncaughtExceptionHandler = new PolyglotUncaughtExceptionHandler();
 
     PolyglotLanguageContext(PolyglotContextImpl context, PolyglotLanguage language, OptionValuesImpl optionValues, String[] applicationArguments, Map<String, Object> config) {
         this.context = context;
@@ -657,6 +659,14 @@ final class PolyglotLanguageContext implements VMObject {
     @Override
     public String toString() {
         return "PolyglotLanguageContext [language=" + language + ", initialized=" + (env != null) + "]";
+    }
+
+    private class PolyglotUncaughtExceptionHandler implements Thread.UncaughtExceptionHandler {
+
+        @Override
+        public void uncaughtException(Thread t, Throwable e) {
+            e.printStackTrace(new PrintStream(env.err()));
+        }
     }
 
 }
