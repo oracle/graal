@@ -694,6 +694,97 @@ public class SLDebugTest {
         assertTrue(done[0]);
     }
 
+    @Test
+    public void testUnwindAndReenter() {
+        final Source source = slCode("function main() {\n" +
+                        "  return fac(10);\n" +
+                        "}\n" +
+                        "function fac(n) {\n" +
+                        "  if (n <= 1) {\n" +
+                        "    return 1;\n" + // break
+                        "  }\n" +
+                        "  return n * fac(n - 1);\n" +
+                        "}\n");
+
+        try (DebuggerSession session = startSession()) {
+            session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(6).build());
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                assertEquals(6, event.getTopStackFrame().getSourceSection().getStartLine());
+                Iterator<DebugStackFrame> frames = event.getStackFrames().iterator();
+                for (int i = 0; i < 5; i++) {
+                    frames.next();
+                }
+                event.prepareUnwindFrame(frames.next());
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                assertEquals(8, event.getTopStackFrame().getSourceSection().getStartLine());
+                assertEquals("7", event.getTopStackFrame().getScope().getDeclaredValue("n").as(String.class));
+                event.prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                assertEquals(5, event.getTopStackFrame().getSourceSection().getStartLine());
+                assertEquals("6", event.getTopStackFrame().getScope().getDeclaredValue("n").as(String.class));
+                event.prepareContinue();
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                // The breakpoint hit again
+                assertEquals(6, event.getTopStackFrame().getSourceSection().getStartLine());
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testArgumentsAndValues() throws Throwable {
+        // Test that after a re-enter, arguments are kept and variables are cleared.
+        final Source source = slCode("function main() {\n" +
+                        "  i = 10;\n" +
+                        "  return fnc(i = i + 1, 20);\n" +
+                        "}\n" +
+                        "function fnc(n, m) {\n" +
+                        "  x = n + m;\n" +
+                        "  n = m - n;\n" +
+                        "  m = m / 2;\n" +
+                        "  x = x + n * m;\n" +
+                        "  return x;\n" +
+                        "}\n");
+
+        try (DebuggerSession session = startSession()) {
+            session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(6).build());
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                assertEquals(6, frame.getSourceSection().getStartLine());
+                checkArgs(frame, "n", "11", "m", "20");
+                checkStack(frame, "fnc", "n", "11", "m", "20");
+                event.prepareStepOver(4);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                assertEquals(10, frame.getSourceSection().getStartLine());
+                checkArgs(frame, "n", "11", "m", "20");
+                checkStack(frame, "fnc", "n", "9", "m", "10", "x", "121");
+                event.prepareUnwindFrame(frame);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                assertEquals(3, frame.getSourceSection().getStartLine());
+                checkArgs(frame);
+                checkStack(frame, "main", "i", "11");
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                assertEquals(6, frame.getSourceSection().getStartLine());
+                checkArgs(frame, "n", "11", "m", "20");
+                checkStack(frame, "fnc", "n", "11", "m", "20");
+            });
+            assertEquals("121", expectDone());
+        }
+    }
+
     private static void assertNumber(Object real, double expected) {
         if (real instanceof Number) {
             assertEquals(expected, ((Number) real).doubleValue(), 0.1);

@@ -37,7 +37,6 @@ import com.oracle.truffle.api.debug.DebuggerSession.SteppingLocation;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -109,7 +108,7 @@ public final class SuspendedEvent {
     private final Thread thread;
 
     private DebuggerSession session;
-    private EventContext context;
+    private SuspendedContext context;
     private MaterializedFrame materializedFrame;
     private List<Breakpoint> breakpoints;
     private Object returnValue;
@@ -120,7 +119,7 @@ public final class SuspendedEvent {
     private final Map<Breakpoint, Throwable> conditionFailures;
     private DebugStackFrameIterable cachedFrames;
 
-    SuspendedEvent(DebuggerSession session, Thread thread, EventContext context, MaterializedFrame frame, SteppingLocation location, Object returnValue,
+    SuspendedEvent(DebuggerSession session, Thread thread, SuspendedContext context, MaterializedFrame frame, SteppingLocation location, Object returnValue,
                     List<Breakpoint> breakpoints, Map<Breakpoint, Throwable> conditionFailures) {
         this.session = session;
         this.context = context;
@@ -197,7 +196,7 @@ public final class SuspendedEvent {
         return thread;
     }
 
-    EventContext getContext() {
+    SuspendedContext getContext() {
         return context;
     }
 
@@ -335,13 +334,13 @@ public final class SuspendedEvent {
         return cachedFrames;
     }
 
-    private static boolean isEvalRootStackFrame(SuspendedEvent event, FrameInstance instance) {
+    static boolean isEvalRootStackFrame(DebuggerSession session, FrameInstance instance) {
         CallTarget target = instance.getCallTarget();
         RootNode root = null;
         if (target instanceof RootCallTarget) {
             root = ((RootCallTarget) target).getRootNode();
         }
-        if (root != null && event.getSession().getDebugger().getEnv().isEngineRoot(root)) {
+        if (root != null && session.getDebugger().getEnv().isEngineRoot(root)) {
             return true;
         }
         return false;
@@ -540,6 +539,21 @@ public final class SuspendedEvent {
     }
 
     /**
+     * Prepare to unwind a frame. This frame and all frames above it are unwound off the execution
+     * stack. The frame needs to be on the {@link #getStackFrames() execution stack of this event}.
+     *
+     * @param frame the frame to unwind
+     * @throws IllegalArgumentException when the frame is not on the execution stack of this event
+     * @since 0.31
+     */
+    public void prepareUnwindFrame(DebugStackFrame frame) throws IllegalArgumentException {
+        if (frame.event != this) {
+            throw new IllegalArgumentException("The stack frame is not in the scope of this event.");
+        }
+        setNextStrategy(SteppingStrategy.createUnwind(frame.getDepth()));
+    }
+
+    /**
      * Prepare to terminate the suspended execution represented by this event. One use-case for this
      * method is to shield an execution of an unknown code with a timeout:
      *
@@ -572,7 +586,7 @@ public final class SuspendedEvent {
 
         private DebugStackFrame getTopStackFrame() {
             if (topStackFrame == null) {
-                topStackFrame = new DebugStackFrame(SuspendedEvent.this, null);
+                topStackFrame = new DebugStackFrame(SuspendedEvent.this, null, 0);
             }
             return topStackFrame;
         }
@@ -581,19 +595,18 @@ public final class SuspendedEvent {
             if (otherFrames == null) {
                 final List<DebugStackFrame> frameInstances = new ArrayList<>();
                 Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<FrameInstance>() {
-                    private boolean first = true;
+                    private int depth = -context.getStackDepth() - 1;
 
                     @Override
                     public FrameInstance visitFrame(FrameInstance frameInstance) {
-                        if (isEvalRootStackFrame(SuspendedEvent.this, frameInstance)) {
+                        if (isEvalRootStackFrame(session, frameInstance)) {
                             // we stop at eval root stack frames
                             return frameInstance;
                         }
-                        if (first) {
-                            first = false;
+                        if (++depth <= 0) {
                             return null;
                         }
-                        frameInstances.add(new DebugStackFrame(SuspendedEvent.this, frameInstance));
+                        frameInstances.add(new DebugStackFrame(SuspendedEvent.this, frameInstance, depth));
                         return null;
                     }
                 });

@@ -47,14 +47,18 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.debug.Breakpoint.BreakpointConditionFailure;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
+import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.Builder;
 import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
@@ -736,7 +740,7 @@ public final class DebuggerSession implements Closeable {
         boolean hitBreakpoint = breaks != null && !breaks.isEmpty();
         if (hitStepping || hitBreakpoint) {
             s.consume();
-            doSuspend(source, frame, returnValue, breaks, breakpointFailures);
+            doSuspend(SuspendedContext.create(source.getContext()), source.getSteppingLocation(), frame, returnValue, breaks, breakpointFailures);
         } else {
             if (Debugger.TRACE) {
                 trace("ignored suspended reason: strategy(%s) from source:%s context:%s location:%s", s, source, source.getContext(), source.getSteppingLocation());
@@ -747,13 +751,57 @@ public final class DebuggerSession implements Closeable {
         }
     }
 
-    private void doSuspend(DebuggerNode source, MaterializedFrame frame, Object returnValue, List<Breakpoint> breaks, Map<Breakpoint, Throwable> conditionFailures) {
+    private static void clearFrame(MaterializedFrame frame) {
+        FrameDescriptor descriptor = frame.getFrameDescriptor();
+        Object value = descriptor.getDefaultValue();
+        for (FrameSlot slot : descriptor.getSlots()) {
+            frame.setObject(slot, value);
+        }
+    }
+
+    private void notifyUnwindCallback(MaterializedFrame frame) {
+        Thread currentThread = Thread.currentThread();
+        SteppingStrategy s = getSteppingStrategy(currentThread);
+        // We must have an active stepping strategy on this thread when unwind finished
+        assert s != null;
+        assert s.isUnwind();
+        assert s.step(this, null, null);
+        s.consume();
+        clearFrame(frame); // Clear the frame that is to be re-entered
+        // Fake the caller context
+        class Caller {
+            final Node node;
+            final MaterializedFrame frame;
+
+            Caller(FrameInstance frameInstance) {
+                this.node = frameInstance.getCallNode();
+                this.frame = frameInstance.getFrame(FrameAccess.MATERIALIZE).materialize();
+            }
+        }
+        Caller caller = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Caller>() {
+            private int depth = 0;
+
+            @Override
+            public Caller visitFrame(FrameInstance frameInstance) {
+                // we stop at eval root stack frames
+                if (!SuspendedEvent.isEvalRootStackFrame(DebuggerSession.this, frameInstance) && (depth++ == 0)) {
+                    return null;
+                }
+                return new Caller(frameInstance);
+            }
+        });
+        SuspendedContext context = SuspendedContext.create(caller.node, ((SteppingStrategy.Unwind) s).unwind);
+        doSuspend(context, SteppingLocation.AFTER_CALL, caller.frame, null, Collections.emptyList(), Collections.emptyMap());
+    }
+
+    private void doSuspend(SuspendedContext context, SteppingLocation steppingLocation, MaterializedFrame frame, Object returnValue, List<Breakpoint> breaks,
+                    Map<Breakpoint, Throwable> conditionFailures) {
         CompilerAsserts.neverPartOfCompilation();
         Thread currentThread = Thread.currentThread();
 
         SuspendedEvent suspendedEvent;
         try {
-            suspendedEvent = new SuspendedEvent(this, currentThread, source.getContext(), frame, source.getSteppingLocation(), returnValue, breaks, conditionFailures);
+            suspendedEvent = new SuspendedEvent(this, currentThread, context, frame, steppingLocation, returnValue, breaks, conditionFailures);
             currentSuspendedEventMap.put(currentThread, suspendedEvent);
             try {
                 callback.onSuspend(suspendedEvent);
@@ -786,12 +834,16 @@ public final class DebuggerSession implements Closeable {
         strategy.initialize();
 
         if (Debugger.TRACE) {
-            trace("end suspend with strategy %s at %s location %s", strategy, source.getContext(), source.getSteppingLocation());
+            trace("end suspend with strategy %s at %s location %s", strategy, context, steppingLocation);
         }
 
         setSteppingStrategy(currentThread, strategy, true);
         if (strategy.isKill()) {
             throw new KillException();
+        } else if (strategy.isUnwind()) {
+            ThreadDeath unwind = context.createUnwind(null, rootBinding);
+            ((SteppingStrategy.Unwind) strategy).unwind = unwind;
+            throw unwind;
         }
     }
 
@@ -990,6 +1042,15 @@ public final class DebuggerSession implements Closeable {
             }
         }
 
+        @Override
+        protected Object onUnwind(VirtualFrame frame, Object info) {
+            if (stepping.get()) {
+                return doUnwind(frame.materialize());
+            } else {
+                return null;
+            }
+        }
+
         @TruffleBoundary
         private void doEnter() {
             SteppingStrategy steppingStrategy = strategyMap.get(Thread.currentThread());
@@ -1006,6 +1067,19 @@ public final class DebuggerSession implements Closeable {
             }
         }
 
+        @TruffleBoundary
+        private Object doUnwind(MaterializedFrame frame) {
+            SteppingStrategy steppingStrategy = strategyMap.get(Thread.currentThread());
+            if (steppingStrategy != null) {
+                Object info = steppingStrategy.notifyOnUnwind();
+                if (info == ProbeNode.UNWIND_ACTION_REENTER) {
+                    notifyUnwindCallback(frame);
+                }
+                return info;
+            } else {
+                return null;
+            }
+        }
     }
 
     /**
