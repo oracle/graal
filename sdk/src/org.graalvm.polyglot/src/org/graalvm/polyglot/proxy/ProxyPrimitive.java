@@ -40,11 +40,12 @@ import org.graalvm.polyglot.PolyglotException;
 public interface ProxyPrimitive extends Proxy {
 
     /**
-     * Unboxes the proxy to a primitive value. The primitive value is {@link #asPrimitive() computed}
-     * lazily when accessed by the guest language. Valid primitive values are {@link String},
-     * {@link Byte}, {@link Character}, {@link Short}, {@link Integer}, {@link Long} , {@link Float} and
-     * {@link Double}. If the returned type is invalid then a {@link IllegalStateException}
-     * {@link PolyglotException#isHostException() host exception} is thrown to the guest language.
+     * Unboxes the proxy to a primitive value. The primitive value is {@link #asPrimitive()
+     * computed} lazily when accessed by the guest language. Valid primitive values are
+     * {@link String}, {@link Byte}, {@link Character}, {@link Short}, {@link Integer}, {@link Long}
+     * , {@link Float} and {@link Double}. If the returned type is invalid then a
+     * {@link IllegalStateException} {@link PolyglotException#isHostException() host exception} is
+     * thrown to the guest language.
      *
      * @since 1.0
      */
