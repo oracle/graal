@@ -32,6 +32,7 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrum
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
@@ -261,7 +262,7 @@ public abstract class TruffleCompiler {
     }
 
     private class TruffleCodeInstallationTask extends Backend.CodeInstallationTask {
-        private List<AssumptionValidAssumption> validAssumptions = new ArrayList<>();
+        private List<Consumer<InstalledCode>> installedCodeEntries = new ArrayList<>();
 
         @Override
         public void preProcess(CompilationResult result) {
@@ -272,7 +273,8 @@ public abstract class TruffleCompiler {
             for (Assumption assumption : result.getAssumptions()) {
                 if (assumption != null && assumption instanceof AssumptionValidAssumption) {
                     AssumptionValidAssumption assumptionValidAssumption = (AssumptionValidAssumption) assumption;
-                    validAssumptions.add(assumptionValidAssumption);
+                    Consumer<InstalledCode> entry = snippetReflection.asObject(OptimizedAssumption.class, assumptionValidAssumption.getAssumption()).registerInstalledCodeEntry();
+                    installedCodeEntries.add(entry);
                 } else {
                     newAssumptions.add(assumption);
                 }
@@ -282,17 +284,15 @@ public abstract class TruffleCompiler {
 
         @Override
         public void postProcess(InstalledCode installedCode) {
-            if (installedCode instanceof OptimizedCallTarget) {
-                for (AssumptionValidAssumption assumption : validAssumptions) {
-                    snippetReflection.asObject(OptimizedAssumption.class, assumption.getAssumption()).registerInstalledCode(installedCode);
-                }
+            for (Consumer<InstalledCode> entry : installedCodeEntries) {
+                entry.accept(installedCode);
             }
         }
 
         @Override
-        public void releaseInstallation(InstalledCode installedCode) {
-            if (installedCode instanceof OptimizedCallTarget) {
-                ((OptimizedCallTarget) installedCode).releaseEntryPoint();
+        public void installFailed(Throwable t) {
+            for (Consumer<InstalledCode> entry : installedCodeEntries) {
+                entry.accept(null);
             }
         }
     }
