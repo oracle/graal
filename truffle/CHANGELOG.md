@@ -14,6 +14,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added [JavaInterop.isHostException](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/interop/java/JavaInterop.html#isHostException-java.lang.Throwable-) and [JavaInterop.asHostException](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/interop/java/JavaInterop.html#asHostException-java.lang.Throwable-) to identify and unwrap host exceptions, respectively.
 * The profiler infrastructure (`CPUSampler`, `CPUTracer` and `MemoryTracer`) moved to a new tools suite.
 * Added [LanguageInfo.isInternal](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/nodes/LanguageInfo.html#isInternal--)
+* Removed special Java interop support for `java.util.Map`.
 
 ## Version 0.30
 

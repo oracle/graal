@@ -362,12 +362,12 @@ public class SLJavaInteropTest {
 
     @Test
     public void accessJavaMap() {
-        String scriptText = "function write(map, key, value) {\n" + //
-                        "  map[key] = value;\n" + //
-                        "}\n" + //
-                        "function read(map, key) {\n" + //
-                        "  return map[key];\n" + //
-                        "}\n"; //
+        String scriptText = "function write(map, key, value) {\n" +
+                        "  map.put(key, value);\n" +
+                        "}\n" +
+                        "function read(map, key) {\n" +
+                        "  return map.get(key);\n" +
+                        "}\n";
         Source script = Source.newBuilder(scriptText).name("Test").mimeType("application/x-sl").build();
         engine.eval(script);
         PolyglotEngine.Value read = engine.findGlobalSymbol("read");
