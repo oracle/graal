@@ -81,9 +81,17 @@ public abstract class TVMCI {
      */
     protected TVMCI() {
         // export only for select packages
-        assert getClass().getPackage().getName().equals("org.graalvm.compiler.truffle") ||
-                        getClass().getPackage().getName().equals("com.oracle.graal.truffle") ||
-                        getClass().getPackage().getName().equals("com.oracle.truffle.api.impl");
+        assert checkCaller();
+    }
+
+    private boolean checkCaller() {
+        final String packageName = getClass().getPackage().getName();
+        assert packageName.equals("org.graalvm.compiler.truffle.runtime") ||
+                        packageName.equals("org.graalvm.graal.truffle") ||
+                        packageName.equals("com.oracle.graal.truffle") ||
+                        packageName.equals("com.oracle.truffle.api.impl") : //
+        TVMCI.class.getName() + " subclass is not in trusted package: " + getClass().getName();
+        return true;
     }
 
     /**

@@ -24,27 +24,22 @@ package com.oracle.svm.truffle.api;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.graal.SubstrateGraalUtils.updateGraalArchitectureWithHostCPUFeatures;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsArePrinted;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsArePrinted;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
-import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.target.Backend;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.CancellableCompileTask;
-import org.graalvm.compiler.truffle.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.LoopNodeFactory;
-import org.graalvm.compiler.truffle.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.LoopNodeFactory;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
@@ -59,8 +54,8 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.stack.SubstrateStackIntrospection;
 import com.oracle.svm.graal.GraalSupport;
+import com.oracle.svm.graal.hosted.GraalFeature;
 import com.oracle.svm.hosted.c.GraalAccess;
-import com.oracle.svm.truffle.SubstrateTruffleCompilationIdentifier;
 import com.oracle.svm.truffle.TruffleFeature;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -111,22 +106,34 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setTruffleCompiler(SubstrateTruffleCompiler compiler) {
+    public SubstrateTruffleCompiler initTruffleCompiler() {
+        assert truffleCompiler == null : "Cannot re-initialize Substrate TruffleCompiler";
+        GraalFeature graalFeature = ImageSingletons.lookup(GraalFeature.class);
+        SnippetReflectionProvider snippetReflection = graalFeature.getHostedProviders().getSnippetReflection();
+        SubstrateTruffleCompiler compiler = new SubstrateTruffleCompiler(this, graalFeature.getHostedProviders().getGraphBuilderPlugins(), GraalSupport.getSuites(),
+                        GraalSupport.getLIRSuites(),
+                        GraalSupport.getRuntimeConfig().getBackendForNormalMethod(), snippetReflection);
         truffleCompiler = compiler;
+        return compiler;
     }
 
     public ResolvedJavaMethod[] getAnyFrameMethod() {
         return callMethods.anyFrameMethod;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     @Override
-    public SubstrateTruffleCompiler getTruffleCompiler() {
-        return (SubstrateTruffleCompiler) truffleCompiler;
+    public SubstrateTruffleCompiler newTruffleCompiler() {
+        GraalFeature graalFeature = ImageSingletons.lookup(GraalFeature.class);
+        SnippetReflectionProvider snippetReflectionProvider = graalFeature.getHostedProviders().getSnippetReflection();
+        return new SubstrateTruffleCompiler(this, graalFeature.getHostedProviders().getGraphBuilderPlugins(), GraalSupport.getSuites(),
+                        GraalSupport.getLIRSuites(),
+                        GraalSupport.getRuntimeConfig().getBackendForNormalMethod(), snippetReflectionProvider);
     }
 
     @Override
-    public CompilationIdentifier getCompilationIdentifier(OptimizedCallTarget optimizedCallTarget, ResolvedJavaMethod callRootMethod, Backend backend) {
-        return new SubstrateTruffleCompilationIdentifier(optimizedCallTarget);
+    public SubstrateTruffleCompiler getTruffleCompiler() {
+        return (SubstrateTruffleCompiler) truffleCompiler;
     }
 
     @Override
@@ -192,21 +199,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    protected DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, OptimizedCallTarget callTarget) {
-        return GraalSupport.get().openDebugContext(options, compilationId, callTarget);
-    }
-
-    @Override
-    protected DiagnosticsOutputDirectory getDebugOutputDirectory() {
-        return GraalSupport.get().getDebugOutputDirectory();
-    }
-
-    @Override
-    protected Map<ExceptionAction, Integer> getCompilationProblemsPerAction() {
-        return GraalSupport.get().getCompilationProblemsPerAction();
-    }
-
-    @Override
     public CancellableCompileTask submitForCompilation(OptimizedCallTarget optimizedCallTarget) {
         if (SubstrateOptions.MultiThreaded.getValue()) {
             return super.submitForCompilation(optimizedCallTarget);
@@ -221,6 +213,8 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
                 e.printStackTrace(new PrintWriter(string));
                 Log.log().string(string.toString());
             }
+        } finally {
+            optimizedCallTarget.resetCompilationTask();
         }
 
         return null;
@@ -264,10 +258,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public void invalidateInstalledCode(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
         CodeInfoTable.invalidateInstalledCode(optimizedCallTarget);
-    }
-
-    @Override
-    public void reinstallStubs() {
     }
 
     @Override

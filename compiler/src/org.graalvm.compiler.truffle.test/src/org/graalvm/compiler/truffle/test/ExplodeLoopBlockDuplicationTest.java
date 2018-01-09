@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;

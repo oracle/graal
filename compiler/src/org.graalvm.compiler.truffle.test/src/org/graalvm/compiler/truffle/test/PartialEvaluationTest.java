@@ -31,9 +31,9 @@ import java.util.List;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -42,30 +42,27 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
-import org.graalvm.compiler.truffle.DefaultInliningPolicy;
-import org.graalvm.compiler.truffle.hotspot.HotSpotTruffleCompiler;
-import org.graalvm.compiler.truffle.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.TruffleCompiler;
-import org.graalvm.compiler.truffle.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.TruffleDebugJavaMethod;
-import org.graalvm.compiler.truffle.TruffleInlining;
-import org.graalvm.compiler.truffle.TruffleTreeDebugHandlersFactory;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
+import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.TruffleInlining;
+import org.graalvm.compiler.truffle.runtime.TruffleTreeDebugHandlersFactory;
 import org.junit.Assert;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 
+import jdk.vm.ci.meta.SpeculationLog;
+
 public class PartialEvaluationTest extends GraalCompilerTest {
-    protected final TruffleCompiler truffleCompiler;
+    protected final TruffleCompilerImpl truffleCompiler;
 
     public PartialEvaluationTest() {
         beforeInitialization();
-        GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
-        this.truffleCompiler = HotSpotTruffleCompiler.create(runtime);
-
-        // DebugEnvironment.ensureInitialized(getInitialOptions(),
-        // runtime.getRequiredGraalCapability(SnippetReflectionProvider.class));
+        this.truffleCompiler = (TruffleCompilerImpl) TruffleCompilerRuntime.getRuntime().newTruffleCompiler();
     }
 
     /**
@@ -86,14 +83,14 @@ public class PartialEvaluationTest extends GraalCompilerTest {
     }
 
     private CompilationIdentifier getCompilationId(final OptimizedCallTarget compilable) {
-        return ((GraalTruffleRuntime) Truffle.getRuntime()).getCompilationIdentifier(compilable, truffleCompiler.getPartialEvaluator().getCompilationRootMethods()[0], getBackend());
+        return this.truffleCompiler.getCompilationIdentifier(compilable);
     }
 
     protected OptimizedCallTarget compileHelper(String methodName, RootNode root, Object[] arguments) {
         final OptimizedCallTarget compilable = (OptimizedCallTarget) (Truffle.getRuntime()).createCallTarget(root);
         CompilationIdentifier compilationId = getCompilationId(compilable);
         StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES, compilationId);
-        truffleCompiler.compileMethodHelper(actual, methodName, null, compilable, asCompilationRequest(compilationId));
+        truffleCompiler.compilePEGraph(actual, methodName, null, compilable, asCompilationRequest(compilationId));
         return compilable;
     }
 
@@ -101,7 +98,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
         CompilationIdentifier compilationId = getCompilationId(compilable);
         StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES, compilationId);
-        truffleCompiler.compileMethodHelper(actual, methodName, null, compilable, asCompilationRequest(compilationId));
+        truffleCompiler.compilePEGraph(actual, methodName, null, compilable, asCompilationRequest(compilationId));
         removeFrameStates(actual);
         StructuredGraph expected = parseForComparison(methodName, actual.getDebug());
         Assert.assertEquals(getCanonicalGraphString(expected, true, true), getCanonicalGraphString(actual, true, true));
@@ -131,7 +128,9 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         OptionValues options = TruffleCompilerOptions.getOptions();
         DebugContext debug = getDebugContext(options);
         try (DebugContext.Scope s = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
-            return truffleCompiler.getPartialEvaluator().createGraph(debug, compilable, new TruffleInlining(compilable, new DefaultInliningPolicy()), allowAssumptions, compilationId, null);
+            TruffleInlining inliningDecision = new TruffleInlining(compilable, new DefaultInliningPolicy());
+            SpeculationLog speculationLog = compilable.getSpeculationLog();
+            return truffleCompiler.getPartialEvaluator().createGraph(debug, compilable, inliningDecision, allowAssumptions, compilationId, speculationLog, null);
         } catch (Throwable e) {
             throw debug.handle(e);
         }

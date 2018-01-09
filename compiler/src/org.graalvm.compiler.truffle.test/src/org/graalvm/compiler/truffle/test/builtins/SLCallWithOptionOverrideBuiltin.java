@@ -23,10 +23,10 @@
 package org.graalvm.compiler.truffle.test.builtins;
 
 import org.graalvm.compiler.options.OptionDescriptor;
-import org.graalvm.compiler.truffle.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleOptionsOverrideScope;
-import org.graalvm.compiler.truffle.TruffleCompilerOptions_OptionDescriptors;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions_OptionDescriptors;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleOptionsOverrideScope;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
