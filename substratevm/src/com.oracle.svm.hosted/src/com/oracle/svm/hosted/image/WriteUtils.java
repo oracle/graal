@@ -66,22 +66,22 @@ public class WriteUtils extends PrimitiveWriteUtils {
             addNonDataRelocation(buffer, index, (RelocatedPointer) SubstrateObjectConstant.asObject(value), heap);
         } else {
             // Other Constants get written without relocation information.
-            write(buffer, index, value, heap, field.getName(), info != null ? info : field);
+            write(buffer, index, value, heap, info != null ? info : field);
         }
     }
 
-    public static void write(RelocatableBuffer buffer, int index, JavaConstant con, NativeImageHeap heap, String label, Object reason) {
+    public static void write(RelocatableBuffer buffer, int index, JavaConstant con, NativeImageHeap heap, Object reason) {
         if (con.getJavaKind() == JavaKind.Object) {
-            writeReference(buffer, index, SubstrateObjectConstant.asObject(con), heap, label, reason);
+            writeReference(buffer, index, SubstrateObjectConstant.asObject(con), heap, reason);
         } else {
             writePrimitive(buffer, index, con);
         }
     }
 
-    public static void writeConstant(RelocatableBuffer buffer, int index, JavaKind kind, Object value, NativeImageHeap heap, String label, ObjectInfo info) {
+    public static void writeConstant(RelocatableBuffer buffer, int index, JavaKind kind, Object value, NativeImageHeap heap, ObjectInfo info) {
         if (value instanceof RelocatedPointer) {
             final RelocatedPointer pointer = (RelocatedPointer) value;
-            writeRelocatedPointer(buffer, index, pointer, heap, label);
+            writeRelocatedPointer(buffer, index, pointer, heap);
         } else {
             JavaConstant con;
             if (value instanceof WordBase) {
@@ -92,26 +92,22 @@ public class WriteUtils extends PrimitiveWriteUtils {
                 assert kind == JavaKind.Object || value != null : "primitive value must not be null";
                 con = SubstrateObjectConstant.forBoxedValue(kind, value);
             }
-            write(buffer, index, con, heap, label, info);
+            write(buffer, index, con, heap, info);
         }
     }
 
-    public static void writeRelocatedPointer(RelocatableBuffer buffer, int index, RelocatedPointer pointer, NativeImageHeap heap, String label) {
+    public static void writeRelocatedPointer(RelocatableBuffer buffer, int index, RelocatedPointer pointer, NativeImageHeap heap) {
         // A RelocatedPointer needs relocation data.
         addNonDataRelocation(buffer, index, pointer, heap);
-        // Add a link in the heap graph.
-        addHeapPrinterLink(heap, pointer, label);
     }
 
-    public static void writeReference(RelocatableBuffer buffer, int index, Object target, NativeImageHeap heap, String label, Object reason) {
+    public static void writeReference(RelocatableBuffer buffer, int index, Object target, NativeImageHeap heap, Object reason) {
         assert !(target instanceof WordBase) : "word values are not references";
         final int objectSize = heap.getLayout().sizeInBytes(JavaKind.Object);
         assert heap.getLayout().isAligned(index) : "index " + index + " must be aligned.";
         if (target != null) {
             verifyTargetDidNotChange(target, reason, heap.objects.get(target));
             buffer.addDirectRelocationWithoutAddend(index, objectSize, target);
-            // Add a link in the heap graph.
-            addHeapPrinterLink(heap, target, label);
         }
     }
 
@@ -131,16 +127,6 @@ public class WriteUtils extends PrimitiveWriteUtils {
             return fillReasonStack(msg, info.reason);
         } else {
             return msg.append("    root: ").append(reason).append("\n");
-        }
-    }
-
-    public static void addHeapPrinterLink(NativeImageHeap heap, Object target, String label) {
-        assert !(target instanceof NativeImageHeap.ObjectInfo) : "Probably you passed a targetInfo where you wanted a target.";
-        if ((heap.getHeapPrinter() != null) && (label != null)) {
-            NativeImageHeap.ObjectInfo targetInfo = heap.objects.get(target);
-            if (targetInfo != null) {
-                heap.getHeapPrinter().addLink(targetInfo, label);
-            }
         }
     }
 

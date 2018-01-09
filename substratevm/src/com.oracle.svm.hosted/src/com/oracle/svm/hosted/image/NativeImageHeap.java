@@ -738,7 +738,7 @@ public class NativeImageHeap {
             final int index = staticFieldsInfo.getIntIndexInSection(location);
             // Overwrite the previously written null-value with the actual object location.
             final RelocatableBuffer buffer = bufferForPartition(staticFieldsInfo, roBuffer, rwBuffer);
-            WriteUtils.writeReference(buffer, index, info.getObject(), this, null, staticFieldsInfo);
+            WriteUtils.writeReference(buffer, index, info.getObject(), this, staticFieldsInfo);
         } catch (NoSuchFieldException ex) {
             throw shouldNotReachHere(ex);
         }
@@ -883,9 +883,6 @@ public class NativeImageHeap {
     }
 
     private void writeObject(ObjectInfo info, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
-        if (getHeapPrinter() != null) {
-            getHeapPrinter().addObject(info);
-        }
         /*
          * Write a reference from the object to its hub. This lives at layout.getHubOffset() from
          * the object base.
@@ -956,8 +953,7 @@ public class NativeImageHeap {
                     final int elementIndex = info.getIntIndexInSection(hybridLayout.getArrayElementOffset(i));
                     final JavaKind elementKind = hybridLayout.getArrayElementKind();
                     final Object array = Array.get(hybridArray, i);
-                    final String indexString = Integer.toString(i);
-                    WriteUtils.writeConstant(buffer, elementIndex, elementKind, array, this, indexString, info);
+                    WriteUtils.writeConstant(buffer, elementIndex, elementKind, array, this, info);
                 }
             }
 
@@ -973,15 +969,13 @@ public class NativeImageHeap {
                 for (int i = 0; i < length; i++) {
                     final int elementIndex = info.getIntIndexInSection(getLayout().getArrayElementOffset(kind, i));
                     final Object element = aUniverse.replaceObject(oarray[i]);
-                    final String indexString = Integer.toString(i);
-                    WriteUtils.writeConstant(buffer, elementIndex, kind, element, this, indexString, info);
+                    WriteUtils.writeConstant(buffer, elementIndex, kind, element, this, info);
                 }
             } else {
                 for (int i = 0; i < length; i++) {
                     final int elementIndex = info.getIntIndexInSection(getLayout().getArrayElementOffset(kind, i));
                     final Object element = Array.get(array, i);
-                    final String indexString = Integer.toString(i);
-                    WriteUtils.writeConstant(buffer, elementIndex, kind, element, this, indexString, info);
+                    WriteUtils.writeConstant(buffer, elementIndex, kind, element, this, info);
                 }
             }
 
@@ -1018,14 +1012,6 @@ public class NativeImageHeap {
         return layout;
     }
 
-    public DotHeapPrinter getHeapPrinter() {
-        return heapPrinter;
-    }
-
-    public void setHeapPrinter(DotHeapPrinter heapPrinter) {
-        this.heapPrinter = heapPrinter;
-    }
-
     public NativeImageHeap(AnalysisUniverse aUniverse, HostedUniverse universe, HostedMetaAccess metaAccess) {
         this.aUniverse = aUniverse;
         this.universe = universe;
@@ -1048,8 +1034,6 @@ public class NativeImageHeap {
     private final AnalysisUniverse aUniverse;
     private final HostedMetaAccess metaAccess;
     private final ObjectLayout layout;
-
-    private DotHeapPrinter heapPrinter;
 
     /**
      * A Map from objects at construction-time to native image objects.
