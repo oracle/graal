@@ -227,7 +227,7 @@ public final class PolyglotRuntime {
             assert engineProfile != null;
             this.cache = cache;
             this.languageId = languageId;
-            this.language = NODES.createLanguage(this, cache.getId(), cache.getName(), cache.getVersion(), cache.getMimeTypes());
+            this.language = NODES.createLanguage(this, cache.getId(), cache.getName(), cache.getVersion(), cache.getMimeTypes(), cache.isInternal());
         }
 
         Language currentLanguage() {
