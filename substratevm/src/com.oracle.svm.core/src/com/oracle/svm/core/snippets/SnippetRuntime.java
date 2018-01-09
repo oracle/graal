@@ -50,7 +50,7 @@ import com.oracle.svm.core.deopt.DeoptTester;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
-import com.oracle.svm.core.heap.NoAllocationVerifier;
+import com.oracle.svm.core.jdk.JDKUtils;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
@@ -254,53 +254,46 @@ public class SnippetRuntime {
     private static final OutOfMemoryError cachedOutOfMemoryError = setEmptyStackTrace(new OutOfMemoryError());
     public static final AssertionError cachedAssertionError = setEmptyStackTrace(new AssertionError());
 
-    private static <T extends Throwable> T implicitException(T exception) {
-        return exception;
-    }
-
     /** Foreign call: {@link #THROW_CACHED_NULL_POINTER_EXCEPTION}. */
     @SubstrateForeignCallTarget
     private static void throwCachedNullPointerException() {
-        throw implicitException(cachedNullPointerException);
+        throw cachedNullPointerException;
     }
 
     /** Foreign call: {@link #THROW_CACHED_CLASS_CAST_EXCEPTION}. */
     @SubstrateForeignCallTarget
     private static void throwCachedClassCastException() {
-        throw implicitException(cachedClassCastException);
+        throw cachedClassCastException;
     }
 
     /** Foreign call: {@link #THROW_CACHED_ARRAY_STORE_EXCEPTION}. */
     @SubstrateForeignCallTarget
     private static void throwCachedArrayStoreException() {
-        throw implicitException(cachedArrayStoreException);
+        throw cachedArrayStoreException;
     }
 
     /** Foreign call: {@link #THROW_CACHED_ARITHMETIC_EXCEPTION}. */
     @SubstrateForeignCallTarget
     private static void throwCachedArithmeticException() {
-        throw implicitException(cachedArithmeticException);
+        throw cachedArithmeticException;
     }
 
     /** Foreign call: {@link #THROW_CACHED_ARRAY_INDEX_OUT_OF_BOUNDS_EXCEPTION}. */
     @SubstrateForeignCallTarget
     private static void throwCachedArrayIndexOutOfBoundsException() {
-        throw implicitException(cachedArrayIndexOutOfBoundsException);
+        throw cachedArrayIndexOutOfBoundsException;
     }
-
-    private static final NoAllocationVerifier outOfMemory = NoAllocationVerifier.factory("SnippetRuntime.outOfMemory", false);
 
     /** Foreign call: {@link #THROW_CACHED_OUT_OF_MEMORY_ERROR}. */
     @SubstrateForeignCallTarget
     private static void throwCachedOutOfMemoryError() {
-        outOfMemory.open();
-        throw implicitException(cachedOutOfMemoryError);
+        throw cachedOutOfMemoryError;
     }
 
     /** Foreign call: {@link #THROW_CACHED_ASSERTION_ERROR}. */
     @SubstrateForeignCallTarget
     private static void throwCachedAssertionError() {
-        throw implicitException(cachedAssertionError);
+        throw cachedAssertionError;
     }
 
     /** Foreign call: {@link #REPORT_TYPE_ASSERTION_ERROR}. */
@@ -454,11 +447,9 @@ public class SnippetRuntime {
 
     public static void reportUnhandledExceptionRaw(Throwable exception) {
         Log.log().string(exception.getClass().getName());
-        if (!NoAllocationVerifier.isActive()) {
-            String detail = exception.getMessage();
-            if (detail != null) {
-                Log.log().string(": ").string(detail);
-            }
+        String detail = JDKUtils.getRawMessage(exception);
+        if (detail != null) {
+            Log.log().string(": ").string(detail);
         }
         Log.log().newline();
         ConfigurationValues.getOSInterface().abort();
