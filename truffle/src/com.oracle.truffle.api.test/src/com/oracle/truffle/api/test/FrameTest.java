@@ -23,9 +23,9 @@
 package com.oracle.truffle.api.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -76,7 +76,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 public class FrameTest {
 
     @Test
-    public void test() throws SecurityException, IllegalArgumentException {
+    public void test() {
         TruffleRuntime runtime = Truffle.getRuntime();
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         String varName = "localVar";
@@ -84,15 +84,9 @@ public class FrameTest {
         TestRootNode rootNode = new TestRootNode(frameDescriptor, new AssignLocal(slot), new ReadLocal(slot));
         CallTarget target = runtime.createCallTarget(rootNode);
         Object result = target.call();
-        Assert.assertEquals(42, result);
+        assertEquals(42, result);
         frameDescriptor.removeFrameSlot(varName);
-        boolean slotMissing = false;
-        try {
-            result = target.call();
-        } catch (IllegalArgumentException iae) {
-            slotMissing = true;
-        }
-        Assert.assertTrue(slotMissing);
+        assertNull(frameDescriptor.findFrameSlot(varName));
     }
 
     class TestRootNode extends RootNode {
