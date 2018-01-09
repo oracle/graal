@@ -25,6 +25,7 @@ package com.oracle.graal.pointsto.typestate;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -41,11 +42,16 @@ import jdk.vm.ci.common.JVMCIError;
 public class TypeStateUtils {
 
     private static final MethodHandle bitSetArrayAccess;
+    private static final MethodHandle trimToSizeAccess;
     static {
         try {
             Field bitSetArrayField = BitSet.class.getDeclaredField("words");
             bitSetArrayField.setAccessible(true);
             bitSetArrayAccess = MethodHandles.lookup().unreflectGetter(bitSetArrayField);
+
+            Method trimToSizeMethod = BitSet.class.getDeclaredMethod("trimToSize");
+            trimToSizeMethod.setAccessible(true);
+            trimToSizeAccess = MethodHandles.lookup().unreflect(trimToSizeMethod);
         } catch (Throwable t) {
             throw JVMCIError.shouldNotReachHere(t);
         }
@@ -66,6 +72,15 @@ public class TypeStateUtils {
         } catch (Throwable t) {
             throw JVMCIError.shouldNotReachHere(t);
         }
+    }
+
+    static void trimBitSetToSize(BitSet bs) {
+        try {
+            trimToSizeAccess.invokeExact(bs);
+        } catch (Throwable t) {
+            throw JVMCIError.shouldNotReachHere(t);
+        }
+
     }
 
     protected static AnalysisObject[] concat(AnalysisObject[] oa1, AnalysisObject[] oa2) {
@@ -362,6 +377,15 @@ public class TypeStateUtils {
     protected static BitSet clear(BitSet bs1, int bitIndex) {
         BitSet bsr = (BitSet) bs1.clone();
         bsr.clear(bitIndex);
+        return bsr;
+    }
+
+    /**
+     * Sets the bit specified by the index to {@code true} without modifying the source.
+     */
+    protected static BitSet set(BitSet bs1, int bitIndex) {
+        BitSet bsr = (BitSet) bs1.clone();
+        bsr.set(bitIndex);
         return bsr;
     }
 

@@ -57,6 +57,19 @@ public class MultiTypeState extends TypeState {
         super(properties);
         this.bigbang = bb;
         this.objects = objects;
+        /*
+         * Trim the typesBitSet to size eagerly. The typesBitSet is effectively immutable, i.e., no
+         * calls to mutating methods are made on it after it is set in the MultiTypeState, thus we
+         * don't need to use any external synchronization. However, to keep it immutable we use
+         * BitSet.clone() when deriving a new BitSet since the set operations (and, or, etc.) mutate
+         * the original object. The problem is that BitSet.clone() breaks the informal contract that
+         * the clone method should not modify the original object; it calls trimToSize() before
+         * creating a copy. Thus, trimming the bit set here ensures that cloning does not modify the
+         * typesBitSet. Since BitSet is not thread safe mutating it during cloning is problematic in
+         * a multithreaded environment. If for example you iterate over the bits at the same time as
+         * another thread calls clone() the words[] array can be in an inconsistent state.
+         */
+        TypeStateUtils.trimBitSetToSize(typesBitSet);
         this.typesBitSet = typesBitSet;
         long cardinality = typesBitSet.cardinality();
         assert cardinality < Integer.MAX_VALUE : "We don't expect so much types.";
