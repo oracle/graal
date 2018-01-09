@@ -24,12 +24,15 @@
  */
 package com.oracle.truffle.tools.profiler;
 
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.tools.profiler.impl.CPUSamplerInstrument;
@@ -206,8 +209,45 @@ public final class CPUSampler implements Closeable {
 
     private boolean gatherSelfHitTimes = false;
 
+    private volatile boolean nonInternalLanguageContextInitialized = false;
+
+    private boolean delaySamplingUntilNonInternalLangInit = true;
+
     CPUSampler(Env env) {
         this.env = env;
+        env.getInstrumenter().attachContextsListener(new ContextsListener() {
+            @Override
+            public void onContextCreated(TruffleContext context) {
+
+            }
+
+            @Override
+            public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
+
+            }
+
+            @Override
+            public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
+                if (!language.isInternal()) {
+                    nonInternalLanguageContextInitialized = true;
+                }
+            }
+
+            @Override
+            public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
+
+            }
+
+            @Override
+            public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
+
+            }
+
+            @Override
+            public void onContextClosed(TruffleContext context) {
+
+            }
+        }, false);
     }
 
     /**
@@ -244,7 +284,7 @@ public final class CPUSampler implements Closeable {
 
     /**
      * Sets the {@link Mode mode} for the sampler.
-     * 
+     *
      * @param mode the new mode for the sampler.
      * @since 0.30
      */
@@ -320,6 +360,18 @@ public final class CPUSampler implements Closeable {
     public synchronized void setFilter(SourceSectionFilter filter) {
         verifyConfigAllowed();
         this.filter = filter;
+    }
+
+    /**
+     * Sets the option to delay sampling until a non-internal language is initialized. Useful to
+     * avoid internal language initialisation code in the samples.
+     *
+     * @param delaySamplingUntilNonInternalLangInit Enable or disable this option.
+     * @since 0.31
+     */
+    public void setDelaySamplingUntilNonInternalLangInit(boolean delaySamplingUntilNonInternalLangInit) {
+        verifyConfigAllowed();
+        this.delaySamplingUntilNonInternalLangInit = delaySamplingUntilNonInternalLangInit;
     }
 
     /**
@@ -401,7 +453,7 @@ public final class CPUSampler implements Closeable {
     /**
      * Sets whether or not to gather timestamp information for the element at the top of the stack
      * for each sample.
-     * 
+     *
      * @param gatherSelfHitTimes new value for whether or not to gather timestamps
      *
      * @since 0.30
@@ -483,6 +535,9 @@ public final class CPUSampler implements Closeable {
         public void run() {
             runcount++;
             if (runcount < delay / period) {
+                return;
+            }
+            if (delaySamplingUntilNonInternalLangInit && !nonInternalLanguageContextInitialized) {
                 return;
             }
             long timestamp = System.currentTimeMillis();
