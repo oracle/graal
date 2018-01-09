@@ -30,6 +30,7 @@ import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.stri
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.Formatter;
 import java.util.Iterator;
 import java.util.List;
@@ -65,6 +66,7 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StaticDeoptimizingNode;
+import org.graalvm.compiler.nodes.StaticDeoptimizingNode.GuardPriority;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
@@ -774,13 +776,18 @@ public final class SchedulePhase extends Phase {
 
             if (graph.getGuardsStage().allowsFloatingGuards() && graph.getNodes(GuardNode.TYPE).isNotEmpty()) {
                 // Now process guards.
-                for (GuardNode guard : graph.getNodes(GuardNode.TYPE)) {
-                    if (entries.get(guard) == null) {
-                        processStack(guard, startBlock, entries, visited, stack);
-                    }
-                }
                 if (GuardPriorities.getValue(graph.getOptions()) && withGuardOrder) {
+                    EnumMap<GuardPriority, List<GuardNode>> guardsByPriority = new EnumMap<>(GuardPriority.class);
+                    for (GuardNode guard : graph.getNodes(GuardNode.TYPE)) {
+                        guardsByPriority.computeIfAbsent(guard.computePriority(), p -> new ArrayList<>()).add(guard);
+                    }
+                    // `EnumMap.values` returns values in "natural" key order
+                    for (List<GuardNode> guards : guardsByPriority.values()) {
+                        processNodes(visited, entries, stack, startBlock, guards);
+                    }
                     GuardOrder.resortGuards(graph, entries, stack);
+                } else {
+                    processNodes(visited, entries, stack, startBlock, graph.getNodes(GuardNode.TYPE));
                 }
             } else {
                 assert graph.getNodes(GuardNode.TYPE).isEmpty();
@@ -789,11 +796,7 @@ public final class SchedulePhase extends Phase {
             // Now process inputs of fixed nodes.
             for (Block b : cfg.reversePostOrder()) {
                 for (FixedNode current : b.getBeginNode().getBlockNodes()) {
-                    for (Node input : current.inputs()) {
-                        if (entries.get(input) == null) {
-                            processStack(input, startBlock, entries, visited, stack);
-                        }
-                    }
+                    processNodes(visited, entries, stack, startBlock, current.inputs());
                 }
             }
 
@@ -881,6 +884,14 @@ public final class SchedulePhase extends Phase {
             assert (!Assertions.detailedAssertionsEnabled(cfg.graph.getOptions())) || MemoryScheduleVerification.check(cfg.getStartBlock(), blockToNodes);
         }
 
+        private static void processNodes(NodeBitMap visited, NodeMap<MicroBlock> entries, NodeStack stack, MicroBlock startBlock, Iterable<? extends Node> nodes) {
+            for (Node node : nodes) {
+                if (entries.get(node) == null) {
+                    processStack(node, startBlock, entries, visited, stack);
+                }
+            }
+        }
+
         private static void processStackPhi(NodeStack stack, PhiNode phiNode, NodeMap<MicroBlock> nodeToBlock, NodeBitMap visited) {
             stack.pop();
             if (visited.checkAndMarkInc(phiNode)) {
@@ -960,7 +971,7 @@ public final class SchedulePhase extends Phase {
                     blocksWithGuards.add(block);
                 }
                 assert !blocksWithGuards.isEmpty();
-                NodeMap<GuardNode.GuardPriority> priorities = graph.createNodeMap();
+                NodeMap<GuardPriority> priorities = graph.createNodeMap();
                 NodeBitMap blockNodes = graph.createNodeBitMap();
                 for (MicroBlock block : blocksWithGuards) {
                     MicroBlock newBlock = resortGuards(block, stack, blockNodes, priorities);
@@ -981,12 +992,12 @@ public final class SchedulePhase extends Phase {
              * data-structures which are allocated once by the callers of this method. They should
              * be in their "initial"/"empty" state when calling this method and when it returns.
              */
-            private static MicroBlock resortGuards(MicroBlock block, NodeStack stack, NodeBitMap blockNodes, NodeMap<GuardNode.GuardPriority> priorities) {
+            private static MicroBlock resortGuards(MicroBlock block, NodeStack stack, NodeBitMap blockNodes, NodeMap<GuardPriority> priorities) {
                 if (!propagatePriority(block, stack, priorities, blockNodes)) {
                     return null;
                 }
 
-                Function<GuardNode, GuardNode.GuardPriority> transitiveGuardPriorityGetter = priorities::get;
+                Function<GuardNode, GuardPriority> transitiveGuardPriorityGetter = priorities::get;
                 Comparator<GuardNode> globalGuardPriorityComparator = Comparator.comparing(transitiveGuardPriorityGetter).thenComparing(GuardNode::computePriority).thenComparingInt(Node::hashCode);
 
                 SortedSet<GuardNode> availableGuards = new TreeSet<>(globalGuardPriorityComparator);
@@ -1058,26 +1069,27 @@ public final class SchedulePhase extends Phase {
              *
              * This method returns {@code false} if no re-ordering is necessary in this micro-block.
              */
-            private static boolean propagatePriority(MicroBlock block, NodeStack stack, NodeMap<GuardNode.GuardPriority> priorities, NodeBitMap blockNodes) {
+            private static boolean propagatePriority(MicroBlock block, NodeStack stack, NodeMap<GuardPriority> priorities, NodeBitMap blockNodes) {
                 assert stack.isEmpty();
                 assert blockNodes.isEmpty();
-                GuardNode.GuardPriority singlePriority = null;
-                boolean hasSinglePriority = true;
+                GuardPriority lowestPriority = GuardPriority.highest();
                 for (NodeEntry e = block.head; e != null; e = e.next) {
                     blockNodes.mark(e.node);
                     if (e.node instanceof GuardNode) {
                         GuardNode guard = (GuardNode) e.node;
-                        GuardNode.GuardPriority priority = guard.computePriority();
-                        if (singlePriority == null) {
-                            singlePriority = priority;
-                        } else if (priority != singlePriority) {
-                            hasSinglePriority = false;
+                        GuardPriority priority = guard.computePriority();
+                        if (lowestPriority != null) {
+                            if (priority.isLowerPriorityThan(lowestPriority)) {
+                                lowestPriority = priority;
+                            } else if (priority.isHigherPriorityThan(lowestPriority)) {
+                                lowestPriority = null;
+                            }
                         }
                         stack.push(guard);
                         priorities.set(guard, priority);
                     }
                 }
-                if (hasSinglePriority) {
+                if (lowestPriority != null) {
                     stack.clear();
                     blockNodes.clearAll();
                     return false;
@@ -1086,12 +1098,12 @@ public final class SchedulePhase extends Phase {
                 do {
                     Node current = stack.pop();
                     assert blockNodes.isMarked(current);
-                    GuardNode.GuardPriority priority = priorities.get(current);
+                    GuardPriority priority = priorities.get(current);
                     for (Node input : current.inputs()) {
                         if (!blockNodes.isMarked(input)) {
                             continue;
                         }
-                        GuardNode.GuardPriority inputPriority = priorities.get(input);
+                        GuardPriority inputPriority = priorities.get(input);
                         if (inputPriority == null || inputPriority.isLowerPriorityThan(priority)) {
                             priorities.set(input, priority);
                             stack.push(input);
