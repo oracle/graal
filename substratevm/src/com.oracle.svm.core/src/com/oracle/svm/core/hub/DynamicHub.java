@@ -29,6 +29,7 @@ import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericDeclaration;
 import java.lang.reflect.InvocationTargetException;
@@ -681,18 +682,24 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      * This class stores similar information as the non-public class java.lang.Class.ReflectionData.
      */
     public static final class ReflectionData {
-        Field[] declaredFields;
-        Field[] publicFields;
-        Method[] declaredMethods;
-        Method[] publicMethods;
-        Constructor<?>[] declaredConstructors;
-        Constructor<?>[] publicConstructors;
-        Constructor<?> nullaryConstructor;
-        Field[] declaredPublicFields;
-        Method[] declaredPublicMethods;
+        final Field[] declaredFields;
+        final Field[] publicFields;
+        final Method[] declaredMethods;
+        final Method[] publicMethods;
+        final Constructor<?>[] declaredConstructors;
+        final Constructor<?>[] publicConstructors;
+        final Constructor<?> nullaryConstructor;
+        final Field[] declaredPublicFields;
+        final Method[] declaredPublicMethods;
+
+        /**
+         * The result of {@link Class#getEnclosingMethod()} or
+         * {@link Class#getEnclosingConstructor()}.
+         */
+        final Executable enclosingMethodOrConstructor;
 
         public ReflectionData(Field[] declaredFields, Field[] publicFields, Method[] declaredMethods, Method[] publicMethods, Constructor<?>[] declaredConstructors,
-                        Constructor<?>[] publicConstructors, Constructor<?> nullaryConstructor, Field[] declaredPublicFields, Method[] declaredPublicMethods) {
+                        Constructor<?>[] publicConstructors, Constructor<?> nullaryConstructor, Field[] declaredPublicFields, Method[] declaredPublicMethods, Executable enclosingMethodOrConstructor) {
             this.declaredFields = declaredFields;
             this.publicFields = publicFields;
             this.declaredMethods = declaredMethods;
@@ -702,6 +709,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
             this.nullaryConstructor = nullaryConstructor;
             this.declaredPublicFields = declaredPublicFields;
             this.declaredPublicMethods = declaredPublicMethods;
+            this.enclosingMethodOrConstructor = enclosingMethodOrConstructor;
         }
     }
 
@@ -710,7 +718,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     private static final ReflectionData NO_REFLECTION_DATA = new ReflectionData(new Field[0], new Field[0], new Method[0], new Method[0], new Constructor<?>[0], new Constructor<?>[0], null,
-                    new Field[0], new Method[0]);
+                    new Field[0], new Method[0], null);
 
     private ReflectionData rd = NO_REFLECTION_DATA;
 
@@ -848,12 +856,18 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     private Method getEnclosingMethod() {
-        throw VMError.unsupportedFeature("Class.getEnclosingMethod is not supported on Substrate VM");
+        if (rd.enclosingMethodOrConstructor instanceof Method) {
+            return (Method) rd.enclosingMethodOrConstructor;
+        }
+        return null;
     }
 
     @Substitute
     private Constructor<?> getEnclosingConstructor() {
-        throw VMError.unsupportedFeature("Class.getEnclosingConstructor is not supported on Substrate VM");
+        if (rd.enclosingMethodOrConstructor instanceof Constructor) {
+            return (Constructor<?>) rd.enclosingMethodOrConstructor;
+        }
+        return null;
     }
 
     @Substitute
