@@ -97,4 +97,15 @@ final class JavaObject implements TruffleObject {
         }
         return false;
     }
+
+    @Override
+    public String toString() {
+        if (obj == NULL) {
+            return "null";
+        }
+        if (isClass()) {
+            return "JavaClass[" + clazz.getTypeName() + "]";
+        }
+        return "JavaObject[" + obj + " (" + clazz.getTypeName() + ")" + "]";
+    }
 }
