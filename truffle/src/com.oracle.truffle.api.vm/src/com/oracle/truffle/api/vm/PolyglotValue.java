@@ -1729,7 +1729,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             protected Object executeImpl(Object receiver, Object[] args) {
                 try {
                     Object[] newInstanceArgs = (Object[]) args[1];
-                    return toHostValue.execute(ForeignAccess.sendExecute(newInstanceNode, (TruffleObject) receiver, toGuestValues.execute(newInstanceArgs)));
+                    return toHostValue.execute(ForeignAccess.sendNew(newInstanceNode, (TruffleObject) receiver, toGuestValues.execute(newInstanceArgs)));
                 } catch (UnsupportedTypeException e) {
                     CompilerDirectives.transferToInterpreter();
                     throw handleUnsupportedType(e);
