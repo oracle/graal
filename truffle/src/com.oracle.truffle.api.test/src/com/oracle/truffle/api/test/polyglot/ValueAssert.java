@@ -351,26 +351,30 @@ public class ValueAssert {
         }, exceptionType);
     }
 
-    static <T extends Throwable> void assertFails(Callable<?> callable, Class<T> exceptionType, Consumer<T> verfier) {
+    static <T extends Throwable> void assertFails(Callable<?> callable, Class<T> exceptionType, Consumer<T> verifier) {
         try {
             callable.call();
         } catch (Throwable t) {
             if (!exceptionType.isInstance(t)) {
-                throw new AssertionError("expected instanceof " + exceptionType + " was " + t.getClass(), t);
+                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.getClass().getName(), t);
             }
-            verfier.accept(exceptionType.cast(t));
+            verifier.accept(exceptionType.cast(t));
+            return;
         }
+        fail("expected " + exceptionType.getName() + " but no exception was thrown");
     }
 
-    static <T extends Throwable> void assertFails(Runnable run, Class<T> exceptionType, Consumer<T> verfier) {
+    static <T extends Throwable> void assertFails(Runnable run, Class<T> exceptionType, Consumer<T> verifier) {
         try {
             run.run();
         } catch (Throwable t) {
             if (!exceptionType.isInstance(t)) {
-                throw new AssertionError("expected instanceof " + exceptionType + " was " + t.getClass(), t);
+                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.getClass().getName(), t);
             }
-            verfier.accept(exceptionType.cast(t));
+            verifier.accept(exceptionType.cast(t));
+            return;
         }
+        fail("expected " + exceptionType.getName() + " but no exception was thrown");
     }
 
     static void assertFails(Callable<?> callable, Class<? extends Throwable> exceptionType) {
@@ -378,9 +382,11 @@ public class ValueAssert {
             callable.call();
         } catch (Throwable t) {
             if (!exceptionType.isInstance(t)) {
-                throw new AssertionError("expected instanceof " + exceptionType + " was " + t.getClass(), t);
+                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.getClass().getName(), t);
             }
+            return;
         }
+        fail("expected " + exceptionType.getName() + " but no exception was thrown");
     }
 
     private static void assertValueNumber(Value value) {
