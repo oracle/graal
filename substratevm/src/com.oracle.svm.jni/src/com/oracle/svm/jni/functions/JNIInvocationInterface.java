@@ -53,6 +53,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.CEntryPointSetup.EnterCreateIsolatePrologue;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
+import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveTearDownIsolateEpilogue;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.properties.RuntimePropertyParser;
 import com.oracle.svm.core.thread.JavaThreads;
@@ -199,6 +200,16 @@ final class JNIInvocationInterface {
         // JNI specification requires releasing all owned monitors
         Support.releaseCurrentThreadOwnedMonitors();
         return result;
+    }
+
+    /*
+     * jint DestroyJavaVM(JavaVM *vm);
+     */
+    @CEntryPoint
+    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadPrologue.class, epilogue = LeaveTearDownIsolateEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    static int DestroyJavaVM(JNIJavaVM vm) {
+        JavaThreads.singleton().joinAllNonDaemons();
+        return JNIErrors.JNI_OK();
     }
 
     /*

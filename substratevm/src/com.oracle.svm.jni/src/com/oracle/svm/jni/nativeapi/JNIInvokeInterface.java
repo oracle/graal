@@ -43,4 +43,7 @@ public interface JNIInvokeInterface extends PointerBase {
 
     @CField("GetEnv")
     void setGetEnv(CFunctionPointer p);
+
+    @CField("DestroyJavaVM")
+    void setDestroyJavaVM(CFunctionPointer p);
 }
