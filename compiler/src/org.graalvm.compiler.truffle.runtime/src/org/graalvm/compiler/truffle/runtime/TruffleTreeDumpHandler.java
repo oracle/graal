@@ -176,6 +176,87 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         throw (E) ex;
     }
 
+    @SuppressWarnings("deprecation")
+    private static void readNodeProperties(ASTNode astNode, Node node) {
+        NodeClass nodeClass = NodeClass.get(node);
+        for (com.oracle.truffle.api.nodes.NodeFieldAccessor field : findNodeFields(nodeClass)) {
+            if (isDataField(nodeClass, field)) {
+                String key = findFieldName(nodeClass, field);
+                Object value = findFieldValue(nodeClass, field, node);
+                astNode.properties.put(key, value);
+            }
+        }
+    }
+
+    private static void copyDebugProperties(ASTNode astNode, Node node) {
+        Map<String, Object> debugProperties = node.getDebugProperties();
+        for (Map.Entry<String, Object> property : debugProperties.entrySet()) {
+            astNode.properties.put(property.getKey(), property.getValue());
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static LinkedHashMap<String, Node> findNamedNodeChildren(Node node) {
+        LinkedHashMap<String, Node> nodes = new LinkedHashMap<>();
+        NodeClass nodeClass = NodeClass.get(node);
+
+        for (com.oracle.truffle.api.nodes.NodeFieldAccessor field : findNodeFields(nodeClass)) {
+            if (isChildField(nodeClass, field)) {
+                Object value = findFieldObject(nodeClass, field, node);
+                if (value != null) {
+                    nodes.put(findFieldName(nodeClass, field), (Node) value);
+                }
+            } else if (isChildrenField(nodeClass, field)) {
+                Object value = findFieldObject(nodeClass, field, node);
+                if (value != null) {
+                    Object[] children = (Object[]) value;
+                    for (int i = 0; i < children.length; i++) {
+                        if (children[i] != null) {
+                            nodes.put(findFieldName(nodeClass, field) + "[" + i + "]", (Node) children[i]);
+                        }
+                    }
+                }
+            }
+        }
+
+        return nodes;
+    }
+
+    @SuppressWarnings({"deprecation", "unused"})
+    private static Object findFieldValue(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field, Node node) {
+        return field.loadValue(node);
+    }
+
+    @SuppressWarnings("deprecation")
+    private static Iterable<com.oracle.truffle.api.nodes.NodeFieldAccessor> findNodeFields(NodeClass nodeClass) {
+        return Arrays.asList(nodeClass.getFields());
+    }
+
+    @SuppressWarnings({"deprecation", "unused"})
+    private static boolean isChildField(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field) {
+        return field.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.CHILD;
+    }
+
+    @SuppressWarnings({"deprecation", "unused"})
+    private static boolean isChildrenField(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field) {
+        return field.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.CHILDREN;
+    }
+
+    @SuppressWarnings({"deprecation", "unused"})
+    private static Object findFieldObject(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field, Node node) {
+        return field.getObject(node);
+    }
+
+    @SuppressWarnings({"deprecation", "unused"})
+    private static String findFieldName(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field) {
+        return field.getName();
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean isDataField(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field) {
+        return !isChildField(nodeClass, field) && !isChildrenField(nodeClass, field);
+    }
+
     static class AST {
         final ASTNode root;
         final Map<Node, ASTNode> nodes = new HashMap<>();
@@ -246,63 +327,6 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
                 }
             }
         }
-
-        @SuppressWarnings("deprecation")
-        private static LinkedHashMap<String, Node> findNamedNodeChildren(Node node) {
-            LinkedHashMap<String, Node> nodes = new LinkedHashMap<>();
-            NodeClass nodeClass = NodeClass.get(node);
-
-            for (com.oracle.truffle.api.nodes.NodeFieldAccessor field : findNodeFields(nodeClass)) {
-                if (isChildField(nodeClass, field)) {
-                    Object value = findFieldObject(nodeClass, field, node);
-                    if (value != null) {
-                        nodes.put(findFieldName(nodeClass, field), (Node) value);
-                    }
-                } else if (isChildrenField(nodeClass, field)) {
-                    Object value = findFieldObject(nodeClass, field, node);
-                    if (value != null) {
-                        Object[] children = (Object[]) value;
-                        for (int i = 0; i < children.length; i++) {
-                            if (children[i] != null) {
-                                nodes.put(findFieldName(nodeClass, field) + "[" + i + "]", (Node) children[i]);
-                            }
-                        }
-                    }
-                }
-            }
-
-            return nodes;
-        }
-
-        @SuppressWarnings({"deprecation", "unused"})
-        private static Object findFieldValue(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field, Node node) {
-            return field.loadValue(node);
-        }
-
-        @SuppressWarnings("deprecation")
-        private static Iterable<com.oracle.truffle.api.nodes.NodeFieldAccessor> findNodeFields(NodeClass nodeClass) {
-            return Arrays.asList(nodeClass.getFields());
-        }
-
-        @SuppressWarnings({"deprecation", "unused"})
-        private static boolean isChildField(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field) {
-            return field.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.CHILD;
-        }
-
-        @SuppressWarnings({"deprecation", "unused"})
-        private static boolean isChildrenField(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field) {
-            return field.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.CHILDREN;
-        }
-
-        @SuppressWarnings({"deprecation", "unused"})
-        private static Object findFieldObject(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field, Node node) {
-            return field.getObject(node);
-        }
-
-        @SuppressWarnings({"deprecation", "unused"})
-        private static String findFieldName(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field) {
-            return field.getName();
-        }
     }
 
     static class ASTNode {
@@ -325,8 +349,8 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
                 }
             }
 
-//                readNodeProperties((Node) node);
-//                copyDebugProperties((Node) node);
+            readNodeProperties(this, source);
+            copyDebugProperties(this, source);
 
         }
 
@@ -363,7 +387,6 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
             this.id = id;
         }
     }
-
 
     static class ASTDumpStructure implements GraphStructure<AST, ASTNode, ASTNode, List<ASTEdge>>, GraphBlocks<AST, ASTBlock, ASTNode> {
 
