@@ -24,63 +24,29 @@
 package org.graalvm.compiler.hotspot.amd64;
 
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
-import org.graalvm.compiler.core.amd64.AMD64AddressLowering;
 import org.graalvm.compiler.core.amd64.AMD64AddressNode;
+import org.graalvm.compiler.core.amd64.AMD64CompressAddressLowering;
 import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.CounterKey;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.CompressionNode;
-import org.graalvm.compiler.nodes.CompressionNode.CompressionOp;
 import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;
 
-public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
-
-    private static final CounterKey counterFoldedUncompressDuringAddressLowering = DebugContext.counter("FoldedUncompressDuringAddressLowering");
+public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
 
     private final long heapBase;
     private final Register heapBaseRegister;
     private final GraalHotSpotVMConfig config;
     private final boolean generatePIC;
-
-    @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-    public static class HeapBaseNode extends FloatingNode implements LIRLowerable {
-
-        public static final NodeClass<HeapBaseNode> TYPE = NodeClass.create(HeapBaseNode.class);
-
-        private final Register heapBaseRegister;
-
-        public HeapBaseNode(Register heapBaseRegister) {
-            super(TYPE, StampFactory.pointer());
-            this.heapBaseRegister = heapBaseRegister;
-        }
-
-        @Override
-        public void generate(NodeLIRBuilderTool generator) {
-            LIRKind kind = generator.getLIRGeneratorTool().getLIRKind(stamp(NodeView.DEFAULT));
-            generator.setResult(this, heapBaseRegister.asValue(kind));
-        }
-    }
 
     public AMD64HotSpotAddressLowering(GraalHotSpotVMConfig config, Register heapBaseRegister, OptionValues options) {
         this.heapBase = config.getOopEncoding().getBase();
@@ -94,35 +60,7 @@ public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
     }
 
     @Override
-    protected boolean improve(StructuredGraph graph, DebugContext debug, AMD64AddressNode addr, boolean isBaseNegated, boolean isIndexNegated) {
-        if (super.improve(graph, debug, addr, isBaseNegated, isIndexNegated)) {
-            return true;
-        }
-
-        if (addr.getScale() == Scale.Times1) {
-            if (addr.getIndex() instanceof CompressionNode) {
-                if (improveUncompression(addr, (CompressionNode) addr.getIndex(), addr.getBase(), isBaseNegated, isIndexNegated)) {
-                    counterFoldedUncompressDuringAddressLowering.increment(debug);
-                    return true;
-                }
-            }
-
-            if (addr.getBase() instanceof CompressionNode) {
-                if (improveUncompression(addr, (CompressionNode) addr.getBase(), addr.getIndex(), isBaseNegated, isIndexNegated)) {
-                    counterFoldedUncompressDuringAddressLowering.increment(debug);
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private boolean improveUncompression(AMD64AddressNode addr, CompressionNode compression, ValueNode other, boolean isBaseNegated, boolean isIndexNegated) {
-        if (isBaseNegated || isIndexNegated || compression.getOp() != CompressionOp.Uncompress) {
-            return false;
-        }
-
+    protected final boolean improveUncompression(AMD64AddressNode addr, CompressionNode compression, ValueNode other) {
         CompressEncoding encoding = compression.getEncoding();
         Scale scale = Scale.fromShift(encoding.getShift());
         if (scale == null) {
@@ -147,7 +85,7 @@ public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
                     return false;
                 }
             } else {
-                if (updateDisplacement(addr, encoding.getBase(), isBaseNegated)) {
+                if (updateDisplacement(addr, encoding.getBase(), false)) {
                     addr.setBase(other);
                 } else {
                     return false;

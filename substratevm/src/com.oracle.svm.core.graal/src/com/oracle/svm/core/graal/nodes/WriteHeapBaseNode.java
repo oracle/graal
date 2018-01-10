@@ -37,12 +37,12 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.PointerBase;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
-public class WriteCurrentVMHeapBaseNode extends FixedWithNextNode implements LIRLowerable {
-    public static final NodeClass<WriteCurrentVMHeapBaseNode> TYPE = NodeClass.create(WriteCurrentVMHeapBaseNode.class);
+public class WriteHeapBaseNode extends FixedWithNextNode implements LIRLowerable {
+    public static final NodeClass<WriteHeapBaseNode> TYPE = NodeClass.create(WriteHeapBaseNode.class);
 
     @Input protected ValueNode value;
 
-    protected WriteCurrentVMHeapBaseNode(ValueNode value) {
+    protected WriteHeapBaseNode(ValueNode value) {
         super(TYPE, StampFactory.forVoid());
         this.value = value;
     }

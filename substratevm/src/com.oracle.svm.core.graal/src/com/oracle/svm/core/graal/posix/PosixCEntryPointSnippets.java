@@ -23,7 +23,7 @@
 package com.oracle.svm.core.graal.posix;
 
 import static com.oracle.svm.core.LibCHelper.heapBase;
-import static com.oracle.svm.core.graal.nodes.WriteCurrentVMHeapBaseNode.writeCurrentVMHeapBase;
+import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
@@ -63,8 +63,8 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
-import com.oracle.svm.core.graal.nodes.DeadEndNode;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
+import com.oracle.svm.core.graal.nodes.DeadEndNode;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;

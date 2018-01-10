@@ -43,6 +43,11 @@ public class KnownIntrinsics {
     public static native IsolateThread currentVMThread();
 
     /**
+     * Returns the value of the heap base.
+     */
+    public static native Pointer heapBase();
+
+    /**
      * Returns the length of the given array. It does not check if the provided object is an array,
      * so the caller has to check that beforehand.
      */

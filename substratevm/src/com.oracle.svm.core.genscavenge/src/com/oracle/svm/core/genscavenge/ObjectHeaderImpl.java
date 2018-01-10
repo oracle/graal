@@ -22,8 +22,11 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -181,13 +184,24 @@ public class ObjectHeaderImpl extends ObjectHeader {
         return KnownIntrinsics.readHub(o);
     }
 
+    @Fold
+    static boolean hasBase() {
+        CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
+        return compressEncoding.hasBase();
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public WordBase formatHub(DynamicHub hub, boolean rememberedSet, boolean unaligned) {
         /*
          * All DynamicHub instances are in the native image heap and therefore do not move, so we
          * can convert the hub to a Pointer without any precautions.
          */
-        Pointer result = Word.objectToUntrackedPointer(hub);
+        Word result = Word.objectToUntrackedPointer(hub);
+        if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
+            if (hasBase()) {
+                result = result.subtract(KnownIntrinsics.heapBase());
+            }
+        }
         if (rememberedSet) {
             result = result.or(MASK_REMEMBERED_SET);
         }
