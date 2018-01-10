@@ -87,6 +87,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
     }
 
     private static final ASTDumpStructure AST_DUMP_STRUCTURE = new ASTDumpStructure();
+    private static final CallGraphDumpStructure CALL_GRAPH_DUMP_STRUCTURE = new CallGraphDumpStructure();
 
     private static void dumpASTAndInliningTrees(DebugContext debug, final String message, TruffleTreeDump truffleTreeDump) throws IOException {
         final RootCallTarget callTarget = truffleTreeDump.callTarget;
@@ -105,7 +106,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
                     astOutput.beginGroup(null, "Inlined", "Inlined", null, 0, DebugContext.addVersionProperties(null));
                     dumpInlinedTrees(debug, astOutput, (OptimizedCallTarget) callTarget, inlining, message);
                     final CallGraph callGraph = new CallGraph(truffleTreeDump);
-                    final GraphOutput<CallGraph, ?> callGraphOutput = debug.buildOutput(GraphOutput.newBuilder(new CallGraphDumpStructure()));
+                    final GraphOutput<CallGraph, ?> callGraphOutput = debug.buildOutput(GraphOutput.newBuilder(CALL_GRAPH_DUMP_STRUCTURE));
                     callGraphOutput.print(callGraph, null, 0, "inlined call graph");
                 }
                 astOutput.endGroup();
