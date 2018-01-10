@@ -53,12 +53,13 @@ import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import com.oracle.svm.core.graal.code.amd64.SubstrateAMD64AddressLowering;
+import com.oracle.svm.core.graal.code.amd64.SubstrateAMD64RegisterConfig;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
-import org.graalvm.compiler.core.amd64.AMD64AddressLowering;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -724,7 +725,7 @@ public class NativeImageGenerator {
                                 bigbang.getUnsupportedFeatures()).build(debug);
 
                 runtime = new HostedRuntimeConfigurationBuilder(options, svmHost, hUniverse, hMetaAccess, aProviders).build();
-                NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, runtime.getRuntimeConfig(), (HostedProviders) runtime.getRuntimeConfig().getProviders(), aMetaAccess, aUniverse,
+                registerGraphBuilderPlugins(featureHandler, runtime.getRuntimeConfig(), (HostedProviders) runtime.getRuntimeConfig().getProviders(), aMetaAccess, aUniverse,
                                 hMetaAccess, hUniverse,
                                 nativeLibs, loader, false, true);
 
@@ -1065,7 +1066,10 @@ public class NativeImageGenerator {
 
         lowTier.addBeforeLast(new OptimizeExceptionCallsPhase());
 
-        lowTier.findPhase(FixReadsPhase.class).add(new AddressLoweringPhase(new AMD64AddressLowering()));
+        CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
+        SubstrateAMD64RegisterConfig registerConfig = (SubstrateAMD64RegisterConfig) runtimeCallProviders.getCodeCache().getRegisterConfig();
+        SubstrateAMD64AddressLowering addressLowering = new SubstrateAMD64AddressLowering(compressEncoding, registerConfig);
+        lowTier.findPhase(FixReadsPhase.class).add(new AddressLoweringPhase(addressLowering));
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
             /*

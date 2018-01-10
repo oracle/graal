@@ -28,6 +28,7 @@ import java.util.Map;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -93,12 +94,23 @@ public class SubstrateBasicLoweringProvider extends DefaultJavaLoweringProvider 
 
     private RuntimeConfiguration runtimeConfig;
     private final CompressEncoding compressEncoding;
+    private final AbstractObjectStamp objectStamp;
+
+    private static boolean useHeapBaseRegister() {
+        return SubstrateOptions.UseHeapBaseRegister.getValue();
+    }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateBasicLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, TargetDescription target) {
-        super(metaAccess, foreignCalls, target, SubstrateOptions.UseHeapBaseRegister.getValue());
+        super(metaAccess, foreignCalls, target, useHeapBaseRegister());
         lowerings = new HashMap<>();
         compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
+
+        AbstractObjectStamp hubStamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(metaAccess.lookupJavaType(DynamicHub.class)));
+        if (useHeapBaseRegister()) {
+            hubStamp = SubstrateNarrowOopStamp.compressed(hubStamp, compressEncoding);
+        }
+        objectStamp = hubStamp;
     }
 
     @Override
@@ -168,8 +180,11 @@ public class SubstrateBasicLoweringProvider extends DefaultJavaLoweringProvider 
         ValueNode memoryRead = graph.unique(new FloatingReadNode(address, NamedLocationIdentity.FINAL_LOCATION, null, FrameAccess.getWordStamp(), null, BarrierType.NONE));
         ValueNode masked = graph.unique(new AndNode(memoryRead, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), ObjectHeader.BITS_CLEAR.rawValue(), graph)));
 
-        Stamp objectStamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(getProviders().getMetaAccess().lookupJavaType(DynamicHub.class)));
-        return graph.unique(new FloatingWordCastNode(objectStamp, masked));
+        ValueNode casted = graph.unique(new FloatingWordCastNode(objectStamp, masked));
+        if (useHeapBaseRegister()) {
+            casted = SubstrateCompressionNode.uncompress(casted, compressEncoding);
+        }
+        return casted;
     }
 
     @Override
