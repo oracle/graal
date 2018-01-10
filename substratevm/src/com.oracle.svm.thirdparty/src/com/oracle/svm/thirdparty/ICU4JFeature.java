@@ -120,6 +120,9 @@ final class Target_com_ibm_icu_impl_ICUBinary {
                     if (instance == null) {
                         instance = new ArrayList<>();
                         String dataPath = System.getProperty("com.ibm.icu.impl.ICUBinary.dataPath");
+                        if (dataPath == null || dataPath.isEmpty()) {
+                            dataPath = System.getenv("ICU4J_DATA_PATH");
+                        }
                         if (dataPath != null && !dataPath.isEmpty()) {
                             addDataFilesFromPath(dataPath, instance);
                         }
