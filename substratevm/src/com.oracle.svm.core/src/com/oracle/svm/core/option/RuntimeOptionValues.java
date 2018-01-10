@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.ModifiableOptionValues;
 import org.graalvm.compiler.options.OptionDescriptor;
@@ -39,8 +41,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionType;
-import org.graalvm.util.EconomicSet;
-import org.graalvm.util.UnmodifiableEconomicMap;
 
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.AutomaticFeature;

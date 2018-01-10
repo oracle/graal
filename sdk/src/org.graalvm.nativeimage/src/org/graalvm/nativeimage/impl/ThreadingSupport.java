@@ -26,6 +26,8 @@ package org.graalvm.nativeimage.impl;
 
 import java.util.concurrent.TimeUnit;
 
+import org.graalvm.nativeimage.Threading.RecurringCallback;
+
 public interface ThreadingSupport {
-    void registerRecurringCallback(long interval, TimeUnit unit, Runnable callback);
+    void registerRecurringCallback(long interval, TimeUnit unit, RecurringCallback callback);
 }

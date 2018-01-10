@@ -30,7 +30,9 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.config.HybridLayout;
@@ -77,5 +79,9 @@ public class HostedConfiguration {
                 }
             }
         }
+    }
+
+    public StaticAnalysisResultsBuilder createStaticAnalysisResultsBuilder(BigBang bigbang, HostedUniverse universe) {
+        return new StaticAnalysisResultsBuilder(bigbang, universe);
     }
 }

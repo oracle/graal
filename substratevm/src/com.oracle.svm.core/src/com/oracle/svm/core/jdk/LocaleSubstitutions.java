@@ -121,7 +121,7 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
                 LocaleServiceProviderPool pool = LocaleServiceProviderPool.getPool(providerClass);
                 ConcurrentMap<LocaleProviderAdapter.Type, LocaleServiceProvider> providers = (ConcurrentMap<LocaleProviderAdapter.Type, LocaleServiceProvider>) providersField.get(pool);
                 LocaleServiceProvider provider = providers.get(LocaleProviderAdapter.Type.JRE);
-                assert providers.size() == 1 && provider != null : providers;
+                assert provider != null : "There should be no null LocaleServiceProviders.";
                 cachedPools.put(providerClass, new Target_sun_util_locale_provider_LocaleServiceProviderPool(provider));
             }
         } catch (Throwable ex) {

@@ -40,19 +40,23 @@ public final class JNIJavaCallWrappers {
         return metaAccess.lookupJavaType(JNIJavaCallWrappers.class).getDeclaredConstructors()[0].getConstantPool();
     }
 
-    public static ResolvedJavaMethod lookupJavaCallTrampoline(MetaAccessProvider metaAccess, CallVariant variant) {
-        String name;
+    public static ResolvedJavaMethod lookupJavaCallTrampoline(MetaAccessProvider metaAccess, CallVariant variant, boolean nonVirtual) {
+        StringBuilder name = new StringBuilder(48);
         if (variant == CallVariant.VARARGS) {
-            name = "varargsJavaCallTrampoline";
+            name.append("varargs");
         } else if (variant == CallVariant.ARRAY) {
-            name = "arrayJavaCallTrampoline";
+            name.append("array");
         } else if (variant == CallVariant.VA_LIST) {
-            name = "valistJavaCallTrampoline";
+            name.append("valist");
         } else {
             throw VMError.shouldNotReachHere();
         }
+        if (nonVirtual) {
+            name.append("Nonvirtual");
+        }
+        name.append("JavaCallTrampoline");
         try {
-            return metaAccess.lookupJavaMethod(JNIJavaCallWrappers.class.getDeclaredMethod(name));
+            return metaAccess.lookupJavaMethod(JNIJavaCallWrappers.class.getDeclaredMethod(name.toString()));
         } catch (NoSuchMethodException e) {
             throw VMError.shouldNotReachHere(e);
         }
@@ -66,4 +70,10 @@ public final class JNIJavaCallWrappers {
     private native void arrayJavaCallTrampoline();
 
     private native void valistJavaCallTrampoline();
+
+    private native void varargsNonvirtualJavaCallTrampoline();
+
+    private native void arrayNonvirtualJavaCallTrampoline();
+
+    private native void valistNonvirtualJavaCallTrampoline();
 }

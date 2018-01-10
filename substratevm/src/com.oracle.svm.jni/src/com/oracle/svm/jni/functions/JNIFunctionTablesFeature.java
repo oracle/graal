@@ -162,8 +162,8 @@ public class JNIFunctionTablesFeature implements Feature {
         JNIFunctionTables.singleton().initialize(invokesInitializer, functionsInitializer);
     }
 
-    private static CFunctionPointer prepareCallTrampoline(CompilationAccessImpl access, CallVariant variant) {
-        JNICallTrampolineMethod trampolineMethod = JNIAccessFeature.singleton().getCallTrampolineMethod(variant);
+    private static CFunctionPointer prepareCallTrampoline(CompilationAccessImpl access, CallVariant variant, boolean nonVirtual) {
+        JNICallTrampolineMethod trampolineMethod = JNIAccessFeature.singleton().getCallTrampolineMethod(variant, nonVirtual);
         AnalysisMethod analysisTrampoline = access.getUniverse().getBigBang().getUniverse().lookup(trampolineMethod);
         HostedMethod hostedTrampoline = access.getUniverse().lookup(analysisTrampoline);
         hostedTrampoline.compilationInfo.setCustomParseFunction(trampolineMethod.createCustomParseFunction());
@@ -204,7 +204,9 @@ public class JNIFunctionTablesFeature implements Feature {
         HostedMethod[] methods = functions.getDeclaredMethods();
         int index = 0;
         int count = methods.length + generatedMethods.length;
-        count += jniKinds.size() * 2 * 3; // per kind: Call and CallStatic: varargs, array, va_list
+        // Call, CallStatic, CallNonvirtual: for each return value kind: array, va_list, varargs
+        // NewObject: array, va_list, varargs
+        count += (jniKinds.size() * 3 + 1) * 3;
         int[] offsets = new int[count];
         CFunctionPointer[] pointers = new CFunctionPointer[offsets.length];
         for (HostedMethod method : methods) {
@@ -225,17 +227,26 @@ public class JNIFunctionTablesFeature implements Feature {
             index++;
         }
         for (CallVariant variant : CallVariant.values()) {
-            CFunctionPointer trampoline = prepareCallTrampoline(access, variant);
+            CFunctionPointer trampoline = prepareCallTrampoline(access, variant, false);
             String suffix = (variant == CallVariant.ARRAY) ? "A" : ((variant == CallVariant.VA_LIST) ? "V" : "");
-            String[] prefixes = {"Call", "CallStatic"};
-            for (String prefix : prefixes) {
-                for (JavaKind kind : jniKinds) {
+            CFunctionPointer nonvirtualTrampoline = prepareCallTrampoline(access, variant, true);
+            for (JavaKind kind : jniKinds) {
+                String[] prefixes = {"Call", "CallStatic"};
+                for (String prefix : prefixes) {
                     StructFieldInfo field = findFieldFor(functionTableMetadata, prefix + kind.name() + "Method" + suffix);
                     offsets[index] = field.getOffsetInfo().getProperty();
                     pointers[index] = trampoline;
                     index++;
                 }
+                StructFieldInfo field = findFieldFor(functionTableMetadata, "CallNonvirtual" + kind.name() + "Method" + suffix);
+                offsets[index] = field.getOffsetInfo().getProperty();
+                pointers[index] = nonvirtualTrampoline;
+                index++;
             }
+            StructFieldInfo field = findFieldFor(functionTableMetadata, "NewObject" + suffix);
+            offsets[index] = field.getOffsetInfo().getProperty();
+            pointers[index] = trampoline;
+            index++;
         }
         VMError.guarantee(index == offsets.length && index == pointers.length);
         return new JNIStructFunctionsInitializer<>(JNINativeInterface.class, offsets, pointers, unimplemented);

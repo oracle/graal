@@ -81,7 +81,7 @@ public abstract class Accessor {
 
         public abstract void setLanguageSpi(LanguageInfo languageInfo, TruffleLanguage<?> spi);
 
-        public abstract LanguageInfo createLanguage(Object vmObject, String id, String name, String version, Set<String> mimeTypes);
+        public abstract LanguageInfo createLanguage(Object vmObject, String id, String name, String version, Set<String> mimeTypes, boolean internal);
 
         public abstract Object getSourceVM(RootNode rootNode);
 

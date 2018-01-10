@@ -204,35 +204,32 @@ def svm_gate_body(args, tasks, port=-1):
             test_ruby([join(os.getcwd(), 'svmbuild', 'ruby'), 'release'])
     with Task('Python', tasks, tags=[GraalTags.python]) as t:
         if t:
-            gate_build_python_image(port)
+            gate_build_python_image(port, [])
             test_python_smoke([join(os.getcwd(), 'svmbuild', 'python')])
-    gate_sulong(port, tasks)
+    gate_sulong(port, tasks, [])
 
-def gate_build_python_image(port):
+def gate_build_python_image(port, args):
     if port:
-        image_server(port, IMAGE_ASSERTION_FLAGS + ['-python'], True)
+        image_server(port, IMAGE_ASSERTION_FLAGS + ['-python'] + args, True)
     else:
-        image(IMAGE_ASSERTION_FLAGS + ['-python'], True)
+        image(IMAGE_ASSERTION_FLAGS + ['-python'] + args, True)
 
-def gate_build_sulong_image(port):
+def gate_build_sulong_image(port, args):
     if port:
-        image_server(port, IMAGE_ASSERTION_FLAGS + ['-sulong', '-H:MaxRuntimeCompileMethods=10000', '-H:-HostedAssertions'], True)
+        image_server(port, IMAGE_ASSERTION_FLAGS + ['-sulong', '-H:MaxRuntimeCompileMethods=10000', '-H:-HostedAssertions'] + args, True)
     else:
-        image(IMAGE_ASSERTION_FLAGS + ['-sulong', '-H:MaxRuntimeCompileMethods=10000', '-H:-HostedAssertions'], True)
+        image(IMAGE_ASSERTION_FLAGS + ['-sulong', '-H:MaxRuntimeCompileMethods=10000', '-H:-HostedAssertions'] + args, True)
 
-def gate_sulong(port, tasks):
+def gate_sulong(port, tasks, args):
     with Task('Run SulongSuite tests with SVM image', tasks, tags=[GraalTags.sulong]) as t:
         if t:
-            gate_build_sulong_image(port)
+            gate_build_sulong_image(port, args)
             libpath = mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:sulong:SULONG_LIBS>')
             unittest(['-Dsulongtest.testAOTImage=./svmbuild/sulong', '-Dsulongtest.testAOTArgs=' + libpath, 'SulongSuite', '--enable-timing'])
     with Task('Run Sulong interop tests with SVM image', tasks, tags=[GraalTags.sulong]) as t:
         if t:
-            sulong_version = None
-            if os.environ.has_key('TRUFFLE_SULONG_VERSION'):
-                sulong_version = os.environ['TRUFFLE_SULONG_VERSION']
-            ensure_trufflelanguage('sulong', sulong_version)
-            image_server(port, ['-nfi', '-junit', 'com.oracle.truffle.llvm.test.interop', '-H:-HostedAssertions'], True)
+            ensure_trufflelanguage('sulong', os.environ.get('TRUFFLE_SULONG_VERSION'))
+            image_server(port, ['-nfi', '-junit', 'com.oracle.truffle.llvm.test.interop', '-H:-HostedAssertions'] + args, True)
             libpath = mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:sulong:SULONG_LIBS>:<path:sulong:SULONG_TEST_NATIVE>')
             mx.run(['./svmbuild/svmjunit', libpath, '-Dpolyglot.llvm.libraries=libsulongtest.so', '--enable-timing'])
 
@@ -617,7 +614,7 @@ def image_server_start(args, dumpArgs=False, timeout=None):
         vmArgs, normalArgs = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
         noTruffleRuntimeVmArgs = [arg for arg in vmArgs + extraVmArgs if not arg.startswith('-Dtruffle.TruffleRuntime=')]
 
-        run_java(['-Xss10m', '-Xms2G'] + GRAAL_COMPILER_FLAGS + ['-cp', classpath] + noTruffleRuntimeVmArgs + [
+        run_java(['-Xss10m', '-Xms4G'] + GRAAL_COMPILER_FLAGS + ['-cp', classpath] + noTruffleRuntimeVmArgs + [
                 'com.oracle.svm.hosted.server.NativeImageBuildServer', PORT_PREFIX + str(port)] + normalArgs + extraNormalArgs, timeout=timeout)
 
 
@@ -940,7 +937,7 @@ def helloworld(args=None):
     # Build an image for the javac compiler, so that we test and gate-check javac all the time.
     # Dynamic class loading code is reachable (used by the annotation processor), so -H:+ReportUnsupportedElementsAtRuntime is a necessary option
     image(['-cp', mx_compiler.jdk.toolsjar, "-H:Path=" + helloPath, "-H:Class=com.sun.tools.javac.Main", "-H:Name=javac",
-           "-H:+ReportUnsupportedElementsAtRuntime", "-H:IncludeResourceBundles=com.sun.tools.javac.resources.compiler,com.sun.tools.javac.resources.javac,com.sun.tools.javac.resources.version"])
+           "-H:+ReportUnsupportedElementsAtRuntime", "-H:IncludeResourceBundles=com.sun.tools.javac.resources.compiler,com.sun.tools.javac.resources.javac,com.sun.tools.javac.resources.version"] + args)
 
     helloFile = join(helloPath, 'HelloWorld.java')
     output = 'Hello from Substrate VM'

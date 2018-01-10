@@ -180,6 +180,7 @@ public final class DebuggerSession implements Closeable {
     private Predicate<Source> sourceFilter;
     private final StableBoolean breakpointsActive = new StableBoolean(true);
     private final DebuggerExecutionLifecycle executionLifecycle;
+    private final ThreadLocal<Boolean> disabledSuspensions = new ThreadLocal<>();
 
     private final int sessionId;
 
@@ -432,6 +433,16 @@ public final class DebuggerSession implements Closeable {
         stepping.set(needsStepping);
     }
 
+    @TruffleBoundary
+    void setThreadSuspendEnabled(boolean enabled) {
+        if (!enabled) {
+            // temporarily disable suspensions in the given thread
+            disabledSuspensions.set(Boolean.TRUE);
+        } else {
+            disabledSuspensions.remove();
+        }
+    }
+
     private void addBindings(boolean includeInternalCode, Predicate<Source> sFilter) {
         if (statementBinding == null) {
             // The order of registered instrumentations matters.
@@ -629,6 +640,9 @@ public final class DebuggerSession implements Closeable {
 
     @TruffleBoundary
     void notifyCallback(DebuggerNode source, MaterializedFrame frame, Object returnValue, BreakpointConditionFailure conditionFailure) {
+        if (disabledSuspensions.get() == Boolean.TRUE) {
+            return;
+        }
         // SuspensionFilter:
         if (source.isStepNode()) {
             if (ignoreLanguageContextInitialization.get() && !source.getContext().isLanguageContextInitialized()) {

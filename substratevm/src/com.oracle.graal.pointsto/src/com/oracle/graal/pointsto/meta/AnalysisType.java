@@ -52,6 +52,7 @@ import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.flow.context.object.ConstantContextSensitiveObject;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
@@ -65,7 +66,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class AnalysisType implements WrappedJavaType, Comparable<AnalysisType> {
+public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Comparable<AnalysisType> {
 
     @SuppressWarnings("rawtypes")//
     private static final AtomicReferenceFieldUpdater<AnalysisType, ConcurrentHashMap> UNSAFE_ACCESS_FIELDS_UPDATER = //
@@ -646,6 +647,11 @@ public class AnalysisType implements WrappedJavaType, Comparable<AnalysisType> {
     }
 
     @Override
+    public Class<?> getJavaClass() {
+        return OriginalClassProvider.getJavaClass(universe.getOriginalSnippetReflection(), wrapped);
+    }
+
+    @Override
     public final String getName() {
         return wrapped.getName();
     }
@@ -955,6 +961,14 @@ public class AnalysisType implements WrappedJavaType, Comparable<AnalysisType> {
     @Override
     public boolean equals(Object obj) {
         return this == obj;
+    }
+
+    /* Value copied from java.lang.Class. */
+    private static final int ANNOTATION = 0x00002000;
+
+    /* Method copied from java.lang.Class. */
+    public boolean isAnnotation() {
+        return (getModifiers() & ANNOTATION) != 0;
     }
 
 }

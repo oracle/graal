@@ -26,6 +26,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -57,5 +58,10 @@ public class SubstrateSnippetReflectionProvider implements SnippetReflectionProv
     @Override
     public <T> T getInjectedNodeIntrinsicParameter(Class<T> type) {
         return null;
+    }
+
+    @Override
+    public Class<?> originalClass(ResolvedJavaType type) {
+        throw VMError.shouldNotReachHere();
     }
 }

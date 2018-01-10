@@ -24,9 +24,9 @@ package com.oracle.graal.pointsto.api;
 
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.util.EconomicMap;
 
 public class PointstoOptions {
 

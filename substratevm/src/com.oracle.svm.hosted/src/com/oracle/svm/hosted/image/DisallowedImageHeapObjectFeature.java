@@ -28,7 +28,6 @@ import org.graalvm.nativeimage.Feature;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.thread.JavaThreads;
 
 /**
  * Complain if there are types that can not move from the image generator heap to the image heap.
@@ -41,23 +40,19 @@ public class DisallowedImageHeapObjectFeature implements Feature {
         access.registerObjectReplacer(DisallowedImageHeapObjectFeature::replacer);
     }
 
-    static Object replacer(Object original) {
-        /* Threads can not be in the image heap. */
+    private static Object replacer(Object original) {
+        /* Started Threads can not be in the image heap. */
         if (original instanceof Thread) {
             final Thread asThread = (Thread) original;
-            /* Except for the special singleton thread object created during image building. */
-            if (!JavaThreads.singleton().isSingleThread(asThread)) {
-                throw new UnsupportedFeatureException("Must not have a Thread in the image heap.");
+            if (asThread.getState() != Thread.State.NEW) {
+                throw new UnsupportedFeatureException("Must not have a started Thread in the image heap.");
             }
         }
         /* FileDescriptors can not be in the image heap. */
         if (original instanceof FileDescriptor) {
             final FileDescriptor asFileDescriptor = (FileDescriptor) original;
             /* Except for a few well-known FileDescriptors. */
-            if (!((asFileDescriptor == FileDescriptor.in) ||
-                            (asFileDescriptor == FileDescriptor.out) ||
-                            (asFileDescriptor == FileDescriptor.err) ||
-                            (!asFileDescriptor.valid()))) {
+            if (!((asFileDescriptor == FileDescriptor.in) || (asFileDescriptor == FileDescriptor.out) || (asFileDescriptor == FileDescriptor.err) || (!asFileDescriptor.valid()))) {
                 throw new UnsupportedFeatureException("Must not have a FileDescriptor in the image heap.");
             }
         }

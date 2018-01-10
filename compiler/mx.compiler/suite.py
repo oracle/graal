@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.124.0",
+  "mxversion" : "5.134.3",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -7,6 +7,13 @@ suite = {
     "suites": [
       {
         "name" : "truffle",
+        "subdir": True,
+        "urls" : [
+          {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
+         ]
+      },
+      {
+        "name" : "tools",
         "subdir": True,
         "urls" : [
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -139,7 +146,12 @@ suite = {
     "org.graalvm.compiler.options" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["JVMCI_SERVICES", "JVMCI_API", "org.graalvm.util"],
+      "dependencies" : [
+        "JVMCI_SERVICES",
+        "JVMCI_API",
+        "sdk:GRAAL_SDK",
+        "org.graalvm.util",
+      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "uses" : ["org.graalvm.compiler.options.OptionDescriptors"],
       "javaCompliance" : "1.8",
@@ -223,6 +235,9 @@ suite = {
     "org.graalvm.util" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
+      "dependencies" : [
+        "sdk:GRAAL_SDK",
+      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
       "workingSets" : "API,Graal",
@@ -232,8 +247,8 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "mx:JUNIT",
         "org.graalvm.util",
+        "org.graalvm.compiler.core.test",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
@@ -1078,7 +1093,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.debug",
-        "org.graalvm.util",
         "mx:JUNIT",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -1159,7 +1173,7 @@ suite = {
         "org.graalvm.compiler.core.test",
         "truffle:TRUFFLE_SL_TEST",
         "truffle:TRUFFLE_INSTRUMENT_TEST",
-        "truffle:TRUFFLE_PROFILER",
+        "tools:TRUFFLE_PROFILER",
       ],
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
@@ -1261,6 +1275,7 @@ suite = {
       "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.options"],
       "distDependencies" : [
+        "sdk:GRAAL_SDK",
         "JVMCI_API",
       ],
     },
@@ -1392,7 +1407,7 @@ suite = {
         "GRAAL_TRUFFLE_HOTSPOT",
         "truffle:TRUFFLE_SL_TEST",
         "truffle:TRUFFLE_INSTRUMENT_TEST",
-        "truffle:TRUFFLE_PROFILER",
+        "tools:TRUFFLE_PROFILER",
       ],
       "exclude" : [
         "mx:JUNIT",
@@ -1463,11 +1478,6 @@ suite = {
     "GRAAL" : {
       # This distribution defines a module.
       "moduleName" : "jdk.internal.vm.compiler",
-      "addExports" : [
-        # All other internal packages are exported dynamically -
-        # see org.graalvm.compiler.hotspot.HotSpotGraalJVMCIServiceLocator
-        "java.base/jdk.internal.module",
-      ],
       "subDir" : "src",
       "overlaps" : [
         "GRAAL_GRAPHIO",

@@ -35,6 +35,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.Pair;
+import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.api.replacements.MethodSubstitutionRegistry;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
@@ -44,12 +50,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
-import org.graalvm.util.EconomicMap;
-import org.graalvm.util.Equivalence;
-import org.graalvm.util.MapCursor;
-import org.graalvm.util.Pair;
-import org.graalvm.util.UnmodifiableEconomicMap;
-import org.graalvm.util.UnmodifiableMapCursor;
 
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

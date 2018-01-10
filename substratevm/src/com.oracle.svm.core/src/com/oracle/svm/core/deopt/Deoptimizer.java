@@ -80,7 +80,6 @@ import com.oracle.svm.core.util.RingBuffer;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -312,6 +311,7 @@ public final class Deoptimizer {
      * @param ignoreNonDeoptimizable if set to true, a frame that cannot be deoptimized is ignored
      *            instead of raising an error (use for deoptimzation testing only).
      */
+    @NeverInline("Inlining of this method would require that we have deopt targets for callees of this method (SVM internals).")
     public static void deoptimizeFrame(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation) {
         DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sourceSp);
         if (deoptFrame != null) {
@@ -726,6 +726,8 @@ public final class Deoptimizer {
         assert sourceFrame.getValueInfos().length >= targetFrame.getValueInfos().length;
         int numValues = targetFrame.getValueInfos().length;
 
+        boolean useCompressedReferences = ReferenceAccess.singleton().haveCompressedReferences();
+
         /*
          * Create stack entries for all values of the source frame.
          */
@@ -772,8 +774,7 @@ public final class Deoptimizer {
                             assert totalOffset >= targetContentSize;
                             result.values[idx] = DeoptimizedFrame.ConstantEntry.factory(totalOffset, con);
 
-                            TargetDescription target = ConfigurationValues.getTarget();
-                            int endOffset = totalOffset + target.arch.getPlatformKind(con.getJavaKind()).getSizeInBytes();
+                            int endOffset = totalOffset + ConfigurationValues.getObjectLayout().sizeInBytes(con.getJavaKind(), useCompressedReferences);
                             if (endOffset > newEndOfParams) {
                                 newEndOfParams = endOffset;
                             }
@@ -897,12 +898,15 @@ public final class Deoptimizer {
             Heap.getHeap().getGC().collect("from Deoptimizer.materializeObject because of testGCinDeoptimizer");
         }
 
+        /* Objects must contain only compressed references when compression is enabled */
+        boolean useCompressedReferences = ReferenceAccess.singleton().haveCompressedReferences();
+
         while (curIdx < encodings.length) {
             ValueInfo value = encodings[curIdx];
             JavaKind kind = value.getKind();
             JavaConstant con = readValue(value, sourceFrame);
             writeValueInMaterializedObj(obj, curOffset, con);
-            curOffset = curOffset.add(objectLayout.sizeInBytes(kind, value.isCompressedReference()));
+            curOffset = curOffset.add(objectLayout.sizeInBytes(kind, useCompressedReferences));
             curIdx++;
         }
 
@@ -943,10 +947,8 @@ public final class Deoptimizer {
             case Double:
                 BarrieredAccess.writeDouble(materializedObj, offsetInObj, constant.asDouble());
                 break;
-            case Object:
-                Object obj = SubstrateObjectConstant.asObject(constant);
-                boolean isCompressed = SubstrateObjectConstant.isCompressed(constant);
-                ReferenceAccess.singleton().writeObjectBarrieredAt(materializedObj, offsetInObj, obj, isCompressed);
+            case Object: // like all objects, references are always compressed when available
+                BarrieredAccess.writeObject(materializedObj, offsetInObj, SubstrateObjectConstant.asObject(constant));
                 break;
             default:
                 throw VMError.shouldNotReachHere();
@@ -1067,8 +1069,10 @@ public final class Deoptimizer {
         /** Some constant sizes, gathered before I become uninterruptible. */
         private static final int sizeofInt = JavaKind.Int.getByteCount();
         private static final int sizeofLong = JavaKind.Long.getByteCount();
-        private static final int sizeofReference = ConfigurationValues.getObjectLayout().getReferenceSize();
-        private static final int sizeofCompressedReference = ConfigurationValues.getObjectLayout().getCompressedReferenceSize();
+        /** All references in deopt frames are compressed when compressed references are enabled. */
+        private final boolean haveCompressedReferences = ReferenceAccess.singleton().haveCompressedReferences();
+        private final int sizeofReference = haveCompressedReferences ? ConfigurationValues.getObjectLayout().getCompressedReferenceSize()
+                        : ConfigurationValues.getObjectLayout().getReferenceSize();
         /**
          * The offset of the within the array object. I do not have to scale the offsets.
          */
@@ -1126,12 +1130,11 @@ public final class Deoptimizer {
 
         /** An Object can be written to the frame buffer. */
         @Uninterruptible(reason = "Called from uninterruptible code.")
-        protected void writeObject(int offset, Object value, boolean isCompressed) {
-            offsetCheck(offset, isCompressed ? sizeofReference : sizeofCompressedReference);
-
+        protected void writeObject(int offset, Object value) {
+            offsetCheck(offset, sizeofReference);
             Word address = (Word) addressOfFrameArray0();
             address = address.add(offset);
-            ReferenceAccess.singleton().writeObjectAt(address, value, isCompressed);
+            ReferenceAccess.singleton().writeObjectAt(address, value, haveCompressedReferences);
         }
 
         /* Return &contentArray[0] as a Pointer. */

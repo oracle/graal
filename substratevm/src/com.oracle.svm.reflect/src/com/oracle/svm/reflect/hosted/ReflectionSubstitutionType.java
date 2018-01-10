@@ -572,6 +572,8 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
 
             graphKit.endInvokeWithException();
 
+            mergeUnwinds(graphKit);
+
             assert graphKit.getGraph().verify();
             return graphKit.getGraph();
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,8 +29,6 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 
 import java.lang.reflect.Array;
 
-import jdk.vm.ci.meta.JavaKind;
-
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
@@ -50,7 +48,7 @@ public class HotSpotArraySubstitutions {
             // Exit the intrinsic here for the case where the array class does not exist
             return newInstance(componentType, length);
         }
-        return DynamicNewArrayNode.newArray(GraalDirectives.guardingNonNull(componentType), length, JavaKind.Object);
+        return DynamicNewArrayNode.newArray(GraalDirectives.guardingNonNull(componentType), length);
     }
 
 }

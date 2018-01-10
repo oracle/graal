@@ -13,6 +13,9 @@ include "truffle/ci.hocon"
 compiler-suite-root = "./compiler"
 logPatterns = ["*.bgv"]
 
+#Tools
+include "tools/ci.hocon"
+
 #Examples
 #Examples gate also disabled.
 #include "examples/ci.hocon"
@@ -43,4 +46,7 @@ include "compiler/ci_includes/m7_eighth-c2.hocon"
 # ------------------ SVM ----------------------
 include "substratevm/ci_includes/svm-gate.hocon"
 include "substratevm/ci_includes/svm-gate-tasks.hocon"
+
+# Publish Javadoc
+include "ci_includes/publish-javadoc.hocon"
 

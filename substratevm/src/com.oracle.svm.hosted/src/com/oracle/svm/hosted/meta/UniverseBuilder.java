@@ -29,14 +29,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ForkJoinTask;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -127,7 +126,7 @@ public class UniverseBuilder {
             }
 
             BigBang bb = staticAnalysisResultsBuilder.getBigBang();
-            CompletableFuture<Void> profilingInformationFuture = CompletableFuture.runAsync(this::buildProfilingInformation);
+            ForkJoinTask<?> profilingInformationBuildTask = ForkJoinTask.adapt(this::buildProfilingInformation).fork();
 
             buildSubTypes();
             buildOrderedTypes();
@@ -151,7 +150,7 @@ public class UniverseBuilder {
             hUniverse.orderedMethods.sort(METHOD_COMPARATOR);
             hUniverse.orderedFields = new ArrayList<>(hUniverse.fields.values());
             hUniverse.orderedFields.sort(FIELD_COMPARATOR);
-            profilingInformationFuture.join();
+            profilingInformationBuildTask.join();
         }
     }
 
@@ -370,9 +369,8 @@ public class UniverseBuilder {
 
     private void buildProfilingInformation() {
         /* Convert profiling information after all types and methods have been created. */
-        hUniverse.methods.entrySet().parallelStream().forEach(entry -> {
-            entry.getValue().staticAnalysisResults = staticAnalysisResultsBuilder.makeResults(entry.getKey());
-        });
+        hUniverse.methods.entrySet().parallelStream()
+                        .forEach(entry -> entry.getValue().staticAnalysisResults = staticAnalysisResultsBuilder.makeResults(entry.getKey()));
 
         staticAnalysisResultsBuilder = null;
     }
@@ -385,7 +383,7 @@ public class UniverseBuilder {
          */
         Map<HostedType, Set<HostedType>> allSubTypes = new HashMap<>();
         for (HostedType type : hUniverse.types.values()) {
-            allSubTypes.put(type, new HashSet<HostedType>());
+            allSubTypes.put(type, new HashSet<>());
         }
 
         for (HostedType type : hUniverse.types.values()) {
@@ -710,7 +708,7 @@ public class UniverseBuilder {
          */
         final List<AnalysisMethod> waitNotifyAnalysisMethods = new ArrayList<>();
         try {
-            waitNotifyAnalysisMethods.add(aMetaAccess.lookupJavaMethod(Object.class.getMethod("wait", new Class<?>[]{long.class})));
+            waitNotifyAnalysisMethods.add(aMetaAccess.lookupJavaMethod(Object.class.getMethod("wait", long.class)));
             waitNotifyAnalysisMethods.add(aMetaAccess.lookupJavaMethod(Object.class.getMethod("notify", (Class<?>[]) null)));
             waitNotifyAnalysisMethods.add(aMetaAccess.lookupJavaMethod(Object.class.getMethod("notifyAll", (Class<?>[]) null)));
         } catch (NoSuchMethodException | SecurityException e) {
@@ -830,7 +828,7 @@ public class UniverseBuilder {
         }
 
         // Sort so that a) all Object fields are consecutive, and b) bigger types come first.
-        Collections.sort(rawFields, FIELD_COMPARATOR);
+        rawFields.sort(FIELD_COMPARATOR);
 
         int nextOffset = startSize;
         while (rawFields.size() > 0) {
@@ -922,7 +920,7 @@ public class UniverseBuilder {
         }
 
         // Sort so that a) all Object fields are consecutive, and b) bigger types come first.
-        Collections.sort(fields, FIELD_COMPARATOR);
+        fields.sort(FIELD_COMPARATOR);
 
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
 
@@ -987,7 +985,7 @@ public class UniverseBuilder {
         for (HostedType type : hUniverse.orderedTypes) {
             List<HostedMethod> list = methodsOfType[type.getTypeID()];
             if (list != null) {
-                Collections.sort(list, METHOD_COMPARATOR);
+                list.sort(METHOD_COMPARATOR);
                 type.allDeclaredMethods = list.toArray(new HostedMethod[list.size()]);
             } else {
                 type.allDeclaredMethods = noMethods;
@@ -1032,9 +1030,7 @@ public class UniverseBuilder {
         if (SubstrateUtil.assertionsEnabled()) {
             /* Check that all vtable entries are the correctly resolved methods. */
             for (HostedType type : hUniverse.orderedTypes) {
-                HostedMethod[] vtable = type.vtable;
-                for (int i = 0; i < vtable.length; i++) {
-                    HostedMethod m = vtable[i];
+                for (HostedMethod m : type.vtable) {
                     assert m == null || m.equals(hUniverse.lookup(type.wrapped.resolveConcreteMethod(m.wrapped, type.wrapped)));
                 }
             }
@@ -1274,8 +1270,8 @@ public class UniverseBuilder {
     private static boolean assertSame(Collection<HostedType> c1, Collection<HostedType> c2) {
         List<HostedType> list1 = new ArrayList<>(c1);
         List<HostedType> list2 = new ArrayList<>(c2);
-        Collections.sort(list1, TYPE_COMPARATOR);
-        Collections.sort(list2, TYPE_COMPARATOR);
+        list1.sort(TYPE_COMPARATOR);
+        list2.sort(TYPE_COMPARATOR);
 
         for (int i = 0; i < Math.min(list1.size(), list2.size()); i++) {
             assert list1.get(i) == list2.get(i);

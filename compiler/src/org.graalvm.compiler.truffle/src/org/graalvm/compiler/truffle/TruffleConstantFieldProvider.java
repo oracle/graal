@@ -24,8 +24,8 @@ package org.graalvm.compiler.truffle;
 
 import java.lang.annotation.Annotation;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.util.EconomicMap;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node.Child;

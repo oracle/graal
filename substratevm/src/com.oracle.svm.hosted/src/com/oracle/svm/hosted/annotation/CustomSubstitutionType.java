@@ -28,6 +28,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.svm.hosted.c.GraalAccess;
+
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
@@ -36,7 +39,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public abstract class CustomSubstitutionType<F extends CustomSubstitutionField, M extends CustomSubstitutionMethod> implements ResolvedJavaType {
+public abstract class CustomSubstitutionType<F extends CustomSubstitutionField, M extends CustomSubstitutionMethod> implements ResolvedJavaType, OriginalClassProvider {
 
     protected final ResolvedJavaType original;
     protected final List<F> fields;
@@ -272,4 +275,10 @@ public abstract class CustomSubstitutionType<F extends CustomSubstitutionField, 
     public ResolvedJavaType getHostClass() {
         throw JVMCIError.unimplemented();
     }
+
+    @Override
+    public Class<?> getJavaClass() {
+        return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), original);
+    }
+
 }

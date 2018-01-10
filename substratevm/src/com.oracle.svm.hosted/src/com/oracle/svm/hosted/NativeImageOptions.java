@@ -26,10 +26,10 @@ import static org.graalvm.compiler.options.OptionType.User;
 
 import java.util.Arrays;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.util.EconomicMap;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.util.CompletionExecutor;

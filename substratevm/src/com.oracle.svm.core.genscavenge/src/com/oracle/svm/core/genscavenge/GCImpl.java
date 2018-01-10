@@ -33,6 +33,7 @@ import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature.FeatureAccess;
 import org.graalvm.nativeimage.IsolateThread;
@@ -59,6 +60,7 @@ import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
@@ -68,6 +70,14 @@ import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
 public class GCImpl implements GC {
+
+    /** Options for this implementation. */
+    static final class Options {
+
+        @Option(help = "How much history to maintain about garbage collections.")//
+        public static final HostedOptionKey<Integer> GCHistory = new HostedOptionKey<>(1);
+    }
+
     private static final int DECIMALS_IN_TIME_PRINTING = 7;
 
     /*
@@ -264,7 +274,7 @@ public class GCImpl implements GC {
                 HeapImpl.getHeapImpl().verifyBeforeGC(cause, getCollectionEpoch());
             }
 
-            getAccounting().beforeCollection(mutatorTimer);
+            getAccounting().beforeCollection();
 
             try (Timer ct = collectionTimer.open()) {
 
@@ -368,7 +378,7 @@ public class GCImpl implements GC {
                 printGCLog.unsigned(sizeBefore.unsignedDivide(1024));
                 printGCLog.string("K->");
                 printGCLog.unsigned(sizeAfter.unsignedDivide(1024)).string("K, ");
-                printGCLog.rational(collectionTimer.getNanos(), TimeUtils.nanosPerSecond, DECIMALS_IN_TIME_PRINTING).string(" secs");
+                printGCLog.rational(collectionTimer.getCollectedNanos(), TimeUtils.nanosPerSecond, DECIMALS_IN_TIME_PRINTING).string(" secs");
 
                 printGCLog.string("]").newline();
             }
@@ -389,7 +399,7 @@ public class GCImpl implements GC {
                 }
                 if (!HeapOptions.PrintGCTimes.getValue()) {
                     verboseGCLog.newline();
-                    verboseGCLog.string("  collection time: ").unsigned(collectionTimer.getNanos()).string(" nanoSeconds");
+                    verboseGCLog.string("  collection time: ").unsigned(collectionTimer.getCollectedNanos()).string(" nanoSeconds");
                 } else {
                     logGCTimers(verboseGCLog);
                 }
@@ -1056,9 +1066,9 @@ public class GCImpl implements GC {
     }
 
     private static void logOneTimer(final Log log, final String prefix, final Timer timer) {
-        /* If the timer has been started, and has recorded some time, then print it. */
-        if ((timer.getStart() > 0) && (timer.getNanos() > 0)) {
-            log.newline().string(prefix).string(timer.getName()).string(": ").signed(timer.getNanos());
+        /* If the timer has recorded some time, then print it. */
+        if (timer.getCollectedNanos() > 0) {
+            log.newline().string(prefix).string(timer.getName()).string(": ").signed(timer.getCollectedNanos());
         }
     }
 
@@ -1068,9 +1078,9 @@ public class GCImpl implements GC {
      * not take in to account that the collector is single-threaded, while the mutator might be
      * multi-threaded.
      */
-    private void logGCLoad(Log log, String prefix, String label, Timer cTimer, Timer mTimer) {
-        final long collectionNanos = cTimer.getNanos();
-        final long mutatorNanos = getAccounting().getMutatorIntervalNanos(mTimer);
+    private static void logGCLoad(Log log, String prefix, String label, Timer cTimer, Timer mTimer) {
+        final long collectionNanos = cTimer.getLastIntervalNanos();
+        final long mutatorNanos = mTimer.getLastIntervalNanos();
         /* Compute a rounded percentage, since I can only log integers. */
         final long intervalNanos = mutatorNanos + collectionNanos;
         final long intervalGCPercent = (((100 * collectionNanos) + (intervalNanos / 2)) / intervalNanos);
@@ -1089,18 +1099,22 @@ public class GCImpl implements GC {
         private long completeCollectionCount;
         private long completeCollectionTotalNanos;
         private UnsignedWord collectedTotalChunkBytes;
-        private long mutatorTotalNanos;
         private UnsignedWord pinnedChunkBytes;
         private UnsignedWord normalChunkBytes;
-        /* State that is maintained, but not exposed directly, because no one needs them, yet. */
         private UnsignedWord promotedTotalChunkBytes;
         private UnsignedWord copiedTotalChunkBytes;
-        /* Bytes of chunks in the various spaces. */
+        /* Before and after measures. */
         private UnsignedWord youngChunkBytesBefore;
         private UnsignedWord oldChunkBytesBefore;
         private UnsignedWord oldChunkBytesAfter;
         private UnsignedWord pinnedChunkBytesBefore;
         private UnsignedWord pinnedChunkBytesAfter;
+        /* History of promotions and copies. */
+        private int history;
+        private UnsignedWord[] promotedUnpinnedChunkBytes;
+        private UnsignedWord[] promotedPinnedChunkBytes;
+        private UnsignedWord[] copiedUnpinnedChunkBytes;
+        private UnsignedWord[] copiedPinnedChunkBytes;
         /*
          * Bytes allocated in Objects, as opposed to bytes of chunks. These are only maintained if
          * -R:+PrintGCSummary because they are expensive.
@@ -1120,17 +1134,23 @@ public class GCImpl implements GC {
             this.incrementalCollectionTotalNanos = 0L;
             this.completeCollectionCount = 0L;
             this.completeCollectionTotalNanos = 0L;
-            this.mutatorTotalNanos = 0L;
             this.pinnedChunkBytes = WordFactory.zero();
             this.normalChunkBytes = WordFactory.zero();
             this.promotedTotalChunkBytes = WordFactory.zero();
             this.collectedTotalChunkBytes = WordFactory.zero();
             this.copiedTotalChunkBytes = WordFactory.zero();
+            this.history = 0;
             this.youngChunkBytesBefore = WordFactory.zero();
             this.oldChunkBytesBefore = WordFactory.zero();
             this.oldChunkBytesAfter = WordFactory.zero();
             this.pinnedChunkBytesBefore = WordFactory.zero();
             this.pinnedChunkBytesAfter = WordFactory.zero();
+            /* Initialize histories. */
+            this.promotedUnpinnedChunkBytes = historyFactory(WordFactory.zero());
+            this.promotedPinnedChunkBytes = historyFactory(WordFactory.zero());
+            this.copiedUnpinnedChunkBytes = historyFactory(WordFactory.zero());
+            this.copiedPinnedChunkBytes = historyFactory(WordFactory.zero());
+            /* Object bytes, if requested. */
             this.collectedTotalObjectBytes = WordFactory.zero();
             this.youngObjectBytesBefore = WordFactory.zero();
             this.oldObjectBytesBefore = WordFactory.zero();
@@ -1166,7 +1186,7 @@ public class GCImpl implements GC {
             return normalChunkBytes;
         }
 
-        protected UnsignedWord getPromotedTotalChunkBytes() {
+        UnsignedWord getPromotedTotalChunkBytes() {
             return promotedTotalChunkBytes;
         }
 
@@ -1178,11 +1198,7 @@ public class GCImpl implements GC {
             return completeCollectionTotalNanos;
         }
 
-        long getMutatorTotalNanos() {
-            return mutatorTotalNanos;
-        }
-
-        protected UnsignedWord getCopiedTotalChunkBytes() {
+        UnsignedWord getCopiedTotalChunkBytes() {
             return copiedTotalChunkBytes;
         }
 
@@ -1215,19 +1231,86 @@ public class GCImpl implements GC {
             return oldChunkBytesAfter.add(pinnedChunkBytesAfter);
         }
 
-        /* Nanoseconds in the last mutator interval. */
-        long getMutatorIntervalNanos(Timer mutatorTimer) {
-            final long mutuatorStartNanos = (0 < mutatorTimer.getStart() ? mutatorTimer.getStart() : HeapChunkProvider.getFirstAllocationTime());
-            final long mutatorFinishNanos = mutatorTimer.getFinish();
-            return mutatorFinishNanos - mutuatorStartNanos;
+        /** Average promoted unpinned chunk bytes. */
+        UnsignedWord averagePromotedUnpinnedChunkBytes() {
+            return averageOfHistory(promotedUnpinnedChunkBytes);
+        }
+
+        /** Average promoted pinned chunk bytes. */
+        UnsignedWord averagePromotedPinnedChunkBytes() {
+            return averageOfHistory(promotedPinnedChunkBytes);
+        }
+
+        /* History methods. */
+
+        /** Increment the amount of history I have seen. */
+        void incrementHistory() {
+            history += 1;
+        }
+
+        /** Convert the history counter into an index into a bounded history array. */
+        int historyAsIndex() {
+            return historyAsIndex(0);
+        }
+
+        /** Convert an offset into an index into a bounded history array. */
+        int historyAsIndex(int offset) {
+            return ((history + offset) % Options.GCHistory.getValue().intValue());
+        }
+
+        UnsignedWord[] historyFactory(UnsignedWord initial) {
+            assert initial.equal(WordFactory.zero()) : "Can not initialize history to any value except Word.zero().";
+            final UnsignedWord[] result = new UnsignedWord[Options.GCHistory.getValue().intValue()];
+            /* Initialization to null/WordFactory.zero() is implicit. */
+            return result;
+        }
+
+        /** Get the current element of a history array. */
+        UnsignedWord getHistoryOf(UnsignedWord[] array) {
+            return getHistoryOf(array, 0);
+        }
+
+        /** Get an offset element of a history array. */
+        UnsignedWord getHistoryOf(UnsignedWord[] array, int offset) {
+            return array[historyAsIndex(offset)];
+        }
+
+        /** Set the current element of a history array. */
+        void setHistoryOf(UnsignedWord[] array, UnsignedWord value) {
+            setHistoryOf(array, 0, value);
+        }
+
+        /** Set an offset element of a history array. */
+        void setHistoryOf(UnsignedWord[] array, int offset, UnsignedWord value) {
+            array[historyAsIndex(offset)] = value;
+        }
+
+        /** Average the non-zero elements of a history array. */
+        UnsignedWord averageOfHistory(UnsignedWord[] array) {
+            int count = 0;
+            UnsignedWord sum = WordFactory.zero();
+            UnsignedWord result = WordFactory.zero();
+            for (int offset = 0; offset < array.length; offset += 1) {
+                final UnsignedWord element = getHistoryOf(array, offset);
+                if (element.aboveThan(WordFactory.zero())) {
+                    sum = sum.add(element);
+                    count += 1;
+                }
+            }
+            if (count > 0) {
+                result = sum.unsignedDivide(count);
+            }
+            return result;
         }
 
         /*
          * Methods for collectors.
          */
 
-        void beforeCollection(Timer mutatorTimer) {
+        void beforeCollection() {
+            final Log trace = Log.noopLog().string("[GCImpl.Accounting.beforeCollection:").newline();
             /* Gather some space statistics. */
+            incrementHistory();
             final HeapImpl heap = HeapImpl.getHeapImpl();
             final Space youngSpace = heap.getYoungGeneration().getSpace();
             youngChunkBytesBefore = youngSpace.getChunkBytes();
@@ -1235,21 +1318,29 @@ public class GCImpl implements GC {
             final Space oldSpace = heap.getOldGeneration().getFromSpace();
             oldChunkBytesBefore = oldSpace.getChunkBytes();
             final Space pinnedSpace = heap.getOldGeneration().getPinnedFromSpace();
-            pinnedChunkBytesBefore = pinnedSpace.getChunkBytes();
-            /* Objects are allocated in the Pinned space, and in the young generation. */
-            final UnsignedWord allocatedPinnedChunkBytes = pinnedChunkBytesBefore.subtract(pinnedChunkBytesAfter);
-            pinnedChunkBytes = pinnedChunkBytes.add(allocatedPinnedChunkBytes);
+            /* Objects are allocated in the young generation. */
             normalChunkBytes = normalChunkBytes.add(youngChunkBytesBefore);
+            /*
+             * Pinned objects are *already* flushed from the thread-local allocation buffers to
+             * pinned space, so the `before` size is the previous `after` size.
+             */
+            pinnedChunkBytesBefore = pinnedChunkBytesAfter;
+            final UnsignedWord allocatedPinnedChunkBytes = pinnedSpace.getChunkBytes().subtract(pinnedChunkBytesBefore);
+            setHistoryOf(promotedPinnedChunkBytes, allocatedPinnedChunkBytes);
+            pinnedChunkBytes = pinnedChunkBytes.add(allocatedPinnedChunkBytes);
             /* Keep some aggregate metrics. */
-            mutatorTotalNanos += getMutatorIntervalNanos(mutatorTimer);
             if (SubstrateOptions.PrintGCSummary.getValue()) {
                 youngObjectBytesBefore = youngSpace.getObjectBytes();
                 oldObjectBytesBefore = oldSpace.getObjectBytes();
-                pinnedObjectBytesBefore = pinnedSpace.getObjectBytes();
-                final UnsignedWord allocatedPinnedObjectBytes = pinnedObjectBytesBefore.subtract(pinnedObjectBytesAfter);
+                pinnedObjectBytesBefore = pinnedObjectBytesAfter;
+                final UnsignedWord allocatedPinnedObjectBytes = pinnedSpace.getObjectBytes().subtract(pinnedObjectBytesBefore);
                 pinnedObjectBytes = pinnedObjectBytes.add(allocatedPinnedObjectBytes);
                 normalObjectBytes = normalObjectBytes.add(youngObjectBytesBefore);
             }
+            trace.string("  youngChunkBytesBefore: ").unsigned(youngChunkBytesBefore)
+                            .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore)
+                            .string("  pinnedChunkBytesBefore: ").unsigned(pinnedChunkBytesBefore);
+            trace.string("]").newline();
         }
 
         void afterCollection(boolean incremental, Timer collectionTimer) {
@@ -1269,18 +1360,19 @@ public class GCImpl implements GC {
             incrementalCollectionCount += 1;
             afterCollectionCommon();
             /* Incremental collections only promote. */
-            final UnsignedWord promotedUnpinnedChunkBytes = oldChunkBytesAfter.subtract(oldChunkBytesBefore);
-            final UnsignedWord promotedPinnedChunkBytes = pinnedChunkBytesAfter.subtract(pinnedChunkBytesBefore);
-            promotedTotalChunkBytes = promotedTotalChunkBytes.add(promotedUnpinnedChunkBytes).add(promotedPinnedChunkBytes);
-            incrementalCollectionTotalNanos += collectionTimer.getNanos();
+            setHistoryOf(promotedUnpinnedChunkBytes, oldChunkBytesAfter.subtract(oldChunkBytesBefore));
+            promotedTotalChunkBytes = promotedTotalChunkBytes.add(getHistoryOf(promotedUnpinnedChunkBytes)).add(getHistoryOf(promotedPinnedChunkBytes));
+            incrementalCollectionTotalNanos += collectionTimer.getCollectedNanos();
         }
 
         private void afterCompleteCollection(Timer collectionTimer) {
             completeCollectionCount += 1;
             afterCollectionCommon();
             /* Complete collections only copy, and they copy everything. */
+            setHistoryOf(copiedUnpinnedChunkBytes, oldChunkBytesAfter);
+            setHistoryOf(copiedPinnedChunkBytes, pinnedChunkBytesAfter);
             copiedTotalChunkBytes = copiedTotalChunkBytes.add(oldChunkBytesAfter).add(pinnedChunkBytesAfter);
-            completeCollectionTotalNanos += collectionTimer.getNanos();
+            completeCollectionTotalNanos += collectionTimer.getCollectedNanos();
         }
 
         /** Shared after collection processing. */
@@ -1320,12 +1412,18 @@ public class GCImpl implements GC {
 
         @Override
         public void close() {
+            /* If a timer was not opened, pretend it was opened at the start of the VM. */
+            if (openNanos == 0L) {
+                openNanos = HeapChunkProvider.getFirstAllocationTime();
+            }
             closeNanos = System.nanoTime();
+            collectedNanos += closeNanos - openNanos;
         }
 
         public void reset() {
             openNanos = 0L;
             closeNanos = 0L;
+            collectedNanos = 0L;
         }
 
         public String getName() {
@@ -1337,12 +1435,19 @@ public class GCImpl implements GC {
         }
 
         public long getFinish() {
+            assert closeNanos > 0L : "Should have closed timer";
             return closeNanos;
         }
 
-        long getNanos() {
-            assert openNanos > 0L : "Should have opened counter";
-            assert closeNanos > 0L : "Should have closed counter.";
+        /** Get all the nanoseconds collected between open/close pairs since the last reset. */
+        long getCollectedNanos() {
+            return collectedNanos;
+        }
+
+        /** Get the nanoseconds collected by the most recent open/close pair. */
+        long getLastIntervalNanos() {
+            assert openNanos > 0L : "Should have opened timer";
+            assert closeNanos > 0L : "Should have closed timer";
             return closeNanos - openNanos;
         }
 
@@ -1358,6 +1463,7 @@ public class GCImpl implements GC {
         final String name;
         long openNanos;
         long closeNanos;
+        long collectedNanos;
     }
 
     /** A constructor of remembered sets. */
@@ -1510,7 +1616,7 @@ public class GCImpl implements GC {
         log.string(prefix).string("CompleteGCNanos: ").signed(completeNanos).newline();
         /* Compute a GC load percent. */
         final long gcNanos = incrementalNanos + completeNanos;
-        final long mutatorNanos = accounting.getMutatorTotalNanos();
+        final long mutatorNanos = mutatorTimer.getCollectedNanos();
         final long totalNanos = gcNanos + mutatorNanos;
         final long roundedGCLoad = (0 < totalNanos ? TimeUtils.roundedDivide(100 * gcNanos, totalNanos) : 0);
         log.string(prefix).string("GCNanos: ").signed(gcNanos).newline();

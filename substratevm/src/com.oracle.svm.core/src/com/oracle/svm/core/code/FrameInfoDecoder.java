@@ -311,6 +311,6 @@ public class FrameInfoDecoder {
     }
 
     private static boolean extractIsCompressedReference(int flags) {
-        return ((flags & IS_COMPRESSED_REFERENCE_MASK_IN_PLACE) >> IS_COMPRESSED_REFERENCE_SHIFT) != 0;
+        return (flags & IS_COMPRESSED_REFERENCE_MASK_IN_PLACE) != 0;
     }
 }

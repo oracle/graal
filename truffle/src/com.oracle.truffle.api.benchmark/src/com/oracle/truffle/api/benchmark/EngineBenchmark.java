@@ -43,6 +43,7 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
@@ -218,6 +219,11 @@ public class EngineBenchmark extends TruffleBenchmark {
         }
 
         @Override
+        protected Iterable<Scope> findTopScopes(BenchmarkContext context) {
+            return context.topScopes;
+        }
+
+        @Override
         protected Object getLanguageGlobal(BenchmarkContext context) {
             return context.object;
         }
@@ -287,6 +293,18 @@ public class EngineBenchmark extends TruffleBenchmark {
                     } else {
                         return JavaInterop.asTruffleObject(ts.context.object);
                     }
+                }
+            }
+
+            @Resolve(message = "KEY_INFO")
+            abstract static class VarsMapKeyInfoNode extends Node {
+                private static final int EXISTING = KeyInfo.newBuilder().setReadable(true).build();
+
+                public int access(TopScopeObject ts, String propertyName) {
+                    if ("context".equals(propertyName)) {
+                        return EXISTING;
+                    }
+                    return 0;
                 }
             }
         }

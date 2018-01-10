@@ -83,17 +83,16 @@ def createBenchmarkShortcut(benchSuite, args):
     return mx_benchmark.benchmark([benchSuite + ":" + benchname] + remaining_args)
 
 
-# dacapo suite parsers.
-def _create_dacapo_parser():
+def _create_temporary_workdir_parser():
     parser = ArgumentParser(add_help=False, usage=mx_benchmark._mx_benchmark_usage_example + " -- <options> -- ...")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--keep-scratch", action="store_true", help="Do not delete scratch directory after benchmark execution.")
     group.add_argument("--no-scratch", action="store_true", help="Do not execute benchmark in scratch directory.")
     return parser
 
-mx_benchmark.parsers["dacapo_benchmark_suite"] = ParserEntry(
-    _create_dacapo_parser(),
-    "\n\nFlags for DaCapo-style benchmark suites:\n"
+mx_benchmark.parsers["temporary_workdir_parser"] = ParserEntry(
+    _create_temporary_workdir_parser(),
+    "\n\nFlags for benchmark suites with temporary working directories:\n"
 )
 
 class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
@@ -116,7 +115,7 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
         if tag and tag != mx_compiler._JVMCI_JDK_TAG:
             mx.abort("The '{0}/{1}' VM requires '--jdk={2}'".format(
                 self.name(), self.config_name(), mx_compiler._JVMCI_JDK_TAG))
-        mx.get_jdk(tag=mx_compiler._JVMCI_JDK_TAG).run_java(
+        return mx.get_jdk(tag=mx_compiler._JVMCI_JDK_TAG).run_java(
             args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
 
 
@@ -450,7 +449,45 @@ class AveragingBenchmarkMixin(object):
             results.append(averageResult)
 
 
-class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchmarkMixin):
+class TemporaryWorkdirMixin(mx_benchmark.VmBenchmarkSuite):
+    def before(self, bmSuiteArgs):
+        parser = mx_benchmark.parsers["temporary_workdir_parser"].parser
+        bmArgs, otherArgs = parser.parse_known_args(bmSuiteArgs)
+        self.keepScratchDir = bmArgs.keep_scratch
+        if not bmArgs.no_scratch:
+            self._create_tmp_workdir()
+        else:
+            mx.warn("NO scratch directory created! (--no-scratch)")
+            self.workdir = None
+        super(TemporaryWorkdirMixin, self).before(otherArgs)
+
+    def _create_tmp_workdir(self):
+        self.workdir = mkdtemp(prefix=self.name() + '-work.', dir='.')
+
+    def workingDirectory(self, benchmarks, bmSuiteArgs):
+        return self.workdir
+
+    def after(self, bmSuiteArgs):
+        if hasattr(self, "keepScratchDir") and self.keepScratchDir:
+            mx.warn("Scratch directory NOT deleted (--keep-scratch): {0}".format(self.workdir))
+        elif self.workdir:
+            rmtree(self.workdir)
+        super(TemporaryWorkdirMixin, self).after(bmSuiteArgs)
+
+    def repairDatapointsAndFail(self, benchmarks, bmSuiteArgs, partialResults, message):
+        try:
+            super(TemporaryWorkdirMixin, self).repairDatapointsAndFail(benchmarks, bmSuiteArgs, partialResults, message)
+        finally:
+            if self.workdir:
+                # keep old workdir for investigation, create a new one for further benchmarking
+                mx.warn("Keeping scratch directory after failed benchmark: {0}".format(self.workdir))
+                self._create_tmp_workdir()
+
+    def parserNames(self):
+        return super(TemporaryWorkdirMixin, self).parserNames() + ["temporary_workdir_parser"]
+
+
+class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchmarkMixin, TemporaryWorkdirMixin):
     """Base benchmark suite for DaCapo-based benchmarks.
 
     This suite can only run a single benchmark in one VM invocation.
@@ -463,37 +500,6 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchma
 
     def benchSuiteName(self):
         return self.name()
-
-    def before(self, bmSuiteArgs):
-        parser = mx_benchmark.parsers["dacapo_benchmark_suite"].parser
-        bmArgs, _ = parser.parse_known_args(bmSuiteArgs)
-        self.keepScratchDir = bmArgs.keep_scratch
-        if not bmArgs.no_scratch:
-            self._create_tmp_workdir()
-        else:
-            mx.warn("NO scratch directory created! (--no-scratch)")
-            self.workdir = None
-
-    def _create_tmp_workdir(self):
-        self.workdir = mkdtemp(prefix='dacapo-work.', dir='.')
-
-    def workingDirectory(self, benchmarks, bmSuiteArgs):
-        return self.workdir
-
-    def after(self, bmSuiteArgs):
-        if hasattr(self, "keepScratchDir") and self.keepScratchDir:
-            mx.warn("Scratch directory NOT deleted (--keep-scratch): {0}".format(self.workdir))
-        elif self.workdir:
-            rmtree(self.workdir)
-
-    def repairDatapointsAndFail(self, benchmarks, bmSuiteArgs, partialResults, message):
-        try:
-            super(BaseDaCapoBenchmarkSuite, self).repairDatapointsAndFail(benchmarks, bmSuiteArgs, partialResults, message)
-        finally:
-            if self.workdir:
-                # keep old workdir for investigation, create a new one for further benchmarking
-                mx.warn("Keeping scratch directory after failed benchmark: {0}".format(self.workdir))
-                self._create_tmp_workdir()
 
     def daCapoClasspathEnvVarName(self):
         raise NotImplementedError()
@@ -512,9 +518,6 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchma
 
     def daCapoIterations(self):
         raise NotImplementedError()
-
-    def parserNames(self):
-        return super(BaseDaCapoBenchmarkSuite, self).parserNames() + ["dacapo_benchmark_suite"]
 
     def validateEnvironment(self):
         if not self.daCapoPath():
@@ -541,12 +544,6 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchma
             else:
                 iterations = iterations + self.getExtraIterationCount(iterations)
                 return ["-n", str(iterations)] + remaining
-
-    def vmArgs(self, bmSuiteArgs):
-        parser = mx_benchmark.parsers["dacapo_benchmark_suite"].parser
-        _, remainingBmSuiteArgs = parser.parse_known_args(bmSuiteArgs)
-        vmArgs = super(BaseDaCapoBenchmarkSuite, self).vmArgs(remainingBmSuiteArgs)
-        return vmArgs
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
@@ -711,7 +708,7 @@ _daCapoIterations = {
 }
 
 
-class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite):
+class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-ancestors
     """DaCapo 9.12 (Bach) benchmark suite implementation."""
 
     def name(self):
@@ -779,7 +776,7 @@ _daCapoScalaConfig = {
 }
 
 
-class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite):
+class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-ancestors
     """Scala DaCapo benchmark suite implementation."""
 
     def name(self):
@@ -1343,7 +1340,7 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite):
 mx_benchmark.add_bm_suite(JMHDistWhiteboxBenchmarkSuite())
 
 
-class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchmarkMixin):
+class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchmarkMixin, TemporaryWorkdirMixin):
     """Renaissance benchmark suite implementation.
     """
     def name(self):
@@ -1366,18 +1363,8 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchm
             raise RuntimeError(
                 "The RENAISSANCE environment variable was not specified.")
 
-    def before(self, bmSuiteArgs):
-        self.workdir = mkdtemp(prefix='renaissance-work.', dir='.')
-
-    def after(self, bmSuiteArgs):
-        if self.workdir:
-            rmtree(self.workdir)
-
     def validateReturnCode(self, retcode):
         return retcode == 0
-
-    def workingDirectory(self, benchmarks, bmSuiteArgs):
-        return self.workdir
 
     def classpathAndMainClass(self):
         mainClass = "org.renaissance.RenaissanceSuite"
@@ -1406,9 +1393,6 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchm
         return []
 
     def failurePatterns(self):
-        return []
-
-    def flakySuccessPatterns(self):
         return []
 
     def rules(self, out, benchmarks, bmSuiteArgs):
