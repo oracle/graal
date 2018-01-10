@@ -122,7 +122,7 @@ maven-deploy-dry-run : ${labsjdk8} {
   targets : [gate]
   run : [
     ["mx", "--strict-compliance", "build"]
-    ["mx", "maven-deploy", "--licenses", "GPLv2-CPE,UPL", "--dry-run", "ossrh", "https://this-is-only-a-test"]
+    ["mx", "maven-deploy", "--validate", "full", "--licenses", "GPLv2-CPE,UPL", "--dry-run", "ossrh", "https://this-is-only-a-test"]
   ]
 }
 

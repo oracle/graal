@@ -182,7 +182,12 @@ suite = {
       "distDependencies" : [
         "GRAAL_SDK",
       ],
-      "maven": False,
+      "maven" : {
+        "groupId" : "org.graalvm",
+        "artifactId" : "launcher-common"
+      },
+      "description" : "Common infrastructure to create language launchers using the Polyglot API.",
+      "allowsJavadocWarnings": True,
     },
     "POLYGLOT_TCK" : {
       "subDir" : "src",
