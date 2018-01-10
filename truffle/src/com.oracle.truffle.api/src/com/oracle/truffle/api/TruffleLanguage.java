@@ -58,6 +58,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.options.OptionKey;
 
 /**
  * A Truffle language implementation for executing guest language code in a
@@ -2035,15 +2036,24 @@ class TruffleLanguageSnippets {
         InputStream in;
         OutputStream out;
         OutputStream err;
+        String languageVersion;
 
         Context(String[] args) {
             this.args = args;
             this.env = null;
+            this.languageVersion = null;
         }
 
         Context(Env env) {
             this.env = env;
             this.args = null;
+            this.languageVersion = null;
+        }
+
+        Context(Env env, String languageVersion) {
+            this.env = env;
+            this.args = null;
+            this.languageVersion = languageVersion;
         }
 
         Context fork() {
@@ -2090,11 +2100,13 @@ class TruffleLanguageSnippets {
     abstract
     class PreInitializedLanguage extends TruffleLanguage<Context> {
 
+        private final OptionKey<String> version = new OptionKey<>("2.0");
+
         // BEGIN: TruffleLanguageSnippets.PreInitializedLanguage#patchContext
         @Override
         protected boolean patchContext(Context context, Env newEnv) {
-            if (!optionsAllowPreInitializedContext(newEnv.getOptions())) {
-                //Incompatible options - cannot use pre-initialed context
+            if (!optionsAllowPreInitializedContext(context, newEnv)) {
+                // Incompatible options - cannot use pre-initialized context
                 return false;
             }
             context.env = newEnv;
@@ -2104,11 +2116,14 @@ class TruffleLanguageSnippets {
             context.err = newEnv.err();
             return true;
         }
-        // END: TruffleLanguageSnippets.PreInitializedLanguage#patchContext
 
-        private boolean optionsAllowPreInitializedContext(@SuppressWarnings("unused") OptionValues optionValues) {
-            return true;
+        private boolean optionsAllowPreInitializedContext(Context context, Env newEnv) {
+            // Verify that values of important options in the new Env do not differ
+            // from values in the pre-initialized context
+            final String newVersionValue = newEnv.getOptions().get(version);
+            return Objects.equals(context.languageVersion, newVersionValue);
         }
+        // END: TruffleLanguageSnippets.PreInitializedLanguage#patchContext
     }
 
     // BEGIN: TruffleLanguageSnippets#parseWithParams
