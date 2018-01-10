@@ -34,7 +34,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
 public class WriteCurrentVMHeapBaseNode extends FixedWithNextNode implements LIRLowerable {
@@ -54,5 +54,5 @@ public class WriteCurrentVMHeapBaseNode extends FixedWithNextNode implements LIR
     }
 
     @NodeIntrinsic
-    public static native void writeCurrentVMHeapBase(Pointer value);
+    public static native void writeCurrentVMHeapBase(PointerBase value);
 }

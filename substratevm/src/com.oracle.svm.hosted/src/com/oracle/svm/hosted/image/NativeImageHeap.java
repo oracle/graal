@@ -54,7 +54,6 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.cfunction.CFunctionLinkages;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NativeImageInfo;
-import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.StringInternSupport;
@@ -679,41 +678,19 @@ public class NativeImageHeap {
         } else {
             throw shouldNotReachHere();
         }
-        final HeapPartition result;
-        if (!SubstrateOptions.UseOnlyWritableBootImageHeap.getValue()) {
-            // The usual case.
-            result = choosePartition(written, references, immutable);
-        } else {
-            // Emergency use only! Alarms will sound!
-            result = getWritableReferencePartition();
-        }
-        return result;
-    }
 
-    /** Choose a partition of the native image heap based on properties from static analysis. */
-    private HeapPartition choosePartition(final boolean written, final boolean references, final boolean immutable) {
-        final HeapPartition result;
-        if ((!written) && (!references)) {
-            result = getReadOnlyPrimitivePartition();
-        } else if ((!written) && (references)) {
-            result = getReadOnlyReferencePartition();
-        } else if ((written) && (!references)) {
-            if (!immutable) {
-                result = getWritablePrimitivePartition();
-            } else {
-                // Immutable objects go in the read-only partition.
-                result = getReadOnlyPrimitivePartition();
-            }
-        } else {
-            if (!immutable) {
-                // The default is to put things in the writable reference-containing partition.
-                result = getWritableReferencePartition();
-            } else {
-                // Immutable objects go in the read-only partition.
-                result = getReadOnlyReferencePartition();
+        if (SubstrateOptions.UseOnlyWritableBootImageHeap.getValue()) {
+            // Emergency use only! Alarms will sound!
+            return getWritableReferencePartition();
+        }
+
+        if (!SubstrateOptions.UseHeapBaseRegister.getValue()) {
+            if (!written || immutable) {
+                return references ? getReadOnlyReferencePartition() : getReadOnlyPrimitivePartition();
             }
         }
-        return result;
+
+        return references ? getWritableReferencePartition() : getWritablePrimitivePartition();
     }
 
     private void patchPartitionBoundaries(DebugContext debug, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
@@ -724,18 +701,12 @@ public class NativeImageHeap {
         patchWritablePartitionBoundaries(debug, roBuffer, rwBuffer);
     }
 
-    // @formatter:off
-    private void patchBootImageInfoField(final ObjectInfo        info,
-                                         final String            fieldName,
-                                         final RelocatableBuffer roBuffer,
-                                         final RelocatableBuffer rwBuffer) {
-        // @formatter:on
+    private void patchBootImageInfoField(ObjectInfo info, String fieldName, RelocatableBuffer roBuffer, RelocatableBuffer rwBuffer) {
         try {
             // Look up the field name in the static object fields.
             ObjectInfo staticFieldsInfo = objects.get(StaticFieldsSupport.getStaticObjectFields());
             final HostedField field = getMetaAccess().lookupJavaField(NativeImageInfo.class.getDeclaredField(fieldName));
-            final int location = field.getLocation();
-            final int index = staticFieldsInfo.getIntIndexInSection(location);
+            final int index = staticFieldsInfo.getIntIndexInSection(field.getLocation());
             // Overwrite the previously written null-value with the actual object location.
             final RelocatableBuffer buffer = bufferForPartition(staticFieldsInfo, roBuffer, rwBuffer);
             WriteUtils.writeReference(buffer, index, info.getObject(), this, staticFieldsInfo);
@@ -875,11 +846,11 @@ public class NativeImageHeap {
         return selectFromObjects((i) -> (i.getPartition() == getWritableReferencePartition()), (b, c) -> (b.getOffsetInSection() < c.getOffsetInSection()));
     }
 
-    protected RelocatableBuffer bufferForPartition(final ObjectInfo info, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
+    private static RelocatableBuffer bufferForPartition(final ObjectInfo info, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
         VMError.guarantee(info != null, "[BootImageHeap.bufferForPartition: info is null]");
         VMError.guarantee(info.getPartition() != null, "[BootImageHeap.bufferForPartition: info.partition is null]");
 
-        return (info.getPartition().isReadOnly() ? roBuffer : rwBuffer);
+        return info.getPartition().isReadOnly() ? roBuffer : rwBuffer;
     }
 
     private void writeObject(ObjectInfo info, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
@@ -891,14 +862,17 @@ public class NativeImageHeap {
         final int indexInSection = info.getIntIndexInSection(getLayout().getHubOffset());
         assert getLayout().isReferenceAligned(info.getOffsetInPartition());
         assert getLayout().isReferenceAligned(indexInSection);
-        final DynamicHub hub = info.getClazz().getHub();
-        final ObjectHeader ohi = Heap.getHeap().getObjectHeader();
-        WriteUtils.writeDynamicHub(buffer, indexInSection, hub, this, ohi);
 
-        if (info.getClazz().isInstanceClass()) {
+        final HostedClass clazz = info.getClazz();
+        final DynamicHub hub = clazz.getHub();
+
+        final long objectHeaderBits = Heap.getHeap().getObjectHeader().setBootImageOnLong(0L);
+        WriteUtils.writeDynamicHub(buffer, indexInSection, hub, this, objectHeaderBits);
+
+        if (clazz.isInstanceClass()) {
             JavaConstant con = SubstrateObjectConstant.forObject(info.getObject());
 
-            HybridLayout<?> hybridLayout = hybridLayouts.get(info.getClazz());
+            HybridLayout<?> hybridLayout = hybridLayouts.get(clazz);
             HostedField hybridArrayField = null;
             HostedField hybridBitsetField = null;
             int maxBitIndex = -1;
@@ -932,7 +906,7 @@ public class NativeImageHeap {
             /*
              * Write the regular instance fields.
              */
-            for (HostedField field : info.getClazz().getInstanceFields(true)) {
+            for (HostedField field : clazz.getInstanceFields(true)) {
                 if (!field.equals(hybridArrayField) && !field.equals(hybridBitsetField) && field.isAccessed()) {
                     assert field.getLocation() >= 0;
                     final int fieldIndex = info.getIntIndexInSection(field.getLocation());
@@ -940,8 +914,8 @@ public class NativeImageHeap {
                     WriteUtils.writeField(buffer, fieldIndex, field, con, this, info);
                 }
             }
-            if (info.getClazz().getHub().getHashCodeOffset() != 0) {
-                buffer.putInt(info.getIntIndexInSection(info.getClazz().getHub().getHashCodeOffset()), info.getIdentityHashCode());
+            if (hub.getHashCodeOffset() != 0) {
+                buffer.putInt(info.getIntIndexInSection(hub.getHashCodeOffset()), info.getIdentityHashCode());
             }
             if (hybridArray != null) {
                 /*
@@ -957,8 +931,8 @@ public class NativeImageHeap {
                 }
             }
 
-        } else if (info.getClazz().isArray()) {
-            JavaKind kind = info.getClazz().getComponentType().getJavaKind();
+        } else if (clazz.isArray()) {
+            JavaKind kind = clazz.getComponentType().getJavaKind();
             Object array = info.getObject();
             int length = Array.getLength(array);
             buffer.putInt(info.getIntIndexInSection(getLayout().getArrayLengthOffset()), length);
@@ -1017,11 +991,21 @@ public class NativeImageHeap {
         this.universe = universe;
         this.metaAccess = metaAccess;
         this.layout = ConfigurationValues.getObjectLayout();
+
         // Heap partitions.
-        this.readOnlyPrimitive = HeapPartition.factory("readOnlyPrimitive", this, false, false);
-        this.readOnlyReference = HeapPartition.factory("readOnlyReference", this, false, true);
-        this.writablePrimitive = HeapPartition.factory("writablePrimitive", this, true, false);
-        this.writableReference = HeapPartition.factory("writableReference", this, true, true);
+        readOnlyPrimitive = HeapPartition.factory("readOnlyPrimitive", this, false, false);
+        readOnlyReference = HeapPartition.factory("readOnlyReference", this, false, true);
+        writablePrimitive = HeapPartition.factory("writablePrimitive", this, true, false);
+        writableReference = HeapPartition.factory("writableReference", this, true, true);
+
+        /*
+         * Zero designates null, so add some padding at the heap base to make object offsets
+         * strictly positive
+         */
+        if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
+            writablePrimitive.incrementSize(layout.getAlignment());
+        }
+
         // Initialize the canonicalizable and immutable class lists.
         // Some hosted classes I know are not canonicalizable.
         knownNonCanonicalizableClasses.add(Enum.class);
