@@ -39,6 +39,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.GraphPrintVisitor.GraphPrintAdapter;
 import org.graalvm.compiler.truffle.runtime.GraphPrintVisitor.GraphPrintHandler;
+import org.graalvm.graphio.GraphBlocks;
 import org.graalvm.graphio.GraphOutput;
 import org.graalvm.graphio.GraphStructure;
 
@@ -178,37 +179,47 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
     static class AST {
         final ASTNode root;
         final Map<Node, ASTNode> nodes = new HashMap<>();
+        final List<ASTBlock> blocks = new ArrayList<>();
 
         AST(RootCallTarget target) {
             final RootNode rootNode = target.getRootNode();
             root = new ASTNode(rootNode, 0);
-            traverseNodes(rootNode, root, this, 1, null);
+            nodes.put(rootNode, root);
+            traverseNodes(rootNode, root, this, null);
+        }
+
+        ASTNode makeASTNode(Node source) {
+            final ASTNode astNode = new ASTNode(source, nodes.size());
+            nodes.put(source, astNode);
+            return astNode;
+        }
+
+        ASTBlock makeASTBlock() {
+            return new ASTBlock(blocks.size());
         }
 
         void inline(TruffleInlining inliningDecisions) {
-            traverseNodes(root.source, root, this, nodes.size(), inliningDecisions);
+            traverseNodes(root.source, root, this, inliningDecisions);
         }
 
-        private static int traverseNodes(Node parent, ASTNode astParent, AST ast, int nextId, TruffleInlining inliningDecisions) {
+        private static void traverseNodes(Node parent, ASTNode astParent, AST ast, TruffleInlining inliningDecisions) {
             for (Map.Entry<String, Node> entry : findNamedNodeChildren(parent).entrySet()) {
                 final String label = entry.getKey();
                 final Node node = entry.getValue();
                 final ASTNode seenAstNode = ast.nodes.get(node);
                 if (seenAstNode == null) {
-                    final ASTNode astNode = new ASTNode(node, nextId);
-                    ast.nodes.put(node, astNode);
+                    final ASTNode astNode = ast.makeASTNode(node);
                     astParent.edges.add(new ASTEdge(astNode, label));
-                    nextId = handleCallNodes(ast, nextId, inliningDecisions, node, astNode);
-                    nextId = traverseNodes(node, astNode, ast, nextId + 1, inliningDecisions);
+                    handleCallNodes(ast, inliningDecisions, node, astNode);
+                    traverseNodes(node, astNode, ast, inliningDecisions);
                 } else {
-                    nextId = handleCallNodes(ast, nextId, inliningDecisions, node, seenAstNode);
-                    nextId = traverseNodes(node, seenAstNode, ast, nextId, inliningDecisions);
+                    handleCallNodes(ast, inliningDecisions, node, seenAstNode);
+                    traverseNodes(node, seenAstNode, ast, inliningDecisions);
                 }
             }
-            return nextId;
         }
 
-        private static int handleCallNodes(AST ast, int nextId, TruffleInlining inliningDecisions, Node node, ASTNode seenAstNode) {
+        private static void handleCallNodes(AST ast, TruffleInlining inliningDecisions, Node node, ASTNode seenAstNode) {
             if (inliningDecisions != null) {
                 if (node instanceof DirectCallNode) {
                     final DirectCallNode callNode = (DirectCallNode) node;
@@ -216,12 +227,11 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
                     if (inlinedCallTarget instanceof OptimizedCallTarget && callNode instanceof OptimizedDirectCallNode) {
                         TruffleInliningDecision decision = inliningDecisions.findByCall((OptimizedDirectCallNode) callNode);
                         if (decision != null && decision.shouldInline()) {
-                            nextId = traverseNodes(((OptimizedCallTarget) inlinedCallTarget).getRootNode(), seenAstNode, ast, nextId + 1, decision);
+                            traverseNodes(((OptimizedCallTarget) inlinedCallTarget).getRootNode(), seenAstNode, ast, decision);
                         }
                     }
                 }
             }
-            return nextId;
         }
 
         @SuppressWarnings("deprecation")
@@ -331,6 +341,16 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         }
     }
 
+    static class ASTBlock {
+        final int id;
+        final List<ASTBlock> successors = new ArrayList<>();
+        final List<ASTNode> nodes = new ArrayList<>();
+
+        ASTBlock(int id) {
+            this.id = id;
+        }
+    }
+
 
     static class ASTDumpStructure implements GraphStructure<AST, ASTNode, ASTNode, List<ASTEdge>> {
 
@@ -424,6 +444,29 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
             List<ASTNode> singleton = new ArrayList<>(1);
             singleton.add(port.get(index).node);
             return singleton;
+        }
+    }
+
+    static class ASTBlocksStructure implements GraphBlocks<AST, ASTBlock, ASTNode> {
+
+        @Override
+        public Collection<? extends ASTBlock> blocks(AST graph) {
+            return graph.blocks;
+        }
+
+        @Override
+        public int blockId(ASTBlock block) {
+            return block.id;
+        }
+
+        @Override
+        public Collection<? extends ASTNode> blockNodes(AST info, ASTBlock block) {
+            return block.nodes;
+        }
+
+        @Override
+        public Collection<? extends ASTBlock> blockSuccessors(ASTBlock block) {
+            return block.successors;
         }
     }
 
