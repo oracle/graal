@@ -784,11 +784,6 @@ public final class ForeignAccess {
         }
     }
 
-    // currently intrinsified by Graal
-    @SuppressWarnings("unused")
-    private void checkThread() {
-    }
-
     boolean canHandle(TruffleObject receiver) {
         return factory.canHandle(receiver);
     }
