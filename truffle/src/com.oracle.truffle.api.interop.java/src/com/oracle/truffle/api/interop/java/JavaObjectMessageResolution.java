@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.interop.java;
 
 import java.lang.reflect.Array;
+import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -48,15 +49,15 @@ class JavaObjectMessageResolution {
 
         public Object access(JavaObject receiver) {
             Object obj = receiver.obj;
-            if (obj == null) {
-                return 0;
+            if (obj != null) {
+                if (obj.getClass().isArray()) {
+                    return Array.getLength(obj);
+                } else if (obj instanceof List<?>) {
+                    return ((List<?>) obj).size();
+                }
             }
-            try {
-                return Array.getLength(obj);
-            } catch (IllegalArgumentException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw UnsupportedMessageException.raise(Message.GET_SIZE);
-            }
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedMessageException.raise(Message.GET_SIZE);
         }
 
     }
@@ -69,7 +70,7 @@ class JavaObjectMessageResolution {
             if (obj == null) {
                 return false;
             }
-            return obj.getClass().isArray();
+            return obj.getClass().isArray() || obj instanceof List<?>;
         }
 
     }

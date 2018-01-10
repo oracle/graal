@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.interop.java;
 
 import java.lang.reflect.Array;
+import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -37,19 +38,37 @@ abstract class ArrayReadNode extends Node {
 
     protected abstract Object executeWithTarget(JavaObject receiver, Object index);
 
-    @Specialization(guards = {"receiver.isArray()", "index.getClass() == clazz"})
-    protected Object doNumber(JavaObject receiver, Number index, @Cached("index.getClass()") Class<? extends Number> clazz) {
+    @Specialization(guards = {"receiver.isArray()"})
+    protected Object doArrayIntIndex(JavaObject receiver, int index) {
+        return doArrayAccess(receiver, index);
+    }
+
+    @Specialization(guards = {"receiver.isArray()", "index.getClass() == clazz"}, replaces = "doArrayIntIndex")
+    protected Object doArrayCached(JavaObject receiver, Number index,
+                    @Cached("index.getClass()") Class<? extends Number> clazz) {
         return doArrayAccess(receiver, clazz.cast(index).intValue());
     }
 
-    @Specialization(guards = {"receiver.isArray()"}, replaces = "doNumber")
-    protected Object doNumberGeneric(JavaObject receiver, Number index) {
+    @Specialization(guards = {"receiver.isArray()"}, replaces = "doArrayCached")
+    protected Object doArrayGeneric(JavaObject receiver, Number index) {
         return doArrayAccess(receiver, index.intValue());
+    }
+
+    @TruffleBoundary
+    @Specialization(guards = {"isList(receiver)"})
+    protected Object doListIntIndex(JavaObject receiver, int index) {
+        return ((List<?>) receiver.obj).get(index);
+    }
+
+    @TruffleBoundary
+    @Specialization(guards = {"isList(receiver)"}, replaces = "doListIntIndex")
+    protected Object doListGeneric(JavaObject receiver, Number index) {
+        return doListIntIndex(receiver, index.intValue());
     }
 
     @SuppressWarnings("unused")
     @TruffleBoundary
-    @Specialization(guards = {"!receiver.isArray()"})
+    @Specialization(guards = {"!receiver.isArray()", "!isList(receiver)"})
     protected static Object notArray(JavaObject receiver, Number index) {
         throw UnknownIdentifierException.raise(String.valueOf(index));
     }
@@ -65,6 +84,10 @@ abstract class ArrayReadNode extends Node {
             throw UnknownIdentifierException.raise(String.valueOf(index));
         }
         return JavaInterop.toGuestValue(val, object.languageContext);
+    }
+
+    static boolean isList(JavaObject receiver) {
+        return receiver.obj instanceof List;
     }
 
     static ArrayReadNode create() {
