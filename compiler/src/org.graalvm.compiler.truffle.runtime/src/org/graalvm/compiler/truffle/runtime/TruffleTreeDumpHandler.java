@@ -26,7 +26,11 @@ package org.graalvm.compiler.truffle.runtime;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeClass;
+import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
@@ -35,8 +39,18 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.GraphPrintVisitor.GraphPrintAdapter;
 import org.graalvm.compiler.truffle.runtime.GraphPrintVisitor.GraphPrintHandler;
+import org.graalvm.graphio.GraphOutput;
+import org.graalvm.graphio.GraphStructure;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public class TruffleTreeDumpHandler implements DebugDumpHandler {
 
@@ -66,30 +80,37 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         if (object instanceof TruffleTreeDump && DebugOptions.PrintGraph.getValue(options) && TruffleCompilerOptions.getValue(DebugOptions.PrintTruffleTrees)) {
             String message = String.format(format, arguments);
             try {
-                dumpRootCallTarget(debug, message, (TruffleTreeDump) object);
+                dumpASTAndInliningTrees(debug, message, (TruffleTreeDump) object);
             } catch (IOException ex) {
                 throw rethrowSilently(RuntimeException.class, ex);
             }
         }
     }
 
-    private static void dumpRootCallTarget(DebugContext debug, final String message, TruffleTreeDump truffleTreeDump) throws IOException {
+    private static void dumpASTAndInliningTrees(DebugContext debug, final String message, TruffleTreeDump truffleTreeDump) throws IOException {
         final RootCallTarget callTarget = truffleTreeDump.callTarget;
         if (callTarget.getRootNode() != null) {
-            final GraphPrintVisitor printer = new GraphPrintVisitor(debug);
+            final AST ast = AST.makeSimpleAST(callTarget);
+            final GraphOutput<AST, ?> output = debug.buildOutput(GraphOutput.newBuilder(new ASTDumpStructure()));
 
-            printer.beginGroup(callTarget, "Truffle." + truffleTreeDump.toString(), callTarget.getRootNode().getName());
-            printer.beginGraph(message).visit(callTarget.getRootNode());
-            if (callTarget instanceof OptimizedCallTarget) {
-                printer.beginGroup(callTarget, "Inlining", "Inlining");
-                final TruffleInlining inlining = truffleTreeDump.inlining;
-                if (inlining.countInlinedCalls() > 0) {
-                    dumpInlinedTrees(debug, printer, (OptimizedCallTarget) callTarget, inlining);
-                    dumpInlinedCallGraph(printer, (OptimizedCallTarget) callTarget, inlining);
-                }
-                printer.endGroup();
-            }
-            printer.endGroup();
+
+            output.beginGroup(ast, "Truffle." + truffleTreeDump.toString(), callTarget.getRootNode().getName(), null, 0, DebugContext.addVersionProperties(null));
+            output.print(ast, Collections.emptyMap(), 0, message);
+            output.endGroup();
+            output.close();
+//            final GraphPrintVisitor printer = new GraphPrintVisitor(debug);
+//            printer.beginGroup(callTarget, "Truffle." + truffleTreeDump.toString(), callTarget.getRootNode().getName());
+//            printer.beginGraph(message).visit(callTarget.getRootNode());
+//            if (callTarget instanceof OptimizedCallTarget) {
+//                printer.beginGroup(callTarget, "Inlining", "Inlining");
+//                final TruffleInlining inlining = truffleTreeDump.inlining;
+//                if (inlining.countInlinedCalls() > 0) {
+//                    dumpInlinedTrees(debug, printer, (OptimizedCallTarget) callTarget, inlining);
+//                    dumpInlinedCallGraph(printer, (OptimizedCallTarget) callTarget, inlining);
+//                }
+//                printer.endGroup();
+//            }
+//            printer.endGroup();
         }
     }
 
@@ -150,5 +171,233 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
     @SuppressWarnings({"unused", "unchecked"})
     private static <E extends Exception> E rethrowSilently(Class<E> type, Throwable ex) throws E {
         throw (E) ex;
+    }
+
+    static class AST {
+        final ASTNode root;
+        final List<ASTNode> nodes = new ArrayList<>();
+
+        AST(ASTNode root) {
+            this.root = root;
+        }
+
+        private static AST makeSimpleAST(RootCallTarget target) {
+            final RootNode rootNode = target.getRootNode();
+            final ASTNode astRoot = new ASTNode(rootNode, 0);
+            final AST ast = new AST(astRoot);
+            traverseNodes(rootNode, astRoot, ast, 1);
+            return ast;
+        }
+
+        private static int traverseNodes(Node parent, ASTNode astParent, AST ast, int nextId) {
+            for (Map.Entry<String, Node> entry : findNamedNodeChildren(parent).entrySet()) {
+                final ASTNode astNode = new ASTNode(entry.getValue(), nextId);
+                ast.nodes.add(astNode);
+                astParent.edges.add(new ASTEdge(astNode, entry.getKey()));
+                nextId = traverseNodes(entry.getValue(), astNode, ast, nextId + 1);
+            }
+            return nextId;
+        }
+
+        @SuppressWarnings("deprecation")
+        private static LinkedHashMap<String, Node> findNamedNodeChildren(Node node) {
+            LinkedHashMap<String, Node> nodes = new LinkedHashMap<>();
+            NodeClass nodeClass = NodeClass.get(node);
+
+            for (com.oracle.truffle.api.nodes.NodeFieldAccessor field : findNodeFields(nodeClass)) {
+                if (isChildField(nodeClass, field)) {
+                    Object value = findFieldObject(nodeClass, field, node);
+                    if (value != null) {
+                        nodes.put(findFieldName(nodeClass, field), (Node) value);
+                    }
+                } else if (isChildrenField(nodeClass, field)) {
+                    Object value = findFieldObject(nodeClass, field, node);
+                    if (value != null) {
+                        Object[] children = (Object[]) value;
+                        for (int i = 0; i < children.length; i++) {
+                            if (children[i] != null) {
+                                nodes.put(findFieldName(nodeClass, field) + "[" + i + "]", (Node) children[i]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return nodes;
+        }
+
+        @SuppressWarnings({"deprecation", "unused"})
+        private static Object findFieldValue(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field, Node node) {
+            return field.loadValue(node);
+        }
+
+        @SuppressWarnings("deprecation")
+        private static Iterable<com.oracle.truffle.api.nodes.NodeFieldAccessor> findNodeFields(NodeClass nodeClass) {
+            return Arrays.asList(nodeClass.getFields());
+        }
+
+        @SuppressWarnings({"deprecation", "unused"})
+        private static boolean isChildField(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field) {
+            return field.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.CHILD;
+        }
+
+        @SuppressWarnings({"deprecation", "unused"})
+        private static boolean isChildrenField(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field) {
+            return field.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.CHILDREN;
+        }
+
+        @SuppressWarnings({"deprecation", "unused"})
+        private static Object findFieldObject(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field, Node node) {
+            return field.getObject(node);
+        }
+
+        @SuppressWarnings({"deprecation", "unused"})
+        private static String findFieldName(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field) {
+            return field.getName();
+        }
+    }
+
+    static class ASTNode {
+        Node source;
+        List<ASTEdge> edges = new ArrayList<>();
+        final int id;
+        // TODO
+        Map<String, ? super Object> properties = new HashMap<>();
+
+        ASTNode(Node source, int id) {
+            this.source = source;
+            this.id = id;
+            String className = className(source.getClass());
+            properties.put("label", dropNodeSuffix(className));
+            NodeInfo nodeInfo = source.getClass().getAnnotation(NodeInfo.class);
+            if (nodeInfo != null) {
+                properties.put("cost", nodeInfo.cost());
+                if (!nodeInfo.shortName().isEmpty()) {
+                    properties.put("shortName", nodeInfo.shortName());
+                }
+            }
+
+//                readNodeProperties((Node) node);
+//                copyDebugProperties((Node) node);
+
+        }
+
+        static String className(Class<?> clazz) {
+            String name = clazz.getName();
+            return name.substring(name.lastIndexOf('.') + 1);
+        }
+
+        private static String dropNodeSuffix(String className) {
+            return className.replaceFirst("Node$", "");
+        }
+    }
+
+    static class ASTEdge {
+        final ASTNode node;
+        final String label;
+
+        enum EdgeType {
+            EDGE_TYPE;
+        }
+
+        ASTEdge(ASTNode node, String label) {
+            this.node = node;
+            this.label = label;
+        }
+    }
+
+    static class ASTDumpStructure implements GraphStructure<AST, ASTNode, ASTNode, List<ASTEdge>> {
+
+        @Override
+        public AST graph(AST currentGraph, Object obj) {
+            return obj instanceof AST ? (AST) obj : null;
+        }
+
+        @Override
+        public Iterable<? extends ASTNode> nodes(AST graph) {
+            return graph.nodes;
+        }
+
+        @Override
+        public int nodesCount(AST graph) {
+            return graph.nodes.size();
+        }
+
+        @Override
+        public int nodeId(ASTNode node) {
+            return node.id;
+        }
+
+        @Override
+        public boolean nodeHasPredecessor(ASTNode node) {
+            return false;
+        }
+
+        @Override
+        public void nodeProperties(AST graph, ASTNode node, Map<String, ? super Object> properties) {
+            properties.putAll(node.properties);
+        }
+
+        @Override
+        public ASTNode node(Object obj) {
+            return obj instanceof ASTNode ? (ASTNode) obj : null;
+        }
+
+        @Override
+        public ASTNode nodeClass(Object obj) {
+            return obj instanceof ASTNode ? (ASTNode) obj : null;
+        }
+
+        @Override
+        public ASTNode classForNode(ASTNode node) {
+            return node;
+        }
+
+        @Override
+        public String nameTemplate(ASTNode nodeClass) {
+            return "{p#label}";
+        }
+
+        @Override
+        public Object nodeClassType(ASTNode nodeClass) {
+            return nodeClass.getClass();
+        }
+
+        @Override
+        public List<ASTEdge> portInputs(ASTNode nodeClass) {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public List<ASTEdge> portOutputs(ASTNode nodeClass) {
+            return nodeClass.edges;
+        }
+
+        @Override
+        public int portSize(List<ASTEdge> port) {
+            return port.size();
+        }
+
+        @Override
+        public boolean edgeDirect(List<ASTEdge> port, int index) {
+            return true;
+        }
+
+        @Override
+        public String edgeName(List<ASTEdge> port, int index) {
+            return port.get(index).label;
+        }
+
+        @Override
+        public Object edgeType(List<ASTEdge> port, int index) {
+            return ASTEdge.EdgeType.EDGE_TYPE;
+        }
+
+        @Override
+        public Collection<? extends ASTNode> edgeNodes(AST graph, ASTNode node, List<ASTEdge> port, int index) {
+            List<ASTNode> singleton = new ArrayList<>(1);
+            singleton.add(port.get(index).node);
+            return singleton;
+        }
     }
 }
