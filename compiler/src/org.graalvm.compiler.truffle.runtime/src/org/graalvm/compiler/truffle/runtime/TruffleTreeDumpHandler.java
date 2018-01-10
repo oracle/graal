@@ -90,12 +90,14 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
     private static void dumpASTAndInliningTrees(DebugContext debug, final String message, TruffleTreeDump truffleTreeDump) throws IOException {
         final RootCallTarget callTarget = truffleTreeDump.callTarget;
         if (callTarget.getRootNode() != null) {
-            final AST ast = AST.makeSimpleAST(callTarget);
+            AST ast = new AST(callTarget);
             final GraphOutput<AST, ?> output = debug.buildOutput(GraphOutput.newBuilder(new ASTDumpStructure()));
-
-
             output.beginGroup(ast, "Truffle." + truffleTreeDump.toString(), callTarget.getRootNode().getName(), null, 0, DebugContext.addVersionProperties(null));
             output.print(ast, Collections.emptyMap(), 0, message);
+            // TODO find out why this is needed. It would be prefered to just call inline on the old graph and dump it.
+            ast = new AST(callTarget);
+            ast.inline(truffleTreeDump.inlining);
+            output.print(ast, null, 1, message + "-Inlined");
             output.endGroup();
             output.close();
 //            final GraphPrintVisitor printer = new GraphPrintVisitor(debug);
@@ -175,26 +177,49 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
 
     static class AST {
         final ASTNode root;
-        final List<ASTNode> nodes = new ArrayList<>();
+        final Map<Node, ASTNode> nodes = new HashMap<>();
 
-        AST(ASTNode root) {
-            this.root = root;
-        }
-
-        private static AST makeSimpleAST(RootCallTarget target) {
+        AST(RootCallTarget target) {
             final RootNode rootNode = target.getRootNode();
-            final ASTNode astRoot = new ASTNode(rootNode, 0);
-            final AST ast = new AST(astRoot);
-            traverseNodes(rootNode, astRoot, ast, 1);
-            return ast;
+            root = new ASTNode(rootNode, 0);
+            traverseNodes(rootNode, root, this, 1, null);
         }
 
-        private static int traverseNodes(Node parent, ASTNode astParent, AST ast, int nextId) {
+        void inline(TruffleInlining inliningDecisions) {
+            traverseNodes(root.source, root, this, nodes.size(), inliningDecisions);
+        }
+
+        private static int traverseNodes(Node parent, ASTNode astParent, AST ast, int nextId, TruffleInlining inliningDecisions) {
             for (Map.Entry<String, Node> entry : findNamedNodeChildren(parent).entrySet()) {
-                final ASTNode astNode = new ASTNode(entry.getValue(), nextId);
-                ast.nodes.add(astNode);
-                astParent.edges.add(new ASTEdge(astNode, entry.getKey()));
-                nextId = traverseNodes(entry.getValue(), astNode, ast, nextId + 1);
+                final String label = entry.getKey();
+                final Node node = entry.getValue();
+                final ASTNode seenAstNode = ast.nodes.get(node);
+                if (seenAstNode == null) {
+                    final ASTNode astNode = new ASTNode(node, nextId);
+                    ast.nodes.put(node, astNode);
+                    astParent.edges.add(new ASTEdge(astNode, label));
+                    nextId = handleCallNodes(ast, nextId, inliningDecisions, node, astNode);
+                    nextId = traverseNodes(node, astNode, ast, nextId + 1, inliningDecisions);
+                } else {
+                    nextId = handleCallNodes(ast, nextId, inliningDecisions, node, seenAstNode);
+                    nextId = traverseNodes(node, seenAstNode, ast, nextId, inliningDecisions);
+                }
+            }
+            return nextId;
+        }
+
+        private static int handleCallNodes(AST ast, int nextId, TruffleInlining inliningDecisions, Node node, ASTNode seenAstNode) {
+            if (inliningDecisions != null) {
+                if (node instanceof DirectCallNode) {
+                    final DirectCallNode callNode = (DirectCallNode) node;
+                    final CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
+                    if (inlinedCallTarget instanceof OptimizedCallTarget && callNode instanceof OptimizedDirectCallNode) {
+                        TruffleInliningDecision decision = inliningDecisions.findByCall((OptimizedDirectCallNode) callNode);
+                        if (decision != null && decision.shouldInline()) {
+                            nextId = traverseNodes(((OptimizedCallTarget) inlinedCallTarget).getRootNode(), seenAstNode, ast, nextId + 1, decision);
+                        }
+                    }
+                }
             }
             return nextId;
         }
@@ -306,6 +331,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         }
     }
 
+
     static class ASTDumpStructure implements GraphStructure<AST, ASTNode, ASTNode, List<ASTEdge>> {
 
         @Override
@@ -315,7 +341,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
 
         @Override
         public Iterable<? extends ASTNode> nodes(AST graph) {
-            return graph.nodes;
+            return graph.nodes.values();
         }
 
         @Override
@@ -400,4 +426,5 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
             return singleton;
         }
     }
+
 }
