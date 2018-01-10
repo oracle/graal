@@ -42,10 +42,20 @@ public final class DynamicPiNode extends PiNode {
 
     public static final NodeClass<DynamicPiNode> TYPE = NodeClass.create(DynamicPiNode.class);
     @Input ValueNode typeMirror;
+    private final boolean exact;
 
-    public DynamicPiNode(ValueNode object, GuardingNode guard, ValueNode typeMirror) {
+    public DynamicPiNode(ValueNode object, GuardingNode guard, ValueNode typeMirror, boolean exact) {
         super(TYPE, object, StampFactory.object(), guard);
         this.typeMirror = typeMirror;
+        this.exact = exact;
+    }
+
+    public DynamicPiNode(ValueNode object, GuardingNode guard, ValueNode typeMirror) {
+        this(object, guard, typeMirror, false);
+    }
+
+    public boolean isExact() {
+        return exact;
     }
 
     @Override
@@ -57,7 +67,7 @@ public final class DynamicPiNode extends PiNode {
                 if (t.isPrimitive()) {
                     staticPiStamp = StampFactory.alwaysNull();
                 } else {
-                    TypeReference type = TypeReference.createTrusted(tool.getAssumptions(), t);
+                    TypeReference type = exact ? TypeReference.createExactTrusted(t) : TypeReference.createTrusted(tool.getAssumptions(), t);
                     staticPiStamp = StampFactory.object(type);
                 }
 

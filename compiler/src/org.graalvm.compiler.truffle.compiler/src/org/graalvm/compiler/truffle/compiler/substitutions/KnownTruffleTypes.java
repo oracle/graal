@@ -57,8 +57,6 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
 
     public final ResolvedJavaField fieldOptimizedAssumptionIsValid = findField(lookupType("com.oracle.truffle.api.impl.AbstractAssumption"), "isValid");
 
-    public final ResolvedJavaType classValueProfile = lookupType("com.oracle.truffle.api.profiles.ValueProfile");
-
     public KnownTruffleTypes(MetaAccessProvider metaAccess) {
         super(metaAccess);
     }

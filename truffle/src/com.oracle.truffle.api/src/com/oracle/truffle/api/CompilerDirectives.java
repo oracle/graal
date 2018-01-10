@@ -24,12 +24,14 @@
  */
 package com.oracle.truffle.api;
 
-import com.oracle.truffle.api.nodes.ControlFlowException;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.Objects;
 import java.util.concurrent.Callable;
+
+import com.oracle.truffle.api.nodes.ControlFlowException;
 
 /**
  * Directives that influence the optimizations of the Truffle compiler. All of the operations have
@@ -314,5 +316,27 @@ public final class CompilerDirectives {
      * @since 0.8 or earlier
      */
     public static void ensureVirtualizedHere(@SuppressWarnings("unused") Object object) {
+    }
+
+    /**
+     * Casts the given object to the exact class represented by {@code clazz}. The cast succeeds
+     * only if {@code object == null || object.getClass() == clazz} and thus fails for any subclass.
+     *
+     * @param object the object to be cast
+     * @param clazz the class to check against, must not be null
+     * @return the object after casting
+     * @throws ClassCastException if the object is non-null and not exactly of the given class
+     * @throws NullPointerException if the class argument is null
+     * @since 0.33
+     * @see Class#cast(Object)
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> T castExact(Object object, Class<T> clazz) {
+        Objects.requireNonNull(clazz);
+        if (object == null || object.getClass() == clazz) {
+            return (T) object;
+        } else {
+            throw new ClassCastException();
+        }
     }
 }

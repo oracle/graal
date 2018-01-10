@@ -148,11 +148,6 @@ public abstract class ValueProfile extends Profile {
         }
     }
 
-    @SuppressWarnings({"unchecked", "unused"})
-    private static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
-        return (T) value;
-    }
-
     static final class Disabled extends ValueProfile {
 
         static final ValueProfile INSTANCE = new Disabled();
@@ -300,9 +295,8 @@ public abstract class ValueProfile extends Profile {
             // Field needs to be cached in local variable for thread safety and startup speed.
             Class<?> clazz = cachedClass;
             if (clazz != Object.class) {
-                final boolean condition;
-                if (clazz != null && value != null && (condition = clazz == value.getClass())) {
-                    return (T) unsafeCast(value, clazz, condition, true, true);
+                if (clazz != null && value != null && value.getClass() == clazz) {
+                    return (T) CompilerDirectives.castExact(value, clazz);
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     if (clazz == null && value != null) {
