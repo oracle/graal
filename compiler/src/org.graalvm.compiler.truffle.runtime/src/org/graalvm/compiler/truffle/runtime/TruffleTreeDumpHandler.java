@@ -101,34 +101,32 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
             ast = new AST(callTarget);
             ast.inline(truffleTreeDump.inlining);
             output.print(ast, null, 1, message + "-Inlined");
+            if (callTarget instanceof OptimizedCallTarget) {
+                output.beginGroup(null, "Inlined.", "Inlined.", null, 0, DebugContext.addVersionProperties(null));
+                final TruffleInlining inlining = truffleTreeDump.inlining;
+                if (inlining.countInlinedCalls() > 0) {
+                    dumpInlinedTrees(debug, output, (OptimizedCallTarget) callTarget, inlining, message);
+                    dumpInlinedCallGraph(new GraphPrintVisitor(debug), (OptimizedCallTarget) callTarget, inlining);
+                }
+                output.endGroup();
+            }
             output.endGroup();
             output.close();
-//            final GraphPrintVisitor printer = new GraphPrintVisitor(debug);
-//            printer.beginGroup(callTarget, "Truffle." + truffleTreeDump.toString(), callTarget.getRootNode().getName());
-//            printer.beginGraph(message).visit(callTarget.getRootNode());
-//            if (callTarget instanceof OptimizedCallTarget) {
-//                printer.beginGroup(callTarget, "Inlining", "Inlining");
-//                final TruffleInlining inlining = truffleTreeDump.inlining;
-//                if (inlining.countInlinedCalls() > 0) {
-//                    dumpInlinedTrees(debug, printer, (OptimizedCallTarget) callTarget, inlining);
-//                    dumpInlinedCallGraph(printer, (OptimizedCallTarget) callTarget, inlining);
-//                }
-//                printer.endGroup();
-//            }
-//            printer.endGroup();
         }
     }
 
-    private static void dumpInlinedTrees(DebugContext debug, GraphPrintVisitor printer, final OptimizedCallTarget callTarget, TruffleInlining inlining) throws IOException {
+    private static void dumpInlinedTrees(DebugContext debug, GraphOutput<AST, ?> output, final OptimizedCallTarget callTarget, TruffleInlining inlining, String message) throws IOException {
         for (DirectCallNode callNode : NodeUtil.findAllNodeInstances(callTarget.getRootNode(), DirectCallNode.class)) {
             CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
             if (inlinedCallTarget instanceof OptimizedCallTarget && callNode instanceof OptimizedDirectCallNode) {
                 TruffleInliningDecision decision = inlining.findByCall((OptimizedDirectCallNode) callNode);
                 if (decision != null && decision.shouldInline()) {
-                    printer.beginGroup((RootCallTarget) inlinedCallTarget, inlinedCallTarget.toString(), null);
-                    printer.beginGraph(inlinedCallTarget.toString()).visit(((RootCallTarget) inlinedCallTarget).getRootNode());
-                    dumpInlinedTrees(debug, printer, (OptimizedCallTarget) inlinedCallTarget, decision);
-                    printer.endGroup();
+                    final RootCallTarget rootCallTarget = (RootCallTarget) inlinedCallTarget;
+                    AST ast = new AST(rootCallTarget);
+                    output.beginGroup(ast, inlinedCallTarget.toString(), rootCallTarget.getRootNode().getName(), null, 0, DebugContext.addVersionProperties(null));
+                    output.print(ast, Collections.emptyMap(), 0, message);
+                    dumpInlinedTrees(debug, output, (OptimizedCallTarget) inlinedCallTarget, decision, message);
+                    output.endGroup();
                 }
             }
         }
