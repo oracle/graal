@@ -103,18 +103,19 @@ public class ValueAssert {
         assertSame(value, value.as(Value.class));
 
         for (Trait supportedType : expectedTypes) {
+            String msg = "expected " + supportedType.name() + " but was " + value.toString();
             switch (supportedType) {
                 case NULL:
-                    assertTrue("expected " + supportedType.name(), value.isNull());
+                    assertTrue(msg, value.isNull());
                     break;
                 case BOOLEAN:
-                    assertTrue("expected " + supportedType.name(), value.isBoolean());
+                    assertTrue(msg, value.isBoolean());
                     boolean booleanValue = value.asBoolean();
                     assertEquals(booleanValue, value.as(Boolean.class));
                     assertEquals(booleanValue, value.as(boolean.class));
                     break;
                 case STRING:
-                    assertTrue("expected " + supportedType.name(), value.isString());
+                    assertTrue(msg, value.isString());
                     String stringValue = value.asString();
                     assertEquals(stringValue, value.as(String.class));
                     if (stringValue.length() == 1) {
@@ -126,11 +127,11 @@ public class ValueAssert {
                     assertValueNumber(value);
                     break;
                 case ARRAY_ELEMENTS:
-                    assertTrue("expected " + supportedType.name(), value.hasArrayElements());
+                    assertTrue(msg, value.hasArrayElements());
                     assertValueArrayElements(context, value);
                     break;
                 case EXECUTABLE:
-                    assertTrue("expected " + supportedType.name(), value.canExecute());
+                    assertTrue(msg, value.canExecute());
                     assertFunctionalInterfaceMapping(context, value, arguments);
                     if (arguments != null) {
                         Value result = value.execute(arguments);
@@ -138,7 +139,7 @@ public class ValueAssert {
                     }
                     break;
                 case INSTANTIABLE:
-                    assertTrue("expected " + supportedType.name(), value.canInstantiate());
+                    assertTrue(msg, value.canInstantiate());
                     value.as(Function.class);
                     if (arguments != null) {
                         Value result = value.newInstance(arguments);
@@ -151,18 +152,18 @@ public class ValueAssert {
                     break;
 
                 case HOST_OBJECT:
-                    assertTrue("expected " + supportedType.name(), value.isHostObject());
+                    assertTrue(msg, value.isHostObject());
                     Object hostObject = value.asHostObject();
                     assertTrue(!(hostObject instanceof Proxy));
                     // TODO assert mapping to interfaces
                     break;
                 case PROXY_OBJECT:
-                    assertTrue("expected " + supportedType.name(), value.isProxyObject());
+                    assertTrue(msg, value.isProxyObject());
                     Object proxyObject = value.asProxyObject();
                     assertTrue(proxyObject instanceof Proxy);
                     break;
                 case MEMBERS:
-                    assertTrue("expected " + supportedType.name(), value.hasMembers());
+                    assertTrue(msg, value.hasMembers());
 
                     for (String key : value.getMemberKeys()) {
                         assertValue(context, value.getMember(key));
@@ -171,7 +172,7 @@ public class ValueAssert {
                     // TODO virify setting and getting
                     break;
                 case NATIVE:
-                    assertTrue("expected " + supportedType.name(), value.isNativePointer());
+                    assertTrue(msg, value.isNativePointer());
                     value.asNativePointer();
                     break;
             }
@@ -246,7 +247,7 @@ public class ValueAssert {
                     assertFails(() -> value.getMemberKeys(), UnsupportedOperationException.class);
                     break;
                 case EXECUTABLE:
-                    assertFalse(value.canExecute());
+                    assertFalse(value.toString(), value.canExecute());
                     assertFails(() -> value.execute(), UnsupportedOperationException.class);
                     if (!value.canInstantiate()) {
                         assertFails(() -> value.as(Function.class), ClassCastException.class);

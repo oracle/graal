@@ -292,13 +292,14 @@ final class JavaInteropReflect {
     }
 }
 
-final class ExecuteFunctionFromJava extends RootNode {
-    @Child private Node executeNode;
+abstract class AbstractFunctionFromJava extends RootNode {
+
+    @Child private Node interopActionNode;
     @Child private ToJavaNode toJava;
 
-    ExecuteFunctionFromJava() {
+    AbstractFunctionFromJava(Node interopActionNode) {
         super(null);
-        this.executeNode = Message.createExecute(0).createNode();
+        this.interopActionNode = interopActionNode;
         this.toJava = ToJavaNode.create();
     }
 
@@ -323,10 +324,10 @@ final class ExecuteFunctionFromJava extends RootNode {
 
         Object raw;
         try {
-            raw = ForeignAccess.send(executeNode, function, args);
+            raw = ForeignAccess.send(interopActionNode, function, args);
         } catch (InteropException ex) {
             CompilerDirectives.transferToInterpreter();
-            throw ex.raise();
+            throw JavaInteropReflect.rethrow(JavaInterop.wrapHostException(new UnsupportedOperationException(ex.getMessage())));
         }
         if (type == null) {
             return raw;
@@ -334,6 +335,22 @@ final class ExecuteFunctionFromJava extends RootNode {
         Object real = JavaInterop.findOriginalObject(raw);
         return toJava.execute(real, type, genericType, languageContext);
     }
+}
+
+final class InstantiateFromJava extends AbstractFunctionFromJava {
+
+    InstantiateFromJava() {
+        super(Message.createNew(0).createNode());
+    }
+
+}
+
+final class ExecuteFunctionFromJava extends AbstractFunctionFromJava {
+
+    ExecuteFunctionFromJava() {
+        super(Message.createExecute(0).createNode());
+    }
+
 }
 
 final class JavaFunction implements Function<Object[], Object> {

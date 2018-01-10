@@ -25,15 +25,17 @@ package com.oracle.truffle.api.test.polyglot;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertValue;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.ARRAY_ELEMENTS;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.BOOLEAN;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.PROXY_OBJECT;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.HOST_OBJECT;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.MEMBERS;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NULL;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NUMBER;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.STRING;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -94,7 +96,7 @@ public class ValueAPITest {
     }
 
     private static final Object[] STRINGS = new Object[]{
-                    "", /* TODO 'a', */ "a", "foo",
+                    "", 'a', "a", "foo",
     };
 
     @Test
@@ -130,7 +132,7 @@ public class ValueAPITest {
     public void testBooleans() {
         for (Object bool : BOOLEANS) {
             assertValue(context, context.asValue(bool), BOOLEAN);
-            assertValue(context, context.asValue((ProxyPrimitive) () -> bool), BOOLEAN);
+            assertValue(context, context.asValue((ProxyPrimitive) () -> bool), BOOLEAN, PROXY_OBJECT);
         }
     }
 
@@ -146,7 +148,6 @@ public class ValueAPITest {
                     new EmptyObject(),
                     new PrivateObject(),
                     new FieldAccess(),
-                    new JavaClass(),
                     new JavaSuperClass(),
                     Proxy.newProxyInstance(ValueAPITest.class.getClassLoader(), new Class[]{ProxyInterface.class}, new InvocationHandler() {
                         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
@@ -163,7 +164,6 @@ public class ValueAPITest {
 
     @Test
     public void testHostObject() {
-
         assertTrue(context.asValue(new EmptyObject()).getMemberKeys().isEmpty());
         assertTrue(context.asValue(new PrivateObject()).getMemberKeys().isEmpty());
 
@@ -309,12 +309,7 @@ public class ValueAPITest {
                     new String[]{"a", "b", "c"},
                     new CharSequence[]{"a"},
                     new ArrayList<>(Arrays.asList("a", 42)),
-                    new HashSet<>(Arrays.asList("a", 42)),
-                    new Iterable<Object>() {
-                        public java.util.Iterator<Object> iterator() {
-                            return Arrays.<Object> asList("a", 42).iterator();
-                        }
-                    }, new DummyCollection(), new DummyList(), new DummySet()
+                    new DummyList()
 
     };
 
@@ -512,7 +507,7 @@ public class ValueAPITest {
         mapAndArrayAndExecutableAndInstantiable.array.add(42);
         mapAndArrayAndExecutableAndInstantiable.executableResult = "foobarbaz";
 
-        objectCoercionTest(mapAndArrayAndInstantiable, Map.class, (v) -> {
+        objectCoercionTest(mapAndArrayAndExecutableAndInstantiable, Map.class, (v) -> {
             assertEquals(42, v.get(0L));
             assertEquals("bar", v.get("foo"));
             assertEquals(2, v.size());
