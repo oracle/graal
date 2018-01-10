@@ -142,7 +142,11 @@ final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod
 
     @Override
     protected Object findJavaClass(NodeClass clazz) {
-        return structure.nodeClassType(clazz);
+        final Object type = structure.nodeClassType(clazz);
+        if (!(type instanceof Class<?>) && findJavaTypeName(type) == null) {
+            throw new IllegalStateException("nodeClassType method shall return a Java class (instance of Class)! Was: " + type);
+        }
+        return type;
     }
 
     @Override
