@@ -77,11 +77,11 @@ final class JavaObject implements TruffleObject {
         return System.identityHashCode(obj);
     }
 
-    public boolean isClass() {
+    boolean isClass() {
         return NULL != this && obj == null;
     }
 
-    public boolean isArray() {
+    boolean isArray() {
         return obj != null && obj.getClass().isArray();
     }
 
@@ -90,9 +90,10 @@ final class JavaObject implements TruffleObject {
     }
 
     @Override
-    public boolean equals(Object other) {
-        if (other instanceof JavaObject) {
-            return obj == ((JavaObject) other).obj && clazz == ((JavaObject) other).clazz;
+    public boolean equals(Object o) {
+        if (o instanceof JavaObject) {
+            JavaObject other = (JavaObject) o;
+            return this.obj == other.obj && clazz == other.clazz && this.languageContext == other.languageContext;
         }
         return false;
     }

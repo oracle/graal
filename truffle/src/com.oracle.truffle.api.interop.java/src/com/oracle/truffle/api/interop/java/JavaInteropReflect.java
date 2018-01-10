@@ -357,6 +357,20 @@ final class JavaFunction implements Function<Object[], Object> {
         }
         return target.call(functionObj, args, Object.class, null, languageContext);
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof JavaFunction) {
+            JavaFunction other = (JavaFunction) obj;
+            return this.languageContext == other.languageContext && this.functionObj.equals(other.functionObj);
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return functionObj.hashCode();
+    }
 }
 
 final class FunctionProxyHandler implements InvocationHandler {
