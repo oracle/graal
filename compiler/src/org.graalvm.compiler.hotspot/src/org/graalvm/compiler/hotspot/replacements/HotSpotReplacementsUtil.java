@@ -565,9 +565,20 @@ public class HotSpotReplacementsUtil {
         return WordFactory.unsigned(ComputeObjectAddressNode.get(a, getArrayBaseOffset(JavaKind.Int)));
     }
 
+    /**
+     * Idiom for making {@link GraalHotSpotVMConfig} a constant.
+     */
     @Fold
-    public static int objectAlignment(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.objectAlignment;
+    public static GraalHotSpotVMConfig getConfig(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config;
+    }
+
+    /**
+     * Calls {@link #arrayAllocationSize(int, int, int, GraalHotSpotVMConfig)} using an injected VM
+     * configuration object.
+     */
+    public static int arrayAllocationSize(int length, int headerSize, int log2ElementSize) {
+        return arrayAllocationSize(length, headerSize, log2ElementSize, getConfig(INJECTED_VMCONFIG));
     }
 
     /**
@@ -578,10 +589,12 @@ public class HotSpotReplacementsUtil {
      * @param length the number of elements in the array
      * @param headerSize the size of the array header
      * @param log2ElementSize log2 of the size of an element in the array
+     * @param config the VM configuration providing the
+     *            {@linkplain GraalHotSpotVMConfig#objectAlignment object alignment requirement}
      * @return the size of the memory chunk
      */
-    public static int arrayAllocationSize(int length, int headerSize, int log2ElementSize) {
-        int alignment = objectAlignment(INJECTED_VMCONFIG);
+    public static int arrayAllocationSize(int length, int headerSize, int log2ElementSize, GraalHotSpotVMConfig config) {
+        int alignment = config.objectAlignment;
         int size = (length << log2ElementSize) + headerSize + (alignment - 1);
         int mask = ~(alignment - 1);
         return size & mask;
