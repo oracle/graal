@@ -45,8 +45,11 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
+import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.CEntryPointSetup.EnterCreateIsolatePrologue;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
@@ -145,6 +148,23 @@ final class JNIInvocationInterface {
             penv.write(JNIThreadLocalEnvironment.getAddress());
             explicitlyInitialized = true;
             return JNIErrors.JNI_OK();
+        }
+
+        /*
+         * jint JNI_GetDefaultJavaVMInitArgs(void *vm_args);
+         */
+        @CEntryPoint(name = "JNI_GetDefaultJavaVMInitArgs")
+        @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly, include = CEntryPointOptions.NotIncludedAutomatically.class)
+        @Uninterruptible(reason = "No Java context")
+        static int JNI_GetDefaultJavaVMInitArgs(JNIJavaVMInitArgs vmArgs) {
+            int version = vmArgs.getVersion();
+            if (version == JNI_VERSION_1_8() || version == JNI_VERSION_1_6() || version == JNI_VERSION_1_4() || version == JNI_VERSION_1_2()) {
+                return JNIErrors.JNI_OK();
+            }
+            if (version == JNI_VERSION_1_1()) {
+                vmArgs.setVersion(JNI_VERSION_1_2());
+            }
+            return JNIErrors.JNI_ERR();
         }
     }
 

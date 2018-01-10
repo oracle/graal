@@ -33,6 +33,9 @@ public interface JNIJavaVMInitArgs extends PointerBase {
     @CField("version")
     int getVersion();
 
+    @CField("version")
+    void setVersion(int version);
+
     @CField("nOptions")
     int getNOptions();
 
