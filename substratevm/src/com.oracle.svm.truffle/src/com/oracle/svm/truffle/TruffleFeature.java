@@ -121,6 +121,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @AutomaticFeature
 public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
 
+    /**
+     * True in the first analysis run where contexts are pre-initialized.
+     */
+    private boolean firstAnalysisRun;
+
     public static final class IsEnabled implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
@@ -291,6 +296,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         invokeStaticMethod("com.oracle.truffle.api.vm.LanguageCache", "resetNativeImageState", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.api.vm.InstrumentCache", "resetNativeImageState", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.api.vm.PolyglotRootNode", "resetNativeImageState", Collections.emptyList());
+        invokeStaticMethod("org.graalvm.polyglot.Engine$ImplHolder", "resetPreInitializedEngine", Collections.emptyList());
 
     }
 
@@ -413,6 +419,16 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                  */
                 config.registerAsCompiled((AnalysisMethod) method);
             }
+        }
+        firstAnalysisRun = true;
+    }
+
+    @Override
+    public void duringAnalysis(DuringAnalysisAccess access) {
+        if (firstAnalysisRun) {
+            firstAnalysisRun = false;
+            invokeStaticMethod("org.graalvm.polyglot.Engine$ImplHolder", "preInitializeEngine", Collections.emptyList());
+            access.requireAnalysisIteration();
         }
     }
 

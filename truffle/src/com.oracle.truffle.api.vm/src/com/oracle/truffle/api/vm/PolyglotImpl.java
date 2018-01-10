@@ -71,6 +71,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import java.util.concurrent.atomic.AtomicReference;
 
 /*
  * This class is exported to the Graal SDK. Keep that in mind when changing its class or package name.
@@ -89,6 +90,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     private final PolyglotSource sourceImpl = new PolyglotSource(this);
     private final PolyglotSourceSection sourceSectionImpl = new PolyglotSourceSection(this);
+    private final AtomicReference<PolyglotEngineImpl> preInitializedEngineRef = new AtomicReference<>();
 
     private static void ensureInitialized() {
         if (VMAccessor.SPI == null || !(VMAccessor.SPI.engineSupport() instanceof EngineImpl)) {
@@ -141,11 +143,49 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         DispatchOutputStream dispatchOut = INSTRUMENT.createDispatchOutput(resolvedOut);
         DispatchOutputStream dispatchErr = INSTRUMENT.createDispatchOutput(resolvedErr);
         ClassLoader contextClassLoader = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
-        PolyglotEngineImpl impl = new PolyglotEngineImpl(this, dispatchOut, dispatchErr, resolvedIn, arguments, timeout, timeoutUnit, sandbox, useSystemProperties,
-                        contextClassLoader, boundEngine);
+
+        PolyglotEngineImpl impl = preInitializedEngineRef.getAndSet(null);
+        if (impl != null) {
+            if (!impl.patch(dispatchOut, dispatchErr, resolvedIn, arguments, timeout, timeoutUnit, sandbox, useSystemProperties, contextClassLoader, boundEngine)) {
+                impl.ensureClosed(false, true);
+                impl = null;
+            }
+        }
+        if (impl == null) {
+            impl = new PolyglotEngineImpl(this, dispatchOut, dispatchErr, resolvedIn, arguments, timeout, timeoutUnit, sandbox, useSystemProperties,
+                            contextClassLoader, boundEngine);
+        }
         Engine engine = getAPIAccess().newEngine(impl);
         impl.api = engine;
         return engine;
+    }
+
+    /**
+     * Pre-initializes a polyglot engine instance.
+     *
+     * @since 0.31
+     */
+    @Override
+    public void preInitializeEngine() {
+        ensureInitialized();
+        final PolyglotEngineImpl preInitializedEngine = PolyglotEngineImpl.preInitialize(
+                        this,
+                        INSTRUMENT.createDispatchOutput(System.out),
+                        INSTRUMENT.createDispatchOutput(System.err),
+                        System.in,
+                        TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader());
+        preInitializedEngineRef.set(preInitializedEngine);
+    }
+
+    /**
+     * Cleans the pre-initialized polyglot engine instance.
+     *
+     * @since 0.31
+     */
+    @Override
+    public void resetPreInitializedEngine() {
+        preInitializedEngineRef.set(null);
+        PolyglotEngineImpl.resetPreInitializedEngine();
     }
 
     /**

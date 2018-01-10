@@ -66,7 +66,7 @@ final class PolyglotLanguageContext implements VMObject {
     volatile PolyglotValue defaultValueCache;
     volatile OptionValuesImpl optionValues;
     volatile Value nullValue;
-    final String[] applicationArguments;
+    String[] applicationArguments;    // effectively final
     final Set<PolyglotThread> activePolyglotThreads = new HashSet<>();
     volatile boolean creating; // true when context is currently being created.
     volatile boolean initialized;
@@ -78,9 +78,9 @@ final class PolyglotLanguageContext implements VMObject {
     PolyglotLanguageContext(PolyglotContextImpl context, PolyglotLanguage language, OptionValuesImpl optionValues, String[] applicationArguments, Map<String, Object> config) {
         this.context = context;
         this.language = language;
-        this.optionValues = optionValues;
-        this.applicationArguments = applicationArguments == null ? EMPTY_STRING_ARRAY : applicationArguments;
         this.config = config;
+        this.optionValues = optionValues;
+        setApplicationArguments(applicationArguments);
     }
 
     /**
@@ -260,7 +260,9 @@ final class PolyglotLanguageContext implements VMObject {
                 if (!initialized) {
                     initialized = true; // Allow language use during initialization
                     try {
-                        LANGUAGE.initializeThread(env, Thread.currentThread());
+                        if (!context.inContextPreInitialization) {
+                            LANGUAGE.initializeThread(env, Thread.currentThread());
+                        }
 
                         LANGUAGE.postInitEnv(env);
 
@@ -338,6 +340,43 @@ final class PolyglotLanguageContext implements VMObject {
 
     ToGuestValuesNode createToGuestValues() {
         return new ToGuestValuesNode();
+    }
+
+    void preInitialize() {
+        ensureInitialized(null);
+    }
+
+    boolean patch(Map<String, String> newOptions, String[] newApplicationArguments) {
+        final boolean preInitialized = isInitialized();
+        if (preInitialized) {
+            // Reset options from image generation time
+            optionValues = null;
+        }
+        if (newOptions != null) {
+            getOptionValues().putAll(newOptions);
+        }
+        setApplicationArguments(newApplicationArguments);
+        if (preInitialized) {
+            try {
+                final Env newEnv = LANGUAGE.patchEnvContext(env, context.out, context.err, context.in, config, getOptionValues(), newApplicationArguments);
+                if (newEnv != null) {
+                    env = newEnv;
+                    return true;
+                }
+                return false;
+            } catch (Throwable t) {
+                if (t instanceof ThreadDeath) {
+                    throw t;
+                }
+                return false;
+            }
+        } else {
+            return true;
+        }
+    }
+
+    private void setApplicationArguments(String[] newApplicationArguments) {
+        this.applicationArguments = newApplicationArguments == null ? EMPTY_STRING_ARRAY : newApplicationArguments;
     }
 
     final class ToGuestValuesNode {

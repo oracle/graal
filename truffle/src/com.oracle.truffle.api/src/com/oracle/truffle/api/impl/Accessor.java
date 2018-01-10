@@ -302,6 +302,8 @@ public abstract class Accessor {
 
         public abstract Iterable<Scope> findTopScopes(Env env);
 
+        public abstract Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments);
+
     }
 
     public abstract static class InstrumentSupport {
@@ -363,6 +365,8 @@ public abstract class Accessor {
         public abstract void notifyThreadStarted(Object engine, TruffleContext context, Thread thread);
 
         public abstract void notifyThreadFinished(Object engine, TruffleContext context, Thread thread);
+
+        public abstract void patchInstrumentationHandler(Object instrumentationHandler, DispatchOutputStream out, DispatchOutputStream err, InputStream in);
 
     }
 
