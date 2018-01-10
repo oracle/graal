@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.SubstrateOptions;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -245,6 +246,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
             // in the roData section.
             final long roHeapPartitionOffset = constantsPartitionOffset + roSectionConstantsSize;
             heap.setReadOnlySection(roDataSection.getName(), roHeapPartitionOffset);
+
             // The read-write heap partition comes first in the rwData section.
             final long rwHeapPartitionOffset = 0;
             heap.setWritableSection(rwDataSection.getName(), rwHeapPartitionOffset);
@@ -266,6 +268,11 @@ public abstract class NativeBootImage extends AbstractBootImage {
             markRelocationSitesFromMaps(rwDataBuffer, rwDataImpl, heap.objects);
 
             relocationsForNativeFunctions(rwDataImpl);
+
+            if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
+                /* The symbol name must match the imported name in libchelper/heapbase.c */
+                objectFile.createDefinedSymbol("__svm_heap_base", rwDataSection.getElement(), 0, false);
+            }
         }
 
         // [Footnote 1]
