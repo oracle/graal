@@ -48,9 +48,6 @@ public class JNIFeature implements Feature {
 
         @Option(help = "Resources describing program elements to be made accessible via JNI (see JNIConfigurationFiles).")//
         public static final HostedOptionKey<String> JNIConfigurationResources = new HostedOptionKey<>("");
-
-        @Option(help = "Have JNI_GetCreatedJavaVMs return 0 until JNI_CreateJavaVM is called.")//
-        public static final HostedOptionKey<Boolean> JNICreateJavaVM = new HostedOptionKey<>(false);
     }
 
     @Override

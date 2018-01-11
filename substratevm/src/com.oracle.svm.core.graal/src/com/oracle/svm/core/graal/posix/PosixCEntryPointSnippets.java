@@ -130,13 +130,13 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
                     ENTER, DETACH_THREAD, REPORT_EXCEPTION, TEAR_DOWN_ISOLATE, IS_ATTACHED, FAIL_FATALLY};
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    public static native IsolateThread runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, CEntryPointCreateIsolateParameters parameters, int vmThreadSize);
+    public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, CEntryPointCreateIsolateParameters parameters, int vmThreadSize);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    public static native IsolateThread runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate, int vmThreadSize);
+    public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate, int vmThreadSize);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    public static native IsolateThread runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate);
+    public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native void runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, IsolateThread thread);
@@ -207,9 +207,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @Snippet
     public static int createIsolateSnippet(CEntryPointCreateIsolateParameters parameters, @ConstantParameter int vmThreadSize) {
         writeCurrentVMThread(VMThreads.nullThread());
-        IsolateThread thread = runtimeCall(CREATE_ISOLATE, parameters, vmThreadSize);
-        writeCurrentVMThread(thread);
-        return 0;
+        return runtimeCall(CREATE_ISOLATE, parameters, vmThreadSize);
     }
 
     /**
@@ -217,7 +215,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
      */
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget
-    private static IsolateThread createIsolate(@SuppressWarnings("unused") CEntryPointCreateIsolateParameters parameters, int vmThreadSize) {
+    private static int createIsolate(@SuppressWarnings("unused") CEntryPointCreateIsolateParameters parameters, int vmThreadSize) {
         /*
          * TODO: Create a heap for the isolate, write it to the heap base register, pass it as an
          * Isolate to attachThread
@@ -234,9 +232,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @Snippet
     public static int attachThreadSnippet(Isolate isolate, @ConstantParameter int vmThreadSize) {
         writeCurrentVMThread(VMThreads.nullThread());
-        IsolateThread thread = runtimeCall(ATTACH_THREAD, isolate, vmThreadSize);
-        writeCurrentVMThread(thread);
-        return 0;
+        return runtimeCall(ATTACH_THREAD, isolate, vmThreadSize);
     }
 
     /**
@@ -247,14 +243,14 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
      */
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget
-    private static IsolateThread attachThread(@SuppressWarnings("unused") Isolate isolate, int vmThreadSize) {
+    private static int attachThread(@SuppressWarnings("unused") Isolate isolate, int vmThreadSize) {
         /* TODO: Use isolate as a heap base here, write it to the created IsolateThread */
         setHeapBase();
 
         if (!PosixVMThreads.isInitialized()) {
-            Log.log().string("VM is not initialized").newline();
-            LibC.abort();
+            return -1;
         }
+
         /* Check if the thread is already attached. */
         IsolateThread thread = PosixVMThreads.VMThreadTL.get();
         if (VMThreads.isNullThread(thread)) {
@@ -266,7 +262,8 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
         }
         VMThreads.StatusSupport.setStatusJavaUnguarded(thread);
         postAttachThread(thread);
-        return thread;
+        writeCurrentVMThread(thread);
+        return 0;
     }
 
     /** Things to be done to the current thread <em>after</em> attachThread. */
@@ -350,7 +347,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @SubstrateForeignCallTarget
     private static int tearDownIsolate() {
         /* Let someone who can do all the work do all the work. */
-        return JavaThreads.singleton().tearDownVM() ? 0 : 1;
+        return JavaThreads.singleton().tearDownVM() ? 0 : -1;
     }
 
     /** Call from C to Java with IsolateThread coming from Posix thread-local storage. */
@@ -358,33 +355,38 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     public static int enterIsolateSnippet(Isolate isolate) {
         // Get IsolateThread from Posix thread-local storage.
         writeCurrentVMThread(VMThreads.nullThread());
-        IsolateThread thread = runtimeCall(ENTER_ISOLATE, isolate);
-        writeCurrentVMThread(thread);
-        transitionCtoJava();
-        return 0;
+        int result = runtimeCall(ENTER_ISOLATE, isolate);
+        if (result == 0) {
+            transitionCtoJava();
+        }
+        return result;
     }
 
     /** Foreign call: {@link #ENTER_ISOLATE}. */
     @Uninterruptible(reason = "Thread register not set up yet")
     @SubstrateForeignCallTarget
-    private static IsolateThread enterIsolate(@SuppressWarnings("unused") Isolate isolate) {
+    private static int enterIsolate(@SuppressWarnings("unused") Isolate isolate) {
+        if (!PosixVMThreads.isInitialized()) {
+            return -2;
+        }
         /* Get thread from pthread thread-local variable. */
         IsolateThread thread = PosixVMThreads.VMThreadTL.get();
         if (VMThreads.isNullThread(thread)) {
-            /* There is not much we can do when we fail this way. */
-            Log.log().string("No thread found").newline();
-            LibC.abort();
+            return -1;
         }
-
         // TODO: Use isolate as a heap base
         setHeapBase();
-        return thread;
+        writeCurrentVMThread(thread);
+        return 0;
     }
 
     /** Call from C to Java with IsolateThread coming from the parameter. */
     @Snippet
     public static int enterSnippet(IsolateThread thread) {
         // Get IsolateThread from parameter.
+        if (thread.isNull()) {
+            return -1;
+        }
         writeCurrentVMThread(thread);
         if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
             // TODO: read heap base from the thread
