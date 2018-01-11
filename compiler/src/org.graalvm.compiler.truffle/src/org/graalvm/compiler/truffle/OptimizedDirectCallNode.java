@@ -41,20 +41,18 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
 
     @CompilationFinal private OptimizedCallTarget splitCallTarget;
 
-    private final TruffleSplittingStrategy splittingStrategy;
     private final GraalTruffleRuntime runtime;
 
     public OptimizedDirectCallNode(GraalTruffleRuntime runtime, OptimizedCallTarget target) {
         super(target);
         assert target.getSourceCallTarget() == null;
         this.runtime = runtime;
-        this.splittingStrategy = new DefaultTruffleSplittingStrategy(this);
     }
 
     @Override
     public Object call(Object[] arguments) {
         if (CompilerDirectives.inInterpreter()) {
-            onInterpreterCall(arguments);
+            onInterpreterCall();
         }
         return callProxy(this, getCurrentCallTarget(), arguments, true);
     }
@@ -111,12 +109,12 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
         return splitCallTarget;
     }
 
-    private void onInterpreterCall(Object[] arguments) {
+    private void onInterpreterCall() {
         int calls = ++callCount;
         if (calls == 1) {
             getCurrentCallTarget().incrementKnownCallSites();
         }
-        splittingStrategy.beforeCall(arguments);
+        TruffleSplittingStrategy.beforeCall(this, runtime.getTvmci());
     }
 
     /** Used by the splitting strategy to install new targets. */
@@ -151,7 +149,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
 
     @Override
     public boolean cloneCallTarget() {
-        splittingStrategy.forceSplitting();
+        TruffleSplittingStrategy.forceSplitting(this, runtime.getTvmci());
         return true;
     }
 

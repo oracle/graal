@@ -29,6 +29,9 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompile
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBoundaries;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBranches;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleProfilingEnabled;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplitting;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplittingLimitGrowth;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplittingMaxNumberOfSplits;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.getValue;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.overrideOptions;
@@ -482,6 +485,12 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     @Override
     public RootCallTarget createCallTarget(RootNode rootNode) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (TruffleCompilerOptions.getValue(TruffleSplitting)) {
+            final GraalTVMCI.EngineData engineData = tvmci.getEngineData(rootNode);
+            final int newLimit = engineData.splitLimit + TruffleCompilerOptions.getValue(TruffleSplittingLimitGrowth);
+            engineData.splitLimit = Math.min(newLimit, TruffleCompilerOptions.getValue(TruffleSplittingMaxNumberOfSplits));
+        }
         return createClonedCallTarget(null, rootNode);
     }
 
