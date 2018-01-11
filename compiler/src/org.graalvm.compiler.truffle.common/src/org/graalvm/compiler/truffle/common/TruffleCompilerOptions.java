@@ -180,6 +180,12 @@ public class TruffleCompilerOptions {
     @Option(help = "Disable call target splitting if number of nodes created by splitting exceeds this limit", type = OptionType.Debug)
     public static final OptionKey<Integer> TruffleSplittingMaxNumberOfSplitNodes = new OptionKey<>(500_000);
 
+    @Option(help = "Use the splitting strategy that relies on language implamentations marking nodes for splitting", type = OptionType.Expert)
+    public static final OptionKey<Boolean> TruffleUsePollutionBasedSplittingStrategy= new OptionKey<>(false);
+
+    @Option(help = "Used for debugging the splitting implementation. Prints splitting information directly to stdout", type = OptionType.Expert)
+    public static final OptionKey<Boolean> TruffleDirectTraceSplitting = new OptionKey<>(false);
+
     @Option(help = "Enable asynchronous truffle compilation in background thread", type = OptionType.Expert)
     public static final OptionKey<Boolean> TruffleBackgroundCompilation = new OptionKey<>(true);
 
