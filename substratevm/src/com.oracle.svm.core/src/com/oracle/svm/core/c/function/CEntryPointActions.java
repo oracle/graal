@@ -22,9 +22,11 @@
  */
 package com.oracle.svm.core.c.function;
 
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -130,4 +132,13 @@ public final class CEntryPointActions {
      */
     public static native int leaveTearDownIsolate();
 
+    /**
+     * Fail in a fatal manner, such as by terminating the executing process. This method is intended
+     * for situations in which recovery is not possible, or in which reporting an error in any other
+     * way is not possible. This method does not return.
+     * 
+     * @param code An integer hinting at the cause (should be non-zero by convention).
+     * @param message A message describing the cause (may be {@link Word#nullPointer() null}).
+     */
+    public static native void failFatally(int code, CCharPointer message);
 }

@@ -50,6 +50,9 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.CFunction.Transition;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
@@ -71,6 +74,7 @@ import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.LibC;
+import com.oracle.svm.core.posix.headers.Stdio.FILE;
 import com.oracle.svm.core.posix.thread.PosixVMThreads;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -119,9 +123,11 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     public static final SubstrateForeignCallDescriptor REPORT_EXCEPTION = SnippetRuntime.findForeignCall(PosixCEntryPointSnippets.class, "reportException", false, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor TEAR_DOWN_ISOLATE = SnippetRuntime.findForeignCall(PosixCEntryPointSnippets.class, "tearDownIsolate", false, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor IS_ATTACHED = SnippetRuntime.findForeignCall(PosixCEntryPointSnippets.class, "isAttached", false, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor FAIL_FATALLY = SnippetRuntime.findForeignCall(PosixCEntryPointSnippets.class, "failFatally", false, LocationIdentity.any());
 
-    public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS_ST = {REPORT_EXCEPTION};
-    public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS_MT = {CREATE_ISOLATE, ATTACH_THREAD, ENTER_ISOLATE, ENTER, DETACH_THREAD, REPORT_EXCEPTION, TEAR_DOWN_ISOLATE, IS_ATTACHED};
+    public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS_ST = {REPORT_EXCEPTION, FAIL_FATALLY};
+    public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS_MT = {CREATE_ISOLATE, ATTACH_THREAD, ENTER_ISOLATE,
+                    ENTER, DETACH_THREAD, REPORT_EXCEPTION, TEAR_DOWN_ISOLATE, IS_ATTACHED, FAIL_FATALLY};
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native IsolateThread runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, CEntryPointCreateIsolateParameters parameters, int vmThreadSize);
@@ -146,6 +152,9 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
 
     public static final String HEAP_BASE = "__svm_heap_base";
     private static final CGlobalData<PointerBase> heapBaseAccess = CGlobalDataFactory.forSymbol(HEAP_BASE);
+
+    @NodeIntrinsic(value = ForeignCallNode.class)
+    public static native void runtimeCallFailFatally(@ConstantNodeParameter ForeignCallDescriptor descriptor, int code, CCharPointer message);
 
     @Uninterruptible(reason = "Called by an uninterruptible method.")
     static PointerBase heapBase() {
@@ -435,6 +444,28 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     }
 
     @Snippet
+    public static void failFatallySnippet(int code, CCharPointer message) {
+        runtimeCallFailFatally(FAIL_FATALLY, code, message);
+    }
+
+    private static final CGlobalData<CCharPointer> FAIL_FATALLY_FDOPEN_MODE = CGlobalDataFactory.createCString("w");
+    private static final CGlobalData<CCharPointer> FAIL_FATALLY_MESSAGE_FORMAT = CGlobalDataFactory.createCString("Fatal error: %s (code %d)\n");
+
+    @CFunction(value = "fdopen", transition = Transition.NO_TRANSITION)
+    public static native FILE fdopen(int fd, CCharPointer mode);
+
+    @CFunction(value = "fprintf", transition = Transition.NO_TRANSITION)
+    public static native int fprintfSD(FILE stream, CCharPointer format, CCharPointer arg0, int arg1);
+
+    @Uninterruptible(reason = "Unknown thread state.")
+    @SubstrateForeignCallTarget
+    private static void failFatally(int code, CCharPointer message) {
+        FILE stderr = fdopen(2, FAIL_FATALLY_FDOPEN_MODE.get());
+        fprintfSD(stderr, FAIL_FATALLY_MESSAGE_FORMAT.get(), message, code);
+        LibC.exit(code);
+    }
+
+    @Snippet
     public static int enterSingleThreadedSnippet() {
         return 0;
     }
@@ -606,6 +637,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
 
     protected class UtilityMTLowering implements NodeLoweringProvider<CEntryPointUtilityNode> {
         private final SnippetInfo isAttached = snippet(PosixCEntryPointSnippets.class, "isAttachedSnippet");
+        private final SnippetInfo failFatally = snippet(PosixCEntryPointSnippets.class, "failFatallySnippet");
 
         @Override
         public void lower(CEntryPointUtilityNode node, LoweringTool tool) {
@@ -613,7 +645,12 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
             switch (node.getUtilityAction()) {
                 case IsAttached:
                     args = new Arguments(isAttached, node.graph().getGuardsStage(), tool.getLoweringStage());
-                    args.add("isolate", node.getParameter());
+                    args.add("isolate", node.getParameter0());
+                    break;
+                case FailFatally:
+                    args = new Arguments(failFatally, node.graph().getGuardsStage(), tool.getLoweringStage());
+                    args.add("code", node.getParameter0());
+                    args.add("message", node.getParameter1());
                     break;
                 default:
                     throw shouldNotReachHere();
@@ -624,6 +661,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
 
     protected class UtilitySTLowering implements NodeLoweringProvider<CEntryPointUtilityNode> {
         private final SnippetInfo isAttachedSingleThreaded = snippet(PosixCEntryPointSnippets.class, "isAttachedSingleThreadedSnippet");
+        private final SnippetInfo failFatally = snippet(PosixCEntryPointSnippets.class, "failFatallySnippet");
 
         @Override
         public void lower(CEntryPointUtilityNode node, LoweringTool tool) {
@@ -631,6 +669,11 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
             switch (node.getUtilityAction()) {
                 case IsAttached:
                     args = new Arguments(isAttachedSingleThreaded, node.graph().getGuardsStage(), tool.getLoweringStage());
+                    break;
+                case FailFatally:
+                    args = new Arguments(failFatally, node.graph().getGuardsStage(), tool.getLoweringStage());
+                    args.add("code", node.getParameter0());
+                    args.add("message", node.getParameter1());
                     break;
                 default:
                     throw shouldNotReachHere();
