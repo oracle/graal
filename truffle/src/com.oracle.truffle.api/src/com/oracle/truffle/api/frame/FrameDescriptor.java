@@ -86,30 +86,6 @@ public final class FrameDescriptor implements Cloneable {
     }
 
     /**
-     * Use {@link #FrameDescriptor()}.
-     *
-     * @return new instance of the descriptor
-     * @deprecated
-     * @since 0.8 or earlier
-     */
-    @Deprecated
-    public static FrameDescriptor create() {
-        return new FrameDescriptor();
-    }
-
-    /**
-     * Use {@link #FrameDescriptor(java.lang.Object) }.
-     *
-     * @return new instance of the descriptor
-     * @deprecated
-     * @since 0.8 or earlier
-     */
-    @Deprecated
-    public static FrameDescriptor create(Object defaultValue) {
-        return new FrameDescriptor(defaultValue);
-    }
-
-    /**
      * Adds frame slot. Delegates to
      * {@link #addFrameSlot(java.lang.Object, java.lang.Object, FrameSlotKind) addFrameSlot}
      * (identifier, <code>null</code>, {@link FrameSlotKind#Illegal}). This is a slow operation that
