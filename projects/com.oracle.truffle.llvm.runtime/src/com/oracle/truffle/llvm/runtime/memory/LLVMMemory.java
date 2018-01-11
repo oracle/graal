@@ -29,6 +29,15 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
+import static com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode.ADDRESS_SIZE_IN_BYTES;
+import static com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode.DOUBLE_SIZE_IN_BYTES;
+import static com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode.FLOAT_SIZE_IN_BYTES;
+import static com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode.I16_SIZE_IN_BYTES;
+import static com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode.I1_SIZE_IN_BYTES;
+import static com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode.I32_SIZE_IN_BYTES;
+import static com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode.I64_SIZE_IN_BYTES;
+import static com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode.I8_SIZE_IN_BYTES;
+
 import java.lang.reflect.Field;
 import java.util.function.BinaryOperator;
 import java.util.function.IntBinaryOperator;
@@ -338,21 +347,12 @@ public final class LLVMMemory {
         unsafe.putAddress(ptr, ptrValue);
     }
 
-    private static final int I32_SIZE = 4;
-    private static final int I8_SIZE = 1;
-    private static final int I1_SIZE = 1;
-    private static final int I16_SIZE = 2;
-    private static final int I64_SIZE = 8;
-    private static final int FLOAT_SIZE = 4;
-    private static final int DOUBLE_SIZE = 8;
-    private static final int ADDRESS_LENGTH = 8;
-
     public LLVMI32Vector getI32Vector(LLVMAddress address, int size) {
         int[] vector = new int[size];
         long currentPtr = address.getVal();
         for (int i = 0; i < size; i++) {
             vector[i] = getI32(currentPtr);
-            currentPtr += I32_SIZE;
+            currentPtr += I32_SIZE_IN_BYTES;
         }
         return LLVMI32Vector.create(vector);
     }
@@ -362,7 +362,7 @@ public final class LLVMMemory {
         long currentPtr = address.getVal();
         for (int i = 0; i < size; i++) {
             vector[i] = getI8(currentPtr);
-            currentPtr += I8_SIZE;
+            currentPtr += I8_SIZE_IN_BYTES;
         }
         return LLVMI8Vector.create(vector);
     }
@@ -372,7 +372,7 @@ public final class LLVMMemory {
         long currentPtr = address.getVal();
         for (int i = 0; i < size; i++) {
             vector[i] = getI1(currentPtr);
-            currentPtr += I1_SIZE;
+            currentPtr += I1_SIZE_IN_BYTES;
         }
         return LLVMI1Vector.create(vector);
     }
@@ -382,7 +382,7 @@ public final class LLVMMemory {
         long currentPtr = address.getVal();
         for (int i = 0; i < size; i++) {
             vector[i] = getI16(currentPtr);
-            currentPtr += I16_SIZE;
+            currentPtr += I16_SIZE_IN_BYTES;
         }
         return LLVMI16Vector.create(vector);
     }
@@ -392,7 +392,7 @@ public final class LLVMMemory {
         long currentPtr = address.getVal();
         for (int i = 0; i < size; i++) {
             vector[i] = getI64(currentPtr);
-            currentPtr += I64_SIZE;
+            currentPtr += I64_SIZE_IN_BYTES;
         }
         return LLVMI64Vector.create(vector);
     }
@@ -402,7 +402,7 @@ public final class LLVMMemory {
         long currentPtr = address.getVal();
         for (int i = 0; i < size; i++) {
             vector[i] = getFloat(currentPtr);
-            currentPtr += FLOAT_SIZE;
+            currentPtr += FLOAT_SIZE_IN_BYTES;
         }
         return LLVMFloatVector.create(vector);
     }
@@ -412,7 +412,7 @@ public final class LLVMMemory {
         long currentPtr = address.getVal();
         for (int i = 0; i < size; i++) {
             vector[i] = getDouble(currentPtr);
-            currentPtr += DOUBLE_SIZE;
+            currentPtr += DOUBLE_SIZE_IN_BYTES;
         }
         return LLVMDoubleVector.create(vector);
     }
@@ -422,7 +422,7 @@ public final class LLVMMemory {
         long currentPtr = address.getVal();
         for (int i = 0; i < size; i++) {
             vector[i] = getAddress(currentPtr);
-            currentPtr += ADDRESS_LENGTH;
+            currentPtr += ADDRESS_SIZE_IN_BYTES;
         }
         return LLVMAddressVector.create(vector);
     }
@@ -432,7 +432,7 @@ public final class LLVMMemory {
         long currentPtr = address.getVal();
         for (int i = 0; i < size; i++) {
             vector[i] = getAddress(currentPtr).getVal();
-            currentPtr += ADDRESS_LENGTH;
+            currentPtr += ADDRESS_SIZE_IN_BYTES;
         }
         return LLVMFunctionVector.create(vector);
     }
@@ -443,7 +443,7 @@ public final class LLVMMemory {
         long currentPtr = address.getVal();
         for (int i = 0; i < vector.getLength(); i++) {
             putDouble(currentPtr, vector.getValue(i));
-            currentPtr += DOUBLE_SIZE;
+            currentPtr += DOUBLE_SIZE_IN_BYTES;
         }
     }
 
@@ -451,7 +451,7 @@ public final class LLVMMemory {
         long currentPtr = address.getVal();
         for (int i = 0; i < vector.getLength(); i++) {
             putFloat(currentPtr, vector.getValue(i));
-            currentPtr += FLOAT_SIZE;
+            currentPtr += FLOAT_SIZE_IN_BYTES;
         }
     }
 
@@ -459,7 +459,7 @@ public final class LLVMMemory {
         long currentPtr = address.getVal();
         for (int i = 0; i < vector.getLength(); i++) {
             putI16(currentPtr, vector.getValue(i));
-            currentPtr += I16_SIZE;
+            currentPtr += I16_SIZE_IN_BYTES;
         }
     }
 
@@ -467,7 +467,7 @@ public final class LLVMMemory {
         long currentPtr = address.getVal();
         for (int i = 0; i < vector.getLength(); i++) {
             putI1(currentPtr, vector.getValue(i));
-            currentPtr += I1_SIZE;
+            currentPtr += I1_SIZE_IN_BYTES;
         }
     }
 
@@ -475,7 +475,7 @@ public final class LLVMMemory {
         long currentPtr = address.getVal();
         for (int i = 0; i < vector.getLength(); i++) {
             putI32(currentPtr, vector.getValue(i));
-            currentPtr += I32_SIZE;
+            currentPtr += I32_SIZE_IN_BYTES;
         }
     }
 
@@ -483,7 +483,7 @@ public final class LLVMMemory {
         long currentPtr = address.getVal();
         for (int i = 0; i < vector.getLength(); i++) {
             putI64(currentPtr, vector.getValue(i));
-            currentPtr += I64_SIZE;
+            currentPtr += I64_SIZE_IN_BYTES;
         }
     }
 
@@ -491,7 +491,7 @@ public final class LLVMMemory {
         long currentPtr = address.getVal();
         for (int i = 0; i < vector.getLength(); i++) {
             putI8(currentPtr, vector.getValue(i));
-            currentPtr += I8_SIZE;
+            currentPtr += I8_SIZE_IN_BYTES;
         }
     }
 
@@ -499,7 +499,7 @@ public final class LLVMMemory {
         long currentPtr = address.getVal();
         for (int i = 0; i < vector.getLength(); i++) {
             putAddress(currentPtr, vector.getValue(i));
-            currentPtr += ADDRESS_LENGTH;
+            currentPtr += ADDRESS_SIZE_IN_BYTES;
         }
     }
 
@@ -507,7 +507,7 @@ public final class LLVMMemory {
         long currentPtr = address.getVal();
         for (int i = 0; i < vector.getLength(); i++) {
             putAddress(currentPtr, toNative.executeWithTarget(frame, vector.getValue(i)));
-            currentPtr += ADDRESS_LENGTH;
+            currentPtr += ADDRESS_SIZE_IN_BYTES;
         }
     }
 

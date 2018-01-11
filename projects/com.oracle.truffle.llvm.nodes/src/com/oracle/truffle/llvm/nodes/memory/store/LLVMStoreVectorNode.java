@@ -192,56 +192,88 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     @Specialization
     protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI1Vector value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
-        foreignWrite.execute(frame, address, value);
+        LLVMTruffleObject currentPtr = address;
+        for (int i = 0; i < value.getLength(); i++) {
+            foreignWrite.execute(frame, currentPtr, value.getValue(i));
+            currentPtr = currentPtr.increment(I1_SIZE_IN_BYTES, currentPtr.getType());
+        }
         return null;
     }
 
     @Specialization
     protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI8Vector value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
-        foreignWrite.execute(frame, address, value);
+        LLVMTruffleObject currentPtr = address;
+        for (int i = 0; i < value.getLength(); i++) {
+            foreignWrite.execute(frame, currentPtr, value.getValue(i));
+            currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES, currentPtr.getType());
+        }
         return null;
     }
 
     @Specialization
     protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI16Vector value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
-        foreignWrite.execute(frame, address, value);
+        LLVMTruffleObject currentPtr = address;
+        for (int i = 0; i < value.getLength(); i++) {
+            foreignWrite.execute(frame, currentPtr, value.getValue(i));
+            currentPtr = currentPtr.increment(I16_SIZE_IN_BYTES, currentPtr.getType());
+        }
         return null;
     }
 
     @Specialization
     protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI32Vector value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
-        foreignWrite.execute(frame, address, value);
+        LLVMTruffleObject currentPtr = address;
+        for (int i = 0; i < value.getLength(); i++) {
+            foreignWrite.execute(frame, currentPtr, value.getValue(i));
+            currentPtr = currentPtr.increment(I32_SIZE_IN_BYTES, currentPtr.getType());
+        }
         return null;
     }
 
     @Specialization
     protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMFloatVector value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
-        foreignWrite.execute(frame, address, value);
+        LLVMTruffleObject currentPtr = address;
+        for (int i = 0; i < value.getLength(); i++) {
+            foreignWrite.execute(frame, currentPtr, value.getValue(i));
+            currentPtr = currentPtr.increment(FLOAT_SIZE_IN_BYTES, currentPtr.getType());
+        }
         return null;
     }
 
     @Specialization
     protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMDoubleVector value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
-        foreignWrite.execute(frame, address, value);
+        LLVMTruffleObject currentPtr = address;
+        for (int i = 0; i < value.getLength(); i++) {
+            foreignWrite.execute(frame, currentPtr, value.getValue(i));
+            currentPtr = currentPtr.increment(DOUBLE_SIZE_IN_BYTES, currentPtr.getType());
+        }
         return null;
     }
 
     @Specialization
     protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI64Vector value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
-        foreignWrite.execute(frame, address, value);
+        LLVMTruffleObject currentPtr = address;
+        for (int i = 0; i < value.getLength(); i++) {
+            foreignWrite.execute(frame, currentPtr, value.getValue(i));
+            currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES, currentPtr.getType());
+        }
         return null;
     }
 
     @Specialization
     protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMAddressVector value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
-        foreignWrite.execute(frame, address, value);
+        LLVMTruffleObject currentPtr = address;
+        for (int i = 0; i < value.getLength(); i++) {
+            foreignWrite.execute(frame, currentPtr, value.getValue(i));
+            currentPtr = currentPtr.increment(ADDRESS_SIZE_IN_BYTES, currentPtr.getType());
+        }
         return null;
     }
 }
