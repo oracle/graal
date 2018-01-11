@@ -319,8 +319,6 @@ supr com.oracle.truffle.api.nodes.SlowPathException
 hfds serialVersionUID
 
 CLSS public final com.oracle.truffle.api.frame.FrameUtil
-cons public init()
- anno 0 java.lang.Deprecated()
 meth public static boolean getBooleanSafe(com.oracle.truffle.api.frame.Frame,com.oracle.truffle.api.frame.FrameSlot)
 meth public static byte getByteSafe(com.oracle.truffle.api.frame.Frame,com.oracle.truffle.api.frame.FrameSlot)
 meth public static double getDoubleSafe(com.oracle.truffle.api.frame.Frame,com.oracle.truffle.api.frame.FrameSlot)
