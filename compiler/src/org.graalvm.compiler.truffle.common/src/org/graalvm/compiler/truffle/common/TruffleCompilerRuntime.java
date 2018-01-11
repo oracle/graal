@@ -157,8 +157,6 @@ public interface TruffleCompilerRuntime {
 
     CompilableTruffleAST asCompilableTruffleAST(JavaConstant constant);
 
-    boolean enableInfopoints();
-
     GraalRuntime getGraalRuntime();
 
     /**

@@ -230,6 +230,7 @@ public class ForeignCallStub extends Stub {
         boolean isObjectResult = !LIRKind.isValue(linkage.getOutgoingCallingConvention().getReturn());
         StructuredGraph graph = new StructuredGraph.Builder(options, debug).name(toString()).compilationId(compilationId).build();
         graph.disableUnsafeAccessTracking();
+        graph.setTrackNodeSourcePosition();
 
         GraphKit kit = new GraphKit(graph, providers, wordTypes, providers.getGraphBuilderPlugins());
         ParameterNode[] params = createParameters(kit, args);

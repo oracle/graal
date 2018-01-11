@@ -41,10 +41,10 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
+import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.compiler.replacements.Snippets;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
@@ -133,7 +133,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             Arguments args = new Arguments(postWriteBarrierSnippetInfo, barrier.graph().getGuardsStage(), tool.getLoweringStage());
             OffsetAddressNode address = (OffsetAddressNode) barrier.getAddress();
             args.add("object", address.getBase());
-            template(barrier.getDebug(), args).instantiate(providers.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(barrier, args).instantiate(providers.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 

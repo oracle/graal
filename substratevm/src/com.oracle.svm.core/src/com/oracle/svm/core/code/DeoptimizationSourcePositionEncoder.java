@@ -125,7 +125,7 @@ public class DeoptimizationSourcePositionEncoder {
         }
 
         encodingBuffer.putUV(callerRelativeOffset);
-        encodingBuffer.putUV(sourcePosition.getBCI());
+        encodingBuffer.putSV(sourcePosition.getBCI());
         encodingBuffer.putUV(objectConstants.getIndex(sourcePosition.getMethod()));
         encodingBuffer.putUV(objectConstants.getIndex(unwrapReceiver(sourcePosition)));
 

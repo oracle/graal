@@ -66,7 +66,7 @@ final class SafepointSnippets extends SubstrateTemplates implements Snippets {
             assert SubstrateOptions.MultiThreaded.getValue() : "safepoints are only inserted into the graph in MultiThreaded mode";
 
             Arguments args = new Arguments(safepoint, node.graph().getGuardsStage(), tool.getLoweringStage());
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 

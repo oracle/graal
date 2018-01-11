@@ -32,7 +32,6 @@ import static org.graalvm.compiler.bytecode.Bytecodes.POP;
 import static org.graalvm.compiler.bytecode.Bytecodes.POP2;
 import static org.graalvm.compiler.bytecode.Bytecodes.SWAP;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
-import static org.graalvm.compiler.java.BytecodeParserOptions.HideSubstitutionStates;
 import static org.graalvm.compiler.nodes.FrameState.TWO_SLOT_MARKER;
 
 import java.util.ArrayList;
@@ -310,7 +309,7 @@ public final class FrameStateBuilder implements SideEffectsState {
 
     public FrameState create(int bci, StateSplit forStateSplit) {
         if (parser != null && parser.parsingIntrinsic()) {
-            NodeSourcePosition sourcePosition = createBytecodePosition(bci, false);
+            NodeSourcePosition sourcePosition = parser.getGraph().trackNodeSourcePosition() ? createBytecodePosition(bci) : null;
             return parser.intrinsicContext.createFrameState(parser.getGraph(), this, forStateSplit, sourcePosition);
         }
 
@@ -354,25 +353,14 @@ public final class FrameStateBuilder implements SideEffectsState {
     }
 
     public NodeSourcePosition createBytecodePosition(int bci) {
-        return createBytecodePosition(bci, HideSubstitutionStates.getValue(parser.graph.getOptions()));
-    }
-
-    private NodeSourcePosition createBytecodePosition(int bci, boolean hideSubstitutionStates) {
         BytecodeParser parent = parser.getParent();
-        if (hideSubstitutionStates) {
-            if (parser.parsingIntrinsic()) {
-                // Attribute to the method being replaced
-                return new NodeSourcePosition(constantReceiver, parent.getFrameStateBuilder().createBytecodePosition(parent.bci()), parser.intrinsicContext.getOriginalMethod(), -1);
-            }
-            // Skip intrinsic frames
-            parent = parser.getNonIntrinsicAncestor();
-        }
-        return create(constantReceiver, bci, parent, hideSubstitutionStates);
+        NodeSourcePosition position = create(constantReceiver, bci, parent);
+        return position;
     }
 
-    private NodeSourcePosition create(JavaConstant receiver, int bci, BytecodeParser parent, boolean hideSubstitutionStates) {
+    private NodeSourcePosition create(JavaConstant receiver, int bci, BytecodeParser parent) {
         if (outerSourcePosition == null && parent != null) {
-            outerSourcePosition = parent.getFrameStateBuilder().createBytecodePosition(parent.bci(), hideSubstitutionStates);
+            outerSourcePosition = parent.getFrameStateBuilder().createBytecodePosition(parent.bci());
         }
         if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI && parent != null) {
             return FrameState.toSourcePosition(outerFrameState);

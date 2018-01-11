@@ -173,7 +173,7 @@ public final class AssertSnippets extends SubstrateTemplates implements Snippets
                             node.stamp(NodeView.DEFAULT) +
                             " but found ";
             args.add("message", msg.getBytes());
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
@@ -196,7 +196,7 @@ public final class AssertSnippets extends SubstrateTemplates implements Snippets
             String msg = node.getClass().getSimpleName() + " failed: " + node.graph().method().format("%H.%n(%p)") + " @ " + node.toString(Verbosity.Short) + " expected type state " +
                             node.getTypeState() + " but found ";
             args.add("message", msg.getBytes());
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 }

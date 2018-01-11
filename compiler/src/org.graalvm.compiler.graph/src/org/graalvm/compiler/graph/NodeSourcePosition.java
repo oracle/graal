@@ -22,11 +22,20 @@
  */
 package org.graalvm.compiler.graph;
 
+import static org.graalvm.compiler.graph.NodeSourcePosition.Marker.None;
+import static org.graalvm.compiler.graph.NodeSourcePosition.Marker.Placeholder;
+import static org.graalvm.compiler.graph.NodeSourcePosition.Marker.Substitution;
+
 import java.util.Objects;
 
+import org.graalvm.compiler.bytecode.BytecodeDisassembler;
+import org.graalvm.compiler.bytecode.Bytecodes;
+
+import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -37,8 +46,19 @@ public class NodeSourcePosition extends BytecodePosition {
      */
     private final JavaConstant receiver;
     private final int hashCode;
+    private final Marker special;
+
+    enum Marker {
+        None,
+        Placeholder,
+        Substitution
+    }
 
     public NodeSourcePosition(JavaConstant receiver, NodeSourcePosition caller, ResolvedJavaMethod method, int bci) {
+        this(receiver, caller, method, bci, None);
+    }
+
+    public NodeSourcePosition(JavaConstant receiver, NodeSourcePosition caller, ResolvedJavaMethod method, int bci, Marker special) {
         super(caller, method, bci);
         if (caller == null) {
             this.hashCode = 31 * bci + method.hashCode();
@@ -46,7 +66,33 @@ public class NodeSourcePosition extends BytecodePosition {
             this.hashCode = caller.hashCode * 7 + 31 * bci + method.hashCode();
         }
         this.receiver = receiver;
-        assert receiver == null || method.getDeclaringClass().isInstance(receiver);
+        this.special = special;
+        assert receiver == null || special != None || method.getDeclaringClass().isInstance(receiver) : this;
+        // assert bci >= -1 : this;
+    }
+
+    public static NodeSourcePosition placeholder(ResolvedJavaMethod method) {
+        return new NodeSourcePosition(null, null, method, BytecodeFrame.INVALID_FRAMESTATE_BCI, Placeholder);
+    }
+
+    public static NodeSourcePosition placeholder(ResolvedJavaMethod method, int bci) {
+        return new NodeSourcePosition(null, null, method, bci, Placeholder);
+    }
+
+    public boolean isPlaceholder() {
+        return special == Placeholder;
+    }
+
+    public static NodeSourcePosition substitution(ResolvedJavaMethod method) {
+        return new NodeSourcePosition(null, null, method, BytecodeFrame.INVALID_FRAMESTATE_BCI, Substitution);
+    }
+
+    public static NodeSourcePosition substitution(NodeSourcePosition caller, ResolvedJavaMethod method, int bci) {
+        return new NodeSourcePosition(null, caller, method, bci, Substitution);
+    }
+
+    public boolean isSubstitution() {
+        return special == Substitution;
     }
 
     @Override
@@ -76,18 +122,37 @@ public class NodeSourcePosition extends BytecodePosition {
         return receiver;
     }
 
+    public int depth() {
+        int d = 0;
+        NodeSourcePosition pos = this;
+        while (pos != null) {
+            d++;
+            pos = pos.getCaller();
+        }
+        return d;
+    }
+
     @Override
     public NodeSourcePosition getCaller() {
         return (NodeSourcePosition) super.getCaller();
     }
 
-    public NodeSourcePosition addCaller(JavaConstant newCallerReceiver, NodeSourcePosition link) {
+    public NodeSourcePosition addCaller(JavaConstant newCallerReceiver, NodeSourcePosition link, boolean isSubstitution) {
         if (getCaller() == null) {
+            if (isPlaceholder()) {
+                return new NodeSourcePosition(newCallerReceiver, link, getMethod(), 0);
+            }
             assert newCallerReceiver == null || receiver == null : "replacing receiver";
+            assert link == null || isSubstitution || verifyCaller(this, link) : link;
+
             return new NodeSourcePosition(newCallerReceiver, link, getMethod(), getBCI());
         } else {
-            return new NodeSourcePosition(receiver, getCaller().addCaller(newCallerReceiver, link), getMethod(), getBCI());
+            return new NodeSourcePosition(receiver, getCaller().addCaller(newCallerReceiver, link, isSubstitution), getMethod(), getBCI());
         }
+    }
+
+    public NodeSourcePosition addCaller(JavaConstant newCallerReceiver, NodeSourcePosition link) {
+        return addCaller(newCallerReceiver, link, false);
     }
 
     public NodeSourcePosition addCaller(NodeSourcePosition link) {
@@ -99,15 +164,67 @@ public class NodeSourcePosition extends BytecodePosition {
         StringBuilder sb = new StringBuilder(100);
         NodeSourcePosition pos = this;
         while (pos != null) {
-            MetaUtil.appendLocation(sb.append("at "), pos.getMethod(), pos.getBCI());
-            if (pos.receiver != null) {
-                sb.append("receiver=" + pos.receiver + " ");
-            }
+            format(sb, pos);
             pos = pos.getCaller();
             if (pos != null) {
                 sb.append(CodeUtil.NEW_LINE);
             }
         }
         return sb.toString();
+    }
+
+    private static void format(StringBuilder sb, NodeSourcePosition pos) {
+        MetaUtil.appendLocation(sb.append("at "), pos.getMethod(), pos.getBCI());
+        if (pos.receiver != null) {
+            sb.append(" receiver=" + pos.receiver);
+        }
+        String disassembly = BytecodeDisassembler.disassembleOne(pos.getMethod(), pos.getBCI());
+        if (disassembly != null && disassembly.length() > 0) {
+            sb.append(" // ");
+            sb.append(disassembly);
+        }
+    }
+
+    String shallowToString() {
+        StringBuilder sb = new StringBuilder(100);
+        format(sb, this);
+        return sb.toString();
+    }
+
+    public boolean verify() {
+        NodeSourcePosition current = this;
+        NodeSourcePosition caller = getCaller();
+        while (caller != null) {
+            assert verifyCaller(current, caller) : current;
+            current = caller;
+            caller = caller.getCaller();
+        }
+        return true;
+    }
+
+    private static boolean verifyCaller(NodeSourcePosition current, NodeSourcePosition caller) {
+        if (BytecodeFrame.isPlaceholderBci(caller.getBCI())) {
+            return true;
+        }
+        int opcode = BytecodeDisassembler.getBytecodeAt(caller.getMethod(), caller.getBCI());
+        if (opcode == Bytecodes.GETSTATIC) {
+            System.err.println(current.shallowToString() + " " + caller.shallowToString());
+            return true;
+        }
+        JavaMethod method = BytecodeDisassembler.getInvokedMethodAt(caller.getMethod(), caller.getBCI());
+        /*
+         * It's not really possible to match the declaring classes since this might be an interface
+         * invoke. Matching name and signature probably provides enough accuracy.
+         */
+        assert method == null || method.getName().equals(current.getMethod().getName()) &&
+                        method.getSignature().equals(current.getMethod().getSignature()) ||
+                        caller.getMethod().getName().equals("linkToTargetMethod") ||
+                        opcode == Bytecodes.INVOKEDYNAMIC ||
+                        caller.getMethod().getDeclaringClass().getName().startsWith("Ljava/lang/invoke/LambdaForm$") ||
+                        (caller.getMethod().getDeclaringClass().equals(method.getDeclaringClass()) &&
+                                        method.getName().equals("callProxy") && current.getMethod().getName().equals("callRoot")) ||
+                        current.getMethod().getName().equals("callInlined") : "expected " + method + " but found " +
+                                        current.getMethod();
+        return true;
     }
 }

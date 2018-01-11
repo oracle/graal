@@ -22,8 +22,8 @@
  */
 package com.oracle.svm.core.graal.posix;
 
-import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
+import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.Map;
@@ -531,7 +531,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
                 default:
                     throw shouldNotReachHere();
             }
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
@@ -553,7 +553,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
                 default:
                     throw shouldNotReachHere();
             }
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
@@ -589,7 +589,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
                 default:
                     throw shouldNotReachHere();
             }
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
     }
@@ -617,7 +617,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
                 default:
                     throw shouldNotReachHere();
             }
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 }

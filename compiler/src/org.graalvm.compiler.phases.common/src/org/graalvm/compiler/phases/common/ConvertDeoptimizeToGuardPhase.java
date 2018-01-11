@@ -116,6 +116,7 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
         }
     }
 
+    @SuppressWarnings("try")
     private void processFixedGuardAndPhis(FixedGuardNode fixedGuard, PhaseContext context, CompareNode compare, ValueNode x, ValuePhiNode xPhi, ValueNode y, ValuePhiNode yPhi) {
         AbstractBeginNode pred = AbstractBeginNode.prevBegin(fixedGuard);
         if (pred instanceof AbstractMergeNode) {
@@ -131,6 +132,7 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
         }
     }
 
+    @SuppressWarnings("try")
     private void processFixedGuardAndMerge(FixedGuardNode fixedGuard, PhaseContext context, CompareNode compare, ValueNode x, ValuePhiNode xPhi, ValueNode y, ValuePhiNode yPhi,
                     AbstractMergeNode merge) {
         List<EndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
@@ -152,7 +154,9 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
                 ys = yPhi.valueAt(mergePredecessor).asConstant();
             }
             if (xs != null && ys != null && compare.condition().foldCondition(xs, ys, context.getConstantReflection(), compare.unorderedIsTrue()) == fixedGuard.isNegated()) {
-                propagateFixed(mergePredecessor, fixedGuard, context.getLowerer());
+                try (DebugCloseable position = fixedGuard.withNodeSourcePosition()) {
+                    propagateFixed(mergePredecessor, fixedGuard, context.getLowerer());
+                }
             }
         }
     }

@@ -65,7 +65,7 @@ public class DeoptimizationSourcePositionDecoder {
     private static NodeSourcePosition decodeSourcePosition(long startOffset, Object[] deoptimizationObjectConstants, UnsafeArrayTypeReader readBuffer) {
         readBuffer.setByteIndex(startOffset);
         long callerRelativeOffset = readBuffer.getUV();
-        int bci = readBuffer.getUVInt();
+        int bci = readBuffer.getSVInt();
         ResolvedJavaMethod method = (ResolvedJavaMethod) deoptimizationObjectConstants[readBuffer.getUVInt()];
         Object receiver = deoptimizationObjectConstants[readBuffer.getUVInt()];
 

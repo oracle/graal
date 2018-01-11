@@ -279,6 +279,7 @@ import org.graalvm.compiler.bytecode.Bytecodes;
 import org.graalvm.compiler.bytecode.Bytes;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
@@ -713,6 +714,11 @@ public class BytecodeParser implements GraphBuilderContext {
             lnt = code.getLineNumberTable();
             previousLineNumber = -1;
         }
+
+        assert !GraalOptions.TrackNodeSourcePosition.getValue(options) || graph.trackNodeSourcePosition();
+        if (graphBuilderConfig.trackNodeSourcePosition() || (parent != null && parent.graph.trackNodeSourcePosition())) {
+            graph.setTrackNodeSourcePosition();
+        }
     }
 
     protected GraphBuilderPhase.Instance getGraphBuilderInstance() {
@@ -807,25 +813,27 @@ public class BytecodeParser implements GraphBuilderContext {
                 }
             }
 
-            if (method.isSynchronized()) {
-                finishPrepare(lastInstr, BytecodeFrame.BEFORE_BCI);
+            try (DebugCloseable context = openNodeContext()) {
+                if (method.isSynchronized()) {
+                    finishPrepare(lastInstr, BytecodeFrame.BEFORE_BCI);
 
-                // add a monitor enter to the start block
-                methodSynchronizedObject = synchronizedObject(frameState, method);
-                frameState.clearNonLiveLocals(startBlock, liveness, true);
-                assert bci() == 0;
-                genMonitorEnter(methodSynchronizedObject, bci());
+                    // add a monitor enter to the start block
+                    methodSynchronizedObject = synchronizedObject(frameState, method);
+                    frameState.clearNonLiveLocals(startBlock, liveness, true);
+                    assert bci() == 0;
+                    genMonitorEnter(methodSynchronizedObject, bci());
+                }
+
+                ProfilingPlugin profilingPlugin = this.graphBuilderConfig.getPlugins().getProfilingPlugin();
+                if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
+                    FrameState stateBefore = frameState.create(bci(), getNonIntrinsicAncestor(), false, null, null);
+                    profilingPlugin.profileInvoke(this, method, stateBefore);
+                }
+
+                finishPrepare(lastInstr, 0);
+
+                genInfoPointNode(InfopointReason.METHOD_START, null);
             }
-
-            ProfilingPlugin profilingPlugin = this.graphBuilderConfig.getPlugins().getProfilingPlugin();
-            if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
-                FrameState stateBefore = frameState.create(bci(), getNonIntrinsicAncestor(), false, null, null);
-                profilingPlugin.profileInvoke(this, method, stateBefore);
-            }
-
-            finishPrepare(lastInstr, 0);
-
-            genInfoPointNode(InfopointReason.METHOD_START, null);
 
             currentBlock = blockMap.getStartBlock();
             setEntryState(startBlock, frameState);
@@ -2017,6 +2025,7 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
+    @SuppressWarnings("try")
     protected boolean tryInvocationPlugin(InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType, JavaType returnType) {
         InvocationPlugin plugin = graphBuilderConfig.getPlugins().getInvocationPlugins().lookupInvocation(targetMethod);
         if (plugin != null) {
@@ -2041,11 +2050,13 @@ public class BytecodeParser implements GraphBuilderContext {
             }
 
             InvocationPluginAssertions assertions = Assertions.assertionsEnabled() ? new InvocationPluginAssertions(plugin, args, targetMethod, resultType) : null;
-            if (plugin.execute(this, targetMethod, pluginReceiver, args)) {
-                afterInvocationPluginExecution(true, assertions, intrinsicGuard, invokeKind, args, targetMethod, resultType, returnType);
-                return true;
-            } else {
-                afterInvocationPluginExecution(false, assertions, intrinsicGuard, invokeKind, args, targetMethod, resultType, returnType);
+            try (DebugCloseable context = openNodeContext(targetMethod)) {
+                if (plugin.execute(this, targetMethod, pluginReceiver, args)) {
+                    afterInvocationPluginExecution(true, assertions, intrinsicGuard, invokeKind, args, targetMethod, resultType, returnType);
+                    return true;
+                } else {
+                    afterInvocationPluginExecution(false, assertions, intrinsicGuard, invokeKind, args, targetMethod, resultType, returnType);
+                }
             }
         }
         return false;
@@ -2562,6 +2573,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
     @Override
     public <T extends ValueNode> T append(T v) {
+        assert !graph.trackNodeSourcePosition() || graph.currentNodeSourcePosition() != null || currentBlock == blockMap.getUnwindBlock() || currentBlock instanceof ExceptionDispatchBlock;
         if (v.graph() != null) {
             return v;
         }
@@ -2670,93 +2682,97 @@ public class BytecodeParser implements GraphBuilderContext {
         return createTarget(block, state, false, false);
     }
 
+    @SuppressWarnings("try")
     private FixedNode createTarget(BciBlock block, FrameStateBuilder state, boolean canReuseInstruction, boolean canReuseState) {
         assert block != null && state != null;
         assert !block.isExceptionEntry || state.stackSize() == 1;
 
-        if (getFirstInstruction(block) == null) {
-            /*
-             * This is the first time we see this block as a branch target. Create and return a
-             * placeholder that later can be replaced with a MergeNode when we see this block again.
-             */
-            FixedNode targetNode;
-            if (canReuseInstruction && (block.getPredecessorCount() == 1 || !controlFlowSplit) && !block.isLoopHeader && (currentBlock.loops & ~block.loops) == 0) {
-                setFirstInstruction(block, lastInstr);
-                lastInstr = null;
-            } else {
-                setFirstInstruction(block, graph.add(new BeginNode()));
-            }
-            targetNode = getFirstInstruction(block);
-            Target target = checkLoopExit(targetNode, block, state);
-            FixedNode result = target.fixed;
-            FrameStateBuilder currentEntryState = target.state == state ? (canReuseState ? state : state.copy()) : target.state;
-            setEntryState(block, currentEntryState);
-            currentEntryState.clearNonLiveLocals(block, liveness, true);
+        try (DebugCloseable context = openNodeContext(state, block.startBci)) {
+            if (getFirstInstruction(block) == null) {
+                /*
+                 * This is the first time we see this block as a branch target. Create and return a
+                 * placeholder that later can be replaced with a MergeNode when we see this block
+                 * again.
+                 */
+                FixedNode targetNode;
+                if (canReuseInstruction && (block.getPredecessorCount() == 1 || !controlFlowSplit) && !block.isLoopHeader && (currentBlock.loops & ~block.loops) == 0) {
+                    setFirstInstruction(block, lastInstr);
+                    lastInstr = null;
+                } else {
+                    setFirstInstruction(block, graph.add(new BeginNode()));
+                }
+                targetNode = getFirstInstruction(block);
+                Target target = checkLoopExit(targetNode, block, state);
+                FixedNode result = target.fixed;
+                FrameStateBuilder currentEntryState = target.state == state ? (canReuseState ? state : state.copy()) : target.state;
+                setEntryState(block, currentEntryState);
+                currentEntryState.clearNonLiveLocals(block, liveness, true);
 
-            debug.log("createTarget %s: first visit, result: %s", block, targetNode);
-            return result;
-        }
-
-        // We already saw this block before, so we have to merge states.
-        if (!getEntryState(block).isCompatibleWith(state)) {
-            throw bailout("stacks do not match; bytecodes would not verify");
-        }
-
-        if (getFirstInstruction(block) instanceof LoopBeginNode) {
-            assert (block.isLoopHeader && currentBlock.getId() >= block.getId()) : "must be backward branch";
-            /*
-             * Backward loop edge. We need to create a special LoopEndNode and merge with the loop
-             * begin node created before.
-             */
-            LoopBeginNode loopBegin = (LoopBeginNode) getFirstInstruction(block);
-            LoopEndNode loopEnd = graph.add(new LoopEndNode(loopBegin));
-            Target target = checkLoopExit(loopEnd, block, state);
-            FixedNode result = target.fixed;
-            getEntryState(block).merge(loopBegin, target.state);
-
-            debug.log("createTarget %s: merging backward branch to loop header %s, result: %s", block, loopBegin, result);
-            return result;
-        }
-        assert currentBlock == null || currentBlock.getId() < block.getId() : "must not be backward branch";
-        assert getFirstInstruction(block).next() == null : "bytecodes already parsed for block";
-
-        if (getFirstInstruction(block) instanceof AbstractBeginNode && !(getFirstInstruction(block) instanceof AbstractMergeNode)) {
-            /*
-             * This is the second time we see this block. Create the actual MergeNode and the End
-             * Node for the already existing edge.
-             */
-            AbstractBeginNode beginNode = (AbstractBeginNode) getFirstInstruction(block);
-
-            // The EndNode for the already existing edge.
-            EndNode end = graph.add(new EndNode());
-            // The MergeNode that replaces the placeholder.
-            AbstractMergeNode mergeNode = graph.add(new MergeNode());
-            FixedNode next = beginNode.next();
-
-            if (beginNode.predecessor() instanceof ControlSplitNode) {
-                beginNode.setNext(end);
-            } else {
-                beginNode.replaceAtPredecessor(end);
-                beginNode.safeDelete();
+                debug.log("createTarget %s: first visit, result: %s", block, targetNode);
+                return result;
             }
 
-            mergeNode.addForwardEnd(end);
-            mergeNode.setNext(next);
+            // We already saw this block before, so we have to merge states.
+            if (!getEntryState(block).isCompatibleWith(state)) {
+                throw bailout("stacks do not match; bytecodes would not verify");
+            }
 
-            setFirstInstruction(block, mergeNode);
+            if (getFirstInstruction(block) instanceof LoopBeginNode) {
+                assert (block.isLoopHeader && currentBlock.getId() >= block.getId()) : "must be backward branch";
+                /*
+                 * Backward loop edge. We need to create a special LoopEndNode and merge with the
+                 * loop begin node created before.
+                 */
+                LoopBeginNode loopBegin = (LoopBeginNode) getFirstInstruction(block);
+                LoopEndNode loopEnd = graph.add(new LoopEndNode(loopBegin));
+                Target target = checkLoopExit(loopEnd, block, state);
+                FixedNode result = target.fixed;
+                getEntryState(block).merge(loopBegin, target.state);
+
+                debug.log("createTarget %s: merging backward branch to loop header %s, result: %s", block, loopBegin, result);
+                return result;
+            }
+            assert currentBlock == null || currentBlock.getId() < block.getId() : "must not be backward branch";
+            assert getFirstInstruction(block).next() == null : "bytecodes already parsed for block";
+
+            if (getFirstInstruction(block) instanceof AbstractBeginNode && !(getFirstInstruction(block) instanceof AbstractMergeNode)) {
+                /*
+                 * This is the second time we see this block. Create the actual MergeNode and the
+                 * End Node for the already existing edge.
+                 */
+                AbstractBeginNode beginNode = (AbstractBeginNode) getFirstInstruction(block);
+
+                // The EndNode for the already existing edge.
+                EndNode end = graph.add(new EndNode());
+                // The MergeNode that replaces the placeholder.
+                AbstractMergeNode mergeNode = graph.add(new MergeNode());
+                FixedNode next = beginNode.next();
+
+                if (beginNode.predecessor() instanceof ControlSplitNode) {
+                    beginNode.setNext(end);
+                } else {
+                    beginNode.replaceAtPredecessor(end);
+                    beginNode.safeDelete();
+                }
+
+                mergeNode.addForwardEnd(end);
+                mergeNode.setNext(next);
+
+                setFirstInstruction(block, mergeNode);
+            }
+
+            AbstractMergeNode mergeNode = (AbstractMergeNode) getFirstInstruction(block);
+
+            // The EndNode for the newly merged edge.
+            EndNode newEnd = graph.add(new EndNode());
+            Target target = checkLoopExit(newEnd, block, state);
+            FixedNode result = target.fixed;
+            getEntryState(block).merge(mergeNode, target.state);
+            mergeNode.addForwardEnd(newEnd);
+
+            debug.log("createTarget %s: merging state, result: %s", block, result);
+            return result;
         }
-
-        AbstractMergeNode mergeNode = (AbstractMergeNode) getFirstInstruction(block);
-
-        // The EndNode for the newly merged edge.
-        EndNode newEnd = graph.add(new EndNode());
-        Target target = checkLoopExit(newEnd, block, state);
-        FixedNode result = target.fixed;
-        getEntryState(block).merge(mergeNode, target.state);
-        mergeNode.addForwardEnd(newEnd);
-
-        debug.log("createTarget %s: merging state, result: %s", block, result);
-        return result;
     }
 
     /**
@@ -2965,28 +2981,28 @@ public class BytecodeParser implements GraphBuilderContext {
         }
 
         while (bci < endBCI) {
-            if (graphBuilderConfig.insertFullInfopoints() && !parsingIntrinsic()) {
-                currentLineNumber = lnt != null ? lnt.getLineNumber(bci) : -1;
-                if (currentLineNumber != previousLineNumber) {
-                    genInfoPointNode(InfopointReason.BYTECODE_POSITION, null);
-                    previousLineNumber = currentLineNumber;
-                }
-            }
-
-            // read the opcode
-            int opcode = stream.currentBC();
-            assert traceState();
-            assert traceInstruction(bci, opcode, bci == block.startBci);
-            if (parent == null && bci == entryBCI) {
-                if (block.getJsrScope() != JsrScope.EMPTY_SCOPE) {
-                    throw new JsrNotSupportedBailout("OSR into a JSR scope is not supported");
-                }
-                EntryMarkerNode x = append(new EntryMarkerNode());
-                frameState.insertProxies(value -> graph.unique(new EntryProxyNode(value, x)));
-                x.setStateAfter(createFrameState(bci, x));
-            }
-
             try (DebugCloseable context = openNodeContext()) {
+                if (graphBuilderConfig.insertFullInfopoints() && !parsingIntrinsic()) {
+                    currentLineNumber = lnt != null ? lnt.getLineNumber(bci) : -1;
+                    if (currentLineNumber != previousLineNumber) {
+                        genInfoPointNode(InfopointReason.BYTECODE_POSITION, null);
+                        previousLineNumber = currentLineNumber;
+                    }
+                }
+
+                // read the opcode
+                int opcode = stream.currentBC();
+                assert traceState();
+                assert traceInstruction(bci, opcode, bci == block.startBci);
+                if (parent == null && bci == entryBCI) {
+                    if (block.getJsrScope() != JsrScope.EMPTY_SCOPE) {
+                        throw new JsrNotSupportedBailout("OSR into a JSR scope is not supported");
+                    }
+                    EntryMarkerNode x = append(new EntryMarkerNode());
+                    frameState.insertProxies(value -> graph.unique(new EntryProxyNode(value, x)));
+                    x.setStateAfter(createFrameState(bci, x));
+                }
+
                 processBytecode(bci, opcode);
             } catch (BailoutException e) {
                 // Don't wrap bailouts as parser errors
@@ -3017,11 +3033,22 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
-    private DebugCloseable openNodeContext() {
-        if ((graphBuilderConfig.trackNodeSourcePosition() || debug.isDumpEnabledForMethod()) && !parsingIntrinsic()) {
-            return graph.withNodeSourcePosition(createBytecodePosition());
+    private DebugCloseable openNodeContext(FrameStateBuilder state, int startBci) {
+        if (graph.trackNodeSourcePosition()) {
+            return graph.withNodeSourcePosition(state.createBytecodePosition(startBci));
         }
         return null;
+    }
+
+    private DebugCloseable openNodeContext(ResolvedJavaMethod targetMethod) {
+        if (graph.trackNodeSourcePosition()) {
+            return graph.withNodeSourcePosition(new NodeSourcePosition(null, createBytecodePosition(), targetMethod, -1));
+        }
+        return null;
+    }
+
+    private DebugCloseable openNodeContext() {
+        return openNodeContext(frameState, bci());
     }
 
     /* Also a hook for subclasses. */
@@ -3433,7 +3460,8 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected NodeSourcePosition createBytecodePosition() {
-        return frameState.createBytecodePosition(bci());
+        NodeSourcePosition bytecodePosition = frameState.createBytecodePosition(bci());
+        return bytecodePosition;
     }
 
     public void setCurrentFrameState(FrameStateBuilder frameState) {
