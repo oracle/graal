@@ -69,7 +69,7 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
 
     private static boolean isLoopIncrement(AddNode self) {
         return self.getX() instanceof PhiNode && ((PhiNode) self.getX()).isLoopPhi() ||
-                    self.getY() instanceof PhiNode && ((PhiNode) self.getY()).isLoopPhi();
+                        self.getY() instanceof PhiNode && ((PhiNode) self.getY()).isLoopPhi();
     }
 
     private static ValueNode canonical(AddNode addNode, BinaryOp<Add> op, ValueNode forX, ValueNode forY, NodeView view) {
