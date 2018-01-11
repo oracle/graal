@@ -122,7 +122,7 @@ public class TruffleGraphBuilderPlugins {
         } else {
             registerFrameWithBoxingPlugins(plugins, metaAccess, canDelayIntrinsification);
         }
-
+        registerProfilePlugins(plugins, canDelayIntrinsification, types);
     }
 
     public static void registerOptimizedAssumptionPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, KnownTruffleTypes types) {
@@ -425,6 +425,11 @@ public class TruffleGraphBuilderPlugins {
         registerUnsafeCast(r, canDelayIntrinsification);
     }
 
+    private static void registerProfilePlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, KnownTruffleTypes types) {
+        Registration r = new Registration(plugins, new ResolvedJavaSymbol(types.classValueProfile));
+        registerUnsafeCast(r, canDelayIntrinsification);
+    }
+
     /**
      * We intrinsify the getXxx, setXxx, and isXxx methods for all type tags. The intrinsic nodes
      * are lightweight fixed nodes without a {@link FrameState}. No {@link FrameState} is important
@@ -541,18 +546,22 @@ public class TruffleGraphBuilderPlugins {
     }
 
     public static void registerUnsafeCast(Registration r, boolean canDelayIntrinsification) {
-        r.register4("unsafeCast", Object.class, Class.class, boolean.class, boolean.class, new InvocationPlugin() {
+        r.register5("unsafeCast", Object.class, Class.class, boolean.class, boolean.class, boolean.class, new InvocationPlugin() {
             @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode clazz, ValueNode condition, ValueNode nonNull) {
-                if (clazz.isConstant() && nonNull.isConstant()) {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode clazz, ValueNode condition, ValueNode nonNull,
+                            ValueNode isExactType) {
+                if (clazz.isConstant() && nonNull.isConstant() && isExactType.isConstant()) {
                     ConstantReflectionProvider constantReflection = b.getConstantReflection();
                     ResolvedJavaType javaType = constantReflection.asJavaType(clazz.asConstant());
                     if (javaType == null) {
                         b.push(JavaKind.Object, object);
                     } else {
-                        TypeReference type = TypeReference.createTrusted(b.getAssumptions(), javaType);
-                        if (javaType.isArray()) {
-                            type = type.asExactReference();
+                        TypeReference type;
+                        if (isExactType.asJavaConstant().asInt() != 0) {
+                            assert javaType.isConcrete() || javaType.isArray() : "exact type is not a concrete class: " + javaType;
+                            type = TypeReference.createExactTrusted(javaType);
+                        } else {
+                            type = TypeReference.createTrusted(b.getAssumptions(), javaType);
                         }
                         Stamp piStamp = StampFactory.object(type, nonNull.asJavaConstant().asInt() != 0);
                         ConditionAnchorNode valueAnchorNode = null;
@@ -580,7 +589,7 @@ public class TruffleGraphBuilderPlugins {
                 } else if (canDelayIntrinsification) {
                     return false;
                 } else {
-                    throw b.bailout("unsafeCast arguments could not reduce to a constant: " + clazz + ", " + nonNull);
+                    throw b.bailout("unsafeCast arguments could not reduce to a constant: " + clazz + ", " + nonNull + ", " + isExactType);
                 }
             }
         });

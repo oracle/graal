@@ -495,7 +495,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      *
      * @param length the length of {@code args} that is guaranteed to be final at compile time
      */
-    static Object castArrayFixedLength(Object[] args, int length) {
+    static Object[] castArrayFixedLength(Object[] args, int length) {
         return args;
     }
 
@@ -504,10 +504,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      *
      * @param type the type the compiler should assume for {@code value}
      * @param condition the condition that guards the assumptions expressed by this directive
-     * @param nonNull the nullness info the compiler should assume for {@code args}
+     * @param nonNull the nullness info the compiler should assume for {@code value}
+     * @param exact if {@code true}, the compiler should assume exact type info
      */
     @SuppressWarnings({"unchecked"})
-    static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
+    static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
         return (T) value;
     }
 

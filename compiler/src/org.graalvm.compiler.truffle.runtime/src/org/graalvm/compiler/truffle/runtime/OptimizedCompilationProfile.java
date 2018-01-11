@@ -239,7 +239,7 @@ public class OptimizedCompilationProfile {
         Assumption argumentTypesAssumption = profiledArgumentTypesAssumption;
         Object[] args = originalArguments;
         if (argumentTypesAssumption != null && argumentTypesAssumption.isValid()) {
-            args = OptimizedCallTarget.unsafeCast(OptimizedCallTarget.castArrayFixedLength(args, profiledArgumentTypes.length), Object[].class, true, true);
+            args = OptimizedCallTarget.unsafeCast(OptimizedCallTarget.castArrayFixedLength(args, profiledArgumentTypes.length), Object[].class, true, true, true);
             args = castArgumentsImpl(args);
         }
         return args;
@@ -250,7 +250,7 @@ public class OptimizedCompilationProfile {
         Class<?>[] types = profiledArgumentTypes;
         Object[] castArguments = new Object[types.length];
         for (int i = 0; i < types.length; i++) {
-            castArguments[i] = types[i] != null ? OptimizedCallTarget.unsafeCast(originalArguments[i], types[i], true, true) : originalArguments[i];
+            castArguments[i] = types[i] != null ? OptimizedCallTarget.unsafeCast(originalArguments[i], types[i], true, true, true) : originalArguments[i];
         }
         return castArguments;
     }
@@ -258,7 +258,7 @@ public class OptimizedCompilationProfile {
     final Object injectReturnValueProfile(Object result) {
         Class<?> klass = profiledReturnType;
         if (klass != null && CompilerDirectives.inCompiledCode() && profiledReturnTypeAssumption.isValid()) {
-            return OptimizedCallTarget.unsafeCast(result, klass, true, true);
+            return OptimizedCallTarget.unsafeCast(result, klass, true, true, true);
         }
         return result;
     }
