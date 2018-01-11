@@ -24,18 +24,22 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.util.Map;
 
+import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
+import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
+
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- * A Truffle AST level listener for Graal Truffle runtime events related to the execution phases of
- * a {@link OptimizedCallTarget}. The states for a {@link OptimizedCallTarget} instance can be
+ * A listener for events related to the execution and compilation phases of a
+ * {@link OptimizedCallTarget}. The states for a {@link OptimizedCallTarget} instance can be
  * described using the following deterministic automata: * <code>
  * <pre>
  * ( (split | (queue . unqueue))*
  *    . queue . started
- *    . (success | failed)
+ *    . (truffleTierFinished . graalTierFinished . success)
+ *      | ([truffleTierFinished] . [graalTierFinished] . failed)
  *    . invalidate )*
  * </pre>
  * </code>
@@ -69,9 +73,9 @@ public interface GraalTruffleRuntimeListener {
      *
      * @param target the call target that has just been removed from the compilation queue
      * @param source the source object that caused the compilation to be unqueued. For example the
-     *            source {@link Node} object. May be <code>null</code>.
+     *            source {@link Node} object. May be {@code null}.
      * @param reason a textual description of the reason why the compilation was unqueued. May be
-     *            <code>null</code>.
+     *            {@code null}.
      */
     default void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
     }
@@ -90,8 +94,19 @@ public interface GraalTruffleRuntimeListener {
      *
      * @param target the call target being compiled
      * @param inliningDecision the inlining plan used during partial evaluation
+     * @param graph access to compiler graph info
      */
-    default void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision) {
+    default void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph) {
+    }
+
+    /**
+     * Notifies this object when Graal compilation of a call target completes. Graal compilation
+     * occurs between {@link #onCompilationTruffleTierFinished} and code installation.
+     *
+     * @param target the call target that was compiled
+     * @param graph the graph representing {@code target}
+     */
+    default void onCompilationGraalTierFinished(OptimizedCallTarget target, GraphInfo graph) {
     }
 
     /**
@@ -99,8 +114,10 @@ public interface GraalTruffleRuntimeListener {
      *
      * @param target the call target whose compilation succeeded
      * @param inliningDecision the inlining plan used during the compilation
+     * @param graph access to compiler graph info
+     * @param result access to compilation result info
      */
-    default void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision) {
+    default void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
     }
 
     /**
@@ -109,7 +126,7 @@ public interface GraalTruffleRuntimeListener {
      * @param target the call target whose compilation failed
      * @param reason a description of the failure
      * @param bailout specifies whether the failure was a bailout or an error in the compiler. A
-     *            bailout means the compiler aborts the compilation based on some of property of
+     *            bailout means the compiler aborted the compilation based on some of property of
      *            {@code target} (e.g., too big). A non-bailout means an unexpected error in the
      *            compiler itself.
      * @param permanentBailout specifies if a bailout is due to a condition that probably won't
@@ -124,16 +141,18 @@ public interface GraalTruffleRuntimeListener {
      *
      * @param target the call target whose compiled code was just invalidated
      * @param source the source object that caused the compilation to be invalidated. For example
-     *            the source {@link Node} object. May be <code>null</code>.
+     *            the source {@link Node} object. May be {@code null}.
      * @param reason a textual description of the reason why the compilation was invalidated. May be
-     *            <code>null</code>.
+     *            {@code null}.
      */
     default void onCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
     }
 
     /**
+     * Notifies this object when {@code target} has just deoptimized and is now executing in the
+     * Truffle interpreter instead of executing compiled code.
      *
-     * @param target
+     * @param target the call target whose compiled code was just deoptimized
      * @param frame
      */
     default void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {

@@ -27,6 +27,8 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TraceTr
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
+import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -50,7 +52,7 @@ public final class TraceCompilationPolymorphismListener extends AbstractGraalTru
     }
 
     @Override
-    public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision) {
+    public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
         for (Node node : target.nodeIterable(inliningDecision)) {
             if (node != null && (node.getCost() == NodeCost.MEGAMORPHIC || node.getCost() == NodeCost.POLYMORPHIC)) {
                 NodeCost cost = node.getCost();

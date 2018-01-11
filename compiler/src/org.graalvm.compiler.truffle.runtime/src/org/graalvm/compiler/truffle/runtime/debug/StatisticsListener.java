@@ -26,6 +26,7 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationStatistics;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -37,6 +38,8 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.Function;
 
+import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
+import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -53,7 +56,7 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 
-public final class ASTStatisticsListener extends AbstractGraalTruffleRuntimeListener {
+public final class StatisticsListener extends AbstractGraalTruffleRuntimeListener {
 
     private long firstCompilation;
 
@@ -87,16 +90,35 @@ public final class ASTStatisticsListener extends AbstractGraalTruffleRuntimeList
     private final IntSummaryStatistics loopCount = new IntSummaryStatistics();
 
     private final LongSummaryStatistics compilationTime = new LongSummaryStatistics();
+    private final LongSummaryStatistics compilationTimeTruffleTier = new LongSummaryStatistics();
+    private final LongSummaryStatistics compilationTimeGraalTier = new LongSummaryStatistics();
+    private final LongSummaryStatistics compilationTimeCodeInstallation = new LongSummaryStatistics();
 
-    private ASTStatisticsListener(GraalTruffleRuntime runtime) {
+    private final IntSummaryStatistics truffleTierNodeCount = new IntSummaryStatistics();
+    private final IdentityStatistics<String> truffleTierNodeStatistics = new IdentityStatistics<>();
+    private final IntSummaryStatistics graalTierNodeCount = new IntSummaryStatistics();
+    private final IdentityStatistics<String> graalTierNodeStatistics = new IdentityStatistics<>();
+
+    private final IntSummaryStatistics compilationResultCodeSize = new IntSummaryStatistics();
+    private final IntSummaryStatistics compilationResultExceptionHandlers = new IntSummaryStatistics();
+    private final IntSummaryStatistics compilationResultInfopoints = new IntSummaryStatistics();
+    private final IdentityStatistics<String> compilationResultInfopointStatistics = new IdentityStatistics<>();
+    private final IntSummaryStatistics compilationResultMarks = new IntSummaryStatistics();
+    private final IntSummaryStatistics compilationResultTotalFrameSize = new IntSummaryStatistics();
+    private final IntSummaryStatistics compilationResultDataPatches = new IntSummaryStatistics();
+
+    private StatisticsListener(GraalTruffleRuntime runtime) {
         super(runtime);
     }
 
-    private final ThreadLocal<Long> compilationStart = new ThreadLocal<>();
+    /**
+     * Records interesting points in time for the current compilation.
+     */
+    private final ThreadLocal<Times> compilationTimes = new ThreadLocal<>();
 
     public static void install(GraalTruffleRuntime runtime) {
         if (TruffleCompilerOptions.getValue(TruffleCompilationStatistics) || TruffleCompilerOptions.getValue(TruffleCompilationStatisticDetails)) {
-            runtime.addListener(new ASTStatisticsListener(runtime));
+            runtime.addListener(new StatisticsListener(runtime));
         }
     }
 
@@ -130,18 +152,19 @@ public final class ASTStatisticsListener extends AbstractGraalTruffleRuntimeList
     @Override
     public synchronized void onCompilationStarted(OptimizedCallTarget target) {
         compilations++;
-        long start = System.nanoTime();
-        compilationStart.set(start);
-
+        final Times times = new Times();
+        compilationTimes.set(times);
         OptimizedCompilationProfile profile = target.getCompilationProfile();
         if (profile != null) {
             deferCompilations.accept(profile.getDeferredCount());
-            timeToCompilation.accept(start - profile.getTimestamp());
+            timeToCompilation.accept(times.compilationStarted - profile.getTimestamp());
         }
     }
 
     @Override
-    public synchronized void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision) {
+    public synchronized void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph) {
+        final Times times = compilationTimes.get();
+        times.truffleTierFinished = System.nanoTime();
         nodeStatistics.accept(nodeClasses(target, inliningDecision));
 
         CallTargetNodeStatistics callTargetStat = new CallTargetNodeStatistics(target, inliningDecision);
@@ -160,6 +183,11 @@ public final class ASTStatisticsListener extends AbstractGraalTruffleRuntimeList
         callCountDirectCloned.accept(callTargetStat.getCallCountDirectCloned());
         callCountDirectNotCloned.accept(callTargetStat.getCallCountDirectNotCloned());
         loopCount.accept(callTargetStat.getLoopCount());
+
+        truffleTierNodeCount.accept(graph.getNodeCount());
+        if (TruffleCompilerOptions.getValue(TruffleCompilationStatisticDetails)) {
+            truffleTierNodeStatistics.accept(Arrays.asList(graph.getNodeTypes(true)));
+        }
     }
 
     private static Collection<Class<?>> nodeClasses(OptimizedCallTarget target, TruffleInlining inliningDecision) {
@@ -173,20 +201,41 @@ public final class ASTStatisticsListener extends AbstractGraalTruffleRuntimeList
     }
 
     @Override
-    public synchronized void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision) {
+    public synchronized void onCompilationGraalTierFinished(OptimizedCallTarget target, GraphInfo graph) {
+        final Times times = compilationTimes.get();
+        times.graalTierFinished = System.nanoTime();
+        graalTierNodeCount.accept(graph.getNodeCount());
+        if (TruffleCompilerOptions.getValue(TruffleCompilationStatisticDetails)) {
+            graalTierNodeStatistics.accept(Arrays.asList(graph.getNodeTypes(true)));
+        }
+    }
+
+    @Override
+    public synchronized void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
         success++;
-        onCompilationFinish();
+        long compilationDone = System.nanoTime();
+
+        Times times = compilationTimes.get();
+
+        compilationTime.accept(compilationDone - times.compilationStarted);
+        compilationTimeTruffleTier.accept(times.truffleTierFinished - times.compilationStarted);
+        compilationTimeGraalTier.accept(times.graalTierFinished - times.truffleTierFinished);
+        compilationTimeCodeInstallation.accept(compilationDone - times.graalTierFinished);
+
+        compilationResultCodeSize.accept(result.getTargetCodeSize());
+        compilationResultTotalFrameSize.accept(result.getTotalFrameSize());
+        compilationResultExceptionHandlers.accept(result.getExceptionHandlersCount());
+        compilationResultInfopoints.accept(result.getInfopointsCount());
+        compilationResultInfopointStatistics.accept(Arrays.asList(result.getInfopoints()));
+        compilationResultMarks.accept(result.getMarksCount());
+        compilationResultDataPatches.accept(result.getDataPatchesCount());
     }
 
     @Override
     public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
         failures++;
-        onCompilationFinish();
-    }
-
-    private void onCompilationFinish() {
-        long compilationDone = System.nanoTime();
-        compilationTime.accept(compilationDone - compilationStart.get());
+        final Times times = compilationTimes.get();
+        compilationTime.accept(System.nanoTime() - times.compilationStarted);
     }
 
     @Override
@@ -216,6 +265,9 @@ public final class ASTStatisticsListener extends AbstractGraalTruffleRuntimeList
         printStatisticTime(rt, "Time to compilation", timeToCompilation);
 
         printStatisticTime(rt, "Compilation time", compilationTime);
+        printStatisticTime(rt, "  Truffle Tier", compilationTimeTruffleTier);
+        printStatisticTime(rt, "  Graal Tier", compilationTimeGraalTier);
+        printStatisticTime(rt, "  Code Installation", compilationTimeCodeInstallation);
 
         printStatistic(rt, "Truffle node count", nodeCount);
         printStatistic(rt, "  Trivial", nodeCountTrivial);
@@ -232,10 +284,26 @@ public final class ASTStatisticsListener extends AbstractGraalTruffleRuntimeList
         printStatistic(rt, "    Cloned", callCountDirectCloned);
         printStatistic(rt, "    Not Cloned", callCountDirectNotCloned);
         printStatistic(rt, "Truffle loops", loopCount);
+        printStatistic(rt, "Graal node count");
+        printStatistic(rt, "  After Truffle Tier", truffleTierNodeCount);
+        printStatistic(rt, "  After Graal Tier", graalTierNodeCount);
+
+        printStatistic(rt, "Graal compilation result");
+        printStatistic(rt, "  Code size", compilationResultCodeSize);
+        printStatistic(rt, "  Total frame size", compilationResultTotalFrameSize);
+        printStatistic(rt, "  Exception handlers", compilationResultExceptionHandlers);
+        printStatistic(rt, "  Infopoints", compilationResultInfopoints);
+        compilationResultInfopointStatistics.printStatistics(rt, Function.identity());
+        printStatistic(rt, "  Marks", compilationResultMarks);
+        printStatistic(rt, "  Data references", compilationResultDataPatches);
 
         if (TruffleCompilerOptions.getValue(TruffleCompilationStatisticDetails)) {
             printStatistic(rt, "Truffle nodes");
             nodeStatistics.printStatistics(rt, Class::getSimpleName);
+            printStatistic(rt, "Graal nodes after Truffle tier");
+            truffleTierNodeStatistics.printStatistics(rt, Function.identity());
+            printStatistic(rt, "Graal nodes after Graal tier");
+            graalTierNodeStatistics.printStatistics(rt, Function.identity());
         }
     }
 
@@ -407,5 +475,11 @@ public final class ASTStatisticsListener extends AbstractGraalTruffleRuntimeList
         public int getLoopCount() {
             return loopCount;
         }
+    }
+
+    static class Times {
+        final long compilationStarted = System.nanoTime();
+        long truffleTierFinished;
+        long graalTierFinished;
     }
 }

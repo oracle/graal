@@ -73,7 +73,7 @@ public class TransferToInterpreterTest {
         TruffleCompilerImpl compiler = (TruffleCompilerImpl) runtime.newTruffleCompiler();
         CompilationIdentifier compilationId = compiler.getCompilationIdentifier(compilable);
         TruffleInliningPlan inliningPlan = new TruffleInlining(compilable, new DefaultInliningPolicy());
-        compiler.compileAST(debug, compilable, inliningPlan, compilationId, null);
+        compiler.compileAST(debug, compilable, inliningPlan, compilationId, null, null);
         Assert.assertTrue(target.isValid());
         target.call(0);
         Assert.assertTrue(target.isValid());

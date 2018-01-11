@@ -26,14 +26,14 @@ import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * A plan to be consulted when partial evaluating or compiling a Truffle AST as to whether a given
- * call in the AST should be inlined.
+ * call should be inlined.
  */
 public interface TruffleInliningPlan {
 
     /**
      * Gets the decision of whether or not to inline the Truffle AST called by {@code callNode}.
      *
-     * @param callNode a call in the Truffle AST represented by this object
+     * @param callNode a call in the AST represented by this object
      * @return the decision for {@code callNode} or {@code null} when this object contains no
      *         decision for {@code callNode}
      */
@@ -41,8 +41,8 @@ public interface TruffleInliningPlan {
 
     /**
      * Decision of whether a called Truffle AST should be inlined. If {@link #shouldInline()}
-     * returns {@code true}, this object is also an inlining plan for the calls in the called
-     * Truffle AST.
+     * returns {@code true}, this object is also an inlining plan for the calls in the to-be-inlined
+     * AST.
      */
     interface Decision extends TruffleInliningPlan {
 

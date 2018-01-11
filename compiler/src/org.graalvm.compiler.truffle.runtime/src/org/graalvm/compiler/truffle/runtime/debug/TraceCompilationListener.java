@@ -28,6 +28,8 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TraceTr
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
+import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -98,13 +100,16 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     }
 
     @Override
-    public void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision) {
-        currentCompilation.get().timePartialEvaluationFinished = System.nanoTime();
+    public void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph) {
+        final Times current = currentCompilation.get();
+        current.timePartialEvaluationFinished = System.nanoTime();
+        current.nodeCountPartialEval = graph.getNodeCount();
     }
 
     @Override
-    public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision) {
+    public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo compilationResult) {
         long timeCompilationFinished = System.nanoTime();
+        int nodeCountLowered = graph.getNodeCount();
         Times compilation = currentCompilation.get();
 
         int calls = 0;
@@ -131,6 +136,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                         (compilation.timePartialEvaluationFinished - compilation.timeCompilationStarted) / 1e6, //
                         (timeCompilationFinished - compilation.timePartialEvaluationFinished) / 1e6));
         properties.put("DirectCallNodes", String.format("I %4d/D %4d", inlinedCalls, dispatchedCalls));
+        properties.put("GraalNodes", String.format("%5d/%5d", compilation.nodeCountPartialEval, nodeCountLowered));
         properties.put("CodeAddress", "0x" + Long.toHexString(target.getAddress()));
         properties.put("Source", formatSourceSection(target.getRootNode().getSourceSection()));
 
@@ -164,5 +170,6 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     private static final class Times {
         final long timeCompilationStarted = System.nanoTime();
         long timePartialEvaluationFinished;
+        long nodeCountPartialEval;
     }
 }

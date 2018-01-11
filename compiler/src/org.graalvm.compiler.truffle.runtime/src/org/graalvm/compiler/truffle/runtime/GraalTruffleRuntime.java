@@ -75,7 +75,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleOptionsOverrideScope;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
-import org.graalvm.compiler.truffle.runtime.debug.ASTStatisticsListener;
+import org.graalvm.compiler.truffle.runtime.debug.StatisticsListener;
 import org.graalvm.compiler.truffle.runtime.debug.TraceASTCompilationListener;
 import org.graalvm.compiler.truffle.runtime.debug.TraceCallTreeListener;
 import org.graalvm.compiler.truffle.runtime.debug.TraceCompilationFailureListener;
@@ -232,27 +232,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @Override
-    public void onCompilationTruffleTierFinished(CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan) {
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) compilable;
-        listeners.onCompilationTruffleTierFinished(callTarget, (TruffleInlining) inliningPlan);
-    }
-
-    @Override
-    public void onCompilationSuccess(CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan) {
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) compilable;
-        listeners.onCompilationSuccess(callTarget, (TruffleInlining) inliningPlan);
-    }
-
-    @Override
-    public void onCompilationFailure(CompilableTruffleAST compilable, Throwable reason) {
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) compilable;
-        BailoutException bailout = reason instanceof BailoutException ? (BailoutException) reason : null;
-        boolean permanentBailout = bailout != null ? bailout.isPermanent() : false;
-        listeners.onCompilationFailed(callTarget, reason.toString(), bailout != null, permanentBailout);
-        callTarget.onCompilationFailed(reason);
-    }
-
-    @Override
     public Consumer<InstalledCode> registerInstalledCodeEntryForAssumption(JavaConstant optimizedAssumptionConstant) {
         SnippetReflectionProvider snippetReflection = getGraalRuntime().getRequiredCapability(SnippetReflectionProvider.class);
         OptimizedAssumption optimizedAssumption = snippetReflection.asObject(OptimizedAssumption.class, optimizedAssumptionConstant);
@@ -406,7 +385,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         TraceCallTreeListener.install(this);
         TraceInliningListener.install(this);
         TraceSplittingListener.install(this);
-        ASTStatisticsListener.install(this);
+        StatisticsListener.install(this);
         TraceASTCompilationListener.install(this);
         installShutdownHooks();
     }
@@ -687,8 +666,15 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @SuppressWarnings("try")
     protected void doCompile(OptionValues options, OptimizedCallTarget callTarget, Cancellable task) {
+        listeners.onCompilationStarted(callTarget);
         TruffleCompiler compiler = getTruffleCompiler();
         TruffleInlining inlining = new TruffleInlining(callTarget, new DefaultInliningPolicy());
+        maybeDumpTruffleTree(options, callTarget);
+        compiler.doCompile(options, callTarget, inlining, task, listeners.isEmpty() ? null : listeners);
+        dequeueInlinedCallSites(inlining, callTarget);
+    }
+
+    private static void maybeDumpTruffleTree(OptionValues options, OptimizedCallTarget callTarget) {
         Description description = new Description(callTarget, "TruffleTree:" + callTarget.getName());
         DebugContext debug = DebugContext.create(options, description, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, singletonList(new TruffleTreeDebugHandlersFactory()));
         GraphOutput<Void, ?> output = null;
@@ -709,10 +695,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             }
             throw debug.handle(e);
         }
-
-        listeners.onCompilationStarted(callTarget);
-        compiler.doCompile(options, callTarget, inlining, task);
-        dequeueInlinedCallSites(inlining, callTarget);
     }
 
     private static void dequeueInlinedCallSites(TruffleInlining inliningDecision, OptimizedCallTarget optimizedCallTarget) {

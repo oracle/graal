@@ -269,28 +269,4 @@ public interface TruffleCompilerRuntime {
      * Determines if {@code method} is annotated by {@code TruffleBoundary}.
      */
     boolean isTruffleBoundary(ResolvedJavaMethod method);
-
-    /**
-     * Notifies this object when compilation of {@code compilable} has completed partial evaluation
-     * and is about to perform compilation of the graph produced by partial evaluation.
-     *
-     * @param compilable the call target being compiled
-     * @param inliningPlan the inlining plan used during partial evaluation
-     */
-    void onCompilationTruffleTierFinished(CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan);
-
-    /**
-     * Notifies this runtime when compilation of {@code compilable} succeeds.
-     *
-     * @param compilable the Truffle AST whose compilation succeeded
-     */
-    void onCompilationSuccess(CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan);
-
-    /**
-     * Notifies this runtime when compilation of {@code compilable} fails.
-     *
-     * @param compilable the Truffle AST whose compilation failed
-     * @param reason the reason compilation failed
-     */
-    void onCompilationFailure(CompilableTruffleAST compilable, Throwable reason);
 }

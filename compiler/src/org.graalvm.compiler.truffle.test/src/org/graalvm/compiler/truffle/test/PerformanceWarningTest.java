@@ -115,7 +115,7 @@ public class PerformanceWarningTest {
                     TruffleCompilerImpl compiler = (TruffleCompilerImpl) runtime.newTruffleCompiler();
                     CompilationIdentifier compilationId = compiler.getCompilationIdentifier(compilable);
                     TruffleInliningPlan inliningPlan = new TruffleInlining(compilable, new DefaultInliningPolicy());
-                    compiler.compileAST(debug, compilable, inliningPlan, compilationId, null);
+                    compiler.compileAST(debug, compilable, inliningPlan, compilationId, null, null);
                 }
             } catch (AssertionError e) {
                 seenException = true;

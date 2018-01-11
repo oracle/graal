@@ -24,13 +24,18 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.util.ArrayList;
 
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
+import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
+
 import com.oracle.truffle.api.frame.Frame;
 
 /**
- * A collection for broadcasting {@link GraalTruffleRuntimeListener} events.
+ * A collection for broadcasting {@link GraalTruffleRuntimeListener} events and converting
+ * {@link TruffleCompilerListener} events to {@link GraalTruffleRuntimeListener} events.
  */
 @SuppressWarnings("serial")
-final class GraalTruffleRuntimeListenerDispatcher extends ArrayList<GraalTruffleRuntimeListener> implements GraalTruffleRuntimeListener {
+final class GraalTruffleRuntimeListenerDispatcher extends ArrayList<GraalTruffleRuntimeListener> implements GraalTruffleRuntimeListener, TruffleCompilerListener {
 
     @Override
     public boolean add(GraalTruffleRuntimeListener e) {
@@ -76,16 +81,23 @@ final class GraalTruffleRuntimeListenerDispatcher extends ArrayList<GraalTruffle
     }
 
     @Override
-    public void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision) {
+    public void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph) {
         for (GraalTruffleRuntimeListener l : this) {
-            l.onCompilationTruffleTierFinished(target, inliningDecision);
+            l.onCompilationTruffleTierFinished(target, inliningDecision, graph);
         }
     }
 
     @Override
-    public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision) {
+    public void onCompilationGraalTierFinished(OptimizedCallTarget target, GraphInfo graph) {
         for (GraalTruffleRuntimeListener l : this) {
-            l.onCompilationSuccess(target, inliningDecision);
+            l.onCompilationGraalTierFinished(target, graph);
+        }
+    }
+
+    @Override
+    public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
+        for (GraalTruffleRuntimeListener l : this) {
+            l.onCompilationSuccess(target, inliningDecision, graph, result);
         }
     }
 
@@ -108,5 +120,27 @@ final class GraalTruffleRuntimeListenerDispatcher extends ArrayList<GraalTruffle
         for (GraalTruffleRuntimeListener l : this) {
             l.onShutdown();
         }
+    }
+
+    // Conversion from TruffleCompilerListener events to GraalTruffleRuntimeListener events
+
+    @Override
+    public void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan, GraphInfo graph) {
+        onCompilationTruffleTierFinished((OptimizedCallTarget) compilable, (TruffleInlining) inliningPlan, graph);
+    }
+
+    @Override
+    public void onGraalTierFinished(CompilableTruffleAST compilable, GraphInfo graph) {
+        onCompilationGraalTierFinished((OptimizedCallTarget) compilable, graph);
+    }
+
+    @Override
+    public void onSuccess(CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan, GraphInfo graph, CompilationResultInfo result) {
+        onCompilationSuccess((OptimizedCallTarget) compilable, (TruffleInlining) inliningPlan, graph, result);
+    }
+
+    @Override
+    public void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout) {
+        onCompilationFailed((OptimizedCallTarget) compilable, reason, bailout, permanentBailout);
     }
 }

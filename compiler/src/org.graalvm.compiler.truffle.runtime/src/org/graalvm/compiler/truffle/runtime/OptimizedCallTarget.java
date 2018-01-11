@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -377,6 +378,40 @@ public class OptimizedCallTarget extends InstalledCode implements CompilableTruf
 
     boolean cancelInstalledTask(Node source, CharSequence reason) {
         return runtime().cancelInstalledTask(this, source, reason);
+    }
+
+    @Override
+    public void onCompilationFailed(Supplier<String> detailedReason, boolean bailout, boolean permanentBailout) {
+        if (bailout && !permanentBailout) {
+            /*
+             * Non-permanent bailouts are expected cases. A non-permanent bailout would be for
+             * example class redefinition during code installation. As opposed to permanent
+             * bailouts, non-permanent bailouts will trigger recompilation and are not considered a
+             * failure state.
+             */
+        } else {
+            compilationProfile.reportCompilationFailure();
+            if (TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreThrown)) {
+                final InternalError error = new InternalError(detailedReason.get());
+                throw new OptimizationFailedException(error, this);
+            }
+            /*
+             * Automatically enable TruffleCompilationExceptionsAreFatal when asserts are enabled
+             * but respect TruffleCompilationExceptionsAreFatal if it's been explicitly set.
+             */
+            boolean truffleCompilationExceptionsAreFatal = TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreFatal);
+            assert TruffleCompilationExceptionsAreFatal.hasBeenSet(TruffleCompilerOptions.getOptions()) || (truffleCompilationExceptionsAreFatal = true) == true;
+            truffleCompilationExceptionsAreFatal = truffleCompilationExceptionsAreFatal || TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal);
+
+            if (TruffleCompilerOptions.getValue(TruffleCompilationExceptionsArePrinted) || truffleCompilationExceptionsAreFatal) {
+                log(detailedReason.get());
+                if (truffleCompilationExceptionsAreFatal) {
+                    log("Exiting VM due to " + (TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreFatal) ? TruffleCompilationExceptionsAreFatal.getName()
+                                    : TrufflePerformanceWarningsAreFatal.getName()) + "=true");
+                    System.exit(-1);
+                }
+            }
+        }
     }
 
     void onCompilationFailed(Throwable t) {

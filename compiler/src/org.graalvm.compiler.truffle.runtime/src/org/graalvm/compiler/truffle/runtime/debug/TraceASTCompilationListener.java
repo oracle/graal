@@ -26,6 +26,8 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TraceTr
 
 import java.util.List;
 
+import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
+import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -52,7 +54,7 @@ public final class TraceASTCompilationListener extends AbstractGraalTruffleRunti
     }
 
     @Override
-    public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision) {
+    public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo) {
         runtime.log(0, "opt AST", target.toString(), target.getDebugProperties(inliningDecision));
         printCompactTree(target, inliningDecision);
     }

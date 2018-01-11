@@ -39,7 +39,7 @@ public interface TruffleCompiler {
      * @param task an object that must be periodically queried during compilation to see if the
      *            compilation has been cancelled by the requestor
      */
-    void doCompile(OptionValues options, CompilableTruffleAST compilable, TruffleInliningPlan inlining, Cancellable task);
+    void doCompile(OptionValues options, CompilableTruffleAST compilable, TruffleInliningPlan inlining, Cancellable task, TruffleCompilerListener listener);
 
     /**
      * Notifies this object that it will no longer being used and should thus perform all relevant
