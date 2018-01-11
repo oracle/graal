@@ -22,6 +22,7 @@
  */
 package com.oracle.svm.core.c;
 
+import java.nio.charset.Charset;
 import java.util.Arrays;
 
 import org.graalvm.nativeimage.Feature;
@@ -78,12 +79,17 @@ class CTypeConversionSupportImpl implements CTypeConversionSupport {
     }
 
     @Override
-    public CCharPointer toCString(CharSequence javaString, CCharPointer buffer, UnsignedWord bufferSize) {
+    public UnsignedWord toCString(CharSequence javaString, CCharPointer buffer, UnsignedWord bufferSize) {
+        return toCString(javaString, Charset.defaultCharset(), buffer, bufferSize);
+    }
+
+    @Override
+    public UnsignedWord toCString(CharSequence javaString, Charset charset, CCharPointer buffer, UnsignedWord bufferSize) {
         if (javaString == null || bufferSize.equal(0)) {
-            return WordFactory.nullPointer();
+            return WordFactory.zero();
         }
 
-        byte[] baseString = javaString.toString().getBytes();
+        byte[] baseString = javaString.toString().getBytes(charset);
 
         /*
          * The array length is always an int, so the truncation of the buffer size to int can never
@@ -95,7 +101,7 @@ class CTypeConversionSupportImpl implements CTypeConversionSupport {
             buffer.write(i, baseString[i]);
         }
 
-        return buffer;
+        return WordFactory.unsigned(len);
     }
 
     @Override
