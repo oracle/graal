@@ -638,20 +638,6 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     }
 }
 
-// @TargetClass(org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.class)
-// final class Target_org.graalvm.compiler.truffle_OptimizedCallTarget {
-//
-// @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
-// private static PrintStream OUT = JavaLangSubstitutions.runtimeSystemOut;
-// }
-//
-// @TargetClass(org.graalvm.compiler.truffle.debug.AbstractDebugCompilationListener.class)
-// final class Target_org.graalvm.compiler.truffle_debug_AbstractDebugCompilationListener {
-//
-// @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
-// private static PrintStream OUT = JavaLangSubstitutions.runtimeSystemOut;
-// }
-
 /*
  * Java interoperability cannot be supported on Substrate VM. Ensure that the nodes are not used by
  * marking the node classes as deleted.

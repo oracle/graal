@@ -667,7 +667,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
     }
 
-    @SuppressWarnings("try")
     protected void doCompile(OptionValues options, OptimizedCallTarget callTarget, Cancellable task) {
         listeners.onCompilationStarted(callTarget);
         TruffleCompiler compiler = getTruffleCompiler();
@@ -677,6 +676,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         dequeueInlinedCallSites(inlining, callTarget);
     }
 
+    @SuppressWarnings("try")
     private static void maybeDumpTruffleTree(OptionValues options, OptimizedCallTarget callTarget) {
         Description description = new Description(callTarget, "TruffleTree:" + callTarget.getName());
         DebugContext debug = DebugContext.create(options, description, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, singletonList(new TruffleTreeDebugHandlersFactory()));
