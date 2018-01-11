@@ -22,28 +22,50 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplitting;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingMaxCalleeSize;
-
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
-
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 import com.oracle.truffle.api.nodes.RootNode;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplitting;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingMaxCalleeSize;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUsePollutionBasedSplittingStrategy;
+
 
 final class TruffleSplittingStrategy {
 
     static void beforeCall(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
+        final GraalTVMCI.EngineData engineData = tvmci.getEngineData(call.getRootNode());
+        if (TruffleCompilerOptions.getValue(TruffleUsePollutionBasedSplittingStrategy)) {
+            if (pollutionBasedShouldSplit(call, engineData)) {
+                engineData.splitCount++;
+                call.split();
+            }
+            return;
+        }
         if (call.getCallCount() == 2) {
-            final GraalTVMCI.EngineData engineData = tvmci.getEngineData(call.getRootNode());
             if (shouldSplit(call, engineData)) {
                 engineData.splitCount += call.getCurrentCallTarget().getUninitializedNodeCount();
                 call.split();
             }
         }
+    }
+
+    private static boolean pollutionBasedShouldSplit(OptimizedDirectCallNode call, GraalTVMCI.EngineData engineData) {
+        if (!canSplit(call) || engineData.splitCount >= engineData.splitLimit) {
+            return false;
+        }
+        OptimizedCallTarget callTarget = call.getCurrentCallTarget();
+        if (callTarget.getNonTrivialNodeCount() > TruffleCompilerOptions.getValue(TruffleSplittingMaxCalleeSize)) {
+            return false;
+        }
+        if (callTarget.isValid()) {
+            return false;
+        }
+         return callTarget.isProfilePolluted();
     }
 
     static void forceSplitting(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
