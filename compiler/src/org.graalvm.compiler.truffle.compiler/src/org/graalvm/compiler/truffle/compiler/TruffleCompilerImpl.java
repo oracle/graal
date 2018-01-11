@@ -226,19 +226,23 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                         DebugContext.Scope s = debug.scope("Truffle", new TruffleDebugJavaMethod(compilable))) {
             new TruffleCompilationWrapper(getDebugOutputDirectory(), getCompilationProblemsPerAction(), compilable, cancellable, inliningPlan, compilationId, listener).run(debug);
         } catch (Throwable e) {
-            BailoutException bailout = e instanceof BailoutException ? (BailoutException) e : null;
-            boolean permanentBailout = bailout != null ? bailout.isPermanent() : false;
-            final Supplier<String> reasonAndStackTrace = new Supplier<String>() {
-
-                @Override
-                public String get() {
-                    StringWriter sw = new StringWriter();
-                    e.printStackTrace(new PrintWriter(sw));
-                    return sw.toString();
-                }
-            };
-            compilable.onCompilationFailed(reasonAndStackTrace, bailout != null, permanentBailout);
+            notifyCompilableOfFailure(compilable, e);
         }
+    }
+
+    private static void notifyCompilableOfFailure(CompilableTruffleAST compilable, Throwable e) {
+        BailoutException bailout = e instanceof BailoutException ? (BailoutException) e : null;
+        boolean permanentBailout = bailout != null ? bailout.isPermanent() : false;
+        final Supplier<String> reasonAndStackTrace = new Supplier<String>() {
+
+            @Override
+            public String get() {
+                StringWriter sw = new StringWriter();
+                e.printStackTrace(new PrintWriter(sw));
+                return sw.toString();
+            }
+        };
+        compilable.onCompilationFailed(reasonAndStackTrace, bailout != null, permanentBailout);
     }
 
     @Override
@@ -377,7 +381,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         } catch (Throwable t) {
             // Note: If the compiler cancels the compilation with a bailout exception, then the
             // graph is null
-            notifyListenerOfFailure(compilable, listener, t);
+            if (listener != null) {
+                BailoutException bailout = t instanceof BailoutException ? (BailoutException) t : null;
+                boolean permanentBailout = bailout != null ? bailout.isPermanent() : false;
+                listener.onFailure(compilable, t.toString(), bailout != null, permanentBailout);
+            }
             throw t;
         }
     }
@@ -486,7 +494,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
 
         @Override
         protected Void handleException(Throwable t) {
-            notifyListenerOfFailure(compilable, listener, t);
+            notifyCompilableOfFailure(compilable, t);
             return null;
         }
 
