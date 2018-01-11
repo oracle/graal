@@ -237,16 +237,23 @@ public abstract class TVMCI {
 
     private static volatile Object fallbackEngineData;
 
-    @SuppressWarnings("unchecked")
     protected <T> T getOrCreateRuntimeData(RootNode rootNode, Supplier<T> constructor) {
         try {
+            if (rootNode == null) {
+                return getOrCreateFallbackEngineData(constructor);
+            }
             final Object sourceVM = Accessor.nodesAccess().getSourceVM(rootNode);
             return Accessor.engineAccess().getOrCreateRuntimeData(sourceVM, constructor);
         } catch (IllegalArgumentException | NullPointerException | UnsupportedOperationException e) {
-            if (fallbackEngineData == null) {
-                fallbackEngineData = constructor.get();
-            }
-            return (T) fallbackEngineData;
+            return getOrCreateFallbackEngineData(constructor);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T getOrCreateFallbackEngineData(Supplier<T> constructor) {
+        if (fallbackEngineData == null) {
+            fallbackEngineData = constructor.get();
+        }
+        return (T) fallbackEngineData;
     }
 }
