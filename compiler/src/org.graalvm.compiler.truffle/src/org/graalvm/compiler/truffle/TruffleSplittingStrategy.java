@@ -46,14 +46,14 @@ final class TruffleSplittingStrategy {
 
     static void forceSplitting(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
         final GraalTVMCI.EngineData engineData = tvmci.getEngineData(call.getRootNode());
-        if (!canSplit(call, engineData)) {
+        if (!canSplit(call)) {
             return;
         }
         engineData.splitCount++;
         call.split();
     }
 
-    private static boolean canSplit(OptimizedDirectCallNode call, GraalTVMCI.EngineData engineData) {
+    private static boolean canSplit(OptimizedDirectCallNode call) {
         if (call.isCallTargetCloned()) {
             return false;
         }
@@ -63,11 +63,11 @@ final class TruffleSplittingStrategy {
         if (!call.isCallTargetCloningAllowed()) {
             return false;
         }
-        return engineData.splitCount < engineData.splitLimit;
+        return true;
     }
 
     private static boolean shouldSplit(OptimizedDirectCallNode call, GraalTVMCI.EngineData engineData) {
-        if (!canSplit(call, engineData)) {
+        if (!canSplit(call) || engineData.splitCount >= engineData.splitLimit) {
             return false;
         }
 
