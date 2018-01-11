@@ -674,8 +674,23 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return profilePolluted;
     }
 
-    void polluteProfile() {
-        profilePolluted = true;
+    void polluteProfile(int depth) {
+        if (sourceCallTarget != null) {
+            // Since sourceCallTarget is not null we know this is a split. It has only one call site
+            final OptimizedCallTarget callTarget = (OptimizedCallTarget) knownCallNodes.iterator().next().getRootNode().getCallTarget();
+            callTarget.polluteProfile(depth);
+            return;
+        }
+        if (depth < 2) {
+            if (profilePolluted) {
+                for (OptimizedDirectCallNode knownCallNode : knownCallNodes) {
+                    final OptimizedCallTarget callTarget = (OptimizedCallTarget) knownCallNode.getRootNode().getCallTarget();
+                    callTarget.polluteProfile(depth + 1);
+                }
+            } else {
+                profilePolluted = true;
+            }
+        }
     }
 
 }
