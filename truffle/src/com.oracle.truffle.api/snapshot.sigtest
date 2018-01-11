@@ -292,8 +292,6 @@ CLSS public abstract interface com.oracle.truffle.api.frame.FrameInstanceVisitor
 meth public abstract {com.oracle.truffle.api.frame.FrameInstanceVisitor%0} visitFrame(com.oracle.truffle.api.frame.FrameInstance)
 
 CLSS public final com.oracle.truffle.api.frame.FrameSlot
-cons public init(com.oracle.truffle.api.frame.FrameDescriptor,java.lang.Object,java.lang.Object,int,com.oracle.truffle.api.frame.FrameSlotKind)
- anno 0 java.lang.Deprecated()
 intf java.lang.Cloneable
 meth public com.oracle.truffle.api.frame.FrameDescriptor getFrameDescriptor()
 meth public com.oracle.truffle.api.frame.FrameSlotKind getKind()
