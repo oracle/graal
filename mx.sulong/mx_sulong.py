@@ -123,6 +123,30 @@ def _sulong_gate_runner(args, tasks):
 
 add_gate_runner(_suite, _sulong_gate_runner)
 
+
+# routines for downstream tests
+def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True):
+    """runs the SulongSuite tests on an AOT compiled lli image"""
+    args = ['-Dsulongtest.testAOTImage=' + image]
+    aotArgs = []
+    if libPath:
+        aotArgs += [mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:SULONG_LIBS>')]
+    if imageArgs is not None:
+        aotArgs += imageArgs
+    if aotArgs:
+        args += ['-Dsulongtest.testAOTArgs=' + ' '.join(aotArgs)]
+    if testFilter is not None:
+        args += ['-Dsulongtest.testFilter=' + testFilter]
+    mx_unittest.unittest(args + ['SulongSuite', '--enable-timing'])
+
+def runLLVMInteropTests(buildJUnitImage, junitArgs):
+    """builds an AOT image containing the interop unit tests and runs them"""
+    image = buildJUnitImage(['com.oracle.truffle.llvm.test.interop'])
+    libpath = mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:SULONG_LIBS>:<path:SULONG_TEST_NATIVE>')
+    libs = mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraries=<lib:sulongtest>')
+    mx.run([image, libpath, libs] + junitArgs)
+
+
 def clangformatcheck(args=None):
     """ Performs a format check on the include/truffle.h file """
     for f in clangFormatCheckPaths:
