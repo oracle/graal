@@ -104,6 +104,7 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
                 }
             }
             /*
+             * @formatter:off
              * Attempt to reassociate to push down constants.
              * We must check that self != null because
              * 1. If this add has not yet been created and as of the form (x + C1) + C2,
@@ -112,6 +113,7 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
              * undo the intended results.
              * Additionally, we must check this add isn't a loop induction variable,
              * since reassociation can break loop analysis
+             * @formatter:on
              */
             if (self != null && forX instanceof AddNode && !isLoopIncrement(self)) {
                 AddNode add = (AddNode) forX;
