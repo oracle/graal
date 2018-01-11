@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import com.oracle.truffle.api.Assumption;
@@ -110,12 +111,15 @@ public final class FrameDescriptor implements Cloneable {
 
     /**
      * Adds frame slot. Delegates to
-     * {@link #addFrameSlot(java.lang.Object, java.lang.Object, com.oracle.truffle.api.frame.FrameSlotKind)
-     * addFrameSlot}(identifier, <code>null</code>, {@link FrameSlotKind#Illegal}). This is a slow
-     * operation that switches to interpreter mode.
+     * {@link #addFrameSlot(java.lang.Object, java.lang.Object, FrameSlotKind) addFrameSlot}
+     * (identifier, <code>null</code>, {@link FrameSlotKind#Illegal}). This is a slow operation that
+     * switches to interpreter mode.
      *
-     * @param identifier key for the slot
+     * @param identifier key for the slot - must not be {@code null} and needs proper
+     *            {@link #equals(java.lang.Object)} and {@link Object#hashCode()} implementations
      * @return the newly created slot
+     * @throws IllegalArgumentException if a frame slot with the same identifier exists
+     * @throws NullPointerException if {@code identifier} is {@code null}
      * @since 0.8 or earlier
      */
     public FrameSlot addFrameSlot(Object identifier) {
@@ -124,13 +128,16 @@ public final class FrameDescriptor implements Cloneable {
 
     /**
      * Adds frame slot. Delegates to
-     * {@link #addFrameSlot(java.lang.Object, java.lang.Object, com.oracle.truffle.api.frame.FrameSlotKind)
-     * addFrameSlot}(identifier, <code>null</code>, <code>kind</code>). This is a slow operation
-     * that switches to interpreter mode.
+     * {@link #addFrameSlot(java.lang.Object, java.lang.Object, FrameSlotKind) addFrameSlot}
+     * (identifier, <code>null</code>, <code>kind</code>). This is a slow operation that switches to
+     * interpreter mode.
      *
-     * @param identifier key for the slot
+     * @param identifier key for the slot - must not be {@code null} and needs proper
+     *            {@link #equals(java.lang.Object)} and {@link Object#hashCode()} implementations
      * @param kind the kind of the new slot
      * @return the newly created slot
+     * @throws IllegalArgumentException if a frame slot with the same identifier exists
+     * @throws NullPointerException if {@code identifier} or {@code kind} is {@code null}
      * @since 0.8 or earlier
      */
     public FrameSlot addFrameSlot(Object identifier, FrameSlotKind kind) {
@@ -141,16 +148,19 @@ public final class FrameDescriptor implements Cloneable {
      * Adds new frame slot to {@link #getSlots()} list. This is a slow operation that switches to
      * interpreter mode.
      *
-     * @param identifier key for the slot - it needs proper {@link #equals(java.lang.Object)} and
-     *            {@link Object#hashCode()} implementations
-     * @param info additional {@link FrameSlot#getInfo() information for the slot}
+     * @param identifier key for the slot - must not be {@code null} and needs proper
+     *            {@link #equals(java.lang.Object)} and {@link Object#hashCode()} implementations
+     * @param info additional {@linkplain FrameSlot#getInfo() information for the slot}, may be null
      * @param kind the kind of the new slot
      * @return the newly created slot
      * @throws IllegalArgumentException if a frame slot with the same identifier exists
+     * @throws NullPointerException if {@code identifier} or {@code kind} is {@code null}
      * @since 0.8 or earlier
      */
     public FrameSlot addFrameSlot(Object identifier, Object info, FrameSlotKind kind) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
+        Objects.requireNonNull(identifier, "identifier");
+        Objects.requireNonNull(kind, "kind");
         if (identifierToSlotMap.containsKey(identifier)) {
             throw new IllegalArgumentException("duplicate frame slot: " + identifier);
         }
@@ -178,7 +188,8 @@ public final class FrameDescriptor implements Cloneable {
      * Finds an existing slot or creates new one. This is a slow operation.
      *
      * @param identifier the key of the slot to search for
-     * @return the slot
+     * @return the found or newly created slot
+     * @throws NullPointerException if {@code identifier} is {@code null}
      * @since 0.8 or earlier
      */
     public FrameSlot findOrAddFrameSlot(Object identifier) {
@@ -195,6 +206,7 @@ public final class FrameDescriptor implements Cloneable {
      * @param identifier the key of the slot to search for
      * @param kind the kind for the newly created slot
      * @return the found or newly created slot
+     * @throws NullPointerException if {@code identifier} or {@code kind} is {@code null}
      * @since 0.8 or earlier
      */
     public FrameSlot findOrAddFrameSlot(Object identifier, FrameSlotKind kind) {
@@ -212,6 +224,7 @@ public final class FrameDescriptor implements Cloneable {
      * @param info info for the newly created slot
      * @param kind the kind for the newly created slot
      * @return the found or newly created slot
+     * @throws NullPointerException if {@code identifier} or {@code kind} is {@code null}
      * @since 0.8 or earlier
      */
     public FrameSlot findOrAddFrameSlot(Object identifier, Object info, FrameSlotKind kind) {
@@ -290,8 +303,8 @@ public final class FrameDescriptor implements Cloneable {
 
     /**
      * Shallow copy of the descriptor. Re-uses the existing slots in new descriptor. As a result, if
-     * you {@link FrameSlot#setKind(com.oracle.truffle.api.frame.FrameSlotKind) change kind} of one
-     * of the slots it is changed in the original as well as in the shallow copy.
+     * you {@link FrameSlot#setKind(FrameSlotKind) change kind} of one of the slots it is changed in
+     * the original as well as in the shallow copy.
      *
      * @return new instance of a descriptor with copies of values from this one
      * @since 0.8 or earlier

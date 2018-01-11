@@ -30,7 +30,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 /**
  * A slot in a {@link Frame} and {@link FrameDescriptor} that can store a value of a given type.
- * 
+ *
  * @since 0.8 or earlier
  */
 public final class FrameSlot implements Cloneable {
