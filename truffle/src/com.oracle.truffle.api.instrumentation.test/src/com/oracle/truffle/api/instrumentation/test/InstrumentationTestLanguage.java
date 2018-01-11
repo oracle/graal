@@ -51,13 +51,17 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
-import com.oracle.truffle.api.instrumentation.Instrumentable;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTest.ReturnLanguageEnv;
-import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.BlockNode;
-import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.DefineNode;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.BlockTag;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.DefineTag;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.FunctionsObject;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.LoopTag;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.MessageResolution;
@@ -67,7 +71,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -116,8 +119,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * </p>
  */
 @Registration(id = InstrumentationTestLanguage.ID, mimeType = InstrumentationTestLanguage.MIME_TYPE, name = "InstrumentTestLang", version = "2.0")
-@ProvidedTags({StandardTags.ExpressionTag.class, DefineNode.class, LoopNode.class,
-                StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, BlockNode.class, StandardTags.RootTag.class})
+@ProvidedTags({StandardTags.ExpressionTag.class, DefineTag.class, LoopTag.class,
+                StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, BlockTag.class, StandardTags.RootTag.class})
 public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                 implements SpecialService {
 
@@ -125,13 +128,25 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
     public static final String MIME_TYPE = "application/x-truffle-instrumentation-test-language";
     public static final String FILENAME_EXTENSION = ".titl";
 
-    public static final Class<?> EXPRESSION = StandardTags.ExpressionTag.class;
-    public static final Class<?> DEFINE = DefineNode.class;
-    public static final Class<?> LOOP = LoopNode.class;
-    public static final Class<?> STATEMENT = StandardTags.StatementTag.class;
-    public static final Class<?> CALL = StandardTags.CallTag.class;
-    public static final Class<?> ROOT = StandardTags.RootTag.class;
-    public static final Class<?> BLOCK = BlockNode.class;
+    static class DefineTag extends Tag {
+
+    }
+
+    static class LoopTag extends Tag {
+
+    }
+
+    static class BlockTag extends Tag {
+
+    }
+
+    public static final Class<? extends Tag> EXPRESSION = StandardTags.ExpressionTag.class;
+    public static final Class<? extends Tag> DEFINE = DefineTag.class;
+    public static final Class<? extends Tag> LOOP = LoopTag.class;
+    public static final Class<? extends Tag> STATEMENT = StandardTags.StatementTag.class;
+    public static final Class<? extends Tag> CALL = StandardTags.CallTag.class;
+    public static final Class<? extends Tag> ROOT = StandardTags.RootTag.class;
+    public static final Class<? extends Tag> BLOCK = BlockTag.class;
 
     public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT};
     public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "CONTEXT", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE", "ARGUMENT",
@@ -524,17 +539,21 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
     }
 
-    @Instrumentable(factory = InstrumentedNodeWrapper.class)
-    public abstract static class InstrumentedNode extends BaseNode {
+    @GenerateWrapper
+    public abstract static class InstrumentedNode extends BaseNode implements InstrumentableNode {
 
         @Children final BaseNode[] children;
+
+        public InstrumentedNode() {
+            this.children = null;
+        }
 
         public InstrumentedNode(BaseNode[] children) {
             this.children = children;
         }
 
-        public InstrumentedNode(@SuppressWarnings("unused") InstrumentedNode delegate) {
-            this.children = null;
+        public boolean isInstrumentable() {
+            return getSourceSection() != null;
         }
 
         @Override
@@ -552,8 +571,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             return returnValue;
         }
 
+        public InstrumentableNode.WrapperNode createWrapper(ProbeNode probe) {
+            return new InstrumentedNodeWrapper(this, probe);
+        }
+
         @Override
-        protected final boolean isTaggedWith(Class<?> tag) {
+        public final boolean hasTag(Class<? extends Tag> tag) {
             if (tag == StandardTags.RootTag.class) {
                 return this instanceof FunctionRootNode;
             } else if (tag == StandardTags.CallTag.class) {
@@ -562,8 +585,14 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                 return this instanceof StatementNode;
             } else if (tag == StandardTags.ExpressionTag.class) {
                 return this instanceof ExpressionNode;
+            } else if (tag == LOOP) {
+                return this instanceof LoopNode;
+            } else if (tag == BLOCK) {
+                return this instanceof BlockNode;
+            } else if (tag == DEFINE) {
+                return this instanceof DefineNode;
             }
-            return getClass() == tag;
+            return false;
         }
 
     }
@@ -591,7 +620,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         }
     }
 
-    static class DefineNode extends BaseNode {
+    static class DefineNode extends InstrumentedNode {
 
         private final String identifier;
         private final CallTarget target;
@@ -606,6 +635,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             }
             SourceSection functionSection = source.getSource().createSection(source.getCharIndex() + index, source.getCharLength() - index - 1);
             this.target = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(lang, identifier, functionSection, children));
+        }
+
+        @Override
+        public boolean isInstrumentable() {
+            return false;
         }
 
         @Override
