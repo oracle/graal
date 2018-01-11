@@ -154,4 +154,10 @@ final class GraalTVMCI extends TVMCI {
             }
         });
     }
+
+    @Override
+    protected void pollute(Node node) {
+        final OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getRootNode().getCallTarget();
+        callTarget.polluteProfile();
+    }
 }

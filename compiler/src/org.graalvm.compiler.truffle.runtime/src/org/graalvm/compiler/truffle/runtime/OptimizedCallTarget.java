@@ -653,4 +653,15 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public <T> T getOptionValue(OptionKey<T> key) {
         return PolyglotCompilerOptions.getValue(rootNode, key);
     }
+
+    private boolean profilePolluted = false;
+
+    boolean isProfilePolluted() {
+        return profilePolluted;
+    }
+
+    void polluteProfile() {
+        profilePolluted = true;
+    }
+
 }

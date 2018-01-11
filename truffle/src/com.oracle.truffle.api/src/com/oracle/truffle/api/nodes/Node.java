@@ -495,6 +495,11 @@ public abstract class Node implements NodeInterface, Cloneable {
         return null;
     }
 
+    public void splitCandidate() {
+        CompilerAsserts.neverPartOfCompilation();
+        Node.ACCESSOR.nodes().splitCandidate(this);
+    }
+
     /**
      * Converts this node to a textual representation useful for debugging.
      *
