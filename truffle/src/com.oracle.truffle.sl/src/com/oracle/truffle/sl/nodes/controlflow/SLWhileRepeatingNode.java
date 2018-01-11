@@ -47,7 +47,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
 import com.oracle.truffle.sl.nodes.expression.SLUnboxNodeGen;
@@ -77,25 +76,9 @@ public final class SLWhileRepeatingNode extends Node implements RepeatingNode {
     private final BranchProfile continueTaken = BranchProfile.create();
     private final BranchProfile breakTaken = BranchProfile.create();
 
-    /**
-     * This node does not extend {@link SLStatementNode}, so we need to maintain source information
-     * manually.
-     */
-    private SourceSection sourceSection;
-
     public SLWhileRepeatingNode(SLExpressionNode conditionNode, SLStatementNode bodyNode) {
         this.conditionNode = SLUnboxNodeGen.create(conditionNode);
         this.bodyNode = bodyNode;
-    }
-
-    @Override
-    public SourceSection getSourceSection() {
-        return sourceSection;
-    }
-
-    public void setSourceSection(SourceSection section) {
-        assert this.sourceSection == null : "overwriting existing SourceSection";
-        this.sourceSection = section;
     }
 
     @Override

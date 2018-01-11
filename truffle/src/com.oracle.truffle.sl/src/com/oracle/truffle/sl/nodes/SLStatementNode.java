@@ -43,10 +43,15 @@ package com.oracle.truffle.sl.nodes;
 import java.io.File;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Instrumentable;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -55,22 +60,99 @@ import com.oracle.truffle.api.source.SourceSection;
  * local variables.
  */
 @NodeInfo(language = "SL", description = "The abstract base node for all SL statements")
-@Instrumentable(factory = SLStatementNodeWrapper.class)
-public abstract class SLStatementNode extends Node {
+@GenerateWrapper
+public abstract class SLStatementNode extends Node implements InstrumentableNode {
 
-    private SourceSection sourceSection;
+    private static final int NO_SOURCE = -1;
+    private static final int UNAVAILABLE_SOURCE = -2;
+
+    private int sourceCharIndex = NO_SOURCE;
+    private int sourceLength;
 
     private boolean hasStatementTag;
     private boolean hasRootTag;
 
+    /*
+     * The creation of source section can be implemented lazily by looking up the root node source
+     * and then creating the source section object using the indices stored in the node. This avoids
+     * the eager creation of source section objects during parsing and creates them only when they
+     * are needed. Alternatively, if the language uses source sections to implement language
+     * semantics, then it might be more efficient to eagerly create source sections and store it in
+     * the AST.
+     *
+     * For more details see {@link InstrumentableNode}.
+     */
     @Override
     public final SourceSection getSourceSection() {
-        return sourceSection;
+        if (sourceCharIndex == NO_SOURCE) {
+            // AST node without source
+            return null;
+        }
+        RootNode rootNode = getRootNode();
+        if (rootNode == null) {
+            // not yet adopted yet
+            return null;
+        }
+        SourceSection rootSourceSection = rootNode.getSourceSection();
+        if (rootSourceSection == null) {
+            return null;
+        }
+        Source source = rootSourceSection.getSource();
+        if (sourceCharIndex == UNAVAILABLE_SOURCE) {
+            return source.createUnavailableSection();
+        } else {
+            return source.createSection(sourceCharIndex, sourceLength);
+        }
     }
 
-    public void setSourceSection(SourceSection section) {
-        assert this.sourceSection == null : "overwriting existing SourceSection";
-        this.sourceSection = section;
+    public final boolean hasSource() {
+        return sourceCharIndex != NO_SOURCE;
+    }
+
+    public final boolean isInstrumentable() {
+        return hasSource();
+    }
+
+    public final int getSourceCharIndex() {
+        return sourceCharIndex;
+    }
+
+    public final int getSourceEndIndex() {
+        return sourceCharIndex + sourceLength;
+    }
+
+    public final int getSourceLength() {
+        return sourceLength;
+    }
+
+    // invoked by the parser to set the source
+    public final void setSourceSection(int charIndex, int length) {
+        assert sourceCharIndex == NO_SOURCE : "source must only be set once";
+        if (charIndex < 0) {
+            throw new IllegalArgumentException("charIndex < 0");
+        } else if (length < 0) {
+            throw new IllegalArgumentException("length < 0");
+        }
+        this.sourceCharIndex = charIndex;
+        this.sourceLength = length;
+    }
+
+    public final void setUnavailableSourceSection() {
+        assert sourceCharIndex == NO_SOURCE : "source must only be set once";
+        this.sourceCharIndex = UNAVAILABLE_SOURCE;
+    }
+
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == StandardTags.StatementTag.class) {
+            return hasStatementTag;
+        } else if (tag == StandardTags.RootTag.class) {
+            return hasRootTag;
+        }
+        return false;
+    }
+
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new SLStatementNodeWrapper(this, probe);
     }
 
     /**

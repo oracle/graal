@@ -50,9 +50,9 @@ import java.util.List;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
@@ -62,7 +62,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.builtins.SLDefineFunctionBuiltinFactory;
@@ -189,11 +188,10 @@ public final class SLContext {
         builtinBodyNode.addRootTag();
         /* The name of the builtin function is specified via an annotation on the node class. */
         String name = lookupNodeInfo(builtinBodyNode.getClass()).shortName();
-        final SourceSection srcSection = BUILTIN_SOURCE.createUnavailableSection();
-        builtinBodyNode.setSourceSection(srcSection);
+        builtinBodyNode.setUnavailableSourceSection();
 
         /* Wrap the builtin in a RootNode. Truffle requires all AST to start with a RootNode. */
-        SLRootNode rootNode = new SLRootNode(language, new FrameDescriptor(), builtinBodyNode, srcSection, name);
+        SLRootNode rootNode = new SLRootNode(language, new FrameDescriptor(), builtinBodyNode, BUILTIN_SOURCE.createUnavailableSection(), name);
 
         /* Register the builtin function in our function registry. */
         getFunctionRegistry().register(name, rootNode);
