@@ -277,34 +277,17 @@ public class GCImpl implements GC {
             getAccounting().beforeCollection();
 
             try (Timer ct = collectionTimer.open()) {
-
-                /* Empty the list of DiscoveredReferences before the collection. */
-                DiscoverableReferenceProcessing.clearDiscoveredReferences();
-
-                trace.string("  Cheney scan: ");
-                try (Timer rst = rootScanTimer.open()) {
-                    if (incremental) {
-                        cheneyScanFromDirtyRoots();
-                    } else {
-                        cheneyScanFromRoots();
-                    }
+                /*
+                 * Always scavenge the young generation, then maybe scavenge the old generation.
+                 * Scavenging the young generation will free up the chunks from the young
+                 * generation, so that when the scavenge of the old generation needs chunks it will
+                 * find them on the free list.
+                 *
+                 */
+                scavenge(true);
+                if (!incremental) {
+                    scavenge(false);
                 }
-
-                trace.string("  Discovered references: ");
-                /* Process the list of DiscoveredReferences after the collection. */
-                try (Timer drt = discoverableReferenceTimer.open()) {
-                    DiscoverableReferenceProcessing.processDiscoveredReferences();
-                }
-
-                trace.string("  Release spaces: ");
-                /* Release any memory in the young and from Spaces. */
-                try (Timer rst = releaseSpacesTimer.open()) {
-                    releaseSpaces();
-                }
-
-                trace.string("  Swap spaces: ");
-                /* Exchange the from and to Spaces. */
-                swapSpaces();
             }
 
             /* Distribute any discovered references to their queues. */
@@ -507,6 +490,46 @@ public class GCImpl implements GC {
         } finally {
             setPolicy(oldPolicy);
         }
+    }
+
+    /**
+     * Scavenge, either just from dirty roots or from all roots.
+     *
+     * Process discovered references while scavenging.
+     */
+    @SuppressWarnings("try")
+    private void scavenge(boolean fromDirtyRoots) {
+        final Log trace = Log.noopLog().string("[GCImpl.scavenge:").string("  fromDirtyRoots: ").bool(fromDirtyRoots).newline();
+
+        /* Empty the list of DiscoveredReferences before walking the heap. */
+        DiscoverableReferenceProcessing.clearDiscoveredReferences();
+
+        try (Timer rst = rootScanTimer.open()) {
+            trace.string("  Cheney scan: ");
+            if (fromDirtyRoots) {
+                cheneyScanFromDirtyRoots();
+            } else {
+                cheneyScanFromRoots();
+            }
+        }
+
+        trace.string("  Discovered references: ");
+        /* Process the list of DiscoveredReferences after walking the heap. */
+        try (Timer drt = discoverableReferenceTimer.open()) {
+            DiscoverableReferenceProcessing.processDiscoveredReferences();
+        }
+
+        trace.string("  Release spaces: ");
+        /* Release any memory in the young and from Spaces. */
+        try (Timer rst = releaseSpacesTimer.open()) {
+            releaseSpaces();
+        }
+
+        trace.string("  Swap spaces: ");
+        /* Exchange the from and to Spaces. */
+        swapSpaces();
+
+        trace.string("]").newline();
     }
 
     @SuppressWarnings("try")
