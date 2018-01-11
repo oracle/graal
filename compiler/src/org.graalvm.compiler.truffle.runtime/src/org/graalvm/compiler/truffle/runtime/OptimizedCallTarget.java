@@ -381,7 +381,7 @@ public class OptimizedCallTarget extends InstalledCode implements CompilableTruf
     }
 
     @Override
-    public void onCompilationFailed(Supplier<String> detailedReason, boolean bailout, boolean permanentBailout) {
+    public void onCompilationFailed(Supplier<String> reasonAndStackTrace, boolean bailout, boolean permanentBailout) {
         if (bailout && !permanentBailout) {
             /*
              * Non-permanent bailouts are expected cases. A non-permanent bailout would be for
@@ -392,7 +392,7 @@ public class OptimizedCallTarget extends InstalledCode implements CompilableTruf
         } else {
             compilationProfile.reportCompilationFailure();
             if (TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreThrown)) {
-                final InternalError error = new InternalError(detailedReason.get());
+                final InternalError error = new InternalError(reasonAndStackTrace.get());
                 throw new OptimizationFailedException(error, this);
             }
             /*
@@ -404,7 +404,7 @@ public class OptimizedCallTarget extends InstalledCode implements CompilableTruf
             truffleCompilationExceptionsAreFatal = truffleCompilationExceptionsAreFatal || TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal);
 
             if (TruffleCompilerOptions.getValue(TruffleCompilationExceptionsArePrinted) || truffleCompilationExceptionsAreFatal) {
-                log(detailedReason.get());
+                log(reasonAndStackTrace.get());
                 if (truffleCompilationExceptionsAreFatal) {
                     log("Exiting VM due to " + (TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreFatal) ? TruffleCompilationExceptionsAreFatal.getName()
                                     : TrufflePerformanceWarningsAreFatal.getName()) + "=true");
@@ -412,44 +412,6 @@ public class OptimizedCallTarget extends InstalledCode implements CompilableTruf
                 }
             }
         }
-    }
-
-    void onCompilationFailed(Throwable t) {
-        if (t instanceof BailoutException && !((BailoutException) t).isPermanent()) {
-            /*
-             * Non-permanent bailouts are expected cases. A non-permanent bailout would be for
-             * example class redefinition during code installation. As opposed to permanent
-             * bailouts, non-permanent bailouts will trigger recompilation and are not considered a
-             * failure state.
-             */
-        } else {
-            compilationProfile.reportCompilationFailure();
-            if (TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreThrown)) {
-                throw new OptimizationFailedException(t, this);
-            }
-            /*
-             * Automatically enable TruffleCompilationExceptionsAreFatal when asserts are enabled
-             * but respect TruffleCompilationExceptionsAreFatal if it's been explicitly set.
-             */
-            boolean truffleCompilationExceptionsAreFatal = TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreFatal);
-            assert TruffleCompilationExceptionsAreFatal.hasBeenSet(TruffleCompilerOptions.getOptions()) || (truffleCompilationExceptionsAreFatal = true) == true;
-            truffleCompilationExceptionsAreFatal = truffleCompilationExceptionsAreFatal || TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal);
-
-            if (TruffleCompilerOptions.getValue(TruffleCompilationExceptionsArePrinted) || truffleCompilationExceptionsAreFatal) {
-                printException(t);
-                if (truffleCompilationExceptionsAreFatal) {
-                    log("Exiting VM due to " + (TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreFatal) ? TruffleCompilationExceptionsAreFatal.getName()
-                                    : TrufflePerformanceWarningsAreFatal.getName()) + "=true");
-                    System.exit(-1);
-                }
-            }
-        }
-    }
-
-    private static void printException(Throwable e) {
-        StringWriter string = new StringWriter();
-        e.printStackTrace(new PrintWriter(string));
-        log(string.toString());
     }
 
     public static final void log(String message) {

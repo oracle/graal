@@ -228,7 +228,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         } catch (Throwable e) {
             BailoutException bailout = e instanceof BailoutException ? (BailoutException) e : null;
             boolean permanentBailout = bailout != null ? bailout.isPermanent() : false;
-            compilable.onCompilationFailed(new Supplier<String>() {
+            final Supplier<String> reasonAndStackTrace = new Supplier<String>() {
 
                 @Override
                 public String get() {
@@ -236,7 +236,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                     e.printStackTrace(new PrintWriter(sw));
                     return sw.toString();
                 }
-            }, bailout != null, permanentBailout);
+            };
+            compilable.onCompilationFailed(reasonAndStackTrace, bailout != null, permanentBailout);
         }
     }
 

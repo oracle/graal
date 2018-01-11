@@ -22,15 +22,17 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplitting;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingMaxCalleeSize;
+
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 import com.oracle.truffle.api.nodes.RootNode;
-
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplitting;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplittingMaxCalleeSize;
 
 final class TruffleSplittingStrategy {
 

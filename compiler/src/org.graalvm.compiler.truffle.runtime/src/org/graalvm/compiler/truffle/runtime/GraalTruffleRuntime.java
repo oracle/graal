@@ -30,6 +30,9 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompileOnly;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilerThreads;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleProfilingEnabled;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplitting;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingLimitGrowth;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingMaxNumberOfSplits;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getValue;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.overrideOptions;
