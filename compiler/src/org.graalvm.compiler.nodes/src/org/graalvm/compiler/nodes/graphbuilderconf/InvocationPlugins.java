@@ -1273,32 +1273,27 @@ public class InvocationPlugins {
         }
         Method[] methods = declaringClass.getDeclaredMethods();
         List<String> parameterTypeNames = parseParameters(binding.argumentsDescriptor);
+        Method match = null;
         for (int i = 0; i < methods.length; ++i) {
             Method m = methods[i];
-            if (binding.isStatic == Modifier.isStatic(m.getModifiers()) && m.getName().equals(binding.name)) {
-                if (parameterTypeNames.equals(toInternalTypeNames(m.getParameterTypes()))) {
-                    for (int j = i + 1; j < methods.length; ++j) {
-                        Method other = methods[j];
-                        if (binding.isStatic == Modifier.isStatic(other.getModifiers()) && other.getName().equals(binding.name)) {
-                            if (parameterTypeNames.equals(toInternalTypeNames(other.getParameterTypes()))) {
-                                if (m.getReturnType().isAssignableFrom(other.getReturnType())) {
-                                    // `other` has a more specific return type - choose it
-                                    // (m is most likely a bridge method)
-                                    m = other;
-                                } else {
-                                    if (!other.getReturnType().isAssignableFrom(m.getReturnType())) {
-                                        throw new NoSuchMethodError(String.format(
-                                                        "Found 2 methods with same name and parameter types but unrelated return types:%n %s%n %s", m, other));
-                                    }
-                                }
-                            }
-                        }
+            if (binding.isStatic == Modifier.isStatic(m.getModifiers()) &&
+                            m.getName().equals(binding.name) &&
+                            parameterTypeNames.equals(toInternalTypeNames(m.getParameterTypes()))) {
+                if (match == null) {
+                    match = m;
+                } else if (match.getReturnType().isAssignableFrom(m.getReturnType())) {
+                    // `m` has a more specific return type - choose it
+                    // (`match` is most likely a bridge method)
+                    match = m;
+                } else {
+                    if (!m.getReturnType().isAssignableFrom(match.getReturnType())) {
+                        throw new NoSuchMethodError(String.format(
+                                        "Found 2 methods with same name and parameter types but unrelated return types:%n %s%n %s", match, m));
                     }
-                    return m;
                 }
             }
         }
-        return null;
+        return match;
     }
 
     /**
@@ -1317,34 +1312,31 @@ public class InvocationPlugins {
             return null;
         }
 
+        ResolvedJavaMethod match = null;
         for (int i = 0; i < methods.length; ++i) {
             ResolvedJavaMethod m = methods[i];
-            if (binding.isStatic == m.isStatic() && m.getName().equals(binding.name)) {
-                if (m.getSignature().toMethodDescriptor().startsWith(binding.argumentsDescriptor)) {
-                    for (int j = i + 1; j < methods.length; ++j) {
-                        ResolvedJavaMethod other = methods[j];
-                        if (binding.isStatic == other.isStatic() && other.getName().equals(binding.name)) {
-                            if (other.getSignature().toMethodDescriptor().startsWith(binding.argumentsDescriptor)) {
-                                final ResolvedJavaType mReturnType = (ResolvedJavaType) m.getSignature().getReturnType(declaringClass);
-                                final ResolvedJavaType otherReturnType = (ResolvedJavaType) other.getSignature().getReturnType(declaringClass);
-                                if (mReturnType.isAssignableFrom(otherReturnType)) {
-                                    // `other` has a more specific return type - choose it
-                                    // (m is most likely a bridge method)
-                                    m = other;
-                                } else {
-                                    if (!otherReturnType.isAssignableFrom(mReturnType)) {
-                                        throw new NoSuchMethodError(String.format(
-                                                        "Found 2 methods with same name and parameter types but unrelated return types:%n %s%n %s", m, other));
-                                    }
-                                }
-                            }
+            if (binding.isStatic == m.isStatic() &&
+                            m.getName().equals(binding.name) &&
+                            m.getSignature().toMethodDescriptor().startsWith(binding.argumentsDescriptor)) {
+                if (match == null) {
+                    match = m;
+                } else {
+                    final ResolvedJavaType matchReturnType = (ResolvedJavaType) match.getSignature().getReturnType(declaringClass);
+                    final ResolvedJavaType mReturnType = (ResolvedJavaType) m.getSignature().getReturnType(declaringClass);
+                    if (matchReturnType.isAssignableFrom(mReturnType)) {
+                        // `m` has a more specific return type - choose it
+                        // (`match` is most likely a bridge method)
+                        match = m;
+                    } else {
+                        if (!mReturnType.isAssignableFrom(matchReturnType)) {
+                            throw new NoSuchMethodError(String.format(
+                                            "Found 2 methods with same name and parameter types but unrelated return types:%n %s%n %s", match, m));
                         }
                     }
-                    return m;
                 }
             }
         }
-        return null;
+        return match;
     }
 
     /**
