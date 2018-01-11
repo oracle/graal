@@ -35,6 +35,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * A call node with a constant {@link CallTarget} that can be optimized by Graal.
+ *
+ * Note: {@code PartialEvaluator} looks up this class and a number of its methods by name.
  */
 @NodeInfo
 public final class OptimizedDirectCallNode extends DirectCallNode {
@@ -60,6 +62,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
         return callProxy(this, getCurrentCallTarget(), arguments, true);
     }
 
+    // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public static Object callProxy(Node callNode, CallTarget callTarget, Object[] arguments, boolean direct) {
         try {
             if (direct) {

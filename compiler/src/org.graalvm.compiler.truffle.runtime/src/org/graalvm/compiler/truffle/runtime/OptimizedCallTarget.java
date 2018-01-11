@@ -74,6 +74,8 @@ import jdk.vm.ci.meta.SpeculationLog;
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold. That is,
  * this is a Truffle AST that can be optimized via partial evaluation and compiled to machine code.
+ *
+ * Note: {@code PartialEvaluator} looks up this class and a number of its methods by name.
  */
 @SuppressWarnings("deprecation")
 public class OptimizedCallTarget extends InstalledCode implements CompilableTruffleAST, RootCallTarget, ReplaceObserver, com.oracle.truffle.api.LoopCountReceiver {
@@ -186,6 +188,7 @@ public class OptimizedCallTarget extends InstalledCode implements CompilableTruf
         return doInvoke(args);
     }
 
+    // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callDirect(Object... args) {
         getCompilationProfile().profileDirectCall(args);
         try {
@@ -199,6 +202,7 @@ public class OptimizedCallTarget extends InstalledCode implements CompilableTruf
         }
     }
 
+    // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callInlined(Object... arguments) {
         getCompilationProfile().profileInlinedCall();
         return callProxy(createFrame(getRootNode().getFrameDescriptor(), arguments));
@@ -223,6 +227,7 @@ public class OptimizedCallTarget extends InstalledCode implements CompilableTruf
         return callRoot(args);
     }
 
+    // Note: {@code PartialEvaluator} looks up this method by name and signature.
     protected final Object callRoot(Object[] originalArguments) {
         Object[] args = originalArguments;
         OptimizedCompilationProfile profile = this.compilationProfile;
