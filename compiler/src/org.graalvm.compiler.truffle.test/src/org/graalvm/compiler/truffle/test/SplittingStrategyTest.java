@@ -33,6 +33,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.ReflectionUtils;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.GraalTruffleCompilationListener;
@@ -361,7 +362,7 @@ public class SplittingStrategyTest {
             try {
                 final Object tvmci = reflectivelyGetField(graalTruffleRuntime, "tvmci");
                 final Method getEngineDataMethod = tvmci.getClass().getDeclaredMethod("getEngineData", new Class<?>[]{RootNode.class});
-                getEngineDataMethod.setAccessible(true);
+                ReflectionUtils.setAccessible(getEngineDataMethod, true);
                 final Object fallbackEngineData = getEngineDataMethod.invoke(tvmci, rootNode);
                 return fallbackEngineData;
             } catch (NoSuchFieldException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
@@ -384,7 +385,7 @@ public class SplittingStrategyTest {
                     }
                 }
             }
-            fallbackEngineDataField.setAccessible(true);
+            ReflectionUtils.setAccessible(fallbackEngineDataField, true);
             return fallbackEngineDataField.get(o);
         }
     }
