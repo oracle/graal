@@ -103,7 +103,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> UseOnlyWritableBootImageHeap = new HostedOptionKey<>(false);
 
     @Option(help = "Use heap base register. ")//
-    public static final HostedOptionKey<Boolean> UseHeapBaseRegister = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> UseHeapBaseRegister = new HostedOptionKey<>(true);
 
     @Option(help = "Trace VMOperation execution.")//
     public static final RuntimeOptionKey<Boolean> TraceVMOperations = new RuntimeOptionKey<>(false);
