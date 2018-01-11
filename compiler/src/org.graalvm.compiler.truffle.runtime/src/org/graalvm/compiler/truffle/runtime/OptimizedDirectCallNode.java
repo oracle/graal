@@ -162,8 +162,10 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
 
             if (callCount >= 1) {
                 currentTarget.decrementKnownCallSites();
+                currentTarget.removeKnownCallSite(this);
             }
             splitTarget.incrementKnownCallSites();
+            splitTarget.addKnownCallNode(this);
 
             if (getParent() != null) {
                 // dummy replace to report the split, irrelevant if this node is not adopted
