@@ -927,7 +927,7 @@ public class NativeImageGenerator {
 
         HostedSnippetReflectionProvider hostedSnippetReflection = new HostedSnippetReflectionProvider((SVMHost) aUniverse.getHostVM());
         NodeIntrinsificationProvider nodeIntrinsificationProvider = new NodeIntrinsificationProvider(providers.getMetaAccess(), hostedSnippetReflection,
-                        providers.getForeignCalls(), providers.getWordTypes());
+                        providers.getForeignCalls(), providers.getLowerer(), providers.getWordTypes());
         for (Class<? extends NodeIntrinsicPluginFactory> factoryClass : loader.findSubclasses(NodeIntrinsicPluginFactory.class)) {
             if (!Modifier.isAbstract(factoryClass.getModifiers()) && !factoryClass.getName().contains("hotspot")) {
                 NodeIntrinsicPluginFactory factory;
