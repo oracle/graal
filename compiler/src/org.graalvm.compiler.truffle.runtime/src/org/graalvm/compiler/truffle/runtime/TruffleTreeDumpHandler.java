@@ -239,10 +239,11 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         final List<ASTBlock> blocks = new ArrayList<>();
 
         AST(RootCallTarget target) {
+            final ASTBlock astBlock = makeASTBlock();
             final RootNode rootNode = target.getRootNode();
-            root = new ASTNode(rootNode, 0);
-            nodes.put(rootNode, root);
-            traverseNodes(rootNode, root, this, null, null);
+            root = makeASTNode(rootNode);
+            astBlock.nodes.add(root);
+            traverseNodes(rootNode, root, this, null, astBlock);
         }
 
         ASTNode makeASTNode(Node source) {
@@ -258,7 +259,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         }
 
         void inline(TruffleInlining inliningDecisions) {
-            traverseNodes(root.source, root, this, inliningDecisions, null);
+            traverseNodes(root.source, root, this, inliningDecisions, blocks.get(0));
         }
 
         private static void traverseNodes(Node parent, ASTNode astParent, AST ast, TruffleInlining inliningDecisions, ASTBlock currentBlock) {
@@ -268,9 +269,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
                 final ASTNode seenAstNode = ast.nodes.get(node);
                 if (seenAstNode == null) {
                     final ASTNode astNode = ast.makeASTNode(node);
-                    if (currentBlock != null) {
-                        currentBlock.nodes.add(astNode);
-                    }
+                    currentBlock.nodes.add(astNode);
                     astParent.edges.add(new ASTEdge(astNode, label));
                     handleCallNodes(ast, inliningDecisions, node, astNode, currentBlock);
                     traverseNodes(node, astNode, ast, inliningDecisions, currentBlock);
