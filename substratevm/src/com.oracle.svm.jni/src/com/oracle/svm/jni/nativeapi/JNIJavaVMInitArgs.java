@@ -39,9 +39,18 @@ public interface JNIJavaVMInitArgs extends PointerBase {
     @CField("nOptions")
     int getNOptions();
 
+    @CField("nOptions")
+    void setNOptions(int count);
+
     @CField("options")
     JNIJavaVMOption getOptions();
 
+    @CField("options")
+    void setOptions(JNIJavaVMOption options);
+
     @CField("ignoreUnrecognized")
     boolean getIgnoreUnrecognized();
+
+    @CField("ignoreUnrecognized")
+    void setIgnoreUnrecognized(boolean ignoreUnrecognized);
 }
