@@ -3,6 +3,7 @@ import os
 from os.path import join
 import shutil
 import subprocess
+from argparse import ArgumentParser
 
 import mx
 import mx_subst
@@ -124,8 +125,7 @@ def _sulong_gate_runner(args, tasks):
 add_gate_runner(_suite, _sulong_gate_runner)
 
 
-# routines for downstream tests
-def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True):
+def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=None, unittestArgs=None):
     """runs the SulongSuite tests on an AOT compiled lli image"""
     args = ['-Dsulongtest.testAOTImage=' + image]
     aotArgs = []
@@ -137,8 +137,27 @@ def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True):
         args += ['-Dsulongtest.testAOTArgs=' + ' '.join(aotArgs)]
     if testFilter is not None:
         args += ['-Dsulongtest.testFilter=' + testFilter]
-    mx_unittest.unittest(args + ['SulongSuite', '--enable-timing'])
+    testName = 'SulongSuite'
+    if test is not None:
+        testName += '#test[' + test + ']'
+    if unittestArgs is None:
+        unittestArgs = []
+    mx_unittest.unittest(args + [testName] + unittestArgs)
 
+def _test_llvm_image(args):
+    """run the SulongSuite tests on an AOT compiled lli image"""
+    parser = ArgumentParser(prog='mx test-llvm-image', description='Run the SulongSuite tests on an AOT compiled LLVM image.',
+            epilog='Additional arguments are forwarded to the LLVM image command.')
+    parser.add_argument('--omit-library-path', action='store_false', dest='libPath', help='do not add standard library path to arguments')
+    parser.add_argument('--test', action='store', dest='test', help='run a single test (default: run all)')
+    parser.add_argument('--test-filter', action='store', dest='testFilter', help='filter test variants to execute')
+    parser.add_argument('image', help='path to pre-built LLVM image', metavar='<image>')
+    for testArg in ['--verbose', '--very-verbose', '--enable-timing', '--color']:
+        parser.add_argument(testArg, action='append_const', dest='unittestArgs', const=testArg, help='forwarded to mx unittest')
+    (args, imageArgs) = parser.parse_known_args(args)
+    testLLVMImage(args.image, imageArgs=imageArgs, testFilter=args.testFilter, libPath=args.libPath, test=args.test, unittestArgs=args.unittestArgs)
+
+# routine for AOT downstream tests
 def runLLVMInteropTests(buildJUnitImage, junitArgs):
     """builds an AOT image containing the interop unit tests and runs them"""
     image = buildJUnitImage(['com.oracle.truffle.llvm.test.interop'])
@@ -578,4 +597,5 @@ mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
 
 mx.update_commands(_suite, {
     'lli' : [runLLVM, ''],
+    'test-llvm-image' : [_test_llvm_image, 'test a pre-built LLVM image'],
 })
