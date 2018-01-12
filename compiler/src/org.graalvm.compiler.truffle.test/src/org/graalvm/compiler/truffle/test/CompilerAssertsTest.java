@@ -24,13 +24,13 @@ package org.graalvm.compiler.truffle.test;
 
 import jdk.vm.ci.code.BailoutException;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.ConstantTestNode;
 import org.graalvm.compiler.truffle.test.nodes.NonConstantTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
+import org.junit.Assert;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;

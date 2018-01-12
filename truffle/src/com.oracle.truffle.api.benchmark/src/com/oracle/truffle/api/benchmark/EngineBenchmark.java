@@ -300,7 +300,7 @@ public class EngineBenchmark extends TruffleBenchmark {
             abstract static class VarsMapKeyInfoNode extends Node {
                 private static final int EXISTING = KeyInfo.newBuilder().setReadable(true).build();
 
-                public int access(TopScopeObject ts, String propertyName) {
+                public int access(@SuppressWarnings("unused") TopScopeObject ts, String propertyName) {
                     if ("context".equals(propertyName)) {
                         return EXISTING;
                     }

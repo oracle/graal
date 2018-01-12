@@ -318,7 +318,7 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
         }
 
         /**
-         * Invoked after preProcess in the case that the code installation fails.
+         * Invoked after {@link #preProcess} when code installation fails.
          */
         @SuppressWarnings("unused")
         public void installFailed(Throwable t) {

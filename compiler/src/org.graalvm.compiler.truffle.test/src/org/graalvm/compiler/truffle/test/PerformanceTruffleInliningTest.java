@@ -24,8 +24,8 @@ package org.graalvm.compiler.truffle.test;
 
 import java.util.concurrent.TimeUnit;
 
-import org.graalvm.compiler.truffle.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.TruffleInlining;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;

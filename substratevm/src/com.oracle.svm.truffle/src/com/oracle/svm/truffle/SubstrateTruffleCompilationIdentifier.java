@@ -22,7 +22,7 @@
  */
 package com.oracle.svm.truffle;
 
-import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 
 import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
 

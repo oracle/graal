@@ -22,26 +22,15 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.ReflectionUtils;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.truffle.GraalTruffleCompilationListener;
-import org.graalvm.compiler.truffle.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.OptimizedDirectCallNode;
-import org.graalvm.compiler.truffle.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.TruffleInlining;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -50,9 +39,17 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.ReflectionUtils;
 
 public class SplittingStrategyTest {
 
@@ -75,76 +72,21 @@ public class SplittingStrategyTest {
     @Before
     public void addListener() {
         listener = new SplitCountingListener();
-        runtime.addCompilationListener(listener);
+        runtime.addListener(listener);
     }
 
     @After
     public void removeListener() {
-        runtime.removeCompilationListener(listener);
+        runtime.removeListener(listener);
     }
 
-    static class SplitCountingListener implements GraalTruffleCompilationListener {
+    static class SplitCountingListener implements GraalTruffleRuntimeListener {
 
         int splitCount = 0;
 
         @Override
-        public void notifyCompilationSplit(OptimizedDirectCallNode callNode) {
+        public void onCompilationSplit(OptimizedDirectCallNode callNode) {
             splitCount++;
-        }
-
-        @Override
-        public void notifyCompilationQueued(OptimizedCallTarget target) {
-
-        }
-
-        @Override
-        public void notifyCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
-
-        }
-
-        @Override
-        public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t) {
-
-        }
-
-        @Override
-        public void notifyCompilationStarted(OptimizedCallTarget target) {
-
-        }
-
-        @Override
-        public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph) {
-
-        }
-
-        @Override
-        public void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
-
-        }
-
-        @Override
-        public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result) {
-
-        }
-
-        @Override
-        public void notifyCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
-
-        }
-
-        @Override
-        public void notifyCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
-
-        }
-
-        @Override
-        public void notifyShutdown(GraalTruffleRuntime r) {
-
-        }
-
-        @Override
-        public void notifyStartup(GraalTruffleRuntime r) {
-
         }
     }
 
@@ -403,13 +345,13 @@ public class SplittingStrategyTest {
             createDummyTargetsToBoostGrowingSplitLimit();
 
             SplitCountingListener localListener = new SplitCountingListener();
-            runtime.addCompilationListener(localListener);
+            runtime.addListener(localListener);
 
             for (int i = 0; i < 100; i++) {
                 outer.call();
             }
             Assert.assertEquals("Too many of too few splits.", expectedSplits, localListener.splitCount);
-            runtime.removeCompilationListener(localListener);
+            runtime.removeListener(localListener);
         }
     }
 
@@ -436,14 +378,14 @@ public class SplittingStrategyTest {
             runtime.createCallTarget(new DummyRootNode());
 
             SplitCountingListener localListener = new SplitCountingListener();
-            runtime.addCompilationListener(localListener);
+            runtime.addListener(localListener);
 
             for (int i = 0; i < 100; i++) {
                 outer.call();
             }
 
             Assert.assertEquals("Too many of too few splits.", expectedGrowingSplits, localListener.splitCount);
-            runtime.removeCompilationListener(localListener);
+            runtime.removeListener(localListener);
         }
     }
 
