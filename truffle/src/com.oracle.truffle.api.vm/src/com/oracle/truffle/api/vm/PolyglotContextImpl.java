@@ -33,10 +33,10 @@ import static com.oracle.truffle.api.vm.VMAccessor.NODES;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.ref.WeakReference;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -63,13 +63,12 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
-import java.util.Collections;
 
 final class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
 
     @CompilationFinal private static ContextThreadLocal CURRENT = new ContextThreadLocal();
     private static final Assumption SINGLE_CONTEXT = Truffle.getRuntime().createAssumption("Single Context");
-    @CompilationFinal private static volatile WeakReference<PolyglotContextImpl> singleContext;
+    @CompilationFinal private static volatile PolyglotContextImpl singleContext;
 
     private final Assumption singleThreaded = Truffle.getRuntime().createAssumption("Single threaded");
     private final Assumption singleThreadedConstant = Truffle.getRuntime().createAssumption("Single threaded constant thread");
@@ -154,11 +153,11 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         if (SINGLE_CONTEXT.isValid()) {
             synchronized (PolyglotContextImpl.class) {
                 if (SINGLE_CONTEXT.isValid()) {
-                    if (singleContext != null && singleContext.get() != null) {
+                    if (singleContext != null) {
                         SINGLE_CONTEXT.invalidate();
-                        singleContext.clear();
+                        singleContext = null;
                     } else {
-                        singleContext = new WeakReference<>(context);
+                        singleContext = context;
                     }
                 }
             }
@@ -173,9 +172,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         if (SINGLE_CONTEXT.isValid()) {
             synchronized (PolyglotContextImpl.class) {
                 if (SINGLE_CONTEXT.isValid()) {
-                    if (singleContext.get() == context) {
-                        singleContext.clear();
-                    }
+                    assert singleContext == context;
+                    singleContext = null;
                 }
             }
         }
@@ -246,7 +244,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
     static PolyglotContextImpl current() {
         if (SINGLE_CONTEXT.isValid()) {
             if (CURRENT.isSet()) {
-                return singleContext.get();
+                return singleContext;
             } else {
                 CompilerDirectives.transferToInterpreter();
                 return null;
@@ -260,7 +258,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         PolyglotContextImpl context = current();
         if (context == null) {
             CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("No current context available.");
+            context = current();
+            if (context == null) {
+                throw new AssertionError("No current context available.");
+            }
         }
         return context;
     }
