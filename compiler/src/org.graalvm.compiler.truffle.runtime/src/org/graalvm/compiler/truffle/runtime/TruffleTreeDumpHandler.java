@@ -77,9 +77,8 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
     @Override
     public void dump(DebugContext debug, Object object, final String format, Object... arguments) {
         if (object instanceof TruffleTreeDump && DebugOptions.PrintGraph.getValue(options) && TruffleCompilerOptions.getValue(DebugOptions.PrintTruffleTrees)) {
-            String message = String.format(format, arguments);
             try {
-                dumpASTAndInliningTrees(debug, message, (TruffleTreeDump) object);
+                dumpASTAndCallTrees(debug, (TruffleTreeDump) object);
             } catch (IOException ex) {
                 throw rethrowSilently(RuntimeException.class, ex);
             }
@@ -88,35 +87,44 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
 
     private static final ASTDumpStructure AST_DUMP_STRUCTURE = new ASTDumpStructure();
     private static final CallGraphDumpStructure CALL_GRAPH_DUMP_STRUCTURE = new CallGraphDumpStructure();
+    private static final String AFTER_PROFILING = "After Profiling";
+    private static final String AFTER_INLINING = "After Inlining";
 
-    private static void dumpASTAndInliningTrees(DebugContext debug, final String message, TruffleTreeDump truffleTreeDump) throws IOException {
+    private static void dumpASTAndCallTrees(DebugContext debug, TruffleTreeDump truffleTreeDump) throws IOException {
         final RootCallTarget callTarget = truffleTreeDump.callTarget;
-        if (callTarget.getRootNode() != null) {
+        if (callTarget.getRootNode() != null && callTarget instanceof OptimizedCallTarget) {
             AST ast = new AST(callTarget);
             final GraphOutput<AST, ?> astOutput = debug.buildOutput(GraphOutput.newBuilder(AST_DUMP_STRUCTURE).blocks(AST_DUMP_STRUCTURE));
-            astOutput.beginGroup(ast, "Truffle." + truffleTreeDump.toString(), callTarget.getRootNode().getName(), null, 0, DebugContext.addVersionProperties(null));
-            astOutput.print(ast, Collections.emptyMap(), 0, message);
+
+            astOutput.beginGroup(ast, "TruffleAST", "TruffleAST", null, 0, DebugContext.addVersionProperties(null));
+
+            astOutput.print(ast, Collections.emptyMap(), 0, AFTER_PROFILING);
             final TruffleInlining inlining = truffleTreeDump.inlining;
             if (inlining.countInlinedCalls() > 0) {
-                // TODO find out why this is needed. It would be prefered to just call inline on the old graph and dump it.
+                dumpInlinedTrees(astOutput, (OptimizedCallTarget) callTarget, inlining, new ArrayList<>());
+                // TODO why is this needed? It would be preferred to just call inline on the old graph.
                 ast = new AST(callTarget);
                 ast.inline(truffleTreeDump.inlining);
-                astOutput.print(ast, null, 1, message + "-Inlined");
-                if (callTarget instanceof OptimizedCallTarget) {
-                    astOutput.beginGroup(null, "Inlined", "Inlined", null, 0, DebugContext.addVersionProperties(null));
-                    dumpInlinedTrees(debug, astOutput, (OptimizedCallTarget) callTarget, inlining, message);
-                    final CallGraph callGraph = new CallGraph(truffleTreeDump);
-                    final GraphOutput<CallGraph, ?> callGraphOutput = debug.buildOutput(GraphOutput.newBuilder(CALL_GRAPH_DUMP_STRUCTURE));
-                    callGraphOutput.print(callGraph, null, 0, "inlined call graph");
-                }
-                astOutput.endGroup();
+                astOutput.print(ast, null, 1,  AFTER_INLINING);
             }
-            astOutput.endGroup();
+            astOutput.endGroup(); // TruffleAST
             astOutput.close();
+
+            final CallGraph callGraph = new CallGraph(truffleTreeDump);
+            final GraphOutput<CallGraph, ?> callGraphOutput = debug.buildOutput(GraphOutput.newBuilder(CALL_GRAPH_DUMP_STRUCTURE));
+            callGraphOutput.beginGroup(null, "TruffleCallGraph", "TruffleCallGraph", null, 0, DebugContext.addVersionProperties(null));
+            callGraphOutput.print(callGraph, null, 0, "inlined call graph");
+            callGraphOutput.endGroup(); // TruffleCallGraph
+            callGraphOutput.close();
+
+
         }
     }
 
-    private static void dumpInlinedTrees(DebugContext debug, GraphOutput<AST, ?> output, final OptimizedCallTarget callTarget, TruffleInlining inlining, String message) throws IOException {
+    private static void dumpInlinedTrees(GraphOutput<AST, ?> output, final OptimizedCallTarget callTarget, TruffleInlining inlining, List<RootCallTarget> dumped) throws IOException {
+        if (dumped.contains(callTarget)) {
+            return;
+        }
         for (DirectCallNode callNode : NodeUtil.findAllNodeInstances(callTarget.getRootNode(), DirectCallNode.class)) {
             CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
             if (inlinedCallTarget instanceof OptimizedCallTarget && callNode instanceof OptimizedDirectCallNode) {
@@ -125,9 +133,10 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
                     final RootCallTarget rootCallTarget = (RootCallTarget) inlinedCallTarget;
                     AST ast = new AST(rootCallTarget);
                     output.beginGroup(ast, inlinedCallTarget.toString(), rootCallTarget.getRootNode().getName(), null, 0, DebugContext.addVersionProperties(null));
-                    output.print(ast, Collections.emptyMap(), 0, message);
-                    dumpInlinedTrees(debug, output, (OptimizedCallTarget) inlinedCallTarget, decision, message);
+                    output.print(ast, Collections.emptyMap(), 0, AFTER_PROFILING);
                     output.endGroup();
+                    dumped.add(rootCallTarget);
+                    dumpInlinedTrees(output, (OptimizedCallTarget) inlinedCallTarget, decision, dumped);
                 }
             }
         }
