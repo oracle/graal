@@ -32,6 +32,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 
 /**
@@ -49,7 +50,7 @@ public final class TraceCompilationFailureListener extends AbstractGraalTruffleR
 
     @Override
     public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
-        if ((bailout && permanentBailout) || bailoutActionIsPrintOrGreater()) {
+        if (isPermanentFailure(bailout, permanentBailout) || bailoutActionIsPrintOrGreater()) {
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("Reason", reason);
             runtime.log(0, "opt fail", target.toString(), properties);
@@ -60,4 +61,15 @@ public final class TraceCompilationFailureListener extends AbstractGraalTruffleR
         OptionValues options = TruffleCompilerOptions.getOptions();
         return CompilationBailoutAction.getValue(options).ordinal() >= ExceptionAction.Print.ordinal();
     }
+
+    /**
+     * Determines if a failure is permanent.
+     *
+     * @see GraalTruffleRuntimeListener#onCompilationFailed(OptimizedCallTarget, String, boolean,
+     *      boolean)
+     */
+    public static boolean isPermanentFailure(boolean bailout, boolean permanentBailout) {
+        return !bailout || permanentBailout;
+    }
+
 }

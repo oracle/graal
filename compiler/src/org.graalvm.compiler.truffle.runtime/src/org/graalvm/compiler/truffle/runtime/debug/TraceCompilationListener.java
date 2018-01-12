@@ -78,8 +78,8 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     }
 
     @Override
-    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanent) {
-        if (!bailout || !permanent) {
+    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
+        if (!TraceCompilationFailureListener.isPermanentFailure(bailout, permanentBailout)) {
             onCompilationDequeued(target, null, "Non permanent bailout: " + reason);
         }
         currentCompilation.set(null);
