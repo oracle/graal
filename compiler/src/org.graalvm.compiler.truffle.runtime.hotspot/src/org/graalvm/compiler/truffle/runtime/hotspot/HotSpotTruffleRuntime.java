@@ -113,21 +113,17 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime implements 
         return lazy;
     }
 
-    private volatile List<ResolvedJavaMethod> truffleCallBoundaryMethods;
+    private List<ResolvedJavaMethod> truffleCallBoundaryMethods;
 
     @Override
-    public Iterable<ResolvedJavaMethod> getTruffleCallBoundaryMethods() {
+    public synchronized Iterable<ResolvedJavaMethod> getTruffleCallBoundaryMethods() {
         if (truffleCallBoundaryMethods == null) {
-            synchronized (this) {
-                if (truffleCallBoundaryMethods == null) {
-                    truffleCallBoundaryMethods = new ArrayList<>();
-                    MetaAccessProvider metaAccess = getMetaAccess();
-                    ResolvedJavaType type = metaAccess.lookupJavaType(OptimizedCallTarget.class);
-                    for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
-                        if (method.getAnnotation(TruffleCallBoundary.class) != null) {
-                            truffleCallBoundaryMethods.add(method);
-                        }
-                    }
+            truffleCallBoundaryMethods = new ArrayList<>();
+            MetaAccessProvider metaAccess = getMetaAccess();
+            ResolvedJavaType type = metaAccess.lookupJavaType(OptimizedCallTarget.class);
+            for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
+                if (method.getAnnotation(TruffleCallBoundary.class) != null) {
+                    truffleCallBoundaryMethods.add(method);
                 }
             }
         }
