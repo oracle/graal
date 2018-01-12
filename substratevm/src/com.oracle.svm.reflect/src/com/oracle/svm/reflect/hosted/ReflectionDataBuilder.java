@@ -188,8 +188,18 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     }
 
     private Executable enclosingMethodOrConstructor(Class<?> clazz) {
-        Method enclosingMethod = clazz.getEnclosingMethod();
-        Constructor<?> enclosingConstructor = clazz.getEnclosingConstructor();
+        Method enclosingMethod;
+        Constructor<?> enclosingConstructor;
+        try {
+            enclosingMethod = clazz.getEnclosingMethod();
+            enclosingConstructor = clazz.getEnclosingConstructor();
+        } catch (InternalError ex) {
+            // Checkstyle: stop
+            System.err.println("GR-7731 Error retrieving enclosing method for " + clazz);
+            ex.printStackTrace();
+            // Checkstyle: resume
+            return null;
+        }
 
         if (enclosingMethod == null && enclosingConstructor == null) {
             return null;
