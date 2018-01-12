@@ -32,6 +32,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.ValueProfile;
 
 /**
  * A call node with a constant {@link CallTarget} that can be optimized by Graal.
@@ -43,6 +44,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
 
     private int callCount;
     private boolean inliningForced;
+    @CompilationFinal private ValueProfile exceptionProfile;
 
     @CompilationFinal private OptimizedCallTarget splitCallTarget;
 
@@ -59,7 +61,17 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
         if (CompilerDirectives.inInterpreter()) {
             onInterpreterCall();
         }
-        return callProxy(this, getCurrentCallTarget(), arguments, true);
+        try {
+            return callProxy(this, getCurrentCallTarget(), arguments, true);
+        } catch (Throwable t) {
+            if (exceptionProfile == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                exceptionProfile = ValueProfile.createClassProfile();
+            }
+            Throwable profiledT = exceptionProfile.profile(t);
+            OptimizedCallTarget.runtime().getTvmci().onThrowable(this, null, profiledT, null);
+            throw OptimizedCallTarget.rethrow(profiledT);
+        }
     }
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.

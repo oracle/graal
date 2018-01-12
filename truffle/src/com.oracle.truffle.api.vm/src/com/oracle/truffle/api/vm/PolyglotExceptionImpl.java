@@ -377,8 +377,11 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
             this.apiAccess = impl.getAPIAccess();
 
             Throwable cause = impl.exception;
-            while (cause.getCause() != null && (cause.getCause() instanceof HostException || cause.getCause().getStackTrace().length > 0)) {
+            while (cause.getCause() != null && cause.getStackTrace().length == 0) {
                 cause = cause.getCause();
+            }
+            if (cause.getStackTrace().length == 0) {
+                cause = impl.exception;
             }
             this.guestFrames = impl.guestFrames == null ? Collections.<TruffleStackTraceElement> emptyList().iterator() : impl.guestFrames.iterator();
             this.hostFrames = Arrays.asList(cause.getStackTrace()).listIterator();
@@ -470,11 +473,18 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
             return null;
         }
 
+        static boolean isLazyStackTraceElement(StackTraceElement element) {
+            return element == null;
+        }
+
         static boolean isGuestCall(StackTraceElement element) {
-            return VMAccessor.SPI.isGuestCallStackElement(element);
+            return isLazyStackTraceElement(element) || VMAccessor.SPI.isGuestCallStackElement(element);
         }
 
         static boolean isHostToGuest(StackTraceElement element) {
+            if (isLazyStackTraceElement(element)) {
+                return false;
+            }
             if (element.getClassName().startsWith(POLYGLOT_PACKAGE) && element.getClassName().indexOf('.', POLYGLOT_PACKAGE.length()) < 0) {
                 return true;
             } else if (element.getClassName().startsWith(JAVA_INTEROP_PACKAGE)) {
@@ -488,6 +498,9 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
         }
 
         static boolean isGuestToHost(StackTraceElement element) {
+            if (isLazyStackTraceElement(element)) {
+                return false;
+            }
             return element.getClassName().startsWith(PROXY_PACKAGE) || element.getClassName().startsWith(JAVA_INTEROP_PACKAGE);
         }
 
