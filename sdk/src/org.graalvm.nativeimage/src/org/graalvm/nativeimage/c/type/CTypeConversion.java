@@ -24,6 +24,8 @@
  */
 package org.graalvm.nativeimage.c.type;
 
+import java.nio.charset.Charset;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.impl.CTypeConversionSupport;
@@ -52,12 +54,35 @@ public final class CTypeConversion {
     }
 
     /**
-     * Allocates memory for the CString and copies bytes from the Java string into it.
+     * Copies the {@param javaString} into the buffer up to the {@param bufferSize} bytes encoded
+     * with the default character set.
+     *
+     * In case the string is larger than the {@code buffer}, the {@code bufferSize} bytes are
+     * copied.
      *
      * @param javaString managed Java string
+     * @param buffer to store the bytes of javaString encoded with charset
+     * @param bufferSize size of the buffer
+     * @return number of bytes copied to the buffer
      */
-    public static void toCString(CharSequence javaString, CCharPointer buffer, UnsignedWord bufferSize) {
-        ImageSingletons.lookup(CTypeConversionSupport.class).toCString(javaString, buffer, bufferSize);
+    public static UnsignedWord toCString(CharSequence javaString, CCharPointer buffer, UnsignedWord bufferSize) {
+        return ImageSingletons.lookup(CTypeConversionSupport.class).toCString(javaString, buffer, bufferSize);
+    }
+
+    /**
+     * Copies the {@code javaString} into the buffer encoded with the {@code charset} character set.
+     *
+     * In case the string is larger than the {@code buffer}, the {@code bufferSize} bytes are
+     * copied.
+     *
+     * @param javaString managed Java string
+     * @param charset desired character set for the returned string
+     * @param buffer to store the bytes of javaString encoded with charset
+     * @param bufferSize size of the buffer
+     * @return number of bytes copied to the buffer
+     */
+    public static UnsignedWord toCString(CharSequence javaString, Charset charset, CCharPointer buffer, UnsignedWord bufferSize) {
+        return ImageSingletons.lookup(CTypeConversionSupport.class).toCString(javaString, charset, buffer, bufferSize);
     }
 
     /**
