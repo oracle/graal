@@ -36,7 +36,6 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -951,7 +950,7 @@ final class JNIFunctions {
 
         static class JNIJavaVMEnterAttachThreadPrologue {
             static void enter(JNIJavaVM vm) {
-                CEntryPointActions.enterAttachThread((Isolate) vm);
+                CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate());
             }
         }
 

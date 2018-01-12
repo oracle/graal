@@ -33,7 +33,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -250,11 +249,11 @@ final class JNIInvocationInterface {
                     env.write(Word.nullPointer());
                     CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_EVERSION());
                 }
-                if (!CEntryPointContext.isCurrentThreadAttachedTo((Isolate) vm)) {
+                if (!CEntryPointContext.isCurrentThreadAttachedTo(vm.getFunctions().getIsolate())) {
                     env.write(Word.nullPointer());
                     CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_EDETACHED());
                 }
-                if (CEntryPointActions.enterIsolate((Isolate) vm) != 0) {
+                if (CEntryPointActions.enterIsolate(vm.getFunctions().getIsolate()) != 0) {
                     CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_ERR());
                 }
             }
