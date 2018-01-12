@@ -33,6 +33,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -76,6 +77,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVMI1Vector doForeign(VirtualFrame frame, LLVMTruffleObject addr,
                         @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) {
             boolean[] vector = new boolean[getSize()];
@@ -107,6 +109,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVMI8Vector doForeign(VirtualFrame frame, LLVMTruffleObject addr,
                         @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) {
             byte[] vector = new byte[getSize()];
@@ -138,6 +141,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVMI16Vector doForeign(VirtualFrame frame, LLVMTruffleObject addr,
                         @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) {
             short[] vector = new short[getSize()];
@@ -169,6 +173,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVMI32Vector doForeign(VirtualFrame frame, LLVMTruffleObject addr,
                         @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) {
             int[] vector = new int[getSize()];
@@ -200,6 +205,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVMI64Vector doForeign(VirtualFrame frame, LLVMTruffleObject addr,
                         @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) {
             long[] vector = new long[getSize()];
@@ -231,6 +237,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVMFloatVector doForeign(VirtualFrame frame, LLVMTruffleObject addr,
                         @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) {
             float[] vector = new float[getSize()];
@@ -262,6 +269,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVMDoubleVector doForeign(VirtualFrame frame, LLVMTruffleObject addr,
                         @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) {
             double[] vector = new double[getSize()];
@@ -293,6 +301,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
         }
 
         @Specialization
+        @ExplodeLoop
         @SuppressWarnings("unused")
         protected Object doForeign(VirtualFrame frame, LLVMTruffleObject addr,
                         @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) {
