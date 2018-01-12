@@ -118,13 +118,13 @@ import org.graalvm.polyglot.proxy.Proxy;
  * should be pre-initialized, for example: {@code -Dpolyglot.engine.PreinitializeContexts=js,python}
  * <p>
  * During the pre-initialization (in the native compilation time) the
- * {@link com.oracle.truffle.api.TruffleLanguage#createContext(com.oracle.truffle.api.TruffleLanguage.Env)}
- * and {@link com.oracle.truffle.api.TruffleLanguage#initializeContext(java.lang.Object)} methods
+ * {@code com.oracle.truffle.api.TruffleLanguage.createContext(com.oracle.truffle.api.TruffleLanguage.Env)}
+ * and {@code com.oracle.truffle.api.TruffleLanguage.initializeContext(java.lang.Object)} methods
  * are called. In the image execution time the
- * {@link com.oracle.truffle.api.TruffleLanguage#patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)}
+ * {@code com.oracle.truffle.api.TruffleLanguage.patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)}
  * is called as a consequence of {@link org.graalvm.polyglot.Context#create(java.lang.String...)}
  * invocation. If the
- * {@link com.oracle.truffle.api.TruffleLanguage#patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)}
+ * {@code com.oracle.truffle.api.TruffleLanguage.patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)}
  * is successful for all pre-initialized languages the pre-initialized context is used, otherwise a
  * new context is created.
  *
