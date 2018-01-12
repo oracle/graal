@@ -169,27 +169,46 @@ public interface TruffleCompilerRuntime {
     Consumer<InstalledCode> registerInstalledCodeEntryForAssumption(JavaConstant optimizedAssumptionConstant);
 
     /**
-     * Formats a message and some extra properties into a single line of text and writes it to the
-     * Truffle log output stream. A representative trace line is shown below:
+     * {@linkplain #formatEvent(String, int, String, int, String, int, Map, int) Formats} a Truffle
+     * event and writes it to the {@linkplain #log(String) log output}.
+     */
+    default void logEvent(int depth, String event, String subject, Map<String, Object> properties) {
+        log(formatEvent("[truffle]", depth, event, 16, subject, 60, properties, 20));
+    }
+
+    /**
+     * Formats a message describing a Truffle event as a single line of text. A representative event
+     * trace line is shown below:
      *
      * <pre>
      * [truffle] opt queued       :anonymous <split-1563da5>                                  |ASTSize      20/   20 |Calls/Thres    7723/    3 |CallsAndLoop/Thres    7723/ 1000 |Inval#              0
      * </pre>
      *
-     * @param indent amount of indentation to prepend to the line ({@code indent * 2} space
-     *            characters)
-     * @param msg a short description of the event being traced (e.g., "opt done")
-     * @param details a more detailed description of the event (e.g., name of a Truffle AST)
+     * @param depth nesting depth of the event (subject column is indented @{code depth * 2})
+     * @param event a short description of the event being traced (e.g., "opt done")
+     * @param eventWidth the minimum width of the event column
+     * @param subject a description of the event's subject (e.g., name of a Truffle AST)
+     * @param subjectWidth the minimum width of the subject column
      * @param properties name/value pairs describing properties relevant to the event
+     * @param propertyWidth the minimum width of the column for each property
      */
-    default void log(int indent, String msg, String details, Map<String, Object> properties) {
-        int spaceIndent = indent * 2;
-        StringBuilder sb = new StringBuilder();
-        sb.append(String.format("[truffle] %-16s ", msg));
-        for (int i = 0; i < spaceIndent; i++) {
-            sb.append(' ');
+    default String formatEvent(String caption, int depth, String event, int eventWidth, String subject, int subjectWidth, Map<String, Object> properties, int propertyWidth) {
+        if (depth < 0) {
+            throw new IllegalArgumentException("depth is negative: " + depth);
         }
-        sb.append(String.format("%-" + (60 - spaceIndent) + "s", details));
+        if (eventWidth < 0) {
+            throw new IllegalArgumentException("eventWidth is negative: " + eventWidth);
+        }
+        if (subjectWidth < 0) {
+            throw new IllegalArgumentException("subjectWidth is negative: " + subjectWidth);
+        }
+        if (propertyWidth < 0) {
+            throw new IllegalArgumentException("propertyWidth is negative: " + propertyWidth);
+        }
+        int subjectIndent = depth * 2;
+        StringBuilder sb = new StringBuilder();
+        String format = "%s %-" + eventWidth + "s%" + (1 + subjectIndent) + "s%-" + Math.max(1, subjectWidth - subjectIndent) + "s";
+        sb.append(String.format(format, caption, event, "", subject));
         if (properties != null) {
             for (String property : properties.keySet()) {
                 Object value = properties.get(property);
@@ -199,20 +218,20 @@ public interface TruffleCompilerRuntime {
                 sb.append('|');
                 sb.append(property);
 
-                StringBuilder propertyBuilder = new StringBuilder();
+                String valueString;
                 if (value instanceof Integer) {
-                    propertyBuilder.append(String.format("%6d", value));
+                    valueString = String.format("%6d", value);
                 } else if (value instanceof Double) {
-                    propertyBuilder.append(String.format("%8.2f", value));
+                    valueString = String.format("%8.2f", value);
                 } else {
-                    propertyBuilder.append(value);
+                    valueString = String.valueOf(value);
                 }
 
-                int length = Math.max(1, 20 - property.length());
-                sb.append(String.format(" %" + length + "s ", propertyBuilder.toString()));
+                int length = Math.max(1, propertyWidth - property.length());
+                sb.append(String.format(" %" + length + "s ", valueString));
             }
         }
-        log(sb.toString());
+        return sb.toString();
     }
 
     /**

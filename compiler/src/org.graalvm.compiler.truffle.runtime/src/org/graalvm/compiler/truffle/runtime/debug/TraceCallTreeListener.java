@@ -60,7 +60,7 @@ public final class TraceCallTreeListener extends AbstractGraalTruffleRuntimeList
 
     @Override
     public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo) {
-        runtime.log(0, "opt call tree", target.toString(), target.getDebugProperties(inliningDecision));
+        runtime.logEvent(0, "opt call tree", target.toString(), target.getDebugProperties(inliningDecision));
         logTruffleCallTree(target, inliningDecision);
     }
 
@@ -80,10 +80,10 @@ public final class TraceCallTreeListener extends AbstractGraalTruffleRuntimeList
                     Map<String, Object> properties = new LinkedHashMap<>();
                     GraalTruffleRuntimeListener.addASTSizeProperty(callNode.getCurrentCallTarget(), inliningDecision, properties);
                     properties.putAll(callNode.getCurrentCallTarget().getDebugProperties(inliningDecision));
-                    runtime.log(depth, "opt call tree", callNode.getCurrentCallTarget().toString() + dispatched, properties);
+                    runtime.logEvent(depth, "opt call tree", callNode.getCurrentCallTarget().toString() + dispatched, properties);
                 } else if (node instanceof OptimizedIndirectCallNode) {
                     int depth = decisionStack == null ? 0 : decisionStack.size() - 1;
-                    runtime.log(depth, "opt call tree", "<indirect>", new LinkedHashMap<>());
+                    runtime.logEvent(depth, "opt call tree", "<indirect>", new LinkedHashMap<>());
                 }
                 return true;
             }

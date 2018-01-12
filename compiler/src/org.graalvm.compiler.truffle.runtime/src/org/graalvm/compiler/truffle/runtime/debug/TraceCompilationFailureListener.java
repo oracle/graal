@@ -53,7 +53,7 @@ public final class TraceCompilationFailureListener extends AbstractGraalTruffleR
         if (isPermanentFailure(bailout, permanentBailout) || bailoutActionIsPrintOrGreater()) {
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("Reason", reason);
-            runtime.log(0, "opt fail", target.toString(), properties);
+            runtime.logEvent(0, "opt fail", target.toString(), properties);
         }
     }
 

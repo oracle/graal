@@ -55,7 +55,7 @@ public final class TraceASTCompilationListener extends AbstractGraalTruffleRunti
 
     @Override
     public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo) {
-        runtime.log(0, "opt AST", target.toString(), target.getDebugProperties(inliningDecision));
+        runtime.logEvent(0, "opt AST", target.toString(), target.getDebugProperties(inliningDecision));
         printCompactTree(target, inliningDecision);
     }
 

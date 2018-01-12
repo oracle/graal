@@ -48,7 +48,7 @@ public final class TraceSplittingListener implements GraalTruffleRuntimeListener
     public void onCompilationSplit(OptimizedDirectCallNode callNode) {
         OptimizedCallTarget callTarget = callNode.getCallTarget();
         String label = String.format("split %3s-%-4s-%-4s ", splitCount++, Integer.toHexString(callNode.getCurrentCallTarget().hashCode()), callNode.getCallCount());
-        TruffleCompilerRuntime.getRuntime().log(0, label, callTarget.toString(), callTarget.getDebugProperties(null));
+        TruffleCompilerRuntime.getRuntime().logEvent(0, label, callTarget.toString(), callTarget.getDebugProperties(null));
     }
 
 }

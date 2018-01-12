@@ -52,11 +52,11 @@ public final class TraceInliningListener extends AbstractGraalTruffleRuntimeList
             return;
         }
         if (TruffleCompilerOptions.getValue(TruffleFunctionInlining)) {
-            runtime.log(0, "inline start", target.toString(), target.getDebugProperties(null));
+            runtime.logEvent(0, "inline start", target.toString(), target.getDebugProperties(null));
             logInliningDecisionRecursive(target, inliningDecision, 1);
-            runtime.log(0, "inline done", target.toString(), target.getDebugProperties(inliningDecision));
+            runtime.logEvent(0, "inline done", target.toString(), target.getDebugProperties(inliningDecision));
         } else {
-            runtime.log(0, "TruffleFunctionInlining is set to false", "", null);
+            runtime.logEvent(0, "TruffleFunctionInlining is set to false", "", null);
             return;
         }
     }
@@ -66,7 +66,7 @@ public final class TraceInliningListener extends AbstractGraalTruffleRuntimeList
             TruffleInliningProfile profile = decision.getProfile();
             boolean inlined = decision.shouldInline();
             String msg = inlined ? "inline success" : "inline failed";
-            runtime.log(depth, msg, decision.getProfile().getCallNode().getCurrentCallTarget().toString(), profile.getDebugProperties());
+            runtime.logEvent(depth, msg, decision.getProfile().getCallNode().getCurrentCallTarget().toString(), profile.getDebugProperties());
             if (inlined) {
                 logInliningDecisionRecursive(target, decision, depth + 1);
             }

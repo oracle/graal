@@ -556,7 +556,7 @@ public abstract class PartialEvaluator {
 
         private static void logPerformanceWarningImpl(String callTargetName, String msg, String details, Map<String, Object> properties) {
             TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
-            runtime.log(0, msg, String.format("%-60s|%s", callTargetName, details), properties);
+            runtime.logEvent(0, msg, String.format("%-60s|%s", callTargetName, details), properties);
         }
 
         private static void logPerformanceStackTrace(List<? extends Node> locations) {

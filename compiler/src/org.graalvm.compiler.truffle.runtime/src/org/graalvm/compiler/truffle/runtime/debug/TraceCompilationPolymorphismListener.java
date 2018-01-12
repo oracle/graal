@@ -60,7 +60,7 @@ public final class TraceCompilationPolymorphismListener extends AbstractGraalTru
                 props.put("simpleName", node.getClass().getSimpleName());
                 props.put("subtree", "\n" + NodeUtil.printCompactTreeToString(node));
                 String msg = cost == NodeCost.MEGAMORPHIC ? "megamorphic" : "polymorphic";
-                runtime.log(0, msg, node.toString(), props);
+                runtime.logEvent(0, msg, node.toString(), props);
             }
         }
     }
