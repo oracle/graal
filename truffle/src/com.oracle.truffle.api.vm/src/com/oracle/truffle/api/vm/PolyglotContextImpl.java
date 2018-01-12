@@ -78,8 +78,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
     @CompilationFinal private volatile PolyglotThreadInfo constantCurrentThreadInfo = PolyglotThreadInfo.NULL;
 
     /*
-     * While canceling the context can no longer be entered. The context goes from canceling into closed
-     * state.
+     * While canceling the context can no longer be entered. The context goes from canceling into
+     * closed state.
      */
     volatile boolean cancelling;
     private volatile Thread closingThread;
@@ -982,8 +982,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         for (PolyglotThreadInfo threadInfo : threads.values()) {
             if (!threadInfo.isCurrent() && threadInfo.isActive()) {
                 /*
-                 * We send an interrupt to the thread to wake up and to run some guest language code in case they
-                 * are waiting in some async primitive. The interrupt is then cleared when the closed is performed.
+                 * We send an interrupt to the thread to wake up and to run some guest language code
+                 * in case they are waiting in some async primitive. The interrupt is then cleared
+                 * when the closed is performed.
                  */
                 threadInfo.thread.interrupt();
             }
