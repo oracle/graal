@@ -33,6 +33,11 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplitting;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingMaxCalleeSize;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUsePollutionBasedSplittingStrategy;
+import com.oracle.truffle.api.source.SourceSection;
+
+import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 
 final class TruffleSplittingStrategy {
@@ -178,4 +183,61 @@ final class TruffleSplittingStrategy {
         });
     }
 
+    public static void logSplitOf(OptimizedDirectCallNode call) {
+        System.out.println("@Splitting " + extractSourceSection(call) + ":" + call.getCallTarget());
+    }
+
+    private static String extractSourceSection(OptimizedDirectCallNode node) {
+        Node cnode = node;
+        while (cnode.getSourceSection() == null && !(cnode instanceof RootNode)) {
+            cnode = cnode.getParent();
+            if (cnode == null) {
+                return "";
+            }
+        }
+        return getShortDescription(cnode.getSourceSection());
+    }
+
+    static String getShortDescription(SourceSection sourceSection) {
+        if (sourceSection.getSource() == null) {
+            // TODO the source == null branch can be removed if the deprecated
+            // SourceSection#createUnavailable has be removed.
+            return "<Unknown>";
+        }
+        StringBuilder b = new StringBuilder();
+        if (sourceSection.getSource().getPath() == null) {
+            b.append(sourceSection.getSource().getName());
+        } else {
+            Path pathAbsolute = Paths.get(sourceSection.getSource().getPath());
+            Path pathBase = new File("").getAbsoluteFile().toPath();
+            try {
+                Path pathRelative = pathBase.relativize(pathAbsolute);
+                b.append(pathRelative.toFile());
+            } catch (IllegalArgumentException e) {
+                b.append(sourceSection.getSource().getName());
+            }
+        }
+
+        b.append("~").append(formatIndices(sourceSection, true));
+        return b.toString();
+    }
+
+    static String formatIndices(SourceSection sourceSection, boolean needsColumnSpecifier) {
+        StringBuilder b = new StringBuilder();
+        boolean singleLine = sourceSection.getStartLine() == sourceSection.getEndLine();
+        if (singleLine) {
+            b.append(sourceSection.getStartLine());
+        } else {
+            b.append(sourceSection.getStartLine()).append("-").append(sourceSection.getEndLine());
+        }
+        if (needsColumnSpecifier) {
+            b.append(":");
+            if (sourceSection.getCharLength() <= 1) {
+                b.append(sourceSection.getCharIndex());
+            } else {
+                b.append(sourceSection.getCharIndex()).append("-").append(sourceSection.getCharIndex() + sourceSection.getCharLength() - 1);
+            }
+        }
+        return b.toString();
+    }
 }
