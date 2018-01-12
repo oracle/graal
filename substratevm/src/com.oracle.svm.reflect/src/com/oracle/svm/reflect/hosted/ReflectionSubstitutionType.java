@@ -29,17 +29,13 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -57,7 +53,6 @@ import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
-import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.util.VMError;
@@ -170,24 +165,6 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
         @Override
         public int getMaxLocals() {
             return original.getMaxLocals();
-        }
-    }
-
-    /** A graph with multiple unwinds is invalid. Merge the various unwind paths. */
-    private static void mergeUnwinds(HostedGraphKit graphKit) {
-        List<UnwindNode> unwinds = new ArrayList<>();
-        for (Node node : graphKit.getGraph().getNodes()) {
-            if (node instanceof UnwindNode) {
-                unwinds.add((UnwindNode) node);
-            }
-        }
-
-        if (unwinds.size() > 1) {
-            MergeNode unwindMergeNode = graphKit.add(new MergeNode());
-            ValueNode exceptionValue = InliningUtil.mergeValueProducers(unwindMergeNode, unwinds, null, unwindNode -> unwindNode.exception());
-            UnwindNode unwindReplacement = graphKit.add(new UnwindNode(exceptionValue));
-            unwindMergeNode.setNext(unwindReplacement);
-            unwindMergeNode.setStateAfter(graphKit.getFrameState().create(graphKit.bci(), unwindMergeNode));
         }
     }
 
@@ -528,7 +505,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
 
             graphKit.endInvokeWithException();
 
-            mergeUnwinds(graphKit);
+            graphKit.mergeUnwinds();
 
             assert graphKit.getGraph().verify();
             return graphKit.getGraph();
@@ -572,7 +549,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
 
             graphKit.endInvokeWithException();
 
-            mergeUnwinds(graphKit);
+            graphKit.mergeUnwinds();
 
             assert graphKit.getGraph().verify();
             return graphKit.getGraph();
