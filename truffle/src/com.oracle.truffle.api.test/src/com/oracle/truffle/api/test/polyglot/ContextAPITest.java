@@ -223,9 +223,10 @@ public class ContextAPITest {
             future.get();
         }
 
-        context.close();
         service.shutdown();
         service.awaitTermination(1000, TimeUnit.MILLISECONDS);
+
+        context.close();
     }
 
     @Test
