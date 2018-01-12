@@ -22,23 +22,33 @@
  */
 package org.graalvm.compiler.truffle.common;
 
-import org.graalvm.compiler.debug.GraalError;
+import java.lang.reflect.Method;
 
 /**
- * Initializes and stores the singleton {@link TruffleCompilerRuntime} instance.
+ * Initializes and stores the singleton {@code TruffleRuntime} instance. Separating this from
+ * {@link TruffleCompilerRuntimeInstance} is necessary to support
+ * {@link TruffleCompilerRuntime#getRuntimeIfAvailable()}.
  */
-final class TruffleCompilerRuntimeInstance {
+final class TruffleRuntimeInstance {
     /**
      * The singleton instance.
      */
-    static final TruffleCompilerRuntime INSTANCE = init();
+    static final Object INSTANCE = init();
 
-    private static TruffleCompilerRuntime init() {
-        Object truffleRuntime = TruffleRuntimeInstance.INSTANCE;
-        if (truffleRuntime instanceof TruffleCompilerRuntime) {
-            return (TruffleCompilerRuntime) truffleRuntime;
+    /**
+     * Accesses the Truffle runtime via reflection to avoid a dependency on Truffle that will expose
+     * Truffle types to all classes depending on {@code org.graalvm.compiler.truffle.common}.
+     */
+    private static Object init() {
+        try {
+            Class<?> truffleClass = Class.forName("com.oracle.truffle.api.Truffle");
+            Method getRuntime = truffleClass.getMethod("getRuntime");
+            Object truffleRuntime = getRuntime.invoke(null);
+            return truffleRuntime;
+        } catch (Error e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ExceptionInInitializerError(e);
         }
-        throw new GraalError("Truffle runtime %s (loader: %s) is not a %s (loader: %s)", truffleRuntime, truffleRuntime.getClass().getClassLoader(),
-                        TruffleCompilerRuntime.class.getName(), TruffleCompilerRuntime.class.getClassLoader());
     }
 }

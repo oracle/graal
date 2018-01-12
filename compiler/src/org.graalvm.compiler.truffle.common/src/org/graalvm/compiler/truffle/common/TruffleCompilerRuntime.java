@@ -46,10 +46,20 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public interface TruffleCompilerRuntime {
 
     /**
+     * Gets the singleton runtime instance if it is available other returns {@code null}.
+     */
+    static TruffleCompilerRuntime getRuntimeIfAvailable() {
+        if (TruffleRuntimeInstance.INSTANCE instanceof TruffleCompilerRuntime) {
+            return TruffleCompilerRuntimeInstance.INSTANCE;
+        }
+        return null;
+    }
+
+    /**
      * Gets the singleton runtime instance.
      */
     static TruffleCompilerRuntime getRuntime() {
-        return TruffleCompilerRuntimeInstance.RUNTIME;
+        return TruffleCompilerRuntimeInstance.INSTANCE;
     }
 
     /**
