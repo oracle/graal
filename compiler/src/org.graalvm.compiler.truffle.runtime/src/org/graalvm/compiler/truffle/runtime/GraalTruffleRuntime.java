@@ -453,6 +453,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             final OptimizedDirectCallNode directCallNode = new OptimizedDirectCallNode(this, optimizedCallTarget);
             if (TruffleCompilerOptions.getValue(TruffleUsePollutionBasedSplittingStrategy)) {
                 optimizedCallTarget.addKnownCallNode(directCallNode);
+                if (optimizedCallTarget.isProfilePolluted()) {
+                    directCallNode.setNeedsSplit(true);
+                }
             }
             return directCallNode;
         } else {

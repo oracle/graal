@@ -65,7 +65,7 @@ final class TruffleSplittingStrategy {
         if (callTarget.isValid()) {
             return false;
         }
-         return callTarget.isProfilePolluted();
+         return call.isNeedsSplit();
     }
 
     static void forceSplitting(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
