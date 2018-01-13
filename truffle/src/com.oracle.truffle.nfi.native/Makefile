@@ -29,31 +29,22 @@ QUIETLY$(MX_VERBOSE)  = @
 
 .PHONY: default
 
-NATIVE_CLASSES=com.oracle.truffle.nfi.ClosureNativePointer \
-	       com.oracle.truffle.nfi.NativeAllocation \
-	       com.oracle.truffle.nfi.NativeString \
-	       com.oracle.truffle.nfi.NFIContext
-
 OBJECTS=api.o \
 	closure.o \
 	jni.o \
 	lookup.o \
 	signature.o
 
+JNI_HEADERS_PATH:=$(filter-out %.jar,$(subst :, ,$(MX_CLASSPATH)))
+JNI_HEADERS:=$(foreach dir,$(JNI_HEADERS_PATH),$(wildcard $(dir)/*.h))
+JNI_HEADERS_INCLUDE_PATH:=$(patsubst %,-I%,$(JNI_HEADERS_PATH))
+
 default: bin/${LIBTRUFFLENFI}
 
-src_gen/native.h: Makefile
-	$(QUIETLY) echo JAVAH $@
-	$(QUIETLY) rm -f $@
-	$(QUIETLY) ${JAVA_HOME}/bin/javah -classpath ${MX_CLASSPATH} -o $@ ${NATIVE_CLASSES}
-
-bin/src-gen-deps: Makefile
-	$(QUIETLY) rm -f $@
-	$(QUIETLY) mkdir -p bin/
-	$(QUIETLY) ${JAVA_HOME}/bin/javap -sysinfo -classpath ${MX_CLASSPATH} ${NATIVE_CLASSES} | grep "Classfile " | sed -e 's|Classfile |src_gen/native.h: |' >> $@
-
 OBJECTFILES=${OBJECTS:%.o=bin/%.o}
-CPPFLAGS=-I${VPATH}/include -Isrc_gen -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${OS} -Ilibffi-build/include
+CPPFLAGS=-I${VPATH}/include -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${OS} -Ilibffi-build/include
+CPPFLAGS+=${JNI_HEADERS_INCLUDE_PATH}
+
 CFLAGS=-g -fPIC
 LDFLAGS=-g -ldl
 LIBFFI_LIB=libffi-build/.libs/libffi.a
@@ -68,7 +59,8 @@ bin/${LIBTRUFFLENFI}: ${OBJECTFILES} ${LIBFFI_LIB}
 	$(QUIETLY) echo LINK $@
 	$(QUIETLY) gcc -shared ${LDFLAGS} $+ -o $@
 
-bin/%.d: src/%.c src_gen/native.h libffi-build/include/ffi.h
+bin/%.d: src/%.c $(JNI_HEADERS) libffi-build/include/ffi.h
+	$(QUIETLY) mkdir -p bin/
 	$(QUIETLY) gcc -MM ${CPPFLAGS} $< | sed 's|\($*\)\.o[ :]*|bin/\1.o $@ : |g' > $@
 
 bin/%.o: src/%.c
@@ -91,4 +83,3 @@ libffi-3.2.1/configure: ${LIBFFI_SRC}
 	$(QUIETLY) touch $@
 
 -include ${OBJECTS:%.o=bin/%.d}
--include bin/src-gen-deps
