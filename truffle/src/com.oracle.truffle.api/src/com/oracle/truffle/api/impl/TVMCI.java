@@ -216,6 +216,14 @@ public abstract class TVMCI {
         return false;
     }
 
+    @SuppressWarnings("unused")
+    protected void initializeProfile(CallTarget target, Class<?>[] argumentTypes) {
+    }
+
+    protected Object callProfiled(CallTarget target, Object... args) {
+        return target.call(args);
+    }
+
     /**
      * Accessor for {@link TVMCI#Test} class.
      *

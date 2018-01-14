@@ -256,6 +256,37 @@ public final class Context implements AutoCloseable {
     }
 
     /**
+     * Explicitly enters this context on the current thread. A context needs to be entered for any
+     * operation to be performed. The context implicitly enters and leaves the context for every
+     * operation. For example, before and after invoking the {@link Value#execute(Object...)
+     * execute} method. This can be inefficient if a very high number of simple operations needs to
+     * be performed. By {@link #enter() entering} and {@link #leave() leaving} once explicitly, the
+     * overhead for entering/leaving contexts for each operation can be eliminated. Contexts can be
+     * entered multiple times on the same thread.
+     *
+     * @throws IllegalStateException if the context is already {@link #close() closed}.
+     * @throws PolyglotException if a language has denied execution on the current thread.
+     * @see #leave() to leave a context.
+     * @since 1.0
+     */
+    public void enter() {
+        impl.explicitEnter();
+    }
+
+    /**
+     * Explicitly leaves this context on the current thread. The context must be {@link #enter()
+     * entered} before calling this method.
+     *
+     * @throws IllegalStateException if the context is already closed or if the context was not
+     *             {@link #enter() entered} on the current thread.
+     * @see #enter() to enter a context.
+     * @since 1.0
+     */
+    public void leave() {
+        impl.explicitLeave();
+    }
+
+    /**
      * Closes this context and frees up potentially allocated native resources. A context cannot
      * free all native resources allocated automatically. For this reason it is necessary to close
      * contexts after use. If a context is cancelled then the currently executing thread will throw

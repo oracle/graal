@@ -59,6 +59,28 @@ final class GraalTVMCI extends TVMCI {
         return e.getMethodName().equals(OptimizedCallTarget.CALL_BOUNDARY_METHOD_NAME) && e.getClassName().equals(OptimizedCallTarget.class.getName());
     }
 
+    /**
+     * Initializes the argument profile with a custom profile without calling it. A call target must
+     * never be called prior initialization of argument types. Also the argument types must be final
+     * if used in combination with {@link #callProfiled(CallTarget, Object...)}.
+     */
+    @Override
+    protected void initializeProfile(CallTarget target, Class<?>[] argumentTypes) {
+        ((OptimizedCallTarget) target).getCompilationProfile().initializeArgumentTypes(argumentTypes);
+    }
+
+    /**
+     * Call without verifying the argument profile. Needs to be initialized by
+     * {@link #initializeProfile(CallTarget, Class[])}. Potentially crashes the VM if the argument
+     * profile is incompatible with the actual arguments. Use with caution.
+     */
+    @Override
+    protected Object callProfiled(CallTarget target, Object... args) {
+        OptimizedCallTarget castTarget = (OptimizedCallTarget) target;
+        assert castTarget.compilationProfile != null && castTarget.compilationProfile.isValidArgumentProfile(args) : "Invalid argument profile. UnsafeCalls need to explicity initialize the profile.";
+        return castTarget.doInvoke(args);
+    }
+
     @Override
     protected OptionDescriptors getCompilerOptionDescriptors() {
         return PolyglotCompilerOptions.getDescriptors();

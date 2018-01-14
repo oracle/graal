@@ -82,6 +82,17 @@ public class OptimizedCompilationProfile {
                         compilationCallAndLoopThreshold);
     }
 
+    void initializeArgumentTypes(Class<?>[] argumentTypes) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (profiledArgumentTypesAssumption != null) {
+            this.profiledArgumentTypesAssumption.invalidate();
+            throw new AssertionError("Argument types already initialized. initializeArgumentTypes must be called before any profile is initialized.");
+        } else {
+            this.profiledArgumentTypesAssumption = createAssumption("Custom profiled argument types");
+            this.profiledArgumentTypes = argumentTypes;
+        }
+    }
+
     Class<?>[] getProfiledArgumentTypes() {
         if (profiledArgumentTypesAssumption == null) {
             /*
@@ -315,6 +326,18 @@ public class OptimizedCompilationProfile {
         profiledArgumentTypesAssumption = createAssumption("Profiled Argument Types");
     }
 
+    private static boolean checkProfiledArgumentTypes(Object[] args, Class<?>[] types) {
+        assert types != null;
+        if (args.length != types.length) {
+            throw new ArrayIndexOutOfBoundsException();
+        }
+        for (int j = 0; j < types.length; j++) {
+            // throws ClassCast on error
+            types[j].cast(args[j]);
+        }
+        return true;
+    }
+
     private static Class<?> classOf(Object arg) {
         return arg != null ? arg.getClass() : null;
     }
@@ -384,5 +407,9 @@ public class OptimizedCompilationProfile {
 
     private static OptimizedAssumption createAssumption(String name) {
         return (OptimizedAssumption) Truffle.getRuntime().createAssumption(name);
+    }
+
+    public boolean isValidArgumentProfile(Object[] args) {
+        return profiledArgumentTypesAssumption != null && profiledArgumentTypesAssumption.isValid() && checkProfiledArgumentTypes(args, profiledArgumentTypes);
     }
 }

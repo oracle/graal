@@ -32,14 +32,15 @@ import org.graalvm.polyglot.Value;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -74,7 +75,26 @@ public class EngineBenchmark extends TruffleBenchmark {
         final Context context = Context.create(TEST_LANGUAGE);
         final Value value = context.eval(source);
         final Integer intValue = 42;
-        final Value hostValue = context.lookup(TEST_LANGUAGE, "context");
+        final Value hostValue = context.importSymbol("context");
+
+        @TearDown
+        public void tearDown() {
+            context.close();
+        }
+    }
+
+    @State(org.openjdk.jmh.annotations.Scope.Thread)
+    public static class ContextStateEnterLeave extends ContextState {
+
+        public ContextStateEnterLeave() {
+            context.enter();
+        }
+
+        @Override
+        public void tearDown() {
+            context.leave();
+            super.tearDown();
+        }
     }
 
     @Benchmark
@@ -85,6 +105,21 @@ public class EngineBenchmark extends TruffleBenchmark {
     @Benchmark
     public void executePolyglot1(ContextState state) {
         state.value.execute();
+    }
+
+    @Benchmark
+    public void executePolyglot1Void(ContextState state) {
+        state.value.executeVoid();
+    }
+
+    @Benchmark
+    public void executePolyglot1VoidEntered(ContextStateEnterLeave state) {
+        state.value.executeVoid();
+    }
+
+    @Benchmark
+    public Object executePolyglot1CallTarget(CallTargetCallState state) {
+        return state.callTarget.call(state.internalContext.object);
     }
 
     @Benchmark
@@ -115,11 +150,11 @@ public class EngineBenchmark extends TruffleBenchmark {
                 return constant;
             }
         });
-    }
 
-    @Benchmark
-    public Object executeCallTarget1(CallTargetCallState state) {
-        return state.callTarget.call(state.internalContext.object);
+        @TearDown
+        public void tearDown() {
+            context.close();
+        }
     }
 
     @Benchmark
@@ -191,17 +226,23 @@ public class EngineBenchmark extends TruffleBenchmark {
     /*
      * Test language that ensures that only engine overhead is tested.
      */
-    @TruffleLanguage.Registration(id = TEST_LANGUAGE, name = "", version = "", mimeType = "")
+    @TruffleLanguage.Registration(id = TEST_LANGUAGE, name = "", version = "", mimeType = TEST_LANGUAGE)
     public static class BenchmarkTestLanguage extends TruffleLanguage<BenchmarkContext> {
 
         @Override
         protected BenchmarkContext createContext(Env env) {
-            return new BenchmarkContext(env, new Function<TruffleObject, Scope>() {
+            BenchmarkContext context = new BenchmarkContext(env, new Function<TruffleObject, Scope>() {
                 @Override
                 public Scope apply(TruffleObject obj) {
                     return Scope.newBuilder("Benchmark top scope", obj).build();
                 }
             });
+            return context;
+        }
+
+        @Override
+        protected void initializeContext(BenchmarkContext context) throws Exception {
+            context.env.exportSymbol("context", JavaInterop.asTruffleValue(context));
         }
 
         @Override
@@ -245,7 +286,6 @@ public class EngineBenchmark extends TruffleBenchmark {
             this.env = env;
             topScopes = Collections.singleton(scopeProvider.apply(new TopScopeObject(this)));
         }
-
     }
 
     public static class BenchmarkObject implements TruffleObject {

@@ -153,14 +153,6 @@ final class PolyglotLanguageContext implements VMObject {
                 LANGUAGE.disposeThread(localEnv, threadInfo.thread);
             }
             LANGUAGE.dispose(localEnv);
-
-            // temporary disabled
-            // if (!activePolyglotThreads.isEmpty()) {
-            // throw new AssertionError("The language did not complete all polyglot threads but
-            // should have: " +
-            // activePolyglotThreads);
-            // }
-
             env = null;
             return true;
         }
@@ -398,7 +390,9 @@ final class PolyglotLanguageContext implements VMObject {
                     toGuestValue[i] = createToGuestValue();
                 }
             }
-            if (cachedLength == args.length) {
+            if (cachedLength == 0) {
+                return args;
+            } else if (cachedLength == args.length) {
                 // fast path
                 Object[] newArgs = fastToGuestValuesUnroll(args);
                 return newArgs;
