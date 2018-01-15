@@ -18,7 +18,7 @@ builds += [
         ["zip", "-r", "javadoc.zip", "javadoc"],
         [cd, "../compiler"],
         ["mx", "build"],
-        ["mx", "javadoc"],
+        ["mx", "javadoc", "--projects", "org.graalvm.graphio"],
         ["cd", "src/org.graalvm.graphio/"],
         ["zip", "-r", "../../graphio-javadoc.zip", "javadoc"],
         [cd, "../../.."],
