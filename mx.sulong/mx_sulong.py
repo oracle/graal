@@ -158,12 +158,11 @@ def _test_llvm_image(args):
     testLLVMImage(args.image, imageArgs=imageArgs, testFilter=args.testFilter, libPath=args.libPath, test=args.test, unittestArgs=args.unittestArgs)
 
 # routine for AOT downstream tests
-def runLLVMInteropTests(buildJUnitImage, junitArgs):
-    """builds an AOT image containing the interop unit tests and runs them"""
-    image = buildJUnitImage(['com.oracle.truffle.llvm.test.interop'])
+def runLLVMUnittests(unittest_runner):
+    """runs the interop unit tests with a different unittest runner (e.g. AOT-based)"""
     libpath = mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:SULONG_LIBS>:<path:SULONG_TEST_NATIVE>')
     libs = mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraries=<lib:sulongtest>')
-    mx.run([image, libpath, libs] + junitArgs)
+    unittest_runner(unittest_args=['com.oracle.truffle.llvm.test.interop'], run_args=[libpath, libs])
 
 
 def clangformatcheck(args=None):
