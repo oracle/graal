@@ -138,10 +138,12 @@ public final class OptimizedAssumption extends AbstractAssumption {
             return new Consumer<InstalledCode>() {
                 @Override
                 public void accept(InstalledCode installedCode) {
-                    invalidateWithReason(installedCode, "assumption already invalidated when installing code");
-                    if (TruffleCompilerOptions.getValue(TraceTruffleAssumptions)) {
-                        logInvalidatedInstalledCode(installedCode);
-                        logStackTrace();
+                    if (installedCode != null) {
+                        invalidateWithReason(installedCode, "assumption already invalidated when installing code");
+                        if (TruffleCompilerOptions.getValue(TraceTruffleAssumptions)) {
+                            logInvalidatedInstalledCode(installedCode);
+                            logStackTrace();
+                        }
                     }
                 }
             };
