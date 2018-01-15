@@ -58,8 +58,11 @@ public abstract class LLVMNode extends Node {
     public static final int I64_SIZE_IN_BYTES = 8;
     public static final int I64_SIZE_IN_BITS = 64;
 
+    public static final int I8_SIZE_IN_BYTES = 1;
     public static final int I8_SIZE_IN_BITS = 8;
     public static final int I8_MASK = 0xff;
+
+    public static final int I1_SIZE_IN_BYTES = 1;
 
     public static final int ADDRESS_SIZE_IN_BYTES = 8;
 
