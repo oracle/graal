@@ -110,10 +110,12 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
             astOutput.endGroup(); // TruffleAST
             astOutput.close();
 
-            final CallGraph callGraph = new CallGraph(truffleTreeDump);
+            CallGraph callGraph = new CallGraph(truffleTreeDump.callTarget, null);
             final GraphOutput<CallGraph, ?> callGraphOutput = debug.buildOutput(GraphOutput.newBuilder(CALL_GRAPH_DUMP_STRUCTURE).blocks(CALL_GRAPH_DUMP_STRUCTURE));
             callGraphOutput.beginGroup(null, "TruffleCallGraph", "TruffleCallGraph", null, 0, DebugContext.addVersionProperties(null));
-            callGraphOutput.print(callGraph, null, 0, "inlined call graph");
+            callGraphOutput.print(callGraph, null, 0, AFTER_PROFILING);
+            callGraph = new CallGraph(truffleTreeDump.callTarget, truffleTreeDump.inlining);
+            callGraphOutput.print(callGraph, null, 0, AFTER_INLINING);
             callGraphOutput.endGroup(); // TruffleCallGraph
             callGraphOutput.close();
 
@@ -483,29 +485,48 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         final CallGraphBlock inlined = new CallGraphBlock(0);
         final CallGraphBlock notInlined = new CallGraphBlock(1);
 
-        CallGraph(TruffleTreeDump treeDump) {
-            root = makeCallGraphNode(treeDump.callTarget);
+        CallGraph(RootCallTarget target, TruffleInlining inlining) {
+            root = makeCallGraphNode(target);
             inlined.nodes.add(root);
-            root.properties.put("label", treeDump.callTarget.toString());
-            build(treeDump.callTarget, root, treeDump.inlining, this);
+            root.properties.put("label", target.toString());
+            build(target, root, inlining, this);
         }
 
         private static void build(RootCallTarget target, CallGraphNode parent, TruffleInlining inlining, CallGraph graph) {
-            for (DirectCallNode callNode : NodeUtil.findAllNodeInstances((target).getRootNode(), DirectCallNode.class)) {
-                CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
-                if (inlinedCallTarget instanceof OptimizedCallTarget && callNode instanceof OptimizedDirectCallNode) {
-                    TruffleInliningDecision decision = inlining.findByCall((OptimizedDirectCallNode) callNode);
+            if (inlining == null) {
+                for (DirectCallNode callNode : NodeUtil.findAllNodeInstances((target).getRootNode(), DirectCallNode.class)) {
+                    CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
                     final CallGraphNode callGraphNode = graph.makeCallGraphNode(inlinedCallTarget);
                     callGraphNode.properties.put("label", inlinedCallTarget.toString());
                     parent.edges.add(new CallGraphEdge(callGraphNode, ""));
-                    if (decision != null && decision.shouldInline()) {
-                        graph.inlined.nodes.add(callGraphNode);
-                        callGraphNode.properties.put("inlined", "yes");
-                        build((RootCallTarget) inlinedCallTarget, callGraphNode, decision, graph);
-                    } else {
-                        callGraphNode.properties.put("inlined", "no");
-                        graph.notInlined.nodes.add(callGraphNode);
+                    callGraphNode.properties.put("inlined", "no");
+                    graph.notInlined.nodes.add(callGraphNode);
+                }
+            } else {
+                List<RootCallTarget> furtherTargets = new ArrayList<>();
+                List<CallGraphNode> furtherParent = new ArrayList<>();
+                List<TruffleInlining> furtherDecisions = new ArrayList<>();
+                for (DirectCallNode callNode : NodeUtil.findAllNodeInstances((target).getRootNode(), DirectCallNode.class)) {
+                    CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
+                    if (inlinedCallTarget instanceof OptimizedCallTarget && callNode instanceof OptimizedDirectCallNode) {
+                        TruffleInliningDecision decision = inlining.findByCall((OptimizedDirectCallNode) callNode);
+                        final CallGraphNode callGraphNode = graph.makeCallGraphNode(inlinedCallTarget);
+                        callGraphNode.properties.put("label", inlinedCallTarget.toString());
+                        parent.edges.add(new CallGraphEdge(callGraphNode, ""));
+                        if (decision != null && decision.shouldInline()) {
+                            graph.inlined.nodes.add(callGraphNode);
+                            callGraphNode.properties.put("inlined", "yes");
+                            furtherTargets.add((RootCallTarget) inlinedCallTarget);
+                            furtherParent.add(callGraphNode);
+                            furtherDecisions.add(decision);
+                        } else {
+                            callGraphNode.properties.put("inlined", "no");
+                            graph.notInlined.nodes.add(callGraphNode);
+                        }
                     }
+                }
+                for (int i = 0; i < furtherTargets.size(); i++) {
+                    build(furtherTargets.get(i), furtherParent.get(i), furtherDecisions.get(i), graph);
                 }
             }
         }
