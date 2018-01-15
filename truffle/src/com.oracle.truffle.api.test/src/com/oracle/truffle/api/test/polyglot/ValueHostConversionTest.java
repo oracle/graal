@@ -381,11 +381,11 @@ public class ValueHostConversionTest {
         assertTrue(newInstance.asHostObject() instanceof JavaRecord);
 
         assertTrue(newInstance.hasMember("getClass"));
-        assertTrue(newInstance.getMember("getClass").newInstance().asHostObject() instanceof JavaRecord);
+        assertTrue(newInstance.getMember("getClass").execute().newInstance().asHostObject() instanceof JavaRecord);
         assertTrue(newInstance.getMetaObject().newInstance().asHostObject() instanceof JavaRecord);
         assertTrue(newInstance.getMetaObject().asHostObject() == JavaRecord.class);
 
-        assertValue(context, recordClass, Trait.INSTANTIABLE, Trait.MEMBERS);
+        assertValue(context, recordClass, Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
     }
 
     @Test
