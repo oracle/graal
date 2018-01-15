@@ -55,6 +55,7 @@ import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Scope;
 import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.debug.MemUseTrackerKey;
 import org.graalvm.compiler.debug.TTY;
@@ -205,29 +206,33 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
     public static final MemUseTrackerKey CompilationMemUse = DebugContext.memUseTracker("TruffleCompilationMemUse");
     public static final MemUseTrackerKey CodeInstallationMemUse = DebugContext.memUseTracker("TruffleCodeInstallationMemUse");
 
-    /**
-     * Gets a compilation identifier for a given compilable.
-     *
-     * @param compilable
-     */
-    public abstract CompilationIdentifier getCompilationIdentifier(CompilableTruffleAST compilable);
-
-    /**
-     * Opens a debug context for compiling {@code compilable}. The {@link DebugContext#close()}
-     * method should be called on the returned object once the compilation is finished.
-     */
-    protected abstract DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST compilable);
-
     @Override
     @SuppressWarnings("try")
-    public void doCompile(OptionValues options, CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan, Cancellable cancellable, TruffleCompilerListener listener) {
-        CompilationIdentifier compilationId = getCompilationIdentifier(compilable);
-        try (DebugContext debug = openDebugContext(options, compilationId, compilable);
-                        DebugContext.Scope s = debug.scope("Truffle", new TruffleDebugJavaMethod(compilable))) {
+    public void doCompile(DebugContext inDebug, CompilationIdentifier inCompilationId, OptionValues options, CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan, Cancellable cancellable,
+                    TruffleCompilerListener listener) {
+        CompilationIdentifier compilationId = inCompilationId == null ? getCompilationIdentifier(compilable) : inCompilationId;
+        DebugContext debug = inDebug == null ? openDebugContext(options, compilationId, compilable) : inDebug;
+        try (DebugContext debugToClose = debug == inDebug ? null : debug;
+                        DebugContext.Scope s = maybeOpenTruffleScope(compilable, debug)) {
             new TruffleCompilationWrapper(getDebugOutputDirectory(), getCompilationProblemsPerAction(), compilable, cancellable, inliningPlan, compilationId, listener).run(debug);
         } catch (Throwable e) {
             notifyCompilableOfFailure(compilable, e);
         }
+    }
+
+    /**
+     * Opens a new {@code "Truffle"} scope if that's not the unqualified name of the current scope.
+     *
+     * @param compilable the context for the {@code "Truffle"} scope
+     * @param debug the current debug context
+     * @return a new opened {@code "Truffle"} scope or {@code null} if the current (unqualified)
+     *         scope is already named {@code "Truffle"}
+     */
+    private static Scope maybeOpenTruffleScope(CompilableTruffleAST compilable, DebugContext debug) throws Throwable {
+        if (debug.getCurrentScopeName().endsWith(".Truffle")) {
+            return null;
+        }
+        return debug.scope("Truffle", new TruffleDebugJavaMethod(compilable));
     }
 
     private static void notifyCompilableOfFailure(CompilableTruffleAST compilable, Throwable e) {

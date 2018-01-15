@@ -79,7 +79,7 @@ public class SubstrateTruffleCompiler extends TruffleCompilerImpl {
     }
 
     @Override
-    protected DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST callTarget) {
+    public DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST callTarget) {
         return GraalSupport.get().openDebugContext(options, compilationId, callTarget);
     }
 
