@@ -180,7 +180,7 @@ public final class DebuggerSession implements Closeable {
     private Predicate<Source> sourceFilter;
     private final StableBoolean breakpointsActive = new StableBoolean(true);
     private final DebuggerExecutionLifecycle executionLifecycle;
-    private final ThreadLocal<Boolean> disabledSuspensions = new ThreadLocal<>();
+    final ThreadLocal<ThreadSuspension> threadSuspensions = new ThreadLocal<>();
 
     private final int sessionId;
 
@@ -437,9 +437,9 @@ public final class DebuggerSession implements Closeable {
     void setThreadSuspendEnabled(boolean enabled) {
         if (!enabled) {
             // temporarily disable suspensions in the given thread
-            disabledSuspensions.set(Boolean.TRUE);
+            threadSuspensions.set(ThreadSuspension.DISABLED);
         } else {
-            disabledSuspensions.remove();
+            threadSuspensions.remove();
         }
     }
 
@@ -640,7 +640,8 @@ public final class DebuggerSession implements Closeable {
 
     @TruffleBoundary
     void notifyCallback(DebuggerNode source, MaterializedFrame frame, Object returnValue, BreakpointConditionFailure conditionFailure) {
-        if (disabledSuspensions.get() == Boolean.TRUE) {
+        ThreadSuspension suspensionDisabled = threadSuspensions.get();
+        if (suspensionDisabled != null && !suspensionDisabled.enabled) {
             return;
         }
         // SuspensionFilter:
@@ -882,6 +883,18 @@ public final class DebuggerSession implements Closeable {
             return Debugger.ACCESSOR.evalInContext(node, frame, code);
         } catch (KillException kex) {
             throw new IOException("Evaluation was killed.", kex);
+        }
+    }
+
+    static final class ThreadSuspension {
+
+        static final ThreadSuspension ENABLED = new ThreadSuspension(true);
+        static final ThreadSuspension DISABLED = new ThreadSuspension(false);
+
+        boolean enabled;
+
+        ThreadSuspension(boolean enabled) {
+            this.enabled = enabled;
         }
     }
 
