@@ -499,10 +499,10 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
                 for (DirectCallNode callNode : NodeUtil.findAllNodeInstances((target).getRootNode(), DirectCallNode.class)) {
                     CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
                     final CallTreeNode callTreeNode = graph.makeCallTreeNode(inlinedCallTarget);
-                    callTreeNode.properties.put("label", inlinedCallTarget.toString());
                     parent.edges.add(new CallTreeEdge(callTreeNode, ""));
-                    callTreeNode.properties.put("inlined", "no");
                     graph.notInlined.nodes.add(callTreeNode);
+                    callTreeNode.properties.put("label", inlinedCallTarget.toString());
+                    callTreeNode.properties.put("inlined", "false");
                 }
             } else {
                 List<RootCallTarget> furtherTargets = new ArrayList<>();
@@ -517,12 +517,16 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
                         parent.edges.add(new CallTreeEdge(callTreeNode, ""));
                         if (decision != null && decision.shouldInline()) {
                             graph.inlined.nodes.add(callTreeNode);
-                            callTreeNode.properties.put("inlined", "yes");
+                            callTreeNode.properties.put("inlined", "true");
+                            callTreeNode.properties.putAll(decision.getProfile().getDebugProperties());
                             furtherTargets.add((RootCallTarget) inlinedCallTarget);
                             furtherParent.add(callTreeNode);
                             furtherDecisions.add(decision);
                         } else {
-                            callTreeNode.properties.put("inlined", "no");
+                            callTreeNode.properties.put("inlined", "false");
+                            if (decision != null) {
+                                callTreeNode.properties.putAll(decision.getProfile().getDebugProperties());
+                            }
                             graph.notInlined.nodes.add(callTreeNode);
                         }
                     }
