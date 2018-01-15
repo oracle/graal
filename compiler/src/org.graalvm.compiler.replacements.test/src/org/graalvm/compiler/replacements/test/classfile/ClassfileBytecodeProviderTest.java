@@ -158,6 +158,9 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
                                  */
                                 continue;
                             }
+                            if (isFrameBoxingClass(className)) {
+                                continue;
+                            }
                             try {
                                 checkClass(metaAccess, getSnippetReflection(), className);
                             } catch (ClassNotFoundException e) {
@@ -174,6 +177,16 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
 
     private static boolean isInNativeImage(String className) {
         return className.startsWith("org.graalvm.nativeimage");
+    }
+
+    /**
+     * At most one of {@code org.graalvm.compiler.truffle.runtime.FrameWithoutBoxing} or
+     * {@code org.graalvm.compiler.truffle.runtime.FrameWithBoxing} can be loaded. See check within
+     * {@code org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPlugins.registerFrameAccessors}
+     * for details.
+     */
+    private static boolean isFrameBoxingClass(String className) {
+        return className.contains("FrameWithBoxing") || className.contains("FrameWithoutBoxing");
     }
 
     protected void checkClass(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, String className) throws ClassNotFoundException {

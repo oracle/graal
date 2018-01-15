@@ -37,6 +37,7 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
@@ -90,6 +91,7 @@ import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameIsNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameSetNode;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -118,9 +120,9 @@ public class TruffleGraphBuilderPlugins {
         registerOptimizedCallTargetPlugins(plugins, metaAccess, canDelayIntrinsification, types);
 
         if (TruffleCompilerOptions.getValue(TruffleUseFrameWithoutBoxing)) {
-            registerFrameWithoutBoxingPlugins(plugins, canDelayIntrinsification, constantReflection, types);
+            registerFrameWithoutBoxingPlugins(plugins, metaAccess, canDelayIntrinsification, constantReflection, types);
         } else {
-            registerFrameWithBoxingPlugins(plugins, canDelayIntrinsification);
+            registerFrameWithBoxingPlugins(plugins, metaAccess, canDelayIntrinsification);
         }
 
     }
@@ -399,8 +401,10 @@ public class TruffleGraphBuilderPlugins {
         registerUnsafeCast(r, canDelayIntrinsification);
     }
 
-    public static void registerFrameWithoutBoxingPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, ConstantReflectionProvider constantReflection, KnownTruffleTypes types) {
-        Registration r = new Registration(plugins, new ResolvedJavaSymbol(types.classFrameWithoutBoxing));
+    public static void registerFrameWithoutBoxingPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification, ConstantReflectionProvider constantReflection,
+                    KnownTruffleTypes types) {
+        ResolvedJavaType frameWithoutBoxingType = getRuntime().resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.FrameWithoutBoxing");
+        Registration r = new Registration(plugins, new ResolvedJavaSymbol(frameWithoutBoxingType));
         registerFrameMethods(r);
         registerUnsafeCast(r, canDelayIntrinsification);
         registerUnsafeLoadStorePlugins(r, canDelayIntrinsification, null, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object);
@@ -416,8 +420,9 @@ public class TruffleGraphBuilderPlugins {
         }
     }
 
-    public static void registerFrameWithBoxingPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {
-        Registration r = new Registration(plugins, "org.graalvm.compiler.truffle.runtime.FrameWithBoxing", null);
+    public static void registerFrameWithBoxingPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {
+        ResolvedJavaType frameWithBoxingType = getRuntime().resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.FrameWithBoxing");
+        Registration r = new Registration(plugins, new ResolvedJavaSymbol(frameWithBoxingType));
         registerFrameMethods(r);
         registerUnsafeCast(r, canDelayIntrinsification);
     }
@@ -448,12 +453,33 @@ public class TruffleGraphBuilderPlugins {
         r.register2("get" + nameSuffix, Receiver.class, frameSlotType, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode) {
+                checkFrameInvariant(b.getMetaAccess());
                 int frameSlotIndex = maybeGetConstantFrameSlotIndex(frameNode, frameSlotNode, constantReflection, types);
                 if (frameSlotIndex >= 0) {
                     b.addPush(accessKind, new VirtualFrameGetNode(frameNode, frameSlotIndex, accessKind, accessTag));
                     return true;
                 }
                 return false;
+            }
+
+            private boolean invariantChecked;
+
+            private void checkFrameInvariant(MetaAccessProvider metaAccess) {
+                if (!invariantChecked) {
+                    // Checking more than once due to a race is harmless.
+                    invariantChecked = true;
+                    ResolvedJavaType materializedFrameType = getRuntime().resolveType(metaAccess, "com.oracle.truffle.api.frame.MaterializedFrame");
+                    AssumptionResult<ResolvedJavaType> result = materializedFrameType.findLeafConcreteSubtype();
+                    if (result == null) {
+                        // If this error occurs, then use techniques described at
+                        // https://bugs.openjdk.java.net/browse/JDK-8193513 to
+                        // determine why multiple subclasses of MaterializedFrame
+                        // are being resolved.
+                        throw new GraalError("%s has more than one concrete subtype " +
+                                        "which prevents devirtualization of frame accesses.",
+                                        materializedFrameType.toJavaName());
+                    }
+                }
             }
         });
 
@@ -482,13 +508,13 @@ public class TruffleGraphBuilderPlugins {
         });
     }
 
-    static int maybeGetConstantFrameSlotIndex(Receiver frameNode, ValueNode frameSlotNode, ConstantReflectionProvider constantReflection, KnownTruffleTypes knownFields) {
+    static int maybeGetConstantFrameSlotIndex(Receiver frameNode, ValueNode frameSlotNode, ConstantReflectionProvider constantReflection, KnownTruffleTypes types) {
         if (frameSlotNode.isConstant()) {
             ValueNode frameNodeValue = frameNode.get(false);
             if (frameNodeValue instanceof NewFrameNode) {
                 NewFrameNode newFrameNode = (NewFrameNode) frameNodeValue;
                 if (newFrameNode.getIntrinsifyAccessors()) {
-                    int index = constantReflection.readFieldValue(knownFields.fieldFrameSlotIndex, frameSlotNode.asJavaConstant()).asInt();
+                    int index = constantReflection.readFieldValue(types.fieldFrameSlotIndex, frameSlotNode.asJavaConstant()).asInt();
                     if (newFrameNode.isValidSlotIndex(index)) {
                         return index;
                     }
