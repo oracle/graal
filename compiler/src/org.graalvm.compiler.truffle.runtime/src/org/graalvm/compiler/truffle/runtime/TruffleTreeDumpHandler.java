@@ -105,13 +105,13 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
                 // TODO why is this needed? It would be preferred to just call inline on the old graph.
                 ast = new AST(callTarget);
                 ast.inline(truffleTreeDump.inlining);
-                astOutput.print(ast, null, 1,  AFTER_INLINING);
+                astOutput.print(ast, null, 1, AFTER_INLINING);
             }
             astOutput.endGroup(); // TruffleAST
             astOutput.close();
 
             final CallGraph callGraph = new CallGraph(truffleTreeDump);
-            final GraphOutput<CallGraph, ?> callGraphOutput = debug.buildOutput(GraphOutput.newBuilder(CALL_GRAPH_DUMP_STRUCTURE));
+            final GraphOutput<CallGraph, ?> callGraphOutput = debug.buildOutput(GraphOutput.newBuilder(CALL_GRAPH_DUMP_STRUCTURE).blocks(CALL_GRAPH_DUMP_STRUCTURE));
             callGraphOutput.beginGroup(null, "TruffleCallGraph", "TruffleCallGraph", null, 0, DebugContext.addVersionProperties(null));
             callGraphOutput.print(callGraph, null, 0, "inlined call graph");
             callGraphOutput.endGroup(); // TruffleCallGraph
@@ -479,10 +479,13 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
 
     static class CallGraph {
         final CallGraphNode root;
-        final Map<CallTarget, CallGraphNode> nodes = new HashMap<>();
+        final List<CallGraphNode> nodes = new ArrayList<>();
+        final CallGraphBlock inlined = new CallGraphBlock(0);
+        final CallGraphBlock notInlined = new CallGraphBlock(1);
 
         CallGraph(TruffleTreeDump treeDump) {
             root = makeCallGraphNode(treeDump.callTarget);
+            inlined.nodes.add(root);
             root.properties.put("label", treeDump.callTarget.toString());
             build(treeDump.callTarget, root, treeDump.inlining, this);
         }
@@ -492,11 +495,16 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
                 CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
                 if (inlinedCallTarget instanceof OptimizedCallTarget && callNode instanceof OptimizedDirectCallNode) {
                     TruffleInliningDecision decision = inlining.findByCall((OptimizedDirectCallNode) callNode);
+                    final CallGraphNode callGraphNode = graph.makeCallGraphNode(inlinedCallTarget);
+                    callGraphNode.properties.put("label", inlinedCallTarget.toString());
+                    parent.edges.add(new CallGraphEdge(callGraphNode, ""));
                     if (decision != null && decision.shouldInline()) {
-                        final CallGraphNode callGraphNode = graph.makeCallGraphNode(inlinedCallTarget);
-                        callGraphNode.properties.put("label", inlinedCallTarget.toString());
-                        parent.edges.add(new CallGraphEdge(callGraphNode, ""));
+                        graph.inlined.nodes.add(callGraphNode);
+                        callGraphNode.properties.put("inlined", "yes");
                         build((RootCallTarget) inlinedCallTarget, callGraphNode, decision, graph);
+                    } else {
+                        callGraphNode.properties.put("inlined", "no");
+                        graph.notInlined.nodes.add(callGraphNode);
                     }
                 }
             }
@@ -504,7 +512,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
 
         CallGraphNode makeCallGraphNode(CallTarget source) {
             final CallGraphNode callGraphNode = new CallGraphNode(source, nodes.size());
-            nodes.put(source, callGraphNode);
+            nodes.add(callGraphNode);
             return callGraphNode;
         }
     }
@@ -531,7 +539,18 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         }
     }
 
-    static class CallGraphDumpStructure implements GraphStructure<CallGraph, CallGraphNode, CallGraphNode, List<CallGraphEdge>> {
+    static class CallGraphBlock {
+        final int id;
+        final List<CallGraphNode> nodes = new ArrayList<>();
+
+        CallGraphBlock(int id) {
+            this.id = id;
+        }
+    }
+
+    static class CallGraphDumpStructure implements
+            GraphStructure<CallGraph, CallGraphNode, CallGraphNode, List<CallGraphEdge>>,
+            GraphBlocks<CallGraph, CallGraphBlock, CallGraphNode> {
 
         @Override
         public CallGraph graph(CallGraph currentGraph, Object obj) {
@@ -540,7 +559,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
 
         @Override
         public Iterable<? extends CallGraphNode> nodes(CallGraph graph) {
-            return graph.nodes.values();
+            return graph.nodes;
         }
 
         @Override
@@ -623,6 +642,26 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
             List<CallGraphNode> singleton = new ArrayList<>(1);
             singleton.add(port.get(index).target);
             return singleton;
+        }
+
+        @Override
+        public Collection<? extends CallGraphBlock> blocks(CallGraph graph) {
+            return Arrays.asList(graph.inlined, graph.notInlined);
+        }
+
+        @Override
+        public int blockId(CallGraphBlock block) {
+            return block.id;
+        }
+
+        @Override
+        public Collection<? extends CallGraphNode> blockNodes(CallGraph info, CallGraphBlock block) {
+            return block.nodes;
+        }
+
+        @Override
+        public Collection<? extends CallGraphBlock> blockSuccessors(CallGraphBlock block) {
+            return Collections.emptyList();
         }
     }
 
