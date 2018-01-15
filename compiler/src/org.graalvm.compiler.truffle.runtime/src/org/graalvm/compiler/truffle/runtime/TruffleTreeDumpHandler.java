@@ -114,8 +114,10 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
             final GraphOutput<CallTree, ?> callTreeOutput = debug.buildOutput(GraphOutput.newBuilder(CALL_GRAPH_DUMP_STRUCTURE).blocks(CALL_GRAPH_DUMP_STRUCTURE));
             callTreeOutput.beginGroup(null, "Call Tree", "Call Tree", null, 0, DebugContext.addVersionProperties(null));
             callTreeOutput.print(callTree, null, 0, AFTER_PROFILING);
-            callTree = new CallTree(truffleTreeDump.callTarget, truffleTreeDump.inlining);
-            callTreeOutput.print(callTree, null, 0, AFTER_INLINING);
+            if (inlining.countInlinedCalls() > 0) {
+                callTree = new CallTree(truffleTreeDump.callTarget, truffleTreeDump.inlining);
+                callTreeOutput.print(callTree, null, 0, AFTER_INLINING);
+            }
             callTreeOutput.endGroup(); // Call Tree
             callTreeOutput.close();
 
