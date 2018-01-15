@@ -27,7 +27,7 @@ import static org.graalvm.compiler.debug.DebugOptions.DebugStubsAndSnippets;
 import static org.graalvm.compiler.hotspot.meta.HotSpotSuitesProvider.withNodeSourcePosition;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -112,18 +112,26 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         return new HotSpotTruffleCompilationIdentifier(request, compilable);
     }
 
-    private List<DebugHandlersFactory> factories;
+    private volatile List<DebugHandlersFactory> factories;
 
     private List<DebugHandlersFactory> getDebugHandlerFactories() {
         if (factories == null) {
             // Multiple initialization by racing threads is harmless
-            factories = Arrays.asList(new GraalDebugHandlersFactory(snippetReflection));
+            List<DebugHandlersFactory> list = new ArrayList<>();
+            list.add(new GraalDebugHandlersFactory(snippetReflection));
+            for (DebugHandlersFactory factory : DebugHandlersFactory.LOADER) {
+                // Ignore other instances of GraalDebugHandlersFactory
+                if (!(factory instanceof GraalDebugHandlersFactory)) {
+                    list.add(factory);
+                }
+            }
+            factories = list;
         }
         return factories;
     }
 
     @Override
-    protected DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST compilable) {
+    public DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST compilable) {
         return hotspotGraalRuntime.openDebugContext(options, compilationId, compilable, getDebugHandlerFactories());
     }
 

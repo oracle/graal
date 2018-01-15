@@ -53,7 +53,7 @@ final class GraalTestTVMCI extends TVMCI.Test<OptimizedCallTarget> {
         TruffleCompiler compiler = truffleRuntime.getTruffleCompiler();
         TruffleInlining inliningDecision = new TruffleInlining(callTarget, new DefaultInliningPolicy());
         try (DebugContext.Scope s = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(callTarget))) {
-            compiler.doCompile(options, callTarget, inliningDecision, null, null);
+            compiler.doCompile(debug, null, options, callTarget, inliningDecision, null, null);
         } catch (Throwable e) {
             throw debug.handle(e);
         }

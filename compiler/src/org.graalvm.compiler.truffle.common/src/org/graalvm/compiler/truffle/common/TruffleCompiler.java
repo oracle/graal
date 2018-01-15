@@ -22,6 +22,8 @@
  */
 package org.graalvm.compiler.truffle.common;
 
+import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -31,15 +33,38 @@ import org.graalvm.compiler.options.OptionValues;
 public interface TruffleCompiler {
 
     /**
+     * Gets a compilation identifier for a given compilable.
+     *
+     * @return {@code null} if a {@link CompilationIdentifier} cannot shared across the Truffle
+     *         runtime/compiler boundary represented by this object
+     */
+    CompilationIdentifier getCompilationIdentifier(CompilableTruffleAST compilable);
+
+    /**
+     * Opens a debug context for compiling {@code compilable}. The {@link DebugContext#close()}
+     * method should be called on the returned object once the compilation is finished.
+     *
+     * @return {@code null} if a {@link DebugContext} cannot be shared across the Truffle
+     *         runtime/compiler boundary represented by this object
+     */
+    DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST compilable);
+
+    /**
      * Compiles {@code compilable} to machine code.
      *
+     * @param debug a debug context to use or {@code null} if a {@link DebugContext} cannot cross
+     *            the Truffle runtime/compiler boundary represented by this object
+     * @param compilationId an identifier to be used for the compilation or {@code null} if a
+     *            {@link CompilationIdentifier} cannot cross the Truffle runtime/compiler boundary
+     *            represented by this object
      * @param options option values relevant to compilation
      * @param compilable the Truffle AST to be compiled
      * @param inlining a guide for Truffle level inlining to be performed during compilation
      * @param task an object that must be periodically queried during compilation to see if the
      *            compilation has been cancelled by the requestor
      */
-    void doCompile(OptionValues options, CompilableTruffleAST compilable, TruffleInliningPlan inlining, Cancellable task, TruffleCompilerListener listener);
+    void doCompile(DebugContext debug, CompilationIdentifier compilationId, OptionValues options, CompilableTruffleAST compilable, TruffleInliningPlan inlining, Cancellable task,
+                    TruffleCompilerListener listener);
 
     /**
      * Notifies this object that it will no longer being used and should thus perform all relevant

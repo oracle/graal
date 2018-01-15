@@ -62,6 +62,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.CompilerThreadFactory;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugContext.Scope;
@@ -77,6 +78,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleOptionsOverrideScope;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.runtime.debug.StatisticsListener;
 import org.graalvm.compiler.truffle.runtime.debug.TraceASTCompilationListener;
@@ -667,19 +669,32 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
     }
 
+    @SuppressWarnings("try")
     protected void doCompile(OptionValues options, OptimizedCallTarget callTarget, Cancellable task) {
         listeners.onCompilationStarted(callTarget);
         TruffleCompiler compiler = getTruffleCompiler();
         TruffleInlining inlining = new TruffleInlining(callTarget, new DefaultInliningPolicy());
-        maybeDumpTruffleTree(options, callTarget);
-        compiler.doCompile(options, callTarget, inlining, task, listeners.isEmpty() ? null : listeners);
+
+        CompilationIdentifier compilationId = compiler.getCompilationIdentifier(callTarget);
+        DebugContext debug = compilationId != null ? compiler.openDebugContext(options, compilationId, callTarget) : null;
+        try (Scope s = debug != null ? debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget)) : null) {
+            maybeDumpTruffleTree(debug, options, callTarget);
+            compiler.doCompile(debug, compilationId, options, callTarget, inlining, task, listeners.isEmpty() ? null : listeners);
+        } catch (RuntimeException | Error e) {
+            throw e;
+        } catch (Throwable e) {
+            throw new InternalError(e);
+        }
         dequeueInlinedCallSites(inlining, callTarget);
     }
 
     @SuppressWarnings("try")
-    private static void maybeDumpTruffleTree(OptionValues options, OptimizedCallTarget callTarget) {
-        Description description = new Description(callTarget, "TruffleTree:" + callTarget.getName());
-        DebugContext debug = DebugContext.create(options, description, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, singletonList(new TruffleTreeDebugHandlersFactory()));
+    private static void maybeDumpTruffleTree(DebugContext inDebug, OptionValues options, OptimizedCallTarget callTarget) {
+        DebugContext debug = inDebug;
+        if (debug == null) {
+            Description description = new Description(callTarget, "TruffleTree:" + callTarget.getName());
+            debug = DebugContext.create(options, description, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, singletonList(new TruffleTreeDebugHandlersFactory()));
+        }
         GraphOutput<Void, ?> output = null;
         try (Scope c = debug.scope("TruffleTree")) {
             if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
