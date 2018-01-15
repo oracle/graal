@@ -206,7 +206,7 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
                         DebugContext.Activation a = debug.activate()) {
             preCodeInstallationTasks(tasks, compilationResult);
 
-            InstalledCode installedCode = null;
+            InstalledCode installedCode;
             try {
                 CompiledCode compiledCode = createCompiledCode(method, compilationRequest, compilationResult);
                 installedCode = getProviders().getCodeCache().installCode(method, compiledCode, predefinedInstalledCode, speculationLog, isDefault);
