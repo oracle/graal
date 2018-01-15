@@ -1459,17 +1459,18 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createFunctionBlockNode(LLVMParserRuntime runtime, FrameSlot exceptionValueSlot, List<? extends LLVMExpressionNode> allFunctionNodes,
-                    FrameSlot[][] beforeBlockNuller, FrameSlot[][] afterBlockNuller, LLVMSourceLocation location) {
-        return new LLVMDispatchBasicBlockNode(exceptionValueSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), beforeBlockNuller, afterBlockNuller, location);
+    public LLVMExpressionNode createFunctionBlockNode(LLVMParserRuntime runtime, FrameSlot exceptionValueSlot, List<? extends LLVMExpressionNode> allFunctionNodes, FrameSlot[][] beforeBlockNuller,
+                    FrameSlot[][] afterBlockNuller, LLVMSourceLocation location, LLVMExpressionNode[] copyArgumentsToFrame) {
+        return new LLVMDispatchBasicBlockNode(exceptionValueSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), beforeBlockNuller, afterBlockNuller, location,
+                        copyArgumentsToFrame);
     }
 
     @Override
-    public RootNode createFunctionStartNode(LLVMParserRuntime runtime, LLVMExpressionNode functionBodyNode, LLVMExpressionNode[] copyArgumentsToFrame,
-                    SourceSection sourceSection, FrameDescriptor frame, FunctionDefinition functionHeader, Source bcSource, LLVMSourceLocation location) {
-        String originalName = DebugInfoGenerator.getSourceFunctionName(functionHeader);
-        return new LLVMFunctionStartNode(sourceSection, runtime.getLanguage(), functionBodyNode, copyArgumentsToFrame, frame, functionHeader.getName(), functionHeader.getParameters().size(),
-                        originalName, bcSource, location);
+    public RootNode createFunctionStartNode(LLVMParserRuntime runtime, LLVMExpressionNode functionBodyNode, SourceSection sourceSection, FrameDescriptor frame, FunctionDefinition functionHeader,
+                    Source bcSource, LLVMSourceLocation location) {
+        final String originalName = DebugInfoGenerator.getSourceFunctionName(functionHeader);
+        return new LLVMFunctionStartNode(sourceSection, runtime.getLanguage(), functionBodyNode, frame, functionHeader.getName(), functionHeader.getParameters().size(), originalName, bcSource,
+                        location);
     }
 
     @Override

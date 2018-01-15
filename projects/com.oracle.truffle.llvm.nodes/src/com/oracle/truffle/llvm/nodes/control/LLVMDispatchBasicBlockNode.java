@@ -55,18 +55,30 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
     @Children private final LLVMBasicBlockNode[] bodyNodes;
     @CompilationFinal(dimensions = 2) private final FrameSlot[][] beforeBlockNuller;
     @CompilationFinal(dimensions = 2) private final FrameSlot[][] afterBlockNuller;
+    @Children private final LLVMExpressionNode[] copyArgumentsToFrame;
 
-    public LLVMDispatchBasicBlockNode(FrameSlot exceptionValueSlot, LLVMBasicBlockNode[] bodyNodes, FrameSlot[][] beforeBlockNuller, FrameSlot[][] afterBlockNuller, LLVMSourceLocation source) {
+    public LLVMDispatchBasicBlockNode(FrameSlot exceptionValueSlot, LLVMBasicBlockNode[] bodyNodes, FrameSlot[][] beforeBlockNuller, FrameSlot[][] afterBlockNuller, LLVMSourceLocation source,
+                    LLVMExpressionNode[] copyArgumentsToFrame) {
         this.exceptionValueSlot = exceptionValueSlot;
         this.bodyNodes = bodyNodes;
         this.beforeBlockNuller = beforeBlockNuller;
         this.afterBlockNuller = afterBlockNuller;
         this.source = source;
+        this.copyArgumentsToFrame = copyArgumentsToFrame;
+    }
+
+    @ExplodeLoop
+    private void copyArgumentsToFrame(VirtualFrame frame) {
+        for (LLVMExpressionNode n : copyArgumentsToFrame) {
+            n.executeGeneric(frame);
+        }
     }
 
     @Override
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
     public Object executeGeneric(VirtualFrame frame) {
+        copyArgumentsToFrame(frame);
+
         Object returnValue = null;
 
         CompilerAsserts.compilationConstant(bodyNodes.length);
