@@ -96,7 +96,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
             AST ast = new AST(callTarget);
             final GraphOutput<AST, ?> astOutput = debug.buildOutput(GraphOutput.newBuilder(AST_DUMP_STRUCTURE).blocks(AST_DUMP_STRUCTURE));
 
-            astOutput.beginGroup(ast, "TruffleAST", "TruffleAST", null, 0, DebugContext.addVersionProperties(null));
+            astOutput.beginGroup(ast, "AST", "AST", null, 0, DebugContext.addVersionProperties(null));
 
             astOutput.print(ast, Collections.emptyMap(), 0, AFTER_PROFILING);
             final TruffleInlining inlining = truffleTreeDump.inlining;
@@ -107,7 +107,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
                 ast.inline(truffleTreeDump.inlining);
                 astOutput.print(ast, null, 1, AFTER_INLINING);
             }
-            astOutput.endGroup(); // TruffleAST
+            astOutput.endGroup(); // AST
             astOutput.close();
 
             CallTree callTree = new CallTree(truffleTreeDump.callTarget, null);
