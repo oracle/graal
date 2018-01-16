@@ -38,10 +38,10 @@ class VMAccessor extends Accessor {
 
     @CompilationFinal static VMAccessor SPI;
 
-    static Nodes NODES;
-    static InstrumentSupport INSTRUMENT;
-    static JavaInteropSupport JAVAINTEROP;
-    static LanguageSupport LANGUAGE;
+    @CompilationFinal static Nodes NODES;
+    @CompilationFinal static InstrumentSupport INSTRUMENT;
+    @CompilationFinal static JavaInteropSupport JAVAINTEROP;
+    @CompilationFinal static LanguageSupport LANGUAGE;
 
     private static volatile EngineSupport engineSupport;
 

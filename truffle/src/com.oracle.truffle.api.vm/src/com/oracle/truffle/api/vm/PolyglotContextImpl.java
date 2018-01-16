@@ -109,6 +109,15 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
     private final Set<PolyglotContextImpl> childContexts = new LinkedHashSet<>();
     boolean inContextPreInitialization; // effectively final
 
+    /* Constructor for testing. */
+    private PolyglotContextImpl() {
+        super(null);
+        engine = null;
+        contexts = null;
+        truffleContext = null;
+        parent = null;
+    }
+
     /*
      * Constructor for outer contexts.
      */
@@ -303,7 +312,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
     Object enter() {
         Object context;
         PolyglotThreadInfo info = getCachedThreadInfo();
-        if (info.thread == Thread.currentThread()) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.thread == Thread.currentThread())) {
             // fast-path -> same thread
             context = CURRENT.setReturnParent(this);
             info.enter();
@@ -321,7 +330,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
     void leave(Object prev) {
         assert current() == this : "Cannot leave context that is currently not entered. Forgot to enter or leave a context?";
         PolyglotThreadInfo info = getCachedThreadInfo();
-        if (info.thread == Thread.currentThread()) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.thread == Thread.currentThread())) {
             info.leave();
         } else {
             if (singleThreaded.isValid()) {
@@ -383,6 +392,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
             if (!closed && closing == null) {
                 setCachedThreadInfo(threadInfo);
             }
+
         }
         if (needsInitialization) {
             VMAccessor.INSTRUMENT.notifyThreadStarted(engine, truffleContext, current);

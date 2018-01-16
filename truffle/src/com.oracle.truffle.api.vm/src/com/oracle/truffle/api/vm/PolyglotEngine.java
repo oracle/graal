@@ -1505,7 +1505,7 @@ public class PolyglotEngine {
         }
 
         @Override
-        public Object contextReferenceGet(Object vmObject) {
+        public Object getCurrentContext(Object vmObject) {
             return findVMObject(vmObject).getCurrentContext();
         }
 

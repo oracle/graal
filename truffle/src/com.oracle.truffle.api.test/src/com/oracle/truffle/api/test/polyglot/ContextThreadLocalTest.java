@@ -26,6 +26,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -43,6 +44,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 public class ContextThreadLocalTest {
 
     private static final String CLASS_NAME = "com.oracle.truffle.api.vm.ContextThreadLocal";
+    private static final String CONTEXT_CLASS = "com.oracle.truffle.api.vm.PolyglotContextImpl";
 
     @Before
     public void setup() {
@@ -52,8 +54,16 @@ public class ContextThreadLocalTest {
     @SuppressWarnings("unchecked")
     private static ThreadLocal<Object> createContextThreadLocal() {
         try {
-            Class<ThreadLocal<Object>> clazz = (Class<ThreadLocal<Object>>) Class.forName(CLASS_NAME);
-            Constructor<ThreadLocal<Object>> constructor = clazz.getDeclaredConstructor();
+            return (ThreadLocal<Object>) createDefaultInstance(CLASS_NAME);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static Object createDefaultInstance(String className) {
+        try {
+            Class<?> clazz = Class.forName(className);
+            Constructor<?> constructor = clazz.getDeclaredConstructor();
             constructor.setAccessible(true);
             return constructor.newInstance();
         } catch (Exception e) {
@@ -62,7 +72,7 @@ public class ContextThreadLocalTest {
     }
 
     private static Object createContext() {
-        return new Object();
+        return createDefaultInstance(CONTEXT_CLASS);
     }
 
     Object setReturnParent(ThreadLocal<Object> tl, Object value) {

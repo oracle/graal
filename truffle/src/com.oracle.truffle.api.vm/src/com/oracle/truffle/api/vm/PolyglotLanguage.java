@@ -33,13 +33,16 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.vm.LanguageCache.LoadedLanguage;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
-class PolyglotLanguage extends AbstractLanguageImpl implements VMObject {
+final class PolyglotLanguage extends AbstractLanguageImpl implements VMObject {
 
     final PolyglotEngineImpl engine;
     final LanguageCache cache;
@@ -52,7 +55,9 @@ class PolyglotLanguage extends AbstractLanguageImpl implements VMObject {
     private OptionDescriptors options;
     private volatile OptionValuesImpl optionValues;
 
-    volatile boolean initialized;
+    @CompilationFinal private ContextProfile profile;
+
+    private volatile boolean initialized;
 
     PolyglotLanguage(PolyglotEngineImpl engine, LanguageCache cache, int index, boolean host, RuntimeException initError) {
         super(engine.impl);
@@ -61,6 +66,14 @@ class PolyglotLanguage extends AbstractLanguageImpl implements VMObject {
         this.initError = initError;
         this.index = index;
         this.host = host;
+    }
+
+    boolean isInitialized() {
+        return initialized;
+    }
+
+    void setInitialized(boolean initialized) {
+        this.initialized = initialized;
     }
 
     boolean dependsOn(PolyglotLanguage otherLanguage) {
@@ -75,16 +88,6 @@ class PolyglotLanguage extends AbstractLanguageImpl implements VMObject {
             }
         }
         return false;
-    }
-
-    Object getCurrentContext() {
-        Env env = PolyglotContextImpl.requireContext().contexts[index].env;
-        if (env == null) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(
-                            "The language context is not yet initialized or already disposed. ");
-        }
-        return LANGUAGE.getContext(env);
     }
 
     @Override
@@ -114,6 +117,7 @@ class PolyglotLanguage extends AbstractLanguageImpl implements VMObject {
             synchronized (engine) {
                 if (!initialized) {
                     try {
+                        profile = new ContextProfile(this);
                         LoadedLanguage loadedLanguage = cache.loadLanguage();
                         LANGUAGE.initializeLanguage(info, loadedLanguage.getLanguage(), loadedLanguage.isSingleton());
                         this.options = LANGUAGE.describeOptions(loadedLanguage.getLanguage(), cache.getId());
@@ -124,6 +128,15 @@ class PolyglotLanguage extends AbstractLanguageImpl implements VMObject {
                 }
             }
         }
+    }
+
+    ContextProfile requireProfile() {
+        if (profile == null) {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError(
+                            "No language context is active on this thread.");
+        }
+        return profile;
     }
 
     OptionValuesImpl getOptionValues() {
@@ -172,4 +185,58 @@ class PolyglotLanguage extends AbstractLanguageImpl implements VMObject {
         return "PolyglotLanguage [id=" + getId() + ", name=" + getName() + ", host=" + isHost() + "]";
     }
 
+    static final class ContextProfile {
+
+        private static final Object UNSET_CONTEXT = new Object();
+
+        private final PolyglotLanguage language;
+        private final Assumption singleContext = Truffle.getRuntime().createAssumption("Language single context.");
+        @CompilationFinal private volatile Object cachedSingleContext = UNSET_CONTEXT;
+
+        ContextProfile(PolyglotLanguage language) {
+            this.language = language;
+        }
+
+        Object get() {
+            if (singleContext.isValid()) {
+                Object cachedSingle = cachedSingleContext;
+                assert cachedSingle == lookupLanguageContext(PolyglotContextImpl.requireContext());
+                return cachedSingle;
+            } else {
+                return lookupLanguageContext(PolyglotContextImpl.requireContext());
+            }
+        }
+
+        private Object lookupLanguageContext(PolyglotContextImpl context) {
+            Env env = context.contexts[language.index].env;
+            if (env == null) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(
+                                "The language context is not yet initialized or already disposed. ");
+            }
+            return LANGUAGE.getContext(env);
+        }
+
+        void notifyContextCreate(Env env) {
+            if (singleContext.isValid()) {
+                Object cachedSingle = this.cachedSingleContext;
+                assert cachedSingle != LANGUAGE.getContext(env);
+                if (cachedSingle == UNSET_CONTEXT) {
+                    if (singleContext.isValid()) {
+                        cachedSingleContext = LANGUAGE.getContext(env);
+                    }
+                } else {
+                    singleContext.invalidate();
+                    cachedSingleContext = UNSET_CONTEXT;
+                }
+            }
+        }
+
+        void notifyEngineDisposed() {
+            if (singleContext.isValid()) {
+                // do not invalidate assumptions if engine is disposed anyway
+                cachedSingleContext = UNSET_CONTEXT;
+            }
+        }
+    }
 }
