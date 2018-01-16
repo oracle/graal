@@ -32,7 +32,7 @@ _suite = mx.suite('sdk')
 
 def javadoc(args, vm=None):
     """build the Javadoc for all API packages"""
-    mx.javadoc(['--unified'] + args)
+    mx.javadoc(['--unified', '--exclude-packages', 'org.graalvm.polyglot.tck'] + args)
 
 mx.update_commands(_suite, {
     'javadoc' : [javadoc, '[SL args|@VM options]'],
