@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -102,7 +101,8 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
             final TruffleInlining inlining = truffleTreeDump.inlining;
             if (inlining.countInlinedCalls() > 0) {
                 dumpInlinedTrees(astOutput, (OptimizedCallTarget) callTarget, inlining, new ArrayList<>());
-                // TODO why is this needed? It would be preferred to just call inline on the old graph.
+                // TODO why is this needed? It would be preferred to just call inline on the old
+                // graph.
                 ast = new AST(callTarget);
                 ast.inline(truffleTreeDump.inlining);
                 astOutput.print(ast, null, 1, AFTER_INLINING);
@@ -120,7 +120,6 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
             }
             callTreeOutput.endGroup(); // Call Tree
             callTreeOutput.close();
-
 
         }
     }
@@ -576,8 +575,8 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
     }
 
     static class CallTreeDumpStructure implements
-            GraphStructure<CallTree, CallTreeNode, CallTreeNode, List<CallTreeEdge>>,
-            GraphBlocks<CallTree, CallTreeBlock, CallTreeNode> {
+                    GraphStructure<CallTree, CallTreeNode, CallTreeNode, List<CallTreeEdge>>,
+                    GraphBlocks<CallTree, CallTreeBlock, CallTreeNode> {
 
         @Override
         public CallTree graph(CallTree currentGraph, Object obj) {

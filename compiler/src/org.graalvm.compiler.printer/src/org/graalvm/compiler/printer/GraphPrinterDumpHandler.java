@@ -245,8 +245,8 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                 }
             }
             if (result.size() == 2 && result.get(1).startsWith("TruffleGraal")) {
-                    result.clear();
-                    result.add("Graal Graphs");
+                result.clear();
+                result.add("Graal Graphs");
             }
             if (result.isEmpty()) {
                 result.add(graph.toString());
