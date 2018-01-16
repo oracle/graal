@@ -37,7 +37,6 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
@@ -91,7 +90,6 @@ import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameIsNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameSetNode;
 import org.graalvm.word.LocationIdentity;
 
-import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -453,33 +451,12 @@ public class TruffleGraphBuilderPlugins {
         r.register2("get" + nameSuffix, Receiver.class, frameSlotType, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode) {
-                checkFrameInvariant(b.getMetaAccess());
                 int frameSlotIndex = maybeGetConstantFrameSlotIndex(frameNode, frameSlotNode, constantReflection, types);
                 if (frameSlotIndex >= 0) {
                     b.addPush(accessKind, new VirtualFrameGetNode(frameNode, frameSlotIndex, accessKind, accessTag));
                     return true;
                 }
                 return false;
-            }
-
-            private boolean invariantChecked;
-
-            private void checkFrameInvariant(MetaAccessProvider metaAccess) {
-                if (!invariantChecked) {
-                    // Checking more than once due to a race is harmless.
-                    invariantChecked = true;
-                    ResolvedJavaType materializedFrameType = getRuntime().resolveType(metaAccess, "com.oracle.truffle.api.frame.MaterializedFrame");
-                    AssumptionResult<ResolvedJavaType> result = materializedFrameType.findLeafConcreteSubtype();
-                    if (result == null) {
-                        // If this error occurs, then use techniques described at
-                        // https://bugs.openjdk.java.net/browse/JDK-8193513 to
-                        // determine why multiple subclasses of MaterializedFrame
-                        // are being resolved.
-                        throw new GraalError("%s has more than one concrete subtype " +
-                                        "which prevents devirtualization of frame accesses.",
-                                        materializedFrameType.toJavaName());
-                    }
-                }
             }
         });
 
