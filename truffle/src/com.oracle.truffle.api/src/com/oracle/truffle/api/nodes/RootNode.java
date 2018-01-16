@@ -96,7 +96,9 @@ import com.oracle.truffle.api.source.SourceSection;
  * <li>{@link #isInstrumentable()} is overridden and returns <code>true</code>.
  * <li>{@link #getSourceSection()} is overridden and returns a non-null value.
  * <li>The AST contains at least one node that is annotated with
- * {@link com.oracle.truffle.api.instrumentation.Instrumentable} .
+ * {@link com.oracle.truffle.api.instrumentation.Instrumentable}.
+ * <li>It is recommended that children of instrumentable root nodes are tagged with
+ * <code>StandardTags</code>.
  * </ul>
  * <p>
  * <strong>Note:</strong> It is recommended to override {@link #getSourceSection()} and provide a

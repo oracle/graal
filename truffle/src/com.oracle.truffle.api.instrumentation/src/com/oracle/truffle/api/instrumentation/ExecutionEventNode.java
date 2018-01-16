@@ -77,10 +77,30 @@ public abstract class ExecutionEventNode extends Node {
      * {@link Instrumenter#attachListener(SourceSectionFilter, ExecutionEventListener) attached}.
      *
      * @param frame the frame that was used for executing instrumented node
+     * @param exception the exception that occurred during the node's execution
      * @since 0.12
      */
     protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
         // do nothing by default
+    }
+
+    /**
+     * Invoked when an {@link EventContext#getInstrumentedNode() instrumented node} is unwound from
+     * the execution stack by {@link EventContext#createUnwind(Object) unwind throwable} thrown in
+     * this node implementation. Any nodes between the instrumented ones are unwound off without any
+     * notification. The default implementation returns <code>null</code>.
+     *
+     * @param frame the frame that was used for executing instrumented node
+     * @param info an info associated with the unwind - the object passed to
+     *            {@link EventContext#createUnwind(Object)}
+     * @return <code>null</code> to continue to unwind the parent node,
+     *         {@link ProbeNode#UNWIND_ACTION_REENTER} to reenter the current node, or an interop
+     *         value to return that value early from the current node (void nodes just return,
+     *         ignoring the return value).
+     * @since 0.31
+     */
+    protected Object onUnwind(VirtualFrame frame, Object info) {
+        return null;
     }
 
     /**

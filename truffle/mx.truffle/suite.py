@@ -264,7 +264,7 @@ suite = {
    "com.oracle.truffle.api.instrumentation" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.api"],
+      "dependencies" : ["com.oracle.truffle.api.profiles"],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
       ],
