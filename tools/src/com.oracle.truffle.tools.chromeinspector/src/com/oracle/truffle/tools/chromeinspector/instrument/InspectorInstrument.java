@@ -178,7 +178,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             return address;
         }
 
-        private static final String ADDRESS_PREFIX = "chrome-devtools://devtools/bundled/inspector.html?experiments=true&v8only=true&ws=";
+        private static final String ADDRESS_PREFIX = "chrome-devtools://devtools/bundled/inspector.html?ws=";
 
         private static String buildAddress(String hostAddress, int port, String path) {
             return ADDRESS_PREFIX + hostAddress + ":" + port + path;
