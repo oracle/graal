@@ -35,15 +35,10 @@ OBJECTS=api.o \
 	lookup.o \
 	signature.o
 
-JNI_HEADERS_PATH:=$(filter-out %.jar,$(subst :, ,$(MX_CLASSPATH)))
-JNI_HEADERS:=$(foreach dir,$(JNI_HEADERS_PATH),$(wildcard $(dir)/*.h))
-JNI_HEADERS_INCLUDE_PATH:=$(patsubst %,-I%,$(JNI_HEADERS_PATH))
-
 default: bin/${LIBTRUFFLENFI}
 
 OBJECTFILES=${OBJECTS:%.o=bin/%.o}
-CPPFLAGS=-I${VPATH}/include -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${OS} -Ilibffi-build/include
-CPPFLAGS+=${JNI_HEADERS_INCLUDE_PATH}
+CPPFLAGS+= -I${VPATH}/include -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${OS} -Ilibffi-build/include
 
 CFLAGS=-g -fPIC
 LDFLAGS=-g -ldl
@@ -59,7 +54,7 @@ bin/${LIBTRUFFLENFI}: ${OBJECTFILES} ${LIBFFI_LIB}
 	$(QUIETLY) echo LINK $@
 	$(QUIETLY) gcc -shared ${LDFLAGS} $+ -o $@
 
-bin/%.d: src/%.c $(JNI_HEADERS) libffi-build/include/ffi.h
+bin/%.d: src/%.c libffi-build/include/ffi.h
 	$(QUIETLY) mkdir -p bin/
 	$(QUIETLY) gcc -MM ${CPPFLAGS} $< | sed 's|\($*\)\.o[ :]*|bin/\1.o $@ : |g' > $@
 
