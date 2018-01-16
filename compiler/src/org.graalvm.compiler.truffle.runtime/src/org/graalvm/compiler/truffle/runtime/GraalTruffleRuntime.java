@@ -698,7 +698,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         try (Scope c = debug.scope("TruffleTree")) {
             if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
                 output = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE));
-                output.beginGroup(null, callTarget.toString(), callTarget.toString(), null, 0, DebugContext.addVersionProperties(null));
+                output.beginGroup(null, "Truffle::" + callTarget.toString(), "Truffle::" + callTarget.toString(), null, 0, DebugContext.addVersionProperties(null));
                 debug.dump(DebugContext.BASIC_LEVEL, new TruffleTreeDumpHandler.TruffleTreeDump(callTarget, inlining), "TruffleTree");
             }
         } catch (Throwable e) {
