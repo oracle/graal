@@ -57,6 +57,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.util.AnalysisError.TypeNotFoundError;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -131,7 +132,10 @@ public class Inflation extends BigBang {
         checkUnsupportedSynchronization(!aType.equals(metaAccess.lookupJavaType(String.class)), method, bci, aType);
     }
 
-    public void checkUnsupportedSynchronization(boolean condition, AnalysisMethod method, int bci, AnalysisType aType) {
+    private static void checkUnsupportedSynchronization(boolean condition, AnalysisMethod method, int bci, AnalysisType aType) {
+        if (!SubstrateOptions.MultiThreaded.getValue()) {
+            return;
+        }
         UserError.guarantee(condition,
                         "Not supported: Synchronization on '%s' in %s",
                         aType.toJavaName(true), method.asStackTraceElement(bci).toString());
