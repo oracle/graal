@@ -34,7 +34,6 @@ public class DefaultInliningPolicy implements TruffleInliningPolicy {
     private static final String REASON_RECURSION = "number of recursions > " + TruffleCompilerOptions.getValue(TruffleMaximumRecursiveInlining);
     private static final String REASON_MAXIMUM_NODE_COUNT = "deepNodeCount * callSites  > " + TruffleCompilerOptions.getValue(TruffleInliningMaxCallerSize);
     private static final String REASON_MAXIMUM_TOTAL_NODE_COUNT = "totalNodeCount > " + TruffleCompilerOptions.getValue(TruffleInliningMaxCallerSize);
-    private static final String REASON_CACHED = "CACHED!";
 
     @Override
     public double calculateScore(TruffleInliningProfile profile) {
@@ -44,7 +43,7 @@ public class DefaultInliningPolicy implements TruffleInliningPolicy {
     @Override
     public boolean isAllowed(TruffleInliningProfile profile, int currentNodeCount, CompilerOptions options) {
         if (profile.isCached()) {
-            profile.setFailedReason(REASON_CACHED);
+            profile.setFailedReason(profile.getCached().getFailedReason());
             return false;
         }
         if (profile.getRecursions() > TruffleCompilerOptions.getValue(TruffleMaximumRecursiveInlining)) {
