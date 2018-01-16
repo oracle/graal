@@ -97,6 +97,7 @@ final class TestContext implements Closeable {
         checkState(State.NEW, State.INITIALIZING, State.INITIALIZED);
         if (context == null) {
             this.context = Context.newBuilder().out(NullOutputStream.INSTANCE).err(NullOutputStream.INSTANCE).build();
+            Assert.assertNotNull(context.getEngine().getInstruments().get(VerifierInstrument.ID).lookup(VerifierInstrument.class));
         }
         return context;
     }
