@@ -38,6 +38,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -106,7 +107,7 @@ public abstract class ForeignToLLVM extends LLVMNode {
         STRUCT,
         ANY,
         VOID,
-        VARBIT
+        VARBIT;
     }
 
     public static ForeignToLLVMType convert(Type type) {
@@ -177,6 +178,30 @@ public abstract class ForeignToLLVM extends LLVMNode {
             default:
                 throw new IllegalStateException(type.toString());
 
+        }
+    }
+
+    public static Object defaultValue(ForeignToLLVMType type) {
+        switch (type) {
+            case I1:
+                return false;
+            case I8:
+                return (byte) 0;
+            case I16:
+                return (short) 0;
+            case I32:
+                return 0;
+            case I64:
+                return 0L;
+            case POINTER:
+                return LLVMAddress.fromLong(0);
+            case FLOAT:
+                return 0f;
+            case DOUBLE:
+                return 0d;
+            default:
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException();
         }
     }
 
