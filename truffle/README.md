@@ -1,44 +1,41 @@
 # The Truffle Language Implementation Framework
 
-
 ## Introduction
 
-Truffle is a framework for implementing languages as simple interpreters.
-Together with the [Graal compiler](https://github.com/graalvm/graal/tree/master/compiler),
-Truffle interpreters are automatically just-in-time compiled and programs
-running on top of them can reach performance of normal Java.
+Truffle is an Open Source library for building programming language implementations as interpreters for self-modifying Abstract Syntax Trees.
+Together with the Open Source [Graal compiler][https://github.com/graalvm/graal/tree/master/compiler], Truffle represents a significant step 
+forward in programming language implementation technology in the current era of dynamic languages.
 
-The Truffle framework provides the basic foundation for building
-abstract-syntax-tree (AST) interpreters that perform
-[self-optimizations](http://dx.doi.org/10.1145/2384577.2384587) at runtime. The
-included TruffleDSL provides a convenient way to express such optimizations.
+A growing  body of shared implementation code and services
+reduces language implementation effort significantly, but leads to competitive runtime
+performance that matches or exceeds the competition.  The value of the platform is further
+increased by support for low-overhead language interoperation, as well as a general instrumentation
+framework that supports multi-language debugging and other external developer tools.
+
+Find a comprehensive list of all known Truffle languages [here](./docs/Languages.md).
 
 Truffle is developed and maintained by Oracle Labs and the Institute for System
 Software of the Johannes Kepler University Linz.
 
 ## Using Truffle
 
-Truffle official documentation is part of [Truffle javadoc](http://graalvm.github.io/graal/truffle/javadoc/).
-It includes description of common use-cases, references to various tutorials,
-code snippets and more. In case you want to embedded Truffle into your
-application or write your own high speed language interpreter, start by
-downloading [GraalVM](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/)
-(which contains all the necessary pre-built components) and then follow to the
-[javadoc overview](http://graalvm.github.io/graal/truffle/javadoc/).
+Information on how to get starting building your language can be found in the Truffle language implementation [tutorial](./docs/LanguageTutorial.md).
+Reference API documentation is available as part of the [Truffle javadoc] (http://graalvm.org/truffle/javadoc/).
+Truffle comes prebuilt with Graal and several language implementations as as part of [GraalVM](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/).
 
-Truffle bits are uploaded to Maven central. You can use them from your
+The Truffle bits are uploaded to Maven central. You can use them from your
 `pom.xml` file as:
 
 ```xml
 <dependency>
     <groupId>com.oracle.truffle</groupId>
     <artifactId>truffle-api</artifactId>
-    <version>0.23</version> <!-- or any later version -->
+    <version>0.30</version> <!-- or any later version -->
 </dependency>
 <dependency>
     <groupId>com.oracle.truffle</groupId>
     <artifactId>truffle-dsl-processor</artifactId>
-    <version>0.23</version>
+    <version>0.30</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -46,12 +43,25 @@ Truffle bits are uploaded to Maven central. You can use them from your
 If you want to implement your own Truffle guest language, a good way to start is to fork the [SimpleLanguage](https://github.com/graalvm/simplelanguage) project and start hacking.
 SimpleLanguage is well documented and designed to demonstrate most of the Truffle features.
 
-Important links to resources that are available:
-  - [Truffle javadoc overview](http://graalvm.github.io/graal/truffle/javadoc/)
-  - [SimpleLanguage example](https://github.com/graalvm/simplelanguage)
-  - [Tutorials and publications on Truffle and Graal](../docs/Publications.md)
-  - [Graal VM download](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index-2301583.html) on the Oracle Technology Network
+Important links:
+* Start with a new subclass of [TruffleLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) for your own language implementation.
+* Start with a new subclass of [TruffleInstrument](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.html) for your own instrumentation/tool.
+* Fork [SimpleLanguage](https://github.com/graalvm/simplelanguage), a toy language that demonstrates how to use most Truffle features.
+* Embed Truffle languages in Java host applications using the [Polyglot API](../../sdk/docs/PolyglotEmbedding.md).
+* Read The Graal/Truffle [publications](../../docs/Publications.md)
+* Verify that your language is a valid polyglot citizen using the [Polyglot TCK](./docs/TCK.md).
 
+## Compatibility
+
+The Truffle API is evolved in a backwards compatible manner from one version to the next.
+When API is deprecated, then it will stay deprecated for at least two Truffle releases and a minimum of one month before it will be removed.
+The [Polyglot API](../../sdk/docs/PolyglotEmbedding.md) is a long-term stable API to embed languages in Java applications.
+
+As a best practice it is recommended to upgrade Truffle only one version at a time.
+This way you can increment the version, fix deprecation warnings to continue with the next version.
+The deprecated Javadoc tags on the deprecated APIs are designed to be a guide on how to upgrade.
+
+The latest additions and changes can be seen in the [changelog](./CHANGELOG.md). 
 
 ## Hacking Truffle
 
@@ -72,7 +82,7 @@ sources from a command line:
 $ mx clean
 $ mx build
 $ mx unittest
-```
+``` 
 
 The created `./build` directory contains all necessary jars and source bundles.
 
@@ -102,12 +112,12 @@ and then it is possible to include the artifacts as dependencies to a `pom.xml`:
 <dependency>
     <groupId>com.oracle.truffle</groupId>
     <artifactId>truffle-api</artifactId>
-    <version>0.18-SNAPSHOT</version> <!-- or whether version got installed by mx maven-install -->
+    <version>0.30-SNAPSHOT</version> <!-- or whether version got installed by mx maven-install -->
 </dependency>
 <dependency>
     <groupId>com.oracle.truffle</groupId>
     <artifactId>truffle-dsl-processor</artifactId>
-    <version>0.18-SNAPSHOT</version>
+    <version>0.30-SNAPSHOT</version>
     <scope>provided</scope>
 </dependency>
 ```
