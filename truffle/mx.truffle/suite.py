@@ -490,9 +490,6 @@ suite = {
       "uses":[
         "org.graalvm.polyglot.tck.LanguageProvider"
       ],
-      "generatedDependencies" : [
-        "com.oracle.truffle.tutorial",
-      ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.8",
@@ -636,19 +633,6 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,SimpleLanguage,Test",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR", "mx:JMH_1_18"],
-      "license" : "UPL",
-    },
-
-    "com.oracle.truffle.tutorial" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "TRUFFLE_API",
-      ],
-      "checkstyle" : "com.oracle.truffle.sl",
-      "javaCompliance" : "1.8",
-      "workingSets" : "Truffle,SimpleLanguage,Test",
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "license" : "UPL",
     },
    },

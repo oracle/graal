@@ -67,15 +67,7 @@ mx_benchmark.add_bm_suite(JMHRunnerTruffleBenchmarkSuite())
 def javadoc(args, vm=None):
     """build the Javadoc for all API packages"""
     mx.javadoc(['--unified'] + args)
-    javadocDir = os.sep.join([_suite.dir, 'javadoc'])
-    index = os.sep.join([javadocDir, 'index.html'])
-    if exists(index):
-        indexContent = open(index, 'r').read()
-        indexContent = indexContent.replace('src="allclasses-frame.html"', 'src="com/oracle/truffle/api/vm/package-frame.html"')
-        indexContent = indexContent.replace('src="overview-summary.html"', 'src="com/oracle/truffle/tutorial/package-summary.html"')
-        new_file = open(index, "w")
-        new_file.write(indexContent)
-    checkLinks(javadocDir)
+    checkLinks(os.sep.join([_suite.dir, 'javadoc']))
 
 def checkLinks(javadocDir):
     href = re.compile('(?<=href=").*?(?=")')
