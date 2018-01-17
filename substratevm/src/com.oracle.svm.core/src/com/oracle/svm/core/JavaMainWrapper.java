@@ -53,6 +53,7 @@ import com.oracle.svm.core.jdk.RuntimeFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionParser;
+import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.properties.RuntimePropertyParser;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.thread.JavaThreads;
@@ -140,6 +141,7 @@ public class JavaMainWrapper {
         if (SubstrateOptions.ParseRuntimeOptions.getValue()) {
             args = RuntimeOptionParser.singleton().parse(args, RuntimeOptionParser.DEFAULT_OPTION_PREFIX);
             args = RuntimeOptionParser.singleton().parse(args, "-Dgraal.");
+            args = XOptions.singleton().parse(args);
             args = RuntimePropertyParser.parse(args);
         }
         try {
