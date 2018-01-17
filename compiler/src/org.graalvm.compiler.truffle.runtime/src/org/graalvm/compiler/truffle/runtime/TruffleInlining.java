@@ -93,7 +93,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
                 TruffleInliningProfile cachedProfile = decision.getProfile();
                 TruffleInliningProfile newProfile = new TruffleInliningProfile(callNode, cachedProfile.getNodeCount(), cachedProfile.getDeepNodeCount(), cachedProfile.getFrequency(),
                                 cachedProfile.getRecursions());
-                newProfile.setCached(true);
+                newProfile.setCached(cachedProfile);
                 TruffleInliningDecision newDecision = new TruffleInliningDecision(decision.getTarget(), newProfile, decision.getCallSites());
                 decision = newDecision;
             }
