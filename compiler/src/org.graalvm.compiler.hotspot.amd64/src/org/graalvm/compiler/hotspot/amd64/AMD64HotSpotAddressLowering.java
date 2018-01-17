@@ -176,7 +176,7 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
 
     /**
      * Given that Add(a, cst) is always positive, performs the following: ZeroExtend(Add(a, cst)) ->
-     * Add(SignExtend(a), SignExtend(cst))
+     * Add(SignExtend(a), SignExtend(cst)).
      */
     private static void optimizeAdd(ZeroExtendNode zeroExtendNode, ConstantNode constant, ValueNode other, LoopEx loop) {
         StructuredGraph graph = zeroExtendNode.graph();
