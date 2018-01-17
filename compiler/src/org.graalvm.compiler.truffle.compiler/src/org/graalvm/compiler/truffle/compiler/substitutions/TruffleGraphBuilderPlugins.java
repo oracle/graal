@@ -118,9 +118,9 @@ public class TruffleGraphBuilderPlugins {
         registerOptimizedCallTargetPlugins(plugins, metaAccess, canDelayIntrinsification, types);
 
         if (TruffleCompilerOptions.getValue(TruffleUseFrameWithoutBoxing)) {
-            registerFrameWithoutBoxingPlugins(plugins, canDelayIntrinsification, constantReflection, types);
+            registerFrameWithoutBoxingPlugins(plugins, metaAccess, canDelayIntrinsification, constantReflection, types);
         } else {
-            registerFrameWithBoxingPlugins(plugins, canDelayIntrinsification);
+            registerFrameWithBoxingPlugins(plugins, metaAccess, canDelayIntrinsification);
         }
 
     }
@@ -399,8 +399,10 @@ public class TruffleGraphBuilderPlugins {
         registerUnsafeCast(r, canDelayIntrinsification);
     }
 
-    public static void registerFrameWithoutBoxingPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, ConstantReflectionProvider constantReflection, KnownTruffleTypes types) {
-        Registration r = new Registration(plugins, new ResolvedJavaSymbol(types.classFrameWithoutBoxing));
+    public static void registerFrameWithoutBoxingPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification, ConstantReflectionProvider constantReflection,
+                    KnownTruffleTypes types) {
+        ResolvedJavaType frameWithoutBoxingType = getRuntime().resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.FrameWithoutBoxing");
+        Registration r = new Registration(plugins, new ResolvedJavaSymbol(frameWithoutBoxingType));
         registerFrameMethods(r);
         registerUnsafeCast(r, canDelayIntrinsification);
         registerUnsafeLoadStorePlugins(r, canDelayIntrinsification, null, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object);
@@ -416,8 +418,9 @@ public class TruffleGraphBuilderPlugins {
         }
     }
 
-    public static void registerFrameWithBoxingPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {
-        Registration r = new Registration(plugins, "org.graalvm.compiler.truffle.runtime.FrameWithBoxing", null);
+    public static void registerFrameWithBoxingPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {
+        ResolvedJavaType frameWithBoxingType = getRuntime().resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.FrameWithBoxing");
+        Registration r = new Registration(plugins, new ResolvedJavaSymbol(frameWithBoxingType));
         registerFrameMethods(r);
         registerUnsafeCast(r, canDelayIntrinsification);
     }
@@ -482,13 +485,13 @@ public class TruffleGraphBuilderPlugins {
         });
     }
 
-    static int maybeGetConstantFrameSlotIndex(Receiver frameNode, ValueNode frameSlotNode, ConstantReflectionProvider constantReflection, KnownTruffleTypes knownFields) {
+    static int maybeGetConstantFrameSlotIndex(Receiver frameNode, ValueNode frameSlotNode, ConstantReflectionProvider constantReflection, KnownTruffleTypes types) {
         if (frameSlotNode.isConstant()) {
             ValueNode frameNodeValue = frameNode.get(false);
             if (frameNodeValue instanceof NewFrameNode) {
                 NewFrameNode newFrameNode = (NewFrameNode) frameNodeValue;
                 if (newFrameNode.getIntrinsifyAccessors()) {
-                    int index = constantReflection.readFieldValue(knownFields.fieldFrameSlotIndex, frameSlotNode.asJavaConstant()).asInt();
+                    int index = constantReflection.readFieldValue(types.fieldFrameSlotIndex, frameSlotNode.asJavaConstant()).asInt();
                     if (newFrameNode.isValidSlotIndex(index)) {
                         return index;
                     }
