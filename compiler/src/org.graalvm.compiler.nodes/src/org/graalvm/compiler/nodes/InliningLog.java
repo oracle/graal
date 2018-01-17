@@ -23,22 +23,38 @@
 package org.graalvm.compiler.nodes;
 
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public class InliningLog {
+    public static final class BytecodePositionWithId extends BytecodePosition {
+        private long id;
+
+        public BytecodePositionWithId(BytecodePositionWithId caller, ResolvedJavaMethod method, int bci, long id) {
+            super(caller, method, bci);
+            this.id = id;
+        }
+
+        @Override
+        public BytecodePositionWithId getCaller() {
+            return (BytecodePositionWithId) super.getCaller();
+        }
+
+        public long getId() {
+            return id;
+        }
+    }
+
     public static final class Decision {
         private final boolean positive;
         private final String reason;
         private final String phase;
-        private final BytecodePosition position;
+        private final BytecodePositionWithId position;
         private final InliningLog childLog;
 
-        private Decision(boolean positive, String reason, String phase, BytecodePosition position, InliningLog childLog) {
+        private Decision(boolean positive, String reason, String phase, BytecodePositionWithId position, InliningLog childLog) {
             this.positive = positive;
             this.reason = reason;
             this.phase = phase;
@@ -77,7 +93,7 @@ public class InliningLog {
         return decisions;
     }
 
-    public void addDecision(boolean positive, String reason, String phase, BytecodePosition position, InliningLog calleeLog) {
+    public void addDecision(boolean positive, String reason, String phase, BytecodePositionWithId position, InliningLog calleeLog) {
         Decision decision = new Decision(positive, reason, phase, position, calleeLog);
         decisions.add(decision);
     }
