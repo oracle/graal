@@ -40,6 +40,7 @@ import java.util.Objects;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -58,12 +59,14 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import org.graalvm.options.OptionKey;
 
 /**
- * A Truffle language implementation for executing guest language code in a
- * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine PolyglotEngine}. Subclasses of
- * {@link TruffleLanguage} must provide a public default constructor.
+ * A Truffle language implementation contains all the services a language should provide to make it
+ * composable with other languages. Implementation classes must be annotated with
+ * {@link Registration} in order to be discoverable by the {@linkplain org.graalvm.polyglot Polyglot
+ * API}.
+ *
+ * {@link TruffleLanguage} subclasses must provide a public default constructor.
  *
  * <h4>Lifecycle</h4>
  *
@@ -72,29 +75,25 @@ import org.graalvm.options.OptionKey;
  * Machine's class path.
  * <p>
  * A newly created engine locates all available language implementations and creates a
- * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Language descriptor} for each. The
- * descriptor holds the language's registered metadata, but its execution environment is not
- * initialized until the language is needed for code execution. That execution environment remains
- * initialized for the lifetime of the engine and is isolated from the environment in any other
- * engine instance.
+ * {@linkplain org.graalvm.polyglot.Language descriptor} for each. The descriptor holds the
+ * language's registered metadata, but its execution environment is not initialized until the
+ * language is needed for code execution. That execution environment remains initialized for the
+ * lifetime of the engine and is isolated from the environment in any other engine instance.
  * <p>
  * A new {@link TruffleLanguage language implementation} instance is instantiated for each runtime
- * that is created using the {@linkplain com.oracle.truffle.api.vm.PolyglotRuntime.Builder#build()
- * runtime builder}. If an engine is created without a runtime then the language implementation
- * instance is created for each engine.
+ * that is created using the {@linkplain org.graalvm.polyglot.Engine.Builder#build() engine builder}
+ * . If a {@linkplain org.graalvm.polyglot.Context context} is created without a
+ * {@linkplain org.graalvm.polyglot.Engine engine} then the language implementation instance is
+ * created for each context implicitely.
  * <p>
- * Global state can be shared between multiple context instances by saving them as in a field of the
- * {@link TruffleLanguage} subclass. The implementation needs to ensure data isolation between the
- * contexts. However ASTs or assumptions can be shared across multiple contexts if modifying them
- * does not affect language semantics. Languages are strongly discouraged from using static mutable
- * state in their languages. Instead language implementation instances should be used instead.
+ * Global state can be shared between multiple language context instances by saving them as in a
+ * field of the {@link TruffleLanguage} subclass. The implementation needs to ensure data isolation
+ * between the contexts. However ASTs or assumptions can be shared across multiple contexts if
+ * modifying them does not affect language semantics. Languages are strongly discouraged from using
+ * static mutable state in their languages. Instead {@link TruffleLanguage} instances should be used
+ * instead to store global state.
  * <p>
- * The methods in {@link TruffleLanguage} might be invoked from multiple threads. However, one
- * context instance is guaranteed to be invoked only from one single thread. Therefore context
- * objects don't need to be thread-safe. Code that is shared using the {@link TruffleLanguage}
- * instance needs to be prepared to be accessed from multiple threads.
- * <p>
- * Whenever an engine is disposed then each initialized context will be disposed
+ * Whenever an engine is disposed then each initialized language context will be disposed
  * {@link #disposeContext(Object) disposed}.
  *
  * <h4>Cardinalities</h4>
@@ -108,23 +107,20 @@ import org.graalvm.options.OptionKey;
  * N = unbounded
  *
  * - 1:Host VM Processs
- *   - N:PolyglotRuntime
+ *   - N:{@linkplain org.graalvm.polyglot.Engine}
  *     - K:TruffleLanguage
- *     - I:PolyglotRuntime.Instrument
+ *     - I:{@linkplain org.graalvm.polyglot.Instrument}
  *       - 1:TruffleInstrument
- *   - N:PolyglotEngine
- *     - 1:Thread
- *     - K:PolyglotEngine.Language
- *       - 1:Language Context
+ *   - N:{@linkplain org.graalvm.polyglot.Context}
+ *     - K:Language Context
  * </pre>
  *
  * <h4>Language Configuration</h4>
  *
- * Each engine instance can, during its creation, register
- * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Builder#config(String, String, Object)
- * language-specific configuration data} (for example originating from command line arguments) in
- * the form of {@code MIME-type/key/object} triples. A Language implementation retrieves the data
- * via {@link Env#getConfig()} for configuring {@link #createContext(Env) initial execution state}.
+ * On {@link #createContext(Env) context creation} each language context is provided with
+ * information about the environment {@link Env environment }. Language can optionally declare
+ * {@link org.graalvm.polyglot.Context.Builder#option(String, String) configurable} options in
+ * {@link #getOptionDescriptors()}.
  *
  * <h4>Global Symbols</h4>
  *
@@ -140,10 +136,8 @@ import org.graalvm.options.OptionKey;
  * A language implementation can also {@linkplain Env#importSymbol(String) import} a global symbol
  * by name, according to the following rules:
  * <ul>
- * <li>A global symbol
- * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Builder#globalSymbol(String, Object)
- * registered by the engine} will be returned, if any, ignoring global symbols exported by other
- * languages.</li>
+ * <li>A global symbol {@link org.graalvm.polyglot.Context#exportSymbol(String, Object) exported by
+ * the context} will be returned, if any, ignoring global symbols exported by other languages.</li>
  * <li>Otherwise all languages are queried in unspecified order, and the first global symbol found,
  * if any, is returned.</li>
  * </ul>
@@ -153,7 +147,7 @@ import org.graalvm.options.OptionKey;
  * To ensure that a Truffle language can be used in a language-agnostic way, the implementation
  * should be designed to decouple its configuration and initialization from language specifics as
  * much as possible. One aspect of this is the initialization and start of execution via the
- * {@link com.oracle.truffle.api.vm.PolyglotEngine}, which should be designed in a generic way.
+ * {@link org.graalvm.polyglot.Context}, which should be designed in a generic way.
  * Language-specific entry points, for instance to emulate the command-line interface of an existing
  * implementation, should be handled externally.
  *
@@ -182,6 +176,7 @@ import org.graalvm.options.OptionKey;
  * @param <C> internal state of the language associated with every thread that is executing program
  *            {@link #parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest) parsed} by the
  *            language
+ * @see org.graalvm.polyglot for embedding of Truffle languages in Java host applications.
  * @since 0.8 or earlier
  */
 @SuppressWarnings({"javadoc"})
@@ -201,12 +196,9 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * The annotation to use to register your language to the
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine Truffle} system. By annotating your
-     * implementation of {@link TruffleLanguage} by this annotation you are just a <em>one JAR drop
-     * to the class path</em> away from your users. Once they include your JAR in their application,
-     * your language will be available to the {@link com.oracle.truffle.api.vm.PolyglotEngine
-     * Truffle virtual machine}.
+     * The annotation to use to register your language to the {@link org.graalvm.polyglot Polyglot
+     * API}. By annotating your implementation of {@link TruffleLanguage} by this annotation the
+     * language can be discovered on the class path.
      *
      * @since 0.8 or earlier
      */
@@ -225,7 +217,7 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Unique name of your language. This name will be exposed to users via the
-         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Language#getName()} getter.
+         * {@link org.graalvm.polyglot.Language#getName()} getter.
          *
          * @return identifier of your language
          * @since 0.8 or earlier
@@ -242,7 +234,7 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Unique string identifying the language version. This name will be exposed to users via
-         * the {@link com.oracle.truffle.api.vm.PolyglotEngine.Language#getVersion()} getter.
+         * the {@link org.graalvm.polyglot.Language#getVersion()} getter.
          *
          * @return version of your language
          * @since 0.8 or earlier
@@ -250,10 +242,10 @@ public abstract class TruffleLanguage<C> {
         String version();
 
         /**
-         * List of MIME types associated with your language. Users will use them (directly or
-         * indirectly) when
-         * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval(com.oracle.truffle.api.source.Source)
-         * executing} their code snippets or their {@link Source files}.
+         * List of MIME types associated with your language.
+         *
+         * Users will use them when {@link org.graalvm.polyglot.Source#findLanguage(String)} is used
+         * by the embedder to lookup a language id} for a mime type.
          *
          * @return array of MIME types assigned to your language files
          * @since 0.8 or earlier
@@ -313,11 +305,11 @@ public abstract class TruffleLanguage<C> {
     /**
      * Creates internal representation of the executing context suitable for given environment. Each
      * time the {@link TruffleLanguage language} is used by a new
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine} or in a new thread, the system calls this
-     * method to let the {@link TruffleLanguage language} prepare for <em>execution</em>. The
-     * returned execution context is completely language specific; it is however expected it will
-     * contain reference to here-in provided <code>env</code> and adjust itself according to
-     * parameters provided by the <code>env</code> object.
+     * {@link org.graalvm.polyglot.Context}, the system calls this method to let the
+     * {@link TruffleLanguage language} prepare for <em>execution</em>. The returned execution
+     * context is completely language specific; it is however expected it will contain reference to
+     * here-in provided <code>env</code> and adjust itself according to parameters provided by the
+     * <code>env</code> object.
      * <p>
      * The context created by this method is accessible using {@link #getContextReference()}. An
      * {@link IllegalStateException} is thrown if the context is tried to be accessed while the
@@ -424,7 +416,7 @@ public abstract class TruffleLanguage<C> {
      *         just parsed <code>code</code>
      * @throws Exception exception can be thrown when parsing goes wrong. Here-in thrown exception
      *             is propagated to the user who called one of <code>eval</code> methods of
-     *             {@link com.oracle.truffle.api.vm.PolyglotEngine}
+     *             {@link org.graalvm.polyglot.Context}
      * @since 0.22
      */
     protected CallTarget parse(ParsingRequest request) throws Exception {
@@ -877,9 +869,9 @@ public abstract class TruffleLanguage<C> {
     /**
      * Generates language specific textual representation of a value. Each language may have special
      * formating conventions - even primitive values may not follow the traditional Java formating
-     * rules. As such when {@link com.oracle.truffle.api.vm.PolyglotEngine.Value#as(java.lang.Class)
-     * value.as(String.class)} is requested, it consults the language that produced the value by
-     * calling this method. By default this method calls {@link Objects#toString(java.lang.Object)}.
+     * rules. As such when {@link org.graalvm.polyglot.Value#toString()} is requested, it consults
+     * the language that produced the value by calling this method. By default this method calls
+     * {@link Objects#toString(java.lang.Object)}.
      *
      * @param context the execution context for doing the conversion
      * @param value the value to convert. Either primitive type or
@@ -895,27 +887,23 @@ public abstract class TruffleLanguage<C> {
      * Decides whether the result of evaluating an interactive source should be printed to stdout.
      * By default this methods returns <code>true</code> claiming all values are visible.
      * <p>
-     * This method affects behavior of {@link com.oracle.truffle.api.vm.PolyglotEngine#eval} - when
-     * evaluating an {@link Source#isInteractive() interactive source} the result of the
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval evaluation} is tested for
+     * This method affects behavior of
+     * {@link org.graalvm.polyglot.Context#eval(org.graalvm.polyglot.Source)} - when evaluating an
+     * {@link Source#isInteractive() interactive source} the result of the evaluation is tested for
      * {@link #isVisible(java.lang.Object, java.lang.Object) visibility} and if the value is found
      * visible, it gets {@link TruffleLanguage#toString(java.lang.Object, java.lang.Object)
      * converted to string} and printed to
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut standard output}.
+     * {@link org.graalvm.polyglot.Context.Builder#out(OutputStream) standard output}.
      * <p>
      * A language can control whether a value is or isn't printed by overriding this method and
      * returning <code>false</code> for some or all values. In such case it is up to the language
-     * itself to use {@link com.oracle.truffle.api.vm.PolyglotEngine polyglot engine}
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut output},
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setErr error} and
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setIn input} streams. When
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval} is called over an
-     * {@link Source#isInteractive() interactive source} of a language that controls its interactive
-     * behavior, it is the responsibility of the language itself to print the result to
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut(OutputStream) standard output}
-     * or {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setErr(OutputStream) error output}
-     * and/or access {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setIn(InputStream)
-     * standard input} in an appropriate way.
+     * itself to use the {@link Env#out()}, {@link Env#err()} and {@link Env#in()} streams of the
+     * environment.
+     *
+     * When evaluation is called with an {@link Source#isInteractive() interactive source} of a
+     * language that controls its interactive behavior, it is the responsibility of the language
+     * itself to print the result to use the {@link Env#out()}, {@link Env#err()} and
+     * {@link Env#in()} streams of the environment.
      *
      * @param context the execution context for doing the conversion
      * @param value the value to check. Either primitive type or
@@ -1120,7 +1108,7 @@ public abstract class TruffleLanguage<C> {
     public static final class Env {
 
         private static final Object UNSET_CONTEXT = new Object();
-        private final Object vmObject; // PolyglotEngine.Language
+        private final Object vmObject; // PolylgotLanguageContext
         private final LanguageInfo language;
         private final TruffleLanguage<Object> spi;
         private final InputStream in;
@@ -1385,8 +1373,8 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Allows it to be determined if this {@link com.oracle.truffle.api.vm.PolyglotEngine} can
-         * execute code written in a language with a given MIME type.
+         * Allows it to be determined if this {@link org.graalvm.polyglot.Context} can execute code
+         * written in a language with a given MIME type.
          *
          * @see Source#getMimeType()
          * @see #parse(Source, String...)
@@ -1422,8 +1410,8 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Input associated with {@link com.oracle.truffle.api.vm.PolyglotEngine} this language is
-         * being executed in.
+         * Input stream provided by {@link org.graalvm.polyglot.Context.Builder#in(InputStream)}
+         * this language is being executed in.
          *
          * @return reader, never <code>null</code>
          * @since 0.8 or earlier
@@ -1435,8 +1423,9 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Standard output writer for {@link com.oracle.truffle.api.vm.PolyglotEngine} this language
-         * is being executed in.
+         * Standard output writer provided by
+         * {@link org.graalvm.polyglot.Context.Builder#out(OutputStream)} this language is being
+         * executed in.
          *
          * @return writer, never <code>null</code>
          * @since 0.8 or earlier
@@ -1448,8 +1437,9 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Standard error writer for {@link com.oracle.truffle.api.vm.PolyglotEngine} this language
-         * is being executed in.
+         * Standard error writer provided by
+         * {@link org.graalvm.polyglot.Context.Builder#err(OutputStream)} this language is being
+         * executed in.
          *
          * @return writer, never <code>null</code>
          * @since 0.8 or earlier
@@ -1462,9 +1452,9 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Looks additional service up. An environment for a particular {@link TruffleLanguage
-         * language} and a {@link com.oracle.truffle.api.vm.PolyglotEngine} may also be associated
-         * with additional services. One can request implementations of such services by calling
-         * this method with the type identifying the requested service and its API.
+         * language} may also be associated with additional services. One can request
+         * implementations of such services by calling this method with the type identifying the
+         * requested service and its API.
          *
          * Services that can be obtained via this method include
          * {@link com.oracle.truffle.api.instrumentation.Instrumenter} and others.
