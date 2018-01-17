@@ -2,16 +2,15 @@
 
 The Graal SDK is a collection of APIs for the components of GraalVM.
 
-
 * The [`org.graalvm.polyglot`](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html) module contains APIs to embed Graal languages in Java host applications.
 * The [`org.graalvm.collections`](http://www.graalvm.org/sdk/javadoc/org/graalvm/collections/package-summary.html) module contains memory efficient common collection data structures used across Graal projects.
 * The [`org.graalvm.options`](http://www.graalvm.org/sdk/javadoc/org/graalvm/options/package-summary.html) module contains reusable classes for options.
 
 ## Getting Started
 
-1. Download GraalVM from Oracle Technology Network.
+1. Download GraalVM from [Oracle Technology Network](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/).
 2. Use any of the Java executables in `./bin` or import GraalVM as JDK in your favorite IDE.
-3. Use Graal-SDK, it is put on the classpath for you automatically. 
+3. Use Graal-SDK, the jar is put on the class path for you automatically. 
 
 The Graal-SDK bits are also uploaded to Maven central.
 You can use it from your `pom.xml` file as:
@@ -26,7 +25,7 @@ You can use it from your `pom.xml` file as:
   </dependencies>
 ```
 
-Please note that Graal SDK still requires GraalVM to run.
+Please note that Graal SDK requires GraalVM to run.
 
 ## Tutorials
 
