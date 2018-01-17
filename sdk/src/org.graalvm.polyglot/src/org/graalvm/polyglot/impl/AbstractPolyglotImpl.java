@@ -226,6 +226,10 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void close(boolean interuptExecution);
 
+        public abstract void explicitEnter();
+
+        public abstract void explicitLeave();
+
     }
 
     public abstract static class AbstractEngineImpl {
@@ -427,6 +431,10 @@ public abstract class AbstractPolyglotImpl {
             return executeUnsupported(receiver);
         }
 
+        public Value execute(Object receiver) {
+            return executeUnsupported(receiver);
+        }
+
         public final Value executeUnsupported(Object receiver) {
             throw unsupported(receiver, "execute(Object...)", "canExecute()");
         }
@@ -441,6 +449,18 @@ public abstract class AbstractPolyglotImpl {
 
         public final Value newInstanceUnsupported(Object receiver) {
             throw unsupported(receiver, "newInstance(Object...)", "canInstantiate()");
+        }
+
+        public void executeVoid(Object receiver, Object[] arguments) {
+            executeVoidUnsupported(receiver);
+        }
+
+        public void executeVoid(Object receiver) {
+            executeVoidUnsupported(receiver);
+        }
+
+        public final void executeVoidUnsupported(Object receiver) {
+            throw unsupported(receiver, "executeVoid(Object...)", "canExecute()");
         }
 
         public boolean isString(Object receiver) {

@@ -122,7 +122,7 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
      * of its module dependencies are trusted.
      */
     @Override
-    protected boolean canBeIntrinsified(ResolvedJavaType declaringClass) {
+    public boolean canBeIntrinsified(ResolvedJavaType declaringClass) {
         if (declaringClass instanceof HotSpotResolvedJavaType) {
             Class<?> javaClass = ((HotSpotResolvedJavaType) declaringClass).mirror();
             if (Java8OrEarlier) {

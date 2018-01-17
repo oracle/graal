@@ -24,6 +24,9 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameSlot;
+
 /**
  * Set of standard tags usable by language agnostic tools. Language should {@link ProvidedTags
  * provide} an implementation of these tags in order to support a wide variety of tools.
@@ -80,7 +83,9 @@ public final class StandardTags {
 
     /**
      * Marks program locations as root of a function, method or closure. The root prolog should be
-     * executed before and the epilog after the source location marked as root is executed.
+     * executed by this node. In particular, when the implementation copies
+     * {@link Frame#getArguments()} into {@link FrameSlot}s, it should do it here for the
+     * instrumentation to work correctly.
      * <p>
      * Use case descriptions:
      * <ul>

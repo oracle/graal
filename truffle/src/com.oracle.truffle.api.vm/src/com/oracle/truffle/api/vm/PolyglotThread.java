@@ -35,6 +35,7 @@ final class PolyglotThread extends Thread {
     PolyglotThread(PolyglotLanguageContext languageContext, Runnable runnable) {
         super(runnable, createDefaultName(languageContext));
         this.languageContext = languageContext;
+        setUncaughtExceptionHandler(languageContext.uncaughtExceptionHandler);
     }
 
     static String createDefaultName(PolyglotLanguageContext creator) {

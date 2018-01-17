@@ -39,14 +39,13 @@ import urllib2
 
 import mx
 from mx import DisableJavaDebugging
-from mx_unittest import unittest, _run_tests, _VMLauncher
+from mx_unittest import _run_tests, _VMLauncher
 import mx_unittest
 import mx_gate
 from mx_gate import Task
 import mx_compiler
 from mx_compiler import run_java
 from mx_compiler import GraalArchiveParticipant
-import mx_subst
 import mx_urlrewrites
 
 import shutil
@@ -223,15 +222,16 @@ def gate_build_sulong_image(port, args):
 def gate_sulong(port, tasks, args):
     with Task('Run SulongSuite tests with SVM image', tasks, tags=[GraalTags.sulong]) as t:
         if t:
+            sulong = ensure_trufflelanguage('sulong', os.environ.get('TRUFFLE_SULONG_VERSION'))
             gate_build_sulong_image(port, args)
-            libpath = mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:sulong:SULONG_LIBS>')
-            unittest(['-Dsulongtest.testAOTImage=./svmbuild/sulong', '-Dsulongtest.testAOTArgs=' + libpath, 'SulongSuite', '--enable-timing'])
+            sulong.extensions.testLLVMImage('./svmbuild/sulong', unittestArgs=['--enable-timing'])
     with Task('Run Sulong interop tests with SVM image', tasks, tags=[GraalTags.sulong]) as t:
         if t:
-            ensure_trufflelanguage('sulong', os.environ.get('TRUFFLE_SULONG_VERSION'))
-            image_server(port, ['-nfi', '-junit', 'com.oracle.truffle.llvm.test.interop', '-H:-HostedAssertions'] + args, True)
-            libpath = mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:sulong:SULONG_LIBS>:<path:sulong:SULONG_TEST_NATIVE>')
-            mx.run(['./svmbuild/svmjunit', libpath, '-Dpolyglot.llvm.libraries=libsulongtest.so', '--enable-timing'])
+            sulong = ensure_trufflelanguage('sulong', os.environ.get('TRUFFLE_SULONG_VERSION'))
+            def native_junit_runner(unittest_args, run_args):
+                image_server(port, ['-nfi', '-junit'] + unittest_args + ['-H:-HostedAssertions'] + args, True)
+                mx.run(['./svmbuild/svmjunit'] + run_args + ['--enable-timing'])
+            sulong.extensions.runLLVMUnittests(native_junit_runner)
 
 def js_image_test(binary, bench_location, name, warmup_iterations, iterations, timeout=None):
     jsruncmd = [binary, join(bench_location, 'harness.js'), '--',

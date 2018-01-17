@@ -25,9 +25,11 @@
 package com.oracle.truffle.api.debug;
 
 import java.util.Iterator;
+import java.util.List;
 
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -139,8 +141,16 @@ public final class DebugScope {
      */
     public Iterable<DebugValue> getArguments() {
         verifyValidState();
-        Object argumentssObj = scope.getArguments();
-        ValuePropertiesCollection arguments = (argumentssObj != null) ? DebugValue.getProperties(argumentssObj, debugger, getLanguage(), this) : null;
+        Object argumentsObj = scope.getArguments();
+        Iterable<DebugValue> arguments = null;
+        if (argumentsObj != null && argumentsObj instanceof TruffleObject) {
+            TruffleObject argsTO = (TruffleObject) argumentsObj;
+            arguments = DebugValue.getProperties(argumentsObj, debugger, getLanguage(), this);
+            if (arguments == null && ObjectStructures.isArray(debugger.getMessageNodes(), argsTO)) {
+                List<Object> array = ObjectStructures.asList(debugger.getMessageNodes(), argsTO);
+                arguments = new ValueInteropList(debugger, getLanguage(), array);
+            }
+        }
         return arguments;
     }
 

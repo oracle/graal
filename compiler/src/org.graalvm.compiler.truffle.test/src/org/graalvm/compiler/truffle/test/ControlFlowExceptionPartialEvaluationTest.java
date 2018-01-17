@@ -22,9 +22,9 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleFunctionInlining;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleFunctionInlining;
 
-import org.graalvm.compiler.truffle.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.junit.Assume;

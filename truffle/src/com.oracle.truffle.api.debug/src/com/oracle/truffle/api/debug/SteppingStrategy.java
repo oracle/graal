@@ -26,6 +26,7 @@ package com.oracle.truffle.api.debug;
 
 import com.oracle.truffle.api.debug.DebuggerSession.SteppingLocation;
 import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 
 /**
  * Implementation of a strategy for a debugger <em>action</em> that allows execution to continue
@@ -53,6 +54,10 @@ abstract class SteppingStrategy {
     void notifyCallExit() {
     }
 
+    Object notifyOnUnwind() {
+        return null;
+    }
+
     boolean isStopAfterCall() {
         return true;
     }
@@ -66,6 +71,10 @@ abstract class SteppingStrategy {
     abstract void initialize();
 
     boolean isDone() {
+        return false;
+    }
+
+    boolean isUnwind() {
         return false;
     }
 
@@ -104,6 +113,10 @@ abstract class SteppingStrategy {
 
     static SteppingStrategy createStepOver(int stepCount) {
         return new StepOver(stepCount);
+    }
+
+    static SteppingStrategy createUnwind(int depth) {
+        return new Unwind(depth);
     }
 
     static SteppingStrategy createComposed(SteppingStrategy strategy1, SteppingStrategy strategy2) {
@@ -395,6 +408,63 @@ abstract class SteppingStrategy {
         @Override
         public String toString() {
             return String.format("STEP_OVER(stackCounter=%s, stepCount=%s)", stackCounter, unfinishedStepCount);
+        }
+
+    }
+
+    static final class Unwind extends SteppingStrategy {
+
+        private final int depth; // Negative depth
+        private int stackCounter;
+        ThreadDeath unwind;
+
+        Unwind(int depth) {
+            this.depth = -depth;
+        }
+
+        @Override
+        void initialize() {
+            // We're entered already, we'll be called on exit once before unwind.
+            this.stackCounter = 1;
+        }
+
+        @Override
+        void notifyCallEntry() {
+            stackCounter++;
+        }
+
+        @Override
+        void notifyCallExit() {
+            stackCounter--;
+        }
+
+        @Override
+        Object notifyOnUnwind() {
+            if (depth == stackCounter) {
+                return ProbeNode.UNWIND_ACTION_REENTER;
+            } else {
+                return null;
+            }
+        }
+
+        @Override
+        boolean step(DebuggerSession steppingSession, EventContext context, SteppingLocation location) {
+            return true;
+        }
+
+        @Override
+        boolean isUnwind() {
+            return true;
+        }
+
+        @Override
+        boolean isStopAfterCall() {
+            return false;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("REENTER(stackCounter=%s, depth=%s)", stackCounter, depth);
         }
 
     }

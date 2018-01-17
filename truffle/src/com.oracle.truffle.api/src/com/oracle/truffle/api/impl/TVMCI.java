@@ -35,6 +35,8 @@ import com.oracle.truffle.api.impl.Accessor.InstrumentSupport;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
+import java.util.function.Supplier;
+
 /**
  * An interface between Truffle API and hosting virtual machine. Not interesting for regular Truffle
  * API users. Acronym for Truffle Virtual Machine Compiler Interface.
@@ -79,9 +81,17 @@ public abstract class TVMCI {
      */
     protected TVMCI() {
         // export only for select packages
-        assert getClass().getPackage().getName().equals("org.graalvm.compiler.truffle") ||
-                        getClass().getPackage().getName().equals("com.oracle.graal.truffle") ||
-                        getClass().getPackage().getName().equals("com.oracle.truffle.api.impl");
+        assert checkCaller();
+    }
+
+    private boolean checkCaller() {
+        final String packageName = getClass().getPackage().getName();
+        assert packageName.equals("org.graalvm.compiler.truffle.runtime") ||
+                        packageName.equals("org.graalvm.graal.truffle") ||
+                        packageName.equals("com.oracle.graal.truffle") ||
+                        packageName.equals("com.oracle.truffle.api.impl") : //
+        TVMCI.class.getName() + " subclass is not in trusted package: " + getClass().getName();
+        return true;
     }
 
     /**
@@ -206,6 +216,14 @@ public abstract class TVMCI {
         return false;
     }
 
+    @SuppressWarnings("unused")
+    protected void initializeProfile(CallTarget target, Class<?>[] argumentTypes) {
+    }
+
+    protected Object callProfiled(CallTarget target, Object... args) {
+        return target.call(args);
+    }
+
     /**
      * Accessor for {@link TVMCI#Test} class.
      *
@@ -233,4 +251,25 @@ public abstract class TVMCI {
         }
     }
 
+    private static volatile Object fallbackEngineData;
+
+    protected <T> T getOrCreateRuntimeData(RootNode rootNode, Supplier<T> constructor) {
+        try {
+            if (rootNode == null) {
+                return getOrCreateFallbackEngineData(constructor);
+            }
+            final Object sourceVM = Accessor.nodesAccess().getSourceVM(rootNode);
+            return Accessor.engineAccess().getOrCreateRuntimeData(sourceVM, constructor);
+        } catch (IllegalArgumentException | NullPointerException | UnsupportedOperationException e) {
+            return getOrCreateFallbackEngineData(constructor);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T getOrCreateFallbackEngineData(Supplier<T> constructor) {
+        if (fallbackEngineData == null) {
+            fallbackEngineData = constructor.get();
+        }
+        return (T) fallbackEngineData;
+    }
 }

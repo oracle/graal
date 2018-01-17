@@ -44,8 +44,8 @@ import com.oracle.svm.hosted.meta.MethodPointer;
 
 public class WriteUtils extends PrimitiveWriteUtils {
 
-    private static boolean useHeapBaseRegister() {
-        return SubstrateOptions.UseHeapBaseRegister.getValue();
+    private static boolean useHeapBase() {
+        return SubstrateOptions.UseHeapBaseRegister.getValue() && ImageSingletons.lookup(CompressEncoding.class).hasBase();
     }
 
     private static int objectSize(NativeImageHeap heap) {
@@ -121,7 +121,7 @@ public class WriteUtils extends PrimitiveWriteUtils {
             ObjectInfo targetInfo = heap.objects.get(target);
             verifyTargetDidNotChange(target, reason, targetInfo);
             int size = objectSize(heap);
-            if (useHeapBaseRegister()) {
+            if (useHeapBase()) {
                 CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
                 int shift = compressEncoding.getShift();
                 writePointer(buffer, index, targetHeapOffset(targetInfo) >>> shift, size);
@@ -159,7 +159,7 @@ public class WriteUtils extends PrimitiveWriteUtils {
 
         int objectHeaderSize = objectSize(heap);
         // Note that this object is allocated on the native image heap.
-        if (useHeapBaseRegister()) {
+        if (useHeapBase()) {
             long targetOffset = targetHeapOffset(targetInfo);
             writePointer(buffer, index, targetOffset | objectHeaderBits, objectHeaderSize);
         } else {

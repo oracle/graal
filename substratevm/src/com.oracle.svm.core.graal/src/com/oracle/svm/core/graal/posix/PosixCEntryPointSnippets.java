@@ -29,9 +29,11 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.Map;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
@@ -49,6 +51,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.LocationIdentity;
@@ -148,10 +151,16 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
         }
     }
 
+    @Fold
+    static boolean hasHeapBase() {
+        CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
+        return compressEncoding.hasBase();
+    }
+
     @Uninterruptible(reason = "Called by an uninterruptible method.")
     private static void setHeapBase() {
         if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
-            writeCurrentVMHeapBase(heapBase());
+            writeCurrentVMHeapBase(hasHeapBase() ? heapBase() : WordFactory.nullPointer());
         }
     }
 

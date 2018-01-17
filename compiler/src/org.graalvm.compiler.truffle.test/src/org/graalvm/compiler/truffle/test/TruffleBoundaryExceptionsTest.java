@@ -22,23 +22,19 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.truffle.GraalTruffleCompilationListener;
-import org.graalvm.compiler.truffle.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.OptimizedDirectCallNode;
-import org.graalvm.compiler.truffle.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.TruffleInlining;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationThreshold;
+
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Assert;
 import org.junit.Test;
 
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationThreshold;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling {
 
@@ -80,63 +76,10 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
             }
         }
         final int[] compilationCount = {0};
-        GraalTruffleCompilationListener listener = new GraalTruffleCompilationListener() {
+        GraalTruffleRuntimeListener listener = new GraalTruffleRuntimeListener() {
             @Override
-            public void notifyCompilationSplit(OptimizedDirectCallNode callNode) {
-
-            }
-
-            @Override
-            public void notifyCompilationQueued(OptimizedCallTarget target) {
-
-            }
-
-            @Override
-            public void notifyCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
-
-            }
-
-            @Override
-            public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t) {
-
-            }
-
-            @Override
-            public void notifyCompilationStarted(OptimizedCallTarget target) {
+            public void onCompilationStarted(OptimizedCallTarget target) {
                 compilationCount[0]++;
-            }
-
-            @Override
-            public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph) {
-
-            }
-
-            @Override
-            public void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
-
-            }
-
-            @Override
-            public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result) {
-
-            }
-
-            @Override
-            public void notifyCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
-            }
-
-            @Override
-            public void notifyCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
-            }
-
-            @Override
-            public void notifyShutdown(GraalTruffleRuntime r) {
-
-            }
-
-            @Override
-            public void notifyStartup(GraalTruffleRuntime r) {
-
             }
         };
         final OptimizedCallTarget outerTarget = (OptimizedCallTarget) runtime.createCallTarget(new DeoptCountingExceptionOverBoundaryRootNode());
@@ -146,7 +89,7 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
         }
         assertCompiled(outerTarget);
 
-        runtime.addCompilationListener(listener);
+        runtime.addListener(listener);
         final int execCount = 10;
         for (int i = 0; i < execCount; i++) {
             outerTarget.call();
@@ -161,7 +104,7 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
         Assert.assertEquals("Incorrect number of deops detected!", totalExecutions - interpretCount, deopCount);
 
         Assert.assertEquals("Compilation happened!", 0, compilationCount[0]);
-        runtime.removeCompilationListener(listener);
+        runtime.removeListener(listener);
     }
 
     @Test

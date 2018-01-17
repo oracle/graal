@@ -299,7 +299,7 @@ public final class GraalFeature implements Feature {
              */
             config.getMetaAccess().lookupJavaType(SubstrateType.class);
         } catch (NoClassDefFoundError ex) {
-            throw VMError.shouldNotReachHere("Building a native image with Graal support requires Truffle on the class path. For unit tests run with 'smvtest', add the option '--truffle'.");
+            throw VMError.shouldNotReachHere("Building a native image with Graal support requires Truffle on the class path. For unit tests run with 'svmtest', add the option '--truffle'.");
         }
 
         ImageSingletons.add(GraalSupport.class, new GraalSupport());

@@ -112,6 +112,26 @@ public class InvocationPlugins {
     }
 
     /**
+     * A symbol for an already resolved method.
+     */
+    public static class ResolvedJavaSymbol implements Type {
+        private final ResolvedJavaType resolved;
+
+        public ResolvedJavaSymbol(ResolvedJavaType type) {
+            this.resolved = type;
+        }
+
+        public ResolvedJavaType getResolved() {
+            return resolved;
+        }
+
+        @Override
+        public String toString() {
+            return resolved.toJavaName();
+        }
+    }
+
+    /**
      * A symbol that is lazily {@linkplain OptionalLazySymbol#resolve() resolved} to a {@link Type}.
      */
     static class OptionalLazySymbol implements Type {
@@ -696,7 +716,7 @@ public class InvocationPlugins {
      *
      * @param declaringClass the class to test
      */
-    protected boolean canBeIntrinsified(ResolvedJavaType declaringClass) {
+    public boolean canBeIntrinsified(ResolvedJavaType declaringClass) {
         return true;
     }
 
@@ -1150,6 +1170,9 @@ public class InvocationPlugins {
         }
 
         static boolean checkResolvable(boolean isOptional, Type declaringType, Binding binding) {
+            if (declaringType instanceof ResolvedJavaSymbol) {
+                return checkResolvable(isOptional, ((ResolvedJavaSymbol) declaringType).getResolved(), binding);
+            }
             Class<?> declaringClass = InvocationPlugins.resolveType(declaringType, isOptional);
             if (declaringClass == null) {
                 return true;
@@ -1162,6 +1185,13 @@ public class InvocationPlugins {
                 if (resolveMethod(declaringClass, binding) == null && !isOptional) {
                     throw new AssertionError(String.format("Method not found: %s.%s%s", declaringClass.getName(), binding.name, binding.argumentsDescriptor));
                 }
+            }
+            return true;
+        }
+
+        private static boolean checkResolvable(boolean isOptional, ResolvedJavaType declaringType, Binding binding) {
+            if (resolveJavaMethod(declaringType, binding) == null && !isOptional) {
+                throw new AssertionError(String.format("Method not found: %s.%s%s", declaringType.toJavaName(), binding.name, binding.argumentsDescriptor));
             }
             return true;
         }
@@ -1235,7 +1265,7 @@ public class InvocationPlugins {
      * {@link NoSuchMethodError} is thrown.
      *
      * @param declaringClass the class to search for a method matching {@code binding}
-     * @return the method (if any) in {@code declaringClass} matching binding
+     * @return the method (if any) in {@code declaringClass} matching {@code binding}
      */
     public static Method resolveMethod(Class<?> declaringClass, Binding binding) {
         if (binding.name.equals("<init>")) {
@@ -1243,32 +1273,70 @@ public class InvocationPlugins {
         }
         Method[] methods = declaringClass.getDeclaredMethods();
         List<String> parameterTypeNames = parseParameters(binding.argumentsDescriptor);
+        Method match = null;
         for (int i = 0; i < methods.length; ++i) {
             Method m = methods[i];
-            if (binding.isStatic == Modifier.isStatic(m.getModifiers()) && m.getName().equals(binding.name)) {
-                if (parameterTypeNames.equals(toInternalTypeNames(m.getParameterTypes()))) {
-                    for (int j = i + 1; j < methods.length; ++j) {
-                        Method other = methods[j];
-                        if (binding.isStatic == Modifier.isStatic(other.getModifiers()) && other.getName().equals(binding.name)) {
-                            if (parameterTypeNames.equals(toInternalTypeNames(other.getParameterTypes()))) {
-                                if (m.getReturnType().isAssignableFrom(other.getReturnType())) {
-                                    // `other` has a more specific return type - choose it
-                                    // (m is most likely a bridge method)
-                                    m = other;
-                                } else {
-                                    if (!other.getReturnType().isAssignableFrom(m.getReturnType())) {
-                                        throw new NoSuchMethodError(String.format(
-                                                        "Found 2 methods with same name and parameter types but unrelated return types:%n %s%n %s", m, other));
-                                    }
-                                }
-                            }
-                        }
+            if (binding.isStatic == Modifier.isStatic(m.getModifiers()) &&
+                            m.getName().equals(binding.name) &&
+                            parameterTypeNames.equals(toInternalTypeNames(m.getParameterTypes()))) {
+                if (match == null) {
+                    match = m;
+                } else if (match.getReturnType().isAssignableFrom(m.getReturnType())) {
+                    // `m` has a more specific return type - choose it
+                    // (`match` is most likely a bridge method)
+                    match = m;
+                } else {
+                    if (!m.getReturnType().isAssignableFrom(match.getReturnType())) {
+                        throw new NoSuchMethodError(String.format(
+                                        "Found 2 methods with same name and parameter types but unrelated return types:%n %s%n %s", match, m));
                     }
-                    return m;
                 }
             }
         }
-        return null;
+        return match;
+    }
+
+    /**
+     * Same as {@link #resolveMethod(Class, Binding)} and
+     * {@link #resolveConstructor(Class, Binding)} except in terms of {@link ResolvedJavaType} and
+     * {@link ResolvedJavaMethod}.
+     */
+    public static ResolvedJavaMethod resolveJavaMethod(ResolvedJavaType declaringClass, Binding binding) {
+        ResolvedJavaMethod[] methods = declaringClass.getDeclaredMethods();
+        if (binding.name.equals("<init>")) {
+            for (ResolvedJavaMethod m : methods) {
+                if (m.getName().equals("<init>") && m.getSignature().toMethodDescriptor().startsWith(binding.argumentsDescriptor)) {
+                    return m;
+                }
+            }
+            return null;
+        }
+
+        ResolvedJavaMethod match = null;
+        for (int i = 0; i < methods.length; ++i) {
+            ResolvedJavaMethod m = methods[i];
+            if (binding.isStatic == m.isStatic() &&
+                            m.getName().equals(binding.name) &&
+                            m.getSignature().toMethodDescriptor().startsWith(binding.argumentsDescriptor)) {
+                if (match == null) {
+                    match = m;
+                } else {
+                    final ResolvedJavaType matchReturnType = (ResolvedJavaType) match.getSignature().getReturnType(declaringClass);
+                    final ResolvedJavaType mReturnType = (ResolvedJavaType) m.getSignature().getReturnType(declaringClass);
+                    if (matchReturnType.isAssignableFrom(mReturnType)) {
+                        // `m` has a more specific return type - choose it
+                        // (`match` is most likely a bridge method)
+                        match = m;
+                    } else {
+                        if (!mReturnType.isAssignableFrom(matchReturnType)) {
+                            throw new NoSuchMethodError(String.format(
+                                            "Found 2 methods with same name and parameter types but unrelated return types:%n %s%n %s", match, m));
+                        }
+                    }
+                }
+            }
+        }
+        return match;
     }
 
     /**

@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.overrideOptions;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.overrideOptions;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,14 +30,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.truffle.DefaultInliningPolicy;
-import org.graalvm.compiler.truffle.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.OptimizedDirectCallNode;
-import org.graalvm.compiler.truffle.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.TruffleInlining;
-import org.graalvm.compiler.truffle.TruffleInliningDecision;
-import org.graalvm.compiler.truffle.TruffleInliningPolicy;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
+import org.graalvm.compiler.truffle.runtime.TruffleInlining;
+import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
+import org.graalvm.compiler.truffle.runtime.TruffleInliningPolicy;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -256,7 +256,7 @@ public abstract class TruffleInliningTest {
     int countInlines(TruffleInlining decisions, String name) {
         final int[] count = {0};
         traverseDecisions(decisions.getCallSites(), (TruffleInliningDecision d) -> {
-            if (d.isInline() && d.getTarget().toString().equals(name)) {
+            if (d.shouldInline() && d.getTarget().toString().equals(name)) {
                 count[0]++;
             }
         });

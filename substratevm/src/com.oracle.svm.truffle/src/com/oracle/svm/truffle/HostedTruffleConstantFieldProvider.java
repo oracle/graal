@@ -23,7 +23,7 @@
 package com.oracle.svm.truffle;
 
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.truffle.TruffleConstantFieldProvider;
+import org.graalvm.compiler.truffle.compiler.TruffleConstantFieldProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

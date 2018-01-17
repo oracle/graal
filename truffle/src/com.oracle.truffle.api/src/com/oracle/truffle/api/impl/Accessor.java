@@ -29,6 +29,7 @@ import java.io.OutputStream;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -229,6 +230,7 @@ public abstract class Accessor {
 
         public abstract void legacyTckLeave(Object vm, Object prev);
 
+        public abstract <T> T getOrCreateRuntimeData(Object sourceVM, Supplier<T> constructor);
     }
 
     public abstract static class LanguageSupport {
@@ -608,6 +610,14 @@ public abstract class Accessor {
             return false;
         }
         return SUPPORT.isGuestCallStackFrame(element);
+    }
+
+    protected void initializeProfile(CallTarget target, Class<?>[] argmentTypes) {
+        SUPPORT.initializeProfile(target, argmentTypes);
+    }
+
+    protected Object callProfiled(CallTarget target, Object... args) {
+        return SUPPORT.callProfiled(target, args);
     }
 
     @SuppressWarnings("deprecation")

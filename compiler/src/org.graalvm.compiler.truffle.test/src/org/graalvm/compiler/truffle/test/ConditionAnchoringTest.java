@@ -50,8 +50,8 @@ import org.graalvm.compiler.phases.common.FloatingReadPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.ConditionalEliminationPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
-import org.graalvm.compiler.truffle.nodes.ObjectLocationIdentity;
-import org.graalvm.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
+import org.graalvm.compiler.truffle.compiler.nodes.ObjectLocationIdentity;
+import org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPlugins;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaKind;

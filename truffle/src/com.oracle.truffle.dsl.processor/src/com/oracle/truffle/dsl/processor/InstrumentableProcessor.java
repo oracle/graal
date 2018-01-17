@@ -43,9 +43,11 @@ import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
+import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.api.dsl.GeneratedBy;
@@ -63,6 +65,7 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
@@ -78,12 +81,14 @@ public final class InstrumentableProcessor extends AbstractProcessor {
     private static final String EXECUTE_METHOD_PREFIX = "execute";
 
     // API name assumptions
+    private static final String CONSTANT_REENTER = "ProbeNode.UNWIND_ACTION_REENTER";
     private static final String METHOD_GET_NODE_COST = "getCost";
-    private static final String METHOD_ON_RETURN_EXCEPTIONAL = "onReturnExceptional";
+    private static final String METHOD_ON_RETURN_EXCEPTIONAL_OR_UNWIND = "onReturnExceptionalOrUnwind";
     private static final String METHOD_ON_RETURN_VALUE = "onReturnValue";
     private static final String METHOD_ON_ENTER = "onEnter";
     private static final String FIELD_DELEGATE = "delegateNode";
     private static final String FIELD_PROBE = "probeNode";
+    private static final String VAR_RETURN_CALLED = "wasOnReturnExecuted";
 
     @Override
     public SourceVersion getSupportedSourceVersion() {
@@ -369,6 +374,17 @@ public final class InstrumentableProcessor extends AbstractProcessor {
             }
 
             CodeTreeBuilder builder = wrappedExecute.createBuilder();
+            TypeMirror returnTypeMirror = executeMethod.getReturnType();
+            boolean returnVoid = ElementUtils.isVoid(returnTypeMirror);
+            String returnName;
+            if (!returnVoid) {
+                returnName = "returnValue";
+                builder.declaration(returnTypeMirror, returnName, (CodeTree) null);
+            } else {
+                returnName = "null";
+            }
+            builder.startFor().startGroup().string(";;").end().end().startBlock();
+            builder.declaration("boolean", VAR_RETURN_CALLED, "false");
             builder.startTryBlock();
             builder.startStatement().startCall(FIELD_PROBE, METHOD_ON_ENTER).string(frameParameterName).end().end();
 
@@ -378,33 +394,77 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                 callDelegate.string(parameter.getSimpleName().toString());
             }
             callDelegate.end();
-            String returnName;
-            if (ElementUtils.isVoid(executeMethod.getReturnType())) {
-                returnName = "null";
+            if (returnVoid) {
                 builder.statement(callDelegate.build());
             } else {
-                returnName = "returnValue";
-                builder.declaration(executeMethod.getReturnType(), returnName, callDelegate.build());
+                builder.startStatement().string(returnName).string(" = ").tree(callDelegate.build()).end();
             }
 
+            builder.startStatement().string(VAR_RETURN_CALLED).string(" = true").end();
             builder.startStatement().startCall(FIELD_PROBE, METHOD_ON_RETURN_VALUE).string(frameParameterName).string(returnName).end().end();
-            if (!ElementUtils.isVoid(executeMethod.getReturnType())) {
-                builder.startReturn().string(returnName).end();
-            }
+            builder.statement("break");
             if (wrappedExecute.getThrownTypes().contains(context.getType(UnexpectedResultException.class))) {
                 builder.end().startCatchBlock(context.getType(UnexpectedResultException.class), "e");
+                builder.startStatement().string(VAR_RETURN_CALLED).string(" = true").end();
                 builder.startStatement().startCall(FIELD_PROBE, METHOD_ON_RETURN_VALUE).string(frameParameterName).string("e.getResult()").end().end();
                 builder.startThrow().string("e").end();
             }
             builder.end().startCatchBlock(context.getType(Throwable.class), "t");
-            builder.startStatement().startCall(FIELD_PROBE, METHOD_ON_RETURN_EXCEPTIONAL).string(frameParameterName).string("t").end().end();
-            builder.startThrow().string("t").end();
+            CodeTreeBuilder callExOrUnwind = builder.create();
+            callExOrUnwind.startCall(FIELD_PROBE, METHOD_ON_RETURN_EXCEPTIONAL_OR_UNWIND).string(frameParameterName).string("t").string(VAR_RETURN_CALLED).end();
+            builder.declaration("Object", "result", callExOrUnwind.build());
+            builder.startIf().string("result == ").string(CONSTANT_REENTER).end();
+            builder.startBlock();
+            builder.statement("continue");
+            builder.end().startElseIf();
+            if (returnVoid) {
+                builder.string("result != null").end();
+                builder.startBlock();
+                builder.statement("break");
+            } else {
+                boolean objectReturnType = "java.lang.Object".equals(ElementUtils.getQualifiedName(returnTypeMirror)) && returnTypeMirror.getKind() != TypeKind.ARRAY;
+                boolean throwsUnexpectedResult = wrappedExecute.getThrownTypes().contains(context.getType(UnexpectedResultException.class));
+                if (objectReturnType || !throwsUnexpectedResult) {
+                    builder.string("result != null").end();
+                    builder.startBlock();
+                    builder.startStatement().string(returnName).string(" = ");
+                    if (!objectReturnType) {
+                        builder.string("(").string(ElementUtils.getSimpleName(returnTypeMirror)).string(") ");
+                    }
+                    builder.string("result").end();
+                    builder.statement("break");
+                } else { // can throw UnexpectedResultException
+                    builder.string("result").instanceOf(boxed(returnTypeMirror, context.getEnvironment().getTypeUtils())).end();
+                    builder.startBlock();
+                    builder.startStatement().string(returnName).string(" = ");
+                    builder.string("(").string(ElementUtils.getSimpleName(returnTypeMirror)).string(") ");
+                    builder.string("result").end();
+                    builder.statement("break");
+                    builder.end();
+                    builder.startElseIf().string("result != null").end();
+                    builder.startBlock();
+                    builder.startThrow().string("new UnexpectedResultException(result)").end();
+                }
+            }
             builder.end();
+            builder.startThrow().string("t").end();
+            builder.end(2);
+            if (!returnVoid) {
+                builder.startReturn().string(returnName).end();
+            }
 
             wrapperType.add(wrappedExecute);
         }
 
         return wrapperType;
+    }
+
+    private static TypeMirror boxed(TypeMirror type, Types types) {
+        if (type.getKind().isPrimitive()) {
+            return types.boxedClass((PrimitiveType) type).asType();
+        } else {
+            return type;
+        }
     }
 
     private static void addGeneratedBy(ProcessorContext context, CodeTypeElement generatedType, TypeElement generatedByType) {
