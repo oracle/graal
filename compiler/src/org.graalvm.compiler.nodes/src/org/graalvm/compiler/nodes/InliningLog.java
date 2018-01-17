@@ -37,6 +37,26 @@ public class InliningLog {
             this.id = id;
         }
 
+        public BytecodePositionWithId(BytecodePositionWithId caller, BytecodePosition position, long id) {
+            super(toBytecodePositionWithId(position.getCaller()).addCallerWithId(caller), position.getMethod(), position.getBCI());
+            this.id = id;
+        }
+
+        private BytecodePositionWithId addCallerWithId(BytecodePositionWithId caller) {
+            if (getCaller() == null) {
+                return new BytecodePositionWithId(caller, getMethod(), getBCI(), id);
+            } else {
+                return new BytecodePositionWithId(getCaller().addCallerWithId(caller), getMethod(), getBCI(), id);
+            }
+        }
+
+        private static BytecodePositionWithId toBytecodePositionWithId(BytecodePosition position) {
+            if (position == null) {
+                return null;
+            }
+            return new BytecodePositionWithId(toBytecodePositionWithId(position.getCaller()), position.getMethod(), position.getBCI(), 0);
+        }
+
         @Override
         public BytecodePositionWithId getCaller() {
             return (BytecodePositionWithId) super.getCaller();
