@@ -25,21 +25,25 @@ package org.graalvm.compiler.nodes;
 import jdk.vm.ci.code.BytecodePosition;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class InliningLog {
     public static final class Decision {
         private final boolean positive;
         private final String reason;
-        private final List<Object> phaseStack;
+        private final String phase;
         private final BytecodePosition position;
+        private final InliningLog childLog;
 
-        private Decision(boolean positive, String reason, Object phase, BytecodePosition position) {
+        private Decision(boolean positive, String reason, String phase, BytecodePosition position, InliningLog childLog) {
             this.positive = positive;
             this.reason = reason;
-            this.phaseStack = new ArrayList<>();
-            this.phaseStack.add(phase);
+            this.phase = phase;
             this.position = position;
+            this.childLog = childLog;
         }
 
         public boolean isPositive() {
@@ -50,23 +54,16 @@ public class InliningLog {
             return reason;
         }
 
-        public List<Object> getPhaseStack() {
-            return phaseStack;
+        public String getPhase() {
+            return phase;
         }
 
         public BytecodePosition getPosition() {
             return position;
         }
 
-        public Decision appendAt(List<Object> phasesAtInline, BytecodePosition inlinePosition) {
-            return new Decision(positive, reason, prependPhasesAtInline(phasesAtInline), position.addCaller(inlinePosition));
-        }
-
-        private ArrayList<Object> prependPhasesAtInline(List<Object> phasesAtInline) {
-            ArrayList<Object> appendedPhaseStack = new ArrayList<>();
-            appendedPhaseStack.addAll(phasesAtInline);
-            appendedPhaseStack.addAll(phaseStack);
-            return appendedPhaseStack;
+        public InliningLog getChildLog() {
+            return childLog;
         }
     }
 
@@ -80,16 +77,8 @@ public class InliningLog {
         return decisions;
     }
 
-    public void addDecision(boolean positive, String reason, Object phase, BytecodePosition position) {
-        Decision decision = new Decision(positive, reason, phase, position);
+    public void addDecision(boolean positive, String reason, String phase, BytecodePosition position, InliningLog calleeLog) {
+        Decision decision = new Decision(positive, reason, phase, position, calleeLog);
         decisions.add(decision);
     }
-
-    public void addDecisionsFromInlinedGraph(List<Object> phasesAtInline, BytecodePosition inlinePosition, StructuredGraph graph) {
-        for (Decision decision : graph.getInliningLog().getDecisions()) {
-            Decision appendedDecision = decision.appendAt(phasesAtInline, inlinePosition);
-            decisions.add(appendedDecision);
-        }
-    }
-
 }
