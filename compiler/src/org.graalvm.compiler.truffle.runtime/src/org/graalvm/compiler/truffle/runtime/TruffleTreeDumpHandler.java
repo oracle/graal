@@ -124,22 +124,21 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         }
     }
 
-    private static void dumpInlinedTrees(GraphOutput<AST, ?> output, final OptimizedCallTarget callTarget, TruffleInlining inlining, List<RootCallTarget> dumped) throws IOException {
-        if (dumped.contains(callTarget)) {
-            return;
-        }
+    private static void dumpInlinedTrees(GraphOutput<AST, ?> output, final RootCallTarget callTarget, TruffleInlining inlining, List<RootCallTarget> dumped) throws IOException {
         for (DirectCallNode callNode : NodeUtil.findAllNodeInstances(callTarget.getRootNode(), DirectCallNode.class)) {
             CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
-            if (inlinedCallTarget instanceof OptimizedCallTarget && callNode instanceof OptimizedDirectCallNode) {
+            if (inlinedCallTarget instanceof RootCallTarget && callNode instanceof OptimizedDirectCallNode) {
                 TruffleInliningDecision decision = inlining.findByCall((OptimizedDirectCallNode) callNode);
                 if (decision != null && decision.shouldInline()) {
                     final RootCallTarget rootCallTarget = (RootCallTarget) inlinedCallTarget;
-                    AST ast = new AST(rootCallTarget);
-                    output.beginGroup(ast, inlinedCallTarget.toString(), rootCallTarget.getRootNode().getName(), null, 0, DebugContext.addVersionProperties(null));
-                    output.print(ast, Collections.emptyMap(), 0, AFTER_PROFILING);
-                    output.endGroup();
-                    dumped.add(rootCallTarget);
-                    dumpInlinedTrees(output, (OptimizedCallTarget) inlinedCallTarget, decision, dumped);
+                    if (!dumped.contains(rootCallTarget)) {
+                        AST ast = new AST(rootCallTarget);
+                        output.beginGroup(ast, inlinedCallTarget.toString(), rootCallTarget.getRootNode().getName(), null, 0, DebugContext.addVersionProperties(null));
+                        output.print(ast, Collections.emptyMap(), 0, AFTER_PROFILING);
+                        output.endGroup();
+                        dumped.add(rootCallTarget);
+                        dumpInlinedTrees(output, (OptimizedCallTarget) inlinedCallTarget, decision, dumped);
+                    }
                 }
             }
         }
