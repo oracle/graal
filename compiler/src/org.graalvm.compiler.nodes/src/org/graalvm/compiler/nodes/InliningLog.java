@@ -32,7 +32,7 @@ import java.util.Map;
 
 public class InliningLog {
     public static final class BytecodePositionWithId extends BytecodePosition implements Comparable<BytecodePositionWithId> {
-        private int id;
+        private final int id;
 
         public BytecodePositionWithId(BytecodePositionWithId caller, ResolvedJavaMethod method, int bci, int id) {
             super(caller, method, bci);
