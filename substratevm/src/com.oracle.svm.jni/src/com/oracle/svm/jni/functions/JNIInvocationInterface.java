@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.MonitorUtils;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.CEntryPointSetup.EnterCreateIsolatePrologue;
@@ -39,6 +40,7 @@ import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.properties.RuntimePropertyParser;
 import com.oracle.svm.jni.JNIThreadLocalEnvironment;
+import com.oracle.svm.jni.JNIThreadOwnedMonitors;
 import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIJavaVMEnterAttachThreadPrologue;
 import com.oracle.svm.jni.hosted.JNIFeature;
 import com.oracle.svm.jni.nativeapi.JNIEnvironmentPointer;
@@ -155,6 +157,8 @@ final class JNIInvocationInterface {
         if (!vm.equal(JNIFunctionTables.singleton().getGlobalJavaVM())) {
             result = JNIErrors.JNI_ERR();
         }
+        // JNI specification requires releasing all owned monitors
+        Support.releaseCurrentThreadOwnedMonitors();
         return result;
     }
 
@@ -178,6 +182,15 @@ final class JNIInvocationInterface {
                 return JNIErrors.JNI_OK();
             }
             return JNIErrors.JNI_ERR();
+        }
+
+        static void releaseCurrentThreadOwnedMonitors() {
+            JNIThreadOwnedMonitors.forEach((obj, depth) -> {
+                for (int i = 0; i < depth; i++) {
+                    MonitorUtils.monitorExit(obj);
+                }
+                assert !Thread.holdsLock(obj);
+            });
         }
     }
 }

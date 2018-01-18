@@ -37,10 +37,15 @@ public class KnownIntrinsics {
     /**
      * Returns the current VMThread, i.e., the current VM-level thread information block.
      *
-     * In (@link SubstrateOptions#MultiThreaded single-threaded mode}, there is no VMThread
-     * available. This method can still be called, but it always returns {@code null}.
+     * When (@link SubstrateOptions#MultiThreaded} is false, there is no VMThread available. This
+     * method can still be called, but it always returns {@code null}.
      */
     public static native IsolateThread currentVMThread();
+
+    /**
+     * Returns the value of the heap base.
+     */
+    public static native Pointer heapBase();
 
     /**
      * Returns the length of the given array. It does not check if the provided object is an array,
@@ -71,7 +76,7 @@ public class KnownIntrinsics {
 
     /**
      * Narrow down the range of values to exclude 0 as the possible pointer value.
-     * 
+     *
      * @param pointer that we are narrowing to non-null
      * @return a pointer with stamp non-null
      */

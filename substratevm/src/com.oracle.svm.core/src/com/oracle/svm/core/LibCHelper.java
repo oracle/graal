@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.c.struct.AllowNarrowingCast;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
+import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.PointerBase;
 
 @CLibrary("libchelper")
@@ -39,6 +40,9 @@ public class LibCHelper {
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native void determineCPUFeatures(CPUFeatures features);
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native VoidPointer heapBase();
 
     @CStruct
     @CContext(LibCHelperDirectives.class)

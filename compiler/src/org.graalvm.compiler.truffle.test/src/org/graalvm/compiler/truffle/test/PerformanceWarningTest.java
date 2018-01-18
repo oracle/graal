@@ -24,17 +24,21 @@ package org.graalvm.compiler.truffle.test;
 
 import java.io.ByteArrayOutputStream;
 
-import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.LogStream;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.hotspot.HotSpotTruffleCompiler;
-import org.graalvm.compiler.truffle.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleOptionsOverrideScope;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleOptionsOverrideScope;
+import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -107,7 +111,11 @@ public class PerformanceWarningTest {
                 OptionValues options = TruffleCompilerOptions.getOptions();
                 DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
                 try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
-                    HotSpotTruffleCompiler.create(runtime).compileMethod(debug, target, runtime);
+                    final OptimizedCallTarget compilable = target;
+                    TruffleCompilerImpl compiler = (TruffleCompilerImpl) runtime.newTruffleCompiler();
+                    CompilationIdentifier compilationId = compiler.getCompilationIdentifier(compilable);
+                    TruffleInliningPlan inliningPlan = new TruffleInlining(compilable, new DefaultInliningPolicy());
+                    compiler.compileAST(debug, compilable, inliningPlan, compilationId, null, null);
                 }
             } catch (AssertionError e) {
                 seenException = true;

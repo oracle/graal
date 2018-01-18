@@ -107,7 +107,9 @@ public class AMD64AddressLowering extends AddressLowering {
                 ret.setBase(add.getX());
                 ret.setIndex(considerNegation(graph, add.getY(), isBaseNegated));
                 return true;
-            } else if (ret.getBase() == null && ret.getIndex() instanceof AddNode) {
+            }
+
+            if (ret.getBase() == null && ret.getIndex() instanceof AddNode) {
                 AddNode add = (AddNode) ret.getIndex();
                 ret.setBase(considerNegation(graph, add.getX(), isIndexNegated));
                 ret.setIndex(add.getY());

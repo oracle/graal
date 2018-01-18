@@ -35,8 +35,10 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 import org.graalvm.polyglot.proxy.Proxy;
 
 /**
- * Represents a polyglot value. Polyglot values can either result from a {@link #isHostObject()
- * host} or guest language. Polyglot values are bound to a {@link Context context}.
+ * Represents a polyglot value that can be accessed using a set of language agnostic operations.
+ * Polyglot values can either result from a {@link #isHostObject() host} or guest language. Polyglot
+ * values are bound to a {@link Context context}. If the context is closed then the value operation
+ * throw an {@link IllegalStateException}.
  *
  * @since 1.0
  */
@@ -150,9 +152,10 @@ public final class Value {
     // executable
 
     /**
-     * Returns <code>true</code> if the value can be executed. This indicates that the
-     * {@link #execute(Object...)} can be used with this value.
+     * Returns <code>true</code> if the value can be {@link #execute(Object...) executed}.
      *
+     * @throws IllegalStateException if the underlying context was closed
+     * @see #execute(Object...)
      * @since 1.0
      */
     public boolean canExecute() {
@@ -160,7 +163,14 @@ public final class Value {
     }
 
     /**
+     * Executes this value if it {@link #canExecute() can} be executed and returns its result. If no
+     * result value is expected or needed use {@link #executeVoid(Object...)} for better
+     * performance.
      *
+     * @throws IllegalStateException if the underlying context was closed
+     * @throws UnsupportedOperationException if this object cannot be executed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @see #executeVoid(Object...)
      *
      * All arguments are subject to polylgot value mapping rules as described in
      * {@link Context#asValue(Object)}.
@@ -168,7 +178,12 @@ public final class Value {
      * @since 1.0
      */
     public Value execute(Object... arguments) {
-        return impl.execute(receiver, arguments);
+        if (arguments.length == 0) {
+            // specialized entry point for zero argument execute calls
+            return impl.execute(receiver);
+        } else {
+            return impl.execute(receiver, arguments);
+        }
     }
 
     /**
@@ -188,6 +203,26 @@ public final class Value {
      */
     public Value newInstance(Object... arguments) {
         return impl.newInstance(receiver, arguments);
+    }
+
+    /**
+     * Executes this value if it {@link #canExecute() can} be executed. If the result value is
+     * needed use {@link #execute(Object...)} instead.
+     *
+     * @throws IllegalStateException if the underlying context was closed
+     * @throws UnsupportedOperationException if this object cannot be executed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @see #execute(Object...)
+     *
+     * @since 1.0
+     */
+    public void executeVoid(Object... arguments) {
+        if (arguments.length == 0) {
+            // specialized entry point for zero argument execute calls
+            impl.executeVoid(receiver);
+        } else {
+            impl.executeVoid(receiver, arguments);
+        }
     }
 
     /**

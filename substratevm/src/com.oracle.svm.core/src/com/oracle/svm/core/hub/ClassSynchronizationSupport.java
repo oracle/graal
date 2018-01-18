@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,8 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 
@@ -43,15 +45,16 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
  * an unsupported feature error.
  */
 public final class ClassSynchronizationSupport {
+    @Platforms(HOSTED_ONLY.class) //
     private final ConcurrentMap<DynamicHub, ClassSynchronizationTarget> synchronizationTargets = new ConcurrentHashMap<>();
 
     public static ClassSynchronizationTarget synchronizationTarget(DynamicHub hub) {
         ClassSynchronizationSupport support = ImageSingletons.lookup(ClassSynchronizationSupport.class);
         return support.synchronizationTargets.computeIfAbsent(hub, unused -> new ClassSynchronizationTarget());
     }
-}
 
-final class ClassSynchronizationTarget {
+    public static final class ClassSynchronizationTarget {
+    }
 }
 
 @AutomaticFeature

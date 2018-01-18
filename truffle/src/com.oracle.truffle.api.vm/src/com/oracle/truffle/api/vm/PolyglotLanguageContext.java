@@ -29,6 +29,7 @@ import static com.oracle.truffle.api.vm.PolyglotImpl.isGuestInteropValue;
 import static com.oracle.truffle.api.vm.VMAccessor.JAVAINTEROP;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 
+import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
@@ -67,7 +68,7 @@ final class PolyglotLanguageContext implements VMObject {
     volatile PolyglotValue defaultValueCache;
     volatile OptionValuesImpl optionValues;
     volatile Value nullValue;
-    final String[] applicationArguments;
+    String[] applicationArguments;    // effectively final
     final Set<PolyglotThread> activePolyglotThreads = new HashSet<>();
     volatile boolean creating; // true when context is currently being created.
     volatile boolean initialized;
@@ -75,14 +76,15 @@ final class PolyglotLanguageContext implements VMObject {
     volatile Env env;
     private final Node keyInfoNode = Message.KEY_INFO.createNode();
     private final Node readNode = Message.READ.createNode();
+    final Thread.UncaughtExceptionHandler uncaughtExceptionHandler = new PolyglotUncaughtExceptionHandler();
 
     PolyglotLanguageContext(PolyglotContextImpl context, PolyglotLanguage language, OptionValuesImpl optionValues, String[] applicationArguments, Map<String, Object> config, boolean eventsEnabled) {
         this.context = context;
         this.language = language;
-        this.optionValues = optionValues;
-        this.applicationArguments = applicationArguments == null ? EMPTY_STRING_ARRAY : applicationArguments;
         this.config = config;
         this.eventsEnabled = eventsEnabled;
+        this.optionValues = optionValues;
+        setApplicationArguments(applicationArguments);
     }
 
     /**
@@ -157,14 +159,6 @@ final class PolyglotLanguageContext implements VMObject {
                 LANGUAGE.disposeThread(localEnv, threadInfo.thread);
             }
             LANGUAGE.dispose(localEnv);
-
-            // temporary disabled
-            // if (!activePolyglotThreads.isEmpty()) {
-            // throw new AssertionError("The language did not complete all polyglot threads but
-            // should have: " +
-            // activePolyglotThreads);
-            // }
-
             env = null;
             return true;
         }
@@ -266,7 +260,9 @@ final class PolyglotLanguageContext implements VMObject {
                 if (!initialized) {
                     initialized = true; // Allow language use during initialization
                     try {
-                        LANGUAGE.initializeThread(env, Thread.currentThread());
+                        if (!context.inContextPreInitialization) {
+                            LANGUAGE.initializeThread(env, Thread.currentThread());
+                        }
 
                         LANGUAGE.postInitEnv(env);
 
@@ -346,6 +342,43 @@ final class PolyglotLanguageContext implements VMObject {
         return new ToGuestValuesNode();
     }
 
+    void preInitialize() {
+        ensureInitialized(null);
+    }
+
+    boolean patch(Map<String, String> newOptions, String[] newApplicationArguments) {
+        final boolean preInitialized = isInitialized();
+        if (preInitialized) {
+            // Reset options from image generation time
+            optionValues = null;
+        }
+        if (newOptions != null) {
+            getOptionValues().putAll(newOptions);
+        }
+        setApplicationArguments(newApplicationArguments);
+        if (preInitialized) {
+            try {
+                final Env newEnv = LANGUAGE.patchEnvContext(env, context.out, context.err, context.in, config, getOptionValues(), newApplicationArguments);
+                if (newEnv != null) {
+                    env = newEnv;
+                    return true;
+                }
+                return false;
+            } catch (Throwable t) {
+                if (t instanceof ThreadDeath) {
+                    throw t;
+                }
+                return false;
+            }
+        } else {
+            return true;
+        }
+    }
+
+    private void setApplicationArguments(String[] newApplicationArguments) {
+        this.applicationArguments = newApplicationArguments == null ? EMPTY_STRING_ARRAY : newApplicationArguments;
+    }
+
     final class ToGuestValuesNode {
 
         @CompilationFinal private int cachedLength = -1;
@@ -365,7 +398,9 @@ final class PolyglotLanguageContext implements VMObject {
                     toGuestValue[i] = createToGuestValue();
                 }
             }
-            if (cachedLength == args.length) {
+            if (cachedLength == 0) {
+                return args;
+            } else if (cachedLength == args.length) {
                 // fast path
                 Object[] newArgs = fastToGuestValuesUnroll(args);
                 return newArgs;
@@ -630,6 +665,14 @@ final class PolyglotLanguageContext implements VMObject {
     @Override
     public String toString() {
         return "PolyglotLanguageContext [language=" + language + ", initialized=" + (env != null) + "]";
+    }
+
+    private class PolyglotUncaughtExceptionHandler implements Thread.UncaughtExceptionHandler {
+
+        @Override
+        public void uncaughtException(Thread t, Throwable e) {
+            e.printStackTrace(new PrintStream(env.err()));
+        }
     }
 
 }

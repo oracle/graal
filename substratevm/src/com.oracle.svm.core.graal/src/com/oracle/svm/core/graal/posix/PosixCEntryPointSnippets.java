@@ -22,15 +22,18 @@
  */
 package com.oracle.svm.core.graal.posix;
 
-import static com.oracle.svm.core.graal.nodes.WriteCurrentVMHeapBaseNode.writeCurrentVMHeapBase;
+import static com.oracle.svm.core.LibCHelper.heapBase;
+import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.Map;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
@@ -48,10 +51,10 @@ import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -63,8 +66,8 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
-import com.oracle.svm.core.graal.nodes.DeadEndNode;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
+import com.oracle.svm.core.graal.nodes.DeadEndNode;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
@@ -115,12 +118,13 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     public static final SubstrateForeignCallDescriptor CREATE_ISOLATE = SnippetRuntime.findForeignCall(PosixCEntryPointSnippets.class, "createIsolate", false, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor ATTACH_THREAD = SnippetRuntime.findForeignCall(PosixCEntryPointSnippets.class, "attachThread", false, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor ENTER_ISOLATE = SnippetRuntime.findForeignCall(PosixCEntryPointSnippets.class, "enterIsolate", false, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor ENTER = SnippetRuntime.findForeignCall(PosixCEntryPointSnippets.class, "enter", false, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor DETACH_THREAD = SnippetRuntime.findForeignCall(PosixCEntryPointSnippets.class, "detachThread", false, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor REPORT_EXCEPTION = SnippetRuntime.findForeignCall(PosixCEntryPointSnippets.class, "reportException", false, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor TEAR_DOWN_ISOLATE = SnippetRuntime.findForeignCall(PosixCEntryPointSnippets.class, "tearDownIsolate", false, LocationIdentity.any());
 
     public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS_ST = {REPORT_EXCEPTION};
-    public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS_MT = {CREATE_ISOLATE, ATTACH_THREAD, ENTER_ISOLATE, DETACH_THREAD, REPORT_EXCEPTION, TEAR_DOWN_ISOLATE};
+    public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS_MT = {CREATE_ISOLATE, ATTACH_THREAD, ENTER_ISOLATE, ENTER, DETACH_THREAD, REPORT_EXCEPTION, TEAR_DOWN_ISOLATE};
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native IsolateThread runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, CEntryPointCreateIsolateParameters parameters, int vmThreadSize);
@@ -141,9 +145,22 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     public static native int tearDownIsolateForeignCall(@ConstantNodeParameter ForeignCallDescriptor descriptor);
 
     @Uninterruptible(reason = "Called by an uninterruptible method.")
-    private static void writeHeapBase(Pointer base) {
+    private static void clearHeapBase() {
         if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
-            writeCurrentVMHeapBase(base);
+            writeCurrentVMHeapBase(WordFactory.nullPointer());
+        }
+    }
+
+    @Fold
+    static boolean hasHeapBase() {
+        CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
+        return compressEncoding.hasBase();
+    }
+
+    @Uninterruptible(reason = "Called by an uninterruptible method.")
+    private static void setHeapBase() {
+        if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
+            writeCurrentVMHeapBase(hasHeapBase() ? heapBase() : WordFactory.nullPointer());
         }
     }
 
@@ -174,7 +191,6 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @Snippet
     public static int createIsolateSnippet(CEntryPointCreateIsolateParameters parameters, @ConstantParameter int vmThreadSize) {
         writeCurrentVMThread(VMThreads.nullThread());
-        writeHeapBase(WordFactory.nullPointer()); // Write heap base for the thread
         IsolateThread thread = runtimeCall(CREATE_ISOLATE, parameters, vmThreadSize);
         writeCurrentVMThread(thread);
         return 0;
@@ -186,6 +202,12 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget
     private static IsolateThread createIsolate(@SuppressWarnings("unused") CEntryPointCreateIsolateParameters parameters, int vmThreadSize) {
+        /*
+         * TODO: Create a heap for the isolate, write it to the heap base register, pass it as an
+         * Isolate to attachThread
+         */
+        setHeapBase();
+
         // Lenient: in case an isolate has already been created, attach to it.
         // In the future, we will create a separate isolate.
         PosixVMThreads.ensureInitialized();
@@ -196,7 +218,6 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @Snippet
     public static int attachThreadSnippet(Isolate isolate, @ConstantParameter int vmThreadSize) {
         writeCurrentVMThread(VMThreads.nullThread());
-        writeHeapBase(WordFactory.nullPointer()); // Write heap base for the thread
         IsolateThread thread = runtimeCall(ATTACH_THREAD, isolate, vmThreadSize);
         writeCurrentVMThread(thread);
         return 0;
@@ -211,6 +232,9 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget
     private static IsolateThread attachThread(@SuppressWarnings("unused") Isolate isolate, int vmThreadSize) {
+        /* TODO: Use isolate as a heap base here, write it to the created IsolateThread */
+        setHeapBase();
+
         if (!PosixVMThreads.isInitialized()) {
             Log.log().string("VM is not initialized").newline();
             LibC.abort();
@@ -277,7 +301,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
              * thread register or the pthread thread-local variable.
              */
             writeCurrentVMThread(VMThreads.nullThread());
-            writeHeapBase(WordFactory.nullPointer());
+            clearHeapBase();
             PosixVMThreads.VMThreadTL.set(VMThreads.nullThread());
 
             /* Remove the thread from the list of VM threads, and then free the memory. */
@@ -320,7 +344,6 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
         writeCurrentVMThread(VMThreads.nullThread());
         IsolateThread thread = runtimeCall(ENTER_ISOLATE, isolate);
         writeCurrentVMThread(thread);
-        writeHeapBase(WordFactory.nullPointer()); // Write heap base for the thread
         transitionCtoJava();
         return 0;
     }
@@ -336,6 +359,9 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
             Log.log().string("No thread found").newline();
             LibC.abort();
         }
+
+        // TODO: Use isolate as a heap base
+        setHeapBase();
         return thread;
     }
 
@@ -344,9 +370,17 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     public static int enterSnippet(IsolateThread thread) {
         // Get IsolateThread from parameter.
         writeCurrentVMThread(thread);
-        writeHeapBase(WordFactory.nullPointer()); // Write heap base for the thread
+        if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
+            // TODO: read heap base from the thread
+            runtimeCall(ENTER, thread);
+        }
         transitionCtoJava();
         return 0;
+    }
+
+    @SubstrateForeignCallTarget
+    private static void enter(@SuppressWarnings("unused") IsolateThread thread) {
+        setHeapBase();
     }
 
     private static void transitionCtoJava() {

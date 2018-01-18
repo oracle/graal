@@ -49,7 +49,7 @@ public final class SubstrateNarrowOopStamp extends NarrowOopStamp {
         return new SubstrateNarrowOopStamp(type, exactType, nonNull, alwaysNull, getEncoding());
     }
 
-    public static Stamp compressed(AbstractObjectStamp stamp, CompressEncoding encoding) {
+    public static AbstractObjectStamp compressed(AbstractObjectStamp stamp, CompressEncoding encoding) {
         return new SubstrateNarrowOopStamp(stamp.type(), stamp.isExactType(), stamp.nonNull(), stamp.alwaysNull(), encoding);
     }
 

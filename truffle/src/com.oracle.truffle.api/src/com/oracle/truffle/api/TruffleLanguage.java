@@ -58,6 +58,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.options.OptionKey;
 
 /**
  * A Truffle language implementation for executing guest language code in a
@@ -475,6 +476,28 @@ public abstract class TruffleLanguage<C> {
      */
     protected OptionDescriptors getOptionDescriptors() {
         return OptionDescriptors.create(describeOptions());
+    }
+
+    /**
+     * Notifies the language with pre-initialized context about {@link Env} change. See
+     * {@link org.graalvm.polyglot.Context} for pre-initialization details.
+     * <p>
+     * Typical implementation looks like:
+     *
+     * {@link TruffleLanguageSnippets.PreInitializedLanguage#patchContext}
+     *
+     * @param context the context created by
+     *            {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)} during
+     *            pre-initialization
+     * @param newEnv the new environment replacing the environment used in pre-initialization phase
+     * @return true in case of successful environment update. When the context cannot be updated to
+     *         a new environment return false to create a new context. By default it returns
+     *         {@code false} to prevent an usage of pre-initialized context by a language which is
+     *         not aware of context pre-initialization.
+     * @since 0.31
+     */
+    protected boolean patchContext(C context, Env newEnv) {
+        return false;
     }
 
     /**
@@ -1111,6 +1134,7 @@ public abstract class TruffleLanguage<C> {
         @CompilationFinal private volatile Assumption contextUnchangedAssumption = Truffle.getRuntime().createAssumption("Language context unchanged");
         @CompilationFinal private volatile boolean initialized = false;
         @CompilationFinal private volatile Assumption initializedUnchangedAssumption = Truffle.getRuntime().createAssumption("Language context initialized unchanged");
+        @CompilationFinal private volatile boolean valid;
 
         @SuppressWarnings("unchecked")
         private Env(Object vmObject, LanguageInfo language, OutputStream out, OutputStream err, InputStream in, Map<String, Object> config, OptionValues options, String[] applicationArguments) {
@@ -1123,6 +1147,7 @@ public abstract class TruffleLanguage<C> {
             this.config = config;
             this.options = options;
             this.applicationArguments = applicationArguments == null ? new String[0] : applicationArguments;
+            this.valid = true;
         }
 
         Object getVMObject() {
@@ -1136,6 +1161,9 @@ public abstract class TruffleLanguage<C> {
         void checkDisposed() {
             if (AccessAPI.engineAccess().isDisposed(vmObject)) {
                 throw new IllegalStateException("Language environment is already disposed.");
+            }
+            if (!valid) {
+                throw new IllegalStateException("Language environment is already invalidated.");
             }
         }
 
@@ -1982,23 +2010,50 @@ public abstract class TruffleLanguage<C> {
             return true;
         }
 
+        @Override
+        public Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments) {
+            final Env newEnv = createEnv(
+                            env.vmObject,
+                            env.language,
+                            stdOut,
+                            stdErr,
+                            stdIn,
+                            config,
+                            options,
+                            applicationArguments);
+            newEnv.context = env.context;
+            env.valid = false;
+            return env.spi.patchContext(env.context, newEnv) ? newEnv : null;
+        }
     }
 }
 
 class TruffleLanguageSnippets {
     class Context {
-        final String[] args;
-        final Env env;
+        String[] args;
+        Env env;
         CallTarget mul;
+        InputStream in;
+        OutputStream out;
+        OutputStream err;
+        String languageVersion;
 
         Context(String[] args) {
             this.args = args;
             this.env = null;
+            this.languageVersion = null;
         }
 
         Context(Env env) {
             this.env = env;
             this.args = null;
+            this.languageVersion = null;
+        }
+
+        Context(Env env, String languageVersion) {
+            this.env = env;
+            this.args = null;
+            this.languageVersion = languageVersion;
         }
 
         Context fork() {
@@ -2041,6 +2096,35 @@ class TruffleLanguageSnippets {
         }
     }
     // END: TruffleLanguageSnippets.PostInitLanguage#createContext
+
+    abstract
+    class PreInitializedLanguage extends TruffleLanguage<Context> {
+
+        private final OptionKey<String> version = new OptionKey<>("2.0");
+
+        // BEGIN: TruffleLanguageSnippets.PreInitializedLanguage#patchContext
+        @Override
+        protected boolean patchContext(Context context, Env newEnv) {
+            if (!optionsAllowPreInitializedContext(context, newEnv)) {
+                // Incompatible options - cannot use pre-initialized context
+                return false;
+            }
+            context.env = newEnv;
+            context.args = newEnv.getApplicationArguments();
+            context.in = newEnv.in();
+            context.out = newEnv.out();
+            context.err = newEnv.err();
+            return true;
+        }
+
+        private boolean optionsAllowPreInitializedContext(Context context, Env newEnv) {
+            // Verify that values of important options in the new Env do not differ
+            // from values in the pre-initialized context
+            final String newVersionValue = newEnv.getOptions().get(version);
+            return Objects.equals(context.languageVersion, newVersionValue);
+        }
+        // END: TruffleLanguageSnippets.PreInitializedLanguage#patchContext
+    }
 
     // BEGIN: TruffleLanguageSnippets#parseWithParams
     public void parseWithParams(Env env) {

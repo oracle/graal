@@ -24,7 +24,7 @@ package com.oracle.svm.truffle.api;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
-import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.WordFactory;
 
@@ -68,14 +68,6 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
     public void clearAddress() {
         this.address = 0;
         this.entryPoint = 0;
-    }
-
-    @Override
-    public void releaseEntryPoint() {
-        // Since Substrate does not currently know how to remove the release bit from the entry
-        // point address, SubstrateOptimizedCallTarget does not set the release bit after
-        // Truffle installs the assumptions. Until this is fixed, this leaves Substrate with
-        // the same data race that existed in Truffle before GR-4454 was fixed.
     }
 
     @Override

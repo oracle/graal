@@ -25,6 +25,7 @@ package com.oracle.svm.hosted.snippets;
 import java.lang.reflect.Array;
 import java.util.Arrays;
 
+import com.oracle.svm.core.graal.nodes.HeapBaseFixedNode;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
@@ -242,6 +243,13 @@ public class SubstrateGraphBuilderPlugins {
                      */
                     b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), 0));
                 }
+                return true;
+            }
+        });
+        r.register0("heapBase", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.addPush(JavaKind.Object, new HeapBaseFixedNode());
                 return true;
             }
         });

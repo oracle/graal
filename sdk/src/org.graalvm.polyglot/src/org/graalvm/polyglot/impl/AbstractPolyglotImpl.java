@@ -113,6 +113,10 @@ public abstract class AbstractPolyglotImpl {
     public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
                     long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine);
 
+    public abstract void preInitializeEngine();
+
+    public abstract void resetPreInitializedEngine();
+
     public abstract AbstractSourceImpl getSourceImpl();
 
     public abstract AbstractSourceSectionImpl getSourceSectionImpl();
@@ -224,6 +228,10 @@ public abstract class AbstractPolyglotImpl {
         public abstract void close(boolean interuptExecution);
 
         public abstract Value asValue(Object hostValue);
+
+        public abstract void explicitEnter();
+
+        public abstract void explicitLeave();
 
     }
 
@@ -426,6 +434,10 @@ public abstract class AbstractPolyglotImpl {
             return executeUnsupported(receiver);
         }
 
+        public Value execute(Object receiver) {
+            return executeUnsupported(receiver);
+        }
+
         public final Value executeUnsupported(Object receiver) {
             throw unsupported(receiver, "execute(Object...)", "canExecute()");
         }
@@ -440,6 +452,18 @@ public abstract class AbstractPolyglotImpl {
 
         public final Value newInstanceUnsupported(Object receiver) {
             throw unsupported(receiver, "newInstance(Object...)", "canInstantiate()");
+        }
+
+        public void executeVoid(Object receiver, Object[] arguments) {
+            executeVoidUnsupported(receiver);
+        }
+
+        public void executeVoid(Object receiver) {
+            executeVoidUnsupported(receiver);
+        }
+
+        public final void executeVoidUnsupported(Object receiver) {
+            throw unsupported(receiver, "executeVoid(Object...)", "canExecute()");
         }
 
         public boolean isString(Object receiver) {

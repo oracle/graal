@@ -110,6 +110,26 @@ import org.graalvm.polyglot.proxy.Proxy;
  * currently executing code. If a context is currently executing code, a different thread can kill
  * the execution and close the context using {@link #close(boolean)} .
  *
+ * <h4>Pre-Initialization</h4>
+ *
+ * The Context pre-initialization can be used to perform expensive builtin creation in the time of
+ * native compilation.
+ * <p>
+ * The context pre-initialization is enabled by setting the system property
+ * {@code polyglot.engine.PreinitializeContexts} to a comma separated list of language ids which
+ * should be pre-initialized, for example: {@code -Dpolyglot.engine.PreinitializeContexts=js,python}
+ * <p>
+ * During the pre-initialization (in the native compilation time) the
+ * {@code com.oracle.truffle.api.TruffleLanguage.createContext(com.oracle.truffle.api.TruffleLanguage.Env)}
+ * and {@code com.oracle.truffle.api.TruffleLanguage.initializeContext(java.lang.Object)} methods
+ * are called. In the image execution time the
+ * {@code com.oracle.truffle.api.TruffleLanguage.patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)}
+ * is called as a consequence of {@link org.graalvm.polyglot.Context#create(java.lang.String...)}
+ * invocation. If the
+ * {@code com.oracle.truffle.api.TruffleLanguage.patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)}
+ * is successful for all pre-initialized languages the pre-initialized context is used, otherwise a
+ * new context is created.
+ *
  * @since 1.0
  */
 // TODO document that the current context class loader is captured when the engine is created.
@@ -366,6 +386,37 @@ public final class Context implements AutoCloseable {
      */
     public Value asValue(Object hostValue) {
         return impl.asValue(hostValue);
+    }
+
+    /**
+     * Explicitly enters this context on the current thread. A context needs to be entered for any
+     * operation to be performed. The context implicitly enters and leaves the context for every
+     * operation. For example, before and after invoking the {@link Value#execute(Object...)
+     * execute} method. This can be inefficient if a very high number of simple operations needs to
+     * be performed. By {@link #enter() entering} and {@link #leave() leaving} once explicitly, the
+     * overhead for entering/leaving contexts for each operation can be eliminated. Contexts can be
+     * entered multiple times on the same thread.
+     *
+     * @throws IllegalStateException if the context is already {@link #close() closed}.
+     * @throws PolyglotException if a language has denied execution on the current thread.
+     * @see #leave() to leave a context.
+     * @since 1.0
+     */
+    public void enter() {
+        impl.explicitEnter();
+    }
+
+    /**
+     * Explicitly leaves this context on the current thread. The context must be {@link #enter()
+     * entered} before calling this method.
+     *
+     * @throws IllegalStateException if the context is already closed or if the context was not
+     *             {@link #enter() entered} on the current thread.
+     * @see #enter() to enter a context.
+     * @since 1.0
+     */
+    public void leave() {
+        impl.explicitLeave();
     }
 
     /**

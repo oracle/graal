@@ -31,6 +31,8 @@ from os.path import exists
 import re
 import zipfile
 from collections import OrderedDict
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+import tempfile
 
 import mx
 
@@ -330,3 +332,68 @@ def mx_post_parse_cmd_line(opts):
         if d.isJARDistribution():
             if _uses_truffle_dsl_processor(d):
                 d.set_archiveparticipant(TruffleArchiveParticipant())
+
+_debuggertestHelpSuffix = """
+    TCK options:
+
+      --tck-configuration                  configuration {default|debugger}
+          default                          executes TCK tests
+          debugger                         executes TCK tests with enabled debugalot instrument
+"""
+
+def _execute_debugger_test(testFilter, logFile, testEvaluation=False, unitTestOptions=None, jvmOptions=None):
+    """
+    Executes given unit tests with enabled debugalot instrument.
+    The 'testFilter' argument is a filter unit test pattern.
+    The 'logFile' argument is a file path to store the instrument output into.
+    The 'testEvaluation' argument enables evaluation testing, default is False.
+    The 'unitTestOptions' argument is a list of unit test options.
+    The 'jvmOptions' argument is a list of VM options.
+    """
+    debugalot_options = ["-Dpolyglot.debugalot=true"]
+    if testEvaluation:
+        debugalot_options.append("-Dpolyglot.debugalot.Eval=true")
+    debugalot_options.append("-Dpolyglot.debugalot.LogFile=" + logFile)
+    args = []
+    if unitTestOptions is not None:
+        args = args + unitTestOptions
+    args = args + ["--"]
+    if jvmOptions is not None:
+        args = args + jvmOptions
+    args = args + debugalot_options
+    args = args + testFilter
+    unittest(args)
+
+
+def _tck(args):
+    """runs TCK tests"""
+
+    parser = ArgumentParser(prog="mx tck", description="run the TCK tests", formatter_class=RawDescriptionHelpFormatter, epilog=_debuggertestHelpSuffix)
+    parser.add_argument("--tck-configuration", help="TCK configuration", choices=["default", "debugger"], default="default")
+    parsed_args, args = parser.parse_known_args(args)
+    tckConfiguration = parsed_args.tck_configuration
+    index = len(args)
+    for arg in reversed(args):
+        if arg.startswith("-"):
+            break
+        index = index - 1
+    args_no_tests = args[0:index]
+    tests = args[index:len(args)]
+    if len(tests) == 0:
+        tests = ["com.oracle.truffle.tck.tests"]
+    index = len(args_no_tests)
+    for arg in reversed(args_no_tests):
+        if arg.startswith("--"):
+            break
+        index = index - 1
+    unitTestOptions = args_no_tests[0:max(index-1, 0)]
+    jvmOptions = args_no_tests[index:len(args_no_tests)]
+    if tckConfiguration == "default":
+        unittest(unitTestOptions + ["--"] + jvmOptions + tests)
+    elif tckConfiguration == "debugger":
+        with mx.SafeFileCreation(os.path.join(tempfile.gettempdir(), "debugalot")) as sfc:
+            _execute_debugger_test(tests, sfc.tmpPath, False, unitTestOptions, jvmOptions)
+
+mx.update_commands(_suite, {
+    'tck' : [_tck, "[--tck-configuration {default|debugger}] [unittest options] [--] [VM options] [filters...]", _debuggertestHelpSuffix]
+})

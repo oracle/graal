@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.128.5",
+  "mxversion" : "5.136.0",
   "name" : "truffle",
   "sourceinprojectwhitelist" : [],
   "url" : "http://openjdk.java.net/projects/graal",
@@ -264,7 +264,7 @@ suite = {
    "com.oracle.truffle.api.instrumentation" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.api"],
+      "dependencies" : ["com.oracle.truffle.api.profiles"],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
       ],
@@ -527,6 +527,7 @@ suite = {
     "com.oracle.truffle.nfi" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
+      "jniHeaders" : True,
       "dependencies" : [
         "com.oracle.truffle.api.interop.java",
         "com.oracle.truffle.nfi.types",
@@ -561,6 +562,7 @@ suite = {
         "com.oracle.truffle.nfi",
       ],
       "buildEnv" : {
+        "CPPFLAGS" : "-I<jnigen:com.oracle.truffle.nfi>",
         "LIBFFI_SRC" : "<path:LIBFFI>",
         "LIBTRUFFLENFI" : "<lib:trufflenfi>",
         "OS" : "<os>",

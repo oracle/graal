@@ -44,6 +44,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -950,6 +951,9 @@ abstract class PolyglotValue extends AbstractValueImpl {
         final CallTarget execute;
         final CallTarget canInstantiate;
         final CallTarget newInstance;
+        final CallTarget executeNoArgs;
+        final CallTarget executeVoid;
+        final CallTarget executeVoidNoArgs;
         final CallTarget asPrimitive;
 
         final Class<?> receiverType;
@@ -959,24 +963,36 @@ abstract class PolyglotValue extends AbstractValueImpl {
         Interop(PolyglotLanguageContext context, TruffleObject receiver, Class<?> receiverType) {
             super(context);
             this.receiverType = receiverType;
-            this.isNativePointer = Truffle.getRuntime().createCallTarget(new IsNativePointerNode(this));
-            this.asNativePointer = Truffle.getRuntime().createCallTarget(new AsNativePointerNode(this));
-            this.hasArrayElements = Truffle.getRuntime().createCallTarget(new HasArrayElementsNode(this));
-            this.getArrayElement = Truffle.getRuntime().createCallTarget(new GetArrayElementNode(this));
-            this.setArrayElement = Truffle.getRuntime().createCallTarget(new SetArrayElementNode(this));
-            this.getArraySize = Truffle.getRuntime().createCallTarget(new GetArraySizeNode(this));
-            this.hasMembers = Truffle.getRuntime().createCallTarget(new HasMembersNode(this));
-            this.hasMember = Truffle.getRuntime().createCallTarget(new HasMemberNode(this));
-            this.getMember = Truffle.getRuntime().createCallTarget(new GetMemberNode(this));
-            this.putMember = Truffle.getRuntime().createCallTarget(new PutMemberNode(this));
-            this.isNull = Truffle.getRuntime().createCallTarget(new IsNullNode(this));
-            this.execute = Truffle.getRuntime().createCallTarget(new ExecuteNode(this));
-            this.canExecute = Truffle.getRuntime().createCallTarget(new CanExecuteNode(this));
-            this.newInstance = Truffle.getRuntime().createCallTarget(new NewInstanceNode(this));
-            this.canInstantiate = Truffle.getRuntime().createCallTarget(new CanInstantiateNode(this));
-            this.asPrimitive = Truffle.getRuntime().createCallTarget(new AsPrimitiveNode(this));
+            this.isNativePointer = createTarget(new IsNativePointerNode(this));
+            this.asNativePointer = createTarget(new AsNativePointerNode(this));
+            this.hasArrayElements = createTarget(new HasArrayElementsNode(this));
+            this.getArrayElement = createTarget(new GetArrayElementNode(this));
+            this.setArrayElement = createTarget(new SetArrayElementNode(this));
+            this.getArraySize = createTarget(new GetArraySizeNode(this));
+            this.hasMember = createTarget(new HasMemberNode(this));
+            this.getMember = createTarget(new GetMemberNode(this));
+            this.putMember = createTarget(new PutMemberNode(this));
+            this.isNull = createTarget(new IsNullNode(this));
+            this.execute = createTarget(new ExecuteNode(this));
+            this.executeNoArgs = createTarget(new ExecuteNoArgsNode(this));
+            this.executeVoid = createTarget(new ExecuteVoidNode(this));
+            this.executeVoidNoArgs = createTarget(new ExecuteVoidNoArgsNode(this));
+            this.newInstance = createTarget(new NewInstanceNode(this));
+            this.canInstantiate = createTarget(new CanInstantiateNode(this));
+            this.canExecute = createTarget(new CanExecuteNode(this));
+            this.hasMembers = createTarget(new HasMembersNode(this));
+            this.asPrimitive = createTarget(new AsPrimitiveNode(this));
             this.isProxy = PolyglotProxy.isProxyGuestObject(receiver);
             this.isJava = JavaInterop.isJavaObject(receiver);
+        }
+
+        private static CallTarget createTarget(InteropNode root) {
+            CallTarget target = Truffle.getRuntime().createCallTarget(root);
+            Class<?>[] types = root.getArgumentTypes();
+            if (types != null) {
+                VMAccessor.SPI.initializeProfile(target, types);
+            }
+            return target;
         }
 
         @Override
@@ -986,27 +1002,27 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         @Override
         public boolean isNativePointer(Object receiver) {
-            return (boolean) isNativePointer.call(receiver);
+            return (boolean) VMAccessor.SPI.callProfiled(isNativePointer, receiver);
         }
 
         @Override
         public boolean hasArrayElements(Object receiver) {
-            return (boolean) hasArrayElements.call(receiver);
+            return (boolean) VMAccessor.SPI.callProfiled(hasArrayElements, receiver);
         }
 
         @Override
         public Value getArrayElement(Object receiver, long index) {
-            return (Value) getArrayElement.call(receiver, index);
+            return (Value) VMAccessor.SPI.callProfiled(getArrayElement, receiver, index);
         }
 
         @Override
         public void setArrayElement(Object receiver, long index, Object value) {
-            setArrayElement.call(receiver, index, value);
+            VMAccessor.SPI.callProfiled(setArrayElement, receiver, index, value);
         }
 
         @Override
         public long getArraySize(Object receiver) {
-            return (long) getArraySize.call(receiver);
+            return (long) VMAccessor.SPI.callProfiled(getArraySize, receiver);
         }
 
         @Override
@@ -1016,17 +1032,17 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         @Override
         public Value getMember(Object receiver, String key) {
-            return (Value) getMember.call(receiver, key);
+            return (Value) VMAccessor.SPI.callProfiled(getMember, receiver, key);
         }
 
         @Override
         public boolean hasMember(Object receiver, String key) {
-            return (boolean) hasMember.call(receiver, key);
+            return (boolean) VMAccessor.SPI.callProfiled(hasMember, receiver, key);
         }
 
         @Override
         public void putMember(Object receiver, String key, Object member) {
-            putMember.call(receiver, key, member);
+            VMAccessor.SPI.callProfiled(putMember, receiver, key, member);
         }
 
         @Override
@@ -1051,7 +1067,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         @Override
         public long asNativePointer(Object receiver) {
-            return (long) asNativePointer.call(receiver);
+            return (long) VMAccessor.SPI.callProfiled(asNativePointer, receiver);
         }
 
         @Override
@@ -1085,17 +1101,32 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         @Override
         public boolean isNull(Object receiver) {
-            return (boolean) isNull.call(receiver);
+            return (boolean) VMAccessor.SPI.callProfiled(isNull, receiver);
         }
 
         @Override
         public boolean canExecute(Object receiver) {
-            return (boolean) canExecute.call(receiver);
+            return (boolean) VMAccessor.SPI.callProfiled(canExecute, receiver);
+        }
+
+        @Override
+        public void executeVoid(Object receiver, Object[] arguments) {
+            VMAccessor.SPI.callProfiled(executeVoid, receiver, arguments);
+        }
+
+        @Override
+        public void executeVoid(Object receiver) {
+            VMAccessor.SPI.callProfiled(executeVoidNoArgs, receiver);
         }
 
         @Override
         public Value execute(Object receiver, Object[] arguments) {
-            return (Value) execute.call(receiver, arguments);
+            return (Value) VMAccessor.SPI.callProfiled(execute, receiver, arguments);
+        }
+
+        @Override
+        public Value execute(Object receiver) {
+            return (Value) VMAccessor.SPI.callProfiled(executeNoArgs, receiver);
         }
 
         @Override
@@ -1113,7 +1144,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         }
 
         private Object asPrimitive(Object receiver) {
-            return asPrimitive.call(receiver);
+            return VMAccessor.SPI.callProfiled(asPrimitive, receiver);
         }
 
         private PolyglotValue getPrimitiveCache(Object primitive) {
@@ -1282,23 +1313,45 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             protected abstract String getOperationName();
 
+            @CompilationFinal private boolean seenEnter;
+            @CompilationFinal private boolean seenNonEnter;
+
             protected PolyglotNode(PolyglotValue polyglot) {
                 super(null);
                 this.polyglot = polyglot;
             }
 
+            protected abstract Class<?>[] getArgumentTypes();
+
             @Override
             public final Object execute(VirtualFrame frame) {
                 Object[] args = frame.getArguments();
                 Object receiver = polyglot.getReceiverType().cast(args[0]);
-                Object prev = polyglot.languageContext.enter();
+                PolyglotContextImpl context = interop.languageContext.context;
+                boolean needsEnter = context.needsEnter();
+                Object prev;
+                if (needsEnter) {
+                    if (!seenEnter) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        seenEnter = true;
+                    }
+                    prev = context.enter();
+                } else {
+                    if (!seenNonEnter) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        seenNonEnter = true;
+                    }
+                    prev = null;
+                }
                 try {
                     return executeImpl(receiver, args);
                 } catch (Throwable e) {
                     CompilerDirectives.transferToInterpreter();
                     throw wrapGuestException(polyglot.languageContext, e);
                 } finally {
-                    polyglot.languageContext.leave(prev);
+                    if (needsEnter) {
+                        context.leave(prev);
+                    }
                 }
             }
 
@@ -1325,6 +1378,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
             }
 
             @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{interop.receiverType};
+            }
+
+            @Override
             protected String getOperationName() {
                 return "isNativePointer";
             }
@@ -1342,6 +1400,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             protected AsNativePointerNode(Interop interop) {
                 super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{interop.receiverType};
             }
 
             @Override
@@ -1370,6 +1433,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
             }
 
             @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{interop.receiverType};
+            }
+
+            @Override
             protected String getOperationName() {
                 return "hasArrayElements";
             }
@@ -1388,6 +1456,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             protected GetArrayElementNode(Interop interop) {
                 super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{interop.receiverType, Long.class};
             }
 
             @Override
@@ -1419,6 +1492,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             protected SetArrayElementNode(Interop interop) {
                 super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{interop.receiverType, Long.class, Object.class};
             }
 
             @Override
@@ -1456,6 +1534,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
             }
 
             @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{interop.receiverType};
+            }
+
+            @Override
             protected String getOperationName() {
                 return "getArraySize";
             }
@@ -1480,6 +1563,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             protected GetMemberNode(Interop interop) {
                 super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{interop.receiverType, String.class};
             }
 
             @Override
@@ -1518,6 +1606,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
             }
 
             @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{interop.receiverType, String.class, Object.class};
+            }
+
+            @Override
             protected Object executeImpl(Object receiver, Object[] args) {
                 String key = (String) args[1];
                 Object member = args[2];
@@ -1548,6 +1641,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
             }
 
             @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{interop.receiverType};
+            }
+
+            @Override
             protected String getOperationName() {
                 return "isNull";
             }
@@ -1568,6 +1666,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
             }
 
             @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{interop.receiverType};
+            }
+
+            @Override
             protected String getOperationName() {
                 return "hasMembers";
             }
@@ -1585,6 +1688,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             protected HasMemberNode(Interop interop) {
                 super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{interop.receiverType, String.class};
             }
 
             @Override
@@ -1615,6 +1723,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
             }
 
             @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{interop.receiverType};
+            }
+
+            @Override
             protected Object executeImpl(Object receiver, Object[] args) {
                 return ForeignAccess.sendIsExecutable(isExecutableNode, (TruffleObject) receiver);
             }
@@ -1627,6 +1740,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             protected CanInstantiateNode(Interop interop) {
                 super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{interop.receiverType};
             }
 
             @Override
@@ -1656,6 +1774,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
             }
 
             @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{interop.receiverType};
+            }
+
+            @Override
             protected Object executeImpl(Object receiver, Object[] args) {
                 if (ForeignAccess.sendIsBoxed(isBoxedNode, (TruffleObject) receiver)) {
                     try {
@@ -1670,21 +1793,19 @@ abstract class PolyglotValue extends AbstractValueImpl {
             }
         }
 
-        private static class ExecuteNode extends PolyglotNode {
+        private abstract static class AbstractExecuteNode extends InteropNode {
 
             @Child private Node executeNode = Message.createExecute(0).createNode();
             private final ToGuestValuesNode toGuestValues = polyglot.languageContext.createToGuestValues();
             private final ToHostValueNode toHostValue = polyglot.languageContext.createToHostValue();
 
-            protected ExecuteNode(Interop interop) {
+            protected AbstractExecuteNode(Interop interop) {
                 super(interop);
             }
 
-            @Override
-            protected Object executeImpl(Object receiver, Object[] args) {
+            protected final Object executeShared(Object receiver, Object[] args) {
                 try {
-                    Object[] executeArgs = (Object[]) args[1];
-                    return toHostValue.execute(ForeignAccess.sendExecute(executeNode, (TruffleObject) receiver, toGuestValues.execute(executeArgs)));
+                    return ForeignAccess.sendExecute(executeNode, (TruffleObject) receiver, toGuestValues.execute(args));
                 } catch (UnsupportedTypeException e) {
                     CompilerDirectives.transferToInterpreter();
                     throw handleUnsupportedType(e);
@@ -1708,6 +1829,101 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 return error(String.format("Invalid arguments provided %s when executing %s.", arguments, toString()), e);
             }
 
+        }
+
+        private static class ExecuteVoidNode extends AbstractExecuteNode {
+
+            protected ExecuteVoidNode(Interop interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{interop.receiverType, Object[].class};
+            }
+
+            @Override
+            protected Object executeImpl(Object receiver, Object[] args) {
+                executeShared(receiver, (Object[]) args[1]);
+                return null;
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "executeVoid";
+            }
+
+        }
+
+        private static class ExecuteVoidNoArgsNode extends AbstractExecuteNode {
+
+            private static final Object[] NO_ARGS = new Object[0];
+
+            protected ExecuteVoidNoArgsNode(Interop interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{interop.receiverType};
+            }
+
+            @Override
+            protected Object executeImpl(Object receiver, Object[] args) {
+                executeShared(receiver, NO_ARGS);
+                return null;
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "executeVoid";
+            }
+
+        }
+
+        private static class ExecuteNode extends AbstractExecuteNode {
+
+            private final ToHostValueNode toHostValue = interop.languageContext.createToHostValue();
+
+            protected ExecuteNode(Interop interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{interop.receiverType, Object[].class};
+            }
+
+            @Override
+            protected Object executeImpl(Object receiver, Object[] args) {
+                return toHostValue.execute(executeShared(receiver, (Object[]) args[1]));
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "execute";
+            }
+
+        }
+
+        private static class ExecuteNoArgsNode extends AbstractExecuteNode {
+
+            private final ToHostValueNode toHostValue = interop.languageContext.createToHostValue();
+
+            protected ExecuteNoArgsNode(Interop interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{interop.receiverType};
+            }
+
+            @Override
+            protected Object executeImpl(Object receiver, Object[] args) {
+                return toHostValue.execute(executeShared(receiver, ExecuteVoidNoArgsNode.NO_ARGS));
+            }
+
             @Override
             protected String getOperationName() {
                 return "execute";
@@ -1723,6 +1939,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             protected NewInstanceNode(Interop interop) {
                 super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{interop.receiverType, Object[].class};
             }
 
             @Override

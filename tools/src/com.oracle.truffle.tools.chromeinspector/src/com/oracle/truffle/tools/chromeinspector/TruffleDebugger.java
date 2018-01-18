@@ -33,8 +33,14 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Phaser;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Phaser;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -81,6 +87,7 @@ public final class TruffleDebugger extends DebuggerDomain {
     // private Scope globalScope;
     private volatile DebuggerSuspendedInfo suspendedInfo; // Set when suspended
     private boolean running = true;
+    private final AtomicBoolean delayUnlock = new AtomicBoolean();
     private final Phaser onSuspendPhaser = new Phaser();
     private final BlockingQueue<CancellableRunnable> suspendThreadExecutables = new LinkedBlockingQueue<>();
 
@@ -206,6 +213,7 @@ public final class TruffleDebugger extends DebuggerDomain {
         DebuggerSuspendedInfo susp = suspendedInfo;
         if (susp != null) {
             susp.getSuspendedEvent().prepareStepInto(1);
+            delayUnlock.set(true);
             postProcessor.setPostProcessJob(() -> doResume());
         }
     }
@@ -215,6 +223,7 @@ public final class TruffleDebugger extends DebuggerDomain {
         DebuggerSuspendedInfo susp = suspendedInfo;
         if (susp != null) {
             susp.getSuspendedEvent().prepareStepOver(1);
+            delayUnlock.set(true);
             postProcessor.setPostProcessJob(() -> doResume());
         }
     }
@@ -224,6 +233,7 @@ public final class TruffleDebugger extends DebuggerDomain {
         DebuggerSuspendedInfo susp = suspendedInfo;
         if (susp != null) {
             susp.getSuspendedEvent().prepareStepOut(1);
+            delayUnlock.set(true);
             postProcessor.setPostProcessJob(() -> doResume());
         }
     }
@@ -582,13 +592,22 @@ public final class TruffleDebugger extends DebuggerDomain {
 
     private class SuspendedCallbackImpl implements SuspendedCallback {
 
+        private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+        private final AtomicReference<ScheduledFuture<?>> future = new AtomicReference<>();
+        private Thread locked = null;
+
         @Override
         public void onSuspend(SuspendedEvent se) {
             SourceSection ss = se.getSourceSection();
+            lock();
             onSuspendPhaser.register();
             try {
                 synchronized (suspendLock) {
                     running = false;
+                }
+                if (ds == null) {
+                    // Debugger has been disabled while waiting on locks
+                    return;
                 }
                 slh.assureLoaded(ss.getSource());
                 context.setLastLanguage(ss.getSource().getLanguage(), ss.getSource().getMimeType());
@@ -650,6 +669,13 @@ public final class TruffleDebugger extends DebuggerDomain {
                 eventHandler.event(resumed);
             } finally {
                 onSuspendPhaser.arrive();
+                if (delayUnlock.getAndSet(false)) {
+                    future.set(scheduler.schedule(() -> {
+                        unlock();
+                    }, 1, TimeUnit.SECONDS));
+                } else {
+                    unlock();
+                }
             }
         }
 
@@ -661,6 +687,27 @@ public final class TruffleDebugger extends DebuggerDomain {
             return array;
         }
 
-    }
+        private synchronized void lock() {
+            Thread current = Thread.currentThread();
+            if (locked != current) {
+                while (locked != null) {
+                    try {
+                        wait();
+                    } catch (InterruptedException ex) {
+                    }
+                }
+                locked = current;
+            } else {
+                ScheduledFuture<?> sf = future.getAndSet(null);
+                if (sf != null) {
+                    sf.cancel(true);
+                }
+            }
+        }
 
+        private synchronized void unlock() {
+            locked = null;
+            notify();
+        }
+    }
 }

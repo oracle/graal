@@ -4,9 +4,9 @@ overlay = c6dd636911c01b77f267014f138ee99a358ca5f6
 # labsjdk* are JDKs based on OracleJDK binaries
 # openjdk* are JDKs based on OpenJDK binaries
 jdks: {
-  labsjdk8 : {name : labsjdk, version : "8u151-jvmci-0.39", platformspecific: true}
+  labsjdk8 : {name : labsjdk, version : "8u151-jvmci-0.40", platformspecific: true}
   labsjdk9 : {name : labsjdk, version : "9+181", platformspecific: true}
-  labsjdk8Debug : {name : labsjdk, version : "8u151-jvmci-0.39-fastdebug", platformspecific: true}
+  labsjdk8Debug : {name : labsjdk, version : "8u151-jvmci-0.40-fastdebug", platformspecific: true}
 }
 
 # Overlay placeholder for pinning mx to a specific revision
@@ -122,7 +122,7 @@ maven-deploy-dry-run : ${labsjdk8} {
   targets : [gate]
   run : [
     ["mx", "--strict-compliance", "build"]
-    ["mx", "maven-deploy", "--licenses", "GPLv2-CPE,UPL", "--dry-run", "ossrh", "https://this-is-only-a-test"]
+    ["mx", "maven-deploy", "--validate", "full", "--licenses", "GPLv2-CPE,UPL", "--dry-run", "ossrh", "https://this-is-only-a-test"]
   ]
 }
 
