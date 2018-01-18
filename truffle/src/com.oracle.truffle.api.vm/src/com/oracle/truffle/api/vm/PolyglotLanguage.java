@@ -198,17 +198,28 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements VMObject {
         }
 
         Object get() {
+            assert assertCorrectEngine();
             if (singleContext.isValid()) {
                 Object cachedSingle = cachedSingleContext;
-                if (singleContext.isValid() && cachedSingle != UNSET_CONTEXT) {
-                    assert getAssert(cachedSingle);
+                if (cachedSingle != UNSET_CONTEXT) {
+                    assert assertGet(cachedSingle);
                     return cachedSingle;
                 }
             }
             return lookupLanguageContext(PolyglotContextImpl.requireContext());
         }
 
-        private boolean getAssert(Object cachedSingle) {
+        private boolean assertCorrectEngine() {
+            PolyglotContextImpl context = PolyglotContextImpl.requireContext();
+            if (context.engine != language.engine) {
+                throw new AssertionError(String.format("Context reference was used from an Engine that is currently not entered. " +
+                                "ContextReference of engine %s was used but engine %s is currently entered. " +
+                                "ContextReference must not be shared between multiple TruffleLanguage instances.", language.engine.api, context.engine.api));
+            }
+            return true;
+        }
+
+        private boolean assertGet(Object cachedSingle) {
             // avoid race between current context and single context assertion
             PolyglotContextImpl context = PolyglotContextImpl.requireContext();
             if (!singleContext.isValid()) {
