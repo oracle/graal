@@ -1,0 +1,8 @@
+BREAK "9" "CONTINUE" "main"
+
+OPEN_SCOPE
+
+MEMBER int "myUnsignedInt" "typedefedVal" "15"
+MEMBER int "const int" "constVal" "234"
+MEMBER int "const myUnsignedInt" "cuVal" "128"
+MEMBER int "volatile int" "volatileVal" "756"

@@ -303,12 +303,33 @@ public abstract class LLVMSourceLocation {
         private final String file;
         private final int line;
         private final int col;
+        private final List<LLVMSourceSymbol> symbols;
 
         UnavailableScope(LLVMSourceLocation parent, Kind kind, String name, String file, int line, int col) {
             super(parent, kind, name);
             this.file = file;
             this.line = line;
             this.col = col;
+            this.symbols = new LinkedList<>();
+        }
+
+        @TruffleBoundary
+        @Override
+        public void addSymbol(LLVMSourceSymbol symbol) {
+            if (symbol != null) {
+                symbols.add(symbol);
+            }
+        }
+
+        @TruffleBoundary
+        @Override
+        public boolean hasSymbols() {
+            return !symbols.isEmpty();
+        }
+
+        @Override
+        public List<LLVMSourceSymbol> getSymbols() {
+            return symbols;
         }
 
         @Override

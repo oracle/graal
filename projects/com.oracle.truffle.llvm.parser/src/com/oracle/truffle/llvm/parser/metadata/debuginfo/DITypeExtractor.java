@@ -260,7 +260,11 @@ final class DITypeExtractor implements MetadataVisitor {
             @Override
             @TruffleBoundary
             public String get() {
-                return String.format(nameFormatString, baseType.getName(), length);
+                String baseName = baseType.getName();
+                if (baseName.contains(" ")) {
+                    baseName = String.format("(%s)", baseName);
+                }
+                return String.format(nameFormatString, baseName, length);
             }
         });
     }

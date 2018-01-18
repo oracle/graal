@@ -1,0 +1,11 @@
+SUSPEND
+
+STOP 13 STEP_INTO "main"
+
+STOP 7 STEP_OVER "foo"
+
+STOP 8 STEP_OUT "foo"
+
+STOP 13 CONTINUE "main"
+
+BREAK 15 CONTINUE "main"

@@ -278,7 +278,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.debug" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
-      "variants" : ["O0_MEM2REG"],
+      "variants" : ["O1", "O0", "O0_MEM2REG"],
       "buildRef" : False,
       "buildEnv" : {
         "CFLAGS" : "<clangImplicitArgs> -g",
