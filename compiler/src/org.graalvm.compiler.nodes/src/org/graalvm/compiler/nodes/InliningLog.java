@@ -30,7 +30,34 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * This class contains all inlining decisions performed on a graph during the compilation.
+ *
+ * Each inlining decision consists of:
+ *
+ * <ul>
+ * <li>a value indicating whether the decision was positive or negative</li>
+ * <li>a string explanation of the reason for the inlining decision</li>
+ * <li>the name of the phase in which the inlining decision took place</li>
+ * <li>the special {@code BytecodePositionWithId} value that describes the position in the bytecode
+ * together with the callsite-specific unique identifier</li>
+ * <li>the inlining log of the inlined graph, or {@code null} if the decision was negative</li>
+ * </ul>
+ *
+ * A phase that does inlining should use the instance of this class contained in the {@code StructuredGraph}
+ * by calling {@code addDecision} whenever it decides to inline a method. If there are invokes in the graph
+ * at the end of the respective phase, then that phase must call {@code addDecision} to log negative decisions.
+ *
+ * At the end of the compilation, the contents of the inlining log can be converted into a list of decisions
+ * by calling {@code formatAsList} or into an inlining tree, by calling {@code formatAsTree}.
+ */
 public class InliningLog {
+    /**
+     * A bytecode position with a unique identifier attached.
+     *
+     * The purpose of this class is to disambiguate callsites that are duplicated by a transformation
+     * (such as loop peeling or path duplication).
+     */
     public static final class BytecodePositionWithId extends BytecodePosition implements Comparable<BytecodePositionWithId> {
         private final int id;
 
@@ -133,13 +160,14 @@ public class InliningLog {
     }
 
     private static class Callsite {
-        public String decision;
+        public final List<String> decisions;
         public final Map<BytecodePositionWithId, Callsite> children;
         public final BytecodePositionWithId position;
 
         Callsite(BytecodePositionWithId position) {
             this.children = new HashMap<>();
             this.position = position;
+            this.decisions = new ArrayList<>();
         }
 
         public Callsite getOrCreateChild(BytecodePositionWithId position) {
@@ -154,7 +182,7 @@ public class InliningLog {
         public Callsite createCallsite(BytecodePositionWithId position, String decision) {
             Callsite parent = getOrCreateCallsite(position.getCaller());
             Callsite callsite = parent.getOrCreateChild(position);
-            callsite.decision = decision;
+            callsite.decisions.add(decision);
             return null;
         }
 
@@ -227,11 +255,12 @@ public class InliningLog {
 
     private void formatAsTree(Callsite site, String indent, StringBuilder builder) {
         String position = site.position != null ? site.position.withoutCaller().toString() : "<root>";
-        String decision = site.decision != null ? site.decision : "";
+        String decision = String.join("; ", site.decisions);
         String line = String.format("%s%s; %s", indent, position, decision);
         builder.append(line).append(System.lineSeparator());
         String childIndent = indent + "  ";
-        site.children.entrySet().stream().sorted((x, y) -> x.getKey().compareTo(y.getKey()))
-                        .forEach(e -> formatAsTree(e.getValue(), childIndent, builder));
+        site.children.entrySet().stream().sorted((x, y) -> x.getKey().compareTo(y.getKey())).forEach(e -> {
+            formatAsTree(e.getValue(), childIndent, builder);
+        });
     }
 }
