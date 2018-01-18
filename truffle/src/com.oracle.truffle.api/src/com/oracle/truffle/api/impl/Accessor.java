@@ -230,6 +230,8 @@ public abstract class Accessor {
 
         public abstract ClassCastException newClassCastException(String message, Throwable cause);
 
+        public abstract NullPointerException newNullPointerException(String message, Throwable cause);
+
         public abstract Object getCurrentHostContext();
 
         public abstract Object legacyTckEnter(Object vm);

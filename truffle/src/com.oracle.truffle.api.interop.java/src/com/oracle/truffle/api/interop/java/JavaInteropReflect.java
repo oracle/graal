@@ -538,8 +538,14 @@ final class ObjectProxyHandler implements InvocationHandler {
                     res = JavaInterop.findOriginalObject(res);
                 }
                 return toJavaNode.execute(res, returnType, genericReturnType, languageContext);
+            } catch (UnknownIdentifierException ex) {
+                throw new UnsupportedOperationException(ex.getMessage());
+            } catch (UnsupportedTypeException ex) {
+                throw new IllegalArgumentException(ex.getMessage());
+            } catch (ArityException ex) {
+                throw new IllegalArgumentException(ex.getMessage());
             } catch (InteropException ex) {
-                throw ex.raise();
+                throw new UnsupportedOperationException(ex.getMessage());
             }
         }
 

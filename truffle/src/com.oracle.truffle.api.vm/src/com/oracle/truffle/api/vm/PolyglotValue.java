@@ -147,6 +147,24 @@ abstract class PolyglotValue extends AbstractValueImpl {
     }
 
     @Override
+    protected RuntimeException npe(Object receiver, String message, String useToCheck) {
+        Object prev = languageContext.enter();
+        try {
+            Object metaObject = LANGUAGE.findMetaObject(languageContext.env, receiver);
+            String typeName = LANGUAGE.toStringIfVisible(languageContext.env, metaObject, false);
+            String languageName = getLanguage().getName();
+
+            throw new PolyglotNullPointerException(
+                            String.format("Unsupported operation %s.%s for receiver type %s and language %s. You can ensure that the operation is supported using %s.%s.",
+                                            Value.class.getSimpleName(), message, typeName, languageName, Value.class.getSimpleName(), useToCheck));
+        } catch (Throwable e) {
+            throw wrapGuestException(languageContext, e);
+        } finally {
+            languageContext.leave(prev);
+        }
+    }
+
+    @Override
     protected RuntimeException classcast(Object receiver, String castTypeName, String useToCheck) {
         Object prev = languageContext.enter();
         try {
@@ -1202,6 +1220,9 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         @Override
         public String asString(Object receiver) {
+            if (isNull(receiver)) {
+                return null;
+            }
             Object primitive = asPrimitive(receiver);
             if (primitive == null) {
                 return super.asString(receiver);

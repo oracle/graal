@@ -33,6 +33,7 @@ import java.io.PrintWriter;
 import java.io.Reader;
 import java.net.URI;
 import java.net.URL;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -415,7 +416,7 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public Set<String> getMemberKeys(Object receiver) {
-            throw unsupported(receiver, "getMemberKeys()", "hasMembers()");
+            return Collections.emptySet();
         }
 
         public void putMember(Object receiver, String key, Object member) {
@@ -471,7 +472,11 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public String asString(Object receiver) {
-            throw classcast(receiver, "asString()", "isString()");
+            if (isNull(receiver)) {
+                throw npe(receiver, "asString()", "isString()");
+            } else {
+                throw classcast(receiver, "asString()", "isString()");
+            }
         }
 
         public boolean isBoolean(Object receiver) {
@@ -479,7 +484,11 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public boolean asBoolean(Object receiver) {
-            throw classcast(receiver, "asBoolean()", "isBoolean()");
+            if (isNull(receiver)) {
+                throw npe(receiver, "asBoolean()", "isBoolean()");
+            } else {
+                throw classcast(receiver, "asBoolean()", "isBoolean()");
+            }
         }
 
         public boolean fitsInInt(Object receiver) {
@@ -487,7 +496,11 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public int asInt(Object receiver) {
-            throw classcast(receiver, "asInt()", "fitsInInt()");
+            if (isNull(receiver)) {
+                throw npe(receiver, "asInt()", "fitsInInt()");
+            } else {
+                throw classcast(receiver, "asInt()", "fitsInInt()");
+            }
         }
 
         public boolean fitsInLong(Object receiver) {
@@ -495,7 +508,11 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public long asLong(Object receiver) {
-            throw classcast(receiver, "asLong()", "fitsInLong()");
+            if (isNull(receiver)) {
+                throw npe(receiver, "asLong()", "fitsInLong()");
+            } else {
+                throw classcast(receiver, "asLong()", "fitsInLong()");
+            }
         }
 
         public boolean fitsInDouble(Object receiver) {
@@ -503,7 +520,11 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public double asDouble(Object receiver) {
-            throw classcast(receiver, "asDouble()", "fitsInDouble()");
+            if (isNull(receiver)) {
+                throw npe(receiver, "asDouble()", "fitsInDouble()");
+            } else {
+                throw classcast(receiver, "asDouble()", "fitsInDouble()");
+            }
         }
 
         public boolean fitsInFloat(Object receiver) {
@@ -511,7 +532,11 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public float asFloat(Object receiver) {
-            throw classcast(receiver, "asFloat()", "fitsInFloat()");
+            if (isNull(receiver)) {
+                throw npe(receiver, "asFloat()", "fitsInFloat()");
+            } else {
+                throw classcast(receiver, "asFloat()", "fitsInFloat()");
+            }
         }
 
         public boolean isNull(Object receiver) {
@@ -522,12 +547,28 @@ public abstract class AbstractPolyglotImpl {
             return false;
         }
 
+        public boolean fitsInByte(Object receiver) {
+            return false;
+        }
+
+        public byte asByte(Object receiver) {
+            if (isNull(receiver)) {
+                throw npe(receiver, "asByte()", "fitsInByte()");
+            } else {
+                throw classcast(receiver, "asByte()", "fitsInByte()");
+            }
+        }
+
         public boolean fitsInShort(Object receiver) {
             return false;
         }
 
         public short asShort(Object receiver) {
-            throw classcast(receiver, "asShort()", "fitsInShort()");
+            if (isNull(receiver)) {
+                throw npe(receiver, "asShort()", "fitsInShort()");
+            } else {
+                throw classcast(receiver, "asShort()", "fitsInShort()");
+            }
         }
 
         public long asNativePointer(Object receiver) {
@@ -558,17 +599,11 @@ public abstract class AbstractPolyglotImpl {
 
         protected abstract RuntimeException classcast(Object receiver, String message, String useToCheck);
 
+        protected abstract RuntimeException npe(Object receiver, String message, String useToCheck);
+
         public abstract String toString(Object receiver);
 
         public abstract Value getMetaObject(Object receiver);
-
-        public boolean fitsInByte(Object receiver) {
-            return false;
-        }
-
-        public byte asByte(Object receiver) {
-            throw classcast(receiver, "asByte()", "fitsInByte()");
-        }
 
         public boolean isNumber(Object receiver) {
             return false;

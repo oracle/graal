@@ -48,6 +48,7 @@ abstract class ToJavaNode extends Node {
     static final int LIMIT = 3;
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
     @Child private Node isInstantiable = Message.IS_INSTANTIABLE.createNode();
+    @Child private Node isNull = Message.IS_NULL.createNode();
     @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
 
     public abstract Object execute(Object value, Class<?> targetType, Type genericType, Object languageContext);
@@ -78,10 +79,14 @@ abstract class ToJavaNode extends Node {
             convertedValue = value instanceof Value ? value : JavaInterop.toHostValue(value, languageContext);
         } else if (JavaObject.isJavaInstance(targetType, value)) {
             convertedValue = JavaObject.valueOf(value);
-        } else if (value == JavaObject.NULL) {
-            return null;
         } else if (value instanceof TruffleObject) {
-            if (targetType == Object.class) {
+            TruffleObject tValue = (TruffleObject) value;
+            if (ForeignAccess.sendIsNull(isNull, tValue)) {
+                if (targetType.isPrimitive()) {
+                    throw newNullPointerException(targetType);
+                }
+                return null;
+            } else if (targetType == Object.class) {
                 convertedValue = convertToObject((TruffleObject) value, languageContext);
             } else if (!TruffleOptions.AOT && JavaInterop.isJavaFunctionInterface(targetType) && isExecutable((TruffleObject) value)) {
                 if (targetType.isInstance(value)) {
@@ -114,11 +119,13 @@ abstract class ToJavaNode extends Node {
             return true;
         } else if (JavaObject.isJavaInstance(targetType, value)) {
             return true;
-        } else if (value == JavaObject.NULL && !targetType.isPrimitive()) {
-            return true;
         } else if (value instanceof TruffleObject) {
-            if (targetType.isPrimitive()) {
-                return false;
+            TruffleObject tValue = (TruffleObject) value;
+            if (ForeignAccess.sendIsNull(isNull, tValue)) {
+                if (targetType.isPrimitive()) {
+                    return false;
+                }
+                return true;
             }
             if (targetType == Object.class) {
                 return true;
@@ -239,6 +246,13 @@ abstract class ToJavaNode extends Node {
     private static ClassCastException newClassCastException(Object value, Type targetType, String reason) {
         String message = "Cannot convert " + (value == null ? "null" : value.getClass().getName()) + " to " + targetType.getTypeName() + (reason == null ? "" : ": " + reason);
         return newClassCastException(message);
+    }
+
+    @TruffleBoundary
+    private static NullPointerException newNullPointerException(Type targetType) {
+        String message = "Cannot convert null to " + targetType.getTypeName();
+        EngineSupport engine = JavaInterop.ACCESSOR.engine();
+        return engine != null ? engine.newNullPointerException(message, null) : new NullPointerException(message);
     }
 
     @TruffleBoundary

@@ -237,6 +237,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             throw (PolyglotClassCastException) e;
         } else if (e instanceof PolyglotIllegalStateException) {
             throw (PolyglotIllegalStateException) e;
+        } else if (e instanceof PolyglotNullPointerException) {
+            throw (PolyglotNullPointerException) e;
         } else {
             // fallthrough
         }
@@ -766,6 +768,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public ClassCastException newClassCastException(String message, Throwable cause) {
             return cause == null ? new PolyglotClassCastException(message) : new PolyglotClassCastException(message, cause);
+        }
+
+        @Override
+        public NullPointerException newNullPointerException(String message, Throwable cause) {
+            return cause == null ? new PolyglotNullPointerException(message) : new PolyglotNullPointerException(message, cause);
         }
 
         @Override

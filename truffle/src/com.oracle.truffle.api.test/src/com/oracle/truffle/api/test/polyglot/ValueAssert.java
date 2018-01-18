@@ -26,16 +26,17 @@ import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.ARRAY_ELEME
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.BOOLEAN;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.EXECUTABLE;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.HOST_OBJECT;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.PROXY_OBJECT;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.INSTANTIABLE;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.MEMBERS;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NATIVE;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NULL;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NUMBER;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.PROXY_OBJECT;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.STRING;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -79,6 +80,8 @@ public class ValueAssert {
     private static final TypeLiteral<Map<Double, Object>> DOUBLE_OBJECT_MAP = new TypeLiteral<Map<Double, Object>>() {
     };
     private static final TypeLiteral<Map<CharSequence, Object>> CHAR_SEQUENCE_OBJECT_MAP = new TypeLiteral<Map<CharSequence, Object>>() {
+    };
+    private static final TypeLiteral<Function<Object, Object>> FUNCTION = new TypeLiteral<Function<Object, Object>>() {
     };
 
     private static final TypeLiteral<?>[] NEVER_SUPPORTED_MAPS = new TypeLiteral[]{
@@ -208,58 +211,105 @@ public class ValueAssert {
                     assertFalse(value.fitsInFloat());
                     assertFalse(value.fitsInDouble());
 
-                    assertFails(() -> value.asByte(), ClassCastException.class);
-                    assertFails(() -> value.asShort(), ClassCastException.class);
-                    assertFails(() -> value.asInt(), ClassCastException.class);
-                    assertFails(() -> value.asLong(), ClassCastException.class);
-                    assertFails(() -> value.asFloat(), ClassCastException.class);
-                    assertFails(() -> value.asDouble(), ClassCastException.class);
+                    if (value.isNull()) {
+                        assertNull(value.as(Number.class));
+                        assertNull(value.as(Byte.class));
+                        assertNull(value.as(Short.class));
+                        assertNull(value.as(Integer.class));
+                        assertNull(value.as(Long.class));
+                        assertNull(value.as(Float.class));
 
-                    assertFails(() -> value.as(Number.class), ClassCastException.class);
-                    assertFails(() -> value.as(byte.class), ClassCastException.class);
-                    assertFails(() -> value.as(Byte.class), ClassCastException.class);
-                    assertFails(() -> value.as(short.class), ClassCastException.class);
-                    assertFails(() -> value.as(Short.class), ClassCastException.class);
-                    assertFails(() -> value.as(int.class), ClassCastException.class);
-                    assertFails(() -> value.as(Integer.class), ClassCastException.class);
-                    assertFails(() -> value.as(long.class), ClassCastException.class);
-                    assertFails(() -> value.as(Long.class), ClassCastException.class);
-                    assertFails(() -> value.as(float.class), ClassCastException.class);
-                    assertFails(() -> value.as(Float.class), ClassCastException.class);
+                        assertFails(() -> value.as(byte.class), NullPointerException.class);
+                        assertFails(() -> value.as(short.class), NullPointerException.class);
+                        assertFails(() -> value.as(int.class), NullPointerException.class);
+                        assertFails(() -> value.as(long.class), NullPointerException.class);
+                        assertFails(() -> value.as(float.class), NullPointerException.class);
+
+                        assertFails(() -> value.asByte(), NullPointerException.class);
+                        assertFails(() -> value.asShort(), NullPointerException.class);
+                        assertFails(() -> value.asInt(), NullPointerException.class);
+                        assertFails(() -> value.asLong(), NullPointerException.class);
+                        assertFails(() -> value.asFloat(), NullPointerException.class);
+                        assertFails(() -> value.asDouble(), NullPointerException.class);
+
+                    } else {
+                        assertFails(() -> value.as(Number.class), ClassCastException.class);
+                        assertFails(() -> value.as(Byte.class), ClassCastException.class);
+                        assertFails(() -> value.as(Short.class), ClassCastException.class);
+                        assertFails(() -> value.as(Integer.class), ClassCastException.class);
+                        assertFails(() -> value.as(Long.class), ClassCastException.class);
+                        assertFails(() -> value.as(Float.class), ClassCastException.class);
+
+                        assertFails(() -> value.as(byte.class), ClassCastException.class);
+                        assertFails(() -> value.as(short.class), ClassCastException.class);
+                        assertFails(() -> value.as(int.class), ClassCastException.class);
+                        assertFails(() -> value.as(long.class), ClassCastException.class);
+                        assertFails(() -> value.as(float.class), ClassCastException.class);
+
+                        assertFails(() -> value.asByte(), ClassCastException.class);
+                        assertFails(() -> value.asShort(), ClassCastException.class);
+                        assertFails(() -> value.asInt(), ClassCastException.class);
+                        assertFails(() -> value.asLong(), ClassCastException.class);
+                        assertFails(() -> value.asFloat(), ClassCastException.class);
+                        assertFails(() -> value.asDouble(), ClassCastException.class);
+                    }
+
                     break;
                 case BOOLEAN:
                     assertFalse(value.isBoolean());
-                    assertFails(() -> value.asBoolean(), ClassCastException.class);
-                    assertFails(() -> value.as(boolean.class), ClassCastException.class);
-                    assertFails(() -> value.as(Boolean.class), ClassCastException.class);
+
+                    if (value.isNull()) {
+                        assertFails(() -> value.asBoolean(), NullPointerException.class);
+                        assertFails(() -> value.as(boolean.class), NullPointerException.class);
+                        assertNull(value.as(Boolean.class));
+                    } else {
+                        assertFails(() -> value.asBoolean(), ClassCastException.class);
+                        assertFails(() -> value.as(boolean.class), ClassCastException.class);
+                        assertFails(() -> value.as(Boolean.class), ClassCastException.class);
+                    }
+
                     break;
                 case STRING:
                     assertFalse(value.isString());
-                    assertFails(() -> value.asString(), ClassCastException.class);
-                    assertFails(() -> value.as(String.class), ClassCastException.class);
-                    assertFails(() -> value.as(Character.class), ClassCastException.class);
+
+                    if (value.isNull()) {
+                        assertNull(value.as(String.class));
+                        assertNull(value.as(Character.class));
+                        assertNull(value.asString());
+                    } else {
+                        assertFails(() -> value.asString(), ClassCastException.class);
+                        assertFails(() -> value.as(String.class), ClassCastException.class);
+                        assertFails(() -> value.as(Character.class), ClassCastException.class);
+                    }
+
                     break;
                 case MEMBERS:
                     assertFalse(value.hasMembers());
-                    assertFails(() -> value.hasMember("asdf"), UnsupportedOperationException.class);
+                    assertFalse(value.hasMember("asdf"));
                     assertFails(() -> value.getMember("asdf"), UnsupportedOperationException.class);
                     assertFails(() -> value.putMember("", ""), UnsupportedOperationException.class);
-                    assertFails(() -> value.getMemberKeys(), UnsupportedOperationException.class);
+                    assertTrue(value.getMemberKeys().isEmpty());
                     break;
                 case EXECUTABLE:
                     assertFalse(value.toString(), value.canExecute());
                     assertFails(() -> value.execute(), UnsupportedOperationException.class);
-                    if (!value.canInstantiate()) {
-                        assertFails(() -> value.as(Function.class), ClassCastException.class);
-                        assertFails(() -> value.as(IsFunctionalInterfaceVarArgs.class), ClassCastException.class);
+                    if (value.isNull()) {
+                        assertNull(value.as(Function.class));
+                        assertNull(value.as(IsFunctionalInterfaceVarArgs.class));
+                    } else if (!value.canInstantiate()) {
+                        assertFails(() -> value.as(FUNCTION).apply(""), UnsupportedOperationException.class);
+                        assertFails(() -> value.as(IsFunctionalInterfaceVarArgs.class).foobarbaz(), UnsupportedOperationException.class);
                     }
                     break;
                 case INSTANTIABLE:
                     assertFalse(value.canInstantiate());
                     assertFails(() -> value.newInstance(), UnsupportedOperationException.class);
-                    if (!value.canExecute()) {
-                        assertFails(() -> value.as(Function.class), ClassCastException.class);
-                        assertFails(() -> value.as(IsFunctionalInterfaceVarArgs.class), ClassCastException.class);
+                    if (value.isNull()) {
+                        assertNull(value.as(Function.class));
+                        assertNull(value.as(IsFunctionalInterfaceVarArgs.class));
+                    } else if (!value.canExecute()) {
+                        assertFails(() -> value.as(FUNCTION).apply(""), UnsupportedOperationException.class);
+                        assertFails(() -> value.as(IsFunctionalInterfaceVarArgs.class).foobarbaz(), UnsupportedOperationException.class);
                     }
                     break;
                 case NULL:
@@ -328,7 +378,7 @@ public class ValueAssert {
         assertEquals(receivedObjectsLongMap, objectMap4);
 
         if (value.isHostObject()) {
-            assertTrue(value.as(Object.class).getClass().isArray());
+            assertTrue(value.as(Object.class) instanceof List || value.as(Object.class).getClass().isArray());
         } else {
             Map<Object, Object> objectMap5 = (Map<Object, Object>) value.as(Object.class);
             assertEquals(receivedObjectsObjectMap, objectMap5);
@@ -451,7 +501,7 @@ public class ValueAssert {
         Object foobarbaz(Object... args);
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "cast"})
     private static void assertFunctionalInterfaceMapping(Context context, Value value, Object[] arguments) {
         Function<Object, Object> f1;
         if (value.isHostObject()) {
@@ -463,9 +513,15 @@ public class ValueAssert {
         Function<Object[], Object> f2 = value.as(Function.class);
         IsFunctionalInterfaceVarArgs f3 = value.as(IsFunctionalInterfaceVarArgs.class);
 
-        if (!value.hasMembers()) {
-            assertFails(() -> value.as(EmptyInterface.class), ClassCastException.class);
-            assertFails(() -> value.as(NonFunctionalInterface.class), ClassCastException.class);
+        // mapping an empty interface works with any value.
+        if (value.isNull()) {
+            assertNull(value.as(EmptyInterface.class));
+        } else {
+            assertTrue(value.as(EmptyInterface.class) instanceof EmptyInterface);
+        }
+
+        if (!value.hasMember("foobarbaz")) {
+            assertFails(() -> value.as(NonFunctionalInterface.class).foobarbaz(), UnsupportedOperationException.class);
         }
 
         if (arguments != null) {
