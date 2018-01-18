@@ -139,13 +139,13 @@ final class ToPrimitiveNode extends Node {
         } else if (value instanceof Float) {
             float f = (float) value;
             byte b = (byte) f;
-            if (b == f) {
+            if (b == f && !isNegativeZero(f)) {
                 return b;
             }
         } else if (value instanceof Double) {
             double d = (double) value;
             byte b = (byte) d;
-            if (b == d) {
+            if (b == d && !isNegativeZero(d)) {
                 return b;
             }
         }
@@ -174,13 +174,13 @@ final class ToPrimitiveNode extends Node {
         } else if (value instanceof Float) {
             float f = (float) value;
             short s = (short) f;
-            if (s == f) {
+            if (s == f && !isNegativeZero(f)) {
                 return s;
             }
         } else if (value instanceof Double) {
             double d = (double) value;
             short s = (short) d;
-            if (s == d) {
+            if (s == d && !isNegativeZero(d)) {
                 return s;
             }
         }
@@ -205,7 +205,7 @@ final class ToPrimitiveNode extends Node {
             }
         } else if (value instanceof Float) {
             float f = (float) value;
-            if (inSafeIntegerRange(f)) {
+            if (inSafeIntegerRange(f) && !isNegativeZero(f)) {
                 int i = (int) f;
                 if (i == f) {
                     return i;
@@ -214,7 +214,7 @@ final class ToPrimitiveNode extends Node {
         } else if (value instanceof Double) {
             double d = (double) value;
             int i = (int) d;
-            if (i == d) {
+            if (i == d && !isNegativeZero(d)) {
                 return i;
             }
         }
@@ -236,7 +236,7 @@ final class ToPrimitiveNode extends Node {
             return (long) i;
         } else if (value instanceof Float) {
             float f = (float) value;
-            if (inSafeIntegerRange(f)) {
+            if (inSafeIntegerRange(f) && !isNegativeZero(f)) {
                 long l = (long) f;
                 if (l == f) {
                     return l;
@@ -244,7 +244,7 @@ final class ToPrimitiveNode extends Node {
             }
         } else if (value instanceof Double) {
             double d = (double) value;
-            if (inSafeIntegerRange(d)) {
+            if (inSafeIntegerRange(d) && !isNegativeZero(d)) {
                 long l = (long) d;
                 if (l == d) {
                     return l;
@@ -330,6 +330,14 @@ final class ToPrimitiveNode extends Node {
 
     private static boolean inSafeFloatRange(long l) {
         return l >= -INT_MAX_SAFE_FLOAT && l <= INT_MAX_SAFE_FLOAT;
+    }
+
+    private static boolean isNegativeZero(double d) {
+        return d == 0d && Double.doubleToRawLongBits(d) == Double.doubleToRawLongBits(-0d);
+    }
+
+    private static boolean isNegativeZero(float f) {
+        return f == 0f && Float.floatToRawIntBits(f) == Float.floatToRawIntBits(-0f);
     }
 
     @TruffleBoundary(allowInlining = true)
