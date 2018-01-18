@@ -24,6 +24,7 @@ package org.graalvm.compiler.nodes;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.compiler.debug.TTY;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -75,6 +76,7 @@ public class InliningLog {
         private final InliningLog childLog;
 
         private Decision(boolean positive, String reason, String phase, BytecodePositionWithId position, InliningLog childLog) {
+            assert position != null;
             this.positive = positive;
             this.reason = reason;
             this.phase = phase;
@@ -116,5 +118,25 @@ public class InliningLog {
     public void addDecision(boolean positive, String reason, String phase, BytecodePositionWithId position, InliningLog calleeLog) {
         Decision decision = new Decision(positive, reason, phase, position, calleeLog);
         decisions.add(decision);
+    }
+
+    public String formatAsList() {
+        StringBuilder builder = new StringBuilder();
+        formatAsList("", decisions, builder);
+        return builder.toString();
+    }
+
+    private void formatAsList(String phasePrefix, List<Decision> decisions, StringBuilder builder) {
+        for (Decision decision : decisions) {
+            String phaseStack = phasePrefix.equals("") ? decision.getPhase() : phasePrefix + "-" + decision.getPhase();
+            String positive = decision.isPositive() ? "inline" : "do not inline";
+            String position = "  " + decision.getPosition().toString().replaceAll("\n", "\n  ");
+            String line = String.format("<%s> %s: %s\n%s", phaseStack, positive, decision.getReason(), position);
+            builder.append(line);
+            builder.append(System.lineSeparator());
+            if (decision.getChildLog() != null) {
+                formatAsList(phaseStack, decision.getChildLog().getDecisions(), builder);
+            }
+        }
     }
 }

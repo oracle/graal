@@ -422,8 +422,7 @@ public abstract class PartialEvaluator {
         InvocationPlugins invocationPlugins = newConfig.getPlugins().getInvocationPlugins();
         registerTruffleInvocationPlugins(invocationPlugins, canDelayIntrinsification);
         boolean mustInstrumentBranches = TruffleCompilerOptions.getValue(TruffleInstrumentBranches) || TruffleCompilerOptions.getValue(TruffleInstrumentBoundaries);
-        boolean mustLogInlining = GraalOptions.EnableContextualInlineLogging.getValue(TruffleCompilerOptions.getOptions());
-        return newConfig.withNodeSourcePosition(newConfig.trackNodeSourcePosition() || mustLogInlining ||  mustInstrumentBranches || TruffleCompilerOptions.getValue(TraceTrufflePerformanceWarnings));
+        return newConfig.withNodeSourcePosition(newConfig.trackNodeSourcePosition() || mustInstrumentBranches || TruffleCompilerOptions.getValue(TraceTrufflePerformanceWarnings));
     }
 
     protected NodePlugin[] createNodePlugins(Plugins plugins) {
