@@ -274,10 +274,13 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             if (plugin instanceof MethodSubstitutionPlugin) {
                 MethodSubstitutionPlugin msPlugin = (MethodSubstitutionPlugin) plugin;
                 ResolvedJavaMethod substitute = msPlugin.getSubstitute(metaAccess);
-                StructuredGraph graph = graphs.get(substitute);
+                StructuredGraph graph = UseSnippetGraphCache.getValue(options) ? graphs.get(substitute) : null;
                 if (graph == null) {
                     try (DebugContext debug = openDebugContext("Substitution_", method)) {
                         graph = makeGraph(debug, msPlugin.getBytecodeProvider(), substitute, null, method);
+                        if (!UseSnippetGraphCache.getValue(options)) {
+                            return graph;
+                        }
                         graph.freeze();
                         graphs.putIfAbsent(substitute, graph);
                         graph = graphs.get(substitute);
