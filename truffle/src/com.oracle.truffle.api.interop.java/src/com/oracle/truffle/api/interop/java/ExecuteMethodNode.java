@@ -296,6 +296,7 @@ abstract class ExecuteMethodNode extends Node {
         List<SingleMethodDesc> applicableByArity = new ArrayList<>();
         int minOverallArity = Integer.MAX_VALUE;
         int maxOverallArity = 0;
+        boolean anyVarArgs = false;
         for (SingleMethodDesc overload : overloads) {
             int paramCount = overload.getParameterCount();
             if (!overload.isVarArgs()) {
@@ -305,6 +306,7 @@ abstract class ExecuteMethodNode extends Node {
                     continue;
                 }
             } else {
+                anyVarArgs = true;
                 int fixedParamCount = paramCount - 1;
                 if (args.length < fixedParamCount) {
                     minOverallArity = Math.min(minOverallArity, fixedParamCount);
@@ -318,126 +320,108 @@ abstract class ExecuteMethodNode extends Node {
             throw ArityException.raise((args.length > maxOverallArity ? maxOverallArity : minOverallArity), args.length);
         }
 
-        List<SingleMethodDesc> strictCandidates = new ArrayList<>();
-        for (SingleMethodDesc candidate : applicableByArity) {
-            int paramCount = candidate.getParameterCount();
-            if (!candidate.isVarArgs() || paramCount == args.length) {
-                assert paramCount == args.length;
-                Class<?>[] parameterTypes = candidate.getParameterTypes();
-                boolean subtyping = true;
-                for (int i = 0; i < paramCount; i++) {
-                    Class<?> parameterType = parameterTypes[i];
-                    Object argument = args[i];
-                    if (!isSubtypeOf(argument, parameterType)) {
-                        subtyping = false;
-                        break;
-                    }
-                }
-                if (subtyping) {
-                    strictCandidates.add(candidate);
-                }
-            }
+        SingleMethodDesc best;
+        best = findBestCandidate(applicableByArity, args, languageContext, toJavaNode, false, true);
+        if (best != null) {
+            return best;
         }
-        if (!strictCandidates.isEmpty()) {
-            if (strictCandidates.size() == 1) {
-                return strictCandidates.get(0);
-            } else {
-                SingleMethodDesc best = findBestOverload(strictCandidates, args, false);
-                if (best != null) {
-                    return best;
-                }
-                throw ambiguousOverloadsException(strictCandidates, args);
-            }
+        best = findBestCandidate(applicableByArity, args, languageContext, toJavaNode, false, false);
+        if (best != null) {
+            return best;
         }
-        strictCandidates = null;
-
-        List<SingleMethodDesc> looseCandidates = new ArrayList<>();
-        for (SingleMethodDesc candidate : applicableByArity) {
-            int paramCount = candidate.getParameterCount();
-            if (!candidate.isVarArgs() || paramCount == args.length) {
-                assert paramCount == args.length;
-                Class<?>[] parameterTypes = candidate.getParameterTypes();
-                Type[] genericParameterTypes = candidate.getGenericParameterTypes();
-                boolean applicable = true;
-                for (int i = 0; i < paramCount; i++) {
-                    if (!toJavaNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], languageContext)) {
-                        applicable = false;
-                        break;
-                    }
-                }
-                if (applicable) {
-                    looseCandidates.add(candidate);
-                }
+        if (anyVarArgs) {
+            best = findBestCandidate(applicableByArity, args, languageContext, toJavaNode, true, true);
+            if (best != null) {
+                return best;
             }
-        }
-        if (!looseCandidates.isEmpty()) {
-            if (looseCandidates.size() == 1) {
-                return looseCandidates.get(0);
-            } else {
-                SingleMethodDesc best = findBestOverload(looseCandidates, args, false);
-                if (best != null) {
-                    return best;
-                }
-                throw ambiguousOverloadsException(looseCandidates, args);
-            }
-        }
-        looseCandidates = null;
-
-        List<SingleMethodDesc> varArgCandidates = new ArrayList<>();
-        for (SingleMethodDesc candidate : applicableByArity) {
-            if (candidate.isVarArgs()) {
-                int parameterCount = candidate.getParameterCount();
-                Class<?>[] parameterTypes = candidate.getParameterTypes();
-                Type[] genericParameterTypes = candidate.getGenericParameterTypes();
-                boolean applicable = true;
-                for (int i = 0; i < parameterCount - 1; i++) {
-                    if (!isSubtypeOf(args[i], parameterTypes[i]) && !toJavaNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], languageContext)) {
-                        applicable = false;
-                        break;
-                    }
-                }
-                if (applicable) {
-                    Class<?> varArgsComponentType = parameterTypes[parameterCount - 1].getComponentType();
-                    Type varArgsGenericComponentType = genericParameterTypes[parameterCount - 1];
-                    if (varArgsGenericComponentType instanceof GenericArrayType) {
-                        final GenericArrayType arrayType = (GenericArrayType) varArgsGenericComponentType;
-                        varArgsGenericComponentType = arrayType.getGenericComponentType();
-                    } else {
-                        varArgsGenericComponentType = varArgsComponentType;
-                    }
-                    for (int i = parameterCount - 1; i < args.length; i++) {
-                        if (!isSubtypeOf(args[i], varArgsComponentType) && !toJavaNode.canConvert(args[i], varArgsComponentType, varArgsGenericComponentType, languageContext)) {
-                            applicable = false;
-                            break;
-                        }
-                    }
-                    if (applicable) {
-                        varArgCandidates.add(candidate);
-                    }
-                }
-            }
-        }
-
-        if (!varArgCandidates.isEmpty()) {
-            if (varArgCandidates.size() == 1) {
-                return varArgCandidates.get(0);
-            } else {
-                SingleMethodDesc best = findBestOverload(varArgCandidates, args, true);
-                if (best != null) {
-                    return best;
-                }
-                throw ambiguousOverloadsException(varArgCandidates, args);
+            best = findBestCandidate(applicableByArity, args, languageContext, toJavaNode, true, false);
+            if (best != null) {
+                return best;
             }
         }
 
         throw noApplicableOverloadsException(overloads, args);
     }
 
-    private static SingleMethodDesc findBestOverload(List<SingleMethodDesc> candidates, Object[] args, boolean varArgs) {
+    private static SingleMethodDesc findBestCandidate(List<SingleMethodDesc> applicableByArity, Object[] args, Object languageContext, ToJavaNode toJavaNode, boolean varArgs, boolean strict) {
+        List<SingleMethodDesc> candidates = new ArrayList<>();
+
+        if (!varArgs) {
+            for (SingleMethodDesc candidate : applicableByArity) {
+                int paramCount = candidate.getParameterCount();
+                if (!candidate.isVarArgs() || paramCount == args.length) {
+                    assert paramCount == args.length;
+                    Class<?>[] parameterTypes = candidate.getParameterTypes();
+                    boolean applicable = true;
+                    for (int i = 0; i < paramCount; i++) {
+                        Class<?> parameterType = parameterTypes[i];
+                        Type[] genericParameterTypes = candidate.getGenericParameterTypes();
+                        Object argument = args[i];
+                        if (!isSubtypeOf(argument, parameterType) && !toJavaNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], languageContext, strict)) {
+                            applicable = false;
+                            break;
+                        }
+                    }
+                    if (applicable) {
+                        candidates.add(candidate);
+                    }
+                }
+            }
+        } else {
+            for (SingleMethodDesc candidate : applicableByArity) {
+                if (candidate.isVarArgs()) {
+                    int parameterCount = candidate.getParameterCount();
+                    Class<?>[] parameterTypes = candidate.getParameterTypes();
+                    Type[] genericParameterTypes = candidate.getGenericParameterTypes();
+                    boolean applicable = true;
+                    for (int i = 0; i < parameterCount - 1; i++) {
+                        if (!isSubtypeOf(args[i], parameterTypes[i]) && !toJavaNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], languageContext, strict)) {
+                            applicable = false;
+                            break;
+                        }
+                    }
+                    if (applicable) {
+                        Class<?> varArgsComponentType = parameterTypes[parameterCount - 1].getComponentType();
+                        Type varArgsGenericComponentType = genericParameterTypes[parameterCount - 1];
+                        if (varArgsGenericComponentType instanceof GenericArrayType) {
+                            final GenericArrayType arrayType = (GenericArrayType) varArgsGenericComponentType;
+                            varArgsGenericComponentType = arrayType.getGenericComponentType();
+                        } else {
+                            varArgsGenericComponentType = varArgsComponentType;
+                        }
+                        for (int i = parameterCount - 1; i < args.length; i++) {
+                            if (!isSubtypeOf(args[i], varArgsComponentType) && !toJavaNode.canConvert(args[i], varArgsComponentType, varArgsGenericComponentType, languageContext, strict)) {
+                                applicable = false;
+                                break;
+                            }
+                        }
+                        if (applicable) {
+                            candidates.add(candidate);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!candidates.isEmpty()) {
+            if (candidates.size() == 1) {
+                return candidates.get(0);
+            } else {
+                SingleMethodDesc best = findMostSpecificOverload(candidates, args, varArgs);
+                if (best != null) {
+                    return best;
+                }
+                throw ambiguousOverloadsException(candidates, args);
+            }
+        }
+        return null;
+    }
+
+    private static SingleMethodDesc findMostSpecificOverload(List<SingleMethodDesc> candidates, Object[] args, boolean varArgs) {
         assert candidates.size() >= 2;
         if (candidates.size() == 2) {
             int res = compareOverloads(candidates.get(0), candidates.get(1), args, varArgs);
-            return res == 0 ? null : (res == -1 ? candidates.get(0) : candidates.get(1));
+            return res == 0 ? null : (res < 0 ? candidates.get(0) : candidates.get(1));
         }
 
         Iterator<SingleMethodDesc> candIt = candidates.iterator();
@@ -451,11 +435,11 @@ abstract class ExecuteMethodNode extends Node {
                 int res = compareOverloads(cand, bestIt.next(), args, varArgs);
                 if (res == 0) {
                     add = true;
-                } else if (res == -1) {
+                } else if (res < 0) {
                     bestIt.remove();
                     add = true;
                 } else {
-                    assert res == 1;
+                    assert res > 0;
                 }
             }
             if (add) {
@@ -477,19 +461,13 @@ abstract class ExecuteMethodNode extends Node {
         assert varArgs || (m1.getParameterCount() == m2.getParameterCount() && args.length == m1.getParameterCount());
         assert maxParamCount <= args.length;
         for (int i = 0; i < maxParamCount; i++) {
-            Class<?> t1 = varArgs && i >= m1.getParameterCount() - 1 ? m1.getParameterTypes()[m1.getParameterCount() - 1].getComponentType() : m1.getParameterTypes()[i];
-            Class<?> t2 = varArgs && i >= m2.getParameterCount() - 1 ? m2.getParameterTypes()[m2.getParameterCount() - 1].getComponentType() : m2.getParameterTypes()[i];
+            Class<?> t1 = getParameterType(m1.getParameterTypes(), i, varArgs);
+            Class<?> t2 = getParameterType(m2.getParameterTypes(), i, varArgs);
             if (t1 == t2) {
                 continue;
             }
-            int r;
-            if (isAssignableFrom(t1, t2)) {
-                // t1 > t2 (t2 more specific)
-                r = 1;
-            } else if (isAssignableFrom(t2, t1)) {
-                // t1 < t2 (t1 more specific)
-                r = -1;
-            } else {
+            int r = compareAssignable(t1, t2);
+            if (r == 0) {
                 continue;
             }
             if (res == 0) {
@@ -503,22 +481,38 @@ abstract class ExecuteMethodNode extends Node {
         return res;
     }
 
-    private static boolean isAssignableFrom(Class<?> t1, Class<?> t2) {
-        if (t1.isAssignableFrom(t2)) {
+    private static Class<?> getParameterType(Class<?>[] parameterTypes, int i, boolean varArgs) {
+        return varArgs && i >= parameterTypes.length - 1 ? parameterTypes[parameterTypes.length - 1].getComponentType() : parameterTypes[i];
+    }
+
+    private static int compareAssignable(Class<?> t1, Class<?> t2) {
+        if (isAssignableFrom(t1, t2)) {
+            // t1 > t2 (t2 more specific)
+            return 1;
+        } else if (isAssignableFrom(t2, t1)) {
+            // t1 < t2 (t1 more specific)
+            return -1;
+        } else {
+            return 0;
+        }
+    }
+
+    private static boolean isAssignableFrom(Class<?> toType, Class<?> fromType) {
+        if (toType.isAssignableFrom(fromType)) {
             return true;
         }
-        if (t2.isPrimitive()) {
-            if (t1.isPrimitive()) {
-                if (isWideningPrimitiveConversion(t1, t2)) {
+        if (fromType.isPrimitive()) {
+            if (toType.isPrimitive()) {
+                if (isWideningPrimitiveConversion(toType, fromType)) {
                     return true;
                 }
-            } else if (t1.isAssignableFrom(primitiveTypeToBoxedType(t2))) {
+            } else if (toType.isAssignableFrom(primitiveTypeToBoxedType(fromType))) {
                 // primitive <: boxed
                 return true;
             }
-        } else if (t1.isPrimitive()) {
-            Class<?> boxedToPrimitive = boxedTypeToPrimitiveType(t2);
-            if (boxedToPrimitive != null && isWideningPrimitiveConversion(t1, boxedToPrimitive)) {
+        } else if (toType.isPrimitive()) {
+            Class<?> boxedToPrimitive = boxedTypeToPrimitiveType(fromType);
+            if (boxedToPrimitive != null && isWideningPrimitiveConversion(toType, boxedToPrimitive)) {
                 // boxed <: wider primitive
                 return true;
             }

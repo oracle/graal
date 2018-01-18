@@ -68,6 +68,12 @@ abstract class ToJavaNode extends Node {
         return convertImpl(cachedOperandType.cast(operand), cachedTargetType, genericType, languageContext);
     }
 
+    @Specialization(guards = "operand != null", replaces = "doCached")
+    @TruffleBoundary
+    protected Object doGeneric(Object operand, Class<?> targetType, Type genericType, Object languageContext) {
+        return convertImpl(operand, targetType, genericType, languageContext);
+    }
+
     private Object convertImpl(Object value, Class<?> targetType, Type genericType, Object languageContext) {
         Object convertedValue;
         if (isAssignableFromTrufflePrimitiveType(targetType)) {
@@ -76,7 +82,7 @@ abstract class ToJavaNode extends Node {
                 return convertedValue;
             }
         }
-        if (languageContext != null && targetType == Value.class) {
+        if (targetType == Value.class && languageContext != null) {
             convertedValue = value instanceof Value ? value : JavaInterop.toHostValue(value, languageContext);
         } else if (JavaObject.isJavaInstance(targetType, value)) {
             convertedValue = JavaObject.valueOf(value);
@@ -110,15 +116,18 @@ abstract class ToJavaNode extends Node {
     }
 
     @SuppressWarnings("unused")
-    boolean canConvert(Object value, Class<?> targetType, Type genericType, Object languageContext) {
+    boolean canConvert(Object value, Class<?> targetType, Type genericType, Object languageContext, boolean strict) {
+        if (strict) {
+            return false;
+        }
         Object convertedValue;
         if (isAssignableFromTrufflePrimitiveType(targetType)) {
-            convertedValue = primitive.toPrimitive(value, targetType);
+            convertedValue = toPrimitive(value, targetType);
             if (convertedValue != null) {
                 return true;
             }
         }
-        if (languageContext != null && targetType == Value.class) {
+        if (targetType == Value.class && languageContext != null) {
             return true;
         } else if (JavaObject.isJavaInstance(targetType, value)) {
             return true;
@@ -152,13 +161,11 @@ abstract class ToJavaNode extends Node {
         }
     }
 
-    @Specialization(guards = "operand != null", replaces = "doCached")
-    @TruffleBoundary
-    protected Object doGeneric(Object operand, Class<?> targetType, Type genericType, Object languageContext) {
-        return convertImpl(operand, targetType, genericType, languageContext);
+    Object toPrimitive(Object value, Class<?> targetType) {
+        return primitive.toPrimitive(value, targetType);
     }
 
-    private static boolean isAssignableFromTrufflePrimitiveType(Class<?> clazz) {
+    static boolean isAssignableFromTrufflePrimitiveType(Class<?> clazz) {
         return clazz == int.class || clazz == Integer.class ||
                         clazz == boolean.class || clazz == Boolean.class ||
                         clazz == byte.class || clazz == Byte.class ||
@@ -180,7 +187,7 @@ abstract class ToJavaNode extends Node {
     }
 
     private Object convertToObject(TruffleObject truffleObject, Object languageContext) {
-        Object primitiveValue = primitive.toPrimitive(truffleObject, null); // unbox
+        Object primitiveValue = primitive.unbox(truffleObject);
         if (primitiveValue != null) {
             return primitiveValue;
         } else if (primitive.hasKeys(truffleObject)) {
