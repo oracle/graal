@@ -89,16 +89,6 @@ import com.oracle.truffle.api.vm.PolyglotRuntime.LanguageShared;
  * environment also includes a framework for <em>instrumentation</em> that supports both built-in
  * services, for example debugging and profiling, as well as API access to dynamic execution state
  * for external tools.
- * <p>
- * For a simple example see {@link #eval(Source) eval(Source)}. The
- * <em><a href="{@docRoot}/com/oracle/truffle/tutorial/package-summary.html">Truffle
- * Tutorial</a></em> provides much more general information about Truffle. For information
- * specifically related to Java applications, the tutorial
- * <em><a href="{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html">Embedding
- * Truffle Languages in Java</a></em> explains, with examples, how Java code can directly access
- * guest language functions, objects, classes, and some complex data structures with Java-typed
- * accessors. In the reverse direction, guest language code can access Java objects, classes, and
- * constructors.
  *
  * <h4>Engine Creation</h4>
  *
@@ -638,9 +628,7 @@ public class PolyglotEngine {
      * This method is useful for Java applications that <em>interoperate</em> with guest languages.
      * The general strategy is to {@linkplain #eval(Source) evaluate} guest language code that
      * produces the desired language element and then {@linkplain Value#as(Class) create} a Java
-     * object of the appropriate type for Java <em>foreign</em> access to the result. The tutorial
-     * <a href="{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html">"Embedding
-     * Truffle Languages in Java"</a> contains examples.
+     * object of the appropriate type for Java <em>foreign</em> access to the result.
      *
      * @param source guest language code
      * @return result of the evaluation wrapped in a non-null {@link Value}
@@ -1070,9 +1058,7 @@ public class PolyglotEngine {
          * language code. The general strategy is to {@linkplain PolyglotEngine#eval(Source)
          * evaluate} guest language code that produces the desired language element and then use
          * this method to create a Java object of the appropriate type for Java access to the
-         * result. The tutorial <a href=
-         * "{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html">
-         * "Embedding Truffle Languages in Java"</a> contains examples.
+         * result.
          *
          * @param <T> the type of the requested view
          * @param representation an interface describing the requested access (must be an interface)
@@ -1156,9 +1142,7 @@ public class PolyglotEngine {
          * language code. The general strategy is to {@linkplain PolyglotEngine#eval(Source)
          * evaluate} guest language code that produces the desired language element. If that element
          * is a guest language function, this method allows direct execution without giving the
-         * function a Java type. The tutorial <a href=
-         * "{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html">
-         * "Embedding Truffle Languages in Java"</a> contains examples.
+         * function a Java type.
          *
          * @param args arguments to pass when executing the value
          * @return result of the execution wrapped in a non-null {@link Value}
