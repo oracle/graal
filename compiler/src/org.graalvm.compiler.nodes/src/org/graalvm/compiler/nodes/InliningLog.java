@@ -37,6 +37,7 @@ import java.util.Map;
  *
  * <ul>
  * <li>a value indicating whether the decision was positive or negative</li>
+ * <li>the call target method</li>
  * <li>a string explanation of the reason for the inlining decision</li>
  * <li>the name of the phase in which the inlining decision took place</li>
  * <li>the special {@code BytecodePositionWithId} value that describes the position in the bytecode
@@ -126,14 +127,16 @@ public class InliningLog {
         private final boolean positive;
         private final String reason;
         private final String phase;
+        private final ResolvedJavaMethod target;
         private final BytecodePositionWithId position;
         private final InliningLog childLog;
 
-        private Decision(boolean positive, String reason, String phase, BytecodePositionWithId position, InliningLog childLog) {
+        private Decision(boolean positive, String reason, String phase, ResolvedJavaMethod target, BytecodePositionWithId position, InliningLog childLog) {
             assert position != null;
             this.positive = positive;
             this.reason = reason;
             this.phase = phase;
+            this.target = target;
             this.position = position;
             this.childLog = childLog;
         }
@@ -156,6 +159,10 @@ public class InliningLog {
 
         public InliningLog getChildLog() {
             return childLog;
+        }
+
+        public ResolvedJavaMethod getTarget() {
+            return target;
         }
     }
 
@@ -207,8 +214,9 @@ public class InliningLog {
         return decisions;
     }
 
-    public void addDecision(boolean positive, String reason, String phase, BytecodePositionWithId position, InliningLog calleeLog) {
-        Decision decision = new Decision(positive, reason, phase, position, calleeLog);
+    public void addDecision(boolean positive, String reason, String phase, ResolvedJavaMethod target, BytecodePositionWithId position,
+                    InliningLog calleeLog) {
+        Decision decision = new Decision(positive, reason, phase, target, position, calleeLog);
         decisions.add(decision);
     }
 
@@ -221,10 +229,11 @@ public class InliningLog {
     private void formatAsList(String phasePrefix, BytecodePositionWithId caller, List<Decision> decisions, StringBuilder builder) {
         for (Decision decision : decisions) {
             String phaseStack = phasePrefix.equals("") ? decision.getPhase() : phasePrefix + "-" + decision.getPhase();
+            String target = decision.getTarget().format("%H.%n(%p)");
             String positive = decision.isPositive() ? "inline" : "do not inline";
             BytecodePositionWithId absolutePosition = decision.getPosition().addCallerWithId(caller);
             String position = "  " + decision.getPosition().toString().replaceAll("\n", "\n  ");
-            String line = String.format("<%s> %s: %s\n%s", phaseStack, positive, decision.getReason(), position);
+            String line = String.format("<%s> %s %s: %s\n%s", phaseStack, positive, target, decision.getReason(), position);
             builder.append(line).append(System.lineSeparator());
             if (decision.getChildLog() != null) {
                 formatAsList(phaseStack, absolutePosition, decision.getChildLog().getDecisions(), builder);
@@ -243,9 +252,9 @@ public class InliningLog {
     private void createTree(String phasePrefix, BytecodePositionWithId caller, Callsite root, List<Decision> decisions) {
         for (Decision decision : decisions) {
             String phaseStack = phasePrefix.equals("") ? decision.getPhase() : phasePrefix + "-" + decision.getPhase();
-            String positive = decision.isPositive() ? "inline" : "do not inline";
+            String target = decision.getTarget().format("%H.%n(%p)");
             BytecodePositionWithId absolutePosition = decision.getPosition().addCallerWithId(caller);
-            String line = String.format("<%s> %s: %s", phaseStack, positive, decision.getReason());
+            String line = String.format("<%s> %s: %s", phaseStack, target, decision.getReason());
             root.createCallsite(absolutePosition, line);
             if (decision.getChildLog() != null) {
                 createTree(phaseStack, absolutePosition, root, decision.getChildLog().getDecisions());
