@@ -32,7 +32,6 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.ArrayType;
-import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -644,9 +643,6 @@ public class CodeTreeBuilder {
 
     public CodeTreeBuilder cast(TypeMirror type, CodeTree content) {
         if (ElementUtils.isVoid(type)) {
-            tree(content);
-            return this;
-        } else if (type.getKind() == TypeKind.DECLARED && ElementUtils.getQualifiedName(type).equals("java.lang.Object")) {
             tree(content);
             return this;
         } else {

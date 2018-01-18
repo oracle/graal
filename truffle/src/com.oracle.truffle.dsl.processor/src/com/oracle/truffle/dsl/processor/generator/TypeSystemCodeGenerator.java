@@ -99,9 +99,6 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
     }
 
     static CodeTree cast(TypeSystemData typeSystem, TypeMirror type, CodeTree content) {
-        if (ElementUtils.isObject(type)) {
-            return content;
-        }
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
 
         TypeCastData cast = typeSystem.getCast(type);
