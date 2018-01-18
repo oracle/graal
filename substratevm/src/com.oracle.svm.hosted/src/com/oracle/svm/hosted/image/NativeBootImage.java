@@ -38,11 +38,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.SubstrateOptions;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -61,13 +56,17 @@ import com.oracle.objectfile.ObjectFile.Section;
 import com.oracle.objectfile.ObjectFile.Symbol;
 import com.oracle.objectfile.SectionName;
 import com.oracle.objectfile.macho.MachOObjectFile;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.c.NativeImageHeaderPreamble;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.cfunction.CFunctionLinkage;
 import com.oracle.svm.core.graal.cfunction.CFunctionLinkages;
+import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.NativeImageOptions.CStandards;
+import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CSourceCodeWriter;
 import com.oracle.svm.hosted.code.CEntryPointCallStubMethod;
@@ -79,7 +78,14 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.MethodPointer;
 
+import jdk.vm.ci.code.site.DataSectionReference;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+
 public abstract class NativeBootImage extends AbstractBootImage {
+
+    private static final long RWDATA_CGLOBALS_PARTITION_OFFSET = 0;
 
     @Override
     public Section getTextSection() {
@@ -202,13 +208,14 @@ public abstract class NativeBootImage extends AbstractBootImage {
             // Make up the sections themselves.
             // The text section contains the code.
             // The roData section contains the constants and the read-only partitions of the heap.
-            // The rwData section contains the writable partitions of the heap.
+            // The rwData section contains C global variables and writable partitions of the heap.
+            CGlobalDataFeature cGlobals = CGlobalDataFeature.singleton();
 
             final int textSectionSize = codeCache.getCodeCacheSize();
             final int roSectionConstantsSize = codeCache.getAlignedConstantsSize();
             final int roSectionHeapSize = heap.getReadOnlySectionSize();
             final int roSectionSize = roSectionConstantsSize + roSectionHeapSize;
-            final int rwSectionSize = heap.getWritableSectionSize();
+            final int rwSectionSize = cGlobals.getSize() + heap.getWritableSectionSize();
 
             // The text segment contains the code.
             final RelocatableBuffer textBuffer = RelocatableBuffer.factory("text", textSectionSize, objectFile.getByteOrder());
@@ -247,18 +254,21 @@ public abstract class NativeBootImage extends AbstractBootImage {
             final long roHeapPartitionOffset = constantsPartitionOffset + roSectionConstantsSize;
             heap.setReadOnlySection(roDataSection.getName(), roHeapPartitionOffset);
 
-            // The read-write heap partition comes first in the rwData section.
-            final long rwHeapPartitionOffset = 0;
+            // The C global data partition comes first in the rwData section, followed by the
+            // read-write heap partition.
+            final long rwHeapPartitionOffset = RWDATA_CGLOBALS_PARTITION_OFFSET + ConfigurationValues.getObjectLayout().alignUp(cGlobals.getSize());
             heap.setWritableSection(rwDataSection.getName(), rwHeapPartitionOffset);
 
             // Write the section contents and record relocations.
             // - The code goes in the text section, by itself.
             textImpl.writeTextSection(debug, textSection, entryPoints);
-            // - The constants go at the beginning of the read-only data section,
+            // - The constants go at the beginning of the read-only data section.
             codeCache.writeConstants(roDataBuffer);
-            // ... followed by the read-only partitions of the native image heap.
-            // - The writable partitions of the native image heap go in the
-            // ... writable data section.
+            // - Non-heap global data goes at the beginning of the read-write data section.
+            cGlobals.writeData(rwDataBuffer);
+            objectFile.createDefinedSymbol("__svm_cglobaldata_base", rwDataSection.getElement(), Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET), false);
+            // The read-only and writable partitions of the native image heap follow in the
+            // read-only and read-write sections, respectively.
             heap.writeHeap(debug, roDataBuffer, rwDataBuffer);
 
             // Mark the sections with the relocations from the maps.
@@ -271,7 +281,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
             if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
                 /* The symbol name must match the imported name in libchelper/heapbase.c */
-                objectFile.createDefinedSymbol("__svm_heap_base", rwDataSection.getElement(), 0, false);
+                objectFile.createDefinedSymbol("__svm_heap_base", rwDataSection.getElement(), Math.toIntExact(rwHeapPartitionOffset), false);
             }
         }
 
@@ -374,12 +384,33 @@ public abstract class NativeBootImage extends AbstractBootImage {
         sectionImpl.markRelocationSite(offset, info.getRelocationSize(), info.getRelocationKind(), targetSectionName, false, relocationAddend);
     }
 
-    // Relocations from text only go to the read-only section.
-    // Because of the way the code is generated.
     void markDataRelocationSiteFromText(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
         assert ((info.getRelocationSize() == 4) || (info.getRelocationSize() == 8)) : "Data relocation size should be 4 or 8 bytes.";
-        final Long addend = info.getExplicitAddend();
-        sectionImpl.markRelocationSite(offset, info.getRelocationSize(), info.getRelocationKind(), roDataSection.getName(), false, addend);
+        Object target = info.getTargetObject();
+        if (target instanceof DataSectionReference) {
+            long addend = ((DataSectionReference) target).getOffset() - info.getExplicitAddend();
+            sectionImpl.markRelocationSite(offset, info.getRelocationSize(), info.getRelocationKind(), roDataSection.getName(), false, addend);
+        } else if (target instanceof CGlobalDataReference) {
+            CGlobalDataReference ref = (CGlobalDataReference) target;
+            CGlobalDataImpl<?> data = (CGlobalDataImpl<?>) ref.getData();
+            int offsetInGlobalData = CGlobalDataFeature.singleton().getOffsetOf(data);
+            long addend = RWDATA_CGLOBALS_PARTITION_OFFSET + offsetInGlobalData - info.getExplicitAddend();
+            sectionImpl.markRelocationSite(offset, info.getRelocationSize(), info.getRelocationKind(), rwDataSection.getName(), false, addend);
+            if (data.symbolName != null) {
+                int offsetInSection = Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET + offsetInGlobalData);
+                if (data.bytesSupplier != null || data.sizeSupplier != null) { // Create symbol
+                    objectFile.createDefinedSymbol(data.symbolName, rwDataSection, offsetInSection, false);
+                } else { // No data, so this is purely a symbol reference: create relocation
+                    if (!objectFile.getSymbolTable().containsSymbolWithName(data.symbolName)) {
+                        objectFile.createUndefinedSymbol(data.symbolName, true);
+                    }
+                    ProgbitsSectionImpl baseSectionImpl = (ProgbitsSectionImpl) rwDataSection.getImpl();
+                    baseSectionImpl.markRelocationSite(offsetInSection, wordSize, RelocationKind.DIRECT, data.symbolName, false, 0L);
+                }
+            }
+        } else {
+            throw shouldNotReachHere("Unsupported target object for relocation in text section");
+        }
     }
 
     void relocationsForNativeFunctions(final ProgbitsSectionImpl rwDataImpl) {
@@ -401,7 +432,10 @@ public abstract class NativeBootImage extends AbstractBootImage {
         for (CFunctionLinkage f : CFunctionLinkages.get().getLinkages()) {
             // Create an undefined symbol for the function.
             final String fnName = f.getLinkageName();
-            objectFile.createUndefinedSymbol(fnName, true);
+            if (!objectFile.getSymbolTable().containsSymbolWithName(fnName)) {
+                // A symbol can already exist when we declare a @CFunction for a @CEntryPoint
+                objectFile.createUndefinedSymbol(fnName, true);
+            }
             // Create a relocation record from the slot of the array to the function.
             // Offset from the origin of the array to the origin of the elements of the array.
             final int arrayStartOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Object);

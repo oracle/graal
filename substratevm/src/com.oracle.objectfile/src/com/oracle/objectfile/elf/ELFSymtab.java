@@ -646,6 +646,12 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
         return (List) entriesWithName(symName);
     }
 
+    @Override
+    public boolean containsSymbolWithName(String symName) {
+        List<Entry> matches = entriesByName.get(symName);
+        return matches != null && !matches.isEmpty();
+    }
+
     // convenience methods -- these exist mostly because
     // doing syms.new Entry() generates a warning about the
     // unused allocated object

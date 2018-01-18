@@ -662,6 +662,12 @@ public class MachOSymtab extends MachOObjectFile.LinkEditElement implements Symb
     }
 
     @Override
+    public boolean containsSymbolWithName(String symName) {
+        List<Entry> matches = entriesByName.get(symName);
+        return matches != null && !matches.isEmpty();
+    }
+
+    @Override
     public ElementImpl getImpl() {
         return this;
     }
