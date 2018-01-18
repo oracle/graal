@@ -721,7 +721,7 @@ public class UniverseBuilder {
             for (AnalysisMethod method : waitNotifyAnalysisMethods) {
 
                 // If the method is never called, then I do not have to worry about it.
-                if (method == null) {
+                if (method == null || !method.isImplementationInvoked()) {
                     continue;
                 }
 
