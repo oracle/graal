@@ -51,4 +51,8 @@ public abstract class FixedBinaryNode extends DeoptimizingFixedWithNextNode impl
     public ValueNode getY() {
         return y;
     }
+
+    public boolean dataFlowEquals(FixedBinaryNode other) {
+        return getX() == other.getX() && getY() == other.getY();
+    }
 }
