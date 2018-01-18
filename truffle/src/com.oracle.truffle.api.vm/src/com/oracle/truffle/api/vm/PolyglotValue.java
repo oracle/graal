@@ -119,13 +119,13 @@ abstract class PolyglotValue extends AbstractValueImpl {
     @SuppressWarnings("unchecked")
     @Override
     public final <T> T as(Object receiver, Class<T> targetType) {
-        return (T) asClassLiteral.call(receiver, targetType);
+        return (T) VMAccessor.SPI.callProfiled(asClassLiteral, receiver, targetType);
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public final <T> T as(Object receiver, TypeLiteral<T> targetType) {
-        return (T) asTypeLiteral.call(receiver, targetType);
+        return (T) VMAccessor.SPI.callProfiled(asTypeLiteral, receiver, targetType);
     }
 
     @Override
@@ -206,6 +206,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
         }
 
         @Override
+        protected Class<?>[] getArgumentTypes() {
+            return new Class[]{polyglot.getReceiverType(), Class.class};
+        }
+
+        @Override
         protected String getOperationName() {
             return "as";
         }
@@ -223,6 +228,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         protected AsTypeLiteralNode(PolyglotValue interop) {
             super(interop);
+        }
+
+        @Override
+        protected Class<?>[] getArgumentTypes() {
+            return new Class[]{polyglot.getReceiverType(), TypeLiteral.class};
         }
 
         @Override
@@ -986,7 +996,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             this.isJava = JavaInterop.isJavaObject(receiver);
         }
 
-        private static CallTarget createTarget(InteropNode root) {
+        private static CallTarget createTarget(PolyglotNode root) {
             CallTarget target = Truffle.getRuntime().createCallTarget(root);
             Class<?>[] types = root.getArgumentTypes();
             if (types != null) {
@@ -1327,7 +1337,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             public final Object execute(VirtualFrame frame) {
                 Object[] args = frame.getArguments();
                 Object receiver = polyglot.getReceiverType().cast(args[0]);
-                PolyglotContextImpl context = interop.languageContext.context;
+                PolyglotContextImpl context = polyglot.languageContext.context;
                 boolean needsEnter = context.needsEnter();
                 Object prev;
                 if (needsEnter) {
@@ -1379,7 +1389,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{interop.receiverType};
+                return new Class<?>[]{polyglot.getReceiverType()};
             }
 
             @Override
@@ -1404,7 +1414,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{interop.receiverType};
+                return new Class<?>[]{polyglot.getReceiverType()};
             }
 
             @Override
@@ -1434,7 +1444,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{interop.receiverType};
+                return new Class<?>[]{polyglot.getReceiverType()};
             }
 
             @Override
@@ -1460,7 +1470,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{interop.receiverType, Long.class};
+                return new Class<?>[]{polyglot.getReceiverType(), Long.class};
             }
 
             @Override
@@ -1496,7 +1506,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{interop.receiverType, Long.class, Object.class};
+                return new Class<?>[]{polyglot.getReceiverType(), Long.class, Object.class};
             }
 
             @Override
@@ -1535,7 +1545,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{interop.receiverType};
+                return new Class<?>[]{polyglot.getReceiverType()};
             }
 
             @Override
@@ -1567,7 +1577,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{interop.receiverType, String.class};
+                return new Class<?>[]{polyglot.getReceiverType(), String.class};
             }
 
             @Override
@@ -1607,7 +1617,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{interop.receiverType, String.class, Object.class};
+                return new Class<?>[]{polyglot.getReceiverType(), String.class, Object.class};
             }
 
             @Override
@@ -1642,7 +1652,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{interop.receiverType};
+                return new Class<?>[]{polyglot.getReceiverType()};
             }
 
             @Override
@@ -1667,7 +1677,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{interop.receiverType};
+                return new Class<?>[]{polyglot.getReceiverType()};
             }
 
             @Override
@@ -1692,7 +1702,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{interop.receiverType, String.class};
+                return new Class<?>[]{polyglot.getReceiverType(), String.class};
             }
 
             @Override
@@ -1724,7 +1734,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{interop.receiverType};
+                return new Class<?>[]{polyglot.getReceiverType()};
             }
 
             @Override
@@ -1744,7 +1754,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{interop.receiverType};
+                return new Class<?>[]{polyglot.getReceiverType()};
             }
 
             @Override
@@ -1775,7 +1785,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{interop.receiverType};
+                return new Class<?>[]{polyglot.getReceiverType()};
             }
 
             @Override
@@ -1793,11 +1803,10 @@ abstract class PolyglotValue extends AbstractValueImpl {
             }
         }
 
-        private abstract static class AbstractExecuteNode extends InteropNode {
+        private abstract static class AbstractExecuteNode extends PolyglotNode {
 
             @Child private Node executeNode = Message.createExecute(0).createNode();
             private final ToGuestValuesNode toGuestValues = polyglot.languageContext.createToGuestValues();
-            private final ToHostValueNode toHostValue = polyglot.languageContext.createToHostValue();
 
             protected AbstractExecuteNode(Interop interop) {
                 super(interop);
@@ -1839,7 +1848,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{interop.receiverType, Object[].class};
+                return new Class<?>[]{polyglot.getReceiverType(), Object[].class};
             }
 
             @Override
@@ -1865,7 +1874,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{interop.receiverType};
+                return new Class<?>[]{polyglot.getReceiverType()};
             }
 
             @Override
@@ -1883,7 +1892,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         private static class ExecuteNode extends AbstractExecuteNode {
 
-            private final ToHostValueNode toHostValue = interop.languageContext.createToHostValue();
+            private final ToHostValueNode toHostValue = polyglot.languageContext.createToHostValue();
 
             protected ExecuteNode(Interop interop) {
                 super(interop);
@@ -1891,7 +1900,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{interop.receiverType, Object[].class};
+                return new Class<?>[]{polyglot.getReceiverType(), Object[].class};
             }
 
             @Override
@@ -1908,7 +1917,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         private static class ExecuteNoArgsNode extends AbstractExecuteNode {
 
-            private final ToHostValueNode toHostValue = interop.languageContext.createToHostValue();
+            private final ToHostValueNode toHostValue = polyglot.languageContext.createToHostValue();
 
             protected ExecuteNoArgsNode(Interop interop) {
                 super(interop);
@@ -1916,7 +1925,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{interop.receiverType};
+                return new Class<?>[]{polyglot.getReceiverType()};
             }
 
             @Override
@@ -1943,7 +1952,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{interop.receiverType, Object[].class};
+                return new Class<?>[]{polyglot.getReceiverType(), Object[].class};
             }
 
             @Override
