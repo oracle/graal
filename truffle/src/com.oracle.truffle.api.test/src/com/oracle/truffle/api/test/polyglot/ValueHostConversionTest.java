@@ -507,8 +507,6 @@ public class ValueHostConversionTest {
 
         assertEquals("byte", hierarchy.execute(Byte.MIN_VALUE).asString());
         assertEquals("byte", hierarchy.execute(Byte.MAX_VALUE).asString());
-        assertEquals("number", hierarchy.execute((short) (maxValue + 1)).asString());
-        assertEquals("number", hierarchy.execute((short) (minValue - 1)).asString());
         assertEquals("number", hierarchy.execute(Integer.MIN_VALUE).asString());
         assertEquals("number", hierarchy.execute(Integer.MAX_VALUE).asString());
         assertEquals("number", hierarchy.execute(Long.MIN_VALUE).asString());
@@ -551,28 +549,29 @@ public class ValueHostConversionTest {
     @Test
     public void testIntHierarchy() {
         Value hierarchy = context.asValue(new IntHierarchy()).getMember("hierarchy");
-        final int minValue = Integer.MIN_VALUE;
-        final int maxValue = Integer.MAX_VALUE;
 
-        assertEquals("int", hierarchy.execute(minValue).asString());
-        assertEquals("int", hierarchy.execute(maxValue).asString());
-        assertEquals("int", hierarchy.execute((long) minValue).asString());
-        assertEquals("int", hierarchy.execute((long) maxValue).asString());
-        assertEquals("int", hierarchy.execute((float) minValue).asString());
-        assertEquals("int", hierarchy.execute((float) maxValue).asString());
-        assertEquals("int", hierarchy.execute((double) minValue).asString());
-        assertEquals("int", hierarchy.execute((double) maxValue).asString());
+        assertEquals("int", hierarchy.execute(Integer.MIN_VALUE).asString());
+        assertEquals("int", hierarchy.execute(Integer.MAX_VALUE).asString());
+        assertEquals("int", hierarchy.execute((long) Integer.MIN_VALUE).asString());
+        assertEquals("int", hierarchy.execute((long) Integer.MAX_VALUE).asString());
+        assertEquals("int", hierarchy.execute((double) Integer.MIN_VALUE).asString());
+        assertEquals("int", hierarchy.execute((double) Integer.MAX_VALUE).asString());
+        assertEquals("int", hierarchy.execute((float) -(Math.pow(2, 24) - 1)).asString());
+        assertEquals("int", hierarchy.execute((float) +(Math.pow(2, 24) - 1)).asString());
 
         assertEquals("byte", hierarchy.execute(Byte.MIN_VALUE).asString());
         assertEquals("byte", hierarchy.execute(Byte.MAX_VALUE).asString());
         assertEquals("short", hierarchy.execute(Short.MIN_VALUE).asString());
         assertEquals("short", hierarchy.execute(Short.MAX_VALUE).asString());
+
         assertEquals("number", hierarchy.execute(Integer.MIN_VALUE - 1L).asString());
         assertEquals("number", hierarchy.execute(Integer.MAX_VALUE + 1L).asString());
         assertEquals("number", hierarchy.execute(Long.MIN_VALUE).asString());
         assertEquals("number", hierarchy.execute(Long.MAX_VALUE).asString());
         assertEquals("number", hierarchy.execute(Float.MIN_VALUE).asString());
         assertEquals("number", hierarchy.execute(Float.MAX_VALUE).asString());
+        assertEquals("number", hierarchy.execute((float) Integer.MIN_VALUE).asString());
+        assertEquals("number", hierarchy.execute((float) Integer.MAX_VALUE).asString());
         assertEquals("number", hierarchy.execute(Double.MIN_VALUE).asString());
         assertEquals("number", hierarchy.execute(Double.MAX_VALUE).asString());
         assertEquals("number", hierarchy.execute(new BigDecimal("1")).asString());
@@ -613,15 +612,32 @@ public class ValueHostConversionTest {
     @Test
     public void testLongHierarchy() {
         Value hierarchy = context.asValue(new LongHierarchy()).getMember("hierarchy");
-        final long minValue = Long.MIN_VALUE;
-        final long maxValue = Long.MAX_VALUE;
 
-        assertEquals("long", hierarchy.execute(minValue).asString());
-        assertEquals("long", hierarchy.execute(maxValue).asString());
-        assertEquals("long", hierarchy.execute((float) minValue).asString());
-        assertEquals("long", hierarchy.execute((float) maxValue).asString());
-        assertEquals("long", hierarchy.execute((double) minValue).asString());
-        assertEquals("long", hierarchy.execute((double) maxValue).asString());
+        assertEquals("long", hierarchy.execute(Long.MIN_VALUE).asString());
+        assertEquals("long", hierarchy.execute(Long.MAX_VALUE).asString());
+
+        // double
+        assertEquals("long", hierarchy.execute((double) (Integer.MIN_VALUE - 1l)).asString());
+        assertEquals("long", hierarchy.execute((double) (Integer.MAX_VALUE + 1l)).asString());
+        double maxSafeInteger = Math.pow(2, 53) - 1;
+        assertEquals("long", hierarchy.execute(-maxSafeInteger).asString());
+        assertEquals("long", hierarchy.execute(+maxSafeInteger).asString());
+
+        // large double values cannot be safely converted to integer due to lack of precision
+        assertEquals("number", hierarchy.execute(-maxSafeInteger - 1).asString());
+        assertEquals("number", hierarchy.execute(+maxSafeInteger + 1).asString());
+        assertEquals("number", hierarchy.execute((double) Long.MIN_VALUE).asString());
+        assertEquals("number", hierarchy.execute((double) Long.MAX_VALUE).asString());
+
+        // float
+        assertEquals("int", hierarchy.execute((float) -(Math.pow(2, 24) - 1)).asString());
+        assertEquals("int", hierarchy.execute((float) +(Math.pow(2, 24) - 1)).asString());
+
+        // large float values cannot be safely converted to integer due to lack of precision
+        assertEquals("number", hierarchy.execute((float) Integer.MIN_VALUE).asString());
+        assertEquals("number", hierarchy.execute((float) Integer.MAX_VALUE).asString());
+        assertEquals("number", hierarchy.execute((float) Long.MIN_VALUE).asString());
+        assertEquals("number", hierarchy.execute((float) Long.MAX_VALUE).asString());
 
         assertEquals("byte", hierarchy.execute(Byte.MIN_VALUE).asString());
         assertEquals("byte", hierarchy.execute(Byte.MAX_VALUE).asString());
