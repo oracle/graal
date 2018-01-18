@@ -401,8 +401,8 @@ public class ValueAPITest {
         ArrayElements arrayElements = new ArrayElements();
         arrayElements.array.add(42);
 
-        objectCoercionTest(arrayElements, Map.class, (v) -> {
-            assertEquals(42, v.get(0L));
+        objectCoercionTest(arrayElements, List.class, (v) -> {
+            assertEquals(42, v.get(0));
             assertEquals(1, v.size());
             assertFalse(v instanceof Function);
 
