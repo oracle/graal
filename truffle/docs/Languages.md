@@ -9,13 +9,13 @@ This page is intended to keep track of the growing number of Truffle language im
 * [Graal.Python](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index.html), an early-stage implementation of Python. * 
 * [TruffleSOM](https://github.com/SOM-st/TruffleSOM), a SOM Smalltalk implementation. 
 * [SOMns](https://github.com/smarr/SOMns), a Newspeak implementation for Concurrency Research.
-* [ZipPy](https://github.com/securesystemslab/zippy), a Python 3 implementation.
 * [SimpleLanguage](https://github.com/graalvm/simplelanguage), a toy language implementation to demonstrate Truffle features. 
 
 \* Shipped as part of [GraalVM](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index.html).
 
 ## Experiments
 
+* [ZipPy](https://github.com/securesystemslab/zippy), a Python implementation.
 * [TruffleSqueak](https://github.com/timfel/trufflesqueak), an experimental Squeak interpreter.
 * [Mumbler](https://github.com/cesquivias/mumbler), an experimental Lisp programming language.
 * [LuaTruffle](https://github.com/lucasallan/LuaTruffle), an implementation of the Lua language.
