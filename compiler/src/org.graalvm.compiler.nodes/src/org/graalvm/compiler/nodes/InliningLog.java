@@ -38,19 +38,19 @@ import java.util.Map;
  * <ul>
  * <li>a value indicating whether the decision was positive or negative</li>
  * <li>the call target method</li>
- * <li>a string explanation of the reason for the inlining decision</li>
+ * <li>the reason for the inlining decision</li>
  * <li>the name of the phase in which the inlining decision took place</li>
- * <li>the special {@code BytecodePositionWithId} value that describes the position in the bytecode
+ * <li>the special {@link BytecodePositionWithId} value that describes the position in the bytecode
  * together with the callsite-specific unique identifier</li>
  * <li>the inlining log of the inlined graph, or {@code null} if the decision was negative</li>
  * </ul>
  *
- * A phase that does inlining should use the instance of this class contained in the {@code StructuredGraph}
- * by calling {@code addDecision} whenever it decides to inline a method. If there are invokes in the graph
- * at the end of the respective phase, then that phase must call {@code addDecision} to log negative decisions.
+ * A phase that does inlining should use the instance of this class contained in the {@link StructuredGraph}
+ * by calling {@link #addDecision} whenever it decides to inline a method. If there are invokes in the graph
+ * at the end of the respective phase, then that phase must call {@link #addDecision} to log negative decisions.
  *
  * At the end of the compilation, the contents of the inlining log can be converted into a list of decisions
- * by calling {@code formatAsList} or into an inlining tree, by calling {@code formatAsTree}.
+ * by calling {@link #formatAsList} or into an inlining tree, by calling {@link #formatAsTree}.
  */
 public class InliningLog {
     /**
@@ -67,11 +67,6 @@ public class InliningLog {
             this.id = id;
         }
 
-        public BytecodePositionWithId(BytecodePosition position, int id) {
-            super(toPositionWithId(position.getCaller()), position.getMethod(), position.getBCI());
-            this.id = id;
-        }
-
         public BytecodePositionWithId addCallerWithId(BytecodePositionWithId caller) {
             if (getCaller() == null) {
                 return new BytecodePositionWithId(caller, getMethod(), getBCI(), id);
@@ -80,11 +75,15 @@ public class InliningLog {
             }
         }
 
-        private static BytecodePositionWithId toPositionWithId(BytecodePosition position) {
-            if (position == null) {
+        @SuppressWarnings("deprecation")
+        public static BytecodePositionWithId create(FrameState state) {
+            if (state == null) {
                 return null;
             }
-            return new BytecodePositionWithId(toPositionWithId(position.getCaller()), position.getMethod(), position.getBCI(), 0);
+            ResolvedJavaMethod method = state.getMethod();
+            int bci = state.bci;
+            int id = state.getId();
+            return new BytecodePositionWithId(create(state.outerFrameState()), method, bci, id);
         }
 
         @Override

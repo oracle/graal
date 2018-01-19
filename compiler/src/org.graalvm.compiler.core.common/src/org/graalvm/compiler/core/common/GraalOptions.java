@@ -274,7 +274,7 @@ public final class GraalOptions {
     @Option(help = "Enable experimental Trace Register Allocation.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceRA = new OptionKey<>(false);
 
-    @Option(help = "Enable contextual logging of all inlining decisions.", type = OptionType.Debug)
-    public static final OptionKey<Boolean> EnableContextualInlineLogging = new OptionKey<>(false);
+    @Option(help = "Trace inlining decisions.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> TraceInlining = new OptionKey<>(false);
 
 }
