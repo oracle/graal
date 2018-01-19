@@ -48,6 +48,8 @@ public abstract class DebuggerDomain extends Domain {
 
     public abstract void setPauseOnExceptions(String state);
 
+    public abstract Params getPossibleBreakpoints(Location start, Location end, boolean restrictToFunction);
+
     public abstract Params getScriptSource(String scriptId) throws CommandProcessException;
 
     public abstract void pause();
