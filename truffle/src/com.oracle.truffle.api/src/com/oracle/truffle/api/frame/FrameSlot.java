@@ -30,7 +30,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 /**
  * A slot in a {@link Frame} and {@link FrameDescriptor} that can store a value of a given type.
- * 
+ *
  * @since 0.8 or earlier
  */
 public final class FrameSlot implements Cloneable {
@@ -40,18 +40,6 @@ public final class FrameSlot implements Cloneable {
     private final Object info;
     private final int index;
     @CompilationFinal private FrameSlotKind kind;
-
-    /**
-     * @deprecated use
-     *             {@link FrameDescriptor#addFrameSlot(java.lang.Object, java.lang.Object, com.oracle.truffle.api.frame.FrameSlotKind)}
-     *             to create new instance of the slot. This method will be made package private in
-     *             the future.
-     * @since 0.8 or earlier
-     */
-    @Deprecated
-    public FrameSlot(FrameDescriptor descriptor, Object identifier, Object info, int index, FrameSlotKind kind) {
-        this(descriptor, identifier, info, kind, index);
-    }
 
     FrameSlot(FrameDescriptor descriptor, Object identifier, Object info, FrameSlotKind kind, int index) {
         this.descriptor = descriptor;
