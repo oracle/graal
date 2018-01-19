@@ -192,6 +192,8 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         kit.rethrowPendingException();
         kit.createReturn(returnValue, javaReturnType.getJavaKind());
 
+        kit.mergeUnwinds();
+
         assert graph.verify();
         return graph;
     }

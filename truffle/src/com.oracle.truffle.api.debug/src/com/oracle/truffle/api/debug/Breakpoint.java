@@ -816,23 +816,13 @@ public class Breakpoint {
         boolean shouldBreak(VirtualFrame frame) throws BreakpointConditionFailure {
             if (breakCondition != null) {
                 try {
-                    setThreadSuspendEnabled(false);
-                    return breakCondition.shouldBreak(frame);
+                    return breakCondition.executeBreakCondition(frame, sessions);
                 } catch (Throwable e) {
                     CompilerDirectives.transferToInterpreter();
                     throw new BreakpointConditionFailure(breakpoint, e);
-                } finally {
-                    setThreadSuspendEnabled(true);
                 }
             }
             return true;
-        }
-
-        @ExplodeLoop
-        private void setThreadSuspendEnabled(boolean enabled) {
-            for (DebuggerSession session : sessions) {
-                session.setThreadSuspendEnabled(enabled);
-            }
         }
 
     }
@@ -864,6 +854,7 @@ public class Breakpoint {
 
         private final EventContext context;
         private final Breakpoint breakpoint;
+        @Child private SetThreadSuspensionEnabledNode suspensionEnabledNode = SetThreadSuspensionEnabledNodeGen.create();
         @Child private DirectCallNode conditionCallNode;
         @Child private ExecutableNode conditionSnippet;
         @CompilationFinal private Assumption conditionUnchanged;
@@ -874,16 +865,21 @@ public class Breakpoint {
             this.conditionUnchanged = breakpoint.getConditionUnchanged();
         }
 
-        boolean shouldBreak(VirtualFrame frame) {
+        boolean executeBreakCondition(VirtualFrame frame, DebuggerSession[] sessions) {
             if ((conditionSnippet == null && conditionCallNode == null) || !conditionUnchanged.isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 initializeConditional(frame.materialize());
             }
             Object result;
-            if (conditionSnippet != null) {
-                result = conditionSnippet.execute(frame);
-            } else {
-                result = conditionCallNode.call(EMPTY_ARRAY);
+            try {
+                suspensionEnabledNode.execute(false, sessions);
+                if (conditionSnippet != null) {
+                    result = conditionSnippet.execute(frame);
+                } else {
+                    result = conditionCallNode.call(EMPTY_ARRAY);
+                }
+            } finally {
+                suspensionEnabledNode.execute(true, sessions);
             }
             if (!(result instanceof Boolean)) {
                 CompilerDirectives.transferToInterpreter();

@@ -24,9 +24,10 @@ package org.graalvm.compiler.truffle.test;
 
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.tools.profiler.CPUSampler;
-import org.graalvm.compiler.truffle.TruffleCompilerOptions;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;

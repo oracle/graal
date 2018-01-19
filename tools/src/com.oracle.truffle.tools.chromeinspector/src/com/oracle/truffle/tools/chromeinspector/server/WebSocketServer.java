@@ -123,7 +123,7 @@ public final class WebSocketServer extends NanoWSD {
                 info.put("description", "GraalVM");
                 info.put("faviconUrl", "https://assets-cdn.github.com/images/icons/emoji/unicode/1f680.png");
                 String ws = getHostname() + ":" + getListeningPort() + path;
-                info.put("devtoolsFrontendUrl", "chrome-devtools://devtools/bundled/inspector.html?experiments=true&v8only=true&ws=" + ws);
+                info.put("devtoolsFrontendUrl", "chrome-devtools://devtools/bundled/inspector.html?ws=" + ws);
                 info.put("id", path.substring(1));
                 info.put("title", "GraalVM");
                 info.put("type", "node");

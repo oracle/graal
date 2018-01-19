@@ -124,7 +124,11 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 if (moveGuards) {
                     cfg.visitDominatorTree(new MoveGuardsUpwards(), graph.hasValueProxies());
                 }
-                SchedulePhase.run(graph, SchedulingStrategy.EARLIEST, cfg);
+                try (DebugContext.Scope scheduleScope = graph.getDebug().scope(SchedulePhase.class)) {
+                    SchedulePhase.run(graph, SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER, cfg);
+                } catch (Throwable t) {
+                    throw graph.getDebug().handle(t);
+                }
                 ScheduleResult r = graph.getLastSchedule();
                 blockToNodes = r.getBlockToNodesMap();
                 nodeToBlock = r.getNodeToBlockMap();

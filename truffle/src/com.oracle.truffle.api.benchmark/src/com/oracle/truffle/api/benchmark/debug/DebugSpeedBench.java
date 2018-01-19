@@ -24,6 +24,8 @@ package com.oracle.truffle.api.benchmark.debug;
 
 import java.io.IOException;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
@@ -32,9 +34,6 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
 
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;

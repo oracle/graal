@@ -59,9 +59,9 @@ public interface InstrumentableFactory<T extends Node> {
      * onReturnValue(Frame,Object)}: an <em>execute</em> method on the delegate has just returned a
      * (possibly <code>null</code>) value;</li>
      * <li>
-     * {@linkplain ProbeNode#onReturnExceptional(com.oracle.truffle.api.frame.VirtualFrame, Throwable)
-     * onReturnExceptional(Frame,Throwable)}: an <em>execute</em> method on the delegate has just
-     * thrown an exception.</li>
+     * {@linkplain ProbeNode#onReturnExceptionalOrUnwind(com.oracle.truffle.api.frame.VirtualFrame, Throwable, boolean)
+     * onReturnExceptionalOrUnwind(Frame,Throwable,boolean)}: an <em>execute</em> method on the
+     * delegate has just thrown an exception.</li>
      * </ul>
      * </p>
      *

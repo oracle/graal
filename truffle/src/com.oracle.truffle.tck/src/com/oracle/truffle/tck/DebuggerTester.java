@@ -29,7 +29,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.function.Function;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Semaphore;
@@ -96,12 +95,25 @@ public final class DebuggerTester implements AutoCloseable {
      * @since 0.16
      */
     public DebuggerTester() {
+        this(null);
+    }
+
+    /**
+     * Constructs a new debugger tester instance with a pre-set context builder.
+     *
+     * @param contextBuilder a pre-set context builder. Only out and err streams are set on this
+     *            builder prior the {@link Context} instance creation.
+     *
+     * @see #DebuggerTester()
+     * @since 0.31
+     */
+    public DebuggerTester(Context.Builder contextBuilder) {
         this.newEvent = new ArrayBlockingQueue<>(1);
         this.executing = new Semaphore(0);
         this.initialized = new Semaphore(0);
         final AtomicReference<Engine> engineRef = new AtomicReference<>();
         final AtomicReference<Throwable> error = new AtomicReference<>();
-        this.executingLoop = new ExecutingLoop(engineRef, error);
+        this.executingLoop = new ExecutingLoop(contextBuilder, engineRef, error);
         this.evalThread = new Thread(executingLoop);
         this.evalThread.start();
         try {
@@ -113,21 +125,6 @@ public final class DebuggerTester implements AutoCloseable {
         if (error.get() != null) {
             throw new AssertionError("Engine initialization failed", error.get());
         }
-    }
-
-    /**
-     * Constructs a new debugger tester instance. Boots up a new {@link PolyglotEngine engine} on
-     * Thread in the background. The tester instance needs to be {@link #close() closed} after use.
-     * Throws an AssertionError if the engine initialization fails.
-     *
-     * @param engineBuilderDecorator a decorator function that allows to customize the engine
-     *            builder
-     * @since 0.26
-     * @deprecated Do not use {@link PolyglotEngine}, call {@link DebuggerTester()} instead.
-     */
-    @Deprecated
-    public DebuggerTester(Function<PolyglotEngine.Builder, PolyglotEngine.Builder> engineBuilderDecorator) {
-        this();
     }
 
     /**
@@ -317,8 +314,10 @@ public final class DebuggerTester implements AutoCloseable {
                 }
             } else if (event instanceof SuspendedEvent) {
                 throw new AssertionError("Expected done but got " + event);
+            } else if (event instanceof Throwable) {
+                throw new AssertionError("Got exception", (Throwable) event);
             } else {
-                throw new AssertionError("Got unknown");
+                throw new AssertionError("Got unknown: " + event);
             }
         } finally {
             source = null;
@@ -511,10 +510,12 @@ public final class DebuggerTester implements AutoCloseable {
 
     class ExecutingLoop implements Runnable {
 
+        private final Context.Builder contextBuilder;
         private final AtomicReference<Engine> engineRef;
         private final AtomicReference<Throwable> error;
 
-        ExecutingLoop(AtomicReference<Engine> engineRef, AtomicReference<Throwable> error) {
+        ExecutingLoop(Context.Builder contextBuilder, AtomicReference<Engine> engineRef, AtomicReference<Throwable> error) {
+            this.contextBuilder = (contextBuilder != null) ? contextBuilder : Context.newBuilder();
             this.engineRef = engineRef;
             this.error = error;
         }
@@ -524,7 +525,7 @@ public final class DebuggerTester implements AutoCloseable {
             Context context = null;
             try {
                 try {
-                    context = Context.newBuilder().out(out).err(err).allowCreateThread(true).build();
+                    context = contextBuilder.out(out).err(err).build();
                     engineRef.set(context.getEngine());
                 } catch (Throwable t) {
                     error.set(t);

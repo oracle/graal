@@ -23,7 +23,8 @@
 package org.graalvm.compiler.truffle.test;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;

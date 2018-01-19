@@ -138,7 +138,7 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
                 return;
             }
 
-            switch (node.reason()) {
+            switch (node.getReason()) {
                 case NullCheckException:
                 case BoundsCheckException:
                 case ClassCastException:
@@ -151,12 +151,12 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
                 case Unresolved:
                     break;
                 default:
-                    throw shouldNotReachHere("Unexpected reason: " + node.reason());
+                    throw shouldNotReachHere("Unexpected reason: " + node.getReason());
             }
 
             StructuredGraph graph = node.graph();
             Arguments args = new Arguments(deopt, graph.getGuardsStage(), loweringStage);
-            args.addConst("reason", node.reason());
+            args.addConst("reason", node.getReason());
             args.addConst("mustNotAllocate", mustNotAllocate(graph.method()));
             args.add("sourcePosition", node.getNodeSourcePosition() != null ? node.getNodeSourcePosition().toString() : null);
             template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);

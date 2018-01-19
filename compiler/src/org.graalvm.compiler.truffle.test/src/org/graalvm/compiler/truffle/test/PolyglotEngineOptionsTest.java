@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.truffle.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.test.builtins.SLIsOptimizedBuiltinFactory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.polyglot.Context;

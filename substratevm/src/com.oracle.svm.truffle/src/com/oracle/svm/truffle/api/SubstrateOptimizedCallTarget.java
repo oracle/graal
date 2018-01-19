@@ -24,7 +24,7 @@ package com.oracle.svm.truffle.api;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
-import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.WordFactory;
 

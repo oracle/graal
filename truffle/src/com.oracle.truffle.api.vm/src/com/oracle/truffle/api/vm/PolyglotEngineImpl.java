@@ -121,6 +121,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     volatile boolean closed;
 
     private volatile CancelHandler cancelHandler;
+    // Data used by the runtime to enable "global" state per Engine
+    volatile Object runtimeData;
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options, long timeout, TimeUnit timeoutUnit,
                     boolean sandbox, boolean useSystemProperties, ClassLoader contextClassLoader, boolean boundEngine) {
@@ -863,8 +865,10 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         preInitializedContext = null;
         if (contextImpl != null) {
             if (!contextImpl.patch(out, err, in, allowHostAccess, allowCreateThread, classFilter, options, arguments, allowedLanguages)) {
+                PolyglotContextImpl.initializeStaticContext(contextImpl);
                 contextImpl.closeImpl(false, false);
                 contextImpl = null;
+                PolyglotContextImpl.disposeStaticContext(contextImpl);
             }
         }
         if (contextImpl == null) {

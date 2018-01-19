@@ -29,6 +29,7 @@ import java.io.OutputStream;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -55,7 +56,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Communication between PolyglotEngine, TruffleLanguage API/SPI, and other services.
+ * Communication between TruffleLanguage API/SPI, and other services.
  */
 public abstract class Accessor {
 
@@ -229,6 +230,7 @@ public abstract class Accessor {
 
         public abstract void legacyTckLeave(Object vm, Object prev);
 
+        public abstract <T> T getOrCreateRuntimeData(Object sourceVM, Supplier<T> constructor);
     }
 
     public abstract static class LanguageSupport {
@@ -449,19 +451,6 @@ public abstract class Accessor {
     }
 
     @SuppressWarnings("all")
-    private static void conditionallyInitEngine() throws IllegalStateException {
-        try {
-            Class.forName("com.oracle.truffle.api.vm.PolyglotEngine", true, Accessor.class.getClassLoader());
-        } catch (ClassNotFoundException ex) {
-            boolean assertOn = false;
-            assert assertOn = true;
-            if (!assertOn) {
-                throw new IllegalStateException(ex);
-            }
-        }
-    }
-
-    @SuppressWarnings("all")
     private static void conditionallyInitInterop() throws IllegalStateException {
         try {
             Class.forName("com.oracle.truffle.api.interop.ForeignAccess", true, Accessor.class.getClassLoader());
@@ -608,6 +597,14 @@ public abstract class Accessor {
             return false;
         }
         return SUPPORT.isGuestCallStackFrame(element);
+    }
+
+    protected void initializeProfile(CallTarget target, Class<?>[] argmentTypes) {
+        SUPPORT.initializeProfile(target, argmentTypes);
+    }
+
+    protected Object callProfiled(CallTarget target, Object... args) {
+        return SUPPORT.callProfiled(target, args);
     }
 
     @SuppressWarnings("deprecation")

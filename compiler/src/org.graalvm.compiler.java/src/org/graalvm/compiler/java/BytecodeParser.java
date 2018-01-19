@@ -701,6 +701,12 @@ public class BytecodeParser implements GraphBuilderContext {
 
         assert code.getCode() != null : "method must contain bytecodes: " + method;
 
+        if (TraceBytecodeParserLevel.getValue(options) != 0) {
+            if (!Assertions.assertionsEnabled()) {
+                throw new IllegalArgumentException("A non-zero " + TraceBytecodeParserLevel.getName() + " value requires assertions to be enabled");
+            }
+        }
+
         if (graphBuilderConfig.insertFullInfopoints() && !parsingIntrinsic()) {
             lnt = code.getLineNumberTable();
             previousLineNumber = -1;
@@ -3073,7 +3079,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private boolean traceState() {
-        if (debug.isLogEnabled() && TraceBytecodeParserLevel.getValue(options) >= TRACELEVEL_STATE) {
+        if (TraceBytecodeParserLevel.getValue(options) >= TRACELEVEL_STATE) {
             frameState.traceState();
         }
         return true;
@@ -4586,7 +4592,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected boolean traceInstruction(int bci, int opcode, boolean blockStart) {
-        if (debug.isLogEnabled() && TraceBytecodeParserLevel.getValue(options) >= TRACELEVEL_INSTRUCTIONS) {
+        if (TraceBytecodeParserLevel.getValue(options) >= TRACELEVEL_INSTRUCTIONS) {
             traceInstructionHelper(bci, opcode, blockStart);
         }
         return true;
@@ -4607,7 +4613,7 @@ public class BytecodeParser implements GraphBuilderContext {
         if (!currentBlock.getJsrScope().isEmpty()) {
             sb.append(' ').append(currentBlock.getJsrScope());
         }
-        debug.log("%s", sb);
+        TTY.println("%s", sb);
     }
 
     @Override

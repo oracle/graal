@@ -67,12 +67,12 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.truffle.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.PartialEvaluator;
-import org.graalvm.compiler.truffle.TruffleCallBoundary;
-import org.graalvm.compiler.truffle.nodes.asserts.NeverPartOfCompilationNode;
-import org.graalvm.compiler.truffle.phases.InstrumentPhase;
-import org.graalvm.compiler.truffle.substitutions.KnownTruffleFields;
+import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
+import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
+import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -91,7 +91,6 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.hosted.GraalFeature;
 import com.oracle.svm.graal.hosted.GraalFeature.CallTreeNode;
 import com.oracle.svm.graal.hosted.GraalFeature.RuntimeBytecodeParser;
@@ -369,14 +368,12 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         if (useTruffleCompiler()) {
             SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
             GraalFeature graalFeature = ImageSingletons.lookup(GraalFeature.class);
-            SnippetReflectionProvider snippetReflectionProvider = graalFeature.getHostedProviders().getSnippetReflection();
-            SubstrateTruffleCompiler truffleCompiler = new SubstrateTruffleCompiler(graalFeature.getHostedProviders().getGraphBuilderPlugins(), GraalSupport.getSuites(), GraalSupport.getLIRSuites(),
-                            GraalSupport.getRuntimeConfig().getBackendForNormalMethod(), snippetReflectionProvider);
-            truffleRuntime.setTruffleCompiler(truffleCompiler);
+            SnippetReflectionProvider snippetReflection = graalFeature.getHostedProviders().getSnippetReflection();
+            SubstrateTruffleCompiler truffleCompiler = truffleRuntime.initTruffleCompiler();
             truffleRuntime.lookupCallMethods(config.getMetaAccess());
 
             PartialEvaluator partialEvaluator = truffleCompiler.getPartialEvaluator();
-            registerKnownTruffleFields(config, partialEvaluator.getKnownTruffleFields());
+            registerKnownTruffleFields(config, partialEvaluator.getKnownTruffleTypes());
             support.registerInterpreterEntryMethodsAsCompiled(partialEvaluator, access);
 
             GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getConfigForParsing();
@@ -395,7 +392,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                             partialEvaluator.getProviders().getLowerer(),
                             partialEvaluator.getProviders().getReplacements(),
                             partialEvaluator.getProviders().getStampProvider(),
-                            snippetReflectionProvider,
+                            snippetReflection,
                             graalFeature.getHostedProviders().getWordTypes());
             newHostedProviders.setGraphBuilderPlugins(graphBuilderConfig.getPlugins());
 
@@ -432,16 +429,18 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         }
     }
 
-    private static void registerKnownTruffleFields(BeforeAnalysisAccessImpl config, KnownTruffleFields knownTruffleFields) {
+    private static void registerKnownTruffleFields(BeforeAnalysisAccessImpl config, KnownTruffleTypes knownTruffleFields) {
         for (Class<?> klass = knownTruffleFields.getClass(); klass != Object.class; klass = klass.getSuperclass()) {
             for (Field field : klass.getDeclaredFields()) {
-                try {
-                    Object value = field.get(knownTruffleFields);
-                    if (value != null && value instanceof ResolvedJavaField) {
-                        config.registerAsAccessed((AnalysisField) value);
+                if (Modifier.isPublic(field.getModifiers())) {
+                    try {
+                        Object value = field.get(knownTruffleFields);
+                        if (value != null && value instanceof ResolvedJavaField) {
+                            config.registerAsAccessed((AnalysisField) value);
+                        }
+                    } catch (IllegalAccessException ex) {
+                        throw VMError.shouldNotReachHere(ex);
                     }
-                } catch (IllegalAccessException ex) {
-                    throw VMError.shouldNotReachHere(ex);
                 }
             }
         }
@@ -638,20 +637,6 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         }
     }
 }
-
-// @TargetClass(org.graalvm.compiler.truffle.OptimizedCallTarget.class)
-// final class Target_org.graalvm.compiler.truffle_OptimizedCallTarget {
-//
-// @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
-// private static PrintStream OUT = JavaLangSubstitutions.runtimeSystemOut;
-// }
-//
-// @TargetClass(org.graalvm.compiler.truffle.debug.AbstractDebugCompilationListener.class)
-// final class Target_org.graalvm.compiler.truffle_debug_AbstractDebugCompilationListener {
-//
-// @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
-// private static PrintStream OUT = JavaLangSubstitutions.runtimeSystemOut;
-// }
 
 /*
  * Java interoperability cannot be supported on Substrate VM. Ensure that the nodes are not used by
