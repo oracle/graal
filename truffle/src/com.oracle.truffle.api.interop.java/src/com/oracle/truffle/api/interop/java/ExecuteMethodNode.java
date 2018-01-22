@@ -517,6 +517,10 @@ abstract class ExecuteMethodNode extends Node {
                 return true;
             }
         }
+        if ((fromType == char.class || fromType == Character.class) && (toType == String.class || toType == CharSequence.class)) {
+            // char|Character <: String|CharSequence
+            return true;
+        }
         return false;
     }
 
