@@ -443,6 +443,8 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
                 throwIllegalArgumentException(graphKit, "cannot write field of type " + targetField.getJavaKind() + " with Field." + method.getName());
             }
 
+            graphKit.mergeUnwinds();
+
             assert graphKit.getGraph().verify();
             return graphKit.getGraph();
         }
