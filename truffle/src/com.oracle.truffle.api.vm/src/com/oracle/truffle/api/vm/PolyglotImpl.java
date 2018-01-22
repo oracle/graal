@@ -40,6 +40,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import org.graalvm.options.OptionValues;
@@ -53,12 +55,12 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.Scope;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
@@ -68,11 +70,13 @@ import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-import java.util.concurrent.atomic.AtomicReference;
+import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValueNode;
+import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValuesNode;
 
 /*
  * This class is exported to the Graal SDK. Keep that in mind when changing its class or package name.
@@ -239,6 +243,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             throw (PolyglotIllegalStateException) e;
         } else if (e instanceof PolyglotNullPointerException) {
             throw (PolyglotNullPointerException) e;
+        } else if (e instanceof PolyglotIllegalArgumentException) {
+            throw (PolyglotIllegalArgumentException) e;
         } else {
             // fallthrough
         }
@@ -574,6 +580,21 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
+        public <T> T installJavaInteropCodeCache(Object languageContext, Object key, T value, Class<T> expectedType) {
+            T result = expectedType.cast(((PolyglotLanguageContext) languageContext).context.engine.javaInteropCodeCache.putIfAbsent(key, value));
+            if (result != null) {
+                return result;
+            } else {
+                return value;
+            }
+        }
+
+        @Override
+        public <T> T lookupJavaInteropCodeCache(Object languageContext, Object key, Class<T> expectedType) {
+            return expectedType.cast(((PolyglotLanguageContext) languageContext).context.engine.javaInteropCodeCache.get(key));
+        }
+
+        @Override
         public CallTarget lookupOrRegisterComputation(Object truffleObject, RootNode computation, Object... keys) {
             CompilerAsserts.neverPartOfCompilation();
             assert keys.length > 0;
@@ -756,6 +777,21 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
+        public RootNode wrapHostBoundary(ExecutableNode executableNode, Supplier<String> name) {
+            return new PolyglotBoundaryRootNode(name, executableNode);
+        }
+
+        @Override
+        public BiFunction<Object, Object, Object> createToGuestValueNode() {
+            return ToGuestValueNode.create();
+        }
+
+        @Override
+        public BiFunction<Object, Object[], Object[]> createToGuestValuesNode() {
+            return ToGuestValuesNode.create();
+        }
+
+        @Override
         public boolean isHostException(Throwable exception) {
             return exception instanceof HostException;
         }
@@ -773,6 +809,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public NullPointerException newNullPointerException(String message, Throwable cause) {
             return cause == null ? new PolyglotNullPointerException(message) : new PolyglotNullPointerException(message, cause);
+        }
+
+        @Override
+        public IllegalArgumentException newIllegalArgumentException(String message, Throwable cause) {
+            return cause == null ? new PolyglotIllegalArgumentException(message) : new PolyglotIllegalArgumentException(message, cause);
+        }
+
+        @Override
+        public UnsupportedOperationException newUnsupportedOperationException(String message, Throwable cause) {
+            return cause == null ? new PolyglotUnsupportedException(message) : new PolyglotUnsupportedException(message, cause);
         }
 
         @Override

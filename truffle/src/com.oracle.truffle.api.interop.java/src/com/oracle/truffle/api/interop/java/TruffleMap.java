@@ -24,85 +24,73 @@
  */
 package com.oracle.truffle.api.interop.java;
 
+import static com.oracle.truffle.api.interop.ForeignAccess.sendExecute;
+import static com.oracle.truffle.api.interop.ForeignAccess.sendGetSize;
+import static com.oracle.truffle.api.interop.ForeignAccess.sendHasKeys;
+import static com.oracle.truffle.api.interop.ForeignAccess.sendHasSize;
+import static com.oracle.truffle.api.interop.ForeignAccess.sendIsExecutable;
+import static com.oracle.truffle.api.interop.ForeignAccess.sendIsInstantiable;
+import static com.oracle.truffle.api.interop.ForeignAccess.sendKeyInfo;
+import static com.oracle.truffle.api.interop.ForeignAccess.sendKeys;
+import static com.oracle.truffle.api.interop.ForeignAccess.sendNew;
+import static com.oracle.truffle.api.interop.ForeignAccess.sendRead;
+import static com.oracle.truffle.api.interop.ForeignAccess.sendWrite;
+
 import java.lang.reflect.Type;
 import java.util.AbstractMap;
 import java.util.AbstractSet;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.impl.Accessor.EngineSupport;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 
 class TruffleMap<K, V> extends AbstractMap<K, V> {
-    private final Class<K> keyClass;
-    private final Class<V> valueClass;
-    private final Type valueType;
-    final TruffleObject obj;
-    final Object languageContext;
-    private final boolean hasKeys;
-    private final boolean hasSize;
-    private final boolean includeInternal;
-    private final CallTarget callKeyInfo;
-    private final CallTarget callKeys;
-    private final CallTarget callHasSize;
-    private final CallTarget callGetSize;
-    private final CallTarget callRead;
-    private final CallTarget callWrite;
 
-    TruffleMap(Class<K> keyClass, Class<V> valueClass, Type valueType, TruffleObject obj, Object languageContext, boolean hasKeys, boolean hasSize) {
-        this.keyClass = keyClass;
-        this.valueClass = valueClass;
-        this.valueType = valueType;
+    final Object languageContext;
+    final TruffleObject obj;
+    final TruffleMapCache cache;
+
+    private final boolean includeInternal;
+
+    TruffleMap(Object languageContext, TruffleObject obj, Class<K> keyClass, Class<V> valueClass, Type valueType) {
         this.obj = obj;
         this.languageContext = languageContext;
-        this.hasKeys = hasKeys;
-        this.hasSize = hasSize;
         this.includeInternal = false;
-        this.callKeyInfo = initializeMapCall(obj, Message.KEY_INFO);
-        this.callKeys = initializeMapCall(obj, Message.KEYS);
-        this.callHasSize = initializeMapCall(obj, Message.HAS_SIZE);
-        this.callGetSize = initializeMapCall(obj, Message.GET_SIZE);
-        this.callRead = initializeMapCall(obj, Message.READ);
-        this.callWrite = initializeMapCall(obj, Message.WRITE);
+        this.cache = TruffleMapCache.lookup(languageContext, obj.getClass(), keyClass, valueClass, valueType);
     }
 
     private TruffleMap(TruffleMap<K, V> map, boolean includeInternal) {
-        this.keyClass = map.keyClass;
-        this.valueClass = map.valueClass;
-        this.valueType = map.valueType;
         this.obj = map.obj;
+        this.cache = map.cache;
         this.languageContext = map.languageContext;
-        this.hasKeys = map.hasKeys;
-        this.hasSize = map.hasSize;
         this.includeInternal = includeInternal;
-        this.callKeyInfo = map.callKeyInfo;
-        this.callKeys = map.callKeys;
-        this.callHasSize = map.callHasSize;
-        this.callGetSize = map.callGetSize;
-        this.callRead = map.callRead;
-        this.callWrite = map.callWrite;
     }
 
-    static <K, V> Map<K, V> create(Class<K> keyClass, Class<V> valueClass, Type valueType, TruffleObject foreignObject, Object languageContext, boolean hasKeys, boolean hasSize, boolean executable,
-                    boolean instantiable) {
-        if (executable) {
-            return new ExecutableTruffleMap<>(keyClass, valueClass, valueType, foreignObject, languageContext, hasKeys, hasSize);
-        } else if (instantiable) {
-            return new InstantiableTruffleMap<>(keyClass, valueClass, valueType, foreignObject, languageContext, hasKeys, hasSize);
+    static <K, V> Map<K, V> create(Object languageContext, TruffleObject foreignObject, boolean executable,
+                    boolean instantiable, Class<K> keyClass, Class<V> valueClass, Type valueType) {
+        if (executable || instantiable) {
+            return new FunctionTruffleMap<>(languageContext, foreignObject, keyClass, valueClass, valueType);
         } else {
-            return new TruffleMap<>(keyClass, valueClass, valueType, foreignObject, languageContext, hasKeys, hasSize);
+            return new TruffleMap<>(languageContext, foreignObject, keyClass, valueClass, valueType);
         }
     }
 
@@ -112,64 +100,34 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
 
     @Override
     public boolean containsKey(Object key) {
-        if (hasKeys && ((Integer) callKeyInfo.call(obj, key)) != 0) {
-            return true;
-        } else if (hasSize && key instanceof Number) {
-            int index = ((Integer) key).intValue();
-            int size = ((Number) callGetSize.call(obj)).intValue();
-            return index >= 0 && index < size;
-        }
-        return false;
+        return (boolean) cache.containsKey.call(languageContext, obj, key);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public Set<Entry<K, V>> entrySet() {
-        Object keys = null;
-        int keysSize = 0;
-        int elemSize = 0;
-        if (hasKeys) {
-            keys = callKeys.call(obj, includeInternal);
-            if (Boolean.TRUE.equals(callHasSize.call(keys))) {
-                keysSize = ((Number) callGetSize.call(keys)).intValue();
-            }
-        }
-        if (hasSize) {
-            elemSize = ((Number) callGetSize.call(obj)).intValue();
-        }
-        return new LazyEntries(keys, keysSize, elemSize);
+        return (Set<Entry<K, V>>) cache.entrySet.call(languageContext, obj, this, includeInternal);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public V get(Object key) {
-        keyClass.cast(key);
-        final Object item = callRead.call(obj, key, valueClass, valueType, languageContext);
-        return valueClass.cast(item);
+        return (V) cache.get.call(languageContext, obj, key);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public V put(K key, V value) {
-        keyClass.cast(key);
-        valueClass.cast(value);
-        V previous = get(key);
-        callWrite.call(obj, key, value, valueClass, valueType, languageContext);
-        return previous;
-    }
-
-    private static CallTarget initializeMapCall(TruffleObject obj, Message msg) {
-        CallTarget res = JavaInterop.lookupOrRegisterComputation(obj, null, TruffleMap.class, msg);
-        if (res == null) {
-            res = JavaInterop.lookupOrRegisterComputation(obj, new MapNode(msg), TruffleMap.class, msg);
-        }
-        return res;
+        return (V) cache.put.call(languageContext, obj, key, value);
     }
 
     private final class LazyEntries extends AbstractSet<Entry<K, V>> {
 
-        private final Object props;
+        private final List<?> props;
         private final int keysSize;
         private final int elemSize;
 
-        LazyEntries(Object keys, int keysSize, int elemSize) {
+        LazyEntries(List<?> keys, int keysSize, int elemSize) {
             assert keys != null || keysSize == 0;
             this.props = keys;
             this.keysSize = keysSize;
@@ -209,11 +167,12 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
                 return index < keysSize;
             }
 
+            @SuppressWarnings("unchecked")
             @Override
             public Entry<K, V> next() {
                 if (hasNext()) {
-                    Object key = callRead.call(props, index++, keyClass, null, languageContext);
-                    return new TruffleEntry(keyClass.cast(key));
+                    Object key = props.get(index++);
+                    return new TruffleEntry((K) (key));
                 } else {
                     throw new NoSuchElementException();
                 }
@@ -221,7 +180,7 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
         }
 
         private final class ElementsIterator implements Iterator<Entry<K, V>> {
-            private int index;
+            private long index;
 
             ElementsIterator() {
                 index = 0;
@@ -232,12 +191,19 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
                 return index < elemSize;
             }
 
+            @SuppressWarnings("unchecked")
             @Override
             public Entry<K, V> next() {
                 if (hasNext()) {
-                    Object key = keyClass == Integer.class ? (Integer) index : (Long) (long) index;
+                    Number key;
+                    if (cache.keyClass == Long.class) {
+                        key = (long) index;
+                    } else {
+                        key = index;
+                    }
+                    // TODO support more number types?
                     index++;
-                    return new TruffleEntry(keyClass.cast(key));
+                    return new TruffleEntry((K) cache.keyClass.cast(key));
                 } else {
                     throw new NoSuchElementException();
                 }
@@ -286,114 +252,343 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
         }
     }
 
-    static final class InstantiableTruffleMap<K, V> extends TruffleMap<K, V> implements Function<Object[], Object> {
+    static class FunctionTruffleMap<K, V> extends TruffleMap<K, V> implements Function<Object[], Object> {
 
-        private CallTarget callExecute;
-
-        InstantiableTruffleMap(Class<K> keyClass, Class<V> valueClass, Type valueType, TruffleObject obj, Object languageContext, boolean hasKeys, boolean hasSize) {
-            super(keyClass, valueClass, valueType, obj, languageContext, hasKeys, hasSize);
+        FunctionTruffleMap(Object languageContext, TruffleObject obj, Class<K> keyClass, Class<V> valueClass, Type valueType) {
+            super(languageContext, obj, keyClass, valueClass, valueType);
         }
 
         @Override
         public final Object apply(Object[] arguments) {
-            Object[] args = arguments == null ? JavaInteropReflect.EMPTY : arguments;
-            if (callExecute == null) {
-                callExecute = JavaInterop.lookupOrRegisterComputation(obj, null, InstantiateFromJava.class);
-                if (callExecute == null) {
-                    RootNode symbolNode = new InstantiateFromJava();
-                    callExecute = JavaInterop.lookupOrRegisterComputation(obj, symbolNode, InstantiateFromJava.class);
-                }
-            }
-            return callExecute.call(obj, args, Object.class, null, languageContext);
+            return cache.apply.call(languageContext, obj, arguments);
         }
-
     }
 
-    static class ExecutableTruffleMap<K, V> extends TruffleMap<K, V> implements Function<Object[], Object> {
-        private CallTarget callExecute;
+    static final class TruffleMapCache {
 
-        ExecutableTruffleMap(Class<K> keyClass, Class<V> valueClass, Type valueType, TruffleObject obj, Object languageContext, boolean hasKeys, boolean hasSize) {
-            super(keyClass, valueClass, valueType, obj, languageContext, hasKeys, hasSize);
+        final Class<?> receiverClass;
+        final Class<?> keyClass;
+        final Class<?> valueClass;
+        final Type valueType;
+        final boolean memberKey;
+        final boolean numberKey;
+
+        final CallTarget entrySet;
+        final CallTarget get;
+        final CallTarget put;
+        final CallTarget containsKey;
+        final CallTarget apply;
+
+        TruffleMapCache(Class<?> receiverClass, Class<?> keyClass, Class<?> valueClass, Type valueType) {
+            this.receiverClass = receiverClass;
+            this.keyClass = keyClass;
+            this.valueClass = valueClass;
+            this.valueType = valueType;
+            this.memberKey = keyClass == Object.class || keyClass == String.class || keyClass == CharSequence.class;
+            this.numberKey = keyClass == Object.class || keyClass == Number.class || keyClass == Integer.class || keyClass == Long.class || keyClass == Short.class || keyClass == Byte.class;
+            this.get = initializeCall(new Get(this));
+            this.containsKey = initializeCall(new ContainsKey(this));
+            this.entrySet = initializeCall(new EntrySet(this));
+            this.put = initializeCall(new Put(this));
+            this.apply = initializeCall(new Apply(this));
         }
 
-        @Override
-        public final Object apply(Object[] arguments) {
-            Object[] args = arguments == null ? JavaInteropReflect.EMPTY : arguments;
-            if (callExecute == null) {
-                callExecute = JavaInterop.lookupOrRegisterComputation(obj, null, ExecuteFunctionFromJava.class);
-                if (callExecute == null) {
-                    RootNode symbolNode = new ExecuteFunctionFromJava();
-                    callExecute = JavaInterop.lookupOrRegisterComputation(obj, symbolNode, ExecuteFunctionFromJava.class);
-                }
+        private static CallTarget initializeCall(TruffleMapNode node) {
+            return Truffle.getRuntime().createCallTarget(JavaInterop.ACCESSOR.engine().wrapHostBoundary(node, node));
+        }
+
+        static TruffleMapCache lookup(Object languageContext, Class<?> receiverClass, Class<?> keyClass, Class<?> valueClass, Type valueType) {
+            EngineSupport engine = JavaInterop.ACCESSOR.engine();
+            if (engine == null) {
+                return new TruffleMapCache(receiverClass, keyClass, valueClass, valueType);
             }
-            return callExecute.call(obj, args, Object.class, null, languageContext);
+            Key cacheKey = new Key(receiverClass, keyClass, valueType);
+            TruffleMapCache cache = engine.lookupJavaInteropCodeCache(languageContext, cacheKey, TruffleMapCache.class);
+            if (cache == null) {
+                cache = engine.installJavaInteropCodeCache(languageContext, cacheKey, new TruffleMapCache(receiverClass, keyClass, valueClass, valueType), TruffleMapCache.class);
+            }
+            assert cache.receiverClass == receiverClass;
+            assert cache.keyClass == keyClass;
+            assert cache.valueClass == valueClass;
+            assert cache.valueType == valueType;
+            return cache;
         }
 
-    }
+        private static final class Key {
 
-    private static final class MapNode extends RootNode {
-        private final Message msg;
-        @Child private Node node;
-        @Child private ToJavaNode toJavaNode;
+            final Class<?> receiverClass;
+            final Class<?> keyClass;
+            final Type valueType;
 
-        MapNode(Message msg) {
-            super(null);
-            this.msg = msg;
-            this.node = msg.createNode();
-            this.toJavaNode = ToJavaNode.create();
+            Key(Class<?> receiverClass, Class<?> keyClass, Type valueType) {
+                assert receiverClass != null;
+                assert keyClass != null;
+                this.receiverClass = receiverClass;
+                this.keyClass = keyClass;
+                this.valueType = valueType;
+            }
+
+            @Override
+            public int hashCode() {
+                return 31 * (31 * (31 + keyClass.hashCode()) + (valueType == null ? 0 : valueType.hashCode())) + receiverClass.hashCode();
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                if (this == obj) {
+                    return true;
+                } else if (getClass() != obj.getClass()) {
+                    return false;
+                }
+                Key other = (Key) obj;
+                return keyClass == other.keyClass && valueType == other.valueType && receiverClass == other.receiverClass;
+            }
         }
 
-        @Override
-        public Object execute(VirtualFrame frame) {
-            final Object[] args = frame.getArguments();
-            TruffleObject receiver = (TruffleObject) args[0];
-            Class<?> clazz = null;
-            Type type = null;
-            Object languageContext = null;
+        private static abstract class TruffleMapNode extends HostEntryRootNode<TruffleObject> implements Supplier<String> {
 
-            Object ret;
-            try {
-                if (msg == Message.HAS_SIZE) {
-                    ret = ForeignAccess.sendHasSize(node, receiver);
-                } else if (msg == Message.GET_SIZE) {
-                    ret = ForeignAccess.sendGetSize(node, receiver);
-                } else if (msg == Message.READ) {
-                    Object key = args[1];
-                    clazz = (Class<?>) args[2];
-                    type = (Type) args[3];
-                    languageContext = args[4];
-                    try {
-                        ret = ForeignAccess.sendRead(node, receiver, key);
-                    } catch (UnknownIdentifierException uiex) {
-                        return null; // key not present in the map
+            final TruffleMapCache cache;
+            @Child protected Node hasSize = Message.HAS_SIZE.createNode();
+            @Child protected Node hasKeys = Message.HAS_KEYS.createNode();
+            private final ConditionProfile condition = ConditionProfile.createBinaryProfile();
+
+            TruffleMapNode(TruffleMapCache cache) {
+                this.cache = cache;
+            }
+
+            @SuppressWarnings("unchecked")
+            @Override
+            protected Class<? extends TruffleObject> getReceiverType() {
+                return (Class<? extends TruffleObject>) cache.receiverClass;
+            }
+
+            @Override
+            public final String get() {
+                return "TruffleMap<" + cache.receiverClass + ", " + cache.keyClass + ", " + cache.valueType + ">." + getOperationName();
+            }
+
+            protected final boolean isValidKey(TruffleObject receiver, Object key) {
+                if (cache.keyClass.isInstance(key)) {
+                    if (cache.memberKey && condition.profile(sendHasKeys(hasKeys, receiver))) {
+                        if (key instanceof String) {
+                            return true;
+                        }
+                    } else if (cache.numberKey && key instanceof Number && sendHasSize(hasSize, receiver)) {
+                        return true;
                     }
-                } else if (msg == Message.WRITE) {
-                    Object key = args[1];
-                    Object value = args[2];
-                    clazz = (Class<?>) args[3];
-                    type = (Type) args[4];
-                    languageContext = args[5];
-                    ret = ForeignAccess.sendWrite(node, receiver, key, JavaInterop.asTruffleValue(value));
-                } else if (msg == Message.KEY_INFO) {
-                    Object key = args[1];
-                    ret = ForeignAccess.sendKeyInfo(node, receiver, key);
-                } else if (msg == Message.KEYS) {
-                    boolean includeInternal = (boolean) args[1];
-                    ret = ForeignAccess.sendKeys(node, receiver, includeInternal);
-                } else {
-                    CompilerDirectives.transferToInterpreter();
-                    throw UnsupportedMessageException.raise(msg);
                 }
-            } catch (InteropException ex) {
-                CompilerDirectives.transferToInterpreter();
-                throw ex.raise();
+                return false;
             }
 
-            if (clazz != null) {
-                return toJavaNode.execute(ret, clazz, type, languageContext);
-            } else {
-                return ret;
+            protected abstract String getOperationName();
+
+        }
+
+        private class ContainsKey extends TruffleMapNode {
+
+            @Child private Node keyInfo = Message.KEY_INFO.createNode();
+            @Child private Node getSize = Message.GET_SIZE.createNode();
+
+            ContainsKey(TruffleMapCache cache) {
+                super(cache);
+            }
+
+            @Override
+            protected Object executeImpl(Object languageContext, TruffleObject receiver, Object[] args, int offset) {
+                Object key = args[offset];
+                if (isValidKey(receiver, key)) {
+                    return KeyInfo.isReadable(sendKeyInfo(keyInfo, receiver, key));
+                }
+                return false;
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "containsKey";
+            }
+
+        }
+
+        private static class EntrySet extends TruffleMapNode {
+
+            @Child private Node getSize = Message.GET_SIZE.createNode();
+            @Child private Node keysNode = Message.KEYS.createNode();
+
+            EntrySet(TruffleMapCache cache) {
+                super(cache);
+            }
+
+            @Override
+            @SuppressWarnings("unchecked")
+            protected Object executeImpl(Object languageContext, TruffleObject receiver, Object[] args, int offset) {
+                List<?> keys = null;
+                int keysSize = 0;
+                int elemSize = 0;
+                TruffleMap<Object, Object> originalMap = (TruffleMap<Object, Object>) args[offset];
+                boolean includeInternal = (boolean) args[offset + 1];
+
+                if (cache.memberKey && sendHasKeys(hasKeys, receiver)) {
+                    TruffleObject truffleKeys;
+                    try {
+                        truffleKeys = sendKeys(keysNode, receiver, includeInternal);
+                    } catch (UnsupportedMessageException e) {
+                        CompilerDirectives.transferToInterpreter();
+                        return Collections.emptySet();
+                    }
+                    keys = TruffleList.create(String.class, null, truffleKeys, languageContext);
+                    keysSize = keys.size();
+                } else if (cache.numberKey && sendHasSize(hasSize, receiver)) {
+                    try {
+                        elemSize = ((Number) sendGetSize(getSize, receiver)).intValue();
+                    } catch (UnsupportedMessageException e) {
+                        elemSize = 0;
+                    }
+                }
+                return originalMap.new LazyEntries(keys, keysSize, elemSize);
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "entrySet";
+            }
+
+        }
+
+        private static class Get extends TruffleMapNode {
+
+            @Child private Node keyInfo = Message.KEY_INFO.createNode();
+            @Child private Node getSize = Message.GET_SIZE.createNode();
+            @Child private Node read = Message.READ.createNode();
+            @Child private ToJavaNode toHost = ToJavaNode.create();
+
+            Get(TruffleMapCache cache) {
+                super(cache);
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "get";
+            }
+
+            @Override
+            protected Object executeImpl(Object languageContext, TruffleObject receiver, Object[] args, int offset) {
+                Object key = args[offset];
+                Object result = null;
+                if (isValidKey(receiver, key) && KeyInfo.isReadable(sendKeyInfo(keyInfo, receiver, key))) {
+                    try {
+                        result = toHost.execute(sendRead(read, receiver, key), cache.valueClass, cache.valueType, languageContext);
+                    } catch (UnknownIdentifierException e) {
+                        return null;
+                    } catch (UnsupportedMessageException e) {
+                        // be robust for misbehaving languages
+                        return null;
+                    }
+                }
+                return result;
+            }
+
+        }
+
+        private static class Put extends TruffleMapNode {
+
+            @Child private Node keyInfo = Message.KEY_INFO.createNode();
+            @Child private Node getSize = Message.GET_SIZE.createNode();
+            @Child private Node read = Message.READ.createNode();
+            @Child private Node write = Message.WRITE.createNode();
+            @Child private ToJavaNode toHost = ToJavaNode.create();
+            private final BiFunction<Object, Object, Object> toGuest = JavaInterop.ACCESSOR.engine().createToGuestValueNode();
+
+            Put(TruffleMapCache cache) {
+                super(cache);
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "put";
+            }
+
+            @Override
+            protected Object executeImpl(Object languageContext, TruffleObject receiver, Object[] args, int offset) {
+                Object key = args[offset];
+                Object result = null;
+
+                if (isValidKey(receiver, key)) {
+                    Object value = args[offset + 1];
+                    int info = sendKeyInfo(keyInfo, receiver, key);
+                    if (KeyInfo.isWritable(info) && KeyInfo.isReadable(info)) {
+                        try {
+                            result = toHost.execute(sendRead(read, receiver, key), cache.valueClass, cache.valueType, languageContext);
+                        } catch (UnknownIdentifierException e) {
+                        } catch (UnsupportedMessageException e) {
+                        }
+                        try {
+                            sendWrite(write, receiver, key, toGuest.apply(languageContext, value));
+                        } catch (UnknownIdentifierException e) {
+                            throw newUnsupportedOperationException("Unsupported operation");
+                        } catch (UnsupportedMessageException e) {
+                            throw newUnsupportedOperationException("Unsupported operation");
+                        } catch (UnsupportedTypeException e) {
+                            throw newIllegalArgumentException("Unsupported type");
+                        }
+                        return cache.valueClass.cast(result);
+                    }
+                }
+                throw newUnsupportedOperationException("Unsupported operation");
+            }
+
+        }
+
+        private static class Apply extends TruffleMapNode {
+
+            @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
+            @Child private Node isInstantiable = Message.IS_INSTANTIABLE.createNode();
+            @Child private Node execute = Message.createExecute(0).createNode();
+            @Child private Node instantiate = Message.createNew(0).createNode();
+            @Child private Node keyInfo = Message.KEY_INFO.createNode();
+            @Child private Node getSize = Message.GET_SIZE.createNode();
+            @Child private Node read = Message.READ.createNode();
+            @Child private Node write = Message.WRITE.createNode();
+            @Child private ToJavaNode toHost = ToJavaNode.create();
+            private final BiFunction<Object, Object[], Object[]> toGuests = JavaInterop.ACCESSOR.engine().createToGuestValuesNode();
+            private final ConditionProfile condition = ConditionProfile.createBinaryProfile();
+
+            Apply(TruffleMapCache cache) {
+                super(cache);
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "apply";
+            }
+
+            @Override
+            protected Object executeImpl(Object languageContext, TruffleObject function, Object[] args, int offset) {
+                Object[] functionArgs = (Object[]) args[offset];
+                functionArgs = toGuests.apply(languageContext, functionArgs);
+
+                Object result;
+                try {
+                    if (condition.profile(sendIsExecutable(isExecutable, function))) {
+                        result = sendExecute(execute, function, functionArgs);
+                    } else if (sendIsInstantiable(isInstantiable, function)) {
+                        result = sendNew(instantiate, function, functionArgs);
+                    } else {
+                        CompilerDirectives.transferToInterpreter();
+                        throw newUnsupportedOperationException("Unsupported operation.");
+                    }
+                } catch (UnsupportedTypeException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw newIllegalArgumentException("Illegal argument provided.");
+                } catch (ArityException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw newIllegalArgumentException("Illegal number of arguments.");
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw newUnsupportedOperationException("Unsupported operation.");
+                }
+                return toHost.execute(result, Object.class, Object.class, languageContext);
             }
         }
+
     }
 }

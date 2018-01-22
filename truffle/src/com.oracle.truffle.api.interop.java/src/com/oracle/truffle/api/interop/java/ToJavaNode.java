@@ -49,6 +49,7 @@ abstract class ToJavaNode extends Node {
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
     @Child private Node isInstantiable = Message.IS_INSTANTIABLE.createNode();
     @Child private Node isNull = Message.IS_NULL.createNode();
+    @Child private Node hasKeysNode = Message.HAS_KEYS.createNode();
     @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
 
     public abstract Object execute(Object value, Class<?> targetType, Type genericType, Object languageContext);
@@ -88,14 +89,16 @@ abstract class ToJavaNode extends Node {
                 return null;
             } else if (targetType == Object.class) {
                 convertedValue = convertToObject((TruffleObject) value, languageContext);
-            } else if (!TruffleOptions.AOT && JavaInterop.isJavaFunctionInterface(targetType) && isExecutable((TruffleObject) value)) {
+            } else if (!TruffleOptions.AOT && JavaInterop.isJavaFunctionInterface(targetType) && isExecutable(tValue)) {
                 if (targetType.isInstance(value)) {
                     convertedValue = value;
                 } else {
-                    convertedValue = JavaInteropReflect.asJavaFunction(targetType, (TruffleObject) value, languageContext);
+                    convertedValue = JavaInteropReflect.asJavaFunction(targetType, tValue, languageContext);
                 }
             } else {
-                convertedValue = asJavaObject((TruffleObject) value, targetType, genericType, languageContext);
+
+                convertedValue = asJavaObject(tValue, targetType, genericType, languageContext);
+
             }
         } else if (targetType.isAssignableFrom(value.getClass())) {
             assert !(value instanceof TruffleObject);
@@ -180,8 +183,10 @@ abstract class ToJavaNode extends Node {
         Object primitiveValue = primitive.toPrimitive(truffleObject, null); // unbox
         if (primitiveValue != null) {
             return primitiveValue;
-        } else if (primitive.hasKeys(truffleObject) || primitive.hasSize(truffleObject)) {
+        } else if (primitive.hasKeys(truffleObject)) {
             return asJavaObject(truffleObject, Map.class, null, languageContext);
+        } else if (primitive.hasSize(truffleObject)) {
+            return asJavaObject(truffleObject, List.class, null, languageContext);
         } else if (isExecutable(truffleObject)) {
             return JavaInteropReflect.asDefaultJavaFunction(truffleObject, languageContext);
         } else if (languageContext != null) {
@@ -210,15 +215,15 @@ abstract class ToJavaNode extends Node {
             if (!isSupportedMapKeyType(keyClazz)) {
                 throw newInvalidKeyTypeException(keyClazz);
             }
+            boolean hasSize = (Number.class.isAssignableFrom(keyClazz)) && primitive.hasSize(truffleObject);
             boolean hasKeys = (keyClazz == Object.class || keyClazz == String.class) && primitive.hasKeys(truffleObject);
-            boolean hasSize = (keyClazz == Object.class || Number.class.isAssignableFrom(keyClazz)) && primitive.hasSize(truffleObject);
             if (hasKeys || hasSize) {
                 boolean executable = isExecutable(truffleObject);
                 boolean instantiable = false;
                 if (!executable) {
                     instantiable = isInstantiable(truffleObject);
                 }
-                obj = TruffleMap.create(keyClazz, valueType.clazz, valueType.type, truffleObject, languageContext, hasKeys, hasSize, executable, instantiable);
+                obj = TruffleMap.create(languageContext, truffleObject, executable, instantiable, keyClazz, valueType.clazz, valueType.type);
             } else {
                 throw newClassCastException(truffleObject, targetType, "has no keys");
             }
@@ -229,7 +234,7 @@ abstract class ToJavaNode extends Node {
                 throw newClassCastException(truffleObject, targetType, "has no size");
             }
         } else {
-            if (!TruffleOptions.AOT && targetType.isInterface()) {
+            if (!TruffleOptions.AOT && targetType.isInterface() && ForeignAccess.sendHasKeys(hasKeysNode, truffleObject)) {
                 obj = JavaInteropReflect.newProxyInstance(targetType, truffleObject, languageContext);
             } else {
                 throw newClassCastException(truffleObject, targetType, null);

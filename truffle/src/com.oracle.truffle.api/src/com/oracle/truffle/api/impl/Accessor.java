@@ -30,6 +30,7 @@ import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import org.graalvm.options.OptionDescriptors;
@@ -142,6 +143,10 @@ public abstract class Accessor {
 
         public abstract Object findOriginalObject(Object truffleObject);
 
+        public abstract <T> T lookupJavaInteropCodeCache(Object languageContext, Object key, Class<T> expectedType);
+
+        public abstract <T> T installJavaInteropCodeCache(Object languageContext, Object key, T value, Class<T> expectedType);
+
         public abstract CallTarget lookupOrRegisterComputation(Object truffleObject, RootNode symbolNode, Object... keyOrKeys);
 
         @SuppressWarnings("static-method")
@@ -224,6 +229,12 @@ public abstract class Accessor {
 
         public abstract RuntimeException wrapHostException(Throwable exception);
 
+        public abstract RootNode wrapHostBoundary(ExecutableNode executableNode, Supplier<String> name);
+
+        public abstract BiFunction<Object, Object, Object> createToGuestValueNode();
+
+        public abstract BiFunction<Object, Object[], Object[]> createToGuestValuesNode();
+
         public abstract boolean isHostException(Throwable exception);
 
         public abstract Throwable asHostException(Throwable exception);
@@ -231,6 +242,10 @@ public abstract class Accessor {
         public abstract ClassCastException newClassCastException(String message, Throwable cause);
 
         public abstract NullPointerException newNullPointerException(String message, Throwable cause);
+
+        public abstract UnsupportedOperationException newUnsupportedOperationException(String message, Throwable cause);
+
+        public abstract IllegalArgumentException newIllegalArgumentException(String message, Throwable cause);
 
         public abstract Object getCurrentHostContext();
 

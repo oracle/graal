@@ -43,8 +43,8 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -1519,7 +1519,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Child private Node writeArrayNode = Message.WRITE.createNode();
 
-            private final ToGuestValueNode toGuestValue = polyglot.languageContext.createToGuestValue();
+            private final ToGuestValueNode toGuestValue = ToGuestValueNode.create();
 
             protected SetArrayElementNode(Interop interop) {
                 super(interop);
@@ -1540,7 +1540,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 long index = (long) args[1];
                 Object value = args[2];
                 try {
-                    ForeignAccess.sendWrite(writeArrayNode, (TruffleObject) receiver, index, toGuestValue.execute(value));
+                    ForeignAccess.sendWrite(writeArrayNode, (TruffleObject) receiver, index, toGuestValue.apply(polyglot.languageContext, value));
                 } catch (UnsupportedMessageException e) {
                     CompilerDirectives.transferToInterpreter();
                     polyglot.setArrayElementUnsupported(receiver);
@@ -1625,7 +1625,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         private static class PutMemberNode extends PolyglotNode {
 
             @Child private Node writeMemberNode = Message.WRITE.createNode();
-            private final ToGuestValueNode toGuestValue = polyglot.languageContext.createToGuestValue();
+            private final ToGuestValueNode toGuestValue = ToGuestValueNode.create();
 
             protected PutMemberNode(Interop interop) {
                 super(interop);
@@ -1646,7 +1646,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 String key = (String) args[1];
                 Object member = args[2];
                 try {
-                    ForeignAccess.sendWrite(writeMemberNode, (TruffleObject) receiver, key, toGuestValue.execute(member));
+                    ForeignAccess.sendWrite(writeMemberNode, (TruffleObject) receiver, key, toGuestValue.apply(polyglot.languageContext, member));
                 } catch (UnsupportedMessageException e) {
                     CompilerDirectives.transferToInterpreter();
                     polyglot.putMemberUnsupported(receiver);
@@ -1827,7 +1827,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         private abstract static class AbstractExecuteNode extends PolyglotNode {
 
             @Child private Node executeNode = Message.createExecute(0).createNode();
-            private final ToGuestValuesNode toGuestValues = polyglot.languageContext.createToGuestValues();
+            private final ToGuestValuesNode toGuestValues = ToGuestValuesNode.create();
 
             protected AbstractExecuteNode(Interop interop) {
                 super(interop);
@@ -1835,7 +1835,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             protected final Object executeShared(Object receiver, Object[] args) {
                 try {
-                    return ForeignAccess.sendExecute(executeNode, (TruffleObject) receiver, toGuestValues.execute(args));
+                    return ForeignAccess.sendExecute(executeNode, (TruffleObject) receiver, toGuestValues.apply(polyglot.languageContext, args));
                 } catch (UnsupportedTypeException e) {
                     CompilerDirectives.transferToInterpreter();
                     throw handleUnsupportedType(e);
@@ -1964,7 +1964,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         private static class NewInstanceNode extends PolyglotNode {
 
             @Child private Node newInstanceNode = Message.createNew(0).createNode();
-            private final ToGuestValuesNode toGuestValues = polyglot.languageContext.createToGuestValues();
+            private final ToGuestValuesNode toGuestValues = ToGuestValuesNode.create();
             private final ToHostValueNode toHostValue = polyglot.languageContext.createToHostValue();
 
             protected NewInstanceNode(Interop interop) {
@@ -1980,7 +1980,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             protected Object executeImpl(Object receiver, Object[] args) {
                 try {
                     Object[] newInstanceArgs = (Object[]) args[1];
-                    return toHostValue.execute(ForeignAccess.sendNew(newInstanceNode, (TruffleObject) receiver, toGuestValues.execute(newInstanceArgs)));
+                    return toHostValue.execute(ForeignAccess.sendNew(newInstanceNode, (TruffleObject) receiver, toGuestValues.apply(polyglot.languageContext, newInstanceArgs)));
                 } catch (UnsupportedTypeException e) {
                     CompilerDirectives.transferToInterpreter();
                     throw handleUnsupportedType(e);

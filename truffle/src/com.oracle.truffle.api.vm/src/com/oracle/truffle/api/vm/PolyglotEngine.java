@@ -47,7 +47,9 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import org.graalvm.options.OptionValues;
@@ -65,12 +67,14 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -255,6 +259,8 @@ public class PolyglotEngine {
     }
     private List<Object[]> config;
     private HashMap<String, Object> globals;
+
+    private final Map<Object, Object> javaInteropCodeCache = new ConcurrentHashMap<>();
 
     /**
      * Private & temporary only constructor.
@@ -1728,6 +1734,45 @@ public class PolyglotEngine {
             };
         }
 
+        @Override
+        public BiFunction<Object, Object, Object> createToGuestValueNode() {
+            return new BiFunction<Object, Object, Object>() {
+                @TruffleBoundary
+                public Object apply(Object t, Object u) {
+                    return toGuestValue(u, t);
+                }
+            };
+        }
+
+        @Override
+        public BiFunction<Object, Object[], Object[]> createToGuestValuesNode() {
+            return new BiFunction<Object, Object[], Object[]>() {
+                @TruffleBoundary
+                public Object[] apply(Object t, Object[] u) {
+                    for (int i = 0; i < u.length; i++) {
+                        u[i] = toGuestValue(u[i], t);
+                    }
+                    return u;
+                }
+            };
+        }
+
+        @Override
+        public RootNode wrapHostBoundary(ExecutableNode executableNode, Supplier<String> name) {
+            return new RootNode(null) {
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return executableNode.execute(frame);
+                }
+
+                @Override
+                public String getName() {
+                    return name.get();
+                }
+            };
+        }
+
         @SuppressWarnings("deprecation")
         @Override
         public <C> com.oracle.truffle.api.impl.FindContextNode<C> createFindContextNode(TruffleLanguage<C> lang) {
@@ -1758,6 +1803,21 @@ public class PolyglotEngine {
             NullPointerException npe = new NullPointerException(message);
             npe.initCause(cause);
             return npe;
+        }
+
+        @Override
+        public <T> T installJavaInteropCodeCache(Object languageContext, Object key, T value, Class<T> expectedType) {
+            T result = expectedType.cast(((PolyglotEngine) languageContext).javaInteropCodeCache.putIfAbsent(key, value));
+            if (result != null) {
+                return result;
+            } else {
+                return value;
+            }
+        }
+
+        @Override
+        public <T> T lookupJavaInteropCodeCache(Object languageContext, Object key, Class<T> expectedType) {
+            return expectedType.cast(((PolyglotEngine) languageContext).javaInteropCodeCache.get(key));
         }
 
         @Override
@@ -1879,6 +1939,16 @@ public class PolyglotEngine {
         @Override
         public ClassCastException newClassCastException(String message, Throwable cause) {
             return cause == null ? new PolyglotClassCastException(message) : new PolyglotClassCastException(message, cause);
+        }
+
+        @Override
+        public IllegalArgumentException newIllegalArgumentException(String message, Throwable cause) {
+            return cause == null ? new PolyglotIllegalArgumentException(message) : new PolyglotIllegalArgumentException(message, cause);
+        }
+
+        @Override
+        public UnsupportedOperationException newUnsupportedOperationException(String message, Throwable cause) {
+            return cause == null ? new PolyglotUnsupportedException(message) : new PolyglotUnsupportedException(message, cause);
         }
 
         @Override
