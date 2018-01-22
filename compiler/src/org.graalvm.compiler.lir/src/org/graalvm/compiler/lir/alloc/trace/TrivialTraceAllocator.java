@@ -29,7 +29,6 @@ import static org.graalvm.compiler.lir.alloc.trace.TraceUtil.isTrivialTrace;
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.alloc.Trace;
-import org.graalvm.compiler.core.common.alloc.TraceBuilderResult;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
@@ -52,11 +51,10 @@ final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPh
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, Trace trace, TraceAllocationContext context) {
         LIR lir = lirGenRes.getLIR();
-        TraceBuilderResult resultTraces = context.resultTraces;
         assert isTrivialTrace(lir, trace) : "Not a trivial trace! " + trace;
         AbstractBlockBase<?> block = trace.getBlocks()[0];
-
-        AbstractBlockBase<?> pred = TraceUtil.getBestTraceInterPredecessor(resultTraces, block);
+        assert block.getPredecessorCount() == 1 : "Trace head with more than one predecessor?!" + trace;
+        AbstractBlockBase<?> pred = block.getPredecessors()[0];
 
         Value[] variableMap = new Value[lir.numVariables()];
         GlobalLivenessInfo livenessInfo = context.livenessInfo;
