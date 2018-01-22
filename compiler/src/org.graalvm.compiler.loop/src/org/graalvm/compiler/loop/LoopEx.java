@@ -237,13 +237,13 @@ public class LoopEx {
             if (isOutsideLoop(lessThan.getX())) {
                 iv = getInductionVariables().get(lessThan.getY());
                 if (iv != null) {
-                    condition = lessThan.condition().mirror();
+                    condition = lessThan.condition().asCondition().mirror();
                     limit = lessThan.getX();
                 }
             } else if (isOutsideLoop(lessThan.getY())) {
                 iv = getInductionVariables().get(lessThan.getX());
                 if (iv != null) {
-                    condition = lessThan.condition();
+                    condition = lessThan.condition().asCondition();
                     limit = lessThan.getY();
                 }
             }

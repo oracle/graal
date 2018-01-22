@@ -43,6 +43,7 @@ import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.calc.Condition.CanonicalizedCondition;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -458,23 +459,16 @@ public class StandardGraphBuilderPlugins {
 
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-            // the mirroring and negation operations get the condition into canonical form
-            boolean mirror = condition.canonicalMirror();
-            boolean negate = condition.canonicalNegate();
+            CanonicalizedCondition canonical = condition.canonicalize();
             StructuredGraph graph = b.getGraph();
 
-            ValueNode lhs = mirror ? y : x;
-            ValueNode rhs = mirror ? x : y;
+            ValueNode lhs = canonical.mustMirror() ? y : x;
+            ValueNode rhs = canonical.mustMirror() ? x : y;
 
-            ValueNode trueValue = ConstantNode.forBoolean(!negate, graph);
-            ValueNode falseValue = ConstantNode.forBoolean(negate, graph);
+            ValueNode trueValue = ConstantNode.forBoolean(!canonical.mustNegate(), graph);
+            ValueNode falseValue = ConstantNode.forBoolean(canonical.mustNegate(), graph);
 
-            Condition cond = mirror ? condition.mirror() : condition;
-            if (negate) {
-                cond = cond.negate();
-            }
-
-            LogicNode compare = CompareNode.createCompareNode(graph, b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), null, cond, lhs, rhs, NodeView.DEFAULT);
+            LogicNode compare = CompareNode.createCompareNode(graph, b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), null, canonical.getCanonicalCondition(), lhs, rhs, NodeView.DEFAULT);
             b.addPush(JavaKind.Boolean, new ConditionalNode(compare, trueValue, falseValue));
             return true;
         }
