@@ -67,15 +67,27 @@ public class LLVMConditionalBranchNodeWrapper implements InstrumentableFactory<L
 
         @Override
         public boolean executeCondition(VirtualFrame frame) {
-            try {
-                probeNode.onEnter(frame);
-                boolean result = delegate.executeCondition(frame);
-                probeNode.onReturnValue(frame, result);
-                return result;
-            } catch (Throwable t) {
-                probeNode.onReturnExceptional(frame, t);
-                throw t;
+            boolean returnValue;
+            for (;;) {
+                boolean wasOnReturnExecuted = false;
+                try {
+                    probeNode.onEnter(frame);
+                    returnValue = delegate.executeCondition(frame);
+                    wasOnReturnExecuted = true;
+                    probeNode.onReturnValue(frame, returnValue);
+                    break;
+                } catch (Throwable t) {
+                    Object result = probeNode.onReturnExceptionalOrUnwind(frame, t, wasOnReturnExecuted);
+                    if (result == ProbeNode.UNWIND_ACTION_REENTER) {
+                        continue;
+                    } else if (result != null) {
+                        returnValue = (boolean) result;
+                        break;
+                    }
+                    throw t;
+                }
             }
+            return returnValue;
         }
 
         @Override
