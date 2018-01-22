@@ -67,7 +67,7 @@ final class BreakpointsHandler {
         }
     }
 
-    Params createURLBreakpoint(Object url, int line, int column, String condition) throws CommandProcessException {
+    Params createURLBreakpoint(Object url, int line, int column, String condition) {
         long id;
         synchronized (bpIDs) {
             id = ++lastID;
@@ -182,7 +182,7 @@ final class BreakpointsHandler {
         private int column;
         private String condition;
 
-        public BPInfo(Object url, int line, int column, String condition) {
+        private BPInfo(Object url, int line, int column, String condition) {
             this.url = url;
             this.line = line;
             this.column = column;
