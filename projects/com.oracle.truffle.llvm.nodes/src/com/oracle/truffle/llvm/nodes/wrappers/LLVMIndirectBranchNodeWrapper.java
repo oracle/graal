@@ -67,15 +67,27 @@ public class LLVMIndirectBranchNodeWrapper implements InstrumentableFactory<LLVM
 
         @Override
         public int executeCondition(VirtualFrame frame) {
-            try {
-                probeNode.onEnter(frame);
-                int result = delegate.executeCondition(frame);
-                probeNode.onReturnValue(frame, result);
-                return result;
-            } catch (Throwable t) {
-                probeNode.onReturnExceptional(frame, t);
-                throw t;
+            int returnValue;
+            for (;;) {
+                boolean wasOnReturnExecuted = false;
+                try {
+                    probeNode.onEnter(null);
+                    returnValue = delegate.executeCondition(frame);
+                    wasOnReturnExecuted = true;
+                    probeNode.onReturnValue(null, returnValue);
+                    break;
+                } catch (Throwable t) {
+                    Object result = probeNode.onReturnExceptionalOrUnwind(null, t, wasOnReturnExecuted);
+                    if (result == ProbeNode.UNWIND_ACTION_REENTER) {
+                        continue;
+                    } else if (result != null) {
+                        returnValue = (int) result;
+                        break;
+                    }
+                    throw t;
+                }
             }
+            return returnValue;
         }
 
         @Override

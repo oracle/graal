@@ -85,13 +85,23 @@ public class LLVMInvokeNodeWrapper implements InstrumentableFactory<LLVMInvokeNo
 
         @Override
         public void execute(VirtualFrame frame) {
-            try {
-                probeNode.onEnter(frame);
-                delegateNode.execute(frame);
-                probeNode.onReturnValue(frame, null);
-            } catch (Throwable t) {
-                probeNode.onReturnExceptional(frame, t);
-                throw t;
+            for (;;) {
+                boolean wasOnReturnExecuted = false;
+                try {
+                    probeNode.onEnter(frame);
+                    delegateNode.execute(frame);
+                    wasOnReturnExecuted = true;
+                    probeNode.onReturnValue(frame, null);
+                    break;
+                } catch (Throwable t) {
+                    Object result = probeNode.onReturnExceptionalOrUnwind(frame, t, wasOnReturnExecuted);
+                    if (result == ProbeNode.UNWIND_ACTION_REENTER) {
+                        continue;
+                    } else if (result != null) {
+                        break;
+                    }
+                    throw t;
+                }
             }
         }
 

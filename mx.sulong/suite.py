@@ -8,7 +8,7 @@ suite = {
       {
         "name" : "truffle",
         "subdir" : True,
-        "version" : "2fae84ad2179a2646d1bd62d49c07a164827c29f",
+        "version" : "3a00d021027f4136667915386f83b56311db7c12",
         "urls" : [
           {"url" : "https://github.com/graalvm/graal", "kind" : "git"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -270,6 +270,16 @@ suite = {
       "prefix": "",
     },
 
+    "com.oracle.truffle.llvm.tests.debug" : {
+      "subDir" : "tests",
+      "class" : "SulongTestSuite",
+      "variants" : ["O0_MEM2REG"],
+      "buildRef" : False,
+      "buildEnv" : {
+        "CFLAGS" : "<clangImplicitArgs> -g",
+        "CPPFLAGS" : "-I<sulong_include> -g",
+      },
+    },
     "com.oracle.truffle.llvm.tests.interop" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
@@ -384,6 +394,7 @@ suite = {
       "platformDependent" : True,
       "output" : "mxbuild/sulong-test-suites",
       "dependencies" : [
+        "com.oracle.truffle.llvm.tests.debug",
         "com.oracle.truffle.llvm.tests.interop",
         "com.oracle.truffle.llvm.tests.nfi",
         "com.oracle.truffle.llvm.tests.sulong",
