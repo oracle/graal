@@ -23,6 +23,7 @@ suite = {
   },
 
   "defaultLicense" : "GPLv2-CPE",
+  "snippetsPattern" : ".*JavadocSnippets.*",
 
   "jdklibraries" : {
     "JVMCI_SERVICES" : {
