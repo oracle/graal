@@ -117,19 +117,12 @@ public class Inflation extends BigBang {
 
     @Override
     public void checkUnsupportedSynchronization(AnalysisMethod method, int bci, AnalysisType aType) {
-        /* Can not synchronize on a non-instance type. For example, an array. */
-        checkUnsupportedSynchronization(aType.isInstanceClass(), method, bci, aType);
         /*
          * We want DynamicHub instances to be immutable, but synchronization would require
          * installing a Lock object. Static synchronized methods are handled by synchronizing on a
          * dedicated type instead.
          */
         checkUnsupportedSynchronization(!aType.equals(metaAccess.lookupJavaType(DynamicHub.class)), method, bci, aType);
-        /*
-         * We want String instances to be immutable, because they are a major part of the boot image
-         * heap.
-         */
-        checkUnsupportedSynchronization(!aType.equals(metaAccess.lookupJavaType(String.class)), method, bci, aType);
     }
 
     private static void checkUnsupportedSynchronization(boolean condition, AnalysisMethod method, int bci, AnalysisType aType) {
