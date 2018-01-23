@@ -26,8 +26,6 @@ package com.oracle.truffle.tools.chromeinspector;
 
 import java.io.File;
 import java.io.PrintWriter;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -124,7 +122,7 @@ public final class TruffleDebugger extends DebuggerDomain {
         ds = tdbg.startSession(new SuspendedCallbackImpl());
         ds.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(true).includeInternal(false).build());
         slh = context.getScriptsHandler();
-        bph = new BreakpointsHandler(ds);
+        bph = new BreakpointsHandler(ds, slh);
         // globalScope = new Scope("global", null, null, null); // TODO
     }
 
@@ -171,6 +169,13 @@ public final class TruffleDebugger extends DebuggerDomain {
     @Override
     public void setPauseOnExceptions(String state) {
 
+    }
+
+    @Override
+    public Params getPossibleBreakpoints(Location start, Location end, boolean restrictToFunction) {
+        JSONObject json = new JSONObject();
+        json.put("locations", new JSONArray());
+        return new Params(json);
     }
 
     @Override
@@ -353,18 +358,16 @@ public final class TruffleDebugger extends DebuggerDomain {
 
     @Override
     public Params setBreakpointByUrl(String url, String urlRegex, int line, int column, String condition) throws CommandProcessException {
-        if (url == null && urlRegex == null) {
+        if (url.isEmpty() && urlRegex.isEmpty()) {
             throw new CommandProcessException("Must specify either url or urlRegex.");
         }
         if (line <= 0) {
             throw new CommandProcessException("Must specify line number.");
         }
-        if (url != null) {
-            URI uri = getScriptURIForBP(url);
-            return bph.createURLBreakpoint(uri, line, column, condition);
+        if (!url.isEmpty()) {
+            return bph.createURLBreakpoint(url, line, column, condition);
         } else {
-            // TODO
-            throw new CommandProcessException("urlRegex not supported at the moment.");
+            return bph.createURLBreakpoint(Pattern.compile(urlRegex), line, column, condition);
         }
     }
 
@@ -373,11 +376,7 @@ public final class TruffleDebugger extends DebuggerDomain {
         if (location == null) {
             throw new CommandProcessException("Must specify location.");
         }
-        Script script = slh.getScript(location.getScriptId());
-        if (script == null) {
-            throw new CommandProcessException("No script with id '" + location.getScriptId() + "'");
-        }
-        return bph.createBreakpoint(location, script.getSource().getURI(), condition);
+        return bph.createBreakpoint(location, condition);
     }
 
     @Override
@@ -392,11 +391,7 @@ public final class TruffleDebugger extends DebuggerDomain {
         if (location == null) {
             throw new CommandProcessException("Must specify location.");
         }
-        Script script = slh.getScript(location.getScriptId());
-        if (script == null) {
-            throw new CommandProcessException("No script with id '" + location.getScriptId() + "'");
-        }
-        bph.createOneShotBreakpoint(location, script.getSource().getURI());
+        bph.createOneShotBreakpoint(location);
         resume(postProcessor);
     }
 
@@ -495,32 +490,6 @@ public final class TruffleDebugger extends DebuggerDomain {
         return false;
     }
 
-    private static URI getScriptURIForBP(String scripturl) throws CommandProcessException {
-        int i = 0;
-        while (i < scripturl.length()) {
-            char c = scripturl.charAt(i);
-            if (c == ':') {
-                break;
-            } else if (c == '/' || c == '?' || c == '#') {
-                i = 0;
-                break;
-            }
-            i++;
-        }
-        URI uri;
-        try {
-            if (i > 0) {
-                // There is a scheme
-                uri = ScriptsHandler.getURIFromNiceString(scripturl);
-            } else {
-                uri = new URI("file", null, scripturl, null, null);
-            }
-        } catch (URISyntaxException use) {
-            throw new CommandProcessException(use.getMessage());
-        }
-        return uri;
-    }
-
     private class LoadScriptListenerImpl implements LoadScriptListener {
 
         @Override
@@ -560,6 +529,9 @@ public final class TruffleDebugger extends DebuggerDomain {
             Params params = new Params(jsonParams);
             Event scriptParsed = new Event("Debugger.scriptParsed", params);
             eventHandler.event(scriptParsed);
+            bph.resolveURLBreakpoints(script).stream().map(locationParams -> new Event("Debugger.breakpointResolved", locationParams)).forEach(breakpointResolved -> {
+                eventHandler.event(breakpointResolved);
+            });
         }
 
         private CharSequence getSourceMapURL(Source source, int lastLine) {

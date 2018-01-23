@@ -164,41 +164,39 @@ public final class TruffleRuntime extends RuntimeDomain {
         if (expression == null) {
             throw new CommandProcessException("An expression required.");
         }
-        JSONObject json = null;
-        RemoteObject ro = null;
-        String message = null;
-        try {
-            ro = context.executeInSuspendThread(new SuspendThreadExecutable<RemoteObject>() {
-                @Override
-                public RemoteObject executeCommand() throws CommandProcessException {
-                    DebuggerSuspendedInfo suspendedInfo = context.getSuspendedInfo();
-                    if (suspendedInfo == null) {
-                        return null;
-                    } else {
+        JSONObject json = new JSONObject();
+        DebuggerSuspendedInfo suspendedInfo = context.getSuspendedInfo();
+        if (suspendedInfo != null) {
+            try {
+                context.executeInSuspendThread(new SuspendThreadExecutable<Void>() {
+                    @Override
+                    public Void executeCommand() throws CommandProcessException {
+                        JSONObject result;
                         DebugValue value = suspendedInfo.getSuspendedEvent().getTopStackFrame().eval(expression);
-                        return new RemoteObject(value, context.getErr());
+                        if (returnByValue) {
+                            result = RemoteObject.createJSONResultValue(value, context.getErr());
+                        } else {
+                            RemoteObject ro = new RemoteObject(value, context.getErr());
+                            context.getRemoteObjectsHandler().register(ro);
+                            result = ro.toJSON();
+                        }
+                        json.put("result", result);
+                        return null;
                     }
-                }
-            });
-        } catch (NoSuspendedThreadException ex) {
-            message = ex.getLocalizedMessage();
-        } catch (GuestLanguageException ex) {
-            json = new JSONObject();
-            fillExceptionDetails(json, ex);
-        }
-        if (ro != null) {
-            context.getRemoteObjectsHandler().register(ro);
-            json = ro.toJSON();
-        } else if (json == null) {
-            json = new JSONObject();
-            if (message == null) {
-                message = "Not suspended.";
+                });
+            } catch (NoSuspendedThreadException ex) {
+                JSONObject exceptionDetails = new JSONObject();
+                exceptionDetails.put("text", ex.getLocalizedMessage());
+                json.put("exceptionDetails", exceptionDetails);
+            } catch (GuestLanguageException ex) {
+                fillExceptionDetails(json, ex);
             }
-            json.put("value", message);
+        } else {
+            JSONObject exceptionDetails = new JSONObject();
+            exceptionDetails.put("text", "<Not suspended>");
+            json.put("exceptionDetails", exceptionDetails);
         }
-        JSONObject result = new JSONObject();
-        result.put("result", json);
-        return new Params(result);
+        return new Params(json);
     }
 
     @Override

@@ -207,6 +207,13 @@ public final class InspectServerSession {
                                 json.optBoolean("generatePreview"),
                                 json.optBoolean("throwOnSideEffect"));
                 break;
+            case "Debugger.getPossibleBreakpoints":
+                json = cmd.getParams().getJSONObject();
+                resultParams = debugger.getPossibleBreakpoints(
+                                Location.create(json.getJSONObject("start")),
+                                Location.create(json.getJSONObject("end")),
+                                json.optBoolean("restrictToFunction"));
+                break;
             case "Debugger.getScriptSource":
                 resultParams = debugger.getScriptSource(cmd.getParams().getScriptId());
                 break;
