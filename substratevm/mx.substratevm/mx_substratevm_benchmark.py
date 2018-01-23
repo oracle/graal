@@ -225,7 +225,7 @@ def bench_jsimage(bench_conf, out, err, extra_options=None):
         with _timedelta('IMAGEBUILD: ', out=out):
             out('INFO: EXECUTE IMAGEBUILD: svmimage-%s\n' % bench_conf)
             _, image_building_options = _bench_configs[bench_conf]
-            command = ['mx', '-p', os.getcwd(), 'image', '-js', '-H:Path=' + image_dir,
+            command = [mx_substratevm.native_image_path(mx_substratevm.suite_native_image_root()), '--js', '-H:Path=' + image_dir,
                        '-H:Name=' + js_image_name] + image_building_options + extra_options
             # Print out the command.
             print(' '.join(command))
@@ -244,25 +244,25 @@ def bench_jsimage(bench_conf, out, err, extra_options=None):
     return image_path
 
 
-def _bench_compile_server(port, bench_conf, out):
+def _bench_compile_server(bench_conf, out):
     def delete_image(image_path):
         if os.path.exists(image_path):
             os.remove(image_path)
 
-    def build_js_image_in_server(stdout, stderr, port):
-        return bench_jsimage(bench_conf, stdout, stderr, ["-server", "-port=" + str(port)])
+    def build_js_image_in_server(stdouterr):
+        return bench_jsimage(bench_conf, stdouterr, stdouterr)
 
     devnull = open(os.devnull, 'w').write
     for i in range(_IMAGE_WARM_UP_ITERATIONS):
         print("Building js image in the image build server: " + str(i))
-        image_path = build_js_image_in_server(devnull, devnull, port)
+        image_path = build_js_image_in_server(devnull)
         delete_image(image_path)
 
     print('Measuring performance of js image compilation in the server.')
     for _ in range(_IMAGE_BENCH_REPETITIONS):
         with _timedelta("IMAGEBUILD-SERVER: ", out=out):
             out('INFO: EXECUTE IMAGEBUILD: svmimage-%s\n' % bench_conf)
-            image_path = build_js_image_in_server(devnull, devnull, port)
+            image_path = build_js_image_in_server(devnull)
         delete_image(image_path)
 
 
@@ -272,8 +272,8 @@ def run_js(vmArgs, jsArgs, nonZeroIsFatal, out, err, cwd):
     _, _, image_path = _bench_image_params(bench_conf)
     if should_bench_compile_server and not exists(image_path):
         for _ in range(_IMAGE_BENCH_REPETITIONS):
-            with mx_substratevm.compile_server([]) as port:
-                _bench_compile_server(port, bench_conf, out)
+            with mx_substratevm.native_image_context():
+                _bench_compile_server(bench_conf, out)
 
     image_path = bench_jsimage(bench_conf, out=out, err=err)
     if image_path:

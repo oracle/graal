@@ -38,14 +38,16 @@ import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -57,6 +59,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.util.InterruptImageBuilding;
+import com.oracle.svm.core.util.VMError;
 
 public final class ImageClassLoader {
 
@@ -100,21 +103,29 @@ public final class ImageClassLoader {
         return result;
     }
 
+    private static Path toRealPath(Path p) {
+        try {
+            return p.toRealPath();
+        } catch (IOException e) {
+            throw VMError.shouldNotReachHere("Path.toRealPath failed for " + p);
+        }
+    }
+
     private void initAllClasses() {
         final ForkJoinPool executor = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
 
-        Set<String> uniquePaths = new HashSet<>(Arrays.asList(classpath));
+        Set<Path> uniquePaths = new TreeSet<>(Comparator.comparing(t -> toRealPath(t)));
+        uniquePaths.addAll(Arrays.stream(classpath).map(Paths::get).collect(Collectors.toList()));
         uniquePaths.parallelStream().forEach(path -> loadClassesFromPath(executor, path));
 
         executor.awaitQuiescence(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
     }
 
-    private void loadClassesFromPath(ForkJoinPool executor, String path) {
-        File file = new File(path);
-        if (file.exists()) {
-            if (path.endsWith(".jar")) {
+    private void loadClassesFromPath(ForkJoinPool executor, Path path) {
+        if (Files.exists(path)) {
+            if (path.getFileName().toString().endsWith(".jar")) {
                 try {
-                    try (FileSystem jarFileSystem = FileSystems.newFileSystem(URI.create("jar:file:" + file.getAbsolutePath()), Collections.emptyMap())) {
+                    try (FileSystem jarFileSystem = FileSystems.newFileSystem(URI.create("jar:file:" + path), Collections.emptyMap())) {
                         initAllClasses(jarFileSystem.getPath("/"), executor);
                     }
                 } catch (ClosedByInterruptException ignored) {
@@ -123,7 +134,7 @@ public final class ImageClassLoader {
                     throw shouldNotReachHere(e);
                 }
             } else {
-                initAllClasses(FileSystems.getDefault().getPath(path), executor);
+                initAllClasses(path, executor);
             }
         }
     }

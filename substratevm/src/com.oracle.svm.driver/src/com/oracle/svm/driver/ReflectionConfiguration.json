@@ -1,0 +1,22 @@
+[
+  {
+    "name" : "com.oracle.svm.hosted.server.SubstrateServerMessage",
+    "fields" : [
+      { "name" : "command" },
+      { "name" : "payload" }
+    ],
+    "methods" : [
+      {
+        "name" : "<init>",
+        "parameterTypes" : []
+      }
+    ]
+  },
+  {
+    "name" : "com.oracle.svm.hosted.server.SubstrateServerMessage$ServerCommand",
+    "allPublicFields" : "true",
+    "methods" : [
+      { "name" : "<init>" }
+    ]
+  }
+]

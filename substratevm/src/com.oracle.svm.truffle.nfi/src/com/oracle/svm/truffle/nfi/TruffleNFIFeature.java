@@ -29,7 +29,6 @@ import java.util.function.BooleanSupplier;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.truffle.TruffleFeature;
 import com.oracle.truffle.nfi.NFILanguage;
 
@@ -57,15 +56,5 @@ public final class TruffleNFIFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.add(TruffleNFISupport.class, new TruffleNFISupport());
-    }
-}
-
-@AutomaticFeature
-final class RemoveNFILanguageFeature implements Feature {
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        if (ImageSingletons.contains(TruffleFeature.class) && !ImageSingletons.contains(TruffleNFIFeature.class)) {
-            TruffleFeature.removeTruffleLanguage(NFILanguage.MIME_TYPE);
-        }
     }
 }
