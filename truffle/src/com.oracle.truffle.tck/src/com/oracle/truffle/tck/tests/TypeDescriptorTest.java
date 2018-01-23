@@ -275,6 +275,12 @@ public class TypeDescriptorTest {
         Assert.assertTrue(ue4.isAssignable(ue2));
         Assert.assertTrue(ue4.isAssignable(ue3));
         Assert.assertFalse(ue4.isAssignable(up));
+        // strictParameterCount
+        final TypeDescriptor exeStrictAnyAny = TypeDescriptor.executable(TypeDescriptor.ANY, false, TypeDescriptor.ANY);
+        final TypeDescriptor exeAnyNum = TypeDescriptor.executable(TypeDescriptor.ANY, TypeDescriptor.NUMBER);
+        final TypeDescriptor exeAnyNumNum = TypeDescriptor.executable(TypeDescriptor.ANY, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER);
+        Assert.assertTrue(exeAnyNum.isAssignable(exeStrictAnyAny));
+        Assert.assertFalse(exeAnyNumNum.isAssignable(exeStrictAnyAny));
     }
 
     @Test
