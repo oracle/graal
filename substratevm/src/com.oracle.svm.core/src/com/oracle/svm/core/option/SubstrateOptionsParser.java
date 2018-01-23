@@ -284,7 +284,7 @@ public class SubstrateOptionsParser {
         }
     }
 
-    private static long parseLong(String v) {
+    static long parseLong(String v) {
         String valueString = v.toLowerCase();
         long scale = 1;
         if (valueString.endsWith("k")) {
