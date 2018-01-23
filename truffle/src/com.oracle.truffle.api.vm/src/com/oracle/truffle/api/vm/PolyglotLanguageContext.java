@@ -351,19 +351,12 @@ final class PolyglotLanguageContext implements VMObject {
         }
         setApplicationArguments(newApplicationArguments);
         if (preInitialized) {
-            try {
-                final Env newEnv = LANGUAGE.patchEnvContext(env, context.out, context.err, context.in, config, getOptionValues(), newApplicationArguments);
-                if (newEnv != null) {
-                    env = newEnv;
-                    return true;
-                }
-                return false;
-            } catch (Throwable t) {
-                if (t instanceof ThreadDeath) {
-                    throw t;
-                }
-                return false;
+            final Env newEnv = LANGUAGE.patchEnvContext(env, context.out, context.err, context.in, config, getOptionValues(), newApplicationArguments);
+            if (newEnv != null) {
+                env = newEnv;
+                return true;
             }
+            return false;
         } else {
             return true;
         }
