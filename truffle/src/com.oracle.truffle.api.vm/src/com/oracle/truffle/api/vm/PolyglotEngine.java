@@ -1952,6 +1952,11 @@ public class PolyglotEngine {
         }
 
         @Override
+        public ArrayIndexOutOfBoundsException newArrayIndexOutOfBounds(String message, Throwable cause) {
+            return cause == null ? new PolyglotArrayIndexOutOfBoundsException(message) : new PolyglotArrayIndexOutOfBoundsException(message, cause);
+        }
+
+        @Override
         public Object getCurrentHostContext() {
             return null;
         }

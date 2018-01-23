@@ -327,6 +327,13 @@ public class ValueAssert {
                     assertFails(() -> value.getArrayElement(0), UnsupportedOperationException.class);
                     assertFails(() -> value.setArrayElement(0, null), UnsupportedOperationException.class);
                     assertFails(() -> value.getArraySize(), UnsupportedOperationException.class);
+                    if (!value.isNull()) {
+                        assertFails(() -> value.as(List.class), ClassCastException.class);
+                        assertFails(() -> value.as(Object[].class), ClassCastException.class);
+                    } else {
+                        assertNull(value.as(List.class));
+                        assertNull(value.as(Object[].class));
+                    }
                     break;
                 case HOST_OBJECT:
                     assertFalse(value.isHostObject());

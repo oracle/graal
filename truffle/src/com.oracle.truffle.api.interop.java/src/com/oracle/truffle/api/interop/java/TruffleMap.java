@@ -85,9 +85,8 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
         this.includeInternal = includeInternal;
     }
 
-    static <K, V> Map<K, V> create(Object languageContext, TruffleObject foreignObject, boolean executable,
-                    boolean instantiable, Class<K> keyClass, Class<V> valueClass, Type valueType) {
-        if (executable || instantiable) {
+    static <K, V> Map<K, V> create(Object languageContext, TruffleObject foreignObject, boolean implementsFunction, Class<K> keyClass, Class<V> valueClass, Type valueType) {
+        if (implementsFunction) {
             return new FunctionTruffleMap<>(languageContext, foreignObject, keyClass, valueClass, valueType);
         } else {
             return new TruffleMap<>(languageContext, foreignObject, keyClass, valueClass, valueType);
@@ -435,7 +434,7 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
                         CompilerDirectives.transferToInterpreter();
                         return Collections.emptySet();
                     }
-                    keys = TruffleList.create(String.class, null, truffleKeys, languageContext);
+                    keys = TruffleList.create(languageContext, truffleKeys, false, String.class, null);
                     keysSize = keys.size();
                 } else if (cache.numberKey && sendHasSize(hasSize, receiver)) {
                     try {

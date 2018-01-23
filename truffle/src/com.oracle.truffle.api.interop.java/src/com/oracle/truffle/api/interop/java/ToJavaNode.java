@@ -216,8 +216,9 @@ abstract class ToJavaNode extends Node {
             return null;
         } else if (targetType == List.class) {
             if (primitive.hasSize(truffleObject)) {
+                boolean implementsFunction = shouldImplementFunction(truffleObject);
                 TypeAndClass<?> elementType = getGenericParameterType(genericType, 0);
-                obj = TruffleList.create(elementType.clazz, elementType.type, truffleObject, languageContext);
+                obj = TruffleList.create(languageContext, truffleObject, implementsFunction, elementType.clazz, elementType.type);
             } else {
                 throw newClassCastException(truffleObject, targetType, "has no size");
             }
@@ -230,12 +231,8 @@ abstract class ToJavaNode extends Node {
             boolean hasSize = (Number.class.isAssignableFrom(keyClazz)) && primitive.hasSize(truffleObject);
             boolean hasKeys = (keyClazz == Object.class || keyClazz == String.class) && primitive.hasKeys(truffleObject);
             if (hasKeys || hasSize) {
-                boolean executable = isExecutable(truffleObject);
-                boolean instantiable = false;
-                if (!executable) {
-                    instantiable = isInstantiable(truffleObject);
-                }
-                obj = TruffleMap.create(languageContext, truffleObject, executable, instantiable, keyClazz, valueType.clazz, valueType.type);
+                boolean implementsFunction = shouldImplementFunction(truffleObject);
+                obj = TruffleMap.create(languageContext, truffleObject, implementsFunction, keyClazz, valueType.clazz, valueType.type);
             } else {
                 throw newClassCastException(truffleObject, targetType, "has no keys");
             }
@@ -253,6 +250,16 @@ abstract class ToJavaNode extends Node {
             }
         }
         return targetType.cast(obj);
+    }
+
+    private boolean shouldImplementFunction(TruffleObject truffleObject) {
+        boolean executable = isExecutable(truffleObject);
+        boolean instantiable = false;
+        if (!executable) {
+            instantiable = isInstantiable(truffleObject);
+        }
+        boolean implementsFunction = executable || instantiable;
+        return implementsFunction;
     }
 
     private static boolean isSupportedMapKeyType(Class<?> keyType) {
@@ -314,7 +321,7 @@ abstract class ToJavaNode extends Node {
 
     private static Object truffleObjectToArray(TruffleObject foreignObject, Class<?> arrayType, Type genericArrayType, Object languageContext) {
         Class<?> componentType = arrayType.getComponentType();
-        List<?> list = TruffleList.create(componentType, getGenericArrayComponentType(genericArrayType), foreignObject, languageContext);
+        List<?> list = TruffleList.create(languageContext, foreignObject, false, componentType, getGenericArrayComponentType(genericArrayType));
         Object array = Array.newInstance(componentType, list.size());
         for (int i = 0; i < list.size(); i++) {
             Array.set(array, i, list.get(i));

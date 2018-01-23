@@ -822,6 +822,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
+        public ArrayIndexOutOfBoundsException newArrayIndexOutOfBounds(String message, Throwable cause) {
+            return cause == null ? new PolyglotArrayIndexOutOfBoundsException(message) : new PolyglotArrayIndexOutOfBoundsException(message, cause);
+        }
+
+        @Override
         public Object getCurrentHostContext() {
             PolyglotContextImpl polyglotContext = PolyglotContextImpl.current();
             return polyglotContext == null ? null : polyglotContext.getHostContext();

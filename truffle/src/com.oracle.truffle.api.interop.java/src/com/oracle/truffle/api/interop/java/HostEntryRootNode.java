@@ -44,6 +44,11 @@ public abstract class HostEntryRootNode<T> extends ExecutableNode {
         return JavaInterop.ACCESSOR.engine().newIllegalArgumentException(message, null);
     }
 
+    protected static final RuntimeException newArrayIndexOutOfBounds(String message) {
+        CompilerDirectives.transferToInterpreter();
+        return JavaInterop.ACCESSOR.engine().newArrayIndexOutOfBounds(message, null);
+    }
+
     protected abstract Object executeImpl(Object languageContext, T receiver, Object[] args, int offset);
 
 }

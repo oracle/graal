@@ -296,26 +296,21 @@ public final class JavaInterop {
     static TruffleObject asTruffleObject(Object obj, Object languageContext) {
         if (obj instanceof TruffleObject) {
             return ((TruffleObject) obj);
-        }
-        if (obj instanceof Class) {
+        } else if (obj instanceof Class) {
             return new JavaObject(null, (Class<?>) obj, languageContext);
-        }
-        if (obj == null) {
+        } else if (obj == null) {
             return JavaObject.NULL;
-        }
-        if (obj.getClass().isArray()) {
+        } else if (obj.getClass().isArray()) {
             return new JavaObject(obj, obj.getClass(), languageContext);
-        }
-        if (obj instanceof TruffleList) {
+        } else if (obj instanceof TruffleList) {
             return ((TruffleList<?>) obj).array;
-        }
-        if (obj instanceof TruffleMap) {
+        } else if (obj instanceof TruffleMap) {
             return ((TruffleMap<?, ?>) obj).obj;
-        }
-        if (TruffleOptions.AOT) {
+        } else if (TruffleOptions.AOT) {
             return new JavaObject(obj, obj.getClass(), languageContext);
+        } else {
+            return JavaInteropReflect.asTruffleViaReflection(obj, languageContext);
         }
-        return JavaInteropReflect.asTruffleViaReflection(obj, languageContext);
     }
 
     /**
