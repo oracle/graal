@@ -538,7 +538,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
     public void emitCompareBranch(CompareNode compare, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
         PlatformKind kind = gen.getLIRKind(compare.getX().stamp(NodeView.DEFAULT)).getPlatformKind();
-        gen.emitCompareBranch(kind, operand(compare.getX()), operand(compare.getY()), compare.condition(), compare.unorderedIsTrue(), trueSuccessor, falseSuccessor, trueSuccessorProbability);
+        gen.emitCompareBranch(kind, operand(compare.getX()), operand(compare.getY()), compare.condition().asCondition(), compare.unorderedIsTrue(), trueSuccessor, falseSuccessor,
+                        trueSuccessorProbability);
     }
 
     public void emitIntegerTestBranch(IntegerTestNode test, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
@@ -566,7 +567,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         } else if (node instanceof CompareNode) {
             CompareNode compare = (CompareNode) node;
             PlatformKind kind = gen.getLIRKind(compare.getX().stamp(NodeView.DEFAULT)).getPlatformKind();
-            return gen.emitConditionalMove(kind, operand(compare.getX()), operand(compare.getY()), compare.condition(), compare.unorderedIsTrue(), trueValue, falseValue);
+            return gen.emitConditionalMove(kind, operand(compare.getX()), operand(compare.getY()), compare.condition().asCondition(), compare.unorderedIsTrue(), trueValue, falseValue);
         } else if (node instanceof LogicConstantNode) {
             return gen.emitMove(((LogicConstantNode) node).getValue() ? trueValue : falseValue);
         } else if (node instanceof IntegerTestNode) {

@@ -31,7 +31,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
-import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -560,7 +560,7 @@ public class TruffleGraphBuilderPlugins {
                             // Nothing to do.
                         } else {
                             boolean skipAnchor = false;
-                            LogicNode compareNode = CompareNode.createCompareNode(object.graph(), Condition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), constantReflection,
+                            LogicNode compareNode = CompareNode.createCompareNode(object.graph(), CanonicalCondition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), constantReflection,
                                             NodeView.DEFAULT);
 
                             if (compareNode instanceof LogicConstantNode) {
@@ -622,7 +622,7 @@ public class TruffleGraphBuilderPlugins {
                 } else {
                     locationIdentity = ObjectLocationIdentity.create(location.asJavaConstant());
                 }
-                LogicNode compare = b.addWithInputs(CompareNode.createCompareNode(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), null, Condition.EQ, condition,
+                LogicNode compare = b.addWithInputs(CompareNode.createCompareNode(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), null, CanonicalCondition.EQ, condition,
                                 ConstantNode.forBoolean(true, object.graph()), NodeView.DEFAULT));
                 ConditionAnchorNode anchor = b.add(new ConditionAnchorNode(compare));
                 b.addPush(returnKind, b.add(new GuardedUnsafeLoadNode(b.addNonNullCast(object), offset, returnKind, locationIdentity, anchor)));
