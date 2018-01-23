@@ -206,7 +206,7 @@ public class Signal {
     public static native int sigaction(SignalEnum signum, sigaction act, sigaction oldact);
 
     /**
-     * An alphabetical list of the signals common to POSIX platforms. The signal numbers come from
+     * An alphabetical list of the signals on POSIX platforms. The signal numbers come from
      * {@link #getCValue()}.
      */
     @CEnum
@@ -272,6 +272,19 @@ public class Signal {
         SIGXCPU,
         /* terminate process: file size limit exceeded (see setrlimit(2)) */
         SIGXFSZ;
+
+        @CEnumValue
+        public native int getCValue();
+    }
+
+    /** An alphabetical list of Linux-specific signals. */
+    /* Workaround for GR-7858: @Platform @CEnum members. */
+    @Platforms(Platform.LINUX.class)
+    @CEnum
+    @CContext(PosixDirectives.class)
+    public enum LinuxSignalEnum {
+        /* Pollable event (Sys V). Synonym for SIGIO */
+        SIGPOLL;
 
         @CEnumValue
         public native int getCValue();
