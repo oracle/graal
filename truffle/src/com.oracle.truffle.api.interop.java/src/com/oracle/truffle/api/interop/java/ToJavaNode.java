@@ -115,16 +115,22 @@ abstract class ToJavaNode extends Node {
         return convertedValue;
     }
 
-    @SuppressWarnings("unused")
-    boolean canConvert(Object value, Class<?> targetType, Type genericType, Object languageContext, boolean strict) {
-        Object convertedValue;
+    boolean canConvertStrict(Object value, Class<?> targetType) {
         if (isAssignableFromTrufflePrimitiveType(targetType)) {
-            convertedValue = toPrimitive(value, targetType);
+            Object convertedValue = primitive.toPrimitive(value, targetType);
             if (convertedValue != null) {
                 return true;
             }
         }
         if (JavaObject.isJavaInstance(targetType, value)) {
+            return true;
+        }
+        return false;
+    }
+
+    @SuppressWarnings("unused")
+    boolean canConvert(Object value, Class<?> targetType, Type genericType, Object languageContext, boolean strict) {
+        if (canConvertStrict(value, targetType)) {
             return true;
         }
         if (strict) {
@@ -160,10 +166,6 @@ abstract class ToJavaNode extends Node {
             assert !(value instanceof TruffleObject);
             return targetType.isInstance(value);
         }
-    }
-
-    Object toPrimitive(Object value, Class<?> targetType) {
-        return primitive.toPrimitive(value, targetType);
     }
 
     static boolean isAssignableFromTrufflePrimitiveType(Class<?> clazz) {

@@ -213,12 +213,15 @@ abstract class ExecuteMethodNode extends Node {
                         continue;
                     }
                     Class<?> paramType = getParameterType(other.getParameterTypes(), i, varArgs);
-                    if (ToJavaNode.isAssignableFromTrufflePrimitiveType(paramType) && isAssignableFrom(targetType, paramType)) {
+                    if (paramType == targetType) {
+                        continue;
+                    }
+                    if ((ToJavaNode.isAssignableFromTrufflePrimitiveType(paramType) || ToJavaNode.isAssignableFromTrufflePrimitiveType(targetType)) && isAssignableFrom(targetType, paramType)) {
                         otherPossibleTypes.add(paramType);
                     }
                 }
 
-                argType = new PrimitiveCoercibleType(currentTargetType, otherPossibleTypes.toArray(EMPTY_CLASS_ARRAY));
+                argType = new PrimitiveType(currentTargetType, otherPossibleTypes.toArray(EMPTY_CLASS_ARRAY));
             } else if (arg instanceof JavaObject) {
                 argType = new JavaObjectType(((JavaObject) arg).clazz);
             } else {
@@ -255,8 +258,8 @@ abstract class ExecuteMethodNode extends Node {
                     if (!(arg instanceof JavaObject && ((JavaObject) arg).clazz == ((JavaObjectType) argType).clazz)) {
                         return false;
                     }
-                } else if (argType instanceof PrimitiveCoercibleType) {
-                    if (!((PrimitiveCoercibleType) argType).test(arg, toJavaNode)) {
+                } else if (argType instanceof PrimitiveType) {
+                    if (!((PrimitiveType) argType).test(arg, toJavaNode)) {
                         return false;
                     }
                 } else {
@@ -396,12 +399,10 @@ abstract class ExecuteMethodNode extends Node {
                 if (!candidate.isVarArgs() || paramCount == args.length) {
                     assert paramCount == args.length;
                     Class<?>[] parameterTypes = candidate.getParameterTypes();
+                    Type[] genericParameterTypes = candidate.getGenericParameterTypes();
                     boolean applicable = true;
                     for (int i = 0; i < paramCount; i++) {
-                        Class<?> parameterType = parameterTypes[i];
-                        Type[] genericParameterTypes = candidate.getGenericParameterTypes();
-                        Object argument = args[i];
-                        if (!isSubtypeOf(argument, parameterType) && !toJavaNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], languageContext, strict)) {
+                        if (!isSubtypeOf(args[i], parameterTypes[i]) && !toJavaNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], languageContext, strict)) {
                             applicable = false;
                             break;
                         }
@@ -563,11 +564,24 @@ abstract class ExecuteMethodNode extends Node {
             } else if (toType.isAssignableFrom(primitiveTypeToBoxedType(fromType))) {
                 // primitive <: boxed
                 return true;
+            } else {
+                Class<?> primitiveTo = boxedTypeToPrimitiveType(toType);
+                if (primitiveTo != null && isWideningPrimitiveConversion(primitiveTo, fromType)) {
+                    // primitive <: wider boxed
+                    return true;
+                }
             }
         } else if (toType.isPrimitive()) {
-            Class<?> boxedToPrimitive = boxedTypeToPrimitiveType(fromType);
-            if (boxedToPrimitive != null && isWideningPrimitiveConversion(toType, boxedToPrimitive)) {
+            Class<?> primitiveFrom = boxedTypeToPrimitiveType(fromType);
+            if (primitiveFrom != null && isWideningPrimitiveConversion(toType, primitiveFrom)) {
                 // boxed <: wider primitive
+                return true;
+            }
+        } else {
+            Class<?> primitiveTo = boxedTypeToPrimitiveType(toType);
+            Class<?> primitiveFrom = boxedTypeToPrimitiveType(fromType);
+            if (primitiveTo != null && primitiveFrom != null && isWideningPrimitiveConversion(primitiveTo, primitiveFrom)) {
+                // boxed <: wider boxed
                 return true;
             }
         }
@@ -695,11 +709,11 @@ abstract class ExecuteMethodNode extends Node {
         }
     }
 
-    static class PrimitiveCoercibleType implements Type {
+    static class PrimitiveType implements Type {
         final Class<?> targetType;
         @CompilationFinal(dimensions = 1) final Class<?>[] otherTypes;
 
-        PrimitiveCoercibleType(Class<?> targetType, Class<?>[] otherTypes) {
+        PrimitiveType(Class<?> targetType, Class<?>[] otherTypes) {
             this.targetType = targetType;
             this.otherTypes = otherTypes;
         }
@@ -714,17 +728,17 @@ abstract class ExecuteMethodNode extends Node {
             if (this == obj) {
                 return true;
             }
-            if (!(obj instanceof PrimitiveCoercibleType)) {
+            if (!(obj instanceof PrimitiveType)) {
                 return false;
             }
-            PrimitiveCoercibleType other = (PrimitiveCoercibleType) obj;
+            PrimitiveType other = (PrimitiveType) obj;
             return Objects.equals(this.targetType, other.targetType) && Arrays.equals(this.otherTypes, other.otherTypes);
         }
 
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder();
-            sb.append("PrimitiveCoercible[");
+            sb.append("Primitive[");
             sb.append(targetType.getTypeName());
             if (otherTypes.length > 0) {
                 for (Class<?> otherType : otherTypes) {
@@ -739,11 +753,11 @@ abstract class ExecuteMethodNode extends Node {
         @ExplodeLoop
         public boolean test(Object value, ToJavaNode toJavaNode) {
             for (Class<?> otherType : otherTypes) {
-                if (toJavaNode.toPrimitive(value, otherType) != null) {
+                if (toJavaNode.canConvertStrict(value, otherType)) {
                     return false;
                 }
             }
-            return toJavaNode.toPrimitive(value, targetType) != null;
+            return toJavaNode.canConvertStrict(value, targetType);
         }
     }
 }
