@@ -556,37 +556,24 @@ abstract class ExecuteMethodNode extends Node {
         if (toType.isAssignableFrom(fromType)) {
             return true;
         }
-        if (fromType.isPrimitive()) {
-            if (toType.isPrimitive()) {
-                if (isWideningPrimitiveConversion(toType, fromType)) {
-                    return true;
-                }
-            } else if (toType.isAssignableFrom(primitiveTypeToBoxedType(fromType))) {
+        boolean fromIsPrimitive = fromType.isPrimitive();
+        boolean toIsPrimitive = toType.isPrimitive();
+        Class<?> fromAsPrimitive = fromIsPrimitive ? fromType : boxedTypeToPrimitiveType(fromType);
+        Class<?> toAsPrimitive = toIsPrimitive ? toType : boxedTypeToPrimitiveType(toType);
+        if (toAsPrimitive != null && fromAsPrimitive != null) {
+            if (toAsPrimitive == fromAsPrimitive) {
+                assert fromIsPrimitive != toIsPrimitive;
                 // primitive <: boxed
-                return true;
-            } else {
-                Class<?> primitiveTo = boxedTypeToPrimitiveType(toType);
-                if (primitiveTo != null && isWideningPrimitiveConversion(primitiveTo, fromType)) {
-                    // primitive <: wider boxed
-                    return true;
-                }
-            }
-        } else if (toType.isPrimitive()) {
-            Class<?> primitiveFrom = boxedTypeToPrimitiveType(fromType);
-            if (primitiveFrom != null && isWideningPrimitiveConversion(toType, primitiveFrom)) {
-                // boxed <: wider primitive
+                return fromIsPrimitive;
+            } else if (isWideningPrimitiveConversion(toAsPrimitive, fromAsPrimitive)) {
+                // primitive|boxed <: wider primitive|boxed
                 return true;
             }
-        } else {
-            Class<?> primitiveTo = boxedTypeToPrimitiveType(toType);
-            Class<?> primitiveFrom = boxedTypeToPrimitiveType(fromType);
-            if (primitiveTo != null && primitiveFrom != null && isWideningPrimitiveConversion(primitiveTo, primitiveFrom)) {
-                // boxed <: wider boxed
-                return true;
-            }
-        }
-        if ((fromType == char.class || fromType == Character.class) && (toType == String.class || toType == CharSequence.class)) {
+        } else if (fromAsPrimitive == char.class && (toType == String.class || toType == CharSequence.class)) {
             // char|Character <: String|CharSequence
+            return true;
+        } else if (toAsPrimitive == null && fromAsPrimitive != null && toType.isAssignableFrom(primitiveTypeToBoxedType(fromAsPrimitive))) {
+            // primitive|boxed <: Number et al
             return true;
         }
         return false;
