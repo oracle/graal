@@ -403,7 +403,7 @@ def processImageArguments(args):
         if args[i].startswith('-D'):
             extraVMArgs += [args.pop(i)]
 
-        if args[i] == '-js':
+        elif args[i] == '-js':
             args.pop(i)
             projects += ['graal-js:GRAALJS', 'graal-js:GRAALJS_LAUNCHER']
             extraNormalArgs += [

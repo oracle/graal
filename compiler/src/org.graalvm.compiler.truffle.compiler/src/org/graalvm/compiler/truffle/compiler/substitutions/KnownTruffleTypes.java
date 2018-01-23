@@ -34,9 +34,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
 
-    public final ResolvedJavaType classFrameWithBoxing = lookupType("org.graalvm.compiler.truffle.runtime.FrameWithBoxing");
-    public final ResolvedJavaType classFrameWithoutBoxing = lookupType("org.graalvm.compiler.truffle.runtime.FrameWithoutBoxing");
-    public final ResolvedJavaType classFrameClass = getValue(TruffleUseFrameWithoutBoxing) ? classFrameWithoutBoxing : classFrameWithBoxing;
+    public final ResolvedJavaType classFrameClass = getValue(TruffleUseFrameWithoutBoxing) ? //
+                    lookupType("org.graalvm.compiler.truffle.runtime.FrameWithoutBoxing") : //
+                    lookupType("org.graalvm.compiler.truffle.runtime.FrameWithBoxing");
     public final ResolvedJavaType classFrameDescriptor = lookupType("com.oracle.truffle.api.frame.FrameDescriptor");
     public final ResolvedJavaType classFrameSlot = lookupType("com.oracle.truffle.api.frame.FrameSlot");
     public final ResolvedJavaType classFrameSlotKind = lookupType("com.oracle.truffle.api.frame.FrameSlotKind");

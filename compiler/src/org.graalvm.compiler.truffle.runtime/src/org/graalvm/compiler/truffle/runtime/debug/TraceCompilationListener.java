@@ -107,7 +107,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     }
 
     @Override
-    public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo compilationResult) {
+    public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
         long timeCompilationFinished = System.nanoTime();
         int nodeCountLowered = graph.getNodeCount();
         Times compilation = currentCompilation.get();
@@ -137,6 +137,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                         (timeCompilationFinished - compilation.timePartialEvaluationFinished) / 1e6));
         properties.put("DirectCallNodes", String.format("I %4d/D %4d", inlinedCalls, dispatchedCalls));
         properties.put("GraalNodes", String.format("%5d/%5d", compilation.nodeCountPartialEval, nodeCountLowered));
+        properties.put("CodeSize", result.getTargetCodeSize());
         properties.put("CodeAddress", "0x" + Long.toHexString(target.getAddress()));
         properties.put("Source", formatSourceSection(target.getRootNode().getSourceSection()));
 

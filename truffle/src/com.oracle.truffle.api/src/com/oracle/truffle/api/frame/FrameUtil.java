@@ -26,12 +26,7 @@ package com.oracle.truffle.api.frame;
 
 /** @since 0.8 or earlier */
 public final class FrameUtil {
-    /**
-     * @deprecated accidentally public - don't use
-     * @since 0.8 or earlier
-     */
-    @Deprecated
-    public FrameUtil() {
+    private FrameUtil() {
     }
 
     /**
