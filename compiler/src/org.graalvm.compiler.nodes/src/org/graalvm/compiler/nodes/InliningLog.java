@@ -105,9 +105,6 @@ public class InliningLog {
 
         @Override
         public boolean equals(Object that) {
-            if (!(that instanceof BytecodePositionWithId)) {
-                return false;
-            }
             return super.equals(that) && this.id == ((BytecodePositionWithId) that).id;
         }
 
