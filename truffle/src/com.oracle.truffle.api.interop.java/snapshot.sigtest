@@ -5,14 +5,10 @@ CLSS public final com.oracle.truffle.api.interop.java.JavaInterop
 meth public static <%0 extends java.lang.Object> com.oracle.truffle.api.interop.TruffleObject asTruffleFunction(java.lang.Class<{%%0}>,{%%0})
 meth public static <%0 extends java.lang.Object> {%%0} asJavaFunction(java.lang.Class<{%%0}>,com.oracle.truffle.api.interop.TruffleObject)
 meth public static <%0 extends java.lang.Object> {%%0} asJavaObject(java.lang.Class<{%%0}>,com.oracle.truffle.api.interop.TruffleObject)
-meth public static boolean isArray(com.oracle.truffle.api.interop.TruffleObject)
-meth public static boolean isBoxed(com.oracle.truffle.api.interop.TruffleObject)
 meth public static boolean isJavaObject(java.lang.Class<?>,com.oracle.truffle.api.interop.TruffleObject)
-meth public static boolean isNull(com.oracle.truffle.api.interop.TruffleObject)
 meth public static boolean isPrimitive(java.lang.Object)
 meth public static com.oracle.truffle.api.interop.TruffleObject asTruffleObject(java.lang.Object)
 meth public static java.lang.Object asTruffleValue(java.lang.Object)
-meth public static java.lang.Object unbox(com.oracle.truffle.api.interop.TruffleObject)
 supr java.lang.Object
 hfds ACCESSOR
 hcls TemporaryConvertRoot

@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -53,11 +52,6 @@ final class ToPrimitiveNode extends Node {
     }
 
     static ToPrimitiveNode create() {
-        return new ToPrimitiveNode();
-    }
-
-    static ToPrimitiveNode temporary() {
-        CompilerAsserts.neverPartOfCompilation();
         return new ToPrimitiveNode();
     }
 

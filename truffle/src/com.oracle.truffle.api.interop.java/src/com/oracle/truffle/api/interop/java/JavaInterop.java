@@ -32,7 +32,6 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -47,7 +46,6 @@ import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
@@ -153,12 +151,13 @@ public final class JavaInterop {
      * @param <T> type of requested and returned value
      * @param type interface modeling structure of <code>foreignObject</code> in <b>Java</b>
      * @param foreignObject object coming from a {@link TruffleObject Truffle language}, can be
-     *            <code>null</code>, in such case the returned value will likely be <code>null</code> as
-     *            well
-     * @return instance of requested interface granting access to specified <code>foreignObject</code>,
-     *         can be <code>null</code>, if the foreignObject parameter was <code>null</code>
-     * @exception ClassCastException if the <code>foreignObject</code> cannot be converted to requested
-     *                <code>type</code>
+     *            <code>null</code>, in such case the returned value will likely be
+     *            <code>null</code> as well
+     * @return instance of requested interface granting access to specified
+     *         <code>foreignObject</code>, can be <code>null</code>, if the foreignObject parameter
+     *         was <code>null</code>
+     * @exception ClassCastException if the <code>foreignObject</code> cannot be converted to
+     *                requested <code>type</code>
      * @since 0.9
      */
     public static <T> T asJavaObject(Class<T> type, TruffleObject foreignObject) {
@@ -194,8 +193,8 @@ public final class JavaInterop {
     /**
      * Checks whether an {@link TruffleObject object} is a Java object of a given type.
      * <p>
-     * Given some Java object <code>x</code> of type <code>X</code>, the following assertion will always
-     * pass.
+     * Given some Java object <code>x</code> of type <code>X</code>, the following assertion will
+     * always pass.
      *
      * <pre>
      * X x = ...;
@@ -271,13 +270,13 @@ public final class JavaInterop {
      * </pre>
      * <p>
      *
-     * When the <code>obj</code> represents a {@link Class}, then the created {@link TruffleObject} will
-     * allow access to <b>public</b> and <b>static</b> fields and methods from the class.
+     * When the <code>obj</code> represents a {@link Class}, then the created {@link TruffleObject}
+     * will allow access to <b>public</b> and <b>static</b> fields and methods from the class.
      * <p>
-     * Do not convert primitive types (instances of {@link Number}, {@link Boolean}, {@link Character}
-     * or {@link String}) to {@link TruffleObject}, all {@link TruffleLanguage}s are supposed to handle
-     * primitives. Use directly the primitive types instead. To convert generic objects to
-     * {@link TruffleObject} while retaining primitive values unwrapped, use
+     * Do not convert primitive types (instances of {@link Number}, {@link Boolean},
+     * {@link Character} or {@link String}) to {@link TruffleObject}, all {@link TruffleLanguage}s
+     * are supposed to handle primitives. Use directly the primitive types instead. To convert
+     * generic objects to {@link TruffleObject} while retaining primitive values unwrapped, use
      * {@link #asTruffleValue(java.lang.Object)} instead.
      *
      * @param obj a Java object to convert into one suitable for <em>Truffle</em> languages
@@ -321,9 +320,9 @@ public final class JavaInterop {
 
     /**
      * Prepares a Java object for use in any {@link TruffleLanguage}. If the object is one of
-     * {@link #isPrimitive primitive} values, it is just returned, as all {@link TruffleLanguage}s are
-     * supposed to handle such object. If it is a non-primitive type of Java object, the method does
-     * exactly the same thing as {@link #asTruffleObject}.
+     * {@link #isPrimitive primitive} values, it is just returned, as all {@link TruffleLanguage}s
+     * are supposed to handle such object. If it is a non-primitive type of Java object, the method
+     * does exactly the same thing as {@link #asTruffleObject}.
      *
      * @param obj a Java object to convert into one suitable for <em>Truffle</em> languages
      * @return converted object, or primitive
@@ -340,8 +339,8 @@ public final class JavaInterop {
      * {@link String}.
      *
      * @param obj a Java object to test
-     * @return <code>true</code> when the object is a primitive from {@link TruffleLanguage}s point of
-     *         view, <code>false</code> otherwise.
+     * @return <code>true</code> when the object is a primitive from {@link TruffleLanguage}s point
+     *         of view, <code>false</code> otherwise.
      * @since 0.18
      */
     public static boolean isPrimitive(Object obj) {
@@ -369,8 +368,8 @@ public final class JavaInterop {
     /**
      * Takes executable object from a {@link TruffleLanguage} and converts it into an instance of a
      * <b>Java</b> <em>functional interface</em>. If the <code>functionalType</code> method is using
-     * {@link Method#isVarArgs() variable arguments}, then the arguments are unwrapped and passed into
-     * the <code>function</code> as indivual arguments.
+     * {@link Method#isVarArgs() variable arguments}, then the arguments are unwrapped and passed
+     * into the <code>function</code> as indivual arguments.
      *
      * @param <T> requested and returned type
      * @param functionalType interface with a single defined method - so called <em>functional
@@ -386,9 +385,10 @@ public final class JavaInterop {
     }
 
     /**
-     * Takes a functional interface and its implementation (for example lambda function) and converts it
-     * into object executable by <em>Truffle</em> languages. Here is a definition of function returning
-     * the meaning of life as lambda expression, converting it back to <b>Java</b> and using it:
+     * Takes a functional interface and its implementation (for example lambda function) and
+     * converts it into object executable by <em>Truffle</em> languages. Here is a definition of
+     * function returning the meaning of life as lambda expression, converting it back to
+     * <b>Java</b> and using it:
      *
      * <pre>
      * TruffleObject to = JavaInterop.asTruffleFunction(Callable.<b>class</b>, () -> 42);
@@ -399,10 +399,10 @@ public final class JavaInterop {
      * @param <T> requested interface and implementation
      * @param functionalType interface with a single defined method - so called <em>functional
      *            interface</em>
-     * @param implementation implementation of the interface, or directly a lambda expression defining
-     *            the required behavior
-     * @return an {@link Message#IS_EXECUTABLE executable} {@link TruffleObject} ready to be used in any
-     *         <em>Truffle</em> language
+     * @param implementation implementation of the interface, or directly a lambda expression
+     *            defining the required behavior
+     * @return an {@link Message#IS_EXECUTABLE executable} {@link TruffleObject} ready to be used in
+     *         any <em>Truffle</em> language
      * @since 0.9
      */
     public static <T> TruffleObject asTruffleFunction(Class<T> functionalType, T implementation) {
@@ -418,106 +418,6 @@ public final class JavaInterop {
             throw new IllegalArgumentException();
         }
         return new JavaFunctionObject(SingleMethodDesc.unreflect(method), implementation, languageContext);
-    }
-
-    /**
-     * Test whether the object represents a <code>null</code> value.
-     *
-     * @param foreignObject object coming from a {@link TruffleObject Truffle language}, can be
-     *            <code>null</code>.
-     * @return <code>true</code> when the object represents a <code>null</code> value,
-     *         <code>false</code> otherwise.
-     * @see Message#IS_NULL
-     * @since 0.18
-     * @deprecated use {@link ForeignAccess#sendIsNull(Node, TruffleObject)} instead.
-     */
-    @Deprecated
-    public static boolean isNull(TruffleObject foreignObject) {
-        if (foreignObject == null) {
-            return true;
-        }
-        return ToPrimitiveNode.temporary().isNull(foreignObject);
-    }
-
-    /**
-     * Test whether the object represents an array. When an object has a size, it represents an array
-     * and can be converted to a list of array elements by:
-     *
-     * <pre>
-     * {@link #asJavaObject(java.lang.Class, com.oracle.truffle.api.interop.TruffleObject) asJavaObject}(java.util.List.<b>class</b>, foreignObject);
-     * </pre>
-     *
-     * @param foreignObject object coming from a {@link TruffleObject Truffle language}, can be
-     *            <code>null</code>.
-     * @return <code>true</code> when the object represents an array, <code>false</code> otherwise.
-     * @see Message#HAS_SIZE
-     * @since 0.18
-     * @deprecated use {@link ForeignAccess#sendHasSize(Node, TruffleObject)} instead.
-     */
-    @Deprecated
-    public static boolean isArray(TruffleObject foreignObject) {
-        if (foreignObject == null) {
-            return false;
-        }
-        return ToPrimitiveNode.temporary().hasSize(foreignObject);
-    }
-
-    /**
-     * Test whether the object represents a boxed primitive type.
-     *
-     * @param foreignObject object coming from a {@link TruffleObject Truffle language}, can be
-     *            <code>null</code>.
-     * @return <code>true</code> when the object represents a boxed primitive type, <code>false</code>
-     *         otherwise.
-     * @see Message#IS_BOXED
-     * @since 0.18
-     * @deprecated use {@link ForeignAccess#sendIsBoxed(Node, TruffleObject)} instead.
-     */
-    @Deprecated
-    public static boolean isBoxed(TruffleObject foreignObject) {
-        if (foreignObject == null) {
-            return false;
-        }
-        return ToPrimitiveNode.temporary().isBoxed(foreignObject);
-    }
-
-    /**
-     * Convert the object into a Java primitive type. Primitive types are subclasses of Number, Boolean,
-     * Character and String.
-     *
-     * @param foreignObject object coming from a {@link TruffleObject Truffle language}, which is known
-     *            (check {@link #isBoxed(com.oracle.truffle.api.interop.TruffleObject)}) to be a boxed
-     *            Java primitive type.
-     * @return An object representation of Java primitive type, or <code>null<code> when the unboxing
-     *         was not possible.
-     * @see Message#UNBOX
-     * @since 0.18
-     * @deprecated use {@link ForeignAccess#sendUnbox(Node, TruffleObject)} instead.
-     */
-    @Deprecated
-    public static Object unbox(TruffleObject foreignObject) {
-        if (foreignObject == null) {
-            return null;
-        }
-        return ToPrimitiveNode.temporary().unbox(foreignObject);
-    }
-
-    /**
-     * Get information about an object property.
-     *
-     * @param foreignObject object coming from a {@link TruffleObject Truffle language}
-     * @param propertyName name of a property or index of an array
-     * @return an integer representing {@link KeyInfo} bit flags.
-     * @see Message#KEY_INFO
-     * @see KeyInfo
-     * @since 0.26
-     * @deprecated use {@link ForeignAccess#sendKeyInfo(Node, TruffleObject, Object)} instead.
-     */
-    @Deprecated
-    public static int getKeyInfo(TruffleObject foreignObject, Object propertyName) {
-        CompilerAsserts.neverPartOfCompilation();
-        int infoBits = ForeignAccess.sendKeyInfo(Message.KEY_INFO.createNode(), foreignObject, propertyName);
-        return infoBits;
     }
 
     /**
@@ -548,16 +448,17 @@ public final class JavaInterop {
 
     /**
      * Finds a Java class representation for the provided object. If the object was created via
-     * {@link #asTruffleObject(java.lang.Object) asTruffleObject(original)} call, then it is unwrapped
-     * and the result is equal to {@link #asTruffleObject(java.lang.Object)
+     * {@link #asTruffleObject(java.lang.Object) asTruffleObject(original)} call, then it is
+     * unwrapped and the result is equal to {@link #asTruffleObject(java.lang.Object)
      * asTruffleObject(original.getClass())}.
      * <p>
      * This method works only on objects that wrap plain Java objects.
      *
-     * @param obj object expected to be created by {@link #asTruffleObject(java.lang.Object)} or similar
-     *            methods
-     * @return object representing {@link #asTruffleObject(java.lang.Object) wrapper} around original
-     *         Java object's {@link Object#getClass() type} if any. Otherwise <code>null</code>
+     * @param obj object expected to be created by {@link #asTruffleObject(java.lang.Object)} or
+     *            similar methods
+     * @return object representing {@link #asTruffleObject(java.lang.Object) wrapper} around
+     *         original Java object's {@link Object#getClass() type} if any. Otherwise
+     *         <code>null</code>
      * @since 0.26
      */
     public static TruffleObject toJavaClass(TruffleObject obj) {
@@ -576,9 +477,9 @@ public final class JavaInterop {
     /**
      * Tests whether an exception is a host exception thrown by a Java Interop method invocation.
      *
-     * Host exceptions may be thrown by {@linkplain Message messages} sent to Java objects that involve
-     * the invocation of a Java method or constructor ({@code EXECUTE}, {@code INVOKE}, {@code NEW}).
-     * The host exception may be unwrapped using {@link #asHostException(Throwable)}.
+     * Host exceptions may be thrown by {@linkplain Message messages} sent to Java objects that
+     * involve the invocation of a Java method or constructor ({@code EXECUTE}, {@code INVOKE},
+     * {@code NEW}). The host exception may be unwrapped using {@link #asHostException(Throwable)}.
      *
      * @param exception the {@link Throwable} to test
      * @return {@code true} if the {@code exception} is a host exception, {@code false} otherwise
@@ -596,9 +497,9 @@ public final class JavaInterop {
     /**
      * Unwraps a host exception thrown by a Java method invocation.
      *
-     * Host exceptions may be thrown by {@linkplain Message messages} sent to Java objects that involve
-     * the invocation of a Java method or constructor ({@code EXECUTE}, {@code INVOKE}, {@code NEW}).
-     * Host exceptions can be identified using {@link #isHostException(Throwable)}.
+     * Host exceptions may be thrown by {@linkplain Message messages} sent to Java objects that
+     * involve the invocation of a Java method or constructor ({@code EXECUTE}, {@code INVOKE},
+     * {@code NEW}). Host exceptions can be identified using {@link #isHostException(Throwable)}.
      *
      * @param exception the host exception to unwrap
      * @return the original Java exception
