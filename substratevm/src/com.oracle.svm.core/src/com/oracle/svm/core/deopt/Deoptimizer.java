@@ -35,6 +35,7 @@ import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform.AMD64;
 import org.graalvm.nativeimage.Platforms;
@@ -45,7 +46,7 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MonitorUtils;
+import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.UnsafeAccess;
@@ -661,7 +662,7 @@ public final class Deoptimizer {
                      * the same object can be re-locked multiple times, we change the thread after
                      * all virtual frames have been reconstructed.
                      */
-                    MonitorUtils.setExclusiveOwnerThread(lockee, JavaThreads.singleton().createIfNotExisting(currentThread));
+                    ImageSingletons.lookup(MonitorSupport.class).setExclusiveOwnerThread(lockee, JavaThreads.singleton().createIfNotExisting(currentThread));
                 }
             }
         }
@@ -817,7 +818,7 @@ public final class Deoptimizer {
             Object lockee = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(valueConstant), Object.class);
             int lockeeIndex = TypeConversion.asS4(valueInfo.getData());
             assert lockee == materializedObjects[lockeeIndex];
-            MonitorUtils.monitorEnter(lockee);
+            MonitorSupport.monitorEnter(lockee);
 
             if (relockedObjects == null) {
                 relockedObjects = new Object[sourceFrame.getVirtualObjects().length];
