@@ -76,6 +76,8 @@ public abstract class DebuggerDomain extends Domain {
                     boolean includeCommandLineAPI, boolean silent, boolean returnByValue, boolean generatePreview,
                     boolean throwOnSideEffect) throws CommandProcessException;
 
+    public abstract Params restartFrame(long cmdId, String callFrameId, CommandPostProcessor postProcessor) throws CommandProcessException;
+
     public abstract void setVariableValue(int scopeNumber, String variableName, CallArgument newValue, String callFrameId) throws CommandProcessException;
 
     protected final void resumed() {
