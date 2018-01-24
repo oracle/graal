@@ -1937,7 +1937,7 @@ public final class DebugContext implements AutoCloseable {
         if (description != null) {
             printMetrics(description);
         }
-        if (metricsEnabled && globalMetrics != null && metricValues != null) {
+        if (metricsEnabled && metricValues != null && globalMetrics != null) {
             globalMetrics.add(this);
         }
         metricValues = null;
@@ -2029,7 +2029,6 @@ public final class DebugContext implements AutoCloseable {
                 }
             }
         }
-
     }
 
     /**
