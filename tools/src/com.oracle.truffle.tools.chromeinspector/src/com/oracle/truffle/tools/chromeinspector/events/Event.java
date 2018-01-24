@@ -28,10 +28,11 @@ import org.json.JSONObject;
 
 import com.oracle.truffle.tools.chromeinspector.commands.Command;
 import com.oracle.truffle.tools.chromeinspector.commands.Params;
+import com.oracle.truffle.tools.chromeinspector.commands.Result;
 
 public final class Event {
 
-    private final JSONObject json;
+    private final String jsonString;
 
     public Event(String method, Params params) {
         JSONObject event = new JSONObject();
@@ -39,10 +40,17 @@ public final class Event {
         if (params != null) {
             event.put(Command.PARAMS, params.getJSONObject());
         }
-        json = event;
+        jsonString = event.toString();
+    }
+
+    /**
+     * Command result event.
+     */
+    public Event(long id, Result result) {
+        jsonString = result.toJSONString(id);
     }
 
     public String toJSONString() {
-        return json.toString();
+        return jsonString;
     }
 }
