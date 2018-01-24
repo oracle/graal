@@ -30,7 +30,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -43,10 +42,11 @@ import org.graalvm.nativeimage.c.constant.CEnumLookup;
 import org.graalvm.nativeimage.c.constant.CEnumValue;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.graal.cfunction.CFunctionAddressNode;
-import com.oracle.svm.core.graal.cfunction.CFunctionLinkage;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
@@ -54,8 +54,8 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.EnumInfo;
 import com.oracle.svm.hosted.c.info.EnumValueInfo;
-import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.hosted.phases.CInterfaceEnumTool;
+import com.oracle.svm.hosted.phases.HostedGraphKit;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -69,11 +69,11 @@ import jdk.vm.ci.meta.Signature;
  */
 public final class CFunctionCallStubMethod extends CustomSubstitutionMethod {
 
-    private final CFunctionLinkage linkage;
+    private final CGlobalData<CFunctionPointer> linkage;
 
     private static final JavaKind cEnumKind = JavaKind.Int;
 
-    CFunctionCallStubMethod(ResolvedJavaMethod original, CFunctionLinkage linkage) {
+    CFunctionCallStubMethod(ResolvedJavaMethod original, CGlobalData<CFunctionPointer> linkage) {
         super(original);
         this.linkage = linkage;
     }
@@ -100,7 +100,7 @@ public final class CFunctionCallStubMethod extends CustomSubstitutionMethod {
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
 
         FrameStateBuilder state = kit.getFrameState();
-        FixedWithNextNode callAddress = kit.append(new CFunctionAddressNode(linkage));
+        ValueNode callAddress = kit.unique(new CGlobalDataLoadAddressNode(linkage));
 
         List<ValueNode> arguments = kit.loadArguments(method.toParameterTypes());
 

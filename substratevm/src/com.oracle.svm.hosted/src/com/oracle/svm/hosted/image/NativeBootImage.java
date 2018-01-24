@@ -42,7 +42,6 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.word.PointerBase;
 
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.BuildDependency;
@@ -61,8 +60,6 @@ import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.c.NativeImageHeaderPreamble;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.cfunction.CFunctionLinkage;
-import com.oracle.svm.core.graal.cfunction.CFunctionLinkages;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.NativeImageOptions.CStandards;
@@ -277,8 +274,6 @@ public abstract class NativeBootImage extends AbstractBootImage {
             markRelocationSitesFromMaps(roDataBuffer, roDataImpl, heap.objects);
             markRelocationSitesFromMaps(rwDataBuffer, rwDataImpl, heap.objects);
 
-            relocationsForNativeFunctions(rwDataImpl);
-
             if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
                 /* The symbol name must match the imported name in libchelper/heapbase.c */
                 objectFile.createDefinedSymbol("__svm_heap_base", rwDataSection.getElement(), Math.toIntExact(rwHeapPartitionOffset), false);
@@ -410,40 +405,6 @@ public abstract class NativeBootImage extends AbstractBootImage {
             }
         } else {
             throw shouldNotReachHere("Unsupported target object for relocation in text section");
-        }
-    }
-
-    void relocationsForNativeFunctions(final ProgbitsSectionImpl rwDataImpl) {
-        // References to native functions:
-        // There is a hosted object whose entryPoints field is a FunctionPointer[].
-        // That array is added to the native image heap in BootImageHeap.addInitialObjects().
-        // It's this array which the header field nativeFunctionsArrayOffset points to.
-        // The array is thought to be writable (because all arrays are thought to be writable),
-        // so the array is in the rwDataImpl section of the image.
-        // For each of these native functions we are going to:
-        // 1. create an undefined symbol for the function.
-        // 2. generate a relocation record to patch the array slots with the function address,
-        // .. when that address is known.
-        final PointerBase[] entryPointsObject = CFunctionLinkages.get().getEntryPoints();
-        final NativeImageHeap.ObjectInfo entryPointsInfo = heap.objects.get(entryPointsObject);
-        assert entryPointsInfo != null : "NativeBootImage.relocationsForNativeFunctions: No entryPoints object for native function relocations.";
-        // Make sure the SectionImpl I was passed is the one containing the FunctionPointer[].
-        assert entryPointsInfo.getPartition().getSectionName().equals(rwDataSection.getName()) : "NativeBootImage.relocationsForNativeFunctions: Not the rwDataSection.";
-        for (CFunctionLinkage f : CFunctionLinkages.get().getLinkages()) {
-            // Create an undefined symbol for the function.
-            final String fnName = f.getLinkageName();
-            if (!objectFile.getSymbolTable().containsSymbolWithName(fnName)) {
-                // A symbol can already exist when we declare a @CFunction for a @CEntryPoint
-                objectFile.createUndefinedSymbol(fnName, true);
-            }
-            // Create a relocation record from the slot of the array to the function.
-            // Offset from the origin of the array to the origin of the elements of the array.
-            final int arrayStartOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Object);
-            // The size of a pointer to a function.
-            final int pointerSize = wordSize;
-            // The offset of an element in the section.
-            final int elementOffset = entryPointsInfo.getIntIndexInSection(arrayStartOffset + (f.getIndex() * pointerSize));
-            rwDataImpl.markRelocationSite(elementOffset, pointerSize, RelocationKind.DIRECT, fnName, false, (long) 0);
         }
     }
 

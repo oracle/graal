@@ -73,7 +73,7 @@ public class CGlobalDataFeature implements GraalFeature {
     }
 
     @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
+    public void beforeCompilation(BeforeCompilationAccess access) {
         layout();
     }
 
@@ -84,22 +84,26 @@ public class CGlobalDataFeature implements GraalFeature {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 VMError.guarantee(receiver.get().isConstant(), "Accessed CGlobalData is not a compile-time constant: " + b.getMethod().asStackTraceElement(b.bci()));
-                CGlobalDataImpl<?> data = (CGlobalDataImpl<?>) SubstrateObjectConstant.asObject(receiver.get().asConstant());
+                CGlobalData<?> data = (CGlobalData<?>) SubstrateObjectConstant.asObject(receiver.get().asConstant());
                 b.addPush(targetMethod.getSignature().getReturnKind(), new CGlobalDataLoadAddressNode(data));
                 return true;
             }
         });
     }
 
+    public void registerAsAccessed(CGlobalData<?> obj) {
+        assert !layouted || map.containsKey(obj) : "CGlobalData instance must have been discovered/registered before or during analysis";
+        map.putIfAbsent((CGlobalDataImpl<?>) obj, null);
+    }
+
     private Object replaceObject(Object obj) {
         if (obj instanceof CGlobalDataImpl<?>) {
-            assert !layouted || map.containsKey(obj) : "CGlobalData instance must have been discovered during analysis";
-            map.putIfAbsent((CGlobalDataImpl<?>) obj, null);
+            registerAsAccessed((CGlobalData<?>) obj);
         }
         return obj;
     }
 
-    public void layout() {
+    private void layout() {
         assert !layouted : "Already layouted";
         final int wordSize = ConfigurationValues.getTarget().wordSize;
         int offset = 0;

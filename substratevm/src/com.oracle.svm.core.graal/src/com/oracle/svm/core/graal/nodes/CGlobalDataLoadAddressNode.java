@@ -31,6 +31,7 @@ import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import com.oracle.svm.core.amd64.FrameAccess;
+import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.graal.code.SubstrateNodeLIRBuilder;
 
@@ -40,9 +41,9 @@ public final class CGlobalDataLoadAddressNode extends FloatingNode implements LI
 
     private final CGlobalDataImpl<?> data;
 
-    public CGlobalDataLoadAddressNode(CGlobalDataImpl<?> data) {
+    public CGlobalDataLoadAddressNode(CGlobalData<?> data) {
         super(TYPE, FrameAccess.getWordStamp());
-        this.data = data;
+        this.data = (CGlobalDataImpl<?>) data;
     }
 
     public CGlobalDataImpl<?> getData() {

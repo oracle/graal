@@ -28,7 +28,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
-import com.oracle.svm.core.graal.cfunction.CFunctionLinkages;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
