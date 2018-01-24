@@ -27,7 +27,7 @@ import org.graalvm.compiler.core.common.util.TypeReader;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -51,7 +51,7 @@ public class FrameInfoDecoder {
     }
 
     public interface FrameInfoQueryResultAllocator {
-        @MustNotAllocate(reason = "Whitelisted because some implementations can allocate.", list = MustNotAllocate.WHITELIST)
+        @RestrictHeapAccess(reason = "Whitelisted because some implementations can allocate.", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
         FrameInfoQueryResult newFrameInfoQueryResult();
     }
 
@@ -76,25 +76,25 @@ public class FrameInfoDecoder {
 
     static class HeapBasedValueInfoAllocator implements ValueInfoAllocator {
         @Override
-        @MustNotAllocate(reason = "Whitelisted because some implementations can allocate.", list = MustNotAllocate.WHITELIST)
+        @RestrictHeapAccess(reason = "Whitelisted because some implementations can allocate.", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
         public ValueInfo newValueInfo() {
             return new ValueInfo();
         }
 
         @Override
-        @MustNotAllocate(reason = "Whitelisted because some implementations can allocate.", list = MustNotAllocate.WHITELIST)
+        @RestrictHeapAccess(reason = "Whitelisted because some implementations can allocate.", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
         public ValueInfo[] newValueInfoArray(int len) {
             return new ValueInfo[len];
         }
 
         @Override
-        @MustNotAllocate(reason = "Whitelisted because some implementations can allocate.", list = MustNotAllocate.WHITELIST)
+        @RestrictHeapAccess(reason = "Whitelisted because some implementations can allocate.", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
         public ValueInfo[][] newValueInfoArrayArray(int len) {
             return new ValueInfo[len][];
         }
 
         @Override
-        @MustNotAllocate(reason = "Whitelisted because some implementations can allocate.", list = MustNotAllocate.WHITELIST)
+        @RestrictHeapAccess(reason = "Whitelisted because some implementations can allocate.", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
         public void decodeConstant(ValueInfo valueInfo, Object[] frameInfoObjectConstants) {
             switch (valueInfo.type) {
                 case DefaultConstant:

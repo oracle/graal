@@ -22,7 +22,7 @@
  */
 package com.oracle.svm.core.heap;
 
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 
 /**
  * Supply a closure to be applied to Objects.
@@ -46,11 +46,11 @@ public interface ObjectVisitor {
      * @param o The Object to be visited.
      * @return true if visiting should continue, false if visiting should stop.
      */
-    @MustNotAllocate(reason = "Must not allocate while visiting the heap.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting the heap.")
     boolean visitObject(Object o);
 
     /** Like visitObject(Object), but inlined for performance. */
-    @MustNotAllocate(reason = "Must not allocate while visiting the heap.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting the heap.")
     default boolean visitObjectInline(Object o) {
         return visitObject(o);
     }

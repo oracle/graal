@@ -36,7 +36,7 @@ import com.oracle.svm.core.graal.nodes.DeadEndNode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
-import com.oracle.svm.hosted.code.MustNotAllocateCallees;
+import com.oracle.svm.hosted.code.RestrictHeapAccessCallees;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -106,7 +106,7 @@ public class ImplicitExceptionsPlugin implements NodePlugin {
     }
 
     private static boolean methodMustNotAllocate(GraphBuilderContext b) {
-        return ImageSingletons.lookup(MustNotAllocateCallees.class).mustNotAllocate(b.getMethod());
+        return ImageSingletons.lookup(RestrictHeapAccessCallees.class).mustNotAllocate(b.getMethod());
     }
 
     @Override

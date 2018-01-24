@@ -46,7 +46,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.heap.AllocationFreeList;
 import com.oracle.svm.core.heap.AllocationFreeList.PreviouslyRegisteredElementException;
 import com.oracle.svm.core.heap.CollectionWatcher;
@@ -191,7 +191,7 @@ public class GCImpl implements GC {
         possibleCollectionEpilogue(requestingEpoch);
     }
 
-    @MustNotAllocate(reason = "Must not allocate in the implementation of garbage collection.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of garbage collection.")
     void collectWithoutAllocating(String cause) {
         /* Queue a VMOperation to do the collection. */
         collectVMOperation.enqueue(cause, getCollectionEpoch());
@@ -1608,7 +1608,7 @@ public class GCImpl implements GC {
 
         /** What happens when this VMOperation executes. */
         @Override
-        @MustNotAllocate(reason = "Must not allocate while collecting")
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while collecting")
         public void operate() {
             result = HeapImpl.getHeapImpl().getGCImpl().collectOperation(cause, requestingEpoch);
         }

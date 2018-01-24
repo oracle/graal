@@ -25,7 +25,7 @@ package com.oracle.svm.core.stack;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 
 /** Given access to a thread stack frame, perform some computation on it. */
@@ -49,7 +49,7 @@ public interface StackFrameVisitor {
      *            frame is not deoptimized.
      * @return true if visiting should continue, false otherwise.
      */
-    @MustNotAllocate(reason = "Whitelisted because some implementations can allocate.", list = MustNotAllocate.WHITELIST)
+    @RestrictHeapAccess(reason = "Whitelisted because some implementations can allocate.", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
     boolean visitFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame);
 
     /**

@@ -28,21 +28,24 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Methods annotated with <code>@MustNotAllocate(MustNotAllocate.BLACKLIST)</code> may not allocate,
- * nor may any of their transitive callees unless that callee is annotated with
- * <code>@MustNotAllocate(MustNotAllocate.WHITELIST)</code>.
+ * Methods annotated with this annotation have restricted access to the heap.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
-public @interface MustNotAllocate {
+public @interface RestrictHeapAccess {
+    enum Access {
+        NO_ALLOCATION,
+        UNRESTRICTED,
+    }
 
-    /** Constants for use in annotations. */
-    boolean WHITELIST = false;
-    boolean BLACKLIST = true;
+    Access access();
 
-    /** Whether the method is on the blacklist or the whitelist. */
-    boolean list() default BLACKLIST;
+    /**
+     * When {@link #overridesCallers} is enabled and this method is (transitively) called from a
+     * caller with restricted heap access, override the caller's restrictions with those of this
+     * method from {@link #access}.
+     */
+    boolean overridesCallers() default false;
 
-    /** Why the method is annotated. */
     String reason();
 }

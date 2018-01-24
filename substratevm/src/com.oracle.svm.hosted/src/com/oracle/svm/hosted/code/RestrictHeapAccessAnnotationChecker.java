@@ -42,17 +42,17 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
-public final class MustNotAllocateAnnotationChecker {
+public final class RestrictHeapAccessAnnotationChecker {
 
     /*
      * Command line options so errors are not fatal to the build.
      */
     public static class Options {
-        @Option(help = "Print warnings for @MustNotAllocate annotations.")//
-        public static final HostedOptionKey<Boolean> PrintMustNotAllocateWarnings = new HostedOptionKey<>(true);
+        @Option(help = "Print warnings for @RestrictHeapAccess annotations.")//
+        public static final HostedOptionKey<Boolean> PrintRestrictHeapAccessWarnings = new HostedOptionKey<>(true);
 
-        @Option(help = "Print path for @MustNotAllocate warnings.")//
-        public static final HostedOptionKey<Boolean> PrintMustNotAllocatePath = new HostedOptionKey<>(true);
+        @Option(help = "Print path for @RestrictHeapAccess warnings.")//
+        public static final HostedOptionKey<Boolean> PrintRestrictHeapAccessPath = new HostedOptionKey<>(true);
     }
 
     /** Entry point method. */
@@ -85,46 +85,46 @@ public final class MustNotAllocateAnnotationChecker {
     static class AllocationWarningVisitor {
 
         private final HostedUniverse universe;
-        private final MustNotAllocateCallees mustNotAllocateCallees;
+        private final RestrictHeapAccessCallees restrictHeapAccessCallees;
 
         AllocationWarningVisitor(HostedUniverse universe) {
             this.universe = universe;
-            this.mustNotAllocateCallees = ImageSingletons.lookup(MustNotAllocateCallees.class);
+            this.restrictHeapAccessCallees = ImageSingletons.lookup(RestrictHeapAccessCallees.class);
         }
 
         @SuppressWarnings("try")
         public void visitMethod(DebugContext debug, HostedMethod method) {
             /* If this is not a method that must not allocate, then everything is fine. */
-            if (!mustNotAllocateCallees.mustNotAllocate(method)) {
+            if (!restrictHeapAccessCallees.mustNotAllocate(method)) {
                 return;
             }
             /* Look through the graph for this method and see if it allocates. */
             final StructuredGraph graph = method.compilationInfo.getGraph();
-            if (MustNotAllocateAnnotationChecker.hasAllocation(graph)) {
-                try (DebugContext.Scope s = debug.scope("MustNotAllocateAnnotationChecker", graph, method, this)) {
-                    postMustNotAllocateWarning(method.getWrapped(), mustNotAllocateCallees.getCallerMap());
+            if (RestrictHeapAccessAnnotationChecker.hasAllocation(graph)) {
+                try (DebugContext.Scope s = debug.scope("RestrictHeapAccessAnnotationChecker", graph, method, this)) {
+                    postRestrictHeapAccessWarning(method.getWrapped(), restrictHeapAccessCallees.getCallerMap());
                 } catch (Throwable t) {
                     throw debug.handle(t);
                 }
             }
         }
 
-        private void postMustNotAllocateWarning(AnalysisMethod allocatingCallee, Map<AnalysisMethod, MustNotAllocateCallees.InvocationInfo> callerMap) {
-            if (Options.PrintMustNotAllocateWarnings.getValue()) {
-                String message = "@MustNotAllocate warning: ";
+        private void postRestrictHeapAccessWarning(AnalysisMethod allocatingCallee, Map<AnalysisMethod, RestrictHeapAccessCallees.InvocationInfo> callerMap) {
+            if (Options.PrintRestrictHeapAccessWarnings.getValue()) {
+                String message = "@RestrictHeapAccess warning: ";
 
                 /* Walk from callee to caller building a list I can walk from caller to callee. */
-                final Deque<MustNotAllocateCallees.InvocationInfo> invocationList = new ArrayDeque<>();
+                final Deque<RestrictHeapAccessCallees.InvocationInfo> invocationList = new ArrayDeque<>();
                 walkInvocationPath(allocatingCallee, callerMap, (AnalysisMethod element) -> {
-                    final MustNotAllocateCallees.InvocationInfo invocationInfo = callerMap.get(element);
+                    final RestrictHeapAccessCallees.InvocationInfo invocationInfo = callerMap.get(element);
                     if (!invocationInfo.isNullInstance()) {
                         invocationList.addFirst(invocationInfo);
                     }
                 });
 
                 /* Walk from caller to callee building a list to the nearest allocating method. */
-                final Deque<MustNotAllocateCallees.InvocationInfo> allocationList = new ArrayDeque<>();
-                for (MustNotAllocateCallees.InvocationInfo element : invocationList) {
+                final Deque<RestrictHeapAccessCallees.InvocationInfo> allocationList = new ArrayDeque<>();
+                for (RestrictHeapAccessCallees.InvocationInfo element : invocationList) {
                     allocationList.addLast(element);
                     if (hasHostedAllocation(element.getCallee())) {
                         break;
@@ -142,9 +142,9 @@ public final class MustNotAllocateAnnotationChecker {
                     final AnalysisMethod last = allocationList.getLast().getCallee();
                     message += "Blacklisted method: '" + first.format("%h.%n(%p)") + "' calls '" +
                                     last.format("%h.%n(%p)") + "' that allocates.";
-                    if (Options.PrintMustNotAllocatePath.getValue()) {
+                    if (Options.PrintRestrictHeapAccessPath.getValue()) {
                         message += "\n" + "  [Path:";
-                        for (MustNotAllocateCallees.InvocationInfo element : allocationList) {
+                        for (RestrictHeapAccessCallees.InvocationInfo element : allocationList) {
                             message += "\n" + "    " + element.getInvocationStackTraceElement().toString();
                         }
                         final StackTraceElement allocationStackTraceElement = getAllocationStackTraceElement(last);
@@ -163,7 +163,7 @@ public final class MustNotAllocateAnnotationChecker {
         /**
          * Walk up the invocation path and visit each callee.
          */
-        private static void walkInvocationPath(AnalysisMethod callee, Map<AnalysisMethod, MustNotAllocateCallees.InvocationInfo> callerMap, AnalysisMethodVisitor visitor) {
+        private static void walkInvocationPath(AnalysisMethod callee, Map<AnalysisMethod, RestrictHeapAccessCallees.InvocationInfo> callerMap, AnalysisMethodVisitor visitor) {
             for (AnalysisMethod current = callee; current != null; current = callerMap.get(current).getCaller()) {
                 visitor.visitAnalysisMethod(current);
             }
@@ -176,7 +176,7 @@ public final class MustNotAllocateAnnotationChecker {
                 final StructuredGraph graph = hostedMethod.compilationInfo.getGraph();
                 if (graph != null) {
                     for (Node node : graph.getNodes()) {
-                        if (MustNotAllocateAnnotationChecker.isAllocationNode(node)) {
+                        if (RestrictHeapAccessAnnotationChecker.isAllocationNode(node)) {
                             result = true;
                             break;
                         }
@@ -195,7 +195,7 @@ public final class MustNotAllocateAnnotationChecker {
                 final StructuredGraph graph = hostedMethod.compilationInfo.getGraph();
                 if (graph != null) {
                     for (Node node : graph.getNodes()) {
-                        if (MustNotAllocateAnnotationChecker.isAllocationNode(node)) {
+                        if (RestrictHeapAccessAnnotationChecker.isAllocationNode(node)) {
                             final NodeSourcePosition sourcePosition = node.getNodeSourcePosition();
                             if (sourcePosition != null) {
                                 final int bci = sourcePosition.getBCI();

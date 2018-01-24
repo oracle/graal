@@ -58,7 +58,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
@@ -293,7 +293,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
      */
     @SubstrateForeignCallTarget
     @Uninterruptible(reason = "Thread state going away.")
-    @MustNotAllocate(reason = "Must not (thread-local) allocate while detaching a thread.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not (thread-local) allocate while detaching a thread.")
     private static void detachThread(IsolateThread thread) {
         /*
          * Set thread status to exited. This makes me immune to safepoints (the safepoint mechanism

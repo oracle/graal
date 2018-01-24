@@ -35,7 +35,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
@@ -73,7 +73,7 @@ class SubstrateSegfaultHandler {
 
     @CEntryPoint
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
-    @MustNotAllocate(reason = "Must not allocate in segfault signal handler.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in segfault signal handler.")
     @Uninterruptible(reason = "Must be uninterruptible until it gets immune to safepoints", calleeMustBe = false)
     private static void dispatch(int signalNumber, @SuppressWarnings("unused") siginfo_t sigInfo, ucontext_t uContext) {
         if (dispatchInProgress) {

@@ -36,7 +36,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -46,9 +47,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Construct a list of all the methods that are, or are called from, methods annotated with
- * {@link MustNotAllocate} or {@link Uninterruptible}.
+ * {@link RestrictHeapAccess} or {@link Uninterruptible}.
  */
-public class MustNotAllocateCallees {
+public class RestrictHeapAccessCallees {
 
     /**
      * A map from a callee to a caller on a path to an annotated caller. The keys are the set of
@@ -63,7 +64,7 @@ public class MustNotAllocateCallees {
     private boolean initialized;
 
     /** Constructor for the singleton instance. */
-    public MustNotAllocateCallees() {
+    public RestrictHeapAccessCallees() {
         calleeToCallerMap = Collections.emptyMap();
         this.assertionErrorConstructorList = Collections.emptyList();
         initialized = false;
@@ -87,24 +88,23 @@ public class MustNotAllocateCallees {
     }
 
     /**
-     * Aggregate a set of methods that are annotated with {@link MustNotAllocate}, or are called
+     * Aggregate a set of methods that are annotated with {@link RestrictHeapAccess}, or are called
      * from those methods.
      */
     public Map<AnalysisMethod, InvocationInfo> aggregateMethods(Collection<AnalysisMethod> methods) {
         /* Build the list of allocating methods. */
-        assert !initialized : "MustNotAllocateCallees.aggregateMethods: Should only initialize once.";
+        assert !initialized : "RestrictHeapAccessCallees.aggregateMethods: Should only initialize once.";
         final Map<AnalysisMethod, InvocationInfo> aggregation = new HashMap<>();
         final MethodAggregator visitor = new MethodAggregator(aggregation, assertionErrorConstructorList);
         final AnalysisMethodCalleeWalker walker = new AnalysisMethodCalleeWalker();
         for (AnalysisMethod method : methods) {
             /*
-             * Find methods annotated with with either MustNotAllocate(list = BLACKLIST) or
+             * Find methods annotated with with either RestrictHeapAccess(access = NO_ALLOCATION) or
              * Uninterruptible.
              */
-            final MustNotAllocate mustNotAllocateAnnotation = method.getAnnotation(MustNotAllocate.class);
+            final RestrictHeapAccess restrictHeapAccessAnnotation = method.getAnnotation(RestrictHeapAccess.class);
             final Uninterruptible uninterruptibleAnnotation = method.getAnnotation(Uninterruptible.class);
-            if (((mustNotAllocateAnnotation != null) && (mustNotAllocateAnnotation.list() == MustNotAllocate.BLACKLIST)) ||
-                            (uninterruptibleAnnotation != null)) {
+            if ((restrictHeapAccessAnnotation != null && restrictHeapAccessAnnotation.access() == Access.NO_ALLOCATION) || uninterruptibleAnnotation != null) {
                 /* Walk all the implementations of the annotated method. */
                 for (AnalysisMethod calleeImpl : method.getImplementations()) {
                     walker.walkMethod(calleeImpl, visitor);
@@ -129,7 +129,7 @@ public class MustNotAllocateCallees {
         } else if (method instanceof HostedMethod) {
             result = ((HostedMethod) method).getWrapped();
         } else {
-            throw VMError.shouldNotReachHere("MustNotAllocateCallees.methodToKey: ResolvedJavaMethod is neither an AnalysisMethod nor a HostedMethod: " + method);
+            throw VMError.shouldNotReachHere("RestrictHeapAccessCallees.methodToKey: ResolvedJavaMethod is neither an AnalysisMethod nor a HostedMethod: " + method);
         }
         return result;
     }
@@ -155,14 +155,14 @@ public class MustNotAllocateCallees {
             if ((assertionErrorConstructorList != null) && assertionErrorConstructorList.contains(callee)) {
                 /*
                  * Pretend that an AssertionError constructor is annotated
-                 * with @MustNotAllocate(list = MustNotAllocate.WHITELIST). Allocations of
-                 * AssertionError instances are taken out later, in
+                 * with @RestrictHeapAccess(access = Access.UNRESTRICTED, overridesCallers = true).
+                 * Allocations of AssertionError instances are taken out later, in
                  * ImplicitExceptionsPlugin.handleNewInstance(GraphBuilderContext, ResolvedJavaType)
                  */
                 return VisitResult.CUT;
             }
-            final MustNotAllocate mustNotAllocateAnnotation = callee.getAnnotation(MustNotAllocate.class);
-            if ((mustNotAllocateAnnotation != null) && (mustNotAllocateAnnotation.list() == MustNotAllocate.WHITELIST)) {
+            final RestrictHeapAccess restrictHeapAccessAnnotation = callee.getAnnotation(RestrictHeapAccess.class);
+            if (restrictHeapAccessAnnotation != null && restrictHeapAccessAnnotation.access() == Access.UNRESTRICTED && restrictHeapAccessAnnotation.overridesCallers()) {
                 /* The method is annotated as being on the white list, so cut the traversal. */
                 return VisitResult.CUT;
             }
@@ -221,19 +221,19 @@ public class MustNotAllocateCallees {
 }
 
 @AutomaticFeature
-class MustNotAllocateCalleesFeature implements Feature {
+class RestrictHeapAccessCalleesFeature implements Feature {
 
     /** This is called early, to register in the VMConfiguration. */
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(MustNotAllocateCallees.class, new MustNotAllocateCallees());
+        ImageSingletons.add(RestrictHeapAccessCallees.class, new RestrictHeapAccessCallees());
     }
 
     /** This is called during analysis, to find the AssertionError constructors. */
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         List<ResolvedJavaMethod> assertionErrorConstructorList = initializeAssertionErrorConstructors(access);
-        ImageSingletons.lookup(MustNotAllocateCallees.class).setAssertionErrorConstructors(assertionErrorConstructorList);
+        ImageSingletons.lookup(RestrictHeapAccessCallees.class).setAssertionErrorConstructors(assertionErrorConstructorList);
     }
 
     private static List<ResolvedJavaMethod> initializeAssertionErrorConstructors(DuringAnalysisAccess access) {

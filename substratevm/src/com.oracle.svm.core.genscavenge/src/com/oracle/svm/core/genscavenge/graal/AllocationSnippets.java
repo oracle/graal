@@ -71,7 +71,7 @@ import com.oracle.svm.core.RuntimeReflection;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.allocationprofile.AllocationCounter;
 import com.oracle.svm.core.allocationprofile.AllocationSite;
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.HeapPolicy;
@@ -320,7 +320,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
     private static native Object callNewMultiArray(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> c, int rank, Pointer dimensions, AllocationCounter counter);
 
     /** Foreign call: {@link #NEW_MULTI_ARRAY}. */
-    @MustNotAllocate(reason = "Must not allocate in the implementation of allocation.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
     @SubstrateForeignCallTarget
     private static Object newMultiArray(DynamicHub hub, int rank, Pointer dimensionsStackValue, AllocationCounter counter) {
         /*

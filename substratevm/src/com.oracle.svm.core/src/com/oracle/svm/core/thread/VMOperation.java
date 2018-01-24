@@ -28,7 +28,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil.Thunk;
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
@@ -156,7 +156,7 @@ public abstract class VMOperation extends VMOperationControl.AllocationFreeStack
      */
 
     /** Do whatever it is that this VM operation does. */
-    @MustNotAllocate(list = MustNotAllocate.WHITELIST, reason = "Whitelisted because some operations may allocate.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Whitelisted because some operations may allocate.")
     protected abstract void operate();
 
     /*

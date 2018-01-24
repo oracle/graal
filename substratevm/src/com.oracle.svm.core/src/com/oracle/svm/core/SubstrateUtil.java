@@ -41,10 +41,10 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.MustNotAllocate;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -226,7 +226,7 @@ public class SubstrateUtil {
     /**
      * Prints extensive diagnostic information to the given Log.
      */
-    @MustNotAllocate(reason = "Must not allocate during printing diagnostics.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
     @Uninterruptible(reason = "Allow printDiagnostics to be used in uninterruptible code.", calleeMustBe = false)
     public static void printDiagnostics(Log log, Pointer sp, CodePointer ip) {
         if (diagnosticsInProgress) {

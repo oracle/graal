@@ -28,8 +28,8 @@ import java.util.Set;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.annotate.MustNotAllocate;
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -51,7 +51,7 @@ public class DeoptTester {
     private static final StackFrameVisitor collectPcVisitor = new StackFrameVisitor() {
 
         @Override
-        @MustNotAllocate(list = MustNotAllocate.WHITELIST, reason = "Only deals with IPs, not Objects.")
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Only deals with IPs, not Objects.")
         public boolean visitFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame) {
             handledPCs.add(ip.rawValue());
             return true;
