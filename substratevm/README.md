@@ -30,7 +30,7 @@ In the main directory, invoke `mx help` to see the list of commands. Most of the
 
 * `build`: Compile all Java and native code.
 * `clean`: Remove all compilation artifacts.
-* `eclipseinit`: Create Eclipse projects. See the *Eclipse* section [here](../compiler/docs/IDEs.md) for more details.
+* `ideinit`: Create project files for Eclipse and other common IDEs. See the [documentation on IDE integration](../compiler/docs/IDEs.md) for details.
 
 ## Building images
 
