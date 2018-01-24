@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.134.3",
+  "mxversion" : "5.134.4",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -23,6 +23,7 @@ suite = {
   },
 
   "defaultLicense" : "GPLv2-CPE",
+  "snippetsPattern" : ".*JavadocSnippets.*",
 
   "jdklibraries" : {
     "JVMCI_SERVICES" : {

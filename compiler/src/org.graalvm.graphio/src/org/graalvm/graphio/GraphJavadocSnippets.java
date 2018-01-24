@@ -33,10 +33,10 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
-final class GraphSnippets {
+final class GraphJavadocSnippets {
     static GraphStructure<AcmeGraph, AcmeNode, AcmeNodeType, AcmePorts> acmeGraphStructure() {
         // @formatter:off
-        // BEGIN: org.graalvm.graphio.GraphSnippets#acmeGraphStructure
+        // BEGIN: org.graalvm.graphio.GraphJavadocSnippets#acmeGraphStructure
         class AcmeGraphStructure implements
         GraphStructure<AcmeGraph, AcmeNode, AcmeNodeType, AcmePorts> {
 
@@ -140,12 +140,12 @@ final class GraphSnippets {
             }
         }
 
-        // END: org.graalvm.graphio.GraphSnippets#acmeGraphStructure
+        // END: org.graalvm.graphio.GraphJavadocSnippets#acmeGraphStructure
 
         return new AcmeGraphStructure();
     }
 
-    // BEGIN: org.graalvm.graphio.GraphSnippets#buildOutput
+    // BEGIN: org.graalvm.graphio.GraphJavadocSnippets#buildOutput
     static GraphOutput<AcmeGraph, ?> buildOutput(WritableByteChannel channel)
     throws IOException {
         return GraphOutput.newBuilder(acmeGraphStructure()).
@@ -153,9 +153,9 @@ final class GraphSnippets {
             protocolVersion(5, 0).
             build(channel);
     }
-    // END: org.graalvm.graphio.GraphSnippets#buildOutput
+    // END: org.graalvm.graphio.GraphJavadocSnippets#buildOutput
 
-    // BEGIN: org.graalvm.graphio.GraphSnippets#buildAll
+    // BEGIN: org.graalvm.graphio.GraphJavadocSnippets#buildAll
     static GraphOutput<AcmeGraph, ?> buildAll(WritableByteChannel channel)
     throws IOException {
         GraphBlocks<AcmeGraph, AcmeBlocks, AcmeNode> graphBlocks = acmeBlocks();
@@ -170,7 +170,7 @@ final class GraphSnippets {
             types(graphTypes).
             build(channel);
     }
-    // END: org.graalvm.graphio.GraphSnippets#buildAll
+    // END: org.graalvm.graphio.GraphJavadocSnippets#buildAll
 
     private static GraphTypes acmeTypes() {
         GraphTypes graphTypes = null;
@@ -257,7 +257,7 @@ final class GraphSnippets {
     private static class AcmeCodePosition {
     }
 
-    // BEGIN: org.graalvm.graphio.GraphSnippets#dump
+    // BEGIN: org.graalvm.graphio.GraphJavadocSnippets#dump
     static void dump(File toFile) throws IOException {
         try (
             FileChannel ch = new FileOutputStream(toFile).getChannel();
@@ -280,6 +280,6 @@ final class GraphSnippets {
             output.endGroup();
         }
     }
-    // END: org.graalvm.graphio.GraphSnippets#dump
+    // END: org.graalvm.graphio.GraphJavadocSnippets#dump
 
 }
