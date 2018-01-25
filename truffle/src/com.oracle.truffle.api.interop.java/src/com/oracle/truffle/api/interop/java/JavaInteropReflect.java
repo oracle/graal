@@ -35,30 +35,36 @@ import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 
+import java.util.Objects;
+import java.util.function.BiFunction;
+
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+
 import com.oracle.truffle.api.Truffle;
+
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.interop.java.ObjectProxyHandlerFactory.InvokeAndReadExecNodeGen;
-import com.oracle.truffle.api.interop.java.ObjectProxyHandlerFactory.MethodNodeGen;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 
 final class JavaInteropReflect {
     static final Object[] EMPTY = {};
@@ -200,7 +206,7 @@ final class JavaInteropReflect {
     }
 
     static Object newProxyInstance(Class<?> clazz, TruffleObject obj, Object languageContext) throws IllegalArgumentException {
-        return Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[]{clazz}, new ObjectProxyHandler(obj, languageContext));
+        return Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[]{clazz}, new ObjectProxyHandler(obj, languageContext, clazz));
     }
 
     static boolean isStaticTypeOrInterface(Class<?> t) {
@@ -233,14 +239,14 @@ final class JavaInteropReflect {
         throw (E) ex;
     }
 
-    static Class<?> getMethodReturnType(Method method) {
+    public static Class<?> getMethodReturnType(Method method) {
         if (method == null || method.getReturnType() == void.class) {
             return Object.class;
         }
         return method.getReturnType();
     }
 
-    static Type getMethodGenericReturnType(Method method) {
+    public static Type getMethodGenericReturnType(Method method) {
         if (method == null || method.getReturnType() == void.class) {
             return Object.class;
         }
@@ -314,6 +320,8 @@ class FunctionProxyNode extends HostEntryRootNode<TruffleObject> implements Supp
     final Class<?> receiverClass;
     final Method method;
     @Child private TruffleExecuteNode executeNode;
+    @CompilationFinal private Class<?> returnClass;
+    @CompilationFinal private Type returnType;
 
     FunctionProxyNode(Class<?> receiverType, Method method) {
         this.receiverClass = receiverType;
@@ -328,30 +336,18 @@ class FunctionProxyNode extends HostEntryRootNode<TruffleObject> implements Supp
 
     @Override
     public final String get() {
-        return "Proxy<" + receiverClass + ", " + method + ", " + method + ">.apply";
+        return "FunctionalInterfaceProxy<" + receiverClass + ", " + method + ">";
     }
 
     @Override
     protected Object executeImpl(Object languageContext, TruffleObject function, Object[] args, int offset) {
         if (executeNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.executeNode = new TruffleExecuteNode() {
-
-                private final Class<?> returnClass = JavaInteropReflect.getMethodReturnType(method);
-                private final Type returnType = JavaInteropReflect.getMethodGenericReturnType(method);
-
-                @Override
-                protected Class<?> getResultClass() {
-                    return returnClass;
-                }
-
-                @Override
-                protected Type getResultType() {
-                    return returnType;
-                }
-            };
+            this.returnClass = JavaInteropReflect.getMethodReturnType(method);
+            this.returnType = JavaInteropReflect.getMethodGenericReturnType(method);
+            this.executeNode = new TruffleExecuteNode();
         }
-        return executeNode.execute(languageContext, function, args[offset]);
+        return executeNode.execute(languageContext, function, args[offset], returnClass, returnType);
     }
 
     @Override
@@ -447,258 +443,234 @@ final class FunctionProxyHandler implements InvocationHandler {
     }
 }
 
-final class ObjectProxyHandler implements InvocationHandler {
-    final TruffleObject obj;
-    final Object languageContext;
+class ObjectProxyNode extends HostEntryRootNode<TruffleObject> implements Supplier<String> {
 
-    ObjectProxyHandler(TruffleObject obj, Object languageContext) {
-        this.obj = obj;
-        this.languageContext = languageContext;
+    final Class<?> receiverClass;
+    final Class<?> interfaceType;
+
+    @Child private ProxyInvokeNode proxyInvoke = ProxyInvokeNodeGen.create();
+    @CompilationFinal private BiFunction<Object, Object[], Object[]> toGuests;
+
+    ObjectProxyNode(Class<?> receiverType, Class<?> interfaceType) {
+        this.receiverClass = receiverType;
+        this.interfaceType = interfaceType;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    protected Class<? extends TruffleObject> getReceiverType() {
+        return (Class<? extends TruffleObject>) receiverClass;
     }
 
     @Override
-    public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
-        CompilerAsserts.neverPartOfCompilation();
-
-        Object[] args = arguments == null ? JavaInteropReflect.EMPTY : arguments;
-        for (int i = 0; i < args.length; i++) {
-            args[i] = JavaInterop.asTruffleValue(args[i]);
-        }
-
-        if (Object.class == method.getDeclaringClass()) {
-            return method.invoke(obj, args);
-        }
-
-        CallTarget call = JavaInterop.lookupOrRegisterComputation(obj, null, method);
-        if (call == null) {
-            Message message = findMessage(method, method.getAnnotation(MethodMessage.class), args.length);
-            MethodNode methodNode = MethodNodeGen.create(method.getName(), message, JavaInteropReflect.getMethodReturnType(method), JavaInteropReflect.getMethodGenericReturnType(method));
-            call = JavaInterop.lookupOrRegisterComputation(obj, methodNode, method);
-        }
-
-        return call.call(obj, args, languageContext);
+    public final String get() {
+        return "InterfaceProxy<" + receiverClass + ">";
     }
 
-    private static Message findMessage(Method method, MethodMessage mm, int arity) {
+    @Override
+    protected Object executeImpl(Object languageContext, TruffleObject receiver, Object[] args, int offset) {
+        if (proxyInvoke == null || toGuests == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            toGuests = JavaInterop.ACCESSOR.engine().createToGuestValuesNode();
+            proxyInvoke = ProxyInvokeNodeGen.create();
+        }
+        Method method = (Method) args[offset];
+        Object[] arguments = toGuests.apply(languageContext, (Object[]) args[offset + 1]);
+        return proxyInvoke.execute(languageContext, receiver, method, arguments);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = 1;
+        result = 31 * result + Objects.hashCode(receiverClass);
+        result = 31 * result + Objects.hashCode(interfaceType);
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof ObjectProxyNode)) {
+            return false;
+        }
+        ObjectProxyNode other = (ObjectProxyNode) obj;
+        return receiverClass == other.receiverClass && interfaceType == other.interfaceType;
+    }
+
+    static CallTarget lookup(Object languageContext, Class<?> receiverClass, Class<?> interfaceClass) {
+        EngineSupport engine = JavaInterop.ACCESSOR.engine();
+        if (engine == null) {
+            return createTarget(new ObjectProxyNode(receiverClass, interfaceClass));
+        }
+        ObjectProxyNode node = new ObjectProxyNode(receiverClass, interfaceClass);
+        CallTarget target = engine.lookupJavaInteropCodeCache(languageContext, node, CallTarget.class);
+        if (target == null) {
+            target = engine.installJavaInteropCodeCache(languageContext, node, createTarget(node), CallTarget.class);
+        }
+        return target;
+    }
+}
+
+@ImportStatic({Message.class, JavaInteropReflect.class})
+abstract class ProxyInvokeNode extends Node {
+
+    public abstract Object execute(Object languageContext, TruffleObject receiver, Method method, Object[] arguments);
+
+    /*
+     * The limit of the proxy node is unbounded. There are only so many methods a Java interface can
+     * have. So we always want to specialize.
+     */
+    protected static final int LIMIT = Integer.MAX_VALUE;
+
+    /*
+     * It is supposed to be safe to compare method names with == only as they are always interned.
+     */
+    @Specialization(guards = {"cachedMethod.equals(method)"}, limit = "LIMIT")
+    @SuppressWarnings("unused")
+    protected static Object doCachedMethod(Object languageContext, TruffleObject receiver, @SuppressWarnings("unused") Method method, Object[] arguments,
+                    @Cached("method") Method cachedMethod,
+                    @Cached("method.getName()") String name,
+                    @Cached("getMethodReturnType(method)") Class<?> returnClass,
+                    @Cached("getMethodGenericReturnType(method)") Type returnType,
+                    @Cached("createInvoke(0).createNode()") Node invokeNode,
+                    @Cached("KEY_INFO.createNode()") Node keyInfoNode,
+                    @Cached("READ.createNode()") Node readNode,
+                    @Cached("IS_EXECUTABLE.createNode()") Node isExecutableNode,
+                    @Cached("createExecute(0).createNode()") Node executeNode,
+                    @Cached("createBinaryProfile()") ConditionProfile branchProfile,
+                    @Cached("create()") ToJavaNode toJava,
+                    @Cached("findMessage(method)") Message message,
+                    @Cached("maybeCreateNode(message)") Node messageNode) {
+        Object result;
+        if (message == null) {
+            result = invokeOrExecute(receiver, arguments, name, invokeNode, keyInfoNode, readNode, isExecutableNode, executeNode, branchProfile);
+        } else {
+            // legacy behavior for MethodMessage
+            try {
+                result = handleMessage(message, messageNode, receiver, name, arguments);
+            } catch (InteropException e) {
+                CompilerDirectives.transferToInterpreter();
+                // MethodMessage is not reachable normally so its not a problem to rethrow interop exceptions
+                // to make current unit tests happy.
+                throw e.raise();
+            }
+        }
+        return toJava.execute(result, returnClass, returnType, languageContext);
+    }
+
+    protected static Node maybeCreateNode(Message message) {
+        return message == null ? null : message.createNode();
+    }
+
+    private static Object handleMessage(Message message, Node messageNode, TruffleObject obj, String name, Object[] args) throws InteropException {
+        if (message == Message.WRITE) {
+            ForeignAccess.sendWrite(messageNode, obj, name, args[0]);
+            return null;
+        }
+        if (message == Message.HAS_SIZE || message == Message.IS_BOXED || message == Message.IS_EXECUTABLE || message == Message.IS_NULL || message == Message.GET_SIZE) {
+            return ForeignAccess.send(messageNode, obj);
+        }
+
+        if (message == Message.KEY_INFO) {
+            return ForeignAccess.sendKeyInfo(messageNode, obj, name);
+        }
+
+        if (message == Message.READ) {
+            return ForeignAccess.sendRead(messageNode, obj, name);
+        }
+
+        if (message == Message.UNBOX) {
+            return ForeignAccess.sendUnbox(messageNode, obj);
+        }
+
+        if (Message.createExecute(0).equals(message)) {
+            return ForeignAccess.sendExecute(messageNode, obj, args);
+        }
+
+        if (Message.createInvoke(0).equals(message)) {
+            return ForeignAccess.sendInvoke(messageNode, obj, name, args);
+        }
+
+        if (Message.createNew(0).equals(message)) {
+            return ForeignAccess.sendNew(messageNode, obj, args);
+        }
+
+        CompilerDirectives.transferToInterpreter();
+        throw UnsupportedMessageException.raise(message);
+    }
+
+    protected static Message findMessage(Method method) {
         CompilerAsserts.neverPartOfCompilation();
+        MethodMessage mm = method.getAnnotation(MethodMessage.class);
         if (mm == null) {
             return null;
         }
         Message message = Message.valueOf(mm.message());
-        if (message == Message.WRITE && arity != 1) {
+        if (message == Message.WRITE && method.getParameterTypes().length != 1) {
             throw new IllegalStateException("Method needs to have a single argument to handle WRITE message " + method);
         }
         return message;
     }
 
-    abstract static class MethodNode extends RootNode {
-        private final String name;
-        private final Message message;
-        private final Class<?> returnType;
-        private final Type genericReturnType;
-        @Child private ToJavaNode toJavaNode;
-        @Child private Node node;
+    @TruffleBoundary
+    private static boolean guardReturnType(Method method, Type returnType) {
+        return method.getGenericReturnType().equals(returnType);
+    }
 
-        MethodNode(String name, Message message, Class<?> returnType, Type genericReturnType) {
-            super(null);
-            this.name = name;
-            this.message = message;
-            this.returnType = returnType;
-            this.genericReturnType = genericReturnType;
-            this.toJavaNode = ToJavaNode.create();
-        }
-
-        @Override
-        public final Object execute(VirtualFrame frame) {
-            try {
-                TruffleObject receiver = (TruffleObject) frame.getArguments()[0];
-                Object[] params = (Object[]) frame.getArguments()[1];
-                Object languageContext = frame.getArguments()[2];
-                Object res = executeImpl(receiver, params);
-                if (!returnType.isInterface()) {
-                    res = JavaInterop.findOriginalObject(res);
+    private static Object invokeOrExecute(TruffleObject receiver, Object[] arguments, String name, Node invokeNode, Node keyInfoNode, Node readNode, Node isExecutableNode, Node executeNode,
+                    ConditionProfile branchProfile) {
+        try {
+            int keyInfo = ForeignAccess.sendKeyInfo(keyInfoNode, receiver, name);
+            if (branchProfile.profile(KeyInfo.isInvocable(keyInfo))) {
+                try {
+                    return ForeignAccess.sendInvoke(invokeNode, receiver, name, arguments);
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    // fallthrough to unsupported
                 }
-                return toJavaNode.execute(res, returnType, genericReturnType, languageContext);
-            } catch (UnknownIdentifierException ex) {
-                throw new UnsupportedOperationException(ex.getMessage());
-            } catch (UnsupportedTypeException ex) {
-                throw new IllegalArgumentException(ex.getMessage());
-            } catch (ArityException ex) {
-                throw new IllegalArgumentException(ex.getMessage());
-            } catch (InteropException ex) {
-                throw new UnsupportedOperationException(ex.getMessage());
-            }
-        }
-
-        private Object handleMessage(Node messageNode, TruffleObject obj, Object[] args) throws InteropException {
-            if (message == Message.WRITE) {
-                ForeignAccess.sendWrite(messageNode, obj, name, args[0]);
-                return null;
-            }
-            if (message == Message.HAS_SIZE || message == Message.IS_BOXED || message == Message.IS_EXECUTABLE || message == Message.IS_NULL || message == Message.GET_SIZE) {
-                return ForeignAccess.send(messageNode, obj);
-            }
-
-            if (message == Message.KEY_INFO) {
-                return ForeignAccess.sendKeyInfo(messageNode, obj, name);
-            }
-
-            if (message == Message.READ) {
-                return ForeignAccess.sendRead(messageNode, obj, name);
-            }
-
-            if (message == Message.UNBOX) {
-                return ForeignAccess.sendUnbox(messageNode, obj);
-            }
-
-            if (Message.createExecute(0).equals(message)) {
-                return ForeignAccess.sendExecute(messageNode, obj, args);
-            }
-
-            if (Message.createInvoke(0).equals(message)) {
-                return ForeignAccess.sendInvoke(messageNode, obj, name, args);
-            }
-
-            if (Message.createNew(0).equals(message)) {
-                return ForeignAccess.sendNew(messageNode, obj, args);
-            }
-
-            if (message == null) {
-                return ((InvokeAndReadExecNode) messageNode).executeDispatch(obj, name, args);
+            } else if (KeyInfo.isReadable(keyInfo)) {
+                Object readValue = ForeignAccess.sendRead(readNode, receiver, name);
+                if (readValue instanceof TruffleObject) {
+                    TruffleObject truffleReadValue = (TruffleObject) readValue;
+                    if (ForeignAccess.sendIsExecutable(isExecutableNode, truffleReadValue)) {
+                        return ForeignAccess.sendExecute(executeNode, truffleReadValue, arguments);
+                    }
+                }
             }
             CompilerDirectives.transferToInterpreter();
-            throw UnsupportedMessageException.raise(message);
-        }
-
-        Node node(Object[] args) {
-            if (node == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.node = insert(createNode(args));
-            }
-            return node;
-        }
-
-        Node createNode(Object[] args) {
-            if (message == null) {
-                return InvokeAndReadExecNodeGen.create(returnType, args.length);
-            }
-            return message.createNode();
-        }
-
-        protected abstract Object executeImpl(TruffleObject receiver, Object[] arguments) throws InteropException;
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "acceptCached(receiver, foreignAccess, canHandleCall)", limit = "8")
-        protected Object doCached(TruffleObject receiver, Object[] arguments,
-                        @Cached("receiver.getForeignAccess()") ForeignAccess foreignAccess,
-                        @Cached("createInlinedCallNode(createCanHandleTarget(foreignAccess))") DirectCallNode canHandleCall,
-                        @Cached("createNode(arguments)") Node messageNode) {
-            try {
-                return handleMessage(messageNode, receiver, arguments);
-            } catch (InteropException ex) {
-                throw ex.raise();
-            }
-        }
-
-        protected static boolean acceptCached(TruffleObject receiver, ForeignAccess foreignAccess, DirectCallNode canHandleCall) {
-            if (canHandleCall != null) {
-                return (boolean) canHandleCall.call(new Object[]{receiver});
-            } else if (foreignAccess != null) {
-                return JavaInterop.ACCESSOR.interop().canHandle(foreignAccess, receiver);
-            } else {
-                return false;
-            }
-        }
-
-        static DirectCallNode createInlinedCallNode(CallTarget target) {
-            if (target == null) {
-                return null;
-            }
-            DirectCallNode callNode = DirectCallNode.create(target);
-            callNode.forceInlining();
-            return callNode;
-        }
-
-        @Specialization
-        Object doGeneric(TruffleObject receiver, Object[] arguments) {
-            try {
-                return handleMessage(node(arguments), receiver, arguments);
-            } catch (InteropException ex) {
-                throw ex.raise();
-            }
-        }
-
-        @CompilerDirectives.TruffleBoundary
-        CallTarget createCanHandleTarget(ForeignAccess access) {
-            return JavaInterop.ACCESSOR.interop().canHandleTarget(access);
-        }
-
-    }
-
-    abstract static class InvokeAndReadExecNode extends Node {
-        private final Class<?> returnType;
-        @Child private Node invokeNode;
-        @Child private Node isExecNode;
-        @Child private ToPrimitiveNode primitive;
-        @Child private Node readNode;
-        @Child private Node execNode;
-
-        InvokeAndReadExecNode(Class<?> returnType, int arity) {
-            this.returnType = returnType;
-            this.invokeNode = Message.createInvoke(arity).createNode();
-        }
-
-        abstract Object executeDispatch(TruffleObject obj, String name, Object[] args);
-
-        @Specialization(rewriteOn = InteropException.class)
-        Object doInvoke(TruffleObject obj, String name, Object[] args) throws InteropException {
-            return ForeignAccess.sendInvoke(invokeNode, obj, name, args);
-        }
-
-        @Specialization(rewriteOn = UnsupportedMessageException.class)
-        Object doReadExec(TruffleObject obj, String name, Object[] args) throws UnsupportedMessageException {
-            try {
-                if (readNode == null || primitive == null || isExecNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    readNode = insert(Message.READ.createNode());
-                    primitive = insert(ToPrimitiveNode.create());
-                    isExecNode = insert(Message.IS_EXECUTABLE.createNode());
-                }
-                Object val = ForeignAccess.sendRead(readNode, obj, name);
-                Object primitiveVal = primitive.toPrimitive(val, returnType);
-                if (primitiveVal != null) {
-                    return primitiveVal;
-                }
-                TruffleObject attr = (TruffleObject) val;
-                if (!ForeignAccess.sendIsExecutable(isExecNode, attr)) {
-                    if (args.length == 0) {
-                        return attr;
-                    }
-                    CompilerDirectives.transferToInterpreter();
-                    throw ArityException.raise(0, args.length);
-                }
-                if (execNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    execNode = insert(Message.createExecute(args.length).createNode());
-                }
-                return ForeignAccess.sendExecute(execNode, attr, args);
-            } catch (ArityException | UnsupportedTypeException | UnknownIdentifierException ex) {
-                throw ex.raise();
-            }
-        }
-
-        @Specialization
-        @CompilerDirectives.TruffleBoundary
-        Object doBoth(TruffleObject obj, String name, Object[] args) {
-            try {
-                return doInvoke(obj, name, args);
-            } catch (InteropException retry) {
-                try {
-                    return doReadExec(obj, name, args);
-                } catch (UnsupportedMessageException ex) {
-                    throw ex.raise();
-                }
-            }
+            throw HostEntryRootNode.newUnsupportedOperationException("Member not executable.");
+        } catch (UnknownIdentifierException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw HostEntryRootNode.newIllegalArgumentException("Unknown member " + e.getUnknownIdentifier() + ".");
+        } catch (UnsupportedTypeException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw HostEntryRootNode.newIllegalArgumentException("Illegal argument provided.");
+        } catch (ArityException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw HostEntryRootNode.newIllegalArgumentException("Illegal number of arguments.");
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw HostEntryRootNode.newUnsupportedOperationException("Unsupported operation.");
         }
     }
+
+}
+
+final class ObjectProxyHandler implements InvocationHandler {
+
+    final TruffleObject obj;
+    final Object languageContext;
+    final CallTarget invoke;
+
+    ObjectProxyHandler(TruffleObject obj, Object languageContext, Class<?> interfaceClass) {
+        this.obj = obj;
+        this.languageContext = languageContext;
+        this.invoke = ObjectProxyNode.lookup(languageContext, obj.getClass(), interfaceClass);
+    }
+
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
+        CompilerAsserts.neverPartOfCompilation();
+        return invoke.call(languageContext, obj, method, arguments == null ? JavaInteropReflect.EMPTY : arguments);
+    }
+
 }

@@ -136,7 +136,7 @@ abstract class ToJavaNode extends Node {
             } else if (targetType == Map.class) {
                 return primitive.hasKeys(tValue);
             } else if (targetType == Function.class) {
-                return isExecutable(tValue) || isInstantiable(tValue);
+                return isExecutable(tValue) || isInstantiable(tValue) || (TruffleOptions.AOT && ForeignAccess.sendHasKeys(hasKeysNode, tValue));
             } else if (targetType.isArray()) {
                 return primitive.hasKeys(tValue);
             } else {
@@ -149,7 +149,12 @@ abstract class ToJavaNode extends Node {
                         return false;
                     }
                 } else {
-                    return false;
+                    // support Function also without AOT
+                    if (targetType == Function.class) {
+                        return isExecutable(tValue) || isInstantiable(tValue);
+                    } else {
+                        return false;
+                    }
                 }
             }
         } else {
@@ -233,11 +238,12 @@ abstract class ToJavaNode extends Node {
             }
         } else if (targetType == Function.class) {
             TypeAndClass<?> returnType = getGenericParameterType(genericType, 0);
-            TypeAndClass<?> argumentType = getGenericParameterType(genericType, 1);
             if (isExecutable(truffleObject) || isInstantiable(truffleObject)) {
-                obj = TruffleFunction.create(languageContext, truffleObject, argumentType.clazz, argumentType.type, returnType.clazz, returnType.type);
+                obj = TruffleFunction.create(languageContext, truffleObject, returnType.clazz, returnType.type);
+            } else if (!TruffleOptions.AOT && ForeignAccess.sendHasKeys(hasKeysNode, truffleObject)) {
+                obj = JavaInteropReflect.newProxyInstance(targetType, truffleObject, languageContext);
             } else {
-                throw newClassCastException(truffleObject, targetType, "is not executable or instantiable");
+                throw newClassCastException(truffleObject, targetType, null);
             }
         } else if (targetType.isArray()) {
             if (primitive.hasSize(truffleObject)) {
@@ -246,12 +252,8 @@ abstract class ToJavaNode extends Node {
                 throw newClassCastException(truffleObject, targetType, "has no size");
             }
         } else if (!TruffleOptions.AOT && targetType.isInterface()) {
-            if (JavaInterop.isJavaFunctionInterface(targetType)) {
-                if (isExecutable(truffleObject) || isInstantiable(truffleObject)) {
-                    obj = JavaInteropReflect.asJavaFunction(targetType, truffleObject, languageContext);
-                } else {
-                    throw newClassCastException(truffleObject, targetType, "is not executable or instantiable");
-                }
+            if (JavaInterop.isJavaFunctionInterface(targetType) && (isExecutable(truffleObject) || isInstantiable(truffleObject))) {
+                obj = JavaInteropReflect.asJavaFunction(targetType, truffleObject, languageContext);
             } else if (ForeignAccess.sendHasKeys(hasKeysNode, truffleObject)) {
                 obj = JavaInteropReflect.newProxyInstance(targetType, truffleObject, languageContext);
             } else {

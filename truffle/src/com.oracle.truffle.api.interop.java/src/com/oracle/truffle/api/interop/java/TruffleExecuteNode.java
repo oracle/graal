@@ -1,3 +1,27 @@
+/*
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package com.oracle.truffle.api.interop.java;
 
 import static com.oracle.truffle.api.interop.ForeignAccess.sendExecute;
@@ -17,7 +41,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 
-class TruffleExecuteNode extends Node {
+final class TruffleExecuteNode extends Node {
 
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
     @Child private Node isInstantiable = Message.IS_INSTANTIABLE.createNode();
@@ -27,31 +51,10 @@ class TruffleExecuteNode extends Node {
     private final ConditionProfile condition = ConditionProfile.createBinaryProfile();
     @Child private ToJavaNode toHost = ToJavaNode.create();
 
-    protected Class<?> getResultClass() {
-        return Object.class;
-    }
-
-    protected Type getResultType() {
-        return Object.class;
-    }
-
-    protected Class<?> getArgumentClass() {
-        return Object[].class;
-    }
-
-    protected Type getArgumentType() {
-        return Object[].class;
-    }
-
-    public final Object execute(Object languageContext, TruffleObject function, Object functionArgsObject) {
-        Class<?> argumentClass = getArgumentClass();
-        if (!argumentClass.isInstance(functionArgsObject)) {
-            CompilerDirectives.transferToInterpreter();
-            throw HostEntryRootNode.newIllegalArgumentException(
-                            String.format("Function arguments must be of type %s but is %s.", argumentClass.getName(), functionArgsObject != null ? functionArgsObject.getClass().getName() : "null"));
-        }
+    public final Object execute(Object languageContext, TruffleObject function, Object functionArgsObject,
+                    Class<?> resultClass, Type resultType) {
         Object[] argsArray;
-        if (argumentClass == Object[].class) {
+        if (functionArgsObject instanceof Object[]) {
             argsArray = (Object[]) functionArgsObject;
         } else {
             argsArray = new Object[]{functionArgsObject};
@@ -77,6 +80,10 @@ class TruffleExecuteNode extends Node {
             CompilerDirectives.transferToInterpreter();
             throw HostEntryRootNode.newUnsupportedOperationException("Unsupported operation.");
         }
-        return toHost.execute(result, getResultClass(), getResultType(), languageContext);
+        return toHost.execute(result, resultClass, resultType, languageContext);
+    }
+
+    public static TruffleExecuteNode create() {
+        return new TruffleExecuteNode();
     }
 }

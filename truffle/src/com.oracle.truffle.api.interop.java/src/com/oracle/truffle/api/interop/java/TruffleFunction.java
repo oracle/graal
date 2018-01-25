@@ -41,10 +41,10 @@ final class TruffleFunction<T, R> implements Function<T, R> {
     final Object languageContext;
     final CallTarget apply;
 
-    TruffleFunction(Object languageContext, TruffleObject function, Class<?> argumentClass, Type argumentType, Class<?> returnClass, Type returnType) {
+    TruffleFunction(Object languageContext, TruffleObject function, Class<?> returnClass, Type returnType) {
         this.guestObject = function;
         this.languageContext = languageContext;
-        this.apply = Apply.lookup(languageContext, function.getClass(), argumentClass, argumentType, returnClass, returnType);
+        this.apply = Apply.lookup(languageContext, function.getClass(), returnClass, returnType);
     }
 
     @SuppressWarnings("unchecked")
@@ -71,24 +71,20 @@ final class TruffleFunction<T, R> implements Function<T, R> {
     }
 
     @TruffleBoundary
-    public static <T> TruffleFunction<?, ?> create(Object languageContext, TruffleObject function, Class<?> argumentClass, Type argumentType, Class<?> returnClass, Type returnType) {
-        return new TruffleFunction<>(languageContext, function, argumentClass, argumentType, returnClass, returnType);
+    public static <T> TruffleFunction<?, ?> create(Object languageContext, TruffleObject function, Class<?> returnClass, Type returnType) {
+        return new TruffleFunction<>(languageContext, function, returnClass, returnType);
     }
 
     static final class Apply extends HostEntryRootNode<TruffleObject> implements Supplier<String> {
 
         final Class<?> receiverClass;
-        final Class<?> argumentClass;
-        final Type argumentType;
         final Class<?> returnClass;
         final Type returnType;
 
         @Child private TruffleExecuteNode apply;
 
-        Apply(Class<?> receiverType, Class<?> argumentClass, Type argumentType, Class<?> returnClass, Type returnType) {
+        Apply(Class<?> receiverType, Class<?> returnClass, Type returnType) {
             this.receiverClass = receiverType;
-            this.argumentClass = argumentClass;
-            this.argumentType = argumentType;
             this.returnClass = returnClass;
             this.returnType = returnType;
         }
@@ -101,44 +97,22 @@ final class TruffleFunction<T, R> implements Function<T, R> {
 
         @Override
         public final String get() {
-            return "TruffleFunction<" + argumentType + ", " + returnType + ", " + argumentClass + ">.apply";
+            return "TruffleFunction<" + receiverClass + ", " + returnType + ">.apply";
         }
 
         @Override
         protected Object executeImpl(Object languageContext, TruffleObject function, Object[] args, int offset) {
             if (apply == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                apply = new TruffleExecuteNode() {
-                    @Override
-                    protected Class<?> getArgumentClass() {
-                        return argumentClass;
-                    }
-
-                    @Override
-                    protected Type getArgumentType() {
-                        return argumentType;
-                    }
-
-                    @Override
-                    protected Class<?> getResultClass() {
-                        return returnClass;
-                    }
-
-                    @Override
-                    protected Type getResultType() {
-                        return returnType;
-                    }
-                };
+                apply = new TruffleExecuteNode();
             }
-            return apply.execute(languageContext, function, args[offset]);
+            return apply.execute(languageContext, function, args[offset], returnClass, returnType);
         }
 
         @Override
         public int hashCode() {
             int result = 1;
             result = 31 * result + Objects.hashCode(receiverClass);
-            result = 31 * result + Objects.hashCode(argumentClass);
-            result = 31 * result + Objects.hashCode(argumentType);
             result = 31 * result + Objects.hashCode(returnClass);
             result = 31 * result + Objects.hashCode(returnType);
             return result;
@@ -150,16 +124,16 @@ final class TruffleFunction<T, R> implements Function<T, R> {
                 return false;
             }
             Apply other = (Apply) obj;
-            return receiverClass == other.receiverClass && argumentClass == other.argumentClass && argumentType == other.argumentType && returnType == other.returnType &&
+            return receiverClass == other.receiverClass && returnType == other.returnType &&
                             returnClass == other.returnClass;
         }
 
-        private static CallTarget lookup(Object languageContext, Class<?> receiverClass, Class<?> argumentClass, Type argumentType, Class<?> returnClass, Type returnType) {
+        private static CallTarget lookup(Object languageContext, Class<?> receiverClass, Class<?> returnClass, Type returnType) {
             EngineSupport engine = JavaInterop.ACCESSOR.engine();
             if (engine == null) {
-                return createTarget(new Apply(receiverClass, argumentClass, argumentType, returnClass, returnType));
+                return createTarget(new Apply(receiverClass, returnClass, returnType));
             }
-            Apply apply = new Apply(receiverClass, argumentClass, argumentType, returnClass, returnType);
+            Apply apply = new Apply(receiverClass, returnClass, returnType);
             CallTarget target = engine.lookupJavaInteropCodeCache(languageContext, apply, CallTarget.class);
             if (target == null) {
                 target = engine.installJavaInteropCodeCache(languageContext, apply, createTarget(apply), CallTarget.class);

@@ -549,7 +549,7 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
 
             @Override
             protected Object executeImpl(Object languageContext, TruffleObject function, Object[] args, int offset) {
-                return apply.execute(languageContext, function, args[offset]);
+                return apply.execute(languageContext, function, args[offset], Object.class, Object.class);
             }
         }
 

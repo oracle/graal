@@ -316,7 +316,7 @@ class TruffleList<T> extends AbstractList<T> {
 
             @Override
             protected Object executeImpl(Object languageContext, TruffleObject function, Object[] args, int offset) {
-                return apply.execute(languageContext, function, args[offset]);
+                return apply.execute(languageContext, function, args[offset], Object.class, Object.class);
             }
         }
     }
