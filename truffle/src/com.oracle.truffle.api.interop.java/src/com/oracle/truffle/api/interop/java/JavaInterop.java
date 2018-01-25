@@ -303,9 +303,11 @@ public final class JavaInterop {
         } else if (obj.getClass().isArray()) {
             return new JavaObject(obj, obj.getClass(), languageContext);
         } else if (obj instanceof TruffleList) {
-            return ((TruffleList<?>) obj).array;
+            return ((TruffleList<?>) obj).guestObject;
         } else if (obj instanceof TruffleMap) {
-            return ((TruffleMap<?, ?>) obj).obj;
+            return ((TruffleMap<?, ?>) obj).guestObject;
+        } else if (obj instanceof TruffleFunction) {
+            return ((TruffleFunction<?, ?>) obj).guestObject;
         } else if (TruffleOptions.AOT) {
             return new JavaObject(obj, obj.getClass(), languageContext);
         } else {

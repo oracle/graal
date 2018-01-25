@@ -49,7 +49,7 @@ final class JavaObject implements TruffleObject {
         return obj instanceof JavaObject;
     }
 
-    static boolean isJavaInstance(Class<?> targetType, Object javaObject) {
+    static boolean isJavaInstance(Class<?> targetType, TruffleObject javaObject) {
         if (javaObject instanceof JavaObject) {
             final Object value = valueOf(javaObject);
             return targetType.isInstance(value);
@@ -58,7 +58,7 @@ final class JavaObject implements TruffleObject {
         }
     }
 
-    static Object valueOf(Object value) {
+    static Object valueOf(TruffleObject value) {
         final JavaObject obj = (JavaObject) value;
         if (obj.isClass()) {
             return obj.clazz;

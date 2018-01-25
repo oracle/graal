@@ -178,106 +178,6 @@ public class ValueAPITest {
         }
     }
 
-    private static class DummyList extends DummyCollection implements List<Object> {
-
-        public boolean addAll(int index, Collection<? extends Object> c) {
-            return values.addAll(index, c);
-        }
-
-        public Object get(int index) {
-            return values.get(index);
-        }
-
-        public Object set(int index, Object element) {
-            return values.set(index, element);
-        }
-
-        public void add(int index, Object element) {
-            values.add(index, element);
-        }
-
-        public Object remove(int index) {
-            return values.remove(index);
-        }
-
-        public int indexOf(Object o) {
-            return values.indexOf(o);
-        }
-
-        public int lastIndexOf(Object o) {
-            return values.lastIndexOf(o);
-        }
-
-        public ListIterator<Object> listIterator() {
-            return values.listIterator();
-        }
-
-        public ListIterator<Object> listIterator(int index) {
-            return values.listIterator(index);
-        }
-
-        public List<Object> subList(int fromIndex, int toIndex) {
-            return values.subList(fromIndex, toIndex);
-        }
-
-    }
-
-    private static class DummyCollection implements Collection<Object> {
-        List<Object> values = Arrays.asList("a", 42);
-
-        public java.util.Iterator<Object> iterator() {
-            return values.iterator();
-        }
-
-        public int size() {
-            return values.size();
-        }
-
-        public boolean isEmpty() {
-            return values.isEmpty();
-        }
-
-        public boolean contains(Object o) {
-            return values.contains(o);
-        }
-
-        public Object[] toArray() {
-            return values.toArray();
-        }
-
-        public <T> T[] toArray(T[] a) {
-            return values.toArray(a);
-        }
-
-        public boolean add(Object e) {
-            return values.add(e);
-        }
-
-        public boolean remove(Object o) {
-            return values.remove(o);
-        }
-
-        public boolean containsAll(Collection<?> c) {
-            return values.containsAll(c);
-        }
-
-        public boolean addAll(Collection<? extends Object> c) {
-            return values.addAll(c);
-        }
-
-        public boolean removeAll(Collection<?> c) {
-            return values.removeAll(c);
-        }
-
-        public boolean retainAll(Collection<?> c) {
-            return values.retainAll(c);
-        }
-
-        public void clear() {
-            values.clear();
-        }
-    }
-
     private static final Object[] ARRAYS = new Object[]{
                     new boolean[]{true, false, true},
                     new char[]{'a', 'b', 'c'},
@@ -510,6 +410,18 @@ public class ValueAPITest {
             assertTrue(value.hasArrayElements());
         });
 
+        Executable exectable = new Executable();
+        exectable.executableResult = "foobarbaz";
+
+        objectCoercionTest(exectable, Function.class, (v) -> {
+            assertEquals("foobarbaz", ((Function<Object, Object>) v).apply(new Object[0]));
+            Value value = context.asValue(v);
+            assertTrue(value.canExecute());
+            assertFalse(value.canInstantiate());
+            assertFalse(value.hasMembers());
+            assertFalse(value.hasArrayElements());
+        });
+
     }
 
     @SuppressWarnings({"unchecked"})
@@ -531,6 +443,106 @@ public class ValueAPITest {
 
         assertValue(context, context.asValue(value));
         assertValue(context, context.asValue(result));
+    }
+
+    private static class DummyList extends DummyCollection implements List<Object> {
+
+        public boolean addAll(int index, Collection<? extends Object> c) {
+            return values.addAll(index, c);
+        }
+
+        public Object get(int index) {
+            return values.get(index);
+        }
+
+        public Object set(int index, Object element) {
+            return values.set(index, element);
+        }
+
+        public void add(int index, Object element) {
+            values.add(index, element);
+        }
+
+        public Object remove(int index) {
+            return values.remove(index);
+        }
+
+        public int indexOf(Object o) {
+            return values.indexOf(o);
+        }
+
+        public int lastIndexOf(Object o) {
+            return values.lastIndexOf(o);
+        }
+
+        public ListIterator<Object> listIterator() {
+            return values.listIterator();
+        }
+
+        public ListIterator<Object> listIterator(int index) {
+            return values.listIterator(index);
+        }
+
+        public List<Object> subList(int fromIndex, int toIndex) {
+            return values.subList(fromIndex, toIndex);
+        }
+
+    }
+
+    private static class DummyCollection implements Collection<Object> {
+        List<Object> values = Arrays.asList("a", 42);
+
+        public java.util.Iterator<Object> iterator() {
+            return values.iterator();
+        }
+
+        public int size() {
+            return values.size();
+        }
+
+        public boolean isEmpty() {
+            return values.isEmpty();
+        }
+
+        public boolean contains(Object o) {
+            return values.contains(o);
+        }
+
+        public Object[] toArray() {
+            return values.toArray();
+        }
+
+        public <T> T[] toArray(T[] a) {
+            return values.toArray(a);
+        }
+
+        public boolean add(Object e) {
+            return values.add(e);
+        }
+
+        public boolean remove(Object o) {
+            return values.remove(o);
+        }
+
+        public boolean containsAll(Collection<?> c) {
+            return values.containsAll(c);
+        }
+
+        public boolean addAll(Collection<? extends Object> c) {
+            return values.addAll(c);
+        }
+
+        public boolean removeAll(Collection<?> c) {
+            return values.removeAll(c);
+        }
+
+        public boolean retainAll(Collection<?> c) {
+            return values.retainAll(c);
+        }
+
+        public void clear() {
+            values.clear();
+        }
     }
 
     public static class CoerceObject {
@@ -655,6 +667,41 @@ public class ValueAPITest {
     }
 
     private static class MembersAndArrayAndExecutableAndInstantiable extends MembersAndArray implements ProxyArray, ProxyObject, ProxyInstantiable, ProxyExecutable {
+
+        Object executableResult;
+        Object instantiableResult;
+
+        public Object execute(Value... arguments) {
+            return executableResult;
+        }
+
+        public Object newInstance(Value... arguments) {
+            return instantiableResult;
+        }
+
+    }
+
+    private static class Executable implements ProxyExecutable {
+
+        Object executableResult;
+
+        public Object execute(Value... arguments) {
+            return executableResult;
+        }
+
+    }
+
+    private static class Instantiable implements ProxyInstantiable {
+
+        Object instantiableResult;
+
+        public Object newInstance(Value... arguments) {
+            return instantiableResult;
+        }
+
+    }
+
+    private static class ExecutableAndInstantiable implements ProxyExecutable, ProxyInstantiable {
 
         Object executableResult;
         Object instantiableResult;

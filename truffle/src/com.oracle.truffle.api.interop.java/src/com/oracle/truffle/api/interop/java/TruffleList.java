@@ -24,13 +24,9 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import static com.oracle.truffle.api.interop.ForeignAccess.sendExecute;
 import static com.oracle.truffle.api.interop.ForeignAccess.sendGetSize;
 import static com.oracle.truffle.api.interop.ForeignAccess.sendHasSize;
-import static com.oracle.truffle.api.interop.ForeignAccess.sendIsExecutable;
-import static com.oracle.truffle.api.interop.ForeignAccess.sendIsInstantiable;
 import static com.oracle.truffle.api.interop.ForeignAccess.sendKeyInfo;
-import static com.oracle.truffle.api.interop.ForeignAccess.sendNew;
 import static com.oracle.truffle.api.interop.ForeignAccess.sendRead;
 import static com.oracle.truffle.api.interop.ForeignAccess.sendWrite;
 
@@ -46,7 +42,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -54,16 +49,15 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 
 class TruffleList<T> extends AbstractList<T> {
 
-    final TruffleObject array;
+    final TruffleObject guestObject;
     final Object languageContext;
     final TruffleListCache cache;
 
     TruffleList(Class<T> elementClass, Type elementType, TruffleObject array, Object languageContext) {
-        this.array = array;
+        this.guestObject = array;
         this.languageContext = languageContext;
         this.cache = TruffleListCache.lookup(languageContext, array.getClass(), elementClass, elementType);
     }
@@ -80,19 +74,19 @@ class TruffleList<T> extends AbstractList<T> {
     @SuppressWarnings("unchecked")
     @Override
     public T get(int index) {
-        return (T) cache.get.call(languageContext, array, index);
+        return (T) cache.get.call(languageContext, guestObject, index);
     }
 
     @Override
     public T set(int index, T element) {
         T prev = get(index);
-        cache.set.call(languageContext, array, index, element);
+        cache.set.call(languageContext, guestObject, index, element);
         return prev;
     }
 
     @Override
     public int size() {
-        return (Integer) cache.size.call(languageContext, array);
+        return (Integer) cache.size.call(languageContext, guestObject);
     }
 
     @SuppressWarnings("unused")
@@ -103,7 +97,7 @@ class TruffleList<T> extends AbstractList<T> {
         }
 
         public Object apply(Object t) {
-            return cache.apply.call(languageContext, array, t);
+            return cache.apply.call(languageContext, guestObject, t);
         }
 
     }
@@ -183,8 +177,6 @@ class TruffleList<T> extends AbstractList<T> {
 
             final TruffleListCache cache;
 
-            @Child protected Node hasSize = Message.HAS_SIZE.createNode();
-
             TruffleListNode(TruffleListCache cache) {
                 this.cache = cache;
             }
@@ -207,6 +199,7 @@ class TruffleList<T> extends AbstractList<T> {
         private static class Size extends TruffleListNode {
 
             @Child private Node getSize = Message.GET_SIZE.createNode();
+            @Child private Node hasSize = Message.HAS_SIZE.createNode();
 
             Size(TruffleListCache cache) {
                 super(cache);
@@ -237,6 +230,7 @@ class TruffleList<T> extends AbstractList<T> {
             @Child private Node keyInfo = Message.KEY_INFO.createNode();
             @Child private Node read = Message.READ.createNode();
             @Child private ToJavaNode toHost = ToJavaNode.create();
+            @Child private Node hasSize = Message.HAS_SIZE.createNode();
 
             Get(TruffleListCache cache) {
                 super(cache);
@@ -273,6 +267,7 @@ class TruffleList<T> extends AbstractList<T> {
             @Child private Node keyInfo = Message.KEY_INFO.createNode();
             @Child private Node write = Message.WRITE.createNode();
             @Child private ToJavaNode toHost = ToJavaNode.create();
+            @Child private Node hasSize = Message.HAS_SIZE.createNode();
             private final BiFunction<Object, Object, Object> toGuest = JavaInterop.ACCESSOR.engine().createToGuestValueNode();
 
             Set(TruffleListCache cache) {
@@ -308,13 +303,7 @@ class TruffleList<T> extends AbstractList<T> {
 
         private static class Apply extends TruffleListNode {
 
-            @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
-            @Child private Node isInstantiable = Message.IS_INSTANTIABLE.createNode();
-            @Child private Node execute = Message.createExecute(0).createNode();
-            @Child private Node instantiate = Message.createNew(0).createNode();
-            @Child private ToJavaNode toHost = ToJavaNode.create();
-            private final BiFunction<Object, Object[], Object[]> toGuests = JavaInterop.ACCESSOR.engine().createToGuestValuesNode();
-            private final ConditionProfile condition = ConditionProfile.createBinaryProfile();
+            @Child private TruffleExecuteNode apply = new TruffleExecuteNode();
 
             Apply(TruffleListCache cache) {
                 super(cache);
@@ -327,30 +316,7 @@ class TruffleList<T> extends AbstractList<T> {
 
             @Override
             protected Object executeImpl(Object languageContext, TruffleObject function, Object[] args, int offset) {
-                Object[] functionArgs = (Object[]) args[offset];
-                functionArgs = toGuests.apply(languageContext, functionArgs);
-
-                Object result;
-                try {
-                    if (condition.profile(sendIsExecutable(isExecutable, function))) {
-                        result = sendExecute(execute, function, functionArgs);
-                    } else if (sendIsInstantiable(isInstantiable, function)) {
-                        result = sendNew(instantiate, function, functionArgs);
-                    } else {
-                        CompilerDirectives.transferToInterpreter();
-                        throw newUnsupportedOperationException("Unsupported operation.");
-                    }
-                } catch (UnsupportedTypeException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw newIllegalArgumentException("Illegal argument provided.");
-                } catch (ArityException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw newIllegalArgumentException("Illegal number of arguments.");
-                } catch (UnsupportedMessageException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw newUnsupportedOperationException("Unsupported operation.");
-                }
-                return toHost.execute(result, Object.class, Object.class, languageContext);
+                return apply.execute(languageContext, function, args[offset]);
             }
         }
     }

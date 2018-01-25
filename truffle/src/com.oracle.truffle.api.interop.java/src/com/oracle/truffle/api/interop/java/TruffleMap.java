@@ -24,15 +24,11 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import static com.oracle.truffle.api.interop.ForeignAccess.sendExecute;
 import static com.oracle.truffle.api.interop.ForeignAccess.sendGetSize;
 import static com.oracle.truffle.api.interop.ForeignAccess.sendHasKeys;
 import static com.oracle.truffle.api.interop.ForeignAccess.sendHasSize;
-import static com.oracle.truffle.api.interop.ForeignAccess.sendIsExecutable;
-import static com.oracle.truffle.api.interop.ForeignAccess.sendIsInstantiable;
 import static com.oracle.truffle.api.interop.ForeignAccess.sendKeyInfo;
 import static com.oracle.truffle.api.interop.ForeignAccess.sendKeys;
-import static com.oracle.truffle.api.interop.ForeignAccess.sendNew;
 import static com.oracle.truffle.api.interop.ForeignAccess.sendRead;
 import static com.oracle.truffle.api.interop.ForeignAccess.sendWrite;
 
@@ -53,7 +49,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -66,20 +61,20 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 class TruffleMap<K, V> extends AbstractMap<K, V> {
 
     final Object languageContext;
-    final TruffleObject obj;
+    final TruffleObject guestObject;
     final TruffleMapCache cache;
 
     private final boolean includeInternal;
 
     TruffleMap(Object languageContext, TruffleObject obj, Class<K> keyClass, Class<V> valueClass, Type valueType) {
-        this.obj = obj;
+        this.guestObject = obj;
         this.languageContext = languageContext;
         this.includeInternal = false;
         this.cache = TruffleMapCache.lookup(languageContext, obj.getClass(), keyClass, valueClass, valueType);
     }
 
     private TruffleMap(TruffleMap<K, V> map, boolean includeInternal) {
-        this.obj = map.obj;
+        this.guestObject = map.guestObject;
         this.cache = map.cache;
         this.languageContext = map.languageContext;
         this.includeInternal = includeInternal;
@@ -99,25 +94,25 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
 
     @Override
     public boolean containsKey(Object key) {
-        return (boolean) cache.containsKey.call(languageContext, obj, key);
+        return (boolean) cache.containsKey.call(languageContext, guestObject, key);
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public Set<Entry<K, V>> entrySet() {
-        return (Set<Entry<K, V>>) cache.entrySet.call(languageContext, obj, this, includeInternal);
+        return (Set<Entry<K, V>>) cache.entrySet.call(languageContext, guestObject, this, includeInternal);
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public V get(Object key) {
-        return (V) cache.get.call(languageContext, obj, key);
+        return (V) cache.get.call(languageContext, guestObject, key);
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public V put(K key, V value) {
-        return (V) cache.put.call(languageContext, obj, key, value);
+        return (V) cache.put.call(languageContext, guestObject, key, value);
     }
 
     private final class LazyEntries extends AbstractSet<Entry<K, V>> {
@@ -259,7 +254,7 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
 
         @Override
         public final Object apply(Object[] arguments) {
-            return cache.apply.call(languageContext, obj, arguments);
+            return cache.apply.call(languageContext, guestObject, arguments);
         }
     }
 
@@ -541,17 +536,7 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
 
         private static class Apply extends TruffleMapNode {
 
-            @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
-            @Child private Node isInstantiable = Message.IS_INSTANTIABLE.createNode();
-            @Child private Node execute = Message.createExecute(0).createNode();
-            @Child private Node instantiate = Message.createNew(0).createNode();
-            @Child private Node keyInfo = Message.KEY_INFO.createNode();
-            @Child private Node getSize = Message.GET_SIZE.createNode();
-            @Child private Node read = Message.READ.createNode();
-            @Child private Node write = Message.WRITE.createNode();
-            @Child private ToJavaNode toHost = ToJavaNode.create();
-            private final BiFunction<Object, Object[], Object[]> toGuests = JavaInterop.ACCESSOR.engine().createToGuestValuesNode();
-            private final ConditionProfile condition = ConditionProfile.createBinaryProfile();
+            @Child private TruffleExecuteNode apply = new TruffleExecuteNode();
 
             Apply(TruffleMapCache cache) {
                 super(cache);
@@ -564,30 +549,7 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
 
             @Override
             protected Object executeImpl(Object languageContext, TruffleObject function, Object[] args, int offset) {
-                Object[] functionArgs = (Object[]) args[offset];
-                functionArgs = toGuests.apply(languageContext, functionArgs);
-
-                Object result;
-                try {
-                    if (condition.profile(sendIsExecutable(isExecutable, function))) {
-                        result = sendExecute(execute, function, functionArgs);
-                    } else if (sendIsInstantiable(isInstantiable, function)) {
-                        result = sendNew(instantiate, function, functionArgs);
-                    } else {
-                        CompilerDirectives.transferToInterpreter();
-                        throw newUnsupportedOperationException("Unsupported operation.");
-                    }
-                } catch (UnsupportedTypeException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw newIllegalArgumentException("Illegal argument provided.");
-                } catch (ArityException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw newIllegalArgumentException("Illegal number of arguments.");
-                } catch (UnsupportedMessageException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw newUnsupportedOperationException("Unsupported operation.");
-                }
-                return toHost.execute(result, Object.class, Object.class, languageContext);
+                return apply.execute(languageContext, function, args[offset]);
             }
         }
 

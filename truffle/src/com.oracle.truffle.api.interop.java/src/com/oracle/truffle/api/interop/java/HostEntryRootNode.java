@@ -1,11 +1,15 @@
 package com.oracle.truffle.api.interop.java;
 
+import java.util.function.Supplier;
+
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 
-public abstract class HostEntryRootNode<T> extends ExecutableNode {
+public abstract class HostEntryRootNode<T> extends ExecutableNode implements Supplier<String> {
 
     HostEntryRootNode() {
         super(null);
@@ -50,5 +54,9 @@ public abstract class HostEntryRootNode<T> extends ExecutableNode {
     }
 
     protected abstract Object executeImpl(Object languageContext, T receiver, Object[] args, int offset);
+
+    protected static CallTarget createTarget(HostEntryRootNode<?> node) {
+        return Truffle.getRuntime().createCallTarget(JavaInterop.ACCESSOR.engine().wrapHostBoundary(node, node));
+    }
 
 }

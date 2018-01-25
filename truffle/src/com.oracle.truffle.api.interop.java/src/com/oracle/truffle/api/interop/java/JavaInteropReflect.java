@@ -34,6 +34,7 @@ import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.LinkedHashSet;
+
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CallTarget;
@@ -182,9 +183,10 @@ final class JavaInteropReflect {
         return target;
     }
 
+
     @CompilerDirectives.TruffleBoundary
     static TruffleObject asTruffleViaReflection(Object obj, Object languageContext) {
-        if (obj instanceof TruffleFunction) {
+	if (obj instanceof TruffleFunction) {
             return ((TruffleFunction) obj).functionObj;
         } else if (Proxy.isProxyClass(obj.getClass())) {
             InvocationHandler h = Proxy.getInvocationHandler(obj);
@@ -307,70 +309,80 @@ final class JavaInteropReflect {
     }
 }
 
-abstract class AbstractFunctionFromJava extends RootNode implements Supplier<String> {
+class FunctionProxyNode extends HostEntryRootNode<TruffleObject> implements Supplier<String> {
 
-    @Child private Node interopActionNode;
-    @Child private ToJavaNode toJava;
+    final Class<?> receiverClass;
+    final Method method;
+    @Child private TruffleExecuteNode executeNode;
 
-    AbstractFunctionFromJava(Node interopActionNode) {
-        super(null);
-        this.interopActionNode = interopActionNode;
-        this.toJava = ToJavaNode.create();
+    FunctionProxyNode(Class<?> receiverType, Method method) {
+        this.receiverClass = receiverType;
+        this.method = method;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    protected Class<? extends TruffleObject> getReceiverType() {
+        return (Class<? extends TruffleObject>) receiverClass;
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        TruffleObject function = (TruffleObject) frame.getArguments()[0];
-        Object[] args = (Object[]) frame.getArguments()[1];
-        Class<?> type = (Class<?>) frame.getArguments()[2];
-        Type genericType = (Type) frame.getArguments()[3];
-        Object languageContext = frame.getArguments()[4];
-
-        for (int i = 0; i < args.length; i++) {
-            Object arg = args[i];
-            if (arg instanceof TruffleObject) {
-                continue;
-            } else if (JavaInterop.isPrimitive(arg)) {
-                continue;
-            } else {
-                args[i] = JavaInterop.toGuestValue(arg, languageContext);
-            }
-        }
-
-        Object raw;
-        try {
-            raw = ForeignAccess.send(interopActionNode, function, args);
-        } catch (InteropException ex) {
-            CompilerDirectives.transferToInterpreter();
-            throw JavaInteropReflect.rethrow(JavaInterop.wrapHostException(new UnsupportedOperationException(ex.getMessage())));
-        }
-        if (type == null) {
-            return raw;
-        }
-        Object real = JavaInterop.findOriginalObject(raw);
-        return toJava.execute(real, type, genericType, languageContext);
+    public final String get() {
+        return "Proxy<" + receiverClass + ", " + method + ", " + method + ">.apply";
     }
 
     @Override
-    public String get() {
-        return getClass().getSimpleName();
+    protected Object executeImpl(Object languageContext, TruffleObject function, Object[] args, int offset) {
+        if (executeNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.executeNode = new TruffleExecuteNode() {
+
+                private final Class<?> returnClass = JavaInteropReflect.getMethodReturnType(method);
+                private final Type returnType = JavaInteropReflect.getMethodGenericReturnType(method);
+
+                @Override
+                protected Class<?> getResultClass() {
+                    return returnClass;
+                }
+
+                @Override
+                protected Type getResultType() {
+                    return returnType;
+                }
+            };
+        }
+        return executeNode.execute(languageContext, function, args[offset]);
     }
-}
 
-final class InstantiateFromJava extends AbstractFunctionFromJava {
-
-    InstantiateFromJava() {
-        super(Message.createNew(0).createNode());
+    @Override
+    public int hashCode() {
+        int result = 1;
+        result = 31 * result + Objects.hashCode(receiverClass);
+        result = 31 * result + Objects.hashCode(method);
+        return result;
     }
 
-}
-
-final class ExecuteFunctionFromJava extends AbstractFunctionFromJava {
-
-    ExecuteFunctionFromJava() {
-        super(Message.createExecute(0).createNode());
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof FunctionProxyNode)) {
+            return false;
+        }
+        FunctionProxyNode other = (FunctionProxyNode) obj;
+        return receiverClass == other.receiverClass && method.equals(other.method);
     }
 
+    static CallTarget lookup(Object languageContext, Class<?> receiverClass, Method method) {
+        EngineSupport engine = JavaInterop.ACCESSOR.engine();
+        if (engine == null) {
+            return createTarget(new FunctionProxyNode(receiverClass, method));
+        }
+        FunctionProxyNode node = new FunctionProxyNode(receiverClass, method);
+        CallTarget target = engine.lookupJavaInteropCodeCache(languageContext, node, CallTarget.class);
+        if (target == null) {
+            target = engine.installJavaInteropCodeCache(languageContext, node, createTarget(node), CallTarget.class);
+        }
+        return target;
+    }
 }
 
 final class FunctionProxyHandler implements InvocationHandler {
@@ -381,27 +393,19 @@ final class FunctionProxyHandler implements InvocationHandler {
 
     FunctionProxyHandler(TruffleObject obj, Method functionMethod, Object languageContext, CallTarget target) {
         this.functionObj = obj;
-        this.functionMethod = functionMethod;
         this.languageContext = languageContext;
-        this.target = target;
+        this.functionMethod = functionMethod;
+        this.target = FunctionProxyNode.lookup(languageContext, obj.getClass(), functionMethod);
     }
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
         CompilerAsserts.neverPartOfCompilation();
         if (method.equals(functionMethod)) {
-            return call(arguments);
+            return target.call(languageContext, functionObj, spreadVarArgsArray(arguments));
         } else {
             return invokeDefault(proxy, method, arguments);
         }
-    }
-
-    private Object call(Object[] arguments) {
-        Object[] args = arguments == null ? JavaInteropReflect.EMPTY : arguments;
-        if (functionMethod.isVarArgs()) {
-            args = spreadVarArgsArray(args);
-        }
-        return target.call(functionObj, args, JavaInteropReflect.getMethodReturnType(functionMethod), JavaInteropReflect.getMethodGenericReturnType(functionMethod), languageContext);
     }
 
     private static Object[] spreadVarArgsArray(Object[] arguments) {
