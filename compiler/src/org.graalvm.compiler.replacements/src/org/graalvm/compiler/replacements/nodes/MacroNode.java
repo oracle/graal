@@ -31,10 +31,12 @@ import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.Invokable;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -119,6 +121,16 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable, 
 
     protected FrameState stateAfter() {
         return null;
+    }
+
+    @Override
+    protected void afterClone(@SuppressWarnings("unused") Node other) {
+        updateInliningLogAfterClone(other);
+    }
+
+    @Override
+    public FixedNode asFixedNode() {
+        return this;
     }
 
     /**

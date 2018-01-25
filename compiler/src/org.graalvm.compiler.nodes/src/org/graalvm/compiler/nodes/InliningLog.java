@@ -24,11 +24,15 @@ package org.graalvm.compiler.nodes;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /**
  * This class contains all inlining decisions performed on a graph during the compilation.
@@ -80,9 +84,9 @@ public class InliningLog {
     }
 
     private static class Callsite {
-        public final Callsite parent;
-        public final List<String> decisions;
+        public final List<Decision> decisions;
         public final List<Callsite> children;
+        public Callsite parent;
         public Invokable originalInvoke;
 
         Callsite(Callsite parent, Invokable originalInvoke) {
@@ -109,21 +113,84 @@ public class InliningLog {
 
     public void addDecision(Invokable invoke, boolean positive, String reason, String phase, Map<Node, Node> duplicationMap, InliningLog calleeLog) {
         assert leaves.containsKey(invoke);
+        assert (!positive && duplicationMap == null && calleeLog == null) || (positive && duplicationMap != null && calleeLog != null);
+        Callsite callsite = leaves.get(invoke);
         Decision decision = new Decision(positive, reason, phase, invoke.getTargetMethod());
+        callsite.decisions.add(decision);
+        leaves.removeKey(invoke);
+        if (positive) {
+            MapCursor<Invokable, Callsite> entries = calleeLog.leaves.getEntries();
+            while (entries.advance()) {
+                Invokable invokeFromCallee = entries.getKey();
+                Callsite callsiteFromCallee = entries.getValue();
+                Invokable inlinedInvokeFromCallee = (Invokable) duplicationMap.get(invokeFromCallee);
+                callsiteFromCallee.originalInvoke = inlinedInvokeFromCallee;
+                leaves.put(inlinedInvokeFromCallee, callsiteFromCallee);
+            }
+            for (Callsite child : calleeLog.root.children) {
+                child.parent = callsite;
+                callsite.children.add(child);
+            }
+        }
     }
 
-    public void trackNewCallsite(Invokable sibling, Invokable newInvoke) {
+    private UpdateScope activated = null;
+
+    public class UpdateScope implements AutoCloseable {
+        private BiConsumer<Invokable, Invokable> updater;
+
+        public UpdateScope(BiConsumer<Invokable, Invokable> updater) {
+            this.updater = updater;
+            if (activated != null) {
+                throw GraalError.shouldNotReachHere("InliningLog updating already set.");
+            }
+            activated = this;
+        }
+
+        @Override
+        public void close() {
+            assert activated != null;
+            activated = null;
+        }
+
+        public BiConsumer<Invokable, Invokable> getUpdater() {
+            return updater;
+        }
+    }
+
+    public BiConsumer<Invokable, Invokable> getUpdateScope() {
+        if (activated == null) {
+            return null;
+        }
+        return activated.getUpdater();
+    }
+
+    public boolean containsLeafCallsite(Invokable invokable) {
+        return leaves.containsKey(invokable);
+    }
+
+    public void removeLeafCallsite(Invokable invokable) {
+        leaves.removeKey(invokable);
+    }
+
+    public void trackNewCallsite(Invokable invoke) {
+        assert !leaves.containsKey(invoke);
+        Callsite callsite = new Callsite(root, invoke);
+        root.children.add(callsite);
+        leaves.put(invoke, callsite);
+    }
+
+    public void trackDuplicatedCallsite(Invokable sibling, Invokable newInvoke) {
         Callsite siblingCallsite = leaves.get(sibling);
         Callsite parentCallsite = siblingCallsite.parent;
         Callsite callsite = parentCallsite.addChild(newInvoke);
         leaves.put(newInvoke, callsite);
     }
 
-    public void updateCallsite(Invokable previousInvoke, Invokable newInvoke) {
+    public void updateExistingCallsite(Invokable previousInvoke, Invokable newInvoke) {
         Callsite callsite = leaves.get(previousInvoke);
         leaves.removeKey(previousInvoke);
         leaves.put(newInvoke, callsite);
         callsite.originalInvoke = newInvoke;
     }
 }
-

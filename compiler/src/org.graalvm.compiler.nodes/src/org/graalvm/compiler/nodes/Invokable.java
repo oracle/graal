@@ -23,10 +23,46 @@
 package org.graalvm.compiler.nodes;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
 
 /**
  * A marker interface for nodes that represent calls to other methods.
  */
 public interface Invokable {
     ResolvedJavaMethod getTargetMethod();
+
+    FixedNode asFixedNode();
+
+    default void updateInliningLogAfterRegister(StructuredGraph newGraph) {
+        if (newGraph.getInliningLog().getUpdateScope() != null) {
+            newGraph.getInliningLog().getUpdateScope().accept(null, this);
+        } else {
+            newGraph.getInliningLog().trackNewCallsite(this);
+        }
+    }
+
+    default void updateInliningLogAfterClone(Node other) {
+        if (GraalOptions.TraceInlining.getValue(asFixedNode().getOptions()).isTracing()) {
+            // At this point, the invokable node was already added to the inlining log
+            // in the call to updateInliningLogAfterRegister, so we need to remove it.
+            InliningLog log = asFixedNode().graph().getInliningLog();
+            assert log.containsLeafCallsite(this);
+            assert other instanceof Invokable;
+            log.removeLeafCallsite(this);
+            if (log.getUpdateScope() != null) {
+                // InliningLog.UpdateScope determines how to update the log.
+                log.getUpdateScope().accept((Invokable) other, this);
+            } else if (other.graph() == this.asFixedNode().graph()) {
+                // This node was cloned as part of duplication.
+                // We need to add it as a sibling of the node other.
+                log.trackDuplicatedCallsite((Invokable) other, this);
+            } else {
+                // This node was added from a different graph.
+                // The adder is responsible for providing a context.
+                throw GraalError.shouldNotReachHere("No InliningLogUpdate scope provided.");
+            }
+        }
+    }
 }
