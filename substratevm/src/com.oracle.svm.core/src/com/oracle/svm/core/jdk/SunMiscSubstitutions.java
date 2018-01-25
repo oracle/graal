@@ -24,8 +24,6 @@ package com.oracle.svm.core.jdk;
 
 // Checkstyle: allow reflection
 
-import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.ArrayBaseOffset;
-import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.ArrayIndexScale;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
 
 import java.io.FileDescriptor;
@@ -59,29 +57,6 @@ import sun.misc.Unsafe;
 @TargetClass(sun.misc.Unsafe.class)
 @SuppressWarnings({"static-method"})
 final class Target_sun_misc_Unsafe {
-
-    // Checkstyle: stop
-
-    @Alias @RecomputeFieldValue(kind = ArrayBaseOffset, declClass = boolean[].class, isFinal = true) private static int ARRAY_BOOLEAN_BASE_OFFSET;
-    @Alias @RecomputeFieldValue(kind = ArrayBaseOffset, declClass = byte[].class, isFinal = true) private static int ARRAY_BYTE_BASE_OFFSET;
-    @Alias @RecomputeFieldValue(kind = ArrayBaseOffset, declClass = short[].class, isFinal = true) private static int ARRAY_SHORT_BASE_OFFSET;
-    @Alias @RecomputeFieldValue(kind = ArrayBaseOffset, declClass = char[].class, isFinal = true) private static int ARRAY_CHAR_BASE_OFFSET;
-    @Alias @RecomputeFieldValue(kind = ArrayBaseOffset, declClass = int[].class, isFinal = true) private static int ARRAY_INT_BASE_OFFSET;
-    @Alias @RecomputeFieldValue(kind = ArrayBaseOffset, declClass = long[].class, isFinal = true) private static int ARRAY_LONG_BASE_OFFSET;
-    @Alias @RecomputeFieldValue(kind = ArrayBaseOffset, declClass = float[].class, isFinal = true) private static int ARRAY_FLOAT_BASE_OFFSET;
-    @Alias @RecomputeFieldValue(kind = ArrayBaseOffset, declClass = double[].class, isFinal = true) private static int ARRAY_DOUBLE_BASE_OFFSET;
-    @Alias @RecomputeFieldValue(kind = ArrayBaseOffset, declClass = Object[].class, isFinal = true) private static int ARRAY_OBJECT_BASE_OFFSET;
-    @Alias @RecomputeFieldValue(kind = ArrayIndexScale, declClass = boolean[].class, isFinal = true) private static int ARRAY_BOOLEAN_INDEX_SCALE;
-    @Alias @RecomputeFieldValue(kind = ArrayIndexScale, declClass = byte[].class, isFinal = true) private static int ARRAY_BYTE_INDEX_SCALE;
-    @Alias @RecomputeFieldValue(kind = ArrayIndexScale, declClass = short[].class, isFinal = true) private static int ARRAY_SHORT_INDEX_SCALE;
-    @Alias @RecomputeFieldValue(kind = ArrayIndexScale, declClass = char[].class, isFinal = true) private static int ARRAY_CHAR_INDEX_SCALE;
-    @Alias @RecomputeFieldValue(kind = ArrayIndexScale, declClass = int[].class, isFinal = true) private static int ARRAY_INT_INDEX_SCALE;
-    @Alias @RecomputeFieldValue(kind = ArrayIndexScale, declClass = long[].class, isFinal = true) private static int ARRAY_LONG_INDEX_SCALE;
-    @Alias @RecomputeFieldValue(kind = ArrayIndexScale, declClass = float[].class, isFinal = true) private static int ARRAY_FLOAT_INDEX_SCALE;
-    @Alias @RecomputeFieldValue(kind = ArrayIndexScale, declClass = double[].class, isFinal = true) private static int ARRAY_DOUBLE_INDEX_SCALE;
-    @Alias @RecomputeFieldValue(kind = ArrayIndexScale, declClass = Object[].class, isFinal = true) private static int ARRAY_OBJECT_INDEX_SCALE;
-
-    // Checkstyle: resume
 
     @Substitute
     private long allocateMemory(long bytes) {
