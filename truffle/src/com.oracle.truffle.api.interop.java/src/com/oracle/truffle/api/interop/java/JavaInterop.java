@@ -32,6 +32,7 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -566,17 +567,6 @@ public final class JavaInterop {
             return true;
         }
         return false;
-    }
-
-    static CallTarget lookupOrRegisterComputation(Object truffleObject, RootNode symbolNode, Object... keyOrKeys) {
-        EngineSupport engine = ACCESSOR.engine();
-        if (engine == null) {
-            if (symbolNode == null) {
-                return null;
-            }
-            return Truffle.getRuntime().createCallTarget(symbolNode);
-        }
-        return engine.lookupOrRegisterComputation(truffleObject, symbolNode, keyOrKeys);
     }
 
     static Value toHostValue(Object obj, Object languageContext) {

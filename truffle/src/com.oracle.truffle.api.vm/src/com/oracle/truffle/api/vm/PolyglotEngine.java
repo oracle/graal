@@ -32,7 +32,6 @@ import static com.oracle.truffle.api.vm.VMAccessor.engine;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.lang.reflect.Method;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -44,7 +43,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,12 +58,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
@@ -1820,38 +1816,6 @@ public class PolyglotEngine {
             return expectedType.cast(((PolyglotEngine) languageContext).javaInteropCodeCache.get(key));
         }
 
-        @Override
-        public CallTarget lookupOrRegisterComputation(Object truffleObject, RootNode computation, Object... keys) {
-            CompilerAsserts.neverPartOfCompilation();
-            assert keys.length > 0;
-            Object key;
-            if (keys.length == 1) {
-                key = keys[0];
-                assert TruffleOptions.AOT || assertKeyType(key);
-            } else {
-                Pair p = null;
-                for (Object k : keys) {
-                    assert TruffleOptions.AOT || assertKeyType(k);
-                    p = new Pair(k, p);
-                }
-                key = p;
-            }
-            if (truffleObject instanceof EngineTruffleObject) {
-                PolyglotEngine engine = ((EngineTruffleObject) truffleObject).engine();
-                return engine.cachedTargets.lookupComputation(key, computation);
-            }
-
-            if (computation == null) {
-                return null;
-            }
-            return Truffle.getRuntime().createCallTarget(computation);
-        }
-
-        private static boolean assertKeyType(Object key) {
-            assert key instanceof Class || key instanceof Method || key instanceof Message : "Unexpected key: " + key;
-            return true;
-        }
-
         private static LanguageShared findVMObject(Object obj) {
             return ((LanguageShared) obj);
         }
@@ -1985,44 +1949,6 @@ public class PolyglotEngine {
         public org.graalvm.polyglot.SourceSection createSourceSection(Object vmObject, org.graalvm.polyglot.Source source, SourceSection sectionImpl) {
             throw new UnsupportedOperationException("Not supported in legacy engine.");
         }
-
-    }
-
-    private static final class Pair {
-        final Object key;
-        final Pair next;
-
-        Pair(Object key, Pair next) {
-            this.key = key;
-            this.next = next;
-        }
-
-        @Override
-        public int hashCode() {
-            return this.key.hashCode() + (next == null ? 3754 : next.hashCode());
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null) {
-                return false;
-            }
-            if (getClass() != obj.getClass()) {
-                return false;
-            }
-            final Pair other = (Pair) obj;
-            if (!Objects.equals(this.key, other.key)) {
-                return false;
-            }
-            if (!Objects.equals(this.next, other.next)) {
-                return false;
-            }
-            return true;
-        }
-
     }
 
 }

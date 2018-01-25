@@ -147,8 +147,6 @@ public abstract class Accessor {
 
         public abstract <T> T installJavaInteropCodeCache(Object languageContext, Object key, T value, Class<T> expectedType);
 
-        public abstract CallTarget lookupOrRegisterComputation(Object truffleObject, RootNode symbolNode, Object... keyOrKeys);
-
         @SuppressWarnings("static-method")
         public final void attachOutputConsumer(DispatchOutputStream dos, OutputStream out) {
             dos.attach(out);
