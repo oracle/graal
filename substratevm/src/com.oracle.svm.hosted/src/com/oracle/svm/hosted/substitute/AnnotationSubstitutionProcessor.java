@@ -38,6 +38,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -60,9 +61,9 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.option.HostedOptionParser;
@@ -135,6 +136,32 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             return substitution;
         }
         return field;
+    }
+
+    public boolean isDeleted(ResolvedJavaField field) {
+        return deleteAnnotations.get(field) != null;
+    }
+
+    public Optional<ResolvedJavaField> findSubstitution(ResolvedJavaField field) {
+        assert !isDeleted(field) : "Field " + field.format("%H.%n") + "is deleted.";
+        return Optional.ofNullable(fieldSubstitutions.get(field));
+    }
+
+    public Optional<ResolvedJavaType> findSubstitution(ResolvedJavaType type) {
+        /*
+         * When a type is substituted there is a mapping from the original type to the substitution
+         * type (and another mapping from the annotated type to the substitution type).
+         */
+        return Optional.ofNullable(typeSubstitutions.get(type));
+    }
+
+    public boolean isAliased(ResolvedJavaType type) {
+        /*
+         * When a type is aliased there is a mapping from the alias type to the original type. There
+         * is no mapping from the original type to the annotated type since that would be wrong, the
+         * original type is not substituted by the annotated type.
+         */
+        return typeSubstitutions.containsValue(type);
     }
 
     @Override
@@ -731,9 +758,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             result.append(": ").append(message);
         }
         if (hosted) {
-            result.append(System.lineSeparator())
-                            .append("To diagnose the issue, you can add the option ").append(HostedOptionParser.commandArgument(NativeImageOptions.ReportUnsupportedElementsAtRuntime, "+"))
-                            .append(". The unsupported element is then reported at run time when it is accessed the first time.");
+            result.append(System.lineSeparator()).append("To diagnose the issue, you can add the option ").append(
+                            HostedOptionParser.commandArgument(NativeImageOptions.ReportUnsupportedElementsAtRuntime, "+")).append(
+                                            ". The unsupported element is then reported at run time when it is accessed the first time.");
         }
         return result.toString();
     }

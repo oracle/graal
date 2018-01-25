@@ -105,6 +105,10 @@ public class ComputedValueField implements ReadableJavaField, ComputedValue {
         return !finalIllegal.contains(kind);
     }
 
+    public ResolvedJavaField getAnnotated() {
+        return annotated;
+    }
+
     @Override
     public Field getTargetField() {
         return targetField;

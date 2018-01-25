@@ -230,14 +230,20 @@ public class FeatureImpl {
             registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field));
         }
 
-        public void registerAsUnsafeAccessed(AnalysisField aField) {
+        public boolean registerAsUnsafeAccessed(Field field) {
+            return registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field));
+        }
+
+        public boolean registerAsUnsafeAccessed(AnalysisField aField) {
             if (!aField.isUnsafeAccessed()) {
                 /* Register the field as unsafe accessed. */
                 aField.registerAsAccessed();
                 aField.registerAsUnsafeAccessed();
                 /* Force the update of registered unsafe loads and stores. */
                 bb.forceUnsafeUpdate(aField);
+                return true;
             }
+            return false;
         }
 
         public void registerAsFrozenUnsafeAccessed(Field field) {
