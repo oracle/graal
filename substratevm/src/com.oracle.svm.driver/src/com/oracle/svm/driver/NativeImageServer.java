@@ -623,7 +623,7 @@ final class NativeImageServer extends NativeImage {
 
     @Override
     protected void buildImage(LinkedHashSet<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
-        if (useServer) {
+        if (useServer && !javaArgs.contains("-Xdebug")) {
             Server server = getServerInstance(cp, bcp, javaArgs);
             if (server != null) {
                 showVerboseMessage(verboseServer, "\n" + server.getServerInfo() + "\n");
