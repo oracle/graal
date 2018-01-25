@@ -31,7 +31,7 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDuring, FixedNodeInterface {
+public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDuring, FixedNodeInterface, Invokable {
 
     FixedNode next();
 
@@ -59,6 +59,10 @@ public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDur
     boolean isPolymorphic();
 
     void setPolymorphic(boolean value);
+
+    default ResolvedJavaMethod getTargetMethod() {
+        return callTarget().targetMethod();
+    }
 
     /**
      * Returns the {@linkplain ResolvedJavaMethod method} from which this invoke is executed. This
