@@ -22,6 +22,7 @@
  */
 package com.oracle.svm.truffle.nfi;
 
+import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleContext;
 import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleEnv;
 import static com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.getOffset;
@@ -38,6 +39,7 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.struct.CFieldAddress;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -131,7 +133,13 @@ final class NativeSignature {
                     }
                 }
 
-                LibFFI.ffi_call(cif, WordFactory.pointer(functionPointer), ret, argPtrs);
+                CIntPointer errnoMirror = ErrnoMirror.getErrnoMirrorLocation();
+                Errno.set_errno(errnoMirror.read());
+                try {
+                    LibFFI.ffi_call(cif, WordFactory.pointer(functionPointer), ret, argPtrs);
+                } finally {
+                    errnoMirror.write(Errno.errno());
+                }
             } finally {
                 UnmanagedMemory.free(argPtrs);
             }

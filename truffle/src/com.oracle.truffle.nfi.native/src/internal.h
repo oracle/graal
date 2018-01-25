@@ -61,6 +61,10 @@ struct __TruffleContextInternal {
     jclass Object;
     jclass String;
     jclass UnsatisfiedLinkError;
+
+
+    void *__libc_errno_location;
+    void *__pthreads_errno_location;
 };
 
 struct __TruffleEnvInternal {
@@ -71,6 +75,8 @@ struct __TruffleEnvInternal {
 
 extern const struct __TruffleNativeAPI truffleNativeAPI;
 extern const struct __TruffleThreadAPI truffleThreadAPI;
+
+extern __thread int errnoMirror;
 
 // keep this in sync with the code in com.oracle.truffle.nfi.NativeArgumentBuffer$TypeTag
 enum TypeTag {
@@ -91,5 +97,9 @@ enum TypeTag {
 
 #define DECODE_OFFSET(encoded) (((unsigned int) (encoded)) >> 4)
 #define DECODE_TAG(encoded) ((enum TypeTag) ((encoded) & 0x0F))
+
+
+void initialize_intrinsics(struct __TruffleContextInternal *);
+void *check_intrinsify(struct __TruffleContextInternal *, void *);
 
 #endif
