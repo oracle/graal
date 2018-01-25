@@ -198,7 +198,9 @@ abstract class ToJavaNode extends Node {
         } else if (primitive.hasSize(truffleObject)) {
             return asJavaObject(truffleObject, List.class, null, languageContext);
         } else if (isExecutable(truffleObject)) {
-            return JavaInteropReflect.asDefaultJavaFunction(truffleObject, languageContext);
+            return TruffleFunction.create(truffleObject, languageContext, false);
+        } else if (isInstantiable(truffleObject)) {
+            return TruffleFunction.create(truffleObject, languageContext, true);
         } else if (languageContext != null) {
             return JavaInterop.toHostValue(truffleObject, languageContext);
         } else {

@@ -34,15 +34,17 @@ import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.LinkedHashSet;
-import java.util.function.Function;
+import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
@@ -157,20 +159,33 @@ final class JavaInteropReflect {
     static <T> T asJavaFunction(Class<T> functionalType, TruffleObject function, Object languageContext) {
         assert JavaInterop.isJavaFunctionInterface(functionalType);
         Method functionalInterfaceMethod = JavaInterop.functionalInterfaceMethod(functionalType);
-        final FunctionProxyHandler handler = new FunctionProxyHandler(function, functionalInterfaceMethod, languageContext);
+        final FunctionProxyHandler handler = new FunctionProxyHandler(function, functionalInterfaceMethod, languageContext, lookupExecuteFunction(languageContext, false));
         Object obj = Proxy.newProxyInstance(functionalType.getClassLoader(), new Class<?>[]{functionalType}, handler);
         return functionalType.cast(obj);
     }
 
-    @CompilerDirectives.TruffleBoundary
-    static Function<Object[], Object> asDefaultJavaFunction(TruffleObject function, Object languageContext) {
-        return new JavaFunction(function, languageContext);
+    static CallTarget lookupExecuteFunction(Object languageContext, boolean instantiate) {
+        CallTarget target;
+        EngineSupport engine = JavaInterop.ACCESSOR.engine();
+        if (engine == null || languageContext == null) {
+            AbstractFunctionFromJava node = instantiate ? new InstantiateFromJava() : new ExecuteFunctionFromJava();
+            target = Truffle.getRuntime().createCallTarget(node);
+        } else {
+            Class<? extends AbstractFunctionFromJava> cacheKey = instantiate ? InstantiateFromJava.class : ExecuteFunctionFromJava.class;
+            target = engine.lookupJavaInteropCodeCache(languageContext, cacheKey, CallTarget.class);
+            if (target == null) {
+                AbstractFunctionFromJava node = instantiate ? new InstantiateFromJava() : new ExecuteFunctionFromJava();
+                CallTarget callTarget = Truffle.getRuntime().createCallTarget(JavaInterop.ACCESSOR.engine().wrapHostBoundary(node, node));
+                target = engine.installJavaInteropCodeCache(languageContext, cacheKey, callTarget, CallTarget.class);
+            }
+        }
+        return target;
     }
 
     @CompilerDirectives.TruffleBoundary
     static TruffleObject asTruffleViaReflection(Object obj, Object languageContext) {
-        if (obj instanceof JavaFunction) {
-            return ((JavaFunction) obj).functionObj;
+        if (obj instanceof TruffleFunction) {
+            return ((TruffleFunction) obj).functionObj;
         } else if (Proxy.isProxyClass(obj.getClass())) {
             InvocationHandler h = Proxy.getInvocationHandler(obj);
             if (h instanceof FunctionProxyHandler) {
@@ -292,7 +307,7 @@ final class JavaInteropReflect {
     }
 }
 
-abstract class AbstractFunctionFromJava extends RootNode {
+abstract class AbstractFunctionFromJava extends RootNode implements Supplier<String> {
 
     @Child private Node interopActionNode;
     @Child private ToJavaNode toJava;
@@ -335,6 +350,11 @@ abstract class AbstractFunctionFromJava extends RootNode {
         Object real = JavaInterop.findOriginalObject(raw);
         return toJava.execute(real, type, genericType, languageContext);
     }
+
+    @Override
+    public String get() {
+        return getClass().getSimpleName();
+    }
 }
 
 final class InstantiateFromJava extends AbstractFunctionFromJava {
@@ -353,53 +373,17 @@ final class ExecuteFunctionFromJava extends AbstractFunctionFromJava {
 
 }
 
-final class JavaFunction implements Function<Object[], Object> {
-    final TruffleObject functionObj;
-    final Object languageContext;
-    private CallTarget target;
-
-    JavaFunction(TruffleObject executable, Object languageContext) {
-        this.functionObj = executable;
-        this.languageContext = languageContext;
-    }
-
-    public Object apply(Object[] arguments) {
-        Object[] args = arguments == null ? JavaInteropReflect.EMPTY : arguments;
-        if (target == null) {
-            target = JavaInterop.lookupOrRegisterComputation(functionObj, null, ExecuteFunctionFromJava.class);
-            if (target == null) {
-                RootNode symbolNode = new ExecuteFunctionFromJava();
-                target = JavaInterop.lookupOrRegisterComputation(functionObj, symbolNode, ExecuteFunctionFromJava.class);
-            }
-        }
-        return target.call(functionObj, args, Object.class, null, languageContext);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof JavaFunction) {
-            JavaFunction other = (JavaFunction) obj;
-            return this.languageContext == other.languageContext && this.functionObj.equals(other.functionObj);
-        }
-        return false;
-    }
-
-    @Override
-    public int hashCode() {
-        return functionObj.hashCode();
-    }
-}
-
 final class FunctionProxyHandler implements InvocationHandler {
     final TruffleObject functionObj;
     final Object languageContext;
     private final Method functionMethod;
-    private CallTarget target;
+    private final CallTarget target;
 
-    FunctionProxyHandler(TruffleObject obj, Method functionMethod, Object languageContext) {
+    FunctionProxyHandler(TruffleObject obj, Method functionMethod, Object languageContext, CallTarget target) {
         this.functionObj = obj;
         this.functionMethod = functionMethod;
         this.languageContext = languageContext;
+        this.target = target;
     }
 
     @Override
@@ -416,13 +400,6 @@ final class FunctionProxyHandler implements InvocationHandler {
         Object[] args = arguments == null ? JavaInteropReflect.EMPTY : arguments;
         if (functionMethod.isVarArgs()) {
             args = spreadVarArgsArray(args);
-        }
-        if (target == null) {
-            target = JavaInterop.lookupOrRegisterComputation(functionObj, null, ExecuteFunctionFromJava.class);
-            if (target == null) {
-                RootNode symbolNode = new ExecuteFunctionFromJava();
-                target = JavaInterop.lookupOrRegisterComputation(functionObj, symbolNode, ExecuteFunctionFromJava.class);
-            }
         }
         return target.call(functionObj, args, JavaInteropReflect.getMethodReturnType(functionMethod), JavaInteropReflect.getMethodGenericReturnType(functionMethod), languageContext);
     }
