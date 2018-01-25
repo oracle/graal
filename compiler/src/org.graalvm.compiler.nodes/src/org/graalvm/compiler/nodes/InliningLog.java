@@ -83,44 +83,47 @@ public class InliningLog {
         public final Callsite parent;
         public final List<String> decisions;
         public final List<Callsite> children;
-        public Node originalInvoke;
+        public Invokable originalInvoke;
 
-        Callsite(Callsite parent, Node originalInvoke) {
+        Callsite(Callsite parent, Invokable originalInvoke) {
             this.parent = parent;
             this.decisions = new ArrayList<>();
             this.children = new ArrayList<>();
             this.originalInvoke = originalInvoke;
         }
+
+        public Callsite addChild(Invokable childInvoke) {
+            Callsite child = new Callsite(this, childInvoke);
+            children.add(child);
+            return child;
+        }
     }
 
     private final Callsite root;
-    private final EconomicMap<Node, Callsite> leaves;
+    private final EconomicMap<Invokable, Callsite> leaves;
 
     public InliningLog() {
         this.root = new Callsite(null, null);
         this.leaves = EconomicMap.create();
     }
 
-    public void addDecision(boolean positive, String reason, String phase, Node invoke, InliningLog calleeLog) {
+    public void addDecision(Invokable invoke, boolean positive, String reason, String phase, Map<Node, Node> duplicationMap, InliningLog calleeLog) {
         assert leaves.containsKey(invoke);
-        Decision decision = new Decision(positive, reason, phase, getCallTarget(invoke).targetMethod());
+        Decision decision = new Decision(positive, reason, phase, invoke.getTargetMethod());
     }
 
-    private CallTargetNode getCallTarget(Node invoke) {
-        if (invoke instanceof Invoke) {
-            return ((Invoke) invoke).callTarget();
-        }
-        // TODO: Macro nodes, add marker interface.
-        return null;
+    public void trackNewCallsite(Invokable sibling, Invokable newInvoke) {
+        Callsite siblingCallsite = leaves.get(sibling);
+        Callsite parentCallsite = siblingCallsite.parent;
+        Callsite callsite = parentCallsite.addChild(newInvoke);
+        leaves.put(newInvoke, callsite);
     }
 
-    public void trackNewCallsite(Node sibling, Node newInvoke) {
-    }
-
-    public void updateCallsite(Node previousInvoke, Node newInvoke) {
-    }
-
-    public void inlineCallsite(Node invoke, Map<Node, Node> duplicationMap) {
+    public void updateCallsite(Invokable previousInvoke, Invokable newInvoke) {
+        Callsite callsite = leaves.get(previousInvoke);
+        leaves.removeKey(previousInvoke);
+        leaves.put(newInvoke, callsite);
+        callsite.originalInvoke = newInvoke;
     }
 }
 
