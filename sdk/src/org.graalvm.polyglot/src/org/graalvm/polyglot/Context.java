@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 import org.graalvm.polyglot.proxy.Proxy;
@@ -281,7 +280,8 @@ public final class Context implements AutoCloseable {
      * cast to {@link Value}.
      * <li>If the <code>hostValue</code> is an instance of {@link Byte}, {@link Short},
      * {@link Integer}, {@link Long}, {@link Float} or {@link Double} then it will be interpreted as
-     * polyglot {@link Value#isNumber() number}.
+     * polyglot {@link Value#isNumber() number}. Other subclasses of {@link Number} will be
+     * interpreted as {@link Value#isHostObject() host object} (see later).
      * <li>If the <code>hostValue</code> is an instance of {@link Character} or {@link String} then
      * it will be interpreted as polyglot {@link Value#isString() string}.
      * <li>If the <code>hostValue</code> is an instance of {@link Boolean} then it will be

@@ -320,7 +320,7 @@ class FunctionProxyNode extends HostEntryRootNode<TruffleObject> implements Supp
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.returnClass = JavaInteropReflect.getMethodReturnType(method);
             this.returnType = JavaInteropReflect.getMethodGenericReturnType(method);
-            this.executeNode = new TruffleExecuteNode();
+            this.executeNode = insert(new TruffleExecuteNode());
         }
         return executeNode.execute(languageContext, function, args[offset], returnClass, returnType);
     }
@@ -524,7 +524,8 @@ abstract class ProxyInvokeNode extends Node {
                 result = handleMessage(message, messageNode, receiver, name, arguments);
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
-                // MethodMessage is not reachable normally so its not a problem to rethrow interop exceptions
+                // MethodMessage is not reachable normally so its not a problem to rethrow interop
+                // exceptions
                 // to make current unit tests happy.
                 throw e.raise();
             }
