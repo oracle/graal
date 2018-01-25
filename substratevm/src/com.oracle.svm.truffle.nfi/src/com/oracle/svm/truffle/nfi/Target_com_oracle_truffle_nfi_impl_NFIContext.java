@@ -28,6 +28,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Dlfcn;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleContext;
 import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleEnv;
 import com.oracle.svm.truffle.nfi.NativeSignature.CifData;
@@ -217,6 +218,17 @@ final class Target_com_oracle_truffle_nfi_impl_NFIContext {
     @TruffleBoundary
     static void freeLibrary(long library) {
         Dlfcn.dlclose(WordFactory.pointer(library));
+    }
+
+    @Substitute
+    @TruffleBoundary
+    TruffleObject lookupSymbol(Target_com_oracle_truffle_nfi_impl_LibFFILibrary library, String name) {
+        if (ImageSingletons.lookup(TruffleNFISupport.class).errnoGetterFunctionName.equals(name)) {
+            return new ErrnoMirror();
+        } else {
+            Target_com_oracle_truffle_nfi_impl_LibFFISymbol ret = Target_com_oracle_truffle_nfi_impl_LibFFISymbol.create(library, lookup(nativeContext, library.handle, name));
+            return KnownIntrinsics.convertUnknownValue(ret, TruffleObject.class);
+        }
     }
 
     @Substitute

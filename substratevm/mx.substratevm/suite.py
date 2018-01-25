@@ -325,6 +325,7 @@ suite = {
             "checkstyle": "com.oracle.svm.truffle",
             "javaCompliance": "1.8",
             "annotationProcessors": [
+                "truffle:TRUFFLE_DSL_PROCESSOR",
             ],
             "workingSets": "SVM",
         },
