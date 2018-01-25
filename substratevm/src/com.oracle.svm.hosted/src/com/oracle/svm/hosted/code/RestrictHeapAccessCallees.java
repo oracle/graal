@@ -88,30 +88,22 @@ public class RestrictHeapAccessCallees {
     }
 
     /**
-     * Aggregate a set of methods that are annotated with {@link RestrictHeapAccess}, or are called
-     * from those methods.
+     * Aggregate a set of methods that are annotated with {@link RestrictHeapAccess} or with
+     * {@link Uninterruptible}, or methods that are called from those methods.
      */
     public Map<AnalysisMethod, InvocationInfo> aggregateMethods(Collection<AnalysisMethod> methods) {
-        /* Build the list of allocating methods. */
         assert !initialized : "RestrictHeapAccessCallees.aggregateMethods: Should only initialize once.";
         final Map<AnalysisMethod, InvocationInfo> aggregation = new HashMap<>();
         final MethodAggregator visitor = new MethodAggregator(aggregation, assertionErrorConstructorList);
         final AnalysisMethodCalleeWalker walker = new AnalysisMethodCalleeWalker();
         for (AnalysisMethod method : methods) {
-            /*
-             * Find methods annotated with with either RestrictHeapAccess(access = NO_ALLOCATION) or
-             * Uninterruptible.
-             */
-            final RestrictHeapAccess restrictHeapAccessAnnotation = method.getAnnotation(RestrictHeapAccess.class);
-            final Uninterruptible uninterruptibleAnnotation = method.getAnnotation(Uninterruptible.class);
-            if ((restrictHeapAccessAnnotation != null && restrictHeapAccessAnnotation.access() == Access.NO_ALLOCATION) || uninterruptibleAnnotation != null) {
-                /* Walk all the implementations of the annotated method. */
+            final RestrictHeapAccess annotation = method.getAnnotation(RestrictHeapAccess.class);
+            if ((annotation != null && annotation.access() != Access.UNRESTRICTED) || method.isAnnotationPresent(Uninterruptible.class)) {
                 for (AnalysisMethod calleeImpl : method.getImplementations()) {
                     walker.walkMethod(calleeImpl, visitor);
                 }
             }
         }
-        /* Assign the set to the visible state. */
         calleeToCallerMap = Collections.unmodifiableMap(aggregation);
         initialized = true;
         return calleeToCallerMap;
@@ -152,27 +144,37 @@ public class RestrictHeapAccessCallees {
         /** Visit a method and add it to the set of methods that should not allocate. */
         @Override
         public VisitResult visitMethod(AnalysisMethod callee, AnalysisMethod caller, Invoke invoke, int depth) {
-            if ((assertionErrorConstructorList != null) && assertionErrorConstructorList.contains(callee)) {
-                /*
-                 * Pretend that an AssertionError constructor is annotated
-                 * with @RestrictHeapAccess(access = Access.UNRESTRICTED, overridesCallers = true).
-                 * Allocations of AssertionError instances are taken out later, in
-                 * ImplicitExceptionsPlugin.handleNewInstance(GraphBuilderContext, ResolvedJavaType)
-                 */
+            if (assertionErrorConstructorList != null && assertionErrorConstructorList.contains(callee)) {
+                /* Ignore AssertionError allocations: ImplicitExceptionsPlugin will replace them */
                 return VisitResult.CUT;
             }
-            final RestrictHeapAccess restrictHeapAccessAnnotation = callee.getAnnotation(RestrictHeapAccess.class);
-            if (restrictHeapAccessAnnotation != null && restrictHeapAccessAnnotation.access() == Access.UNRESTRICTED && restrictHeapAccessAnnotation.overridesCallers()) {
-                /* The method is annotated as being on the white list, so cut the traversal. */
+            Access access = Access.UNRESTRICTED;
+            boolean overridesCallers = false;
+            if (callee.isAnnotationPresent(Uninterruptible.class)) {
+                access = Access.NO_ALLOCATION;
+            }
+            RestrictHeapAccess annotation = callee.getAnnotation(RestrictHeapAccess.class);
+            if (annotation != null) {
+                access = annotation.access();
+                overridesCallers = annotation.overridesCallers();
+            }
+            if (overridesCallers || caller == null) {
+                if (access == Access.UNRESTRICTED) {
+                    return VisitResult.CUT;
+                }
+            } else {
+                Access callerAccess = calleeToCallerMap.get(caller).getAccess();
+                if (callerAccess.isMoreRestrictiveThan(access)) {
+                    access = callerAccess;
+                }
+            }
+            InvocationInfo invocationInfo = calleeToCallerMap.get(callee);
+            if (invocationInfo != null && !access.isMoreRestrictiveThan(invocationInfo.getAccess())) {
+                /* Earlier traversal with same or higher level of restriction, so stop here. */
                 return VisitResult.CUT;
             }
-            if (calleeToCallerMap.containsKey(callee)) {
-                /* The method is already a known callee, so cut the traversal. */
-                return VisitResult.CUT;
-            }
-            /* A new callee: link it on to the map of callers. */
-            final InvocationInfo invocationInfo = (caller != null
-                            ? new InvocationInfo(caller, caller.asStackTraceElement(invoke.bci()), callee)
+            invocationInfo = (caller != null
+                            ? new InvocationInfo(access, caller, caller.asStackTraceElement(invoke.bci()), callee)
                             : InvocationInfo.nullInstance());
             calleeToCallerMap.put(callee, invocationInfo);
             return VisitResult.CONTINUE;
@@ -182,6 +184,9 @@ public class RestrictHeapAccessCallees {
     /** Information about an invocation, for error messages. */
     public static class InvocationInfo {
 
+        /** The transitively determined level of access. */
+        private final RestrictHeapAccess.Access access;
+
         /** The caller in the invocation. */
         private final AnalysisMethod caller;
         /** The stack trace element of the invocation. */
@@ -190,12 +195,17 @@ public class RestrictHeapAccessCallees {
         private final AnalysisMethod callee;
 
         /** The singleton null instance. */
-        private static final InvocationInfo nullCallerInfo = new InvocationInfo(null, null, null);
+        private static final InvocationInfo nullCallerInfo = new InvocationInfo(Access.UNRESTRICTED, null, null, null);
 
-        InvocationInfo(AnalysisMethod caller, StackTraceElement stackTraceElement, AnalysisMethod callee) {
+        InvocationInfo(Access access, AnalysisMethod caller, StackTraceElement stackTraceElement, AnalysisMethod callee) {
+            this.access = access;
             this.caller = caller;
             this.invocationStackTraceElement = stackTraceElement;
             this.callee = callee;
+        }
+
+        public Access getAccess() {
+            return access;
         }
 
         public AnalysisMethod getCaller() {
