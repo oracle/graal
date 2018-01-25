@@ -9,9 +9,11 @@
    for the current login-session.
 
    -server-session=<custom-session-name>
-                       Use custom session name instead of system provided
+                       use custom session name instead of system provided
                        session ID of the calling process
 
-   -debug-attach       attach to debugger during image building
+   -debug-attach[=<port>]
+                       attach to debugger during image building (default
+                       port is 8000)
 
 The non-standard options are subject to change without notice.
