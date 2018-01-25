@@ -34,21 +34,15 @@ import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.LinkedHashSet;
-
 import java.util.Objects;
 import java.util.function.BiFunction;
-
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-
-import com.oracle.truffle.api.Truffle;
-
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -166,34 +160,15 @@ final class JavaInteropReflect {
     static <T> T asJavaFunction(Class<T> functionalType, TruffleObject function, Object languageContext) {
         assert JavaInterop.isJavaFunctionInterface(functionalType);
         Method functionalInterfaceMethod = JavaInterop.functionalInterfaceMethod(functionalType);
-        final FunctionProxyHandler handler = new FunctionProxyHandler(function, functionalInterfaceMethod, languageContext, lookupExecuteFunction(languageContext, false));
+        final FunctionProxyHandler handler = new FunctionProxyHandler(function, functionalInterfaceMethod, languageContext);
         Object obj = Proxy.newProxyInstance(functionalType.getClassLoader(), new Class<?>[]{functionalType}, handler);
         return functionalType.cast(obj);
     }
 
-    static CallTarget lookupExecuteFunction(Object languageContext, boolean instantiate) {
-        CallTarget target;
-        EngineSupport engine = JavaInterop.ACCESSOR.engine();
-        if (engine == null || languageContext == null) {
-            AbstractFunctionFromJava node = instantiate ? new InstantiateFromJava() : new ExecuteFunctionFromJava();
-            target = Truffle.getRuntime().createCallTarget(node);
-        } else {
-            Class<? extends AbstractFunctionFromJava> cacheKey = instantiate ? InstantiateFromJava.class : ExecuteFunctionFromJava.class;
-            target = engine.lookupJavaInteropCodeCache(languageContext, cacheKey, CallTarget.class);
-            if (target == null) {
-                AbstractFunctionFromJava node = instantiate ? new InstantiateFromJava() : new ExecuteFunctionFromJava();
-                CallTarget callTarget = Truffle.getRuntime().createCallTarget(JavaInterop.ACCESSOR.engine().wrapHostBoundary(node, node));
-                target = engine.installJavaInteropCodeCache(languageContext, cacheKey, callTarget, CallTarget.class);
-            }
-        }
-        return target;
-    }
-
-
     @CompilerDirectives.TruffleBoundary
     static TruffleObject asTruffleViaReflection(Object obj, Object languageContext) {
-	if (obj instanceof TruffleFunction) {
-            return ((TruffleFunction) obj).functionObj;
+        if (obj instanceof TruffleFunction) {
+            return ((TruffleFunction<?, ?>) obj).guestObject;
         } else if (Proxy.isProxyClass(obj.getClass())) {
             InvocationHandler h = Proxy.getInvocationHandler(obj);
             if (h instanceof FunctionProxyHandler) {
@@ -387,7 +362,7 @@ final class FunctionProxyHandler implements InvocationHandler {
     private final Method functionMethod;
     private final CallTarget target;
 
-    FunctionProxyHandler(TruffleObject obj, Method functionMethod, Object languageContext, CallTarget target) {
+    FunctionProxyHandler(TruffleObject obj, Method functionMethod, Object languageContext) {
         this.functionObj = obj;
         this.languageContext = languageContext;
         this.functionMethod = functionMethod;
