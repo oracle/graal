@@ -22,19 +22,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.truffle.nfi.impl;
 
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.nfi.impl.LibFFIType.Direction;
 
-/*
- * This is the umbrella file to include all generated native header at once
- * Please use it instead of including individual files
- */
+final class LibFFIFunction implements TruffleObject {
 
-#ifndef __TRUFFLE_NATIVE_H
-#define __TRUFFLE_NATIVE_H
+    private final NativePointer symbol;
+    private final LibFFISignature signature;
 
-#include "com_oracle_truffle_nfi_impl_NativeAllocation.h"
-#include "com_oracle_truffle_nfi_impl_NFIContext.h"
-#include "com_oracle_truffle_nfi_impl_ClosureNativePointer.h"
-#include "com_oracle_truffle_nfi_impl_NativeString.h"
+    LibFFIFunction(NativePointer symbol, LibFFISignature signature) {
+        if (signature.getAllowedCallDirection() == Direction.NATIVE_TO_JAVA_ONLY) {
+            throw new IllegalArgumentException("signature is only valid for native to Java callbacks");
+        }
+        this.symbol = symbol;
+        this.signature = signature;
+    }
 
-#endif
+    public LibFFISignature getSignature() {
+        return signature;
+    }
+
+    public long getAddress() {
+        return symbol.nativePointer;
+    }
+
+    NativePointer getPointer() {
+        return symbol;
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return LibFFIFunctionMessageResolutionForeign.ACCESS;
+    }
+}

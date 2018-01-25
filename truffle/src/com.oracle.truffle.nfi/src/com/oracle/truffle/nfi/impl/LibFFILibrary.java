@@ -22,19 +22,46 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.truffle.nfi.impl;
 
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 
-/*
- * This is the umbrella file to include all generated native header at once
- * Please use it instead of including individual files
- */
+final class LibFFILibrary implements TruffleObject {
 
-#ifndef __TRUFFLE_NATIVE_H
-#define __TRUFFLE_NATIVE_H
+    protected final long handle;
 
-#include "com_oracle_truffle_nfi_impl_NativeAllocation.h"
-#include "com_oracle_truffle_nfi_impl_NFIContext.h"
-#include "com_oracle_truffle_nfi_impl_ClosureNativePointer.h"
-#include "com_oracle_truffle_nfi_impl_NativeString.h"
+    static LibFFILibrary createDefault() {
+        return new LibFFILibrary(0);
+    }
 
-#endif
+    static LibFFILibrary create(long handle) {
+        assert handle != 0;
+        LibFFILibrary ret = new LibFFILibrary(handle);
+        NativeAllocation.getGlobalQueue().registerNativeAllocation(ret, new Destructor(handle));
+        return ret;
+    }
+
+    private LibFFILibrary(long handle) {
+        this.handle = handle;
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return LibFFILibraryMessageResolutionForeign.ACCESS;
+    }
+
+    private static final class Destructor extends NativeAllocation.Destructor {
+
+        private final long handle;
+
+        private Destructor(long handle) {
+            this.handle = handle;
+        }
+
+        @Override
+        protected void destroy() {
+            NFIContext.freeLibrary(handle);
+        }
+    }
+}

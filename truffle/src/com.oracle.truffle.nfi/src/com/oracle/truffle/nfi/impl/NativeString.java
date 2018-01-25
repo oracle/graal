@@ -22,19 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.truffle.nfi.impl;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 
-/*
- * This is the umbrella file to include all generated native header at once
- * Please use it instead of including individual files
- */
+class NativeString implements TruffleObject {
 
-#ifndef __TRUFFLE_NATIVE_H
-#define __TRUFFLE_NATIVE_H
+    final long nativePointer;
 
-#include "com_oracle_truffle_nfi_impl_NativeAllocation.h"
-#include "com_oracle_truffle_nfi_impl_NFIContext.h"
-#include "com_oracle_truffle_nfi_impl_ClosureNativePointer.h"
-#include "com_oracle_truffle_nfi_impl_NativeString.h"
+    NativeString(long nativePointer) {
+        this.nativePointer = nativePointer;
+    }
 
-#endif
+    public String toJavaString() {
+        return toJavaString(nativePointer);
+    }
+
+    @TruffleBoundary
+    private static native String toJavaString(long pointer);
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return NativeStringMessageResolutionForeign.ACCESS;
+    }
+}

@@ -22,19 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
+import java.util.HashMap;
+import java.util.Map;
 
-/*
- * This is the umbrella file to include all generated native header at once
- * Please use it instead of including individual files
- */
+final class NFILibrary implements TruffleObject {
 
-#ifndef __TRUFFLE_NATIVE_H
-#define __TRUFFLE_NATIVE_H
+    private final TruffleObject library;
+    private final Map<String, TruffleObject> symbols;
 
-#include "com_oracle_truffle_nfi_impl_NativeAllocation.h"
-#include "com_oracle_truffle_nfi_impl_NFIContext.h"
-#include "com_oracle_truffle_nfi_impl_ClosureNativePointer.h"
-#include "com_oracle_truffle_nfi_impl_NativeString.h"
+    NFILibrary(TruffleObject library) {
+        this.library = library;
+        this.symbols = new HashMap<>();
+    }
 
-#endif
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return NFILibraryMessageResolutionForeign.ACCESS;
+    }
+
+    TruffleObject getLibrary() {
+        return library;
+    }
+
+    @TruffleBoundary
+    TruffleObject findSymbol(String name) {
+        return symbols.get(name);
+    }
+
+    @TruffleBoundary
+    void preBindSymbol(String name, TruffleObject symbol) {
+        symbols.put(name, symbol);
+    }
+}

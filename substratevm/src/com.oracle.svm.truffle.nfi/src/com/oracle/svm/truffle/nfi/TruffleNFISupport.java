@@ -108,12 +108,12 @@ public final class TruffleNFISupport {
         closureHandles.destroy((ObjectHandle) handle);
     }
 
-    public TruffleContextHandle createContextHandle(Target_com_oracle_truffle_nfi_NFIContext context) {
+    public TruffleContextHandle createContextHandle(Target_com_oracle_truffle_nfi_impl_NFIContext context) {
         return (TruffleContextHandle) contextHandles.create(context);
     }
 
-    public Target_com_oracle_truffle_nfi_NFIContext resolveContextHandle(TruffleContextHandle handle) {
-        return (Target_com_oracle_truffle_nfi_NFIContext) contextHandles.get((ObjectHandle) handle);
+    public Target_com_oracle_truffle_nfi_impl_NFIContext resolveContextHandle(TruffleContextHandle handle) {
+        return (Target_com_oracle_truffle_nfi_impl_NFIContext) contextHandles.get((ObjectHandle) handle);
     }
 
     public void destroyContextHandle(TruffleContextHandle handle) {
