@@ -1841,8 +1841,8 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public void onThrowable(RootNode root, Throwable e) {
-            TruffleStackTrace.fillIn(e, root.isCaptureFramesForTrace());
+        public void onThrowable(Node callNode, RootCallTarget root, Throwable e, Frame frame) {
+            TruffleStackTrace.addStackFrameInfo(callNode, e, root, frame);
         }
 
         @Override

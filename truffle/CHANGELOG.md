@@ -24,6 +24,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Removed deprecated [DebuggerTester](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerTester.html) constructor that takes the legacy `PolyglotEngine.Builder`.
 * Disallowed `null` as `FrameSlot` identifier.
 * Removed deprecated `FrameSlot` constructor and `FrameDescriptor.create` methods.
+* Changed the behavior of exception handling (TruffleException) to capture stack frames lazily
 
 ## Version 0.30
 

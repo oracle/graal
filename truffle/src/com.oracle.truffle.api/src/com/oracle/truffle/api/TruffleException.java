@@ -30,8 +30,14 @@ import com.oracle.truffle.api.nodes.RootNode;
 /**
  * Represents an exception thrown during the execution of a guest language program. All exceptions
  * thrown in a guest language implementation that are not implementing {@link TruffleException} are
- * considered {@link #isInternalError() internal} errors. Implementations of this interface should
- * not override the default Java stack trace behavior of Java exceptions.
+ * considered {@link #isInternalError() internal} errors.
+ *
+ * {@link TruffleException} is most efficient if the {@link Throwable#getCause() cause} is left
+ * uninitialized. Implementations of {@link TruffleException} also should not prevent initialization
+ * of the exception cause, e.g., by overriding {@link Throwable#initCause(Throwable)}.
+ *
+ * In order to be efficient, a {@link TruffleException} should override
+ * {@link Throwable#fillInStackTrace()} so that it returns {@code null}.
  *
  * @since 0.27
  * @see TruffleStackTraceElement#getStackTrace(Throwable) To access the stack trace of an exception.

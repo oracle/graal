@@ -36,6 +36,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -291,19 +292,24 @@ final class FunctionProxyHandler implements InvocationHandler {
     @Override
     public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
         Object ret;
-        if (method.isVarArgs()) {
-            if (arguments.length == 1) {
-                ret = call((Object[]) arguments[0], method);
+        try {
+            if (method.isVarArgs()) {
+                if (arguments.length == 1) {
+                    ret = call((Object[]) arguments[0], method);
+                } else {
+                    final int allButOne = arguments.length - 1;
+                    Object[] last = (Object[]) arguments[allButOne];
+                    Object[] merge = new Object[allButOne + last.length];
+                    System.arraycopy(arguments, 0, merge, 0, allButOne);
+                    System.arraycopy(last, 0, merge, allButOne, last.length);
+                    ret = call(merge, method);
+                }
             } else {
-                final int allButOne = arguments.length - 1;
-                Object[] last = (Object[]) arguments[allButOne];
-                Object[] merge = new Object[allButOne + last.length];
-                System.arraycopy(arguments, 0, merge, 0, allButOne);
-                System.arraycopy(last, 0, merge, allButOne, last.length);
-                ret = call(merge, method);
+                ret = call(arguments, method);
             }
-        } else {
-            ret = call(arguments, method);
+        } catch (Throwable t) {
+            TruffleStackTraceElement.fillIn(t);
+            throw t;
         }
         return toJava(ret, method, languageContext);
     }
