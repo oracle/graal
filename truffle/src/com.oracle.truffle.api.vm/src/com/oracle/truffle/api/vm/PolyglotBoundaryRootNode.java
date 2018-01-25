@@ -35,8 +35,8 @@ final class PolyglotBoundaryRootNode extends RootNode {
     public final Object execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         Object languageContext = profileContext(args[0]);
-        PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-        boolean needsEnter = context.needsEnter();
+        PolyglotContextImpl context = languageContext != null ? ((PolyglotLanguageContext) languageContext).context : null;
+        boolean needsEnter = languageContext != null && context.needsEnter();
         Object prev;
         if (needsEnter) {
             if (!seenEnter) {

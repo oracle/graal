@@ -299,7 +299,7 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
 
         static TruffleMapCache lookup(Object languageContext, Class<?> receiverClass, Class<?> keyClass, Class<?> valueClass, Type valueType) {
             EngineSupport engine = JavaInterop.ACCESSOR.engine();
-            if (engine == null) {
+            if (engine == null || languageContext == null) {
                 return new TruffleMapCache(receiverClass, keyClass, valueClass, valueType);
             }
             Key cacheKey = new Key(receiverClass, keyClass, valueType);
