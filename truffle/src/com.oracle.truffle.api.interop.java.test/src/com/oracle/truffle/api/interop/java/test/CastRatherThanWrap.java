@@ -24,6 +24,10 @@
  */
 package com.oracle.truffle.api.interop.java.test;
 
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
+
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
@@ -31,19 +35,15 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
-import java.util.concurrent.Executor;
-import static org.junit.Assert.assertEquals;
-import org.junit.Test;
 
 public class CastRatherThanWrap {
 
-    private Executor exec;
+    private Runnable exec;
 
     @MessageResolution(receiverType = ExecutableObject.class)
-    static final class ExecutableObject implements Executor, TruffleObject {
+    static final class ExecutableObject implements Runnable, TruffleObject {
         @Override
-        public void execute(Runnable command) {
-            command.run();
+        public void run() {
         }
 
         static boolean isInstance(TruffleObject obj) {
@@ -72,8 +72,8 @@ public class CastRatherThanWrap {
         }
     }
 
-    public void acceptExecutor(Executor executor) {
-        this.exec = executor;
+    public void acceptRunnable(Runnable runnable) {
+        this.exec = runnable;
     }
 
     @Test
@@ -81,8 +81,8 @@ public class CastRatherThanWrap {
         ExecutableObject execObj = new ExecutableObject();
         TruffleObject thiz = JavaInterop.asTruffleObject(this);
 
-        ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), thiz, "acceptExecutor", execObj);
+        ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), thiz, "acceptRunnable", execObj);
 
-        assertEquals("ExecutableObject was passed as Executor unwrapped", execObj, this.exec);
+        assertEquals("ExecutableObject was passed as Runnable unwrapped", execObj, this.exec);
     }
 }
