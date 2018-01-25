@@ -515,11 +515,13 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
                 if (isValidKey(receiver, key)) {
                     Object value = args[offset + 1];
                     int info = sendKeyInfo(keyInfo, receiver, key);
-                    if (KeyInfo.isWritable(info) && KeyInfo.isReadable(info)) {
-                        try {
-                            result = toHost.execute(sendRead(read, receiver, key), cache.valueClass, cache.valueType, languageContext);
-                        } catch (UnknownIdentifierException e) {
-                        } catch (UnsupportedMessageException e) {
+                    if (!KeyInfo.isExisting(info) || (KeyInfo.isWritable(info) && KeyInfo.isReadable(info))) {
+                        if (KeyInfo.isExisting(info)) {
+                            try {
+                                result = toHost.execute(sendRead(read, receiver, key), cache.valueClass, cache.valueType, languageContext);
+                            } catch (UnknownIdentifierException e) {
+                            } catch (UnsupportedMessageException e) {
+                            }
                         }
                         try {
                             sendWrite(write, receiver, key, toGuest.apply(languageContext, value));
