@@ -69,6 +69,9 @@ final class NativeImageServer extends NativeImage {
     private boolean verboseServer = false;
     private String sessionName = null;
 
+    private volatile Server building = null;
+    private final List<FileChannel> openFileChannels = new ArrayList<>();
+
     NativeImageServer() {
         super();
         registerOptionHandler(new ServerOptionHandler(this));
@@ -139,55 +142,57 @@ final class NativeImageServer extends NativeImage {
         }
 
         void sendBuildRequest(LinkedHashSet<Path> imageCP, LinkedHashSet<String> imageArgs) {
-            boolean abortedOnce = false;
-            boolean finished = false;
-            while (!finished) {
-                try (FileLock lock = lockDirectory(serverDir.resolve(defaultLockFileName)).tryLock()) {
-                    if (lock != null) {
-                        finished = true;
-                        if (abortedOnce) {
-                            showMessage("DONE.");
+            withLockDirFileChannel(serverDir, lockFileChannel -> {
+                boolean abortedOnce = false;
+                boolean finished = false;
+                while (!finished) {
+                    try (FileLock lock = lockFileChannel.tryLock()) {
+                        if (lock != null) {
+                            finished = true;
+                            if (abortedOnce) {
+                                showMessage("DONE.");
+                            }
+                        } else {
+                            /* Cancel strategy */
+                            if (!abortedOnce) {
+                                showMessagePart("A previous build is in progress. Aborting previous build...");
+                                abortTask();
+                                abortedOnce = true;
+                            }
+                            try {
+                                Thread.sleep(3_000);
+                            } catch (InterruptedException e) {
+                                showError("Woke up from waiting for previous build to abort", e);
+                            }
+                            continue;
                         }
-                    } else {
-                        /* Cancel strategy */
-                        if (!abortedOnce) {
-                            showMessagePart("A previous build is in progress. Aborting previous build...");
-                            abortTask();
-                            abortedOnce = true;
-                        }
-                        try {
-                            Thread.sleep(3_000);
-                        } catch (InterruptedException e) {
-                            showError("Woke up from waiting for previous build to abort", e);
-                        }
-                        continue;
-                    }
 
-                    /* Now we have the server-lock and can send the build-request */
-                    List<String> command = new ArrayList<>();
-                    command.add("-task=" + "com.oracle.svm.hosted.NativeImageGeneratorRunner");
-                    LinkedHashSet<Path> imagecp = new LinkedHashSet<>(serverClasspath);
-                    imagecp.addAll(imageCP);
-                    command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(Path::toString).collect(Collectors.joining(":"))));
-                    command.addAll(imageArgs);
-                    showVerboseMessage(isVerbose(), "SendBuildRequest [");
-                    showVerboseMessage(isVerbose(), command.stream().collect(Collectors.joining("\n")));
-                    showVerboseMessage(isVerbose(), "]");
-                    try {
-                        /* logfile main purpose is to know when was the last build request */
-                        String logFileEntry = command.stream().collect(Collectors.joining(" ", Instant.now().toString() + ": ", "\n"));
-                        Files.write(serverDir.resolve(buildRequestLog), logFileEntry.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-                        updateLastBuildRequest();
+                        /* Now we have the server-lock and can send the build-request */
+                        List<String> command = new ArrayList<>();
+                        command.add("-task=" + "com.oracle.svm.hosted.NativeImageGeneratorRunner");
+                        LinkedHashSet<Path> imagecp = new LinkedHashSet<>(serverClasspath);
+                        imagecp.addAll(imageCP);
+                        command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(Path::toString).collect(Collectors.joining(":"))));
+                        command.addAll(imageArgs);
+                        showVerboseMessage(isVerbose(), "SendBuildRequest [");
+                        showVerboseMessage(isVerbose(), command.stream().collect(Collectors.joining("\n")));
+                        showVerboseMessage(isVerbose(), "]");
+                        try {
+                            /* logfile main purpose is to know when was the last build request */
+                            String logFileEntry = command.stream().collect(Collectors.joining(" ", Instant.now().toString() + ": ", "\n"));
+                            Files.write(serverDir.resolve(buildRequestLog), logFileEntry.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+                            updateLastBuildRequest();
+                        } catch (IOException e) {
+                            showError("Could not read/write into build-request log file", e);
+                        }
+                        // Checkstyle: stop
+                        sendRequest(System.out::print, System.err::print, "build", command.toArray(new String[command.size()]));
+                        // Checkstyle: resume
                     } catch (IOException e) {
-                        showError("Could not read/write into build-request log file", e);
+                        showError("Locking ServerDir " + serverDir + " failed", e);
                     }
-                    // Checkstyle: stop
-                    sendRequest(System.out::print, System.err::print, "build", command.toArray(new String[command.size()]));
-                    // Checkstyle: resume
-                } catch (IOException ex) {
-                    showError("Locking ServerDir " + serverDir + " failed", ex);
                 }
-            }
+            });
         }
 
         boolean isAlive() {
@@ -203,13 +208,8 @@ final class NativeImageServer extends NativeImage {
             showVerboseMessage(verboseServer, "Server abort response: " + sb);
         }
 
-        void shutdown(boolean allowKill) {
-            StringBuilder sb = new StringBuilder();
-            int requestResult = sendRequest(sb::append, sb::append, "stop");
-            if (requestResult != NativeImageBuildClient.EXIT_SUCCESS && allowKill) {
-                showMessage(this + " does not respond to stop command. Sending SIGTERM to " + pid);
-                Signal.kill(pid, Signal.SignalEnum.SIGTERM.getCValue());
-            }
+        void shutdown() {
+            Signal.kill(pid, Signal.SignalEnum.SIGTERM.getCValue());
             /* Release port only after server stops responding to it */
             long timeout = System.currentTimeMillis() + 60_000;
             showVerboseMessage(verboseServer, "Waiting for " + this + " to die");
@@ -324,57 +324,62 @@ final class NativeImageServer extends NativeImage {
         replaceArg(javaArgs, oXms, getXmsValue());
         replaceArg(javaArgs, oXmx, getXmxValue());
 
-        Server server = null;
+        Server[] result = {null};
         /* Important - Creating new servers is a machine-exclusive operation */
-        try (FileLock lock = lockDirectory(getMachineDir().resolve("create-server.lock")).lock()) {
-            /* Ensure that all dead server entries are gone before we start */
-            cleanupServers(false, false, true);
-            Path sessionDir = getSessionDir();
-            String serverUID = imageServerUID(classpath, bootClasspath, javaArgs);
-            Path serverDir = sessionDir.resolve(serverDirPrefix + serverUID);
-            if (Files.isDirectory(serverDir)) {
-                try {
-                    server = new Server(serverDir);
-                    if (server.isAlive()) {
-                        showVerboseMessage(verboseServer, "Reuse running server: " + server);
-                        return server;
-                    }
-                    showError("Found defunct server:" + server.getServerInfo());
-                } catch (Exception e) {
-                    showError("Found corrupt ServerDir: " + serverDir, e);
-                }
-            } else {
-                int serverPort = acquirePortNumber();
-                if (serverPort < 0) {
-                    /* Server limit reached */
-                    showVerboseMessage(verboseServer, "Server limit reached -> remove least recently used server");
-                    /* Shutdown least recently used within session */
-                    Server victim = findVictim(getSessionDirs(false));
-                    /* If none found also consider servers from other sessions on machine */
-                    if (victim == null) {
-                        victim = findVictim(getSessionDirs(true));
-                    }
-                    if (victim != null) {
-                        showVerboseMessage(verboseServer, "Selected server to remove " + victim);
-                        victim.shutdown(true);
-                        serverPort = acquirePortNumber();
-                        if (serverPort < 0) {
-                            showWarning("Cannot acquire new server port despite removing " + victim);
+        withFileChannel(getMachineDir().resolve("create-server.lock"), lockFileChannel -> {
+            try (FileLock lock = lockFileChannel(lockFileChannel)) {
+                /* Ensure that all dead server entries are gone before we start */
+                cleanupServers(false, false, true);
+                Path sessionDir = getSessionDir();
+                String serverUID = imageServerUID(classpath, bootClasspath, javaArgs);
+                Path serverDir = sessionDir.resolve(serverDirPrefix + serverUID);
+                if (Files.isDirectory(serverDir)) {
+                    try {
+                        Server server = new Server(serverDir);
+                        if (!server.isAlive()) {
+                            showError("Found defunct server:" + server.getServerInfo());
                         }
-                    } else {
-                        showWarning("Server limit reached and no server to remove found");
+                        showVerboseMessage(verboseServer, "Reuse running server: " + server);
+                        result[0] = server;
+                    } catch (Exception e) {
+                        showError("Found corrupt ServerDir: " + serverDir, e);
+                    }
+                } else {
+                    int serverPort = acquirePortNumber();
+                    if (serverPort < 0) {
+                        /* Server limit reached */
+                        showVerboseMessage(verboseServer, "Server limit reached -> remove least recently used server");
+                        /* Shutdown least recently used within session */
+                        Server victim = findVictim(getSessionDirs(false));
+                        /* If none found also consider servers from other sessions on machine */
+                        if (victim == null) {
+                            victim = findVictim(getSessionDirs(true));
+                        }
+                        if (victim != null) {
+                            showVerboseMessage(verboseServer, "Selected server to remove " + victim);
+                            victim.shutdown();
+                            serverPort = acquirePortNumber();
+                            if (serverPort < 0) {
+                                showWarning("Cannot acquire new server port despite removing " + victim);
+                            }
+                        } else {
+                            showWarning("Server limit reached and no server to remove found");
+                        }
+                    }
+                    if (serverPort >= 0) {
+                        /* Instantiate new server and write properties file */
+                        Server server = startServer(serverDir, serverPort, classpath, bootClasspath, javaArgs);
+                        if (server != null) {
+                            showVerboseMessage(verboseServer, "Created new server: " + server);
+                        }
+                        result[0] = server;
                     }
                 }
-                if (serverPort >= 0) {
-                    /* Instantiate new server and write properties file */
-                    server = startServer(serverDir, serverPort, classpath, bootClasspath, javaArgs);
-                    showVerboseMessage(verboseServer, "Created new server: " + server);
-                }
+            } catch (IOException e) {
+                showError("ServerInstance-creation locking failed", e);
             }
-        } catch (IOException e) {
-            showError("ServerInstance-creation locking failed");
-        }
-        return server;
+        });
+        return result[0];
     }
 
     private Server findVictim(List<Path> sessionDirs) {
@@ -436,21 +441,22 @@ final class NativeImageServer extends NativeImage {
     void cleanupServers(boolean serverShutdown, boolean machineWide, boolean quiet) {
         List<Path> sessionDirs = getSessionDirs(machineWide);
         for (Path sessionDir : sessionDirs) {
-            try (FileLock lock = lockDirectory(sessionDir.resolve(defaultLockFileName)).lock()) {
-                List<Server> servers = findServers(Collections.singletonList(sessionDir));
-                for (Server server : servers) {
-                    boolean alive = server.isAlive();
-                    if (!alive || serverShutdown) {
-                        if (!quiet) {
-                            showMessage("Cleanup " + server + server.getLivenessInfo(alive));
+            withLockDirFileChannel(sessionDir, lockFileChannel -> {
+                try (FileLock lock = lockFileChannel.lock()) {
+                    List<Server> servers = findServers(Collections.singletonList(sessionDir));
+                    for (Server server : servers) {
+                        boolean alive = server.isAlive();
+                        if (!alive || serverShutdown) {
+                            if (!quiet) {
+                                showMessage("Cleanup " + server + server.getLivenessInfo(alive));
+                            }
+                            server.shutdown();
                         }
-                        /* We only allow kill if we know that it's one of our servers */
-                        server.shutdown(alive);
                     }
+                } catch (IOException e) {
+                    showError("Locking SessionDir " + sessionDir + " failed", e);
                 }
-            } catch (IOException e) {
-                showError("Locking SessionDir " + sessionDir + " failed", e);
-            }
+            });
         }
 
         /* Cleanup empty SessionDirs - Potentially unsafe code */
@@ -548,87 +554,168 @@ final class NativeImageServer extends NativeImage {
         }
     }
 
-    private static FileChannel lockDirectory(Path lockFilePath) throws IOException {
-        return FileChannel.open(lockFilePath, StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
+    private void withLockDirFileChannel(Path lockDir, Consumer<FileChannel> consumer) {
+        withFileChannel(lockDir.resolve(defaultLockFileName), consumer);
+    }
+
+    private void withFileChannel(Path filePath, Consumer<FileChannel> consumer) {
+        try {
+            FileChannel fileChannel;
+            synchronized (openFileChannels) {
+                fileChannel = FileChannel.open(filePath, StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
+                openFileChannels.add(fileChannel);
+            }
+
+            consumer.accept(fileChannel);
+
+            synchronized (openFileChannels) {
+                openFileChannels.remove(fileChannel);
+                fileChannel.close();
+            }
+        } catch (IOException e) {
+            showError("Using FileChannel for " + filePath + " failed", e);
+        }
+    }
+
+    private FileLock lockFileChannel(FileChannel channel) throws IOException {
+        Thread lockWatcher = new Thread(() -> {
+            try {
+                Thread.sleep(TimeUnit.MINUTES.toMillis(10));
+                try {
+                    showWarning("Timeout while waiting for FileChannel.lock");
+                    /* Trigger AsynchronousCloseException in channel.lock() */
+                    channel.close();
+                } catch (IOException e) {
+                    showError("LockWatcher closing FileChannel of LockFile failed", e);
+                }
+            } catch (InterruptedException e) {
+                /* Sleep interrupted -> Lock acquired") */
+            }
+        });
+        lockWatcher.start();
+        FileLock lock = channel.lock();
+        lockWatcher.interrupt();
+        return lock;
     }
 
     @SuppressWarnings("try")
     private int acquirePortNumber() {
         int firstPortNumber = 26681;
-        int selectedPort = -1;
+        int[] selectedPort = {-1};
         Path machineDir = getMachineDir();
-        try (FileLock lock = lockDirectory(machineDir.resolve(defaultLockFileName)).lock()) {
-            Path machinePropertiesPath = machineDir.resolve(machineProperties);
-            TreeSet<Integer> inUseSet = new TreeSet<>();
-            Properties mp = new Properties();
-            int maxPorts = 2;
-            if (Files.isReadable(machinePropertiesPath)) {
-                try (InputStream is = Files.newInputStream(machinePropertiesPath)) {
-                    mp.load(is);
-                    String portInUseValue = mp.getProperty(pKeyPortsInUse);
-                    if (portInUseValue != null && !portInUseValue.isEmpty()) {
-                        inUseSet.addAll(Arrays.stream(portInUseValue.split(" ")).map(Integer::parseInt).collect(Collectors.toList()));
-                    }
-                    String maxPortsStr = mp.getProperty(pKeyMaxPorts);
-                    if (maxPortsStr != null && !maxPortsStr.isEmpty()) {
-                        maxPorts = Math.max(1, Integer.parseInt(maxPortsStr));
+        withLockDirFileChannel(machineDir, lockFileChannel -> {
+            try (FileLock lock = lockFileChannel(lockFileChannel)) {
+                Path machinePropertiesPath = machineDir.resolve(machineProperties);
+                TreeSet<Integer> inUseSet = new TreeSet<>();
+                Properties mp = new Properties();
+                int maxPorts = 2;
+                if (Files.isReadable(machinePropertiesPath)) {
+                    try (InputStream is = Files.newInputStream(machinePropertiesPath)) {
+                        mp.load(is);
+                        String portInUseValue = mp.getProperty(pKeyPortsInUse);
+                        if (portInUseValue != null && !portInUseValue.isEmpty()) {
+                            inUseSet.addAll(Arrays.stream(portInUseValue.split(" ")).map(Integer::parseInt).collect(Collectors.toList()));
+                        }
+                        String maxPortsStr = mp.getProperty(pKeyMaxPorts);
+                        if (maxPortsStr != null && !maxPortsStr.isEmpty()) {
+                            maxPorts = Math.max(1, Integer.parseInt(maxPortsStr));
+                        }
                     }
                 }
-            }
-            for (int candidatePort = firstPortNumber; candidatePort < firstPortNumber + maxPorts; candidatePort++) {
-                if (!inUseSet.contains(candidatePort)) {
-                    selectedPort = candidatePort;
-                    inUseSet.add(selectedPort);
-                    break;
+                for (int candidatePort = firstPortNumber; candidatePort < firstPortNumber + maxPorts; candidatePort++) {
+                    if (!inUseSet.contains(candidatePort)) {
+                        selectedPort[0] = candidatePort;
+                        inUseSet.add(selectedPort[0]);
+                        break;
+                    }
                 }
+                mp.setProperty(pKeyPortsInUse, inUseSet.stream().map(String::valueOf).collect(Collectors.joining(" ")));
+                try (OutputStream os = Files.newOutputStream(machinePropertiesPath)) {
+                    mp.store(os, "");
+                }
+            } catch (IOException e) {
+                showError("Acquiring new server port number locking failed", e);
             }
-            mp.setProperty(pKeyPortsInUse, inUseSet.stream().map(String::valueOf).collect(Collectors.joining(" ")));
-            try (OutputStream os = Files.newOutputStream(machinePropertiesPath)) {
-                mp.store(os, "");
-            }
-        } catch (IOException e) {
-            showError("Acquiring new server port number failed", e);
-        }
-        if (selectedPort < firstPortNumber) {
+        });
+        if (selectedPort[0] < firstPortNumber) {
             showVerboseMessage(verboseServer, "Acquired new server port number failed");
         }
-        return selectedPort;
+        return selectedPort[0];
     }
 
     @SuppressWarnings("try")
     private void releasePortNumber(int port) {
         Path machineDir = getMachineDir();
-        try (FileLock lock = lockDirectory(machineDir.resolve(defaultLockFileName)).lock()) {
-            Path machinePropertiesPath = machineDir.resolve(machineProperties);
-            TreeSet<Integer> inUseSet = new TreeSet<>();
-            Properties mp = new Properties();
-            if (Files.isReadable(machinePropertiesPath)) {
-                try (InputStream is = Files.newInputStream(machinePropertiesPath)) {
-                    mp.load(is);
-                    String portInUseValue = mp.getProperty(pKeyPortsInUse);
-                    if (portInUseValue != null) {
-                        inUseSet.addAll(Arrays.stream(portInUseValue.split(" ")).map(Integer::parseInt).collect(Collectors.toList()));
+        withLockDirFileChannel(machineDir, lockFileChannel -> {
+            try (FileLock lock = lockFileChannel(lockFileChannel)) {
+                Path machinePropertiesPath = machineDir.resolve(machineProperties);
+                TreeSet<Integer> inUseSet = new TreeSet<>();
+                Properties mp = new Properties();
+                if (Files.isReadable(machinePropertiesPath)) {
+                    try (InputStream is = Files.newInputStream(machinePropertiesPath)) {
+                        mp.load(is);
+                        String portInUseValue = mp.getProperty(pKeyPortsInUse);
+                        if (portInUseValue != null) {
+                            inUseSet.addAll(Arrays.stream(portInUseValue.split(" ")).map(Integer::parseInt).collect(Collectors.toList()));
+                        }
+                    }
+                }
+                inUseSet.remove(port);
+                mp.setProperty(pKeyPortsInUse, inUseSet.stream().map(String::valueOf).collect(Collectors.joining(" ")));
+                try (OutputStream os = Files.newOutputStream(machinePropertiesPath)) {
+                    mp.store(os, "");
+                }
+            } catch (Exception e) {
+                showError("Locking for releasing server port number " + port + " failed", e);
+            }
+        });
+    }
+
+    private final class SignalHandler implements sun.misc.SignalHandler {
+        @Override
+        public void handle(sun.misc.Signal signal) {
+            killServer();
+            closeFileChannels();
+            System.exit(1);
+        }
+
+        private void closeFileChannels() {
+            showVerboseMessage(isVerbose(), "CleanupHandler Begin");
+            synchronized (openFileChannels) {
+                for (FileChannel fileChannel : openFileChannels) {
+                    try {
+                        showVerboseMessage(isVerbose(), "Closing open FileChannel: " + fileChannel);
+                        fileChannel.close();
+                    } catch (Exception e) {
+                        showError("Closing FileChannel failed", e);
                     }
                 }
             }
-            inUseSet.remove(port);
-            mp.setProperty(pKeyPortsInUse, inUseSet.stream().map(String::valueOf).collect(Collectors.joining(" ")));
-            try (OutputStream os = Files.newOutputStream(machinePropertiesPath)) {
-                mp.store(os, "");
+            showVerboseMessage(isVerbose(), "CleanupHandler End");
+        }
+
+        private void killServer() {
+            showVerboseMessage(isVerbose(), "Caught interrupt. Kill Server.");
+            Server current = building;
+            if (current != null) {
+                current.shutdown();
             }
-        } catch (Exception e) {
-            showError("Releasing server port number " + port + " failed", e);
         }
     }
 
     @Override
     protected void buildImage(LinkedHashSet<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
         if (useServer && !javaArgs.contains("-Xdebug")) {
+            SignalHandler signalHandler = new SignalHandler();
+            sun.misc.Signal.handle(new sun.misc.Signal("TERM"), signalHandler);
+            sun.misc.Signal.handle(new sun.misc.Signal("INT"), signalHandler);
+
             Server server = getServerInstance(cp, bcp, javaArgs);
             if (server != null) {
                 showVerboseMessage(verboseServer, "\n" + server.getServerInfo() + "\n");
                 /* Send image build job to server */
                 showMessage("Build on " + server);
+                building = server;
                 server.sendBuildRequest(imagecp, imageArgs);
                 if (!server.isAlive()) {
                     /* If server does not respond after image-build -> cleanup */
