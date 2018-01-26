@@ -55,7 +55,7 @@ final class TruffleFunction<T, R> implements Function<T, R> {
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof TruffleFunction) {
-            return guestObject == ((TruffleFunction<?, ?>) obj).guestObject;
+            return guestObject.equals(((TruffleFunction<?, ?>) obj).guestObject);
         }
         return false;
     }
@@ -67,6 +67,16 @@ final class TruffleFunction<T, R> implements Function<T, R> {
         } catch (Throwable e) {
             // not allowed to propagate exceptions
             return 0;
+        }
+    }
+
+    @Override
+    public String toString() {
+        EngineSupport engine = JavaInterop.ACCESSOR.engine();
+        if (engine != null) {
+            return engine.toHostValue(guestObject, languageContext).toString();
+        } else {
+            return super.toString();
         }
     }
 

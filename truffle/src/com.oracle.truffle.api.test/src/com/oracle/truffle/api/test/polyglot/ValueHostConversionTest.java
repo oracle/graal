@@ -203,7 +203,7 @@ public class ValueHostConversionTest {
 
         RuntimeException e = new RuntimeException();
         try {
-            context.asValue(new ProxyPrimitive() {
+            value = context.asValue(new ProxyPrimitive() {
                 public Object asPrimitive() {
                     throw e;
                 }
@@ -324,10 +324,11 @@ public class ValueHostConversionTest {
 
     private void assertProxyPrimitive(ProxyPrimitiveTest proxy, Value value, Object primitiveValue, Class<?> primitiveType, Trait... traits) {
         proxy.primitive = primitiveValue;
-        assertEquals(1, proxy.invocationCounter);
+        proxy.invocationCounter = 0;
+        assertEquals(0, proxy.invocationCounter);
         assertEquals(proxy.primitive, value.as(primitiveType));
         assertEquals(proxy.primitive, value.as(Object.class));
-        assertEquals(3, proxy.invocationCounter);
+        assertEquals(2, proxy.invocationCounter);
         proxy.invocationCounter = 0;
 
         assertValue(context, value, null, traits);

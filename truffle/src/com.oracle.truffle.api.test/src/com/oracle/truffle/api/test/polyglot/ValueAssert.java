@@ -53,6 +53,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
@@ -100,6 +101,7 @@ public class ValueAssert {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private static void assertValueImpl(Context context, Value value, Object[] arguments, Trait... expectedTypes) {
         assertNotNull(value.toString());
         assertNotNull(value.getMetaObject());
@@ -170,16 +172,25 @@ public class ValueAssert {
                 case MEMBERS:
                     assertTrue(msg, value.hasMembers());
 
-                    Map<String, Object> expectedValues = new HashMap<>();
+                    Map<Object, Object> expectedValues = new HashMap<>();
                     for (String key : value.getMemberKeys()) {
                         assertValue(context, value.getMember(key));
                         expectedValues.put(key, value.getMember(key).as(Object.class));
                     }
 
-                    assertEquals(expectedValues, value.as(Map.class));
-                    assertEquals(expectedValues, value.as(STRING_OBJECT_MAP));
+                    if (value.isHostObject() && value.asHostObject() instanceof Map) {
+                        expectedValues = value.asHostObject();
+                    } else {
+                        assertEquals(expectedValues, value.as(STRING_OBJECT_MAP));
 
-                    // TODO virify setting and getting
+                        Set<String> keySet = value.as(Map.class).keySet();
+                        assertEquals(value.getMemberKeys(), keySet);
+                        for (String key : keySet) {
+                            assertTrue(value.hasMember(key));
+                        }
+                    }
+                    assertEquals(expectedValues, value.as(Map.class));
+
                     break;
                 case NATIVE:
                     assertTrue(msg, value.isNativePointer());
@@ -392,6 +403,11 @@ public class ValueAssert {
         Map<Long, Object> objectMap2 = value.as(LONG_OBJECT_MAP);
         Map<Integer, Object> objectMap3 = value.as(INTEGER_OBJECT_MAP);
         Map<Number, Object> objectMap4 = value.as(NUMBER_OBJECT_MAP);
+
+        assertFails(() -> value.as(SHORT_OBJECT_MAP), ClassCastException.class);
+        assertFails(() -> value.as(BYTE_OBJECT_MAP), ClassCastException.class);
+        assertFails(() -> value.as(FLOAT_OBJECT_MAP), ClassCastException.class);
+        assertFails(() -> value.as(DOUBLE_OBJECT_MAP), ClassCastException.class);
 
         assertEquals(receivedObjectsLongMap, objectMap2);
         assertEquals(receivedObjectsIntMap, objectMap3);
