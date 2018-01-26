@@ -74,7 +74,11 @@ final class TruffleFunction<T, R> implements Function<T, R> {
     public String toString() {
         EngineSupport engine = JavaInterop.ACCESSOR.engine();
         if (engine != null) {
-            return engine.toHostValue(guestObject, languageContext).toString();
+            try {
+                return engine.toHostValue(guestObject, languageContext).toString();
+            } catch (UnsupportedOperationException e) {
+                return super.toString();
+            }
         } else {
             return super.toString();
         }
@@ -140,7 +144,7 @@ final class TruffleFunction<T, R> implements Function<T, R> {
 
         private static CallTarget lookup(Object languageContext, Class<?> receiverClass, Class<?> returnClass, Type returnType) {
             EngineSupport engine = JavaInterop.ACCESSOR.engine();
-            if (engine == null) {
+            if (engine == null || languageContext == null) {
                 return createTarget(new Apply(receiverClass, returnClass, returnType));
             }
             Apply apply = new Apply(receiverClass, returnClass, returnType);

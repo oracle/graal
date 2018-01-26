@@ -46,8 +46,9 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.Callable;
 
-import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Context;
 import org.hamcrest.CoreMatchers;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -71,10 +72,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ReflectionUtils;
 
 public class JavaInteropTest {
-    static {
-        // ensure engine is initialized
-        Engine.newBuilder().build().close();
-    }
 
     public class Data {
         public int x;
@@ -100,6 +97,20 @@ public class JavaInteropTest {
     private Data data;
     private XYPlus xyp;
     private boolean assertThisCalled;
+
+    private Context context;
+
+    @Before
+    public void enterContext() {
+        context = Context.create();
+        context.enter();
+    }
+
+    @After
+    public void leaveContext() {
+        context.leave();
+        context.close();
+    }
 
     @Before
     public void initObjects() {

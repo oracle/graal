@@ -517,6 +517,10 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
                             } catch (UnsupportedMessageException e) {
                             }
                         }
+                        if (value != null && !cache.valueClass.isInstance(value)) {
+                            CompilerDirectives.transferToInterpreter();
+                            throw newClassCastException("Expected value " + cache.valueClass + " but was " + value.getClass().getName());
+                        }
                         try {
                             sendWrite(write, receiver, key, toGuest.apply(languageContext, value));
                         } catch (UnknownIdentifierException e) {

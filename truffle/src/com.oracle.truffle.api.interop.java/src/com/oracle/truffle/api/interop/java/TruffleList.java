@@ -129,7 +129,7 @@ class TruffleList<T> extends AbstractList<T> {
 
         static TruffleListCache lookup(Object languageContext, Class<?> receiverClass, Class<?> valueClass, Type valueType) {
             EngineSupport engine = JavaInterop.ACCESSOR.engine();
-            if (engine == null) {
+            if (engine == null || languageContext == null) {
                 return new TruffleListCache(receiverClass, valueClass, valueType);
             }
             Key cacheKey = new Key(receiverClass, valueClass, valueType);
@@ -256,6 +256,9 @@ class TruffleList<T> extends AbstractList<T> {
                         CompilerDirectives.transferToInterpreter();
                         throw newUnsupportedOperationException("Operation is not supported.");
                     }
+                } else {
+                    CompilerDirectives.transferToInterpreter();
+                    throw newArrayIndexOutOfBounds(key.toString());
                 }
                 return result;
             }
@@ -287,6 +290,10 @@ class TruffleList<T> extends AbstractList<T> {
                 Object value = args[offset + 1];
                 if (sendHasSize(hasSize, receiver) && KeyInfo.isWritable(sendKeyInfo(keyInfo, receiver, key))) {
                     try {
+                        if (value != null && !cache.valueClass.isInstance(value)) {
+                            CompilerDirectives.transferToInterpreter();
+                            throw newClassCastException("Expected value " + cache.valueClass + " but was " + value.getClass().getName());
+                        }
                         sendWrite(write, receiver, key, toGuest.apply(languageContext, value));
                     } catch (UnknownIdentifierException e) {
                         throw newArrayIndexOutOfBounds("Out of bounds");

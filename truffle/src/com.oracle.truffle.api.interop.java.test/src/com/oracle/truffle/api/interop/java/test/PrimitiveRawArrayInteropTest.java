@@ -31,7 +31,9 @@ import static org.junit.Assert.fail;
 
 import java.util.List;
 
-import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -39,10 +41,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 
 public class PrimitiveRawArrayInteropTest {
-    static {
-        // ensure engine is initialized
-        Engine.newBuilder().build().close();
-    }
 
     private Object[] objArr;
     private byte[] byteArr;
@@ -98,10 +96,19 @@ public class PrimitiveRawArrayInteropTest {
     private TruffleObject obj;
     private RawInterop interop;
 
+    private Context context;
+
     @Before
     public void initObjects() {
+        context = Context.create();
+        context.enter();
         obj = JavaInterop.asTruffleObject(this);
         interop = JavaInterop.asJavaObject(RawInterop.class, obj);
+    }
+
+    @After
+    public void leave() {
+        context.leave();
     }
 
     @Test
@@ -121,9 +128,9 @@ public class PrimitiveRawArrayInteropTest {
     public void exceptionIsPropagated() {
         try {
             assertNull(interop.arr(30));
-        } catch (Exception hostException) {
-            assertTrue("Expected HostException but got: " + hostException.getClass(), JavaInterop.isHostException(hostException));
-            WrongArgument wrongArgument = (WrongArgument) JavaInterop.asHostException(hostException);
+        } catch (PolyglotException hostException) {
+            assertTrue("Expected HostException but got: " + hostException.getClass(), hostException.isHostException());
+            WrongArgument wrongArgument = (WrongArgument) hostException.asHostException();
             assertEquals(30, wrongArgument.type);
             return;
         }

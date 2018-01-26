@@ -25,7 +25,6 @@
 package com.oracle.truffle.api.interop.java.test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -40,6 +39,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.graalvm.polyglot.Context;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -63,6 +65,20 @@ public class TestMemberAccess {
     private final Node readNode = Message.READ.createNode();
     private final Node keysNode = Message.KEYS.createNode();
     private final Node keyInfoNode = Message.KEY_INFO.createNode();
+
+    private Context context;
+
+    @Before
+    public void enterContext() {
+        context = Context.create();
+        context.enter();
+    }
+
+    @After
+    public void leaveContext() {
+        context.leave();
+        context.close();
+    }
 
     @Test
     public void testFields() throws IllegalAccessException, InteropException {
@@ -154,24 +170,6 @@ public class TestMemberAccess {
     public void testKeysAndInternalKeysOnInstance() throws Exception {
         TruffleObject instance = JavaInterop.asTruffleObject(new TestClass());
         assertKeys(instance);
-    }
-
-    @Test
-    public void testUnderscoreKeys() throws Exception {
-        TruffleObject testClass = JavaInterop.asTruffleObject(Test_Underscore.class);
-        assertKeys(testClass);
-
-        CallUnderscore call = JavaInterop.asJavaObject(CallUnderscore.class, testClass);
-
-        Object obj = call.create__Lcom_oracle_truffle_api_interop_java_test_Test_1Underscore_2();
-        assertNotNull("An object created", obj);
-        assertTrue("Instance of my class", obj instanceof Test_Underscore);
-
-        Object copy = call.copy__Lcom_oracle_truffle_api_interop_java_test_Test_1Underscore_2Lcom_oracle_truffle_api_interop_java_test_Test_1Underscore_2(obj);
-        assertNotNull("An object copied", copy);
-        assertTrue("Instance of my class again", copy instanceof Test_Underscore);
-
-        assertEquals(obj, copy);
     }
 
     private void assertKeys(TruffleObject obj) throws UnsupportedMessageException {
@@ -369,7 +367,7 @@ public class TestMemberAccess {
         TruffleObject testObj;
         testObj = (TruffleObject) ForeignAccess.sendNew(newNode, testClass, (short) 42);
         assertEquals(int.class.getName(), ForeignAccess.sendRead(readNode, testObj, "ctor"));
-        testObj = (TruffleObject) ForeignAccess.sendNew(newNode, testClass, 4.2d);
+        testObj = (TruffleObject) ForeignAccess.sendNew(newNode, testClass, 4.2f);
         // TODO prioritize conversion from double to float over double to int
         // assertEquals(float.class.getName(), ForeignAccess.sendRead(readNode, testObj, "ctor"));
     }

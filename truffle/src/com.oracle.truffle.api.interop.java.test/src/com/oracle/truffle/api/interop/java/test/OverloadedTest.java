@@ -141,7 +141,7 @@ public class OverloadedTest {
         Node n = Message.createInvoke(1).createNode();
         ForeignAccess.sendInvoke(n, obj, "x", new UnboxableToInt(21));
         assertEquals(42, data.x);
-        ForeignAccess.sendInvoke(n, obj, "x", JavaInterop.asTruffleObject(BigInteger.TEN));
+        ForeignAccess.sendInvoke(n, obj, "x", JavaInterop.asTruffleObject(10));
         assertEquals(20, data.x);
     }
 

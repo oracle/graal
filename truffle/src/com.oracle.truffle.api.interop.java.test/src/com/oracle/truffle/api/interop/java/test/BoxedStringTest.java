@@ -29,10 +29,11 @@ import static org.junit.Assert.assertEquals;
 import java.util.Arrays;
 import java.util.List;
 
+import org.graalvm.polyglot.Context;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.MessageResolution;
@@ -53,6 +54,20 @@ public class BoxedStringTest implements TruffleObject, ForeignAccess.StandardFac
     private ExactMatchInterop interop;
 
     static final List<String> KEYS = Arrays.asList(new String[]{"charValue", "stringValue"});
+
+    private Context context;
+
+    @Before
+    public void enterContext() {
+        context = Context.create();
+        context.enter();
+    }
+
+    @After
+    public void leaveContext() {
+        context.leave();
+        context.close();
+    }
 
     @Before
     public void initObjects() {

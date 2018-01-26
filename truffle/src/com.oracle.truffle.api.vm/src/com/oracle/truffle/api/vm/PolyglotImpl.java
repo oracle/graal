@@ -240,6 +240,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             throw (PolyglotNullPointerException) e;
         } else if (e instanceof PolyglotIllegalArgumentException) {
             throw (PolyglotIllegalArgumentException) e;
+        } else if (e instanceof PolyglotArrayIndexOutOfBoundsException) {
+            throw (PolyglotArrayIndexOutOfBoundsException) e;
         } else {
             // fallthrough
         }

@@ -29,6 +29,9 @@ import static org.junit.Assert.assertNull;
 
 import java.util.List;
 
+import org.graalvm.polyglot.Context;
+import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -69,6 +72,20 @@ public class PrimitiveArrayInteropTest {
     private TruffleObject obj;
     private ExactMatchInterop interop;
 
+    private Context context;
+
+    @Before
+    public void enterContext() {
+        context = Context.create();
+        context.enter();
+    }
+
+    @After
+    public void leaveContext() {
+        context.leave();
+        context.close();
+    }
+
     @Before
     public void initObjects() {
         obj = JavaInterop.asTruffleObject(this);
@@ -107,6 +124,7 @@ public class PrimitiveArrayInteropTest {
         List rawList = list;
         try {
             rawList.set(0, 42);
+            Assert.fail();
         } catch (ClassCastException ex) {
             // OK
         }

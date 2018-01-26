@@ -32,6 +32,8 @@ import static org.junit.Assert.fail;
 
 import java.util.Arrays;
 
+import org.graalvm.polyglot.Context;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -48,6 +50,20 @@ public class ClassInteropTest {
     public static double y;
     public static final int CONST = 42;
     public int value = CONST;
+
+    private Context context;
+
+    @Before
+    public void enterContext() {
+        context = Context.create();
+        context.enter();
+    }
+
+    @After
+    public void leaveContext() {
+        context.leave();
+        context.close();
+    }
 
     public static double plus(double a, double b) {
         return a + b;

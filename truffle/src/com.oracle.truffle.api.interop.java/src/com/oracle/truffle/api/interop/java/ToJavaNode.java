@@ -188,16 +188,17 @@ abstract class ToJavaNode extends Node {
         Object primitiveValue = primitive.unbox(truffleObject);
         if (primitiveValue != null) {
             return primitiveValue;
+        } else if (languageContext == null) {
+            // for legacy support
+            return truffleObject;
         } else if (primitive.hasKeys(truffleObject)) {
             return asJavaObject(truffleObject, Map.class, null, languageContext);
         } else if (primitive.hasSize(truffleObject)) {
             return asJavaObject(truffleObject, List.class, null, languageContext);
         } else if (isExecutable(truffleObject) || isInstantiable(truffleObject)) {
             return asJavaObject(truffleObject, Function.class, null, languageContext);
-        } else if (languageContext != null) {
-            return JavaInterop.toHostValue(truffleObject, languageContext);
         } else {
-            return truffleObject; // legacy
+            return JavaInterop.toHostValue(truffleObject, languageContext);
         }
     }
 
@@ -257,7 +258,12 @@ abstract class ToJavaNode extends Node {
             } else if (ForeignAccess.sendHasKeys(hasKeysNode, truffleObject)) {
                 obj = JavaInteropReflect.newProxyInstance(targetType, truffleObject, languageContext);
             } else {
-                throw newClassCastException(truffleObject, targetType, null);
+                if (languageContext == null) {
+                    // legacy support
+                    obj = JavaInteropReflect.newProxyInstance(targetType, truffleObject, languageContext);
+                } else {
+                    throw newClassCastException(truffleObject, targetType, null);
+                }
             }
         } else {
             throw newClassCastException(truffleObject, targetType, null);

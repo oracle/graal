@@ -30,8 +30,10 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExecutableNode;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public abstract class HostEntryRootNode<T> extends ExecutableNode implements Supplier<String> {
 
@@ -48,7 +50,7 @@ public abstract class HostEntryRootNode<T> extends ExecutableNode implements Sup
         T receiver = getReceiverType().cast(arguments[1]);
         Object result;
         result = executeImpl(languageContext, receiver, arguments, 2);
-        assert !(result instanceof TruffleObject);
+        assert languageContext == null || !(result instanceof TruffleObject);
         return result;
     }
 
@@ -80,7 +82,17 @@ public abstract class HostEntryRootNode<T> extends ExecutableNode implements Sup
     protected abstract Object executeImpl(Object languageContext, T receiver, Object[] args, int offset);
 
     protected static CallTarget createTarget(HostEntryRootNode<?> node) {
-        return Truffle.getRuntime().createCallTarget(JavaInterop.ACCESSOR.engine().wrapHostBoundary(node, node));
+        EngineSupport support = JavaInterop.ACCESSOR.engine();
+        if (support == null) {
+            return Truffle.getRuntime().createCallTarget(new RootNode(null) {
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return node.execute(frame);
+                }
+            });
+        }
+        return Truffle.getRuntime().createCallTarget(support.wrapHostBoundary(node, node));
     }
 
 }
