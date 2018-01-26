@@ -41,6 +41,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
@@ -57,7 +58,17 @@ abstract class ExecuteMethodNode extends Node {
         return ExecuteMethodNodeGen.create();
     }
 
-    public abstract Object execute(JavaMethodDesc method, Object obj, Object[] args, Object languageContext);
+    public final Object execute(JavaMethodDesc method, Object obj, Object[] args, Object languageContext) {
+        try {
+            return executeImpl(method, obj, args, languageContext);
+        } catch (InteropException e) {
+            throw e.raise();
+        } catch (Throwable e) {
+            throw JavaInteropReflect.rethrow(JavaInterop.wrapHostException(e));
+        }
+    }
+
+    protected abstract Object executeImpl(JavaMethodDesc method, Object obj, Object[] args, Object languageContext) throws InteropException;
 
     static ToJavaNode[] createToJava(int argsLength) {
         ToJavaNode[] toJava = new ToJavaNode[argsLength];
@@ -83,6 +94,7 @@ abstract class ExecuteMethodNode extends Node {
         for (int i = 0; i < toJavaNodes.length; i++) {
             convertedArguments[i] = toJavaNodes[i].execute(args[i], types[i], genericTypes[i], languageContext);
         }
+
         return doInvoke(cachedMethod, obj, convertedArguments, languageContext);
     }
 

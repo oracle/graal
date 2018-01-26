@@ -24,8 +24,10 @@
  */
 package org.graalvm.polyglot.proxy;
 
+import java.util.List;
 import java.util.Map;
 
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 
 /**
@@ -45,17 +47,34 @@ public interface ProxyObject extends Proxy {
     Object getMember(String key);
 
     /**
-     * Returns array of member keys. Returns <code>null</code> or an empty {@link ProxyArray} to
-     * indicate no members.
+     * Returns array of member keys. The returned array must be interpreted as having array elements
+     * using the semantics of {@link Context#asValue(Object)} otherwise and
+     * {@link IllegalStateException} is thrown. If one of the return values of the array is not a
+     * {@link String} then a {@link ClassCastException} is thrown. Examples for valid return values
+     * are:
+     * <ul>
+     * <li><code>null</code> for no member keys
+     * <li>{@link ProxyArray} that returns {@link String} values for each array element
+     * <li>{@link List } with exclusively String elements
+     * <li>{{@link String[]}
+     * <li>A guest language object representing an array of strings.
+     * </ul>
+     * Every member key returned by the {@link #getMemberKeys()} method must return
+     * <code>true</code> for {@link #hasMember(String)}.
      *
+     * @see #hasMember(String)
+     * @see Context#asValue(Object)
      * @since 1.0
      */
-    ProxyArray getMemberKeys();
+    Object getMemberKeys();
 
     /**
      * Returns <code>true</code> if the proxy object contains a member with the given key, or else
-     * <code>false</code>.
+     * <code>false</code>. While not required ever member key which returns <code>true</code> for
+     * {@link #hasMember(String)} should be returned by {@link #getMemberKeys()} to allow guest
+     * members to list member keys.
      *
+     * @see #getMemberKeys()
      * @since 1.0
      */
     boolean hasMember(String key);
@@ -87,8 +106,8 @@ public interface ProxyObject extends Proxy {
                 return values.containsKey(key);
             }
 
-            public ProxyArray getMemberKeys() {
-                return ProxyArray.fromArray(values.keySet().toArray());
+            public Object getMemberKeys() {
+                return values.keySet().toArray();
             }
 
             public Object getMember(String key) {

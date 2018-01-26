@@ -2056,8 +2056,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
                         try {
                             try {
                                 Object result = ForeignAccess.sendRead(keysReadNode, keys, index);
+                                if (!(result instanceof String || result instanceof Character)) {
+                                    throw PolyglotImpl.wrapHostException(new ClassCastException("Cannot cast " + result + " to String."));
+                                }
                                 index++;
-                                return (String) result;
+                                return result.toString();
                             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
                                 throw new AssertionError("Implementation error: Language must support read messages for keys objects.");
                             }

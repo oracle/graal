@@ -355,6 +355,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
         private static final String[] JAVA_INTEROP_HOST_TO_GUEST = {
                         JAVA_INTEROP_PACKAGE + "TruffleMap",
                         JAVA_INTEROP_PACKAGE + "TruffleList",
+                        JAVA_INTEROP_PACKAGE + "TruffleFunction",
                         JAVA_INTEROP_PACKAGE + "FunctionProxyHandler",
                         JAVA_INTEROP_PACKAGE + "ObjectProxyHandler"
         };

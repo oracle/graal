@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertFails;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertUnsupported;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertValue;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.BOOLEAN;
@@ -41,17 +40,17 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.function.BiFunction;
+import java.util.Iterator;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
-import org.graalvm.polyglot.proxy.ProxyArray;
-import org.graalvm.polyglot.proxy.ProxyPrimitive;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -146,195 +145,6 @@ public class ValueHostConversionTest {
         assertSame(obj, context.asValue(value.as(Object.class)).asHostObject());
         assertUnsupported(value, HOST_OBJECT, MEMBERS);
     }
-
-    @Test
-    public void testProxy() {
-        Proxy proxy = new Proxy() {
-        };
-        Value value = context.asValue(proxy);
-        assertTrue(value.isProxyObject());
-        assertSame(proxy, value.asProxyObject());
-        assertUnsupported(value, PROXY_OBJECT);
-    }
-
-    static class ProxyPrimitiveTest implements ProxyPrimitive {
-
-        Object primitive;
-        int invocationCounter = 0;
-
-        public Object asPrimitive() {
-            invocationCounter++;
-            return primitive;
-        }
-    }
-
-    @Test
-    public void testProxyPrimitive() {
-        ProxyPrimitiveTest proxy = new ProxyPrimitiveTest();
-
-        Value value = context.asValue(proxy);
-
-        assertTrue(value.isProxyObject());
-        assertSame(proxy, value.asProxyObject());
-
-        // no need to invoke asPrimitive yet.
-        assertEquals(0, proxy.invocationCounter);
-
-        assertProxyPrimitive(proxy, value, false, Boolean.class, BOOLEAN, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, "a", String.class, STRING, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, 'a', Character.class, STRING, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, (byte) 42, Byte.class, NUMBER, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, (short) 42, Short.class, NUMBER, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, 42, Integer.class, NUMBER, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, 42L, Long.class, NUMBER, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, 42.0f, Float.class, NUMBER, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, 42.0d, Double.class, NUMBER, PROXY_OBJECT);
-
-        // test errors
-        proxy.primitive = null;
-
-        try {
-            // force to unbox the primitive
-            value.isNumber();
-        } catch (PolyglotException e) {
-            assertTrue(e.isHostException());
-            assertTrue(e.asHostException() instanceof IllegalStateException);
-        }
-
-        RuntimeException e = new RuntimeException();
-        try {
-            value = context.asValue(new ProxyPrimitive() {
-                public Object asPrimitive() {
-                    throw e;
-                }
-            });
-            // force to unbox the primitive
-            value.isNumber();
-        } catch (PolyglotException ex) {
-            assertTrue(ex.isHostException());
-            assertSame(e, ex.asHostException());
-            assertFalse(ex.isInternalError());
-        }
-
-    }
-
-    static class ProxyArrayTest implements ProxyArray {
-
-        Function<Long, Object> get;
-        BiFunction<Long, Value, Void> set;
-        Supplier<Long> getSize;
-
-        int getCounter;
-        int setCounter;
-        int getSizeCounter;
-
-        public Object get(long index) {
-            getCounter++;
-            return get.apply(index);
-        }
-
-        public void set(long index, Value value) {
-            setCounter++;
-            set.apply(index, value);
-        }
-
-        public long getSize() {
-            getSizeCounter++;
-            return getSize.get();
-        }
-
-    }
-
-    @Test
-    public void testProxyArray() {
-        ProxyArrayTest proxy = new ProxyArrayTest();
-
-        Value value = context.asValue(proxy);
-
-        assertTrue(value.isProxyObject());
-        assertSame(proxy, value.asProxyObject());
-
-        assertTrue(value.hasArrayElements());
-
-        assertEquals(0, proxy.getCounter);
-        assertEquals(0, proxy.setCounter);
-        assertEquals(0, proxy.getSizeCounter);
-
-        proxy.get = (index) -> 42;
-        assertEquals(42, value.getArrayElement(42).asInt());
-        assertEquals(1, proxy.getCounter);
-        assertEquals(0, proxy.setCounter);
-        assertEquals(0, proxy.getSizeCounter);
-        proxy.getCounter = 0;
-        proxy.get = null;
-
-        Object setObject = new Object();
-        proxy.set = (index, v) -> {
-            assertSame(setObject, v.asHostObject());
-            return null;
-        };
-        value.setArrayElement(42, setObject);
-        assertEquals(0, proxy.getCounter);
-        assertEquals(1, proxy.setCounter);
-        assertEquals(0, proxy.getSizeCounter);
-        proxy.setCounter = 0;
-        proxy.set = null;
-
-        proxy.getSize = () -> 42L;
-        assertEquals(42L, value.getArraySize());
-        assertEquals(0, proxy.getCounter);
-        assertEquals(0, proxy.setCounter);
-        assertEquals(1, proxy.getSizeCounter);
-        proxy.getSize = null;
-        proxy.getCounter = 0;
-
-        RuntimeException ex = new RuntimeException();
-        proxy.get = (index) -> {
-            throw ex;
-        };
-
-        // test errors
-        assertFails(() -> value.getArrayElement(42), PolyglotException.class, (e) -> {
-            assertTrue(e.isHostException());
-            assertSame(ex, e.asHostException());
-            assertFalse(e.isInternalError());
-        });
-        proxy.get = null;
-
-        proxy.set = (index, v) -> {
-            throw ex;
-        };
-        assertFails(() -> value.setArrayElement(42, null), PolyglotException.class, (e) -> {
-            assertTrue(e.isHostException());
-            assertSame(ex, e.asHostException());
-            assertFalse(e.isInternalError());
-        });
-        proxy.set = null;
-
-        proxy.getSize = () -> {
-            throw ex;
-        };
-        assertFails(() -> value.getArraySize(), PolyglotException.class, (e) -> {
-            assertTrue(e.isHostException());
-            assertSame(ex, e.asHostException());
-            assertFalse(e.isInternalError());
-        });
-        proxy.getSize = null;
-    }
-
-    private void assertProxyPrimitive(ProxyPrimitiveTest proxy, Value value, Object primitiveValue, Class<?> primitiveType, Trait... traits) {
-        proxy.primitive = primitiveValue;
-        proxy.invocationCounter = 0;
-        assertEquals(0, proxy.invocationCounter);
-        assertEquals(proxy.primitive, value.as(primitiveType));
-        assertEquals(proxy.primitive, value.as(Object.class));
-        assertEquals(2, proxy.invocationCounter);
-        proxy.invocationCounter = 0;
-
-        assertValue(context, value, null, traits);
-    }
-
-    // TODO test for ProxyExecutable, ProxyObject, ProxyInstantiable, ProxyNativeObject
 
     /**
      * Tests basic examples from {@link Context#asValue(Object)}
@@ -857,6 +667,153 @@ public class ValueHostConversionTest {
 
         assertEquals("object", hierarchy.execute(42).asString());
         assertEquals("object", hierarchy.execute(false).asString());
+    }
+
+    @Test
+    public void testExceptionFrames1() {
+        Value innerInner = context.asValue(new Function<Object, Object>() {
+            public Object apply(Object t) {
+                throw new RuntimeException("foobar");
+            }
+        });
+
+        Value inner = context.asValue(new Function<Object, Object>() {
+            public Object apply(Object t) {
+                return innerInner.execute(t);
+            }
+        });
+
+        Value outer = context.asValue(new Function<Object, Object>() {
+            public Object apply(Object t) {
+                return inner.execute(t);
+            }
+        });
+
+        try {
+            outer.execute(1);
+            Assert.fail();
+        } catch (PolyglotException e) {
+            assertTrue(e.isHostException());
+            assertTrue(e.asHostException() instanceof RuntimeException);
+            assertEquals("foobar", e.getMessage());
+            Iterator<StackFrame> frameIterator = e.getPolyglotStackTrace().iterator();
+            StackFrame frame;
+            for (int i = 0; i < 3; i++) {
+                frame = frameIterator.next();
+                assertTrue(frame.isHostFrame());
+                assertEquals("apply", frame.toHostFrame().getMethodName());
+                frame = frameIterator.next();
+                assertTrue(frame.isHostFrame());
+                assertEquals("execute", frame.toHostFrame().getMethodName());
+            }
+            frame = frameIterator.next();
+            assertTrue(frame.isHostFrame());
+            assertEquals("testExceptionFrames1", frame.toHostFrame().getMethodName());
+        }
+    }
+
+    public static class TestExceptionFrames2 {
+
+        public void foo() {
+            throw new RuntimeException("foo");
+        }
+
+    }
+
+    @Test
+    public void testExceptionFrames2() {
+        Value value = context.asValue(new TestExceptionFrames2());
+        try {
+            value.getMember("foo").execute();
+            Assert.fail();
+        } catch (PolyglotException e) {
+            assertTrue(e.isHostException());
+            assertTrue(e.asHostException() instanceof RuntimeException);
+            assertEquals("foo", e.getMessage());
+            Iterator<StackFrame> frameIterator = e.getPolyglotStackTrace().iterator();
+            StackFrame frame;
+            frame = frameIterator.next();
+            assertTrue(frame.isHostFrame());
+            assertEquals("foo", frame.toHostFrame().getMethodName());
+            frame = frameIterator.next();
+            assertTrue(frame.isHostFrame());
+            assertEquals("execute", frame.toHostFrame().getMethodName());
+            frame = frameIterator.next();
+            assertTrue(frame.isHostFrame());
+            assertEquals("testExceptionFrames2", frame.toHostFrame().getMethodName());
+        }
+
+    }
+
+    private static interface TestExceptionFrames3 {
+
+        void foo();
+
+    }
+
+    @Test
+    public void testExceptionFrames3() {
+        Value value = context.asValue(new TestExceptionFrames2());
+        TestExceptionFrames3 f = value.as(TestExceptionFrames3.class);
+        try {
+            f.foo();
+            Assert.fail();
+        } catch (PolyglotException e) {
+            assertTrue(e.isHostException());
+            assertTrue(e.asHostException() instanceof RuntimeException);
+            assertEquals("foo", e.getMessage());
+            Iterator<StackFrame> frameIterator = e.getPolyglotStackTrace().iterator();
+            StackFrame frame;
+            frame = frameIterator.next();
+            assertTrue(frame.isHostFrame());
+            assertEquals("foo", frame.toHostFrame().getMethodName());
+            frame = frameIterator.next();
+            assertTrue(frame.isHostFrame());
+            assertEquals("invoke", frame.toHostFrame().getMethodName());
+            frame = frameIterator.next();
+            assertTrue(frame.isHostFrame());
+            assertEquals("foo", frame.toHostFrame().getMethodName());
+            frame = frameIterator.next();
+            assertTrue(frame.isHostFrame());
+            assertEquals("testExceptionFrames3", frame.toHostFrame().getMethodName());
+        }
+    }
+
+    public static class TestIllegalArgumentInt {
+
+        public Object foo(int i) {
+            return i;
+        }
+
+    }
+
+    @Test
+    public void testIllegalArgumentInt() {
+        Value value = context.asValue(new TestIllegalArgumentInt());
+
+        // valid cases
+        assertEquals(42, value.getMember("foo").execute(42).asInt());
+        assertEquals(42, value.getMember("foo").execute((byte) 42).asInt());
+        assertEquals(42, value.getMember("foo").execute((short) 42).asInt());
+        assertEquals(42, value.getMember("foo").execute((long) 42).asInt());
+        assertEquals(42, value.getMember("foo").execute((float) 42).asInt());
+        assertEquals(42, value.getMember("foo").execute((double) 42).asInt());
+
+        assertHostPolyglotException(() -> value.getMember("foo").execute((Object) null), NullPointerException.class);
+        assertHostPolyglotException(() -> value.getMember("foo").execute(""), ClassCastException.class);
+        assertHostPolyglotException(() -> value.getMember("foo").execute(42.2d), ClassCastException.class);
+        assertHostPolyglotException(() -> value.getMember("foo").execute(42.2f), ClassCastException.class);
+        assertHostPolyglotException(() -> value.getMember("foo").execute(Float.NaN), ClassCastException.class);
+        assertHostPolyglotException(() -> value.getMember("foo").execute(Double.NaN), ClassCastException.class);
+    }
+
+    private static void assertHostPolyglotException(Runnable r, Class<?> hostExceptionType) {
+        try {
+            r.run();
+        } catch (PolyglotException e) {
+            assertTrue(e.isHostException());
+            assertTrue(e.asHostException().getClass().getName(), hostExceptionType.isInstance(e.asHostException()));
+        }
     }
 
 }

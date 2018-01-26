@@ -41,6 +41,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -53,7 +54,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
@@ -86,26 +86,21 @@ public class ValueAssert {
     };
 
     public static void assertValue(Context context, Value value) {
-        assertValue(context, value, null, detectSupportedTypes(value));
+        assertValue(context, value, detectSupportedTypes(value));
     }
 
     public static void assertValue(Context context, Value value, Trait... expectedTypes) {
-        assertValue(context, value, null, expectedTypes);
-    }
-
-    public static void assertValue(Context context, Value value, Object[] arguments, Trait... expectedTypes) {
         try {
-            assertValueImpl(context, value, arguments, expectedTypes);
+            assertValueImpl(context, value, expectedTypes);
         } catch (AssertionError e) {
             throw new AssertionError(String.format("assertValue: %s traits: %s", value, Arrays.asList(expectedTypes)), e);
         }
     }
 
     @SuppressWarnings("unchecked")
-    private static void assertValueImpl(Context context, Value value, Object[] arguments, Trait... expectedTypes) {
+    private static void assertValueImpl(Context context, Value value, Trait... expectedTypes) {
         assertNotNull(value.toString());
         assertNotNull(value.getMetaObject());
-        assertHostObject(context, value.as(Object.class));
 
         assertSame(value, value.as(Value.class));
 
@@ -139,30 +134,37 @@ public class ValueAssert {
                     break;
                 case EXECUTABLE:
                     assertTrue(msg, value.canExecute());
-                    assertFunctionalInterfaceMapping(context, value, arguments);
-                    if (arguments != null) {
-                        Value result = value.execute(arguments);
-                        assertValue(context, result);
-                    }
+                    assertFunctionalInterfaceMapping(value);
                     break;
                 case INSTANTIABLE:
                     assertTrue(msg, value.canInstantiate());
                     value.as(Function.class);
-                    if (arguments != null) {
-                        Value result = value.newInstance(arguments);
-                        assertValue(context, result);
-                    }
                     // otherwise its ambiguous with the executable semantics.
                     if (!value.canExecute()) {
-                        assertFunctionalInterfaceMapping(context, value, arguments);
+                        assertFunctionalInterfaceMapping(value);
                     }
                     break;
-
                 case HOST_OBJECT:
                     assertTrue(msg, value.isHostObject());
                     Object hostObject = value.asHostObject();
                     assertTrue(!(hostObject instanceof Proxy));
-                    // TODO assert mapping to interfaces
+
+                    if (hostObject != null && !java.lang.reflect.Proxy.isProxyClass(hostObject.getClass())) {
+                        if (hostObject instanceof Class) {
+                            for (java.lang.reflect.Method m : ((Class<?>) hostObject).getMethods()) {
+                                if (Modifier.isPublic(m.getModifiers()) && Modifier.isStatic(m.getModifiers())) {
+                                    assertTrue(m.getName(), value.hasMember(m.getName()));
+                                }
+                            }
+                        } else {
+                            for (java.lang.reflect.Method m : hostObject.getClass().getMethods()) {
+                                if (Modifier.isPublic(m.getModifiers()) && !Modifier.isStatic(m.getModifiers())) {
+                                    assertTrue(m.getName(), value.hasMember(m.getName()));
+                                }
+                            }
+                        }
+                    }
+
                     break;
                 case PROXY_OBJECT:
                     assertTrue(msg, value.isProxyObject());
@@ -538,16 +540,15 @@ public class ValueAssert {
     }
 
     @SuppressWarnings({"unchecked", "cast"})
-    private static void assertFunctionalInterfaceMapping(Context context, Value value, Object[] arguments) {
-        Function<Object, Object> f1;
+    private static void assertFunctionalInterfaceMapping(Value value) {
         if (value.isHostObject()) {
-            f1 = value.as(Function.class);
+            assertNotNull(value.as(Function.class));
         } else {
-            f1 = (Function<Object, Object>) value.as(Object.class);
+            assertNotNull((Function<Object, Object>) value.as(Object.class));
         }
 
-        Function<Object[], Object> f2 = value.as(Function.class);
-        IsFunctionalInterfaceVarArgs f3 = value.as(IsFunctionalInterfaceVarArgs.class);
+        assertNotNull(value.as(Function.class));
+        assertNotNull(value.as(IsFunctionalInterfaceVarArgs.class));
 
         // mapping an empty interface works with any value.
         if (value.isNull()) {
@@ -564,15 +565,6 @@ public class ValueAssert {
             assertFails(() -> value.as(NonFunctionalInterface.class).foobarbaz(), UnsupportedOperationException.class);
         }
 
-        if (arguments != null) {
-            assertHostObject(context, f1.apply(arguments));
-            assertHostObject(context, f2.apply(arguments));
-            assertHostObject(context, f3.foobarbaz(arguments));
-        }
-    }
-
-    private static void assertHostObject(Context context, Object value) {
-        // TODO
     }
 
     private static Trait[] detectSupportedTypes(Value value) {

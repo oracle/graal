@@ -25,7 +25,9 @@ package com.oracle.truffle.api.test.polyglot;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertValue;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.ARRAY_ELEMENTS;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.BOOLEAN;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.EXECUTABLE;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.HOST_OBJECT;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.INSTANTIABLE;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.MEMBERS;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NULL;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NUMBER;
@@ -54,6 +56,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.TypeLiteral;
@@ -150,6 +153,18 @@ public class ValueAPITest {
                     new JavaSuperClass(),
                     new BigInteger("42"),
                     new BigDecimal("42"),
+                    new Function<Object, Object>() {
+                        public Object apply(Object t) {
+                            return t;
+                        }
+                    },
+                    new Supplier<String>() {
+                        public String get() {
+                            return "foobar";
+                        }
+                    },
+                    BigDecimal.class,
+                    Class.class,
                     Proxy.newProxyInstance(ValueAPITest.class.getClassLoader(), new Class[]{ProxyInterface.class}, new InvocationHandler() {
                         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
                             switch (method.getName()) {
@@ -169,8 +184,14 @@ public class ValueAPITest {
         assertTrue(context.asValue(new PrivateObject()).getMemberKeys().isEmpty());
 
         for (Object value : HOST_OBJECTS) {
-            if (value instanceof List) {
+            boolean functionalInterface = value instanceof Supplier || value instanceof Function;
+            boolean instantiable = value instanceof Class && value != Class.class;
+            if (functionalInterface) {
+                assertValue(context, context.asValue(value), MEMBERS, HOST_OBJECT, EXECUTABLE);
+            } else if (value instanceof List) {
                 assertValue(context, context.asValue(value), MEMBERS, HOST_OBJECT, ARRAY_ELEMENTS);
+            } else if (instantiable) {
+                assertValue(context, context.asValue(value), MEMBERS, HOST_OBJECT, INSTANTIABLE);
             } else {
                 assertValue(context, context.asValue(value), MEMBERS, HOST_OBJECT);
             }

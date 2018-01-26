@@ -29,10 +29,10 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.polyglot.ProxyTestLanguage.LanguageContext;
+import com.oracle.truffle.api.test.polyglot.ProxySPITestLanguage.LanguageContext;
 
-@TruffleLanguage.Registration(id = ProxyTestLanguage.ID, name = ProxyTestLanguage.ID, version = "1.0", mimeType = ProxyTestLanguage.MIME)
-public class ProxyTestLanguage extends TruffleLanguage<LanguageContext> {
+@TruffleLanguage.Registration(id = ProxySPITestLanguage.ID, name = ProxySPITestLanguage.ID, version = "1.0", mimeType = ProxySPITestLanguage.MIME)
+public class ProxySPITestLanguage extends TruffleLanguage<LanguageContext> {
 
     static final String ID = "ProxyTestLanguage";
     static final String MIME = "ProxyTestLanguage";
@@ -45,7 +45,7 @@ public class ProxyTestLanguage extends TruffleLanguage<LanguageContext> {
     }
 
     public static LanguageContext getContext() {
-        return getCurrentContext(ProxyTestLanguage.class);
+        return getCurrentContext(ProxySPITestLanguage.class);
     }
 
     @Override
@@ -72,7 +72,7 @@ public class ProxyTestLanguage extends TruffleLanguage<LanguageContext> {
 
     @Override
     protected LanguageContext createContext(Env env) {
-        LanguageContext ctx = new ProxyTestLanguage.LanguageContext();
+        LanguageContext ctx = new ProxySPITestLanguage.LanguageContext();
         ctx.env = env;
         return ctx;
     }
