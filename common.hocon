@@ -7,6 +7,11 @@ jdks: {
   labsjdk8 : {name : labsjdk, version : "8u151-jvmci-0.40", platformspecific: true}
   labsjdk9 : {name : labsjdk, version : "9+181", platformspecific: true}
   labsjdk8Debug : {name : labsjdk, version : "8u151-jvmci-0.40-fastdebug", platformspecific: true}
+
+  # Strictly speaking, this is labsjdk-jdk-hs-snapshot but for
+  # readability we use the java.specification.version reported by the snapshot.
+  # This means the name will change to labsjdk11 at some point.
+  labsjdk10 : {name : labsjdk, version : "20180130-162725", platformspecific: true}
 }
 
 # Overlay placeholder for pinning mx to a specific revision
@@ -19,6 +24,7 @@ labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug} }}
 # openjdk8 :      { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
 labsjdk9 :      { downloads : { JAVA_HOME : ${jdks.labsjdk9},   EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
+labsjdk10 :     { downloads : { JAVA_HOME : ${jdks.labsjdk10},  EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
 
 common : ${mx} {
   timelimit : "30:00"
