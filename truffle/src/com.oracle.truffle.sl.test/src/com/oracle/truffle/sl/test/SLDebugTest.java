@@ -40,14 +40,13 @@
  */
 package com.oracle.truffle.sl.test;
 
+import static com.oracle.truffle.tck.DebuggerTester.getSourceImpl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-
-import static com.oracle.truffle.tck.DebuggerTester.getSourceImpl;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -57,6 +56,10 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -72,11 +75,6 @@ import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tck.DebuggerTester;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
 
 public class SLDebugTest {
 
@@ -662,7 +660,7 @@ public class SLDebugTest {
             for (int i = 0; i < numStacksAt6;) {
                 assertTrue(sfIt.hasNext());
                 dsf = sfIt.next();
-                boolean inFac = dsf.getName() != null;
+                boolean inFac = dsf.getName() != null && !dsf.isInternal();
                 if (inFac) {
                     // Frame in fac function
                     assertEquals("fac", dsf.getName());
@@ -671,7 +669,6 @@ public class SLDebugTest {
                     i++;
                 } else {
                     // Frame in an interop method, internal
-                    assertEquals(null, dsf.getName());
                     assertNull(dsf.getSourceSection());
                     assertTrue(dsf.isInternal());
                     numInteropStacks++;
@@ -688,9 +685,10 @@ public class SLDebugTest {
             done[0] = true;
         })) {
             Assert.assertNotNull(session);
-            Value ret = fac.execute(new Object[]{10, multiply});
+            Value ret = fac.execute(10, multiply);
             assertNumber(ret.asLong(), 3628800L);
         }
+
         assertTrue(done[0]);
     }
 
@@ -799,6 +797,7 @@ public class SLDebugTest {
         }
     }
 
+    @FunctionalInterface
     public interface Fac {
         long fac(long n, Multiply multiply);
     }

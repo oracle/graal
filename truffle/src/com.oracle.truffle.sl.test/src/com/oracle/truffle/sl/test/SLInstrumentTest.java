@@ -46,7 +46,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import org.junit.Test;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -67,6 +66,7 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -85,12 +85,10 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-
 import com.oracle.truffle.sl.runtime.SLBigNumber;
 import com.oracle.truffle.tck.DebuggerTester;
 
@@ -467,16 +465,7 @@ public class SLInstrumentTest {
             if (value != null) {
                 assertEquals(name, value, map.get(name));
             } else {
-                try {
-                    map.get(name);
-                    fail(name + " should not allow to read the value.");
-                } catch (Exception ex) {
-                    if (ex instanceof UnsupportedMessageException) {
-                        // O.K.
-                    } else {
-                        throw new RuntimeException(ex);
-                    }
-                }
+                assertNull(map.get(name));
             }
         }
         assertEquals(map.keySet().toString(), expected.length / 2, map.size());

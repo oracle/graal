@@ -40,20 +40,23 @@
  */
 package com.oracle.truffle.sl.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.concurrent.Executor;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotRuntime;
 import com.oracle.truffle.sl.SLLanguage;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.concurrent.Executor;
-import org.junit.After;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import org.junit.Before;
-import org.junit.Test;
 
 public class SLSharedCodeSeparatedEnvLegacyTest implements Executor {
 
