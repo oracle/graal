@@ -57,7 +57,11 @@ public class WrappedConstantPool implements ConstantPool {
         try {
             wrapped.loadReferencedType(cpi, opcode);
         } catch (Throwable ex) {
-            throw new UnsupportedFeatureException("Error loading a referenced type: " + ex.toString(), ex);
+            Throwable cause = ex;
+            if (ex instanceof ExceptionInInitializerError && ex.getCause() != null) {
+                cause = ex.getCause();
+            }
+            throw new UnsupportedFeatureException("Error loading a referenced type: " + cause.toString(), cause);
         }
     }
 
