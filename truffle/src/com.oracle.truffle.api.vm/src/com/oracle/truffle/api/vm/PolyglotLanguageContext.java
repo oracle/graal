@@ -382,7 +382,6 @@ final class PolyglotLanguageContext implements VMObject {
         private ToGuestValuesNode() {
         }
 
-        @ExplodeLoop
         Object[] execute(Object[] args) {
             if (cachedLength == -1) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
