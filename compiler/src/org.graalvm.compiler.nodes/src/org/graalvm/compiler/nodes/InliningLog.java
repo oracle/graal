@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.nodes;
 
+import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
@@ -31,6 +32,7 @@ import org.graalvm.compiler.graph.Node;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
 /**
  * This class contains all inlining decisions performed on a graph during the compilation.
@@ -79,13 +81,18 @@ public class InliningLog {
         public ResolvedJavaMethod getTarget() {
             return target;
         }
+
+        @Override
+        public String toString() {
+            return String.format("%s - %s at %s:", positive ? "yes" : "no ", phase, target.format("%H.%n(%p)"), reason);
+        }
     }
 
-    private static class Callsite {
+    private class Callsite {
         public final List<Decision> decisions;
         public final List<Callsite> children;
         public Callsite parent;
-        public Invokable originalInvoke;
+        private Invokable originalInvoke;
 
         Callsite(Callsite parent, Invokable originalInvoke) {
             this.parent = parent;
@@ -99,12 +106,34 @@ public class InliningLog {
             children.add(child);
             return child;
         }
+
+        public String positionString() {
+            if (originalInvoke == null) {
+                return "<root>";
+            }
+            ResolvedJavaMethod targetMethod = parent.getOriginalInvoke() == null ? rootMethod : parent.getOriginalInvoke().getTargetMethod();
+            return MetaUtil.appendLocation(new StringBuilder(100), targetMethod, getBci()).toString();
+        }
+
+        public Invokable getOriginalInvoke() {
+            return originalInvoke;
+        }
+
+        public void setOriginalInvoke(Invokable originalInvoke) {
+            this.originalInvoke = originalInvoke;
+        }
+
+        public int getBci() {
+            return originalInvoke != null ? originalInvoke.bci() : -1;
+        }
     }
 
+    private ResolvedJavaMethod rootMethod;
     private final Callsite root;
     private final EconomicMap<Invokable, Callsite> leaves;
 
-    public InliningLog() {
+    public InliningLog(ResolvedJavaMethod rootMethod) {
+        this.rootMethod = rootMethod;
         this.root = new Callsite(null, null);
         this.leaves = EconomicMap.create();
     }
@@ -122,7 +151,7 @@ public class InliningLog {
                 Invokable invokeFromCallee = entries.getKey();
                 Callsite callsiteFromCallee = entries.getValue();
                 Invokable inlinedInvokeFromCallee = (Invokable) duplicationMap.get(invokeFromCallee.asFixedNode());
-                callsiteFromCallee.originalInvoke = inlinedInvokeFromCallee;
+                callsiteFromCallee.setOriginalInvoke(inlinedInvokeFromCallee);
                 leaves.put(inlinedInvokeFromCallee, callsiteFromCallee);
             }
             for (Callsite child : calleeLog.root.children) {
@@ -193,6 +222,21 @@ public class InliningLog {
         Callsite callsite = leaves.get(previousInvoke);
         leaves.removeKey(previousInvoke);
         leaves.put(newInvoke, callsite);
-        callsite.originalInvoke = newInvoke;
+        callsite.setOriginalInvoke(newInvoke);
+    }
+
+    public String formatAsTree() {
+        StringBuilder builder = new StringBuilder(512);
+        formatAsTree(root, "", builder);
+        return builder.toString();
+    }
+
+    private void formatAsTree(Callsite site, String indent, StringBuilder builder) {
+        String position = site.positionString();
+        String decision = String.join(System.lineSeparator() + indent + "    ", site.decisions.stream().map(d -> d.toString()).collect(Collectors.toList()));
+        builder.append(indent).append(position).append(": ").append(decision).append(System.lineSeparator());
+        for (Callsite child : site.children) {
+            formatAsTree(child, indent + "  ", builder);
+        }
     }
 }

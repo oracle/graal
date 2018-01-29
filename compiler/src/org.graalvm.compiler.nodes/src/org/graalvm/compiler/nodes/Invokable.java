@@ -33,6 +33,8 @@ import org.graalvm.compiler.graph.Node;
 public interface Invokable {
     ResolvedJavaMethod getTargetMethod();
 
+    int bci();
+
     FixedNode asFixedNode();
 
     default void updateInliningLogAfterRegister(StructuredGraph newGraph) {
@@ -48,7 +50,6 @@ public interface Invokable {
             // At this point, the invokable node was already added to the inlining log
             // in the call to updateInliningLogAfterRegister, so we need to remove it.
             InliningLog log = asFixedNode().graph().getInliningLog();
-            assert log.containsLeafCallsite(this);
             assert other instanceof Invokable;
             log.removeLeafCallsite(this);
             if (log.getUpdateScope() != null) {
@@ -57,6 +58,7 @@ public interface Invokable {
             } else if (other.graph() == this.asFixedNode().graph()) {
                 // This node was cloned as part of duplication.
                 // We need to add it as a sibling of the node other.
+                assert log.containsLeafCallsite(this) : "Node " + this + " not contained in the log.";
                 log.trackDuplicatedCallsite((Invokable) other, this);
             } else {
                 // This node was added from a different graph.

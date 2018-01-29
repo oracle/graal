@@ -111,7 +111,8 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable, 
         return arguments.toArray(new ValueNode[0]);
     }
 
-    public int getBci() {
+    @Override
+    public int bci() {
         return bci;
     }
 

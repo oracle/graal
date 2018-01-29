@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.core.common;
 
+import org.graalvm.compiler.options.EnumOptionKey;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -275,6 +276,6 @@ public final class GraalOptions {
     public static final OptionKey<Boolean> TraceRA = new OptionKey<>(false);
 
     @Option(help = "How to trace inlining decisions, one of: None, Linear, Tree", type = OptionType.Debug)
-    public static final OptionKey<TraceInliningMode> TraceInlining = new OptionKey<>(TraceInliningMode.None);
+    public static final OptionKey<TraceInliningMode> TraceInlining = new EnumOptionKey<>(TraceInliningMode.None);
 
 }

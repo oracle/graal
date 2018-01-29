@@ -294,6 +294,7 @@ public class InliningUtil extends ValueMergeUtil {
      * @param reason the reason for inlining, used in tracing
      * @param phase the phase that invoked inlining
      */
+    @SuppressWarnings("try")
     public static UnmodifiableEconomicMap<Node, Node> inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck, ResolvedJavaMethod inlineeMethod, String reason, String phase) {
         FixedNode invokeNode = invoke.asNode();
         StructuredGraph graph = invokeNode.graph();
