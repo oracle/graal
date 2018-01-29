@@ -113,9 +113,9 @@ public class ValueAPITest {
                     (byte) 0, (byte) 1, Byte.MAX_VALUE, Byte.MIN_VALUE,
                     (short) 0, (short) 1, Short.MAX_VALUE, Short.MIN_VALUE,
                     0, 1, Integer.MAX_VALUE, Integer.MIN_VALUE,
-                    (long) 0, (long) 1, Long.MAX_VALUE, Long.MIN_VALUE,
-                    (float) 0, 0.24f, -0f, Float.MAX_VALUE, Float.MIN_VALUE, Float.NaN, Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.MIN_NORMAL,
-                    (double) 0, (double) 0.24f, -0d, Double.MAX_VALUE, Double.MIN_VALUE, Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.MIN_NORMAL,
+                    0L, 1L, Long.MAX_VALUE, Long.MIN_VALUE,
+                    0f, 0.24f, -0f, Float.MAX_VALUE, Float.MIN_VALUE, Float.NaN, Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.MIN_NORMAL,
+                    0d, 0.24d, -0d, Double.MAX_VALUE, Double.MIN_VALUE, Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.MIN_NORMAL,
     };
 
     @Test

@@ -189,12 +189,11 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
             public Entry<K, V> next() {
                 if (hasNext()) {
                     Number key;
-                    if (cache.keyClass == Long.class) {
-                        key = (long) index;
+                    if (cache.keyClass == Integer.class) {
+                        key = (int) index;
                     } else {
                         key = index;
                     }
-                    // TODO support more number types?
                     index++;
                     return new TruffleEntry((K) cache.keyClass.cast(key));
                 } else {
