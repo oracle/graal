@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -345,7 +344,7 @@ class FunctionProxyNode extends HostEntryRootNode<TruffleObject> implements Supp
 
     static CallTarget lookup(Object languageContext, Class<?> receiverClass, Method method) {
         EngineSupport engine = JavaInterop.ACCESSOR.engine();
-        if (engine == null || languageContext == null) {
+        if (engine == null) {
             return createTarget(new FunctionProxyNode(receiverClass, method));
         }
         FunctionProxyNode node = new FunctionProxyNode(receiverClass, method);
@@ -450,7 +449,7 @@ class ObjectProxyNode extends HostEntryRootNode<TruffleObject> implements Suppli
     protected Object executeImpl(Object languageContext, TruffleObject receiver, Object[] args, int offset) {
         if (proxyInvoke == null || toGuests == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            toGuests = JavaInterop.ACCESSOR.engine().createToGuestValuesNode();
+            toGuests = createToGuestValuesNode();
             proxyInvoke = ProxyInvokeNodeGen.create();
         }
         Method method = (Method) args[offset];
@@ -477,7 +476,7 @@ class ObjectProxyNode extends HostEntryRootNode<TruffleObject> implements Suppli
 
     static CallTarget lookup(Object languageContext, Class<?> receiverClass, Class<?> interfaceClass) {
         EngineSupport engine = JavaInterop.ACCESSOR.engine();
-        if (engine == null || languageContext == null) {
+        if (engine == null) {
             return createTarget(new ObjectProxyNode(receiverClass, interfaceClass));
         }
         ObjectProxyNode node = new ObjectProxyNode(receiverClass, interfaceClass);

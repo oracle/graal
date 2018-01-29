@@ -93,7 +93,7 @@ public class ExchangingObjectsForbiddenTest {
         myEngine = PolyglotEngine.newBuilder().globalSymbol("myObj", myObj).build();
         myObjWrapped = myEngine.findGlobalSymbol("myObj");
         assertNotNull(myObjWrapped.get());
-        assertThat(myObjWrapped.get(), CoreMatchers.instanceOf(Function.class));
+        assertThat(myObjWrapped.get(), CoreMatchers.instanceOf(TruffleObject.class));
         myObjCall = myObjWrapped.as(CallWithValue.class);
 
         otherObj = new MyObj();
@@ -124,6 +124,13 @@ public class ExchangingObjectsForbiddenTest {
             protected Object access(MyObj obj, Object... value) {
                 obj.value = value[0];
                 return JavaInterop.asTruffleValue(null);
+            }
+        }
+
+        @Resolve(message = "IS_EXECUTABLE")
+        abstract static class IsExectuableNode extends Node {
+            protected Object access(@SuppressWarnings("unused") MyObj obj) {
+                return true;
             }
         }
     }

@@ -141,8 +141,8 @@ public class PrimitiveRawArrayInteropTest {
     public void errorIsPropagated() {
         try {
             assertNull(interop.arr(666));
-        } catch (ThreadDeath ex) {
-            assertEquals("simulation", ex.getMessage());
+        } catch (PolyglotException ex) {
+            assertTrue(ex.isInternalError());
             return;
         }
         fail("SimulatedDeath should have been thrown");

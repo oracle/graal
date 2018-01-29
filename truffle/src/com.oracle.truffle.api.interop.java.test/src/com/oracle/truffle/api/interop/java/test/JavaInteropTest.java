@@ -98,20 +98,6 @@ public class JavaInteropTest {
     private XYPlus xyp;
     private boolean assertThisCalled;
 
-    private Context context;
-
-    @Before
-    public void enterContext() {
-        context = Context.create();
-        context.enter();
-    }
-
-    @After
-    public void leaveContext() {
-        context.leave();
-        context.close();
-    }
-
     @Before
     public void initObjects() {
         data = new Data();
@@ -1200,8 +1186,7 @@ public class JavaInteropTest {
         private final int nBits;    // internal
 
         /**
-         * @param iBits bits at property number indexes, where '1' means internal, '0' means
-         *            non-internal.
+         * @param iBits bits at property number indexes, where '1' means internal, '0' means non-internal.
          */
         InternalPropertiesObject(int iBits) {
             this(-1, -1, -1, iBits);

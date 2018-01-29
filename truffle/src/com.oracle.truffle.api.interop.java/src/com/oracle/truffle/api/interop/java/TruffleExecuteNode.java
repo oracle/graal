@@ -43,11 +43,13 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 
 final class TruffleExecuteNode extends Node {
 
+    private static final Object[] EMPTY = new Object[0];
+
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
     @Child private Node isInstantiable = Message.IS_INSTANTIABLE.createNode();
     @Child private Node execute = Message.createExecute(0).createNode();
     @Child private Node instantiate = Message.createNew(0).createNode();
-    private final BiFunction<Object, Object[], Object[]> toGuests = JavaInterop.ACCESSOR.engine().createToGuestValuesNode();
+    private final BiFunction<Object, Object[], Object[]> toGuests = HostEntryRootNode.createToGuestValuesNode();
     private final ConditionProfile condition = ConditionProfile.createBinaryProfile();
     @Child private ToJavaNode toHost = ToJavaNode.create();
 
@@ -57,7 +59,11 @@ final class TruffleExecuteNode extends Node {
         if (functionArgsObject instanceof Object[]) {
             argsArray = (Object[]) functionArgsObject;
         } else {
-            argsArray = new Object[]{functionArgsObject};
+            if (functionArgsObject == null) {
+                argsArray = EMPTY;
+            } else {
+                argsArray = new Object[]{functionArgsObject};
+            }
         }
         Object[] functionArgs = toGuests.apply(languageContext, argsArray);
         Object result;
@@ -75,7 +81,7 @@ final class TruffleExecuteNode extends Node {
             throw HostEntryRootNode.newIllegalArgumentException("Illegal argument provided.");
         } catch (ArityException e) {
             CompilerDirectives.transferToInterpreter();
-            throw HostEntryRootNode.newIllegalArgumentException("Illegal number of arguments.");
+            throw HostEntryRootNode.newIllegalArgumentException(String.format("Illegal number of arguments. Expected %s got %s.", e.getExpectedArity(), e.getActualArity()));
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw HostEntryRootNode.newUnsupportedOperationException("Unsupported operation.");

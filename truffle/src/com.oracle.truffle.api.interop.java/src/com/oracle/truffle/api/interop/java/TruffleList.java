@@ -124,12 +124,12 @@ class TruffleList<T> extends AbstractList<T> {
         }
 
         private static CallTarget initializeCall(TruffleListNode node) {
-            return Truffle.getRuntime().createCallTarget(JavaInterop.ACCESSOR.engine().wrapHostBoundary(node, node));
+            return HostEntryRootNode.createTarget(node);
         }
 
         static TruffleListCache lookup(Object languageContext, Class<?> receiverClass, Class<?> valueClass, Type valueType) {
             EngineSupport engine = JavaInterop.ACCESSOR.engine();
-            if (engine == null || languageContext == null) {
+            if (engine == null) {
                 return new TruffleListCache(receiverClass, valueClass, valueType);
             }
             Key cacheKey = new Key(receiverClass, valueClass, valueType);
@@ -271,7 +271,7 @@ class TruffleList<T> extends AbstractList<T> {
             @Child private Node write = Message.WRITE.createNode();
             @Child private ToJavaNode toHost = ToJavaNode.create();
             @Child private Node hasSize = Message.HAS_SIZE.createNode();
-            private final BiFunction<Object, Object, Object> toGuest = JavaInterop.ACCESSOR.engine().createToGuestValueNode();
+            private final BiFunction<Object, Object, Object> toGuest = createToGuestValueNode();
 
             Set(TruffleListCache cache) {
                 super(cache);

@@ -215,6 +215,9 @@ abstract class ToJavaNode extends Node {
             obj = JavaObject.valueOf(truffleObject);
         } else if (targetType == Object.class) {
             obj = convertToObject(truffleObject, languageContext);
+        } else if (languageContext == null && targetType.isInstance(truffleObject)) {
+            // legacy support for cast rather than wrap
+            return targetType.cast(truffleObject);
         } else if (targetType == List.class) {
             if (primitive.hasSize(truffleObject)) {
                 boolean implementsFunction = shouldImplementFunction(truffleObject);

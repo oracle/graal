@@ -39,7 +39,7 @@ final class PolyglotEngineProfile {
     private final Assumption dynamicStoreAssumption = Truffle.getRuntime().createAssumption("constant context store");
 
     @CompilationFinal private WeakReference<PolyglotEngine> constantStore;
-    @CompilationFinal private volatile boolean constantEntered;
+    @CompilationFinal private volatile int constantEntered;
 
     private volatile PolyglotEngine dynamicStore;
     @CompilationFinal private volatile Thread singleThread;
@@ -60,7 +60,7 @@ final class PolyglotEngineProfile {
         if (constantStoreAssumption.isValid()) {
             // we can skip the constantEntered check in compiled code, because we are assume we are
             // always entered in such cases.
-            store = (CompilerDirectives.inCompiledCode() || constantEntered) ? constantStore.get() : null;
+            store = (CompilerDirectives.inCompiledCode() || constantEntered > 0) ? constantStore.get() : null;
         } else if (dynamicStoreAssumption.isValid()) {
             // multiple context single thread
             store = dynamicStore;
@@ -76,7 +76,7 @@ final class PolyglotEngineProfile {
         // reference.
         if (constantStoreAssumption.isValid()) {
             assert prev == null;
-            constantEntered = false;
+            constantEntered--;
         } else if (dynamicStoreAssumption.isValid()) {
             dynamicStore = prev;
             assert singleThread == Thread.currentThread();
@@ -91,7 +91,7 @@ final class PolyglotEngineProfile {
         assert store != null;
         if (constantStoreAssumption.isValid()) {
             if (constantStore.get() == store) {
-                constantEntered = true;
+                constantEntered++;
                 return null;
             }
         } else if (dynamicStoreAssumption.isValid()) {
@@ -126,7 +126,7 @@ final class PolyglotEngineProfile {
             if (constantStore.get() == null) {
                 constantStore = new WeakReference<>(engine);
                 singleThread = Thread.currentThread();
-                constantEntered = true;
+                constantEntered++;
                 return null;
             } else {
                 constantStoreAssumption.invalidate();

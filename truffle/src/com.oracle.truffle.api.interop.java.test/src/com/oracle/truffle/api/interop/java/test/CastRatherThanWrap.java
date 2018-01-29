@@ -35,6 +35,7 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.vm.PolyglotEngine;
 
 public class CastRatherThanWrap {
 
@@ -78,6 +79,7 @@ public class CastRatherThanWrap {
 
     @Test
     public void castTruffleObjectIfPossible() throws Exception {
+        PolyglotEngine.newBuilder().build().dispose();
         ExecutableObject execObj = new ExecutableObject();
         TruffleObject thiz = JavaInterop.asTruffleObject(this);
 

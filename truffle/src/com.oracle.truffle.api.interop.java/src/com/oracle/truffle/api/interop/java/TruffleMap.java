@@ -288,12 +288,12 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
         }
 
         private static CallTarget initializeCall(TruffleMapNode node) {
-            return Truffle.getRuntime().createCallTarget(JavaInterop.ACCESSOR.engine().wrapHostBoundary(node, node));
+            return HostEntryRootNode.createTarget(node);
         }
 
         static TruffleMapCache lookup(Object languageContext, Class<?> receiverClass, Class<?> keyClass, Class<?> valueClass, Type valueType) {
             EngineSupport engine = JavaInterop.ACCESSOR.engine();
-            if (engine == null || languageContext == null) {
+            if (engine == null) {
                 return new TruffleMapCache(receiverClass, keyClass, valueClass, valueType);
             }
             Key cacheKey = new Key(receiverClass, keyClass, valueType);
@@ -490,7 +490,7 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
             @Child private Node read = Message.READ.createNode();
             @Child private Node write = Message.WRITE.createNode();
             @Child private ToJavaNode toHost = ToJavaNode.create();
-            private final BiFunction<Object, Object, Object> toGuest = JavaInterop.ACCESSOR.engine().createToGuestValueNode();
+            private final BiFunction<Object, Object, Object> toGuest = createToGuestValueNode();
 
             Put(TruffleMapCache cache) {
                 super(cache);

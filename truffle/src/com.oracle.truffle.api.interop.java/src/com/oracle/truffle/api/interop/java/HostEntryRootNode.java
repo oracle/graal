@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.interop.java;
 
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CallTarget;
@@ -93,6 +94,34 @@ public abstract class HostEntryRootNode<T> extends ExecutableNode implements Sup
             });
         }
         return Truffle.getRuntime().createCallTarget(support.wrapHostBoundary(node, node));
+    }
+
+    protected static BiFunction<Object, Object, Object> createToGuestValueNode() {
+        EngineSupport support = JavaInterop.ACCESSOR.engine();
+        if (support == null) {
+            return new BiFunction<Object, Object, Object>() {
+                public Object apply(Object t, Object u) {
+                    return JavaInterop.asTruffleValue(u);
+                }
+            };
+        }
+        return support.createToGuestValueNode();
+    }
+
+    protected static BiFunction<Object, Object[], Object[]> createToGuestValuesNode() {
+        EngineSupport support = JavaInterop.ACCESSOR.engine();
+        if (support == null) {
+            // legacy support
+            return new BiFunction<Object, Object[], Object[]>() {
+                public Object[] apply(Object t, Object[] u) {
+                    for (int i = 0; i < u.length; i++) {
+                        u[i] = JavaInterop.asTruffleValue(u[i]);
+                    }
+                    return u;
+                }
+            };
+        }
+        return support.createToGuestValuesNode();
     }
 
 }

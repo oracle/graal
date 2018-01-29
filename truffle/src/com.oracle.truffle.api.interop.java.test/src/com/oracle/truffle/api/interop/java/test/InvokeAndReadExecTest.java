@@ -66,7 +66,7 @@ public class InvokeAndReadExecTest {
         @Resolve(message = "INVOKE")
         abstract static class InvokeImpl extends Node {
             @SuppressWarnings("unused")
-            protected Object access(InvokeObject obj, String name, Object... args) {
+            protected Object access(TruffleObject obj, String name, Object... args) {
                 if (name.equals("test")) {
                     return "Invoked " + args[0];
                 }
@@ -77,7 +77,7 @@ public class InvokeAndReadExecTest {
         @Resolve(message = "KEYS")
         abstract static class KeysImpl extends Node {
             @SuppressWarnings("unused")
-            protected Object access(ReadExecObject obj) {
+            protected Object access(TruffleObject obj) {
                 return JavaInterop.asTruffleObject(Collections.singletonList("test"));
             }
         }
@@ -85,7 +85,7 @@ public class InvokeAndReadExecTest {
         @Resolve(message = "KEY_INFO")
         abstract static class KeyInfoImpl extends Node {
             @SuppressWarnings("unused")
-            protected int access(ReadExecObject obj, String name) {
+            protected int access(TruffleObject obj, String name) {
                 return name.equals("test") ? KeyInfo.newBuilder().setInvocable(true).build() : 0;
             }
         }
