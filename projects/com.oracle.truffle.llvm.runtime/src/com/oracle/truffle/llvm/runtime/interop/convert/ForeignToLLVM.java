@@ -108,6 +108,21 @@ public abstract class ForeignToLLVM extends LLVMNode {
         ANY,
         VOID,
         VARBIT;
+
+        public static ForeignToLLVMType getIntegerType(int bitWidth) {
+            switch (bitWidth) {
+                case 8:
+                    return ForeignToLLVMType.I8;
+                case 16:
+                    return ForeignToLLVMType.I16;
+                case 32:
+                    return ForeignToLLVMType.I32;
+                case 64:
+                    return ForeignToLLVMType.I64;
+                default:
+                    throw new IllegalStateException("There is no integer type with " + bitWidth + " bits defined");
+            }
+        }
     }
 
     public static ForeignToLLVMType convert(Type type) {

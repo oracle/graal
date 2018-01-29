@@ -37,9 +37,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
-public abstract class NativeProfiledMemMove extends LLVMMemMoveNode {
+public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemMoveNode {
     protected static final long MAX_JAVA_LEN = 256;
 
     @CompilationFinal private boolean inJava = true;
