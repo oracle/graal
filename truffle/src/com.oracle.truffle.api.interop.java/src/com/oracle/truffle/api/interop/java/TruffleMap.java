@@ -189,8 +189,8 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
             public Entry<K, V> next() {
                 if (hasNext()) {
                     Number key;
-                    if (cache.keyClass == Integer.class) {
-                        key = (int) index;
+                    if (cache.keyClass == Long.class) {
+                        key = (long) index;
                     } else {
                         key = index;
                     }
