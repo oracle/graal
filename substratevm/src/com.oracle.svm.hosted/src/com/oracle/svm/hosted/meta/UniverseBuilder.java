@@ -67,7 +67,6 @@ import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.base.NumUtil;
@@ -684,10 +683,26 @@ public class UniverseBuilder {
 
         TypeState allSynchronizedTypeState = bb.getAllSynchronizedTypeState();
         for (AnalysisType aType : allSynchronizedTypeState.types()) {
-            VMError.guarantee(aType.isInstanceClass(), "Synchronization on non-instance type: " + aType);
-            final HostedInstanceClass hostedInstanceClass = (HostedInstanceClass) hUniverse.lookup(aType);
-            hostedInstanceClass.setNeedMonitorField();
+            if (canHaveMonitorFields(aType)) {
+                final HostedInstanceClass hostedInstanceClass = (HostedInstanceClass) hUniverse.lookup(aType);
+                hostedInstanceClass.setNeedMonitorField();
+            }
         }
+    }
+
+    private boolean canHaveMonitorFields(AnalysisType aType) {
+        if (aType.isArray()) {
+            /* Monitor fields on arrays would increase the array header too much. */
+            return false;
+        }
+        if (aType.equals(aMetaAccess.lookupJavaType(String.class)) || aType.equals(aMetaAccess.lookupJavaType(DynamicHub.class))) {
+            /*
+             * We want String and DynamicHub instances to be immutable so that they can be in the
+             * read-only part of the image heap.
+             */
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -721,7 +736,7 @@ public class UniverseBuilder {
             for (AnalysisMethod method : waitNotifyAnalysisMethods) {
 
                 // If the method is never called, then I do not have to worry about it.
-                if (method == null) {
+                if (method == null || !method.isImplementationInvoked()) {
                     continue;
                 }
 
@@ -733,13 +748,11 @@ public class UniverseBuilder {
                 // All receiver types of a wait/notify call need the wait/notify field.
                 for (AnalysisType type : typesNeedWaitNotify) {
                     debug.log("type %s is a receiver for a wait/notify call", type);
-                    if (type.isInstanceClass()) {
+                    if (canHaveMonitorFields(type)) {
                         HostedInstanceClass hType = (HostedInstanceClass) hUniverse.lookup(type);
                         /* Wait and notify need a monitor and a condition. */
                         hType.setNeedMonitorField();
                         hType.setNeedWaitNotifyConditionField();
-                    } else {
-                        throw VMError.unsupportedFeature("wait/notify called on non-instance type: " + type.toJavaName(true));
                     }
                 }
             }

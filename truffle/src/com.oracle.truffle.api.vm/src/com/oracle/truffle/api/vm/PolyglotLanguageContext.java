@@ -386,7 +386,6 @@ final class PolyglotLanguageContext implements VMObject {
         }
 
         @Override
-        @ExplodeLoop
         public Object[] apply(Object languageContext, Object[] args) {
             if (cachedLength == -1) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -683,7 +682,17 @@ final class PolyglotLanguageContext implements VMObject {
 
         @Override
         public void uncaughtException(Thread t, Throwable e) {
-            e.printStackTrace(new PrintStream(env.err()));
+            Env currentEnv = env;
+            if (currentEnv != null) {
+                try {
+                    e.printStackTrace(new PrintStream(currentEnv.err()));
+                } catch (Throwable exc) {
+                    // Still show the original error if printing on Env.err() fails for some reason
+                    e.printStackTrace();
+                }
+            } else {
+                e.printStackTrace();
+            }
         }
     }
 

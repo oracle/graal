@@ -196,7 +196,7 @@ suite = {
                 "resources"
             ],
             "dependencies": [
-                "com.oracle.svm.truffle.nfi",
+                "com.oracle.svm.hosted",
             ],
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
@@ -325,6 +325,7 @@ suite = {
             "checkstyle": "com.oracle.svm.truffle",
             "javaCompliance": "1.8",
             "annotationProcessors": [
+                "truffle:TRUFFLE_DSL_PROCESSOR",
             ],
             "workingSets": "SVM",
         },
@@ -384,6 +385,24 @@ suite = {
             ],
             "workingSets": "SVM",
             "findbugs": "false",
+        },
+
+        "bootstrap.native-image" : {
+            "class" : "BootstrapNativeImage",
+            "buildDependencies": [
+                "SVM_DRIVER",
+                "SVM",
+                "LIBRARY_SUPPORT"
+            ],
+            "svm" : [
+                "SVM"
+            ],
+            "svmSupport" : [
+                "LIBRARY_SUPPORT"
+            ],
+            "graal" : [
+                "compiler:GRAAL"
+            ],
         },
     },
 
@@ -481,9 +500,7 @@ suite = {
         "com.oracle.svm.driver",
       ],
       "distDependencies": [
-        "SVM",
         "LIBRARY_SUPPORT",
-        "truffle:TRUFFLE_NFI",
       ],
     },
 
@@ -499,5 +516,12 @@ suite = {
       ]
     },
 
+    "NATIVE_IMAGE": {
+      "native": True,
+      "dependencies": [
+        "bootstrap.native-image",
+      ],
+      "output": "svmbuild/native-image-root",
+    }
   },
 }

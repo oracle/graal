@@ -58,7 +58,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Communication between PolyglotEngine, TruffleLanguage API/SPI, and other services.
+ * Communication between TruffleLanguage API/SPI, and other services.
  */
 public abstract class Accessor {
 
@@ -311,7 +311,7 @@ public abstract class Accessor {
 
         public abstract OptionDescriptors describeOptions(TruffleLanguage<?> language, String requiredGroup);
 
-        public abstract void onThrowable(RootNode root, Throwable e);
+        public abstract void onThrowable(Node callNode, RootCallTarget root, Throwable e, Frame frame);
 
         public abstract boolean isThreadAccessAllowed(LanguageInfo env, Thread current, boolean singleThread);
 
@@ -401,7 +401,7 @@ public abstract class Accessor {
         protected abstract boolean getMaterializeCalled(FrameDescriptor descriptor);
     }
 
-    private static Accessor.LanguageSupport API;
+    @CompilationFinal private static Accessor.LanguageSupport API;
     @CompilationFinal private static Accessor.EngineSupport SPI;
     private static Accessor.Nodes NODES;
     private static Accessor.InstrumentSupport INSTRUMENTHANDLER;
@@ -464,19 +464,6 @@ public abstract class Accessor {
     private static void conditionallyInitInstrumentation() throws IllegalStateException {
         try {
             Class.forName("com.oracle.truffle.api.instrumentation.InstrumentationHandler", true, Accessor.class.getClassLoader());
-        } catch (ClassNotFoundException ex) {
-            boolean assertOn = false;
-            assert assertOn = true;
-            if (!assertOn) {
-                throw new IllegalStateException(ex);
-            }
-        }
-    }
-
-    @SuppressWarnings("all")
-    private static void conditionallyInitEngine() throws IllegalStateException {
-        try {
-            Class.forName("com.oracle.truffle.api.vm.PolyglotEngine", true, Accessor.class.getClassLoader());
         } catch (ClassNotFoundException ex) {
             boolean assertOn = false;
             assert assertOn = true;

@@ -52,7 +52,7 @@ public final class NFIInitialization {
         int alignment = ffiType.alignment();
 
         TruffleNFISupport support = ImageSingletons.lookup(TruffleNFISupport.class);
-        Target_com_oracle_truffle_nfi_NFIContext context = support.resolveContextHandle(ctx.contextHandle());
+        Target_com_oracle_truffle_nfi_impl_NFIContext context = support.resolveContextHandle(ctx.contextHandle());
         context.initializeSimpleType(simpleType, size, alignment, ffiType.rawValue());
     }
 

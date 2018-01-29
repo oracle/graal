@@ -125,7 +125,7 @@ public final class TypeDescriptor {
      * @see Value#canExecute().
      * @since 0.30
      */
-    public static final TypeDescriptor EXECUTABLE = new TypeDescriptor(new ExecutableImpl(ExecutableImpl.Kind.BOTTOM, ANY.impl, Collections.emptyList()));
+    public static final TypeDescriptor EXECUTABLE = new TypeDescriptor(new ExecutableImpl(ExecutableImpl.Kind.BOTTOM, ANY.impl, true, Collections.emptyList()));
 
     /**
      * Represents a raw executable type. Any executable can be assigned into the raw executable
@@ -143,7 +143,7 @@ public final class TypeDescriptor {
      * @see TypeDescriptor#EXECUTABLE
      * @since 1.0
      */
-    public static final TypeDescriptor EXECUTABLE_ANY = new TypeDescriptor(new ExecutableImpl(ExecutableImpl.Kind.TOP, ANY.impl, Collections.emptyList()));
+    public static final TypeDescriptor EXECUTABLE_ANY = new TypeDescriptor(new ExecutableImpl(ExecutableImpl.Kind.TOP, ANY.impl, true, Collections.emptyList()));
 
     private static final TypeDescriptor[] PREDEFINED_TYPES = new TypeDescriptor[]{
                     NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, NATIVE_POINTER, OBJECT, ARRAY, EXECUTABLE, EXECUTABLE_ANY, ANY
@@ -442,6 +442,23 @@ public final class TypeDescriptor {
      * @since 0.30
      */
     public static TypeDescriptor executable(TypeDescriptor returnType, TypeDescriptor... parameterTypes) {
+        return executable(returnType, true, parameterTypes);
+    }
+
+    /**
+     * Creates a new executable type with a given return type and parameter types.
+     *
+     * @param returnType the required return type, use ANY as any type
+     * @param vararg the executable has variable length arguments or ignores additional parameters.
+     *            For executables created by the
+     *            {@link LanguageProvider#createValueConstructors(org.graalvm.polyglot.Context)} set
+     *            to {@code false} if the language neither ignores extra parameters nor the
+     *            executable has variable arguments length.
+     * @param parameterTypes the required parameter types
+     * @return an executable type
+     * @since 0.31
+     */
+    public static TypeDescriptor executable(TypeDescriptor returnType, boolean vararg, TypeDescriptor... parameterTypes) {
         Objects.requireNonNull(returnType, "Return type cannot be null");
         Objects.requireNonNull(parameterTypes, "Parameter types cannot be null");
         if (returnType.isAssignable(ANY) && parameterTypes.length == 0) {
@@ -452,7 +469,7 @@ public final class TypeDescriptor {
             Objects.requireNonNull(td, "Parameter types cannot contain null");
             paramTypeImpls.add(td.impl);
         }
-        return new TypeDescriptor(new ExecutableImpl(ExecutableImpl.Kind.UNIT, returnType.impl, paramTypeImpls));
+        return new TypeDescriptor(new ExecutableImpl(ExecutableImpl.Kind.UNIT, returnType.impl, vararg, paramTypeImpls));
     }
 
     /**
@@ -609,11 +626,13 @@ public final class TypeDescriptor {
 
         private final Kind kind;
         private final TypeDescriptorImpl retType;
+        private final boolean vararg;
         private final List<? extends TypeDescriptorImpl> paramTypes;
 
         ExecutableImpl(
                         final Kind kind,
                         final TypeDescriptorImpl retType,
+                        final boolean vararg,
                         final List<? extends TypeDescriptorImpl> paramTypes) {
             assert kind != null;
             assert retType != null;
@@ -621,6 +640,7 @@ public final class TypeDescriptor {
             assert kind == Kind.UNIT || (retType.equals(ANY.impl) && paramTypes.isEmpty());
             this.kind = kind;
             this.retType = retType;
+            this.vararg = vararg;
             this.paramTypes = paramTypes;
         }
 
@@ -647,6 +667,9 @@ public final class TypeDescriptor {
                     if (origExec.paramTypes.size() < byExec.paramTypes.size()) {
                         return false;
                     }
+                    if (!byExec.vararg && origExec.paramTypes.size() != byExec.paramTypes.size()) {
+                        return false;
+                    }
                     for (int i = 0; i < byExec.paramTypes.size(); i++) {
                         final TypeDescriptorImpl pt = origExec.paramTypes.get(i);
                         final TypeDescriptorImpl opt = byExec.paramTypes.get(i);
@@ -664,6 +687,7 @@ public final class TypeDescriptor {
         @Override
         public int hashCode() {
             int res = 17;
+            res = res * 31 + (vararg ? 1 : 0);
             res = res * 31 + kind.hashCode();
             res = res * 31 + retType.hashCode();
             for (TypeDescriptorImpl paramType : paramTypes) {
@@ -681,7 +705,7 @@ public final class TypeDescriptor {
                 return false;
             }
             final ExecutableImpl other = (ExecutableImpl) obj;
-            return kind == other.kind && retType.equals(other.retType) && paramTypes.equals(other.paramTypes);
+            return vararg == other.vararg && kind == other.kind && retType.equals(other.retType) && paramTypes.equals(other.paramTypes);
         }
 
         @Override
@@ -707,6 +731,9 @@ public final class TypeDescriptor {
                     break;
                 default:
                     throw new IllegalStateException("Unknown kind: " + kind);
+            }
+            if (vararg) {
+                sb.append(", *");
             }
             sb.append("):");
             sb.append(retType.isAssignable(retType, ANY.impl) ? "<any>" : retType);

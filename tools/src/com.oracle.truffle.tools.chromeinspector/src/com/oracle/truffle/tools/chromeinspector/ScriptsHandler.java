@@ -27,6 +27,7 @@ package com.oracle.truffle.tools.chromeinspector;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -60,6 +61,12 @@ public final class ScriptsHandler implements LoadSourceListener {
     public Script getScript(int id) {
         synchronized (sourceIDs) {
             return scripts.get(id);
+        }
+    }
+
+    public List<Script> getScripts() {
+        synchronized (sourceIDs) {
+            return Collections.unmodifiableList(scripts);
         }
     }
 

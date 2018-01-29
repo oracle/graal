@@ -310,8 +310,12 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
             } catch (BytecodeParserError ex) {
                 /* Rewrite some bytecode parsing errors as unsupported features. */
                 if (ex.getCause() instanceof UnsupportedFeatureException) {
-                    String message = "Bytecode parsing error: " + ex.getCause().getMessage();
-                    bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, message, ex.context(), ex.getCause());
+                    Throwable cause = ex;
+                    if (ex.getCause().getCause() != null) {
+                        cause = ex.getCause();
+                    }
+                    String message = cause.getMessage();
+                    bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, message, ex.context(), cause.getCause());
                 } else if (ex.getCause() instanceof ClassNotFoundException) {
                     String message = "Bytecode parsing error: " + ex.getMessage();
                     bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, message, ex.context(), ex.getCause());

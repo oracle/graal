@@ -60,6 +60,7 @@ import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Locale;
 import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 public class PosixUtils {
@@ -203,8 +204,13 @@ public class PosixUtils {
         }
     }
 
-    static int getpid() {
+    public static int getpid() {
         return Unistd.getpid();
+    }
+
+    public static int getpid(Process process) {
+        Target_java_lang_UNIXProcess instance = KnownIntrinsics.unsafeCast(process, Target_java_lang_UNIXProcess.class);
+        return instance.pid;
     }
 
     static int readSingle(FileDescriptor fd) throws IOException {

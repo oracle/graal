@@ -29,10 +29,9 @@
 #include "native.h"
 
 #include <string.h>
-#include <errno.h>
 #include "internal.h"
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NFIContext_loadLibrary(JNIEnv *env, jclass self, jlong context, jstring name, jint flags) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_loadLibrary(JNIEnv *env, jclass self, jlong context, jstring name, jint flags) {
     const char *utfName = (*env)->GetStringUTFChars(env, name, NULL);
     void *ret = dlopen(utfName, flags);
     if (ret == NULL) {
@@ -44,11 +43,12 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NFIContext_loadLibrary(JNIEn
     return (jlong) ret;
 }
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_NFIContext_freeLibrary(JNIEnv *env, jclass self, jlong handle) {
+JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_freeLibrary(JNIEnv *env, jclass self, jlong handle) {
     dlclose((void*) handle);
 }
 
 static jlong lookup(JNIEnv *env, jlong context, void *handle, jstring name) {
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
     const char *utfName = (*env)->GetStringUTFChars(env, name, NULL);
     // clear previous errors
     dlerror();
@@ -57,15 +57,14 @@ static jlong lookup(JNIEnv *env, jlong context, void *handle, jstring name) {
         const char *error = dlerror();
         // if error == NULL, the symbol was found, but really points to NULL
         if (error != NULL) {
-            struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
             (*env)->ThrowNew(env, ctx->UnsatisfiedLinkError, error);
         }
     }
     (*env)->ReleaseStringUTFChars(env, name, utfName);
-    return (jlong) ret;
+    return (jlong) check_intrinsify(ctx, ret);
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NFIContext_lookup(JNIEnv *env, jclass self, jlong context, jlong library, jstring name) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_lookup(JNIEnv *env, jclass self, jlong context, jlong library, jstring name) {
     if (library == 0) {
         return lookup(env, context, RTLD_DEFAULT, name);
     } else {

@@ -45,12 +45,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
@@ -62,7 +57,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -74,12 +69,10 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
-import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(java.lang.Object.class)
@@ -106,135 +99,19 @@ final class Target_java_lang_Object {
     @Substitute
     @TargetElement(name = "wait")
     private void waitSubst(long timeoutMillis) throws InterruptedException {
-        Util_java_lang_Object.wait(this, timeoutMillis);
+        ImageSingletons.lookup(MonitorSupport.class).wait(this, timeoutMillis);
     }
 
     @Substitute
     @TargetElement(name = "notify")
     private void notifySubst() {
-        Util_java_lang_Object.notify(this);
+        ImageSingletons.lookup(MonitorSupport.class).notify(this, false);
     }
 
     @Substitute
     @TargetElement(name = "notifyAll")
     private void notifyAllSubst() {
-        Util_java_lang_Object.notifyAll(this);
-    }
-}
-
-final class Util_java_lang_Object {
-
-    @SuppressFBWarnings(value = {"WA_AWAIT_NOT_IN_LOOP"}, justification = "This method is a wait implementation.")
-    protected static void wait(Object receiver, long timeoutMillis) throws InterruptedException {
-        /* Required checks on the arguments. */
-        /* (1) Have I already been interrupted? */
-        if (Thread.interrupted()) {
-            throw new InterruptedException("Object.wait(long), but this thread is already interrupted.");
-        }
-        /* (2) Is the timeout negative? (Also, convert from milliseconds to nanoseconds.) */
-        final long timeoutNanos = ensureTimeoutNanos(timeoutMillis);
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            /* (3) Does current thread hold the lock on the receiver? */
-            final Lock lock = ensureReceiverLocked(receiver, "Object.wait(long)");
-            /* Find the wait/notify condition field of the receiver, which might be null. */
-            final DynamicHub hub = ObjectHeader.readDynamicHubFromObject(receiver);
-            final int conditionOffset = hub.getWaitNotifyOffset();
-            VMError.guarantee(conditionOffset != 0, "Object.wait(long), but the receiver was not given a condition variable field.");
-            Object conditionField = KnownIntrinsics.convertUnknownValue(BarrieredAccess.readObject(receiver, conditionOffset), Condition.class);
-            final Condition condition;
-            if (conditionField == null) {
-                /* Get a new Condition object from the Lock. */
-                final Condition newCondition = lock.newCondition();
-                /* CompareAndSwap it in place of the null at the conditionOffset. */
-                if (!UnsafeAccess.UNSAFE.compareAndSwapObject(receiver, conditionOffset, null, newCondition)) {
-                    /* If I lose the race, use the condition some other thread installed. */
-                    conditionField = KnownIntrinsics.convertUnknownValue(BarrieredAccess.readObject(receiver, conditionOffset), Condition.class);
-                    condition = KnownIntrinsics.unsafeCast(conditionField, Condition.class);
-                } else {
-                    condition = newCondition;
-                }
-            } else {
-                /* Use the existing Condition object. */
-                condition = KnownIntrinsics.unsafeCast(conditionField, Condition.class);
-            }
-            /* Choose between await() or awaitNanos(long). */
-            if (timeoutNanos == 0L) {
-                condition.await();
-            } else {
-                condition.awaitNanos(timeoutNanos);
-            }
-        } else {
-            /* Single-threaded wait. */
-            if (timeoutMillis == 0) {
-                Thread.sleep(Long.MAX_VALUE);
-            } else {
-                Thread.sleep(timeoutMillis);
-            }
-        }
-    }
-
-    protected static void notify(Object receiver) {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            /* Make sure the current thread holds the lock on the receiver. */
-            ensureReceiverLocked(receiver, "Object.notify()");
-            /* Find the wait/notify condition field of the receiver. */
-            final DynamicHub hub = ObjectHeader.readDynamicHubFromObject(receiver);
-            final int conditionOffset = hub.getWaitNotifyOffset();
-            VMError.guarantee(conditionOffset != 0, "Object.wait(long), but the receiver was not given a condition variable field.");
-            Object conditionField = KnownIntrinsics.convertUnknownValue(BarrieredAccess.readObject(receiver, conditionOffset), Condition.class);
-            final Condition condition;
-            /* If the receiver does not have a condition field, then it has not been waited on. */
-            if (conditionField != null) {
-                condition = KnownIntrinsics.unsafeCast(conditionField, Condition.class);
-                condition.signal();
-            }
-        } else {
-            /* Single-threaded notify() is a no-op. */
-        }
-    }
-
-    protected static void notifyAll(Object receiver) {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            /* Make sure the current thread holds the lock on the receiver. */
-            ensureReceiverLocked(receiver, "Object.notifyAll()");
-            /* Find the wait/notify condition field of the receiver. */
-            final DynamicHub hub = ObjectHeader.readDynamicHubFromObject(receiver);
-            final int conditionOffset = hub.getWaitNotifyOffset();
-            VMError.guarantee(conditionOffset != 0, "Object.wait(long), but the receiver was not given a condition variable field.");
-            Object conditionField = KnownIntrinsics.convertUnknownValue(BarrieredAccess.readObject(receiver, conditionOffset), Condition.class);
-            final Condition condition;
-            /* If the receiver does not have a condition field, then it has not been waited on. */
-            if (conditionField != null) {
-                condition = KnownIntrinsics.unsafeCast(conditionField, Condition.class);
-                condition.signalAll();
-            }
-        } else {
-            /* Single-threaded notifyAll() is a no-op. */
-        }
-    }
-
-    /** Return the lock of the receiver. */
-    private static Lock ensureReceiverLocked(Object receiver, String methodName) {
-        final DynamicHub hub = ObjectHeader.readDynamicHubFromObject(receiver);
-        final int monitorOffset = hub.getMonitorOffset();
-        VMError.guarantee(monitorOffset != 0, "Util_java_lang_Object.ensureReceiverLocked, but the receiver was not given a lock field.");
-        final Object monitorField = BarrieredAccess.readObject(receiver, monitorOffset);
-        final ReentrantLock lockObject = KnownIntrinsics.unsafeCast(monitorField, ReentrantLock.class);
-        /* If the monitor field is null then it has not been locked by this thread. */
-        /* If there is a monitor, make sure it is locked by this thread. */
-        if ((lockObject == null) || (!lockObject.isHeldByCurrentThread())) {
-            throw new IllegalMonitorStateException(methodName + ", but the receiver is not locked by the current thread.");
-        }
-        return lockObject;
-    }
-
-    /** Return the timeout in nanoseconds. */
-    private static long ensureTimeoutNanos(long timeoutMillis) {
-        if (timeoutMillis < 0) {
-            throw new IllegalArgumentException("Object.wait(long), but timeout is negative.");
-        }
-        final long result = TimeUtils.millisToNanos(timeoutMillis);
-        return result;
+        ImageSingletons.lookup(MonitorSupport.class).notify(this, true);
     }
 }
 
@@ -772,6 +649,38 @@ final class Target_java_lang_Shutdown {
     @Substitute
     static void runAllFinalizers() {
         throw VMError.unsupportedFeature("java.lang.Shudown.runAllFinalizers()");
+    }
+}
+
+@TargetClass(java.lang.Package.class)
+final class Target_java_lang_Package {
+
+    @Alias
+    @SuppressWarnings({"unused"})
+    Target_java_lang_Package(String name,
+                    String spectitle, String specversion, String specvendor,
+                    String impltitle, String implversion, String implvendor,
+                    URL sealbase, ClassLoader loader) {
+    }
+
+    @Substitute
+    static Package getPackage(Class<?> c) {
+        if (c.isPrimitive() || c.isArray()) {
+            /* Arrays and primitives don't have a package. */
+            return null;
+        }
+
+        /* Logic copied from java.lang.Package.getPackage(java.lang.Class). */
+        String name = c.getName();
+        int i = name.lastIndexOf('.');
+        if (i != -1) {
+            name = name.substring(0, i);
+            Target_java_lang_Package pkg = new Target_java_lang_Package(name, null, null, null,
+                            null, null, null, null, null);
+            return KnownIntrinsics.unsafeCast(pkg, Package.class);
+        } else {
+            return null;
+        }
     }
 }
 

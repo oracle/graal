@@ -207,6 +207,13 @@ public final class InspectServerSession {
                                 json.optBoolean("generatePreview"),
                                 json.optBoolean("throwOnSideEffect"));
                 break;
+            case "Debugger.getPossibleBreakpoints":
+                json = cmd.getParams().getJSONObject();
+                resultParams = debugger.getPossibleBreakpoints(
+                                Location.create(json.getJSONObject("start")),
+                                Location.create(json.getJSONObject("end")),
+                                json.optBoolean("restrictToFunction"));
+                break;
             case "Debugger.getScriptSource":
                 resultParams = debugger.getScriptSource(cmd.getParams().getScriptId());
                 break;
@@ -258,6 +265,10 @@ public final class InspectServerSession {
             case "Debugger.continueToLocation":
                 debugger.continueToLocation(
                                 Location.create(cmd.getParams().getJSONObject().getJSONObject("location")), postProcessor);
+                break;
+            case "Debugger.restartFrame":
+                json = cmd.getParams().getJSONObject();
+                resultParams = debugger.restartFrame(cmd.getId(), json.optString("callFrameId"), postProcessor);
                 break;
             case "Debugger.setVariableValue":
                 json = cmd.getParams().getJSONObject();
@@ -416,7 +427,11 @@ public final class InspectServerSession {
                     if (resultParams == null) {
                         resultMsg = Result.emptyResultToJSONString(cmd.getId());
                     } else {
-                        resultMsg = new Result(resultParams).toJSONString(cmd.getId());
+                        if (resultParams.getJSONObject() != null) {
+                            resultMsg = new Result(resultParams).toJSONString(cmd.getId());
+                        } else {
+                            resultMsg = null;
+                        }
                     }
                 } catch (CommandProcessException cpex) {
                     resultMsg = new ErrorResponse(cmd.getId(), -32601, cpex.getLocalizedMessage()).toJSONString();
@@ -429,9 +444,11 @@ public final class InspectServerSession {
                     }
                     resultMsg = new ErrorResponse(cmd.getId(), -32601, "Processing of '" + cmd.getMethod() + "' has caused " + t.getLocalizedMessage()).toJSONString();
                 }
-                MessageListener listener = messageListener;
-                if (listener != null) {
-                    listener.sendMessage(resultMsg);
+                if (resultMsg != null) {
+                    MessageListener listener = messageListener;
+                    if (listener != null) {
+                        listener.sendMessage(resultMsg);
+                    }
                 }
                 postProcessor.run();
             }

@@ -284,6 +284,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     private ScheduleResult lastSchedule;
 
+    private final InliningLog inliningLog;
+
     /**
      * Records the methods that were used while constructing this graph, one entry for each time a
      * specific method is used.
@@ -328,6 +330,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.speculationLog = speculationLog;
         this.useProfilingInfo = useProfilingInfo;
         this.cancellable = cancellable;
+        this.inliningLog = new InliningLog();
     }
 
     public void setLastSchedule(ScheduleResult result) {
@@ -434,6 +437,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public void setStart(StartNode start) {
         this.start = start;
+    }
+
+    public InliningLog getInliningLog() {
+        return inliningLog;
     }
 
     /**

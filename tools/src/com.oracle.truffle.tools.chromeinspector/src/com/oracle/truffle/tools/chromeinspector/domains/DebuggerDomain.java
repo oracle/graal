@@ -48,6 +48,8 @@ public abstract class DebuggerDomain extends Domain {
 
     public abstract void setPauseOnExceptions(String state);
 
+    public abstract Params getPossibleBreakpoints(Location start, Location end, boolean restrictToFunction);
+
     public abstract Params getScriptSource(String scriptId) throws CommandProcessException;
 
     public abstract void pause();
@@ -73,6 +75,8 @@ public abstract class DebuggerDomain extends Domain {
     public abstract Params evaluateOnCallFrame(String callFrameId, String expression, String objectGroup,
                     boolean includeCommandLineAPI, boolean silent, boolean returnByValue, boolean generatePreview,
                     boolean throwOnSideEffect) throws CommandProcessException;
+
+    public abstract Params restartFrame(long cmdId, String callFrameId, CommandPostProcessor postProcessor) throws CommandProcessException;
 
     public abstract void setVariableValue(int scopeNumber, String variableName, CallArgument newValue, String callFrameId) throws CommandProcessException;
 

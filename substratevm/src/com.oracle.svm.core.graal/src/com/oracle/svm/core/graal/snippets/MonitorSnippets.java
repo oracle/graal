@@ -47,7 +47,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.compiler.replacements.Snippets;
 
-import com.oracle.svm.core.MonitorUtils;
+import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
@@ -145,8 +145,8 @@ public final class MonitorSnippets extends SubstrateTemplates implements Snippet
     }
 
     static class ForeignCalls {
-        static final SubstrateForeignCallDescriptor MONITOR_SNIPPETS_SLOW_PATH_MONITOR_ENTER = SnippetRuntime.findForeignCall(MonitorUtils.class, "monitorEnter", false);
-        static final SubstrateForeignCallDescriptor MONITOR_SNIPPETS_SLOW_PATH_MONITOR_EXIT = SnippetRuntime.findForeignCall(MonitorUtils.class, "monitorExit", false);
+        static final SubstrateForeignCallDescriptor MONITOR_SNIPPETS_SLOW_PATH_MONITOR_ENTER = SnippetRuntime.findForeignCall(MonitorSupport.class, "monitorEnter", false);
+        static final SubstrateForeignCallDescriptor MONITOR_SNIPPETS_SLOW_PATH_MONITOR_EXIT = SnippetRuntime.findForeignCall(MonitorSupport.class, "monitorExit", false);
         private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{MONITOR_SNIPPETS_SLOW_PATH_MONITOR_ENTER, MONITOR_SNIPPETS_SLOW_PATH_MONITOR_EXIT};
 
         @NodeIntrinsic(value = ForeignCallNode.class)

@@ -44,7 +44,7 @@ static void initializeFlag(JNIEnv *env, jclass NFIContext, jobject context, cons
     (*env)->SetIntField(env, context, field, value);
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NFIContext_initializeNativeContext(JNIEnv *env, jobject context) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_initializeNativeContext(JNIEnv *env, jobject context) {
     struct __TruffleContextInternal *ret = (struct __TruffleContextInternal *) malloc(sizeof(*ret));
 
     (*env)->GetJavaVM(env, &ret->javaVM);
@@ -54,23 +54,23 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NFIContext_initializeNativeC
     jclass CallTarget = (*env)->FindClass(env, "com/oracle/truffle/api/CallTarget");
     ret->CallTarget_call = (*env)->GetMethodID(env, CallTarget, "call", "([Ljava/lang/Object;)Ljava/lang/Object;");
 
-    jclass LibFFISignature = (*env)->FindClass(env, "com/oracle/truffle/nfi/LibFFISignature");
+    jclass LibFFISignature = (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFISignature");
     ret->LibFFISignature_cif = (*env)->GetFieldID(env, LibFFISignature, "cif", "J");
-    ret->LibFFISignature_argTypes = (*env)->GetFieldID(env, LibFFISignature, "argTypes", "[Lcom/oracle/truffle/nfi/LibFFIType;");
+    ret->LibFFISignature_argTypes = (*env)->GetFieldID(env, LibFFISignature, "argTypes", "[Lcom/oracle/truffle/nfi/impl/LibFFIType;");
 
-    jclass LibFFIType = (*env)->FindClass(env, "com/oracle/truffle/nfi/LibFFIType");
+    jclass LibFFIType = (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFIType");
     ret->LibFFIType_type = (*env)->GetFieldID(env, LibFFIType, "type", "J");
-    ret->LibFFIType_EnvType = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/LibFFIType$EnvType"));
-    ret->LibFFIType_ObjectType = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/LibFFIType$ObjectType"));
-    ret->LibFFIType_StringType = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/LibFFIType$StringType"));
+    ret->LibFFIType_EnvType = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFIType$EnvType"));
+    ret->LibFFIType_ObjectType = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFIType$ObjectType"));
+    ret->LibFFIType_StringType = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFIType$StringType"));
 
-    ret->NativeString = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/NativeString"));
+    ret->NativeString = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/NativeString"));
     ret->NativeString_nativePointer = (*env)->GetFieldID(env, ret->NativeString, "nativePointer", "J");
 
-    jclass NFIContext = (*env)->FindClass(env, "com/oracle/truffle/nfi/NFIContext");
+    jclass NFIContext = (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/NFIContext");
     ret->NFIContext_getNativeEnv = (*env)->GetMethodID(env, NFIContext, "getNativeEnv", "()J");
     ret->NFIContext_createClosureNativePointer = (*env)->GetMethodID(env, NFIContext, "createClosureNativePointer",
-            "(JJLcom/oracle/truffle/api/CallTarget;Lcom/oracle/truffle/nfi/LibFFISignature;)Lcom/oracle/truffle/nfi/ClosureNativePointer;");
+            "(JJLcom/oracle/truffle/api/CallTarget;Lcom/oracle/truffle/nfi/impl/LibFFISignature;)Lcom/oracle/truffle/nfi/impl/ClosureNativePointer;");
     ret->NFIContext_newClosureRef = (*env)->GetMethodID(env, NFIContext, "newClosureRef", "(J)V");
     ret->NFIContext_releaseClosureRef = (*env)->GetMethodID(env, NFIContext, "releaseClosureRef", "(J)V");
     ret->NFIContext_getClosureObject = (*env)->GetMethodID(env, NFIContext, "getClosureObject", "(J)Lcom/oracle/truffle/api/interop/TruffleObject;");
@@ -79,7 +79,7 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NFIContext_initializeNativeC
     ret->String = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "java/lang/String"));
     ret->UnsatisfiedLinkError = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "java/lang/UnsatisfiedLinkError"));
 
-    jclass LibFFIClosure_RetPatches = (*env)->FindClass(env, "com/oracle/truffle/nfi/LibFFIClosure$RetPatches");
+    jclass LibFFIClosure_RetPatches = (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFIClosure$RetPatches");
     ret->RetPatches_count = (*env)->GetFieldID(env, LibFFIClosure_RetPatches, "count", "I");
     ret->RetPatches_patches = (*env)->GetFieldID(env, LibFFIClosure_RetPatches, "patches", "[I");
     ret->RetPatches_objects = (*env)->GetFieldID(env, LibFFIClosure_RetPatches, "objects", "[Ljava/lang/Object;");
@@ -112,10 +112,13 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NFIContext_initializeNativeC
     initializeFlag(env, NFIContext, context, "RTLD_LAZY", RTLD_LAZY);
     initializeFlag(env, NFIContext, context, "RTLD_NOW", RTLD_NOW);
 
+
+    initialize_intrinsics(ret);
+
     return (jlong) ret;
 }
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_NFIContext_disposeNativeContext(JNIEnv *env, jclass clazz, jlong context) {
+JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_disposeNativeContext(JNIEnv *env, jclass clazz, jlong context) {
     struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
 
     (*env)->DeleteGlobalRef(env, ctx->NFIContext);
@@ -133,7 +136,7 @@ JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_NFIContext_disposeNativeConte
     free(ctx);
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NFIContext_initializeNativeEnv(JNIEnv *env, jclass clazz, jlong context) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_initializeNativeEnv(JNIEnv *env, jclass clazz, jlong context) {
     struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
 
     struct __TruffleEnvInternal *ret = (struct __TruffleEnvInternal *) malloc(sizeof(*ret));
@@ -144,11 +147,11 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NFIContext_initializeNativeE
     return (jlong) ret;
 }
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_NativeAllocation_free(JNIEnv *env, jclass self, jlong pointer) {
+JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_impl_NativeAllocation_free(JNIEnv *env, jclass self, jlong pointer) {
     free((void*) pointer);
 }
 
-JNIEXPORT jstring JNICALL Java_com_oracle_truffle_nfi_NativeString_toJavaString(JNIEnv *env, jclass self, jlong pointer) {
+JNIEXPORT jstring JNICALL Java_com_oracle_truffle_nfi_impl_NativeString_toJavaString(JNIEnv *env, jclass self, jlong pointer) {
     const char *str = (const char *) pointer;
     return (*env)->NewStringUTF(env, str);
 }

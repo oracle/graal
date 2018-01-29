@@ -37,6 +37,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.headers.CSunMiscSignal;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Signal;
@@ -114,11 +115,8 @@ final class Util_sun_misc_Signal {
     /** An initialization flag. */
     private static volatile boolean initialized = false;
 
-    /**
-     * A table of signals, handlers and whether a signal has been raised. Allocated during image
-     * building, but re-initialized at runtime.
-     */
-    private static SignalState[] signalState = allocateSignalState();
+    /** A map from signal numbers to handlers. */
+    private static SignalState[] signalState = null;
 
     private Util_sun_misc_Signal() {
         /* All-static class. */
@@ -149,23 +147,7 @@ final class Util_sun_misc_Signal {
         return result;
     }
 
-    /**
-     * Allocation of the signal state has to be done during image building so it does not move
-     * during collections.
-     */
-    private static SignalState[] allocateSignalState() {
-        final Signal.SignalEnum[] valueArray = Signal.SignalEnum.values();
-        final SignalState[] result = new SignalState[valueArray.length];
-        for (int index = 0; index < valueArray.length; index += 1) {
-            result[index] = new SignalState();
-        }
-        return result;
-    }
-
-    /**
-     * Runtime initialization. This method is called every time someone registers a Java signal
-     * handler.
-     */
+    /** Runtime initialization. */
     private static void ensureInitialized() throws IllegalArgumentException {
         /* Ask if initialization is needed. */
         if (!initialized) {
@@ -191,12 +173,22 @@ final class Util_sun_misc_Signal {
                         VMError.guarantee(false, "Util_sun_misc_Signal.ensureInitialized: CSunMiscSignal.open() failed.");
                     }
 
+                    /* Allocate the table of signal states. */
+                    final int signalCount = Signal.SignalEnum.values().length;
+                    /* Workaround for GR-7858: @Platform @CEnum members. */
+                    final int linuxSignalCount = IsDefined.isLinux() ? Signal.LinuxSignalEnum.values().length : 0;
                     /* Initialize the table of signal states. */
-                    final Signal.SignalEnum[] valueArray = Signal.SignalEnum.values();
-                    for (int index = 0; index < valueArray.length; index += 1) {
-                        final Signal.SignalEnum value = valueArray[index];
-                        final int cValue = value.getCValue();
-                        signalState[index].initialize(cValue);
+                    signalState = new SignalState[signalCount + linuxSignalCount];
+                    for (int index = 0; index < signalCount; index += 1) {
+                        final Signal.SignalEnum value = Signal.SignalEnum.values()[index];
+                        signalState[index] = new SignalState(value.name(), value.getCValue());
+                    }
+                    /* Workaround for GR-7858: @Platform @CEnum members. */
+                    if (IsDefined.isLinux()) {
+                        for (int index = 0; index < linuxSignalCount; index += 1) {
+                            final Signal.LinuxSignalEnum value = Signal.LinuxSignalEnum.values()[index];
+                            signalState[signalCount + index] = new SignalState(value.name(), value.getCValue());
+                        }
                     }
 
                     /* Create and start a daemon thread to dispatch to Java signal handlers. */
@@ -214,12 +206,14 @@ final class Util_sun_misc_Signal {
     }
 
     /** Map from a Java signal name to a signal number. */
-    protected static int numberFromName(String signalName) {
+    protected static int numberFromName(String javaSignalName) {
+        ensureInitialized();
         /* Java deals in signal names without the leading "SIG" prefix, but C uses it. */
-        final String sigSignalName = "SIG" + signalName;
-        for (Signal.SignalEnum s : Signal.SignalEnum.values()) {
-            if (s.name().equals(sigSignalName)) {
-                return s.getCValue();
+        final String cSignalName = "SIG" + javaSignalName;
+        for (int index = 0; index < signalState.length; index += 1) {
+            final SignalState entry = signalState[index];
+            if (entry.getName().equals(cSignalName)) {
+                return entry.getNumber();
             }
         }
         /* {@link sun.misc.Signal#findSignal(String)} expects a -1 on failure. */
@@ -228,11 +222,11 @@ final class Util_sun_misc_Signal {
 
     /** Update the dispatcher of an entry in the signal state table. */
     private static void updateDispatcher(int sig, Signal.SignalDispatcher dispatcher) {
-        final Signal.SignalEnum[] valueArray = Signal.SignalEnum.values();
-        for (int index = 0; index < valueArray.length; index += 1) {
+        for (int index = 0; index < signalState.length; index += 1) {
             final SignalState entry = signalState[index];
             if (entry.getNumber() == sig) {
                 entry.setDispatcher(dispatcher);
+                return;
             }
         }
     }
@@ -317,23 +311,24 @@ final class Util_sun_misc_Signal {
      */
     private static final class SignalState {
 
-        /** The C signal number this state represents. */
-        private int number;
-        /** The C signal handler for this signal number. */
+        /** The C signal name. */
+        private final String name;
+        /** The C signal number. */
+        private final int number;
+        /** The C signal handler. */
         private Signal.SignalDispatcher dispatcher;
 
         /** This just allocates an entry. The entry is initialized at runtime. */
-        protected SignalState() {
+        protected SignalState(String cName, int cValue) {
+            this.name = cName;
+            this.number = cValue;
+            this.dispatcher = Signal.SIG_DFL();
         }
 
-        protected void initialize(int cValue) {
-            number = cValue;
-            dispatcher = Signal.SIG_DFL();
+        protected String getName() {
+            return name;
         }
 
-        /* Access methods. */
-
-        @Uninterruptible(reason = "Called from uninterruptible code.")
         protected int getNumber() {
             return number;
         }

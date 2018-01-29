@@ -22,16 +22,18 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import java.util.function.Supplier;
+
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-
-import java.util.function.Supplier;
 
 final class GraalTVMCI extends TVMCI {
 
@@ -106,8 +108,8 @@ final class GraalTVMCI extends TVMCI {
     }
 
     @Override
-    protected void onThrowable(RootNode root, Throwable e) {
-        super.onThrowable(root, e);
+    protected void onThrowable(Node callNode, RootCallTarget root, Throwable e, Frame frame) {
+        super.onThrowable(callNode, root, e, frame);
     }
 
     @Override

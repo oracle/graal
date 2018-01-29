@@ -16,17 +16,9 @@ where options include:
                   set a system property
     -J<flag>      pass <flag> directly to the JVM running the image generator
     -g            enable debuginfo generation
-    -O<level>     0 - no optimizations, 1 - basic optimizations.
+    -O<level>     0 - no optimizations, 1 - basic optimizations (default).
     -ea           enable assertions in the generated image
-    -verbose
-                  enable verbose output
+    -verbose      enable verbose output
     -version      print product version and exit
     -? -help      print this help message
     -X            print help on non-standard options
-
-Truffle-language building options:
-
-    -nfi
-                  enable Truffle Native Interface support
-${TRUFFLE_HANDLER_OPTIONS}
-The image will automatically be built with polyglot-shell if more than one truffle-option is used.

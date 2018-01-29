@@ -24,18 +24,20 @@
  */
 package com.oracle.truffle.api.impl;
 
+import java.util.function.Supplier;
+
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.Accessor.InstrumentSupport;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-
-import java.util.function.Supplier;
 
 /**
  * An interface between Truffle API and hosting virtual machine. Not interesting for regular Truffle
@@ -169,10 +171,10 @@ public abstract class TVMCI {
         return Accessor.nodesAccess().isCloneUninitializedSupported(root);
     }
 
-    protected void onThrowable(RootNode root, Throwable e) {
+    protected void onThrowable(Node callNode, RootCallTarget root, Throwable e, Frame frame) {
         final Accessor.LanguageSupport language = Accessor.languageAccess();
         if (language != null) {
-            language.onThrowable(root, e);
+            language.onThrowable(callNode, root, e, frame);
         }
     }
 

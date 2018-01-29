@@ -51,7 +51,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MonitorUtils;
+import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.Alias;
@@ -911,10 +911,7 @@ final class JNIFunctions {
         if (obj == null) {
             throw new NullPointerException();
         }
-        if (obj instanceof Class) {
-            throw VMError.unsupportedFeature("Using JNI MonitorEnter and MonitorExit on java.lang.Class objects is currently not supported");
-        }
-        MonitorUtils.monitorEnter(obj);
+        MonitorSupport.monitorEnter(obj);
         assert Thread.holdsLock(obj);
         JNIThreadOwnedMonitors.entered(obj);
         return JNIErrors.JNI_OK();
@@ -930,13 +927,10 @@ final class JNIFunctions {
         if (obj == null) {
             throw new NullPointerException();
         }
-        if (obj instanceof Class) {
-            throw VMError.unsupportedFeature("Using JNI MonitorEnter and MonitorExit on java.lang.Class objects is currently not supported");
-        }
         if (!Thread.holdsLock(obj)) {
             throw new IllegalMonitorStateException();
         }
-        MonitorUtils.monitorExit(obj);
+        MonitorSupport.monitorExit(obj);
         JNIThreadOwnedMonitors.exited(obj);
         return JNIErrors.JNI_OK();
     }

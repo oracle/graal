@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.MonitorUtils;
+import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.CEntryPointSetup.EnterCreateIsolatePrologue;
@@ -187,7 +187,7 @@ final class JNIInvocationInterface {
         static void releaseCurrentThreadOwnedMonitors() {
             JNIThreadOwnedMonitors.forEach((obj, depth) -> {
                 for (int i = 0; i < depth; i++) {
-                    MonitorUtils.monitorExit(obj);
+                    MonitorSupport.monitorExit(obj);
                 }
                 assert !Thread.holdsLock(obj);
             });

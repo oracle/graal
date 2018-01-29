@@ -27,11 +27,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.UnsafeAccess;
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
-import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 
@@ -167,27 +163,14 @@ public class DiscoverableReference {
     static {
         try {
             /*
-             * Step 1 of offset computation: this computes the offset on the hosting VM during
-             * native image generation. It is not yet the correct offset at run time.
+             * This computes the offset on the hosting VM during native image generation. It is not
+             * yet the correct offset at run time. It will be automatically recomputed to the offset
+             * used at run time.
              */
             RAW_REFERENT_OFFSET = UnsafeAccess.UNSAFE.objectFieldOffset(DiscoverableReference.class.getDeclaredField("rawReferent"));
         } catch (NoSuchFieldException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
-    }
-
-    @TargetClass(DiscoverableReference.class)
-    static final class Target_com_oracle_svm_core_heap_DiscoverableReference {
-        // Checkstyle: stop
-        /*
-         * Step 2 of offset computation: rewrite the field to the offset used at run time. Using the
-         *
-         * @RecomputeFieldValue is easier than using a Feature class to get the run-time field
-         * offset.
-         */
-        @Alias @RecomputeFieldValue(kind = Kind.TranslateFieldOffset, declClass = DiscoverableReference.class) //
-        private static long RAW_REFERENT_OFFSET;
-        // Checkstyle: resume
     }
 
     /**

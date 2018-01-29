@@ -280,7 +280,9 @@ import org.graalvm.compiler.bytecode.Bytes;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
+import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.calc.Condition.CanonicalizedCondition;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
@@ -1900,7 +1902,7 @@ public class BytecodeParser implements GraphBuilderContext {
             LoadHubNode hub = graph.unique(new LoadHubNode(stampProvider, nonNullReceiver));
             LoadMethodNode actual = append(new LoadMethodNode(methodStamp, targetMethod, receiverType, method.getDeclaringClass(), hub));
             ConstantNode expected = graph.unique(ConstantNode.forConstant(methodStamp, targetMethod.getEncoding(), getMetaAccess()));
-            LogicNode compare = graph.addOrUniqueWithInputs(CompareNode.createCompareNode(constantReflection, metaAccess, options, null, Condition.EQ, actual, expected, NodeView.DEFAULT));
+            LogicNode compare = graph.addOrUniqueWithInputs(CompareNode.createCompareNode(constantReflection, metaAccess, options, null, CanonicalCondition.EQ, actual, expected, NodeView.DEFAULT));
 
             JavaTypeProfile profile = null;
             if (profilingInfo != null && this.optimisticOpts.useTypeCheckHints(getOptions())) {
@@ -3099,54 +3101,105 @@ public class BytecodeParser implements GraphBuilderContext {
 
         ValueNode a = x;
         ValueNode b = y;
+        BciBlock trueSuccessor = trueBlock;
+        BciBlock falseSuccessor = falseBlock;
+
+        CanonicalizedCondition canonicalizedCondition = cond.canonicalize();
 
         // Check whether the condition needs to mirror the operands.
-        if (cond.canonicalMirror()) {
+        if (canonicalizedCondition.mustMirror()) {
             a = y;
             b = x;
         }
+        if (canonicalizedCondition.mustNegate()) {
+            trueSuccessor = falseBlock;
+            falseSuccessor = trueBlock;
+        }
 
         // Create the logic node for the condition.
-        LogicNode condition = createLogicNode(cond, a, b);
+        LogicNode condition = createLogicNode(canonicalizedCondition.getCanonicalCondition(), a, b);
 
-        // Check whether the condition needs to negate the result.
-        boolean negate = cond.canonicalNegate();
-        genIf(condition, negate, trueBlock, falseBlock);
+        double probability = -1;
+        if (condition instanceof IntegerEqualsNode) {
+            probability = extractInjectedProbability((IntegerEqualsNode) condition);
+            // the probability coming from here is about the actual condition
+        }
+
+        if (probability == -1) {
+            probability = getProfileProbability(canonicalizedCondition.mustNegate());
+        }
+
+        probability = clampProbability(probability);
+        genIf(condition, trueSuccessor, falseSuccessor, probability);
     }
 
-    protected void genIf(LogicNode conditionInput, boolean negateCondition, BciBlock trueBlockInput, BciBlock falseBlockInput) {
+    private double getProfileProbability(boolean negate) {
+        double probability;
+        if (profilingInfo == null) {
+            probability = 0.5;
+        } else {
+            assert assertAtIfBytecode();
+            probability = profilingInfo.getBranchTakenProbability(bci());
+            if (probability < 0) {
+                assert probability == -1 : "invalid probability";
+                debug.log("missing probability in %s at bci %d", code, bci());
+                probability = 0.5;
+            } else {
+                if (negate) {
+                    // the probability coming from profile is about the original condition
+                    probability = 1 - probability;
+                }
+            }
+        }
+        return probability;
+    }
+
+    private static double extractInjectedProbability(IntegerEqualsNode condition) {
+        // Propagate injected branch probability if any.
+        IntegerEqualsNode equalsNode = condition;
+        BranchProbabilityNode probabilityNode = null;
+        ValueNode other = null;
+        if (equalsNode.getX() instanceof BranchProbabilityNode) {
+            probabilityNode = (BranchProbabilityNode) equalsNode.getX();
+            other = equalsNode.getY();
+        } else if (equalsNode.getY() instanceof BranchProbabilityNode) {
+            probabilityNode = (BranchProbabilityNode) equalsNode.getY();
+            other = equalsNode.getX();
+        }
+
+        if (probabilityNode != null && probabilityNode.getProbability().isConstant() && other != null && other.isConstant()) {
+            double probabilityValue = probabilityNode.getProbability().asJavaConstant().asDouble();
+            return other.asJavaConstant().asInt() == 0 ? 1.0 - probabilityValue : probabilityValue;
+        }
+        return -1;
+    }
+
+    protected void genIf(LogicNode conditionInput, BciBlock trueBlockInput, BciBlock falseBlockInput, double probabilityInput) {
         BciBlock trueBlock = trueBlockInput;
         BciBlock falseBlock = falseBlockInput;
         LogicNode condition = conditionInput;
+        double probability = probabilityInput;
         FrameState stateBefore = null;
         ProfilingPlugin profilingPlugin = this.graphBuilderConfig.getPlugins().getProfilingPlugin();
         if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
             stateBefore = frameState.create(bci(), getNonIntrinsicAncestor(), false, null, null);
         }
 
-        // Remove a logic negation node and fold it into the negate boolean.
-        boolean negate = negateCondition;
+        // Remove a logic negation node.
         if (condition instanceof LogicNegationNode) {
             LogicNegationNode logicNegationNode = (LogicNegationNode) condition;
-            negate = !negate;
+            BciBlock tmpBlock = trueBlock;
+            trueBlock = falseBlock;
+            falseBlock = tmpBlock;
+            probability = 1 - probability;
             condition = logicNegationNode.getValue();
         }
 
         if (condition instanceof LogicConstantNode) {
-            genConstantTargetIf(trueBlock, falseBlock, negate, condition);
+            genConstantTargetIf(trueBlock, falseBlock, condition);
         } else {
             if (condition.graph() == null) {
                 condition = genUnique(condition);
-            }
-
-            // Need to get probability based on current bci.
-            double probability = branchProbability(condition);
-
-            if (negate) {
-                BciBlock tmpBlock = trueBlock;
-                trueBlock = falseBlock;
-                falseBlock = tmpBlock;
-                probability = 1 - probability;
             }
 
             if (isNeverExecutedCode(probability)) {
@@ -3224,28 +3277,26 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
-    private LogicNode createLogicNode(Condition cond, ValueNode a, ValueNode b) {
-        LogicNode condition;
+    private LogicNode createLogicNode(CanonicalCondition cond, ValueNode a, ValueNode b) {
         assert !a.getStackKind().isNumericFloat();
-        if (cond == Condition.EQ || cond == Condition.NE) {
-            if (a.getStackKind() == JavaKind.Object) {
-                condition = genObjectEquals(a, b);
-            } else {
-                condition = genIntegerEquals(a, b);
-            }
-        } else {
-            assert a.getStackKind() != JavaKind.Object && !cond.isUnsigned();
-            condition = genIntegerLessThan(a, b);
+        switch (cond) {
+            case EQ:
+                if (a.getStackKind() == JavaKind.Object) {
+                    return genObjectEquals(a, b);
+                } else {
+                    return genIntegerEquals(a, b);
+                }
+            case LT:
+                assert a.getStackKind() != JavaKind.Object;
+                return genIntegerLessThan(a, b);
+            default:
+                throw GraalError.shouldNotReachHere("Unexpected condition: " + cond);
         }
-        return condition;
     }
 
-    private void genConstantTargetIf(BciBlock trueBlock, BciBlock falseBlock, boolean negate, LogicNode condition) {
+    private void genConstantTargetIf(BciBlock trueBlock, BciBlock falseBlock, LogicNode condition) {
         LogicConstantNode constantLogicNode = (LogicConstantNode) condition;
         boolean value = constantLogicNode.getValue();
-        if (negate) {
-            value = !value;
-        }
         BciBlock nextBlock = falseBlock;
         if (value) {
             nextBlock = trueBlock;
@@ -3799,7 +3850,13 @@ public class BytecodeParser implements GraphBuilderContext {
             BciBlock firstSucc = currentBlock.getSuccessor(0);
             BciBlock secondSucc = currentBlock.getSuccessor(1);
             if (firstSucc != secondSucc) {
-                genIf(instanceOfNode, value != Bytecodes.IFNE, firstSucc, secondSucc);
+                boolean negate = value != Bytecodes.IFNE;
+                if (negate) {
+                    BciBlock tmp = firstSucc;
+                    firstSucc = secondSucc;
+                    secondSucc = tmp;
+                }
+                genIf(instanceOfNode, firstSucc, secondSucc, getProfileProbability(negate));
             } else {
                 appendGoto(firstSucc);
             }
@@ -4287,47 +4344,12 @@ public class BytecodeParser implements GraphBuilderContext {
         return probability == 0 && optimisticOpts.removeNeverExecutedCode(getOptions());
     }
 
-    private double rawBranchProbability(LogicNode conditionInput) {
-        if (conditionInput instanceof IntegerEqualsNode) {
-            // Propagate injected branch probability if any.
-            IntegerEqualsNode condition = (IntegerEqualsNode) conditionInput;
-            BranchProbabilityNode injectedProbability = null;
-            ValueNode other = null;
-            if (condition.getX() instanceof BranchProbabilityNode) {
-                injectedProbability = (BranchProbabilityNode) condition.getX();
-                other = condition.getY();
-            } else if (condition.getY() instanceof BranchProbabilityNode) {
-                injectedProbability = (BranchProbabilityNode) condition.getY();
-                other = condition.getX();
-            }
-
-            if (injectedProbability != null && injectedProbability.getProbability().isConstant() && other != null && other.isConstant()) {
-                double probabilityValue = injectedProbability.getProbability().asJavaConstant().asDouble();
-                return other.asJavaConstant().asInt() == 0 ? 1.0 - probabilityValue : probabilityValue;
-            }
-        }
-
-        if (profilingInfo == null) {
-            return 0.5;
-        }
-        assert assertAtIfBytecode();
-
-        return profilingInfo.getBranchTakenProbability(bci());
-    }
-
-    protected double branchProbability(LogicNode conditionInput) {
-        double probability = rawBranchProbability(conditionInput);
-        if (probability < 0) {
-            assert probability == -1 : "invalid probability";
-            debug.log("missing probability in %s at bci %d", code, bci());
-            probability = 0.5;
-        }
-
+    private double clampProbability(double probability) {
         if (!optimisticOpts.removeNeverExecutedCode(getOptions())) {
             if (probability == 0) {
-                probability = 0.0000001;
+                return 0.0000001;
             } else if (probability == 1) {
-                probability = 0.999999;
+                return 0.999999;
             }
         }
         return probability;
