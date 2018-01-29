@@ -454,14 +454,12 @@ class NativeImage {
             nativeImage.prepareImageBuildArgs();
             nativeImage.completeImageBuildArgs(args);
         } catch (NativeImageError e) {
-            // Checkstyle: stop
             nativeImage.show(System.err::println, "Error: " + e.getMessage());
             Throwable cause = e.getCause();
             while (cause != null) {
                 nativeImage.show(System.err::println, "Caused by: " + cause);
                 cause = cause.getCause();
             }
-            // Checkstyle: resume
             System.exit(1);
         }
     }
@@ -546,32 +544,24 @@ class NativeImage {
     }
 
     void showVerboseMessage(boolean show, String message) {
-        // Checkstyle: stop
         if (show) {
             show(System.out::println, message);
         }
-        // Checkstyle: resume
     }
 
     void showMessage(String message) {
-        // Checkstyle: stop
         show(System.out::println, message);
-        // Checkstyle: resume
     }
 
     void showMessagePart(String message) {
-        // Checkstyle: stop
         show(s -> {
             System.out.print(s);
             System.out.flush();
         }, message);
-        // Checkstyle: resume
     }
 
     void showWarning(String message) {
-        // Checkstyle: stop
         show(System.err::println, "Warning: " + message);
-        // Checkstyle: resume
     }
 
     @SuppressWarnings("serial")

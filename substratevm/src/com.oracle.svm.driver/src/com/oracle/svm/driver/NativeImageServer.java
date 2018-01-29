@@ -166,9 +166,7 @@ final class NativeImageServer extends NativeImage {
                     } catch (IOException e) {
                         showError("Could not read/write into build-request log file", e);
                     }
-                    // Checkstyle: stop
                     sendRequest(System.out::print, System.err::print, "build", command.toArray(new String[command.size()]));
-                    // Checkstyle: resume
                 } catch (IOException e) {
                     showError("Error while trying to lock ServerDir " + serverDir, e);
                 }
@@ -287,9 +285,7 @@ final class NativeImageServer extends NativeImage {
         seconds -= TimeUnit.HOURS.toSeconds(hours);
         long minutes = TimeUnit.SECONDS.toMinutes(seconds);
         seconds -= TimeUnit.MINUTES.toSeconds(minutes);
-        // Checkstyle: stop
         return String.format("%02d:%02d:%02d", hours, minutes, seconds);
-        // Checkstyle: resume
     }
 
     @SuppressWarnings("try")
@@ -729,9 +725,7 @@ final class NativeImageServer extends NativeImage {
         byte[] digestBytes = digest.digest();
         StringBuilder sb = new StringBuilder(digestBytes.length * 2);
         for (byte b : digestBytes) {
-            // Checkstyle: stop
             sb.append(String.format("%02x", b & 0xff));
-            // Checkstyle: resume
         }
         return sb.toString();
     }
