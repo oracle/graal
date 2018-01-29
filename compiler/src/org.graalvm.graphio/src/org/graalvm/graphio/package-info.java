@@ -24,11 +24,10 @@
 
 /**
  * Send your graphs to <b>IGV</b> via a socket or a file. This package allows one to easily encode
- * any graph-like data structure and send it for visualization to
- * <em>OracleLab's Ideal Graph Visualizer</em> tool. Assuming you already have your own data
- * structure that contains <b>nodes</b> and <b>edges</b> among them, creating a
- * {@link org.graalvm.graphio.GraphOutput} specialized for your data is a matter of implementing a
- * single interface:
+ * any graph-like data structure and send it for visualization to <em>OracleLab's Ideal Graph
+ * Visualizer</em> tool. Assuming you already have your own data structure that contains
+ * <b>nodes</b> and <b>edges</b> among them, creating a {@link org.graalvm.graphio.GraphOutput}
+ * specialized for your data is a matter of implementing a single interface:
  *
  * {@link org.graalvm.graphio.GraphJavadocSnippets#acmeGraphStructure}
  *
