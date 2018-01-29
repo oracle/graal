@@ -456,9 +456,10 @@ def native_image_context(common_args=None, hosted_assertions=True):
     def native_image_func(args):
         mx.run([native_image_path(suite_native_image_root())] + base_args + common_args + args)
     try:
+        native_image_func(['-server-wipe'])
         yield native_image_func
     finally:
-        mx.run([native_image_path(suite_native_image_root()), '-server-shutdown'])
+        native_image_func(['-server-shutdown'])
 
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
 
