@@ -237,7 +237,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
 
     static class AST {
         final ASTNode root;
-        final Map<Node, ASTNode> nodes = new HashMap<>();
+        final List<ASTNode> nodes = new ArrayList<>();
         final List<ASTBlock> blocks = new ArrayList<>();
 
         AST(RootCallTarget target) {
@@ -250,8 +250,17 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
 
         ASTNode makeASTNode(Node source) {
             final ASTNode astNode = new ASTNode(source, nodes.size());
-            nodes.put(source, astNode);
+            nodes.add(astNode);
             return astNode;
+        }
+
+        ASTNode findASTNode(Node source) {
+            for (ASTNode node : nodes) {
+                if (node.source == source) {
+                    return node;
+                }
+            }
+            return null;
         }
 
         ASTBlock makeASTBlock() {
@@ -261,28 +270,44 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         }
 
         void inline(TruffleInlining inliningDecisions) {
-            traverseNodes(root.source, root, this, inliningDecisions, blocks.get(0));
+            traverseSeenNodes(root.source, root, this, inliningDecisions, blocks.get(0));
+        }
+
+        private static void traverseSeenNodes(Node parent, ASTNode astParent, AST ast, TruffleInlining inliningDecisions, ASTBlock currentBlock) {
+            for (Map.Entry<String, Node> entry : findNamedNodeChildren(parent).entrySet()) {
+                final String label = entry.getKey();
+                final Node node = entry.getValue();
+                final ASTNode seenAstNode = ast.findASTNode(node);
+                if (seenAstNode == null) {
+                    final ASTNode astNode = ast.makeASTNode(node);
+                    currentBlock.nodes.add(astNode);
+                    astParent.edges.add(new ASTEdge(astNode, label));
+                    handleCallNodes(ast, inliningDecisions, node, astNode, currentBlock);
+                    traverseSeenNodes(node, astNode, ast, inliningDecisions, currentBlock);
+                } else {
+                    handleCallNodes(ast, inliningDecisions, node, seenAstNode, currentBlock);
+                    traverseSeenNodes(node, seenAstNode, ast, inliningDecisions, currentBlock);
+                }
+            }
         }
 
         private static void traverseNodes(Node parent, ASTNode astParent, AST ast, TruffleInlining inliningDecisions, ASTBlock currentBlock) {
             for (Map.Entry<String, Node> entry : findNamedNodeChildren(parent).entrySet()) {
                 final String label = entry.getKey();
                 final Node node = entry.getValue();
-                final ASTNode seenAstNode = ast.nodes.get(node);
-                if (seenAstNode == null) {
-                    final ASTNode astNode = ast.makeASTNode(node);
-                    currentBlock.nodes.add(astNode);
-                    astParent.edges.add(new ASTEdge(astNode, label));
-                    handleCallNodes(ast, inliningDecisions, node, astNode, currentBlock);
-                    traverseNodes(node, astNode, ast, inliningDecisions, currentBlock);
-                } else {
-                    handleCallNodes(ast, inliningDecisions, node, seenAstNode, currentBlock);
-                    traverseNodes(node, seenAstNode, ast, inliningDecisions, currentBlock);
-                }
+                final ASTNode astNode = ast.makeASTNode(node);
+                currentBlock.nodes.add(astNode);
+                astParent.edges.add(new ASTEdge(astNode, label));
+                handleCallNodes(ast, inliningDecisions, node, astNode, currentBlock);
+                traverseNodes(node, astNode, ast, inliningDecisions, currentBlock);
             }
         }
 
         private static void handleCallNodes(AST ast, TruffleInlining inliningDecisions, Node node, ASTNode astNode, ASTBlock currentBlock) {
+            // Has this call node been handled already?
+            if (astNode.edges.size() > 0) {
+                return;
+            }
             if (inliningDecisions != null) {
                 if (node instanceof DirectCallNode) {
                     final DirectCallNode callNode = (DirectCallNode) node;
@@ -373,7 +398,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
 
         @Override
         public Iterable<? extends ASTNode> nodes(AST graph) {
-            return graph.nodes.values();
+            return graph.nodes;
         }
 
         @Override
