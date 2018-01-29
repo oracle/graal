@@ -303,8 +303,8 @@ public class InstalledCodeBuilder {
          */
         ObjectConstantsHolder objectConstants = new ObjectConstantsHolder(compilation);
 
-        compilation.getDataSection().buildDataSection(constantsBuffer, constant -> {
-            objectConstants.add(constantsBuffer.position(), KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(constant), Object.class));
+        compilation.getDataSection().buildDataSection(constantsBuffer, (position, constant) -> {
+            objectConstants.add(position, KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(constant), Object.class));
         });
 
         // Open the PinnedAllocator for the meta-information.

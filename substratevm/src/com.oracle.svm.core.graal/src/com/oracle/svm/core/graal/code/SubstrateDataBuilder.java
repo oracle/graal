@@ -80,8 +80,9 @@ public class SubstrateDataBuilder extends DataBuilder {
 
         @Override
         protected void emit(ByteBuffer buffer, Patches patches) {
-            patches.registerPatch(constant);
-            buffer.putLong(0);
+            int position = buffer.position();
+            buffer.putLong(0L);
+            patches.registerPatch(position, constant);
         }
     }
 }
