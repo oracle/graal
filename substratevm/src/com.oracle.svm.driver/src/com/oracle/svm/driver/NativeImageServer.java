@@ -182,7 +182,7 @@ final class NativeImageServer extends NativeImage {
             return alive;
         }
 
-        void shutdown() {
+        synchronized void shutdown() {
             Signal.kill(pid, Signal.SignalEnum.SIGTERM.getCValue());
             /* Release port only after server stops responding to it */
             long timeout = System.currentTimeMillis() + 60_000;

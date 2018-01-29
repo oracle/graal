@@ -681,11 +681,14 @@ class NativeImage {
         return Collections.unmodifiableMap(map);
     }
 
-    static void deleteAllFiles(Path toDelete) {
+    protected void deleteAllFiles(Path toDelete) {
         try {
             Files.walk(toDelete).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
         } catch (IOException e) {
-            showError("Could not recursively delete path: " + toDelete, e);
+            if (isVerbose()) {
+                showMessage("Could not recursively delete path: " + toDelete);
+                e.printStackTrace();
+            }
         }
     }
 }
