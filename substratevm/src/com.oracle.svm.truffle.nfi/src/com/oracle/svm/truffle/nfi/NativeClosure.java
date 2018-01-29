@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -70,7 +70,7 @@ final class NativeClosure {
 
         int skipped = 0;
         for (Object type : signature.getArgTypes()) {
-            if (Target_com_oracle_truffle_nfi_LibFFIType_EnvType.class.isInstance(type)) {
+            if (Target_com_oracle_truffle_nfi_impl_LibFFIType_EnvType.class.isInstance(type)) {
                 skipped++;
             }
         }
@@ -113,13 +113,13 @@ final class NativeClosure {
         Object[] args = new Object[length];
         for (int i = 0; i < argTypes.length; i++) {
             Object type = argTypes[i];
-            if (Target_com_oracle_truffle_nfi_LibFFIType_StringType.class.isInstance(type)) {
+            if (Target_com_oracle_truffle_nfi_impl_LibFFIType_StringType.class.isInstance(type)) {
                 CCharPointerPointer argPtr = argPointers.read(i);
                 args[argIdx++] = TruffleNFISupport.utf8ToJavaString(argPtr.read());
-            } else if (Target_com_oracle_truffle_nfi_LibFFIType_ObjectType.class.isInstance(type)) {
+            } else if (Target_com_oracle_truffle_nfi_impl_LibFFIType_ObjectType.class.isInstance(type)) {
                 WordPointer argPtr = argPointers.read(i);
                 args[argIdx++] = ImageSingletons.lookup(TruffleNFISupport.class).resolveHandle(argPtr.read());
-            } else if (Target_com_oracle_truffle_nfi_LibFFIType_EnvType.class.isInstance(type)) {
+            } else if (Target_com_oracle_truffle_nfi_impl_LibFFIType_EnvType.class.isInstance(type)) {
                 // skip
             } else {
                 WordPointer argPtr = argPointers.read(i);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,13 +36,13 @@ final class Target_com_oracle_truffle_nfi_impl_LibFFIType {
 }
 
 @TargetClass(className = "com.oracle.truffle.nfi.impl.LibFFIType", innerClass = "StringType", onlyWith = TruffleNFIFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_nfi_LibFFIType_StringType {
+final class Target_com_oracle_truffle_nfi_impl_LibFFIType_StringType {
 }
 
 @TargetClass(className = "com.oracle.truffle.nfi.impl.LibFFIType", innerClass = "ObjectType", onlyWith = TruffleNFIFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_nfi_LibFFIType_ObjectType {
+final class Target_com_oracle_truffle_nfi_impl_LibFFIType_ObjectType {
 }
 
 @TargetClass(className = "com.oracle.truffle.nfi.impl.LibFFIType", innerClass = "EnvType", onlyWith = TruffleNFIFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_nfi_LibFFIType_EnvType {
+final class Target_com_oracle_truffle_nfi_impl_LibFFIType_EnvType {
 }
