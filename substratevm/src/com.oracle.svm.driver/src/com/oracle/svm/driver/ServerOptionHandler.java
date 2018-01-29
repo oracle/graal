@@ -52,6 +52,7 @@ class ServerOptionHandler extends NativeImage.OptionHandler<NativeImageServer> {
             String oList = "-list";
             String oCleanup = "-cleanup";
             String oShutdown = "-shutdown";
+            String oWipe = "-wipe";
             String oSession = "-session=";
             boolean serverCleanup = false;
             boolean serverShutdown = false;
@@ -85,6 +86,9 @@ class ServerOptionHandler extends NativeImage.OptionHandler<NativeImageServer> {
                     optionTail = optionTail.substring(oAll.length());
                     machineWide = true;
                 }
+            } else if (optionTail.equals(oWipe)) {
+                nativeImage.wipeMachineDir();
+                System.exit(0);
             } else if (optionTail.startsWith(oSession)) {
                 nativeImage.setSessionName(optionTail.substring(oSession.length()));
                 return true;

@@ -411,6 +411,10 @@ final class NativeImageServer extends NativeImage {
         }
     }
 
+    void wipeMachineDir() {
+        deleteAllFiles(getMachineDir());
+    }
+
     @SuppressWarnings("try")
     void cleanupServers(boolean serverShutdown, boolean machineWide, boolean quiet) {
         List<Path> sessionDirs = getSessionDirs(machineWide);
