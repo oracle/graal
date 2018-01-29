@@ -100,7 +100,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
             astOutput.print(ast, Collections.emptyMap(), 0, AFTER_PROFILING);
             final TruffleInlining inlining = truffleTreeDump.inlining;
             if (inlining.countInlinedCalls() > 0) {
-                dumpInlinedTrees(astOutput, (OptimizedCallTarget) callTarget, inlining, new ArrayList<>());
+                dumpInlinedTrees(astOutput, callTarget, inlining, new ArrayList<>());
                 // TODO why is this needed? It would be preferred to just call inline on the old
                 // graph.
                 ast = new AST(callTarget);
