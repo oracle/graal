@@ -263,7 +263,7 @@ public final class NativeImageBuildServer {
             System.gc();
             System.runFinalization();
             System.gc();
-            log("Available Memory: " + Runtime.getRuntime().freeMemory());
+            log("Available Memory: " + Runtime.getRuntime().freeMemory() + "\n");
         }
         return true;
     }
