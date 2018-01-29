@@ -112,9 +112,9 @@ public class ValueAPITest {
     private static final Object[] NUMBERS = new Object[]{
                     (byte) 0, (byte) 1, Byte.MAX_VALUE, Byte.MIN_VALUE,
                     (short) 0, (short) 1, Short.MAX_VALUE, Short.MIN_VALUE,
-                    (int) 0, (int) 1, Integer.MAX_VALUE, Integer.MIN_VALUE,
+                    0, 1, Integer.MAX_VALUE, Integer.MIN_VALUE,
                     (long) 0, (long) 1, Long.MAX_VALUE, Long.MIN_VALUE,
-                    (float) 0, (float) 0.24f, -0f, Float.MAX_VALUE, Float.MIN_VALUE, Float.NaN, Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.MIN_NORMAL,
+                    (float) 0, 0.24f, -0f, Float.MAX_VALUE, Float.MIN_VALUE, Float.NaN, Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.MIN_NORMAL,
                     (double) 0, (double) 0.24f, -0d, Double.MAX_VALUE, Double.MIN_VALUE, Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.MIN_NORMAL,
     };
 
@@ -165,7 +165,7 @@ public class ValueAPITest {
                     },
                     BigDecimal.class,
                     Class.class,
-                    Proxy.newProxyInstance(ValueAPITest.class.getClassLoader(), new Class[]{ProxyInterface.class}, new InvocationHandler() {
+                    Proxy.newProxyInstance(ValueAPITest.class.getClassLoader(), new Class<?>[]{ProxyInterface.class}, new InvocationHandler() {
                         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
                             switch (method.getName()) {
                                 case "foobar":
