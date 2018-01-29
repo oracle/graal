@@ -2,6 +2,12 @@
 
 This changelog summarizes major changes between Graal SDK versions. The main focus is on APIs exported by Graal SDK.
 
+## Version 0.31
+
+* Added Value#as(Class) and Value.as(TypeLiteral) to convert to Java types.
+* Added Context#asValue(Object) to convert Java values back to the polyglot Value representation.
+* Added Value#isProxyObject() and Value#asProxyObject().
+
 ## Version 0.29
 
 * Introduced Context.enter() and Context.leave() that allows explicitly entering and leaving the context to improve performance of performing many simple operations.
