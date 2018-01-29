@@ -36,7 +36,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public abstract class HostEntryRootNode<T> extends ExecutableNode implements Supplier<String> {
+abstract class HostEntryRootNode<T> extends ExecutableNode implements Supplier<String> {
 
     HostEntryRootNode() {
         super(null);

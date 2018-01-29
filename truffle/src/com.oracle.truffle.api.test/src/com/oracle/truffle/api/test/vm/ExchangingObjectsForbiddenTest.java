@@ -27,8 +27,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 
-import java.util.function.Function;
-
 import org.hamcrest.CoreMatchers;
 import org.junit.After;
 import org.junit.Before;

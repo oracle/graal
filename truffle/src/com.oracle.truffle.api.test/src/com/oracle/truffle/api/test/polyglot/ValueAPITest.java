@@ -176,7 +176,7 @@ public class ValueAPITest {
                                     throw new UnsupportedOperationException(method.getName());
                             }
                         }
-                    }),};
+                    })};
 
     @Test
     public void testHostObject() {
@@ -213,10 +213,10 @@ public class ValueAPITest {
                     new Byte[]{42, 42, 42},
                     new Short[]{42, 42, 42},
                     new Integer[]{42, 42, 42},
-                    new Long[]{42l, 42l, 42l},
+                    new Long[]{42L, 42L, 42L},
                     new Float[]{42f, 42f, 42f},
                     new Double[]{42d, 42d, 42d},
-                    new Object[]{true, 'a', "ab", (byte) 42, (short) 42, 42, 42l, 42f, 42d},
+                    new Object[]{true, 'a', "ab", (byte) 42, (short) 42, 42, 42L, 42f, 42d},
                     new String[]{"a", "b", "c"},
                     new CharSequence[]{"a"},
                     new ArrayList<>(Arrays.asList("a", 42)),
@@ -254,12 +254,12 @@ public class ValueAPITest {
         assertEquals("baz", value.get(0).get("foo").get("bar")[0]);
     }
 
-    public static interface JavaInterface {
+    public interface JavaInterface {
 
     }
 
     @FunctionalInterface
-    public static interface JavaFunctionalInterface {
+    public interface JavaFunctionalInterface {
 
         void foo();
 
@@ -585,7 +585,7 @@ public class ValueAPITest {
         @SuppressWarnings("unused") public EmptyObject member;
     }
 
-    private static interface ProxyInterface {
+    private interface ProxyInterface {
 
         Object foobar(Object... args);
 
@@ -708,31 +708,6 @@ public class ValueAPITest {
 
         public Object execute(Value... arguments) {
             return executableResult;
-        }
-
-    }
-
-    private static class Instantiable implements ProxyInstantiable {
-
-        Object instantiableResult;
-
-        public Object newInstance(Value... arguments) {
-            return instantiableResult;
-        }
-
-    }
-
-    private static class ExecutableAndInstantiable implements ProxyExecutable, ProxyInstantiable {
-
-        Object executableResult;
-        Object instantiableResult;
-
-        public Object execute(Value... arguments) {
-            return executableResult;
-        }
-
-        public Object newInstance(Value... arguments) {
-            return instantiableResult;
         }
 
     }

@@ -504,7 +504,7 @@ abstract class ProxyInvokeNode extends Node {
      */
     @Specialization(guards = {"cachedMethod.equals(method)"}, limit = "LIMIT")
     @SuppressWarnings("unused")
-    protected Object doCachedMethod(Object languageContext, TruffleObject receiver, @SuppressWarnings("unused") Method method, Object[] arguments,
+    protected Object doCachedMethod(Object languageContext, TruffleObject receiver, Method method, Object[] arguments,
                     @Cached("method") Method cachedMethod,
                     @Cached("method.getName()") String name,
                     @Cached("getMethodReturnType(method)") Class<?> returnClass,

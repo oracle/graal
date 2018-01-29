@@ -1184,7 +1184,8 @@ public class JavaInteropTest {
         private final int nBits;    // internal
 
         /**
-         * @param iBits bits at property number indexes, where '1' means internal, '0' means non-internal.
+         * @param iBits bits at property number indexes, where '1' means internal, '0' means
+         *            non-internal.
          */
         InternalPropertiesObject(int iBits) {
             this(-1, -1, -1, iBits);

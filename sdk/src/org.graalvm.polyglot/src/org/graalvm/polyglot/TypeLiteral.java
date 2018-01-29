@@ -56,6 +56,8 @@ public abstract class TypeLiteral<T> {
      * <p>
      * Clients create an empty anonymous subclass. Doing so embeds the type parameter in the
      * anonymous class's type hierarchy so we can reconstitute it at runtime despite erasure.
+     *
+     * @since 1.0
      */
     @SuppressWarnings("unchecked")
     protected TypeLiteral() {
@@ -109,17 +111,25 @@ public abstract class TypeLiteral<T> {
         return (Class<T[]>) Array.newInstance(componentType, 0).getClass();
     }
 
+    /**
+     * Returns the type literal including generic type information.
+     *
+     * @since 1.0
+     */
     public final Type getType() {
         return this.type;
     }
 
+    /**
+     * Returns the raw class type of the literal.
+     *
+     * @since 1.0
+     */
     public final Class<T> getRawType() {
         return rawType;
     }
 
     /**
-     * {@inheritDoc}
-     *
      * @since 1.0
      */
     @Override
@@ -128,8 +138,6 @@ public abstract class TypeLiteral<T> {
     }
 
     /**
-     * {@inheritDoc}
-     *
      * @since 1.0
      */
     @Override
@@ -138,8 +146,6 @@ public abstract class TypeLiteral<T> {
     }
 
     /**
-     * {@inheritDoc}
-     *
      * @since 1.0
      */
     @Override

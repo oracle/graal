@@ -46,7 +46,10 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 public class OptimizedCompilationProfile {
 
     /**
-     * Number of times an installed code for this tree was seen invalidated.
+     * Number of times an installed c
+     *
+     *
+     * ode for this tree was seen invalidated.
      */
     private int invalidationCount;
     private int deferredCount;
@@ -96,9 +99,9 @@ public class OptimizedCompilationProfile {
     Class<?>[] getProfiledArgumentTypes() {
         if (profiledArgumentTypesAssumption == null) {
             /*
-             * We always need an assumption. If this method is called before the profile was
-             * initialized, we have to be conservative and disable profiling, which is done by
-             * creating an invalid assumption but leaving the type field null.
+             * We always need an assumption. If this method is called before the profile was initialized, we
+             * have to be conservative and disable profiling, which is done by creating an invalid assumption
+             * but leaving the type field null.
              */
             CompilerDirectives.transferToInterpreterAndInvalidate();
             profiledArgumentTypesAssumption = createAssumption("Profiled Argument Types");
@@ -115,9 +118,9 @@ public class OptimizedCompilationProfile {
     Class<?> getProfiledReturnType() {
         if (profiledReturnTypeAssumption == null) {
             /*
-             * We always need an assumption. If this method is called before the profile was
-             * initialized, we have to be conservative and disable profiling, which is done by
-             * creating an invalid assumption but leaving the type field null.
+             * We always need an assumption. If this method is called before the profile was initialized, we
+             * have to be conservative and disable profiling, which is done by creating an invalid assumption
+             * but leaving the type field null.
              */
             CompilerDirectives.transferToInterpreterAndInvalidate();
             profiledReturnTypeAssumption = createAssumption("Profiled Return Type");

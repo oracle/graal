@@ -40,7 +40,6 @@ import java.util.function.Supplier;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
@@ -89,7 +88,6 @@ class TruffleList<T> extends AbstractList<T> {
         return (Integer) cache.size.call(languageContext, guestObject);
     }
 
-    @SuppressWarnings("unused")
     private static class FunctionTruffleList<T> extends TruffleList<T> implements Function<Object, Object> {
 
         FunctionTruffleList(Class<T> elementClass, Type elementType, TruffleObject array, Object languageContext) {
@@ -165,7 +163,7 @@ class TruffleList<T> extends AbstractList<T> {
             public boolean equals(Object obj) {
                 if (this == obj) {
                     return true;
-                } else if (getClass() != obj.getClass()) {
+                } else if (obj == null || getClass() != obj.getClass()) {
                     return false;
                 }
                 Key other = (Key) obj;
@@ -173,7 +171,7 @@ class TruffleList<T> extends AbstractList<T> {
             }
         }
 
-        private static abstract class TruffleListNode extends HostEntryRootNode<TruffleObject> implements Supplier<String> {
+        private abstract static class TruffleListNode extends HostEntryRootNode<TruffleObject> implements Supplier<String> {
 
             final TruffleListCache cache;
 

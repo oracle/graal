@@ -80,8 +80,6 @@ public class ValueAssert {
     };
     private static final TypeLiteral<Map<Double, Object>> DOUBLE_OBJECT_MAP = new TypeLiteral<Map<Double, Object>>() {
     };
-    private static final TypeLiteral<Map<CharSequence, Object>> CHAR_SEQUENCE_OBJECT_MAP = new TypeLiteral<Map<CharSequence, Object>>() {
-    };
     private static final TypeLiteral<Function<Object, Object>> FUNCTION = new TypeLiteral<Function<Object, Object>>() {
     };
 
@@ -379,7 +377,7 @@ public class ValueAssert {
         List<Object> receivedObjects = new ArrayList<>();
         Map<Long, Object> receivedObjectsLongMap = new HashMap<>();
         Map<Integer, Object> receivedObjectsIntMap = new HashMap<>();
-        for (long i = 0l; i < value.getArraySize(); i++) {
+        for (long i = 0L; i < value.getArraySize(); i++) {
             Value arrayElement = value.getArrayElement(i);
             receivedObjects.add(arrayElement.as(Object.class));
             receivedObjectsLongMap.put(i, arrayElement.as(Object.class));
@@ -399,8 +397,6 @@ public class ValueAssert {
         } else {
             assertFails(() -> value.as(OBJECT_OBJECT_MAP), ClassCastException.class);
         }
-
-        // TODO assert mappings with other key types than Long and Integer
 
         Map<Long, Object> objectMap2 = value.as(LONG_OBJECT_MAP);
         Map<Integer, Object> objectMap3 = value.as(INTEGER_OBJECT_MAP);
@@ -423,7 +419,7 @@ public class ValueAssert {
         }
 
         // write them all
-        for (long i = 0l; i < value.getArraySize(); i++) {
+        for (long i = 0L; i < value.getArraySize(); i++) {
             value.setArrayElement(i, value.getArrayElement(i));
         }
 

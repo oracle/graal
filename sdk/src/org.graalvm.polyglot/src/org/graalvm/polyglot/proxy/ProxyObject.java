@@ -56,7 +56,7 @@ public interface ProxyObject extends Proxy {
      * <li><code>null</code> for no member keys
      * <li>{@link ProxyArray} that returns {@link String} values for each array element
      * <li>{@link List } with exclusively String elements
-     * <li>{{@link String[]}
+     * <li>{@link String String[]}
      * <li>A guest language object representing an array of strings.
      * </ul>
      * Every member key returned by the {@link #getMemberKeys()} method must return

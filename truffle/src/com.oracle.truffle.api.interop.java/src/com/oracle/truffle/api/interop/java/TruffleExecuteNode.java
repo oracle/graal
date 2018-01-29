@@ -53,7 +53,7 @@ final class TruffleExecuteNode extends Node {
     private final ConditionProfile condition = ConditionProfile.createBinaryProfile();
     @Child private ToJavaNode toHost = ToJavaNode.create();
 
-    public final Object execute(Object languageContext, TruffleObject function, Object functionArgsObject,
+    public Object execute(Object languageContext, TruffleObject function, Object functionArgsObject,
                     Class<?> resultClass, Type resultType) {
         Object[] argsArray;
         if (functionArgsObject instanceof Object[]) {

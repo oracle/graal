@@ -33,7 +33,7 @@ import com.oracle.truffle.api.nodes.Node;
 
 final class ToPrimitiveNode extends Node {
     private static final double DOUBLE_MAX_SAFE_INTEGER = 9007199254740991d; // 2 ** 53 - 1
-    private static final long LONG_MAX_SAFE_DOUBLE = 9007199254740991l; // 2 ** 53 - 1
+    private static final long LONG_MAX_SAFE_DOUBLE = 9007199254740991L; // 2 ** 53 - 1
     private static final float FLOAT_MAX_SAFE_INTEGER = 16777215f; // 2 ** 24 - 1
     private static final int INT_MAX_SAFE_FLOAT = 16777215; // 2 ** 24 - 1
 

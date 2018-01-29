@@ -57,7 +57,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
 
 /**
- * Tests class for {@link Context#asValue(Object)}
+ * Tests class for {@link Context#asValue(Object)}.
  */
 public class ValueHostConversionTest {
 
@@ -147,7 +147,7 @@ public class ValueHostConversionTest {
     }
 
     /**
-     * Tests basic examples from {@link Context#asValue(Object)}
+     * Tests basic examples from {@link Context#asValue(Object)}.
      */
     @Test
     public void testBasicExamples() {
@@ -171,7 +171,7 @@ public class ValueHostConversionTest {
     }
 
     /**
-     * Tests advanced examples from {@link Context#asValue(Object)}
+     * Tests advanced examples from {@link Context#asValue(Object)}.
      */
     @Test
     public void testAdvancedExamples() {
@@ -428,8 +428,8 @@ public class ValueHostConversionTest {
         assertEquals("long", hierarchy.execute(Long.MAX_VALUE).asString());
 
         // double
-        assertEquals("long", hierarchy.execute((double) (Integer.MIN_VALUE - 1l)).asString());
-        assertEquals("long", hierarchy.execute((double) (Integer.MAX_VALUE + 1l)).asString());
+        assertEquals("long", hierarchy.execute((double) (Integer.MIN_VALUE - 1L)).asString());
+        assertEquals("long", hierarchy.execute((double) (Integer.MAX_VALUE + 1L)).asString());
         double maxSafeInteger = Math.pow(2, 53) - 1;
         assertEquals("long", hierarchy.execute(-maxSafeInteger).asString());
         assertEquals("long", hierarchy.execute(+maxSafeInteger).asString());
@@ -745,7 +745,7 @@ public class ValueHostConversionTest {
 
     }
 
-    private static interface TestExceptionFrames3 {
+    private interface TestExceptionFrames3 {
 
         void foo();
 

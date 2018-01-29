@@ -268,11 +268,6 @@ public final class Context implements AutoCloseable {
      * the identity.
      * <p>
      * When a host value is converted to a polyglot value the following rules apply:
-     * <p>
-     * When the <code>hostValue</code> represents a {@link Class}, then the created
-     * {@link TruffleObject} will allow access to <b>public</b> and <b>static</b> fields and methods
-     * from the class.
-     *
      * <ol>
      * <li>If the <code>hostValue</code> is <code>null</code> then it will be interpreted as
      * polyglot {@link Value#isNull() null}.
@@ -322,12 +317,12 @@ public final class Context implements AutoCloseable {
      * <h1>Mapping to Java methods and fields</h1>
      *
      * When Java host objects are passed to guest languages, their public methods and fields are
-     * provided as {@link #getMember(String) members}. Methods and fields are grouped by name, so
-     * only one member is exposed for each name.
+     * provided as {@link Value#getMember(String) members}. Methods and fields are grouped by name,
+     * so only one member is exposed for each name.
      *
      * When an argument value needs to be mapped to match a required Java method parameter type then
-     * the semantics of {@link #as(Class) host value mapping} is used. The result of the mapping is
-     * equivalent of calling {@link Value#as(Class)} with the parameter type. Therefore a
+     * the semantics of {@link Value#as(Class) host value mapping} is used. The result of the
+     * mapping is equivalent of calling {@link Value#as(Class)} with the parameter type. Therefore a
      * {@link ClassCastException} is thrown if a parameter value cannot be cast to the required
      * parameter type.
      * <p>
@@ -340,7 +335,7 @@ public final class Context implements AutoCloseable {
      * The following parameter type hierarchy is used for method resolution. Left-most parameter
      * types are prioritized over types to their right.
      * <ul>
-     * <li>{@link #isBoolean() Boolean} values: boolean, Boolean, Object
+     * <li>{@link Value#isBoolean() Boolean} values: boolean, Boolean, Object
      * <li>String values: char, Character, String, CharSequence, Object
      * <li>Number values: byte, Byte, short, Short, int, Integer, long, Long, float, Float, double,
      * Double, Number, Object

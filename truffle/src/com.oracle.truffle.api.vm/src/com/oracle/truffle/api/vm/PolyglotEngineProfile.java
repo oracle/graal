@@ -39,7 +39,7 @@ final class PolyglotEngineProfile {
     private final Assumption dynamicStoreAssumption = Truffle.getRuntime().createAssumption("constant context store");
 
     @CompilationFinal private WeakReference<PolyglotEngine> constantStore;
-    @CompilationFinal private volatile int constantEntered;
+    @CompilationFinal private int constantEntered;
 
     private volatile PolyglotEngine dynamicStore;
     @CompilationFinal private volatile Thread singleThread;

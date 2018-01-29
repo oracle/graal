@@ -588,7 +588,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         if (!closed) {
             PolyglotContextImpl[] localContexts = contexts.toArray(new PolyglotContextImpl[0]);
             /*
-             * Check ahead of time for open contexts to fail early and avoid closing only some contexts.
+             * Check ahead of time for open contexts to fail early and avoid closing only some
+             * contexts.
              */
             if (!cancelIfExecuting && !ignoreCloseFailure) {
                 for (PolyglotContextImpl context : localContexts) {
