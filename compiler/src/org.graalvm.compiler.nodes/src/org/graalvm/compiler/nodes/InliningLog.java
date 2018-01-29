@@ -30,9 +30,7 @@ import org.graalvm.compiler.graph.Node;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 /**
  * This class contains all inlining decisions performed on a graph during the compilation.
@@ -111,7 +109,7 @@ public class InliningLog {
         this.leaves = EconomicMap.create();
     }
 
-    public void addDecision(Invokable invoke, boolean positive, String reason, String phase, Map<Node, Node> duplicationMap, InliningLog calleeLog) {
+    public void addDecision(Invokable invoke, boolean positive, String reason, String phase, EconomicMap<Node, Node> duplicationMap, InliningLog calleeLog) {
         assert leaves.containsKey(invoke);
         assert (!positive && duplicationMap == null && calleeLog == null) || (positive && duplicationMap != null && calleeLog != null);
         Callsite callsite = leaves.get(invoke);
@@ -123,7 +121,7 @@ public class InliningLog {
             while (entries.advance()) {
                 Invokable invokeFromCallee = entries.getKey();
                 Callsite callsiteFromCallee = entries.getValue();
-                Invokable inlinedInvokeFromCallee = (Invokable) duplicationMap.get(invokeFromCallee);
+                Invokable inlinedInvokeFromCallee = (Invokable) duplicationMap.get(invokeFromCallee.asFixedNode());
                 callsiteFromCallee.originalInvoke = inlinedInvokeFromCallee;
                 leaves.put(inlinedInvokeFromCallee, callsiteFromCallee);
             }
@@ -163,6 +161,10 @@ public class InliningLog {
             return null;
         }
         return activated.getUpdater();
+    }
+
+    public UpdateScope createUpdateScope(BiConsumer<Invokable, Invokable> updater) {
+        return new UpdateScope(updater);
     }
 
     public boolean containsLeafCallsite(Invokable invokable) {

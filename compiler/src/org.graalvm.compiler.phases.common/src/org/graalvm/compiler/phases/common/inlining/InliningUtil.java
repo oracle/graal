@@ -68,6 +68,7 @@ import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -279,6 +280,21 @@ public class InliningUtil extends ValueMergeUtil {
      */
     @SuppressWarnings("try")
     public static UnmodifiableEconomicMap<Node, Node> inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck, ResolvedJavaMethod inlineeMethod) {
+        return inline(invoke, inlineGraph, receiverNullCheck, inlineeMethod, "", "");
+    }
+
+    /**
+     * Performs an actual inlining, thereby replacing the given invoke with the given inlineGraph.
+     *
+     * @param invoke the invoke that will be replaced
+     * @param inlineGraph the graph that the invoke will be replaced with
+     * @param receiverNullCheck true if a null check needs to be generated for non-static inlinings,
+     *            false if no such check is required
+     * @param inlineeMethod the actual method being inlined. Maybe be null for snippets.
+     * @param reason the reason for inlining, used in tracing
+     * @param phase the phase that invoked inlining
+     */
+    public static UnmodifiableEconomicMap<Node, Node> inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck, ResolvedJavaMethod inlineeMethod, String reason, String phase) {
         FixedNode invokeNode = invoke.asNode();
         StructuredGraph graph = invokeNode.graph();
         final NodeInputList<ValueNode> parameters = invoke.callTarget().arguments();
@@ -339,7 +355,15 @@ public class InliningUtil extends ValueMergeUtil {
         assert invokeNode.successors().first() != null : invoke;
         assert invokeNode.predecessor() != null;
 
-        EconomicMap<Node, Node> duplicates = graph.addDuplicates(nodes, inlineGraph, inlineGraph.getNodeCount(), localReplacement);
+        // Do not update the inlining log when adding the duplicates.
+        // Instead, attach the inlining log of the child graph to the current inlining log.
+        EconomicMap<Node, Node> duplicates;
+        try (InliningLog.UpdateScope ignored = graph.getInliningLog().createUpdateScope((oldNode, newNode) -> { })) {
+            duplicates = graph.addDuplicates(nodes, inlineGraph, inlineGraph.getNodeCount(), localReplacement);
+        }
+        if (GraalOptions.TraceInlining.getValue(graph.getOptions()).isTracing()) {
+            graph.getInliningLog().addDecision(invoke, true, reason, phase, duplicates, inlineGraph.getInliningLog());
+        }
 
         FrameState stateAfter = invoke.stateAfter();
         assert stateAfter == null || stateAfter.isAlive();
@@ -409,9 +433,14 @@ public class InliningUtil extends ValueMergeUtil {
         return inlineForCanonicalization(invoke, inlineGraph, receiverNullCheck, inlineeMethod, null);
     }
 
-    @SuppressWarnings("try")
     public static EconomicSet<Node> inlineForCanonicalization(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck, ResolvedJavaMethod inlineeMethod,
                     Consumer<UnmodifiableEconomicMap<Node, Node>> duplicatesConsumer) {
+        return inlineForCanonicalization(invoke, inlineGraph, receiverNullCheck, inlineeMethod, duplicatesConsumer, "", "");
+    }
+
+    @SuppressWarnings("try")
+    public static EconomicSet<Node> inlineForCanonicalization(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck, ResolvedJavaMethod inlineeMethod,
+                    Consumer<UnmodifiableEconomicMap<Node, Node>> duplicatesConsumer, String reason, String phase) {
         HashSetNodeEventListener listener = new HashSetNodeEventListener();
         /*
          * This code relies on the fact that Graph.addDuplicates doesn't trigger the
@@ -419,7 +448,7 @@ public class InliningUtil extends ValueMergeUtil {
          * the graph into the current graph.
          */
         try (NodeEventScope nes = invoke.asNode().graph().trackNodeEvents(listener)) {
-            UnmodifiableEconomicMap<Node, Node> duplicates = InliningUtil.inline(invoke, inlineGraph, receiverNullCheck, inlineeMethod);
+            UnmodifiableEconomicMap<Node, Node> duplicates = InliningUtil.inline(invoke, inlineGraph, receiverNullCheck, inlineeMethod, reason, phase);
             if (duplicatesConsumer != null) {
                 duplicatesConsumer.accept(duplicates);
             }
