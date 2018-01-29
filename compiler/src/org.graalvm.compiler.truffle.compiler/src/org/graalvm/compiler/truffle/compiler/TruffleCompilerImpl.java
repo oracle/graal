@@ -363,8 +363,16 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
 
         try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(TruffleCompilerOptions.getOptions())) {
             PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite();
+
+            // Failed speculations must be collected before any compilation or
+            // partial evaluation is performed.
+            SpeculationLog speculationLog = compilable.getSpeculationLog();
+            if (speculationLog != null) {
+                speculationLog.collectFailedSpeculations();
+            }
+
             try (DebugCloseable a = PartialEvaluationTime.start(debug); DebugCloseable c = PartialEvaluationMemUse.start(debug)) {
-                graph = partialEvaluator.createGraph(debug, compilable, inliningPlan, AllowAssumptions.YES, compilationId, compilable.getSpeculationLog(), cancellable);
+                graph = partialEvaluator.createGraph(debug, compilable, inliningPlan, AllowAssumptions.YES, compilationId, speculationLog, cancellable);
             }
 
             // Check if the task has been cancelled
@@ -427,10 +435,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         try (DebugCloseable a = CompilationTime.start(debug);
                         DebugContext.Scope s = debug.scope("TruffleGraal.GraalCompiler", graph, providers.getCodeCache());
                         DebugCloseable c = CompilationMemUse.start(debug)) {
-            SpeculationLog speculationLog = graph.getSpeculationLog();
-            if (speculationLog != null) {
-                speculationLog.collectFailedSpeculations();
-            }
 
             CompilationResult compilationResult = createCompilationResult(name, graph.compilationId());
             result = GraalCompiler.compileGraph(graph, graph.method(), providers, backend, graphBuilderSuite, Optimizations, graph.getProfilingInfo(), suites, lirSuites, compilationResult,
