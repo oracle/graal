@@ -67,6 +67,7 @@ import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.graalvm.polyglot.proxy.ProxyPrimitive;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -710,6 +711,229 @@ public class ValueAPITest {
             return executableResult;
         }
 
+    }
+
+    @Test
+    public void testNullCoercionErrors() {
+        Value nullValue = context.asValue(null);
+        assertFails(() -> nullValue.asInt(), NullPointerException.class,
+                        "Cannot convert null value 'null'(language: Java) to Java type 'int' using Value.asInt(). " +
+                                        "You can ensure that the operation is supported using Value.fitsInInt().");
+        assertFails(() -> nullValue.as(int.class), NullPointerException.class,
+                        "Cannot convert null value 'null'(language: Java) to Java type 'int'.");
+        assertFails(() -> nullValue.asByte(), NullPointerException.class,
+                        "Cannot convert null value 'null'(language: Java) to Java type 'byte' using Value.asByte(). " +
+                                        "You can ensure that the operation is supported using Value.fitsInByte().");
+        assertFails(() -> nullValue.as(byte.class), NullPointerException.class,
+                        "Cannot convert null value 'null'(language: Java) to Java type 'byte'.");
+        assertFails(() -> nullValue.asShort(), NullPointerException.class,
+                        "Cannot convert null value 'null'(language: Java) to Java type 'short' using Value.asShort(). " +
+                                        "You can ensure that the operation is supported using Value.fitsInShort().");
+        assertFails(() -> nullValue.as(short.class), NullPointerException.class,
+                        "Cannot convert null value 'null'(language: Java) to Java type 'short'.");
+        assertFails(() -> nullValue.asLong(), NullPointerException.class,
+                        "Cannot convert null value 'null'(language: Java) to Java type 'long' using Value.asLong(). " +
+                                        "You can ensure that the operation is supported using Value.fitsInLong().");
+        assertFails(() -> nullValue.as(long.class), NullPointerException.class,
+                        "Cannot convert null value 'null'(language: Java) to Java type 'long'.");
+        assertFails(() -> nullValue.asFloat(), NullPointerException.class,
+                        "Cannot convert null value 'null'(language: Java) to Java type 'float' using Value.asFloat(). " +
+                                        "You can ensure that the operation is supported using Value.fitsInFloat().");
+        assertFails(() -> nullValue.as(float.class), NullPointerException.class,
+                        "Cannot convert null value 'null'(language: Java) to Java type 'float'.");
+        assertFails(() -> nullValue.asDouble(), NullPointerException.class,
+                        "Cannot convert null value 'null'(language: Java) to Java type 'double' using Value.asDouble(). " +
+                                        "You can ensure that the operation is supported using Value.fitsInDouble().");
+        assertFails(() -> nullValue.as(double.class), NullPointerException.class,
+                        "Cannot convert null value 'null'(language: Java) to Java type 'double'.");
+        assertFails(() -> nullValue.as(char.class), NullPointerException.class,
+                        "Cannot convert null value 'null'(language: Java) to Java type 'char'.");
+        assertFails(() -> nullValue.asBoolean(), NullPointerException.class,
+                        "Cannot convert null value 'null'(language: Java) to Java type 'boolean' using Value.asBoolean(). " +
+                                        "You can ensure that the operation is supported using Value.isBoolean().");
+        assertFails(() -> nullValue.as(boolean.class), NullPointerException.class,
+                        "Cannot convert null value 'null'(language: Java) to Java type 'boolean'.");
+    }
+
+    @Test
+    public void testPrimitiveCoercionErrors() {
+        Value bigNumber = context.asValue(Long.MAX_VALUE);
+
+        assertFails(() -> bigNumber.asByte(), ClassCastException.class,
+                        "Cannot convert '9223372036854775807'(language: Java, type: java.lang.Long) to Java type 'byte' using Value.asByte(): Invalid or lossy primitive coercion. " +
+                                        "You can ensure that the value can be converted using Value.fitsInByte().");
+        assertFails(() -> bigNumber.as(byte.class), ClassCastException.class,
+                        "Cannot convert '9223372036854775807'(language: Java, type: java.lang.Long) to Java type 'byte': Invalid or lossy primitive coercion.");
+        assertFails(() -> bigNumber.as(Byte.class), ClassCastException.class,
+                        "Cannot convert '9223372036854775807'(language: Java, type: java.lang.Long) to Java type 'java.lang.Byte': Invalid or lossy primitive coercion.");
+
+        assertFails(() -> bigNumber.asShort(), ClassCastException.class,
+                        "Cannot convert '9223372036854775807'(language: Java, type: java.lang.Long) to Java type 'short' using Value.asShort(): Invalid or lossy primitive coercion. " +
+                                        "You can ensure that the value can be converted using Value.fitsInShort().");
+        assertFails(() -> bigNumber.as(short.class), ClassCastException.class,
+                        "Cannot convert '9223372036854775807'(language: Java, type: java.lang.Long) to Java type 'short': Invalid or lossy primitive coercion.");
+        assertFails(() -> bigNumber.as(Short.class), ClassCastException.class,
+                        "Cannot convert '9223372036854775807'(language: Java, type: java.lang.Long) to Java type 'java.lang.Short': Invalid or lossy primitive coercion.");
+
+        assertFails(() -> bigNumber.asInt(), ClassCastException.class,
+                        "Cannot convert '9223372036854775807'(language: Java, type: java.lang.Long) to Java type 'int' using Value.asInt(): Invalid or lossy primitive coercion. " +
+                                        "You can ensure that the value can be converted using Value.fitsInInt().");
+        assertFails(() -> bigNumber.as(int.class), ClassCastException.class,
+                        "Cannot convert '9223372036854775807'(language: Java, type: java.lang.Long) to Java type 'int': Invalid or lossy primitive coercion.");
+        assertFails(() -> bigNumber.as(Integer.class), ClassCastException.class,
+                        "Cannot convert '9223372036854775807'(language: Java, type: java.lang.Long) to Java type 'java.lang.Integer': Invalid or lossy primitive coercion.");
+
+        Value nan = context.asValue(Double.NaN);
+
+        assertFails(() -> nan.asLong(), ClassCastException.class,
+                        "Cannot convert 'NaN'(language: Java, type: java.lang.Double) to Java type 'long' using Value.asLong(): Invalid or lossy primitive coercion. " +
+                                        "You can ensure that the value can be converted using Value.fitsInLong().");
+        assertFails(() -> nan.as(long.class), ClassCastException.class,
+                        "Cannot convert 'NaN'(language: Java, type: java.lang.Double) to Java type 'long': Invalid or lossy primitive coercion.");
+        assertFails(() -> nan.as(Long.class), ClassCastException.class,
+                        "Cannot convert 'NaN'(language: Java, type: java.lang.Double) to Java type 'java.lang.Long': Invalid or lossy primitive coercion.");
+
+        Value nofloat = context.asValue(Double.MAX_VALUE);
+
+        assertFails(() -> nofloat.asFloat(), ClassCastException.class,
+                        "Cannot convert '1.7976931348623157E308'(language: Java, type: java.lang.Double) to Java type 'float' using Value.asFloat(): Invalid or lossy primitive coercion. " +
+                                        "You can ensure that the value can be converted using Value.fitsInFloat().");
+        assertFails(() -> nofloat.as(float.class), ClassCastException.class,
+                        "Cannot convert '1.7976931348623157E308'(language: Java, type: java.lang.Double) to Java type 'float': Invalid or lossy primitive coercion.");
+        assertFails(() -> nofloat.as(Float.class), ClassCastException.class,
+                        "Cannot convert '1.7976931348623157E308'(language: Java, type: java.lang.Double) to Java type 'java.lang.Float': Invalid or lossy primitive coercion.");
+
+        Value nodouble = context.asValue(9007199254740992L);
+
+        assertFails(() -> nodouble.asDouble(), ClassCastException.class,
+                        "Cannot convert '9007199254740992'(language: Java, type: java.lang.Long) to Java type 'double' using Value.asDouble(): Invalid or lossy primitive coercion. " +
+                                        "You can ensure that the value can be converted using Value.fitsInDouble().");
+        assertFails(() -> nodouble.as(double.class), ClassCastException.class,
+                        "Cannot convert '9007199254740992'(language: Java, type: java.lang.Long) to Java type 'double': Invalid or lossy primitive coercion.");
+        assertFails(() -> nodouble.as(Double.class), ClassCastException.class,
+                        "Cannot convert '9007199254740992'(language: Java, type: java.lang.Long) to Java type 'java.lang.Double': Invalid or lossy primitive coercion.");
+
+        Value noString = context.asValue(false);
+
+        assertFails(() -> noString.asString(), ClassCastException.class,
+                        "Cannot convert 'false'(language: Java, type: java.lang.Boolean) to Java type 'java.lang.String' using Value.asString(): Invalid coercion. You can ensure that the value can be converted using Value.isString().");
+        assertFails(() -> noString.as(char.class), ClassCastException.class,
+                        "Cannot convert 'false'(language: Java, type: java.lang.Boolean) to Java type 'char': Invalid or lossy primitive coercion.");
+        assertFails(() -> noString.as(String.class), ClassCastException.class,
+                        "Cannot convert 'false'(language: Java, type: java.lang.Boolean) to Java type 'java.lang.String': Invalid or lossy primitive coercion.");
+
+        Value noBoolean = context.asValue("foobar");
+
+        assertFails(() -> noBoolean.asBoolean(), ClassCastException.class,
+                        "Cannot convert 'foobar'(language: Java, type: java.lang.String) to Java type 'boolean' using Value.asBoolean(): Invalid or lossy primitive coercion. You can ensure that the value can be converted using Value.isBoolean().");
+        assertFails(() -> noBoolean.as(boolean.class), ClassCastException.class,
+                        "Cannot convert 'foobar'(language: Java, type: java.lang.String) to Java type 'boolean': Invalid or lossy primitive coercion.");
+        assertFails(() -> noBoolean.as(Boolean.class), ClassCastException.class,
+                        "Cannot convert 'foobar'(language: Java, type: java.lang.String) to Java type 'java.lang.Boolean': Invalid or lossy primitive coercion.");
+
+    }
+
+    private static class EmptyProxy implements org.graalvm.polyglot.proxy.Proxy {
+
+        @Override
+        public String toString() {
+            return "proxy";
+        }
+
+    }
+
+    @Test
+    public void testTypeCoercionError() {
+        Value pipe = context.asValue("not a pipe");
+
+        assertFails(() -> pipe.as(List.class), ClassCastException.class,
+                        "Cannot convert 'not a pipe'(language: Java, type: java.lang.String) to Java type 'java.util.List': Unsupported target type.");
+        assertFails(() -> pipe.as(Map.class), ClassCastException.class,
+                        "Cannot convert 'not a pipe'(language: Java, type: java.lang.String) to Java type 'java.util.Map': Unsupported target type.");
+        assertFails(() -> pipe.as(Function.class), ClassCastException.class,
+                        "Cannot convert 'not a pipe'(language: Java, type: java.lang.String) to Java type 'java.util.function.Function': Unsupported target type.");
+        assertFails(() -> pipe.as(JavaInterface.class), ClassCastException.class,
+                        "Cannot convert 'not a pipe'(language: Java, type: java.lang.String) to Java type 'com.oracle.truffle.api.test.polyglot.ValueAPITest$JavaInterface': Unsupported target type.");
+
+        Value other = context.asValue(new EmptyProxy());
+
+        assertFails(() -> other.as(List.class), ClassCastException.class,
+                        "Cannot convert 'proxy'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$EmptyProxy) to Java type 'java.util.List': Value must have array elements.");
+        assertFails(() -> other.as(Map.class), ClassCastException.class,
+                        "Cannot convert 'proxy'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$EmptyProxy) to Java type 'java.util.Map': Value must have members or array elements.");
+        assertFails(() -> other.as(Function.class), ClassCastException.class,
+                        "Cannot convert 'proxy'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$EmptyProxy) to Java type 'java.util.function.Function': Value must be executable or instantiable.");
+        assertFails(() -> other.as(JavaInterface.class), ClassCastException.class,
+                        "Cannot convert 'proxy'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$EmptyProxy) to Java type 'com.oracle.truffle.api.test.polyglot.ValueAPITest$JavaInterface': Value must have members.");
+
+    }
+
+    @Test
+    public void testUnsupportedError() {
+        Value pipe = context.asValue("not a pipe");
+
+        assertFails(() -> pipe.getMember(""), UnsupportedOperationException.class,
+                        "Unsupported operation Value.getMember(String) for 'not a pipe'(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasMembers().");
+        assertFails(() -> pipe.putMember("", null), UnsupportedOperationException.class,
+                        "Unsupported operation Value.putMember(String, Object) for 'not a pipe'(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasMembers().");
+        assertFails(() -> pipe.getArrayElement(0), UnsupportedOperationException.class,
+                        "Unsupported operation Value.getArrayElement(long) for 'not a pipe'(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasArrayElements().");
+        assertFails(() -> pipe.setArrayElement(0, null), UnsupportedOperationException.class,
+                        "Unsupported operation Value.setArrayElement(long, Object) for 'not a pipe'(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasArrayElements().");
+        assertFails(() -> pipe.getArraySize(), UnsupportedOperationException.class,
+                        "Unsupported operation Value.getArraySize() for 'not a pipe'(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasArrayElements().");
+
+    }
+
+    private static final TypeLiteral<List<String>> STRING_LIST = new TypeLiteral<List<String>>() {
+    };
+    private static final TypeLiteral<List<Integer>> INTEGER_LIST = new TypeLiteral<List<Integer>>() {
+    };
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testArrayErrors() {
+        String[] array = new String[]{"asdf"};
+        Value v = context.asValue(array);
+
+        assertFails(() -> v.getArrayElement(1L), IndexOutOfBoundsException.class,
+                        "Invalid array index 1 for array '[asdf]'(language: Java, type: java.lang.String[]).");
+        assertFails(() -> v.setArrayElement(1L, null), IndexOutOfBoundsException.class,
+                        "Invalid array index 1 for array '[asdf]'(language: Java, type: java.lang.String[]).");
+
+        List<Object> list = v.as(List.class);
+        assertFails(() -> list.get(1), IndexOutOfBoundsException.class,
+                        "Invalid list index 1 for List<Object> '[asdf]'(language: Java, type: java.lang.String[]).");
+        assertFails(() -> list.set(1, null), IndexOutOfBoundsException.class,
+                        "Invalid list index 1 for List<Object> '[asdf]'(language: Java, type: java.lang.String[]).");
+
+        List<?> stringList = v.as(STRING_LIST);
+        assertFails(() -> stringList.get(1), IndexOutOfBoundsException.class,
+                        "Invalid list index 1 for List<java.lang.String> '[asdf]'(language: Java, type: java.lang.String[]).");
+        assertFails(() -> stringList.set(1, null), IndexOutOfBoundsException.class,
+                        "Invalid list index 1 for List<java.lang.String> '[asdf]'(language: Java, type: java.lang.String[]).");
+        assertFails(() -> ((List<Object>) stringList).set(0, 42), ClassCastException.class,
+                        "Invalid list value '42'(language: Java, type: java.lang.Integer) for List<java.lang.String> '[asdf]'(language: Java, type: java.lang.String[]) and index 0.");
+        assertFails(() -> ((List<Object>) stringList).set(0, context.asValue(42)), ClassCastException.class,
+                        "Invalid list value '42'(language: Java, type: java.lang.Integer) for List<java.lang.String> '[asdf]'(language: Java, type: java.lang.String[]) and index 0.");
+
+        // just to make sure this works
+        ((List<Object>) stringList).set(0, context.asValue("foo"));
+
+        List<Integer> integerList = v.as(INTEGER_LIST);
+        assertFails(() -> integerList.get(0), ClassCastException.class,
+                        "Cannot convert 'foo'(language: Java, type: java.lang.String) to Java type 'java.lang.Integer': Invalid or lossy primitive coercion.");
+
+    }
+
+    private static void assertFails(Runnable r, Class<?> hostExceptionType, String message) {
+        try {
+            r.run();
+            Assert.fail("No error but expected " + hostExceptionType);
+        } catch (Exception e) {
+            assertTrue(e.getClass().getName() + ":" + e.getMessage(), hostExceptionType.isInstance(e));
+            assertEquals(message, e.getMessage());
+        }
     }
 
 }

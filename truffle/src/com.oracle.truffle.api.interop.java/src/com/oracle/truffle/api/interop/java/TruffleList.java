@@ -244,19 +244,24 @@ class TruffleList<T> extends AbstractList<T> {
                 Object key = args[offset];
                 Object result = null;
                 assert key instanceof Integer;
-                if (sendHasSize(hasSize, receiver) && KeyInfo.isReadable(sendKeyInfo(keyInfo, receiver, key))) {
-                    try {
-                        result = toHost.execute(sendRead(read, receiver, key), cache.valueClass, cache.valueType, languageContext);
-                    } catch (UnknownIdentifierException e) {
+                if (sendHasSize(hasSize, receiver)) {
+                    if (KeyInfo.isReadable(sendKeyInfo(keyInfo, receiver, key))) {
+                        try {
+                            result = toHost.execute(sendRead(read, receiver, key), cache.valueClass, cache.valueType, languageContext);
+                        } catch (UnknownIdentifierException e) {
+                            CompilerDirectives.transferToInterpreter();
+                            throw JavaInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, (int) key);
+                        } catch (UnsupportedMessageException e) {
+                            CompilerDirectives.transferToInterpreter();
+                            throw JavaInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "get()");
+                        }
+                    } else {
                         CompilerDirectives.transferToInterpreter();
-                        throw newArrayIndexOutOfBounds(key.toString());
-                    } catch (UnsupportedMessageException e) {
-                        CompilerDirectives.transferToInterpreter();
-                        throw newUnsupportedOperationException("Operation is not supported.");
+                        throw JavaInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, (int) key);
                     }
                 } else {
                     CompilerDirectives.transferToInterpreter();
-                    throw newArrayIndexOutOfBounds(key.toString());
+                    throw JavaInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "get()");
                 }
                 return result;
             }
@@ -285,24 +290,28 @@ class TruffleList<T> extends AbstractList<T> {
                 Object key = args[offset];
                 Object result = null;
                 assert key instanceof Integer;
-                Object value = args[offset + 1];
-                if (sendHasSize(hasSize, receiver) && KeyInfo.isWritable(sendKeyInfo(keyInfo, receiver, key))) {
-                    try {
-                        if (value != null && !cache.valueClass.isInstance(value)) {
+                Object originalValue = args[offset + 1];
+                Object value = toGuest.apply(languageContext, originalValue);
+                if (sendHasSize(hasSize, receiver)) {
+                    if (KeyInfo.isWritable(sendKeyInfo(keyInfo, receiver, key))) {
+                        try {
+                            sendWrite(write, receiver, key, value);
+                        } catch (UnknownIdentifierException e) {
                             CompilerDirectives.transferToInterpreter();
-                            throw newClassCastException("Expected value " + cache.valueClass + " but was " + value.getClass().getName());
+                            throw JavaInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, (int) key);
+                        } catch (UnsupportedMessageException e) {
+                            CompilerDirectives.transferToInterpreter();
+                            throw JavaInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "set");
+                        } catch (UnsupportedTypeException e) {
+                            CompilerDirectives.transferToInterpreter();
+                            throw JavaInteropErrors.invalidListValue(languageContext, receiver, cache.valueType, (int) key, value);
                         }
-                        sendWrite(write, receiver, key, toGuest.apply(languageContext, value));
-                    } catch (UnknownIdentifierException e) {
-                        throw newArrayIndexOutOfBounds("Out of bounds");
-                    } catch (UnsupportedMessageException e) {
-                        throw newUnsupportedOperationException("Unsupported operation");
-                    } catch (UnsupportedTypeException e) {
-                        throw newIllegalArgumentException("Unsupported type");
+                        return cache.valueClass.cast(result);
+                    } else {
+                        throw JavaInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "set");
                     }
-                    return cache.valueClass.cast(result);
                 }
-                throw newUnsupportedOperationException("Unsupported operation");
+                throw JavaInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "set");
             }
         }
 

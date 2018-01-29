@@ -473,9 +473,9 @@ public abstract class AbstractPolyglotImpl {
 
         public String asString(Object receiver) {
             if (isNull(receiver)) {
-                throw npe(receiver, "asString()", "isString()");
+                throw nullCoercion(receiver, String.class, "asString()", "isString()");
             } else {
-                throw classcast(receiver, "asString()", "isString()");
+                throw cannotConvert(receiver, String.class, "asString()", "isString()", "Invalid coercion.");
             }
         }
 
@@ -485,9 +485,9 @@ public abstract class AbstractPolyglotImpl {
 
         public boolean asBoolean(Object receiver) {
             if (isNull(receiver)) {
-                throw npe(receiver, "asBoolean()", "isBoolean()");
+                throw nullCoercion(receiver, boolean.class, "asBoolean()", "isBoolean()");
             } else {
-                throw classcast(receiver, "asBoolean()", "isBoolean()");
+                throw cannotConvert(receiver, boolean.class, "asBoolean()", "isBoolean()", "Invalid or lossy primitive coercion.");
             }
         }
 
@@ -497,9 +497,9 @@ public abstract class AbstractPolyglotImpl {
 
         public int asInt(Object receiver) {
             if (isNull(receiver)) {
-                throw npe(receiver, "asInt()", "fitsInInt()");
+                throw nullCoercion(receiver, int.class, "asInt()", "fitsInInt()");
             } else {
-                throw classcast(receiver, "asInt()", "fitsInInt()");
+                throw cannotConvert(receiver, int.class, "asInt()", "fitsInInt()", "Invalid or lossy primitive coercion.");
             }
         }
 
@@ -509,9 +509,9 @@ public abstract class AbstractPolyglotImpl {
 
         public long asLong(Object receiver) {
             if (isNull(receiver)) {
-                throw npe(receiver, "asLong()", "fitsInLong()");
+                throw nullCoercion(receiver, long.class, "asLong()", "fitsInLong()");
             } else {
-                throw classcast(receiver, "asLong()", "fitsInLong()");
+                throw cannotConvert(receiver, long.class, "asLong()", "fitsInLong()", "Invalid or lossy primitive coercion.");
             }
         }
 
@@ -521,9 +521,9 @@ public abstract class AbstractPolyglotImpl {
 
         public double asDouble(Object receiver) {
             if (isNull(receiver)) {
-                throw npe(receiver, "asDouble()", "fitsInDouble()");
+                throw nullCoercion(receiver, double.class, "asDouble()", "fitsInDouble()");
             } else {
-                throw classcast(receiver, "asDouble()", "fitsInDouble()");
+                throw cannotConvert(receiver, double.class, "asDouble()", "fitsInDouble()", "Invalid or lossy primitive coercion.");
             }
         }
 
@@ -533,9 +533,9 @@ public abstract class AbstractPolyglotImpl {
 
         public float asFloat(Object receiver) {
             if (isNull(receiver)) {
-                throw npe(receiver, "asFloat()", "fitsInFloat()");
+                throw nullCoercion(receiver, float.class, "asFloat()", "fitsInFloat()");
             } else {
-                throw classcast(receiver, "asFloat()", "fitsInFloat()");
+                throw cannotConvert(receiver, float.class, "asFloat()", "fitsInFloat()", "Invalid or lossy primitive coercion.");
             }
         }
 
@@ -553,9 +553,9 @@ public abstract class AbstractPolyglotImpl {
 
         public byte asByte(Object receiver) {
             if (isNull(receiver)) {
-                throw npe(receiver, "asByte()", "fitsInByte()");
+                throw nullCoercion(receiver, byte.class, "asByte()", "fitsInByte()");
             } else {
-                throw classcast(receiver, "asByte()", "fitsInByte()");
+                throw cannotConvert(receiver, byte.class, "asByte()", "fitsInByte()", "Invalid or lossy primitive coercion.");
             }
         }
 
@@ -565,9 +565,9 @@ public abstract class AbstractPolyglotImpl {
 
         public short asShort(Object receiver) {
             if (isNull(receiver)) {
-                throw npe(receiver, "asShort()", "fitsInShort()");
+                throw nullCoercion(receiver, short.class, "asShort()", "fitsInShort()");
             } else {
-                throw classcast(receiver, "asShort()", "fitsInShort()");
+                throw cannotConvert(receiver, short.class, "asShort()", "fitsInShort()", "Invalid or lossy primitive coercion.");
             }
         }
 
@@ -576,7 +576,7 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public final long asNativePointerUnsupported(Object receiver) {
-            throw classcast(receiver, "asNativePointer()", "isNativeObject()");
+            throw cannotConvert(receiver, long.class, "asNativePointer()", "isNativeObject()", "Value cannot be converted to a native pointer.");
         }
 
         public boolean isHostObject(Object receiver) {
@@ -588,18 +588,18 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public Object asHostObject(Object receiver) {
-            throw classcast(receiver, "asHostObject()", "isHostObject()");
+            throw cannotConvert(receiver, null, "asHostObject()", "isHostObject()", "Value is not a host object.");
         }
 
         public Object asProxyObject(Object receiver) {
-            throw classcast(receiver, "asProxyObject()", "isProxyObject()");
+            throw cannotConvert(receiver, null, "asProxyObject()", "isProxyObject()", "Value is not a proxy object.");
         }
 
         protected abstract RuntimeException unsupported(Object receiver, String message, String useToCheck);
 
-        protected abstract RuntimeException classcast(Object receiver, String message, String useToCheck);
+        protected abstract RuntimeException cannotConvert(Object receiver, Class<?> targetType, String message, String useToCheck, String reason);
 
-        protected abstract RuntimeException npe(Object receiver, String message, String useToCheck);
+        protected abstract RuntimeException nullCoercion(Object receiver, Class<?> targetType, String message, String useToCheck);
 
         public abstract String toString(Object receiver);
 

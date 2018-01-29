@@ -254,6 +254,8 @@ public abstract class Accessor {
         public abstract void legacyTckLeave(Object vm, Object prev);
 
         public abstract <T> T getOrCreateRuntimeData(Object sourceVM, Supplier<T> constructor);
+
+        public abstract String getValueInfo(Object languageContext, Object value);
     }
 
     public abstract static class LanguageSupport {

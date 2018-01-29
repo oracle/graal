@@ -43,6 +43,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -1972,6 +1973,11 @@ public class PolyglotEngine {
         @Override
         public org.graalvm.polyglot.SourceSection createSourceSection(Object vmObject, org.graalvm.polyglot.Source source, SourceSection sectionImpl) {
             throw new UnsupportedOperationException("Not supported in legacy engine.");
+        }
+
+        @Override
+        public String getValueInfo(Object languageContext, Object value) {
+            return Objects.toString(value);
         }
     }
 

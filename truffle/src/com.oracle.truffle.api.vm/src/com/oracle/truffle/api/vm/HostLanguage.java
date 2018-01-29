@@ -38,11 +38,11 @@ import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
@@ -203,14 +203,50 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         return true;
     }
 
+    private String arrayToString(Object array, int level) {
+        if (array == null) {
+            return "null";
+        }
+        if (level > 0) {
+            // avoid recursions all together
+            return "[...]";
+        }
+        int iMax = Array.getLength(array) - 1;
+        if (iMax == -1) {
+            return "[]";
+        }
+
+        StringBuilder b = new StringBuilder();
+        b.append('[');
+        for (int i = 0;; i++) {
+            b.append(toStringImpl(Array.get(array, i), level + 1));
+            if (i == iMax) {
+                return b.append(']').toString();
+            }
+            b.append(", ");
+        }
+    }
+
     @Override
     protected String toString(HostContext context, Object value) {
+        return toStringImpl(value, 0);
+    }
+
+    private String toStringImpl(Object value, int level) {
         if (value instanceof TruffleObject) {
             TruffleObject to = (TruffleObject) value;
             if (JavaInterop.isJavaObject(to)) {
                 Object javaObject = JavaInterop.asJavaObject(to);
                 try {
-                    return Objects.toString(javaObject);
+                    if (javaObject == null) {
+                        return "null";
+                    } else if (javaObject.getClass().isArray()) {
+                        return arrayToString(javaObject, level);
+                    } else if (javaObject instanceof Class) {
+                        return ((Class<?>) javaObject).getTypeName();
+                    } else {
+                        return Objects.toString(javaObject);
+                    }
                 } catch (Throwable t) {
                     throw PolyglotImpl.wrapHostException(t);
                 }

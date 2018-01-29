@@ -55,11 +55,6 @@ abstract class HostEntryRootNode<T> extends ExecutableNode implements Supplier<S
         return result;
     }
 
-    protected static final RuntimeException newNullPointerException(String message) {
-        CompilerDirectives.transferToInterpreter();
-        return JavaInterop.ACCESSOR.engine().newNullPointerException(message, null);
-    }
-
     protected static final RuntimeException newUnsupportedOperationException(String message) {
         CompilerDirectives.transferToInterpreter();
         return JavaInterop.ACCESSOR.engine().newUnsupportedOperationException(message, null);

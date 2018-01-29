@@ -384,7 +384,7 @@ final class ToPrimitiveNode extends Node {
         try {
             result = ForeignAccess.sendUnbox(unboxNode, value);
         } catch (UnsupportedMessageException e) {
-            throw new IllegalStateException();
+            return null;
         }
         if (result instanceof TruffleObject && isNull((TruffleObject) result)) {
             return null;

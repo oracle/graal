@@ -598,7 +598,6 @@ abstract class ProxyInvokeNode extends Node {
     private static Object invokeOrExecute(TruffleObject receiver, Object[] arguments, String name, Node invokeNode, Node keyInfoNode, Node readNode, Node isExecutableNode, Node executeNode,
                     ConditionProfile branchProfile) {
         try {
-
             int keyInfo = ForeignAccess.sendKeyInfo(keyInfoNode, receiver, name);
             if (branchProfile.profile(KeyInfo.isInvocable(keyInfo))) {
                 try {

@@ -31,7 +31,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 
 abstract class ArrayReadNode extends Node {
@@ -70,7 +72,7 @@ abstract class ArrayReadNode extends Node {
     @TruffleBoundary
     @Specialization(guards = {"!receiver.isArray()", "!isList(receiver)"})
     protected static Object notArray(JavaObject receiver, Number index) {
-        throw UnknownIdentifierException.raise(String.valueOf(index));
+        throw UnsupportedMessageException.raise(Message.READ);
     }
 
     private static Object doArrayAccess(JavaObject object, int index) {

@@ -328,7 +328,7 @@ public class TestMemberAccess {
         try {
             ForeignAccess.sendRead(readNode, arrayObject, 0);
             fail();
-        } catch (UnknownIdentifierException e) {
+        } catch (UnsupportedMessageException e) {
         }
     }
 

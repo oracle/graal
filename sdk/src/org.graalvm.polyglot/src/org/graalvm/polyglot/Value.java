@@ -77,7 +77,6 @@ public final class Value {
 
     /**
      *
-     *
      * @since 1.0
      */
     public Value getArrayElement(long index) {

@@ -36,6 +36,7 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -410,27 +411,35 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             return languageContext.env;
         }
 
-        @Override
-        public LanguageInfo getObjectLanguage(Object obj, Object vmObject) {
-            PolyglotLanguageContext[] contexts = PolyglotContextImpl.requireContext().contexts;
-            for (PolyglotLanguageContext context : contexts) {
-                PolyglotLanguage language = context.language;
+        static PolyglotLanguage findObjectLanguage(PolyglotContextImpl context, Object value) {
+            PolyglotLanguageContext[] contexts = context.contexts;
+            for (PolyglotLanguageContext languageContext : contexts) {
+                PolyglotLanguage language = languageContext.language;
                 if (!language.initialized) {
                     continue;
                 }
                 if (language.cache.singletonLanguage instanceof HostLanguage) {
                     // The HostLanguage might not have context created even when JavaObjects exist
                     // Check it separately:
-                    if (((HostLanguage) language.cache.singletonLanguage).isObjectOfLanguage(obj)) {
-                        return language.info;
+                    if (((HostLanguage) language.cache.singletonLanguage).isObjectOfLanguage(value)) {
+                        return language;
                     } else {
                         continue;
                     }
                 }
-                Env env = context.env;
-                if (env != null && LANGUAGE.isObjectOfLanguage(env, obj)) {
-                    return language.info;
+                Env env = languageContext.env;
+                if (env != null && LANGUAGE.isObjectOfLanguage(env, value)) {
+                    return language;
                 }
+            }
+            return null;
+        }
+
+        @Override
+        public LanguageInfo getObjectLanguage(Object obj, Object vmObject) {
+            PolyglotLanguage language = findObjectLanguage(PolyglotContextImpl.requireContext(), obj);
+            if (language != null) {
+                return language.info;
             }
             return null;
         }
@@ -757,6 +766,15 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         public Object getCurrentHostContext() {
             PolyglotContextImpl polyglotContext = PolyglotContextImpl.current();
             return polyglotContext == null ? null : polyglotContext.getHostContext();
+        }
+
+        @Override
+        public String getValueInfo(Object languageContext, Object value) {
+            PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+            if (context == null) {
+                return Objects.toString(value);
+            }
+            return PolyglotValue.getValueInfo(context, value);
         }
 
         @Override
