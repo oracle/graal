@@ -94,13 +94,16 @@ public class NativeImageBuildClient {
 
         try {
             SubstrateServerMessage.send(new SubstrateServerMessage(command, payload), os);
+            String line;
             switch (command) {
                 case "version":
-                    SubstrateServerMessage response = new Gson().fromJson(is.readLine(), SubstrateServerMessage.class);
-                    outln.accept(response.payload);
+                    line = is.readLine();
+                    if (line != null) {
+                        SubstrateServerMessage response = new Gson().fromJson(line, SubstrateServerMessage.class);
+                        outln.accept(response.payload);
+                    }
                     break;
                 default: {
-                    String line;
                     while ((line = is.readLine()) != null) {
                         SubstrateServerMessage serverCommand = new Gson().fromJson(line, SubstrateServerMessage.class);
                         Consumer<String> selectedConsumer = null;
