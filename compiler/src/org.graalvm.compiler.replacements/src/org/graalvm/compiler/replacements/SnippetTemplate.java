@@ -97,6 +97,7 @@ import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -755,7 +756,14 @@ public class SnippetTemplate {
                     }
                 }
             }
-            snippetCopy.addDuplicates(snippetGraph.getNodes(), snippetGraph, snippetGraph.getNodeCount(), nodeReplacements);
+            if (GraalOptions.TraceInlining.getValue(snippetCopy.getOptions()).isTracing()) {
+                try (InliningLog.UpdateScope ignored = snippetCopy.getInliningLog().createUpdateScope((oldNode, newNode) -> { })) {
+                    UnmodifiableEconomicMap<Node, Node> duplicates = snippetCopy.addDuplicates(snippetGraph.getNodes(), snippetGraph, snippetGraph.getNodeCount(), nodeReplacements);
+                    snippetCopy.getInliningLog().replaceLog(duplicates, snippetGraph.getInliningLog());
+                }
+            } else {
+                snippetCopy.addDuplicates(snippetGraph.getNodes(), snippetGraph, snippetGraph.getNodeCount(), nodeReplacements);
+            }
 
             debug.dump(DebugContext.INFO_LEVEL, snippetCopy, "Before specialization");
 
