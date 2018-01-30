@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,8 @@ package com.oracle.svm.truffle.nfi;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -32,7 +34,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 @TargetClass(className = "com.oracle.truffle.nfi.impl.NativeString", onlyWith = TruffleNFIFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_nfi_impl_NativeString {
 
-    @Alias long nativePointer;
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NativeReferenceField.class) long nativePointer;
 
     @Substitute
     @TruffleBoundary
