@@ -66,7 +66,7 @@ public interface Invokable {
             } else {
                 // This node was added from a different graph.
                 // The adder is responsible for providing a context.
-                throw GraalError.shouldNotReachHere("No InliningLogUpdate scope provided.");
+                throw GraalError.shouldNotReachHere("No InliningLog.Update scope provided.");
             }
         }
     }

@@ -25,7 +25,9 @@ package org.graalvm.compiler.nodes;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
@@ -85,7 +87,7 @@ public class InliningLog {
 
         @Override
         public String toString() {
-            return String.format("<%s> %s: %s", phase, target.format("%H.%n(%p)"), reason);
+            return String.format("<%s> %s: %s", phase, target != null ? target.format("%H.%n(%p)") : "", reason);
         }
     }
 
@@ -110,7 +112,7 @@ public class InliningLog {
         }
 
         public String positionString() {
-            if (invoke == null) {
+            if (parent == null) {
                 return "<root>";
             }
             return MetaUtil.appendLocation(new StringBuilder(100), parent.target, getBci()).toString();
@@ -127,30 +129,78 @@ public class InliningLog {
     public InliningLog(ResolvedJavaMethod rootMethod) {
         this.root = new Callsite(null, null);
         this.root.target = rootMethod;
-        this.leaves = EconomicMap.create();
+        this.leaves = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
     }
 
-    public void addDecision(Invokable invoke, boolean positive, String reason, String phase, EconomicMap<Node, Node> duplicationMap, InliningLog calleeLog) {
+    public void addDecision(Invokable invoke, boolean positive, String reason, String phase, EconomicMap<Node, Node> replacements, InliningLog calleeLog) {
         assert leaves.containsKey(invoke);
-        assert (!positive && duplicationMap == null && calleeLog == null) || (positive && duplicationMap != null && calleeLog != null);
+        assert (!positive && replacements == null && calleeLog == null) || (positive && replacements != null && calleeLog != null);
         Callsite callsite = leaves.get(invoke);
         callsite.target = callsite.invoke.getTargetMethod();
         Decision decision = new Decision(positive, reason, phase, invoke.getTargetMethod());
         callsite.decisions.add(decision);
         if (positive) {
             leaves.removeKey(invoke);
+            EconomicMap<Callsite, Callsite> mapping = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+            for (Callsite calleeChild : calleeLog.root.children) {
+                Callsite child = callsite.addChild(calleeChild.invoke);
+                copyTree(child, calleeChild, replacements, mapping);
+            }
             MapCursor<Invokable, Callsite> entries = calleeLog.leaves.getEntries();
             while (entries.advance()) {
                 Invokable invokeFromCallee = entries.getKey();
                 Callsite callsiteFromCallee = entries.getValue();
-                Invokable inlinedInvokeFromCallee = (Invokable) duplicationMap.get(invokeFromCallee.asFixedNode());
-                callsiteFromCallee.invoke = inlinedInvokeFromCallee;
-                leaves.put(inlinedInvokeFromCallee, callsiteFromCallee);
+                if (invokeFromCallee.asFixedNode().isDeleted()) {
+                    // Some invoke nodes could have been removed by optimizations.
+                    continue;
+                }
+                Invokable inlinedInvokeFromCallee = (Invokable) replacements.get(invokeFromCallee.asFixedNode());
+                Callsite descendant = mapping.get(callsiteFromCallee);
+                leaves.put(inlinedInvokeFromCallee, descendant);
             }
-            for (Callsite child : calleeLog.root.children) {
-                child.parent = callsite;
-                callsite.children.add(child);
-            }
+        }
+    }
+
+    public void replaceLog(UnmodifiableEconomicMap<Node, Node> replacements, InliningLog replacementLog) {
+        assert root.decisions.isEmpty();
+        assert root.children.isEmpty();
+        assert leaves.isEmpty();
+        MapCursor<Invokable, Callsite> replacementEntries = replacementLog.leaves.getEntries();
+        EconomicMap<Callsite, Callsite> mapping = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+        copyTree(root, replacementLog.root, replacements, mapping);
+        while (replacementEntries.advance()) {
+            Invokable replacementInvoke = replacementEntries.getKey();
+            Callsite replacementSite = replacementEntries.getValue();
+            Invokable invoke = (Invokable) replacements.get((Node) replacementInvoke);
+            Callsite site = mapping.get(replacementSite);
+            leaves.put(invoke, site);
+        }
+    }
+
+    private void copyTree(Callsite site, Callsite replacementSite, UnmodifiableEconomicMap<Node, Node> replacements, EconomicMap<Callsite, Callsite> mapping) {
+        mapping.put(replacementSite, site);
+        site.target = replacementSite.target;
+        site.decisions.addAll(replacementSite.decisions);
+        site.invoke = replacementSite.invoke != null && replacementSite.invoke.asFixedNode().isAlive() ? (Invokable) replacements.get(replacementSite.invoke.asFixedNode()) : null;
+        for (Callsite replacementChild : replacementSite.children) {
+            Callsite child = new Callsite(site, null);
+            site.children.add(child);
+            copyTree(child, replacementChild, replacements, mapping);
+        }
+    }
+
+    public void checkInvariants(StructuredGraph graph) {
+        for (Invoke invoke : graph.getInvokes()) {
+            assert leaves.containsKey(invoke) : "Invoke " + invoke + " not contained in the leaves.";
+        }
+        assert root.parent == null;
+        checkTreeInvariants(root);
+    }
+
+    private void checkTreeInvariants(Callsite site) {
+        for (Callsite child : site.children) {
+            assert site == child.parent : "Callsite " + site + " with child " + child + " has an invalid parent pointer " + site;
+            checkTreeInvariants(child);
         }
     }
 

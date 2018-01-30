@@ -457,6 +457,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return copy(newName, duplicationMapCallback, compilationId, debugForCopy);
     }
 
+    @SuppressWarnings("try")
     private StructuredGraph copy(String newName, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback, CompilationIdentifier newCompilationId, DebugContext debugForCopy) {
         AllowAssumptions allowAssumptions = AllowAssumptions.ifNonNull(assumptions);
         StructuredGraph copy = new StructuredGraph(newName,
@@ -477,7 +478,15 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         copy.isAfterExpandLogic = isAfterExpandLogic;
         EconomicMap<Node, Node> replacements = EconomicMap.create(Equivalence.IDENTITY);
         replacements.put(start, copy.start);
-        UnmodifiableEconomicMap<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), replacements);
+        UnmodifiableEconomicMap<Node, Node> duplicates;
+        if (GraalOptions.TraceInlining.getValue(getOptions()).isTracing()) {
+            try (InliningLog.UpdateScope ignored = copy.getInliningLog().createUpdateScope((oldNode, newNode) -> { })) {
+                duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), replacements);
+            }
+            copy.getInliningLog().replaceLog(duplicates, this.getInliningLog());
+        } else {
+            duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), replacements);
+        }
         if (duplicationMapCallback != null) {
             duplicationMapCallback.accept(duplicates);
         }
