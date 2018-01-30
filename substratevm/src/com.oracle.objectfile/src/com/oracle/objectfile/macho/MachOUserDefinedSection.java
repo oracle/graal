@@ -29,8 +29,8 @@ import java.util.Map;
 
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.ElementImpl;
-import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.LayoutDecision;
+import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.ObjectFile.RelocationKind;
@@ -207,7 +207,7 @@ public class MachOUserDefinedSection extends MachOSection implements ObjectFile.
 
         // return ByteBuffer cursor to where it was
         sbb.pop();
-        RelocationInfo rec = new RelocationInfo(el, this, offset, length, k, false, symbolName, createAsLocalReloc);
+        RelocationInfo rec = new RelocationInfo(el, this, offset, length, k, symbolName, createAsLocalReloc);
         el.add(rec);
 
         return rec;

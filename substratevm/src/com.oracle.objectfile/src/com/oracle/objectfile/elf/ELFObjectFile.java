@@ -168,9 +168,6 @@ public class ELFObjectFile extends ObjectFile {
     @Override
     public Symbol createUndefinedSymbol(String name, int size, boolean isCode) {
         ELFSymtab symtab = createSymbolTable();
-        // ELFSymtab.Entry sym = symtab.addEntry(name, 0, size, ELFSymtab.SymBinding.GLOBAL, isCode
-        // ? ELFSymtab.SymType.FUNC : ELFSymtab.SymType.OBJECT, PseudoSection.UNDEF);
-        // return sym;
         return symtab.newUndefinedEntry(name, isCode);
     }
 

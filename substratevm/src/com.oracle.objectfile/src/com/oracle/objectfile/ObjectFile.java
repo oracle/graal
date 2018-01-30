@@ -294,8 +294,6 @@ public abstract class ObjectFile {
      */
     public interface RelocationRecord extends RelocationSiteInfo {
 
-        Section getRelocatedSection();
-
         Symbol getReferencedSymbol();
     }
 

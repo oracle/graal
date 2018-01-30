@@ -148,15 +148,12 @@ public class ELFUserDefinedSection extends ELFSection implements ObjectFile.Relo
 
     @Override
     public RelocationRecord markRelocationSite(int offset, int length, ByteBuffer bb, ObjectFile.RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
-        if (useImplicitAddend) {
-            if (explicitAddend != null) {
-                throw new IllegalArgumentException("cannot have both explicit and implicit addend");
-            }
+        if (useImplicitAddend != (explicitAddend == null)) {
+            throw new IllegalArgumentException("must have either an explicit or implicit addend");
         }
         ELFSymtab syms = (ELFSymtab) getOwner().elementForName(".symtab");
         ELFRelocationSection rs = (ELFRelocationSection) getOrCreateRelocationElement(useImplicitAddend);
-        boolean withExplicitAddends = !useImplicitAddend;
-        ELFSymtab.Entry ent = null;
+        ELFSymtab.Entry ent;
         if (symbolName != null) {
             List<ELFSymtab.Entry> ents = syms.entriesWithName(symbolName);
             if (ents.size() == 0) {
@@ -173,13 +170,6 @@ public class ELFUserDefinedSection extends ELFSection implements ObjectFile.Relo
             ent = syms.get(0);
             assert ent.isNull();
         }
-
-        // add the entry
-        if (!withExplicitAddends) {
-            return rs.new Entry(this, offset, ELFMachine.getRelocation(getOwner().getMachine(), k, length), ent);
-        } else {
-            assert explicitAddend != null;
-            return rs.new Entry(this, offset, ELFMachine.getRelocation(getOwner().getMachine(), k, length), ent, explicitAddend);
-        }
+        return rs.addEntry(this, offset, ELFMachine.getRelocation(getOwner().getMachine(), k, length), ent, explicitAddend);
     }
 }

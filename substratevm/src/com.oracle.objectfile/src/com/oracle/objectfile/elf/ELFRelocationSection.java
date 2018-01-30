@@ -26,11 +26,14 @@ package com.oracle.objectfile.elf;
 import static java.lang.Math.toIntExact;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.function.Function;
 
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.ElementImpl;
@@ -41,7 +44,6 @@ import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.objectfile.ObjectFile.RelocationMethod;
 import com.oracle.objectfile.ObjectFile.RelocationRecord;
-import com.oracle.objectfile.ObjectFile.Section;
 import com.oracle.objectfile.ObjectFile.Symbol;
 import com.oracle.objectfile.elf.ELFObjectFile.ELFSection;
 import com.oracle.objectfile.elf.ELFObjectFile.ELFSectionFlag;
@@ -108,50 +110,19 @@ public class ELFRelocationSection extends ELFSection {
         long toLong();
     }
 
-    class Entry implements RelocationRecord {
-
-        final ELFSection s;
+    private static final class Entry implements RelocationRecord {
+        final ELFSection section;
         final long offset;
         final ELFRelocationMethod t;
         final ELFSymtab.Entry sym;
         final long addend; // we only use this if we're a rela section, i.e. if withExplicitAddends
 
-        Entry(ELFSection s, long offset, ELFRelocationMethod t, com.oracle.objectfile.elf.ELFSymtab.Entry sym) {
-            // note: we have been asked to create an implicit-addend entry...
-            // check that our reloc method is okay with our choice of addend-or-no
-            if (!t.canUseImplicitAddend()) {
-                throw new IllegalArgumentException("cannot use relocation method " + t + " with implicit addends");
-            }
-            // check that we're consistent with the containing section
-            if (ELFRelocationSection.this.withExplicitAddends) {
-                throw new IllegalStateException("cannot create relocation without addend in .rela section");
-            }
-
-            this.s = s;
-            this.offset = offset;
-            this.t = t;
-            this.sym = sym;
-            this.addend = 0;
-
-            entries.add(this);
-        }
-
-        Entry(ELFSection s, long offset, ELFRelocationMethod t, com.oracle.objectfile.elf.ELFSymtab.Entry sym, long addend) {
-            // note: we have been asked to create an explicit-addend entry...
-            // check that our reloc method is okay with our choice of addend-or-no
-            if (!t.canUseExplicitAddend()) {
-                throw new IllegalArgumentException("cannot use relocation method " + t + " with explicit addends");
-            }
-            if (!withExplicitAddends) {
-                throw new IllegalStateException("cannot create relocation with addend in .rel section");
-            }
-            this.s = s;
+        Entry(ELFSection section, long offset, ELFRelocationMethod t, ELFSymtab.Entry sym, long addend) {
+            this.section = section;
             this.offset = offset;
             this.t = t;
             this.sym = sym;
             this.addend = addend;
-
-            entries.add(this);
         }
 
         @Override
@@ -170,23 +141,33 @@ public class ELFRelocationSection extends ELFSection {
         }
 
         @Override
-        public Section getRelocatedSection() {
-            return relocated;
+        public int getRelocatedByteSize() {
+            /* All ELF relocation kinds work on a fixed size of relocation site. */
+            return t.getRelocatedByteSize();
         }
 
         @Override
-        public int getRelocatedByteSize() {
-            /*
-             * All ELF relocation kinds work on a fixed size of relocation site.
-             */
-            return t.getRelocatedByteSize();
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj != null && getClass() == obj.getClass()) {
+                Entry other = (Entry) obj;
+                return Objects.equals(section, other.section) && offset == other.offset && Objects.equals(t, other.t) && Objects.equals(sym, other.sym) && addend == other.addend;
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return (((section.hashCode() * 31 + Long.hashCode(offset)) * 31 + t.hashCode()) * 31 + sym.hashCode()) * 31 + Long.hashCode(addend);
         }
     }
 
-    final boolean withExplicitAddends;
-    ELFSection relocated;
-    ELFSymtab syms;
-    final ArrayList<Entry> entries = new ArrayList<>();
+    private final boolean withExplicitAddends;
+    private ELFSection relocated;
+    private ELFSymtab syms;
+    private final Map<Entry, Entry> entries = new TreeMap<>(Comparator.comparingLong(Entry::getOffset));
 
     public ELFRelocationSection(ELFObjectFile owner, String name, ELFSection relocated, ELFSymtab syms, boolean withExplicitAddends) {
         this(owner, name, relocated, syms, withExplicitAddends, -1);
@@ -212,6 +193,26 @@ public class ELFRelocationSection extends ELFSection {
     public void setSymtab(ELFSymtab syms) {
         this.syms = syms;
         assert relocated != null || syms == null || syms.isDynamic(); // only dynsyms
+    }
+
+    public Entry addEntry(ELFSection s, long offset, ELFRelocationMethod t, ELFSymtab.Entry sym, Long explicitAddend) {
+        if (explicitAddend != null) {
+            if (!t.canUseExplicitAddend()) {
+                throw new IllegalArgumentException("cannot use relocation method " + t + " with explicit addends");
+            }
+            if (!withExplicitAddends) {
+                throw new IllegalStateException("cannot create relocation with addend in .rel section");
+            }
+        } else {
+            if (!t.canUseImplicitAddend()) {
+                throw new IllegalArgumentException("cannot use relocation method " + t + " with implicit addends");
+            }
+            if (withExplicitAddends) {
+                throw new IllegalStateException("cannot create relocation without addend in .rela section");
+            }
+        }
+        long addend = (explicitAddend != null) ? explicitAddend : 0L;
+        return entries.computeIfAbsent(new Entry(s, offset, t, sym, addend), Function.identity());
     }
 
     public boolean isDynamic() {
@@ -248,8 +249,8 @@ public class ELFRelocationSection extends ELFSection {
         /* If we're dynamic, it also depends on the vaddr of all referenced sections. */
         if (isDynamic()) {
             Set<ELFSection> referenced = new HashSet<>();
-            for (Entry ent : entries) {
-                referenced.add(ent.s);
+            for (Entry ent : entries.keySet()) {
+                referenced.add(ent.section);
             }
             for (ELFSection es : referenced) {
                 deps.add(BuildDependency.createOrGet(ourContent, decisions.get(es).getDecision(LayoutDecision.Kind.VADDR)));
@@ -263,8 +264,8 @@ public class ELFRelocationSection extends ELFSection {
     public byte[] getOrDecideContent(Map<Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
         /* We blat out our list of relocation records. */
         OutputAssembler oa = AssemblyBuffer.createOutputAssembler(ByteBuffer.allocate(entries.size() * new EntryStruct().getWrittenSize()).order(getOwner().getByteOrder()));
-        for (Entry ent : entries) {
-            long offset = !isDynamic() ? ent.offset : (int) alreadyDecided.get(ent.s).getDecidedValue(LayoutDecision.Kind.VADDR) + ent.offset;
+        for (Entry ent : entries.keySet()) {
+            long offset = !isDynamic() ? ent.offset : (int) alreadyDecided.get(ent.section).getDecidedValue(LayoutDecision.Kind.VADDR) + ent.offset;
             long info;
             switch (getOwner().getFileClass()) {
                 case ELFCLASS32:
