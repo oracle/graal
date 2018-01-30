@@ -106,7 +106,7 @@ final class TruffleFunction<T, R> implements Function<T, R> {
         @SuppressWarnings("unchecked")
         @Override
         protected Class<? extends TruffleObject> getReceiverType() {
-            return (Class<? extends TruffleObject>) returnClass;
+            return (Class<? extends TruffleObject>) receiverClass;
         }
 
         @Override

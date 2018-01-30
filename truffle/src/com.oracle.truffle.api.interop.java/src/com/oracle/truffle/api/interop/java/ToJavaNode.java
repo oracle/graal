@@ -249,7 +249,7 @@ abstract class ToJavaNode extends Node {
                 throw JavaInteropErrors.cannotConvert(languageContext, truffleObject, targetType, "Value must have members or array elements.");
             }
         } else if (targetType == Function.class) {
-            TypeAndClass<?> returnType = getGenericParameterType(genericType, 0);
+            TypeAndClass<?> returnType = getGenericParameterType(genericType, 1);
             if (isExecutable(truffleObject) || isInstantiable(truffleObject)) {
                 obj = TruffleFunction.create(languageContext, truffleObject, returnType.clazz, returnType.type);
             } else if (!TruffleOptions.AOT && ForeignAccess.sendHasKeys(hasKeysNode, truffleObject)) {
