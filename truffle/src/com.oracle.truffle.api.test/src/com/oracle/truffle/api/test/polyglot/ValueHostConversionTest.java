@@ -278,6 +278,33 @@ public class ValueHostConversionTest {
         assertEquals("object", hierarchy.execute(false).asString());
     }
 
+    @Test
+    public void testAsByte() {
+        Number[] canConvert = {
+                        Byte.MIN_VALUE, Byte.MAX_VALUE,
+                        (short) Byte.MIN_VALUE, (short) Byte.MAX_VALUE,
+                        (int) Byte.MIN_VALUE, (int) Byte.MAX_VALUE,
+                        (long) Byte.MIN_VALUE, (long) Byte.MAX_VALUE,
+                        0d, (double) Byte.MIN_VALUE, (double) Byte.MAX_VALUE,
+                        0f, (float) Byte.MIN_VALUE, (float) Byte.MAX_VALUE,
+        };
+        for (Number number : canConvert) {
+            Value value = context.asValue(number);
+            assertTrue(number.toString(), value.fitsInByte());
+            assertEquals(number.toString(), number.byteValue(), value.asByte());
+        }
+
+        Number[] cannotConvert = {
+                        Byte.MIN_VALUE - 1, Byte.MAX_VALUE + 1,
+                        Byte.MIN_VALUE - 1L, Byte.MAX_VALUE + 1L,
+                        -0d, Double.NaN, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, (double) (Byte.MIN_VALUE - 1), (double) (Byte.MAX_VALUE + 1),
+                        -0f, Float.NaN, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY, (float) (Byte.MIN_VALUE - 1), (float) (Byte.MAX_VALUE + 1),
+        };
+        for (Number number : cannotConvert) {
+            ValueAssert.assertFails(() -> context.asValue(number).asByte(), ClassCastException.class);
+        }
+    }
+
     @SuppressWarnings("unused")
     public static class ShortHierarchy {
 
@@ -330,6 +357,33 @@ public class ValueHostConversionTest {
 
         assertEquals("object", hierarchy.execute("").asString());
         assertEquals("object", hierarchy.execute(false).asString());
+    }
+
+    @Test
+    public void testAsShort() {
+        Number[] canConvert = {
+                        Byte.MIN_VALUE, Byte.MAX_VALUE,
+                        Short.MIN_VALUE, Short.MAX_VALUE,
+                        (int) Short.MIN_VALUE, (int) Short.MAX_VALUE,
+                        (long) Short.MIN_VALUE, (long) Short.MAX_VALUE,
+                        0d, (double) Short.MIN_VALUE, (double) Short.MAX_VALUE,
+                        0f, (float) Short.MIN_VALUE, (float) Short.MAX_VALUE,
+        };
+        for (Number number : canConvert) {
+            Value value = context.asValue(number);
+            assertTrue(number.toString(), value.fitsInShort());
+            assertEquals(number.toString(), number.shortValue(), value.asShort());
+        }
+
+        Number[] cannotConvert = {
+                        Short.MIN_VALUE - 1, Short.MAX_VALUE + 1,
+                        Short.MIN_VALUE - 1L, Short.MAX_VALUE + 1L,
+                        -0d, Double.NaN, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, (double) (Short.MIN_VALUE - 1), (double) (Short.MAX_VALUE + 1),
+                        -0f, Float.NaN, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY, (float) (Short.MIN_VALUE - 1), (float) (Short.MAX_VALUE + 1),
+        };
+        for (Number number : cannotConvert) {
+            ValueAssert.assertFails(() -> context.asValue(number).asShort(), ClassCastException.class);
+        }
     }
 
     @SuppressWarnings("unused")
@@ -389,6 +443,32 @@ public class ValueHostConversionTest {
 
         assertEquals("object", hierarchy.execute("").asString());
         assertEquals("object", hierarchy.execute(false).asString());
+    }
+
+    @Test
+    public void testAsInt() {
+        Number[] canConvert = {
+                        Byte.MIN_VALUE, Byte.MAX_VALUE,
+                        Short.MIN_VALUE, Short.MAX_VALUE,
+                        Integer.MIN_VALUE, Integer.MAX_VALUE,
+                        (long) Integer.MIN_VALUE, (long) Integer.MAX_VALUE,
+                        0d, (double) Integer.MIN_VALUE, (double) Integer.MAX_VALUE,
+                        0f, (float) -(Math.pow(2, 24) - 1), (float) +(Math.pow(2, 24) - 1),
+        };
+        for (Number number : canConvert) {
+            Value value = context.asValue(number);
+            assertTrue(number.toString(), value.fitsInInt());
+            assertEquals(number.toString(), number.intValue(), value.asInt());
+        }
+
+        Number[] cannotConvert = {
+                        Integer.MIN_VALUE - 1L, Integer.MAX_VALUE + 1L,
+                        -0d, Double.NaN, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, (double) (Integer.MIN_VALUE - 1L), (double) (Integer.MAX_VALUE + 1L),
+                        -0f, Float.NaN, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY, (float) -Math.pow(2, 24), (float) +Math.pow(2, 24),
+        };
+        for (Number number : cannotConvert) {
+            ValueAssert.assertFails(() -> context.asValue(number).asInt(), ClassCastException.class);
+        }
     }
 
     @SuppressWarnings("unused")
@@ -466,6 +546,31 @@ public class ValueHostConversionTest {
         assertEquals("object", hierarchy.execute(false).asString());
     }
 
+    @Test
+    public void testAsLong() {
+        Number[] canConvert = {
+                        Byte.MIN_VALUE, Byte.MAX_VALUE,
+                        Short.MIN_VALUE, Short.MAX_VALUE,
+                        Integer.MIN_VALUE, Integer.MAX_VALUE,
+                        (long) Integer.MIN_VALUE, (long) Integer.MAX_VALUE,
+                        0d, -(Math.pow(2, 53) - 1), +(Math.pow(2, 53) - 1),
+                        0f, (float) -(Math.pow(2, 24) - 1), (float) +(Math.pow(2, 24) - 1),
+        };
+        for (Number number : canConvert) {
+            Value value = context.asValue(number);
+            assertTrue(number.toString(), value.fitsInLong());
+            assertEquals(number.toString(), number.longValue(), value.asLong());
+        }
+
+        Number[] cannotConvert = {
+                        -0d, Double.NaN, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, -Math.pow(2, 53), +Math.pow(2, 53), Double.MIN_VALUE, Double.MAX_VALUE,
+                        -0f, Float.NaN, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY, (float) -Math.pow(2, 24), (float) +Math.pow(2, 24), Float.MIN_VALUE, Float.MAX_VALUE,
+        };
+        for (Number number : cannotConvert) {
+            ValueAssert.assertFails(() -> context.asValue(number).asLong(), ClassCastException.class);
+        }
+    }
+
     @SuppressWarnings("unused")
     public static class FloatHierarchy {
 
@@ -532,6 +637,31 @@ public class ValueHostConversionTest {
 
         assertEquals("object", hierarchy.execute("").asString());
         assertEquals("object", hierarchy.execute(false).asString());
+    }
+
+    @Test
+    public void testAsFloat() {
+        Number[] canConvert = {
+                        Byte.MIN_VALUE, Byte.MAX_VALUE,
+                        Short.MIN_VALUE, Short.MAX_VALUE,
+                        -(1 << 24 - 1), 1 << 24 - 1,
+                        -(1L << 24 - 1), 1L << 24 - 1,
+                        0d, -0d, Double.NaN, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, -(Math.pow(2, 24) - 1), +(Math.pow(2, 24) - 1),
+        };
+        for (Number number : canConvert) {
+            Value value = context.asValue(number);
+            assertTrue(number.toString(), value.fitsInFloat());
+            assertEquals(number.toString(), number.floatValue(), value.asFloat(), 0f);
+        }
+
+        Number[] cannotConvert = {
+                        Integer.MIN_VALUE, Integer.MAX_VALUE, -(1 << 24), 1 << 24,
+                        Long.MIN_VALUE, Long.MAX_VALUE, -(1L << 24), 1L << 24,
+                        Double.MIN_VALUE, Double.MAX_VALUE,
+        };
+        for (Number number : cannotConvert) {
+            ValueAssert.assertFails(() -> context.asValue(number).asFloat(), ClassCastException.class);
+        }
     }
 
     @SuppressWarnings("unused")
@@ -601,6 +731,29 @@ public class ValueHostConversionTest {
 
         assertEquals("object", hierarchy.execute("").asString());
         assertEquals("object", hierarchy.execute(false).asString());
+    }
+
+    @Test
+    public void testAsDouble() {
+        Number[] canConvert = {
+                        Byte.MIN_VALUE, Byte.MAX_VALUE,
+                        Short.MIN_VALUE, Short.MAX_VALUE,
+                        Integer.MIN_VALUE, Integer.MAX_VALUE,
+                        (long) Integer.MIN_VALUE, (long) Integer.MAX_VALUE, -(1L << 53 - 1), 1L << 53 - 1,
+                        0f, -0f, Float.NaN, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY,
+        };
+        for (Number number : canConvert) {
+            Value value = context.asValue(number);
+            assertTrue(number.toString(), value.fitsInDouble());
+            assertEquals(number.toString(), number.doubleValue(), value.asDouble(), 0d);
+        }
+
+        Number[] cannotConvert = {
+                        Long.MIN_VALUE, Long.MAX_VALUE, -1L << 53, 1L << 53,
+        };
+        for (Number number : cannotConvert) {
+            ValueAssert.assertFails(() -> context.asValue(number).asDouble(), ClassCastException.class);
+        }
     }
 
     @SuppressWarnings("unused")
