@@ -13,9 +13,10 @@ toolsGateLite : ${toolsCommon} {
 }
 
 builds += [
-  ${linux-amd64} ${labsjdk8} ${toolsCommon} ${eclipse} ${jdt} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-tools-8"},
-  ${linux-amd64} ${labsjdk9} ${toolsCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-tools-9"},
-  ${linux-amd64} ${labsjdk8} ${toolsCommon} {
+  ${linux-amd64} ${labsjdk8}  ${toolsCommon} ${eclipse} ${jdt} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-tools-8"},
+  ${linux-amd64} ${labsjdk9}  ${toolsCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-tools-9"},
+  ${linux-amd64} ${labsjdk10} ${toolsCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-tools-10"},
+  ${linux-amd64} ${labsjdk8}  ${toolsCommon} {
     run : [
         ["mx", "build"],
         ["mx", "javadoc"],
@@ -31,6 +32,10 @@ builds += [
     targets : [ weekly ],
     name: "gate-tools-solaris-lite-9"
   }
+  ${solaris-sparcv9} ${labsjdk10} ${toolsGateLite} {
+    targets : [ weekly ],
+    name: "gate-tools-solaris-lite-10"
+  }
   ${darwin-amd64} ${labsjdk8} ${toolsGateLite} {
     targets : [ weekly ],
     name: "gate-tools-mac-lite-8"
@@ -38,5 +43,9 @@ builds += [
   ${darwin-amd64} ${labsjdk9} ${toolsGateLite} {
     targets : [ weekly ],
     name: "gate-tools-mac-lite-9"
+  }
+  ${darwin-amd64} ${labsjdk10} ${toolsGateLite} {
+    targets : [ weekly ],
+    name: "gate-tools-mac-lite-10"
   }
 ]

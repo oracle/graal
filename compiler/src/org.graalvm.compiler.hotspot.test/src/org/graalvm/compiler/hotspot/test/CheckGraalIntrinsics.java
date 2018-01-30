@@ -416,6 +416,12 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "java/lang/StringUTF16.toBytes([CII)[B");
         }
 
+        if (isJDK10OrHigher()) {
+            add(TO_BE_INVESTIGATED,
+                            "java/lang/Math.multiplyHigh(JJ)J",
+                            "jdk/internal/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I");
+        }
+
         if (!getHostArchitectureName().equals("amd64")) {
             // Can we implement these on non-AMD64 platforms? C2 seems to.
             add(TO_BE_INVESTIGATED,
@@ -537,6 +543,10 @@ public class CheckGraalIntrinsics extends GraalTest {
 
     private static boolean isJDK9OrHigher() {
         return JDK9Method.JAVA_SPECIFICATION_VERSION >= 9;
+    }
+
+    private static boolean isJDK10OrHigher() {
+        return JDK9Method.JAVA_SPECIFICATION_VERSION >= 10;
     }
 
     private static String getHostArchitectureName() {
