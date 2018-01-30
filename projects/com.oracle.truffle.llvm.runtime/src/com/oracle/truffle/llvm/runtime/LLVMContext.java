@@ -387,6 +387,13 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
+    public boolean isHandle(LLVMAddress address) {
+        synchronized (handlesLock) {
+            return toManaged.containsKey(address);
+        }
+    }
+
+    @TruffleBoundary
     public TruffleObject getManagedObjectForHandle(LLVMAddress address) {
         synchronized (handlesLock) {
             final TruffleObject object = toManaged.get(address);
