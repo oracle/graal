@@ -101,6 +101,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.truffle.api.SubstrateOptimizedCallTarget;
 import com.oracle.svm.truffle.api.SubstratePartialEvaluator;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
@@ -167,6 +168,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     public static class Options {
         @Option(help = "Print a warning message and stack trace when CompilerAsserts.neverPartOfCompilation is reachable")//
         public static final HostedOptionKey<Boolean> TruffleCheckNeverPartOfCompilation = new HostedOptionKey<>(false);
+
+        @Option(help = "Enforce that the Truffle runtime provides the only implementation of Frame")//
+        public static final HostedOptionKey<Boolean> TruffleCheckFrameImplementation = new HostedOptionKey<>(true);
     }
 
     public static class Support {
@@ -644,7 +648,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             throw VMError.shouldNotReachHere("CompilerAsserts.neverPartOfCompilation reachable for runtime compilation");
         }
 
-        if (useTruffleCompiler()) {
+        if (Options.TruffleCheckFrameImplementation.getValue() && useTruffleCompiler()) {
             /*
              * Check that only one Frame implementation is seen as instantiated by the static
              * analysis. That allows de-virtualization of all calls to Frame methods in the
@@ -662,8 +666,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
                 if (implementations.size() > 1) {
                     throw UserError.abort("More than one implementation of " + Frame.class.getTypeName() +
-                                    " found. For performance reasons, Truffle languages must not provide new implementations, and instead only use the single implementation provided by the Truffle runtime. Found classes: " +
-                                    implementations.stream().map(m -> m.toJavaName(true)).collect(Collectors.joining(", ")));
+                                    " found. For performance reasons, Truffle languages must not provide new implementations, and instead only use the single implementation provided by the Truffle runtime. " +
+                                    "To disable this check, add " + HostedOptionParser.commandArgument(Options.TruffleCheckFrameImplementation, "-") + " to the native-image command line. " +
+                                    "Found classes: " + implementations.stream().map(m -> m.toJavaName(true)).collect(Collectors.joining(", ")));
                 } else {
                     assert implementations.size() == 0 || implementations.iterator().next() == frameType.getSingleImplementor();
                 }
