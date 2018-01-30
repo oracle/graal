@@ -25,6 +25,7 @@ package org.graalvm.compiler.nodes;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 
 /**
@@ -41,6 +42,7 @@ public interface Invokable {
         if (newGraph.getInliningLog().getUpdateScope() != null) {
             newGraph.getInliningLog().getUpdateScope().accept(null, this);
         } else {
+            assert !newGraph.getInliningLog().containsLeafCallsite(this);
             newGraph.getInliningLog().trackNewCallsite(this);
         }
     }
@@ -51,7 +53,6 @@ public interface Invokable {
             // in the call to updateInliningLogAfterRegister, so we need to remove it.
             InliningLog log = asFixedNode().graph().getInliningLog();
             assert other instanceof Invokable;
-            log.removeLeafCallsite(this);
             if (log.getUpdateScope() != null) {
                 // InliningLog.UpdateScope determines how to update the log.
                 log.getUpdateScope().accept((Invokable) other, this);
@@ -59,6 +60,8 @@ public interface Invokable {
                 // This node was cloned as part of duplication.
                 // We need to add it as a sibling of the node other.
                 assert log.containsLeafCallsite(this) : "Node " + this + " not contained in the log.";
+                assert log.containsLeafCallsite((Invokable) other) : "Sibling " + other + " not contained in the log.";
+                log.removeLeafCallsite(this);
                 log.trackDuplicatedCallsite((Invokable) other, this);
             } else {
                 // This node was added from a different graph.
