@@ -31,7 +31,6 @@ import re
 import tarfile
 import zipfile
 import tempfile
-import urllib2
 from contextlib import contextmanager
 from distutils.dir_util import mkpath, copy_tree, remove_tree # pylint: disable=no-name-in-module
 from os.path import join, exists, basename, dirname, islink
@@ -335,18 +334,15 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
     def newestOutput(self):
         return mx.TimeStampFile(native_image_path(self.subject.native_image_root))
 
-# Needs to be a global variable to ensure we are never updating to newer language versions within the same gate run
-session_language = {}
-
 def truffle_language_ensure(language_flag, version=None, native_image_root=None):
-    '''
+    """
     Ensures that we have a valid suite for the given language_flag, by downloading a binary if necessary
     and providing the suite distribution artifacts in the native-image directory hierachy (via symlinks).
     :param language_flag: native-image language_flag whose truffle-language we want to use
     :param version: if not specified and no TRUFFLE_<LANG>_VERSION set latest binary deployed master revision gets downloaded
     :param native_image_root: the native_image_root directory where the the artifacts get installed to
     :return: language suite for the given language_flag
-    '''
+    """
     if not native_image_root:
         native_image_root = suite_native_image_root()
 
@@ -356,52 +352,32 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None)
 
     if language_flag not in flag_suitename_map:
         mx.abort('No truffle-language uses language_flag \'' + language_flag + '\'')
-    if language_flag in session_language:
-        language_suite = session_language[language_flag]
-        mx.log('Reusing ' + language_flag + '.version=' + str(language_suite.version()))
-        return language_suite
 
     language_suite_name = flag_suitename_map[language_flag][0]
 
-    # Accessing truffle_language as source suite (--dynamicimports) has priority over binary suite import
-    language_suite = suite.import_suite(language_suite_name)
+    urlinfos = [
+        mx.SuiteImportURLInfo(mx_urlrewrites.rewriteurl('https://curio.ssw.jku.at/nexus/content/repositories/snapshots'),
+                              'binary',
+                              mx.vc_system('binary'))
+    ]
 
-    if not language_suite:
-        # Get the truffle_language suite via binary suite import
-
-        urlinfos = [
-            mx.SuiteImportURLInfo(mx_urlrewrites.rewriteurl('https://curio.ssw.jku.at/nexus/content/repositories/snapshots'),
-                                  'binary',
-                                  mx.vc_system('binary'))
-        ]
-
-        if not version:
-            # If no specific version requested use binary import of last recently deployed master version
-            version = 'git-bref:binary'
-            urlinfos.append(
-                mx.SuiteImportURLInfo(
-                    mx_urlrewrites.rewriteurl('https://github.com/graalvm/{0}.git'.format(language_suite_name)),
-                    'source',
-                    mx.vc_system('git')
-                )
+    if not version:
+        # If no specific version requested use binary import of last recently deployed master version
+        version = 'git-bref:binary'
+        urlinfos.append(
+            mx.SuiteImportURLInfo(
+                mx_urlrewrites.rewriteurl('https://github.com/graalvm/{0}.git'.format(language_suite_name)),
+                'source',
+                mx.vc_system('git')
             )
+        )
 
-        try:
-            language_suite = suite.import_suite(
-                language_suite_name,
-                version=version,
-                urlinfos=urlinfos,
-                kind=None
-            )
-        except (urllib2.URLError, SystemExit):
-            language_suite = suite.import_suite(language_suite_name)
-            if language_suite:
-                if version and session_language[language_flag] and session_language[language_flag].version() != version:
-                    mx.abort('Cannot switch to ' + language_flag + '.version=' + str(version) + ' without maven access.')
-                else:
-                    mx.log('No maven access. Using already downloaded ' + language_suite_name + ' binary suite.')
-            else:
-                mx.abort('No maven access and no local copy of ' + language_suite_name + ' binary suite available.')
+    language_suite = suite.import_suite(
+        language_suite_name,
+        version=version,
+        urlinfos=urlinfos,
+        kind=None
+    )
 
     if not language_suite:
         mx.abort('Binary suite not found and no local copy of ' + language_suite_name + ' available.')
@@ -425,9 +401,8 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None)
         relsymlink(option_properties, target_path)
     else:
         native_image_option_properties('languages', language_flag, native_image_root)
-
-    session_language[language_flag] = language_suite
     return language_suite
+
 
 def locale_US_args():
     return ['-Duser.country=US', '-Duser.language=en']
