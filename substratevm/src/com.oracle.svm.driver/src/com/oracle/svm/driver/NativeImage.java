@@ -169,7 +169,7 @@ class NativeImage {
         addImageBuilderArg(oHPath + workDir);
 
         /* Discover supported MacroOptions */
-        optionRegistry = new MacroOption.Registry(getRootDir());
+        optionRegistry = new MacroOption.Registry(canonicalize(getRootDir()));
         truffleOption = optionRegistry.addBuiltin("truffle");
 
         /* Default handler needs to be fist */
