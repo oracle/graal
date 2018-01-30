@@ -138,7 +138,6 @@ abstract class PolyglotValue extends AbstractValueImpl {
     protected RuntimeException unsupported(Object receiver, String message, String useToCheck) {
         Object prev = languageContext.enter();
         try {
-
             throw new PolyglotUnsupportedException(
                             String.format("Unsupported operation %s.%s for %s. You can ensure that the operation is supported using %s.%s.",
                                             Value.class.getSimpleName(), message, getValueInfo(languageContext, receiver), Value.class.getSimpleName(), useToCheck));
@@ -267,6 +266,16 @@ abstract class PolyglotValue extends AbstractValueImpl {
         throw new PolyglotClassCastException(
                         String.format("Invalid array value %s for array %s and index %s.",
                                         getValueInfo(context, value), getValueInfo(context, receiver), identifier));
+    }
+
+    protected static RuntimeException invalidMemberKey(PolyglotLanguageContext context, Object receiver, String identifier) {
+        String message = String.format("Invalid member key '%s' for object %s.", identifier, getValueInfo(context, receiver));
+        throw new PolyglotIllegalArgumentException(message);
+    }
+
+    protected static RuntimeException invalidMemberValue(PolyglotLanguageContext context, Object receiver, String identifier, Object value) {
+        String message = String.format("Invalid member value %s for object %s and member key '%s'.", getValueInfo(context, value), getValueInfo(context, receiver), identifier);
+        throw new PolyglotIllegalArgumentException(message);
     }
 
     private static PolyglotException error(String message) {
@@ -1685,7 +1694,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     return polyglot.getMemberUnsupported(receiver, key);
                 } catch (UnknownIdentifierException e) {
                     CompilerDirectives.transferToInterpreter();
-                    throw error(String.format("Unknown provided key %s for object %s.", key, toString()));
+                    throw invalidMemberKey(polyglot.languageContext, receiver, key);
                 }
             }
 
@@ -1713,19 +1722,19 @@ abstract class PolyglotValue extends AbstractValueImpl {
             @Override
             protected Object executeImpl(Object receiver, Object[] args) {
                 String key = (String) args[1];
-                Object member = args[2];
+                Object originalValue = args[2];
+                Object value = toGuestValue.apply(polyglot.languageContext, originalValue);
                 try {
-                    ForeignAccess.sendWrite(writeMemberNode, (TruffleObject) receiver, key, toGuestValue.apply(polyglot.languageContext, member));
+                    ForeignAccess.sendWrite(writeMemberNode, (TruffleObject) receiver, key, value);
                 } catch (UnsupportedMessageException e) {
                     CompilerDirectives.transferToInterpreter();
                     polyglot.putMemberUnsupported(receiver);
                 } catch (UnknownIdentifierException e) {
                     CompilerDirectives.transferToInterpreter();
-                    throw error(String.format("Unknown provided key  %s for object %s.", key, toString()));
+                    throw invalidMemberKey(polyglot.languageContext, receiver, key);
                 } catch (UnsupportedTypeException e) {
                     CompilerDirectives.transferToInterpreter();
-                    String arguments = polyglot.formatSuppliedValues(e);
-                    throw error(String.format("Invalid value provided %s when writing to %s with member key %s.", arguments, toString(), key));
+                    throw invalidMemberValue(polyglot.languageContext, receiver, key, value);
                 }
                 return null;
             }

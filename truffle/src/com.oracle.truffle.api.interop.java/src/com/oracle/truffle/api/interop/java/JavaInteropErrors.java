@@ -50,24 +50,44 @@ class JavaInteropErrors {
 
     @TruffleBoundary
     static RuntimeException invalidListIndex(Object context, Object receiver, Type componentType, int index) {
-        String message = String.format("Invalid list index %s for List<%s> %s.", index, formatComponentType(componentType), getValueInfo(context, receiver));
+        String message = String.format("Invalid index %s for List<%s> %s.", index, formatComponentType(componentType), getValueInfo(context, receiver));
         throw newArrayIndexOutOfBounds(message);
     }
 
     private static Object formatComponentType(Type componentType) {
-        return componentType == null ? "Object" : componentType.getTypeName();
+        return (componentType == null || componentType == Object.class) ? "Object" : componentType.getTypeName();
     }
 
     @TruffleBoundary
     static RuntimeException listUnsupported(Object context, Object receiver, Type componentType, String operation) {
-        String message = String.format("Unsupported list operation %s for List<%s> %s.", operation, formatComponentType(componentType), getValueInfo(context, receiver));
+        String message = String.format("Unsupported operation %s for List<%s> %s.", operation, formatComponentType(componentType), getValueInfo(context, receiver));
         throw newUnsupportedOperationException(message);
+    }
+
+    @TruffleBoundary
+    static RuntimeException mapUnsupported(Object context, Object receiver, Type keyType, Type valueType, String operation) {
+        String message = String.format("Unsupported operation %s for Map<%s, %s> %s.", operation, formatComponentType(keyType), formatComponentType(valueType), getValueInfo(context, receiver));
+        throw newUnsupportedOperationException(message);
+    }
+
+    @TruffleBoundary
+    static RuntimeException invalidMapValue(Object context, Object receiver, Type keyType, Type valueType, Object identifier, Object value) {
+        throw newClassCastException(
+                        String.format("Invalid value %s for Map<%s, %s> %s and identifier '%s'.",
+                                        getValueInfo(context, value), formatComponentType(keyType), formatComponentType(valueType), getValueInfo(context, receiver), identifier));
+    }
+
+    @TruffleBoundary
+    static RuntimeException invalidMapIdentifier(Object context, Object receiver, Type keyType, Type valueType, Object identifier) {
+        throw newIllegalArgumentException(
+                        String.format("Invalid or unmodifiable value for identifier '%s' for Map<%s, %s> %s.", identifier, formatComponentType(keyType),
+                                        formatComponentType(valueType), getValueInfo(context, receiver)));
     }
 
     @TruffleBoundary
     static RuntimeException invalidListValue(Object context, Object receiver, Type componentType, int identifier, Object value) {
         throw newClassCastException(
-                        String.format("Invalid list value %s for List<%s> %s and index %s.",
+                        String.format("Invalid value %s for List<%s> %s and index %s.",
                                         getValueInfo(context, value), formatComponentType(componentType), getValueInfo(context, receiver), identifier));
     }
 

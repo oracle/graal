@@ -131,6 +131,8 @@ public class MultiThreadedLanguageTest {
             valueConsumer.accept(value);
         } catch (UnsupportedOperationException e) {
         } catch (ClassCastException e) {
+        } catch (IllegalArgumentException e) {
+        } catch (NullPointerException e) {
         }
     }
 

@@ -29,10 +29,20 @@ class PolyglotIllegalArgumentException extends IllegalArgumentException {
 
     PolyglotIllegalArgumentException(String message) {
         super(message);
+        // prevent truffle stack trace to be attached.
+        initCause(null);
     }
 
     PolyglotIllegalArgumentException(String message, Throwable cause) {
         super(message, cause);
+    }
+
+    @Override
+    public String toString() {
+        // make it look like normal unsupported operation.
+        String s = IllegalArgumentException.class.getName();
+        String message = getLocalizedMessage();
+        return (message != null) ? (s + ": " + message) : s;
     }
 
 }

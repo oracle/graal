@@ -302,6 +302,13 @@ public class ValueAssert {
                     assertFails(() -> value.getMember("asdf"), UnsupportedOperationException.class);
                     assertFails(() -> value.putMember("", ""), UnsupportedOperationException.class);
                     assertTrue(value.getMemberKeys().isEmpty());
+
+                    if (value.isNull()) {
+                        assertNull(value.as(Map.class));
+                    } else {
+                        assertFails(() -> value.as(Map.class), ClassCastException.class);
+                    }
+
                     break;
                 case EXECUTABLE:
                     assertFalse(value.toString(), value.canExecute());

@@ -29,11 +29,21 @@ class PolyglotClassCastException extends ClassCastException {
 
     PolyglotClassCastException(String message) {
         super(message);
+        // prevent polyglot stack trace to be attached.
+        initCause(null);
     }
 
     PolyglotClassCastException(String message, Throwable cause) {
         super(message);
         initCause(cause);
+    }
+
+    @Override
+    public String toString() {
+        // make it look like normal unsupported operation.
+        String s = ClassCastException.class.getName();
+        String message = getLocalizedMessage();
+        return (message != null) ? (s + ": " + message) : s;
     }
 
 }

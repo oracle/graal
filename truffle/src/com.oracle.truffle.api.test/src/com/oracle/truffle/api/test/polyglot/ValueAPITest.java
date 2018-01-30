@@ -903,19 +903,19 @@ public class ValueAPITest {
 
         List<Object> list = v.as(List.class);
         assertFails(() -> list.get(1), IndexOutOfBoundsException.class,
-                        "Invalid list index 1 for List<Object> '[asdf]'(language: Java, type: java.lang.String[]).");
+                        "Invalid index 1 for List<Object> '[asdf]'(language: Java, type: java.lang.String[]).");
         assertFails(() -> list.set(1, null), IndexOutOfBoundsException.class,
-                        "Invalid list index 1 for List<Object> '[asdf]'(language: Java, type: java.lang.String[]).");
+                        "Invalid index 1 for List<Object> '[asdf]'(language: Java, type: java.lang.String[]).");
 
         List<?> stringList = v.as(STRING_LIST);
         assertFails(() -> stringList.get(1), IndexOutOfBoundsException.class,
-                        "Invalid list index 1 for List<java.lang.String> '[asdf]'(language: Java, type: java.lang.String[]).");
+                        "Invalid index 1 for List<java.lang.String> '[asdf]'(language: Java, type: java.lang.String[]).");
         assertFails(() -> stringList.set(1, null), IndexOutOfBoundsException.class,
-                        "Invalid list index 1 for List<java.lang.String> '[asdf]'(language: Java, type: java.lang.String[]).");
+                        "Invalid index 1 for List<java.lang.String> '[asdf]'(language: Java, type: java.lang.String[]).");
         assertFails(() -> ((List<Object>) stringList).set(0, 42), ClassCastException.class,
-                        "Invalid list value '42'(language: Java, type: java.lang.Integer) for List<java.lang.String> '[asdf]'(language: Java, type: java.lang.String[]) and index 0.");
+                        "Invalid value '42'(language: Java, type: java.lang.Integer) for List<java.lang.String> '[asdf]'(language: Java, type: java.lang.String[]) and index 0.");
         assertFails(() -> ((List<Object>) stringList).set(0, context.asValue(42)), ClassCastException.class,
-                        "Invalid list value '42'(language: Java, type: java.lang.Integer) for List<java.lang.String> '[asdf]'(language: Java, type: java.lang.String[]) and index 0.");
+                        "Invalid value '42'(language: Java, type: java.lang.Integer) for List<java.lang.String> '[asdf]'(language: Java, type: java.lang.String[]) and index 0.");
 
         // just to make sure this works
         ((List<Object>) stringList).set(0, context.asValue("foo"));
@@ -923,6 +923,87 @@ public class ValueAPITest {
         List<Integer> integerList = v.as(INTEGER_LIST);
         assertFails(() -> integerList.get(0), ClassCastException.class,
                         "Cannot convert 'foo'(language: Java, type: java.lang.String) to Java type 'java.lang.Integer': Invalid or lossy primitive coercion.");
+
+        Value notAnArray = context.asValue("");
+        assertFails(() -> notAnArray.getArrayElement(0), UnsupportedOperationException.class,
+                        "Unsupported operation Value.getArrayElement(long) for ''(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasArrayElements().");
+        assertFails(() -> notAnArray.setArrayElement(0, null), UnsupportedOperationException.class,
+                        "Unsupported operation Value.setArrayElement(long, Object) for ''(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasArrayElements().");
+        assertFails(() -> notAnArray.getArraySize(), UnsupportedOperationException.class,
+                        "Unsupported operation Value.getArraySize() for ''(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasArrayElements().");
+    }
+
+    private static final TypeLiteral<Map<String, String>> STRING_MAP = new TypeLiteral<Map<String, String>>() {
+    };
+
+    public static class MemberErrorTest {
+
+        public int value = 43;
+        public final int finalValue = 42;
+
+        @Override
+        public String toString() {
+            return "MemberErrorTest";
+        }
+
+    }
+
+    @Test
+    public void testMemberErrors() {
+        Value noMembers = context.asValue("");
+        assertFails(() -> noMembers.getMember(""), UnsupportedOperationException.class,
+                        "Unsupported operation Value.getMember(String) for ''(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasMembers().");
+        assertFails(() -> noMembers.putMember("", null), UnsupportedOperationException.class,
+                        "Unsupported operation Value.putMember(String, Object) for ''(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasMembers().");
+
+        assertEquals(0, noMembers.getMemberKeys().size());
+        assertFalse(noMembers.hasMembers());
+        assertFalse(noMembers.hasMember(""));
+        assertFalse(noMembers.getMemberKeys().contains(""));
+
+        MemberErrorTest test = new MemberErrorTest();
+        Value v = context.asValue(test);
+        assertEquals(43, v.getMember("value").asInt());
+        v.putMember("value", 42);
+        assertEquals(42, v.getMember("value").asInt());
+
+        assertFails(() -> v.putMember("value", ""), IllegalArgumentException.class,
+                        "Invalid member value ''(language: Java, type: java.lang.String) for object 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest) and member key 'value'.");
+
+        assertFails(() -> v.putMember("finalValue", 42), IllegalArgumentException.class,
+                        "Invalid member key 'finalValue' for object 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
+
+        assertFails(() -> v.putMember("notAMember", ""), IllegalArgumentException.class,
+                        "Invalid member key 'notAMember' for object 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
+
+        assertFails(() -> v.getMember("notAMember"), IllegalArgumentException.class,
+                        "Invalid member key 'notAMember' for object 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
+
+        @SuppressWarnings("unchecked")
+        Map<Object, Object> map = v.as(Map.class);
+
+        // maps behave slightly differently for not existing keys
+        assertNull(map.get("notAMember"));
+
+        map.put("value", 43);
+        assertEquals(43, map.get("value"));
+
+        Map<String, String> stringMap = v.as(STRING_MAP);
+
+        assertFails(() -> stringMap.get("value"), ClassCastException.class,
+                        "Cannot convert '43'(language: Java, type: java.lang.Integer) to Java type 'java.lang.String': Invalid or lossy primitive coercion.");
+
+        assertFails(() -> map.put("value", ""), ClassCastException.class,
+                        "Invalid value ''(language: Java, type: java.lang.String) for Map<Object, Object> 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest) and identifier 'value'.");
+
+        assertFails(() -> map.put("finalValue", 42), IllegalArgumentException.class,
+                        "Invalid or unmodifiable value for identifier 'finalValue' for Map<Object, Object> 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
+
+        assertFails(() -> map.put("finalValue", "42"), ClassCastException.class,
+                        "Invalid value '42'(language: Java, type: java.lang.String) for Map<Object, Object> 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest) and identifier 'finalValue'.");
+
+        assertFails(() -> map.put("notAMember", ""), IllegalArgumentException.class,
+                        "Invalid or unmodifiable value for identifier 'notAMember' for Map<Object, Object> 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
 
     }
 

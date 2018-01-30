@@ -29,11 +29,21 @@ class PolyglotNullPointerException extends NullPointerException {
 
     PolyglotNullPointerException(String message) {
         super(message);
+        // prevent polyglot stack trace to be attached.
+        initCause(null);
     }
 
     PolyglotNullPointerException(String message, Throwable cause) {
         super(message);
         initCause(cause);
+    }
+
+    @Override
+    public String toString() {
+        // make it look like normal unsupported operation.
+        String s = NullPointerException.class.getName();
+        String message = getLocalizedMessage();
+        return (message != null) ? (s + ": " + message) : s;
     }
 
 }
