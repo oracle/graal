@@ -1090,6 +1090,8 @@ class FlatNodeGenFactory {
         builder.declaration(context.getType(Lock.class), "lock", "getLock()");
         builder.declaration(context.getType(boolean.class), "hasLock", "true");
         builder.statement("lock.lock()");
+        builder.declaration(context.getType(NodeCost.class), "oldCost", "getCost()");
+        builder.declaration("boolean", "splitCandidate", CodeTreeBuilder.singleString("false"));
         builder.startTryBlock();
 
         builder.tree(state.createLoad(frameState));
@@ -1108,6 +1110,7 @@ class FlatNodeGenFactory {
             builder.tree(createThrowUnsupported(builder, originalFrameState));
         }
         builder.end().startFinallyBlock();
+        builder.statement("reportNodeCostChange(oldCost, getCost())");
         builder.startIf().string("hasLock").end().startBlock();
         builder.statement("lock.unlock()");
         builder.end();
@@ -2515,6 +2518,7 @@ class FlatNodeGenFactory {
                 builder.statement(specializationLocalName + " = null");
             }
             builder.statement(countName + "++");
+//            builder.startIf().string("!splitCandidate && " + countName + " > 1").end().startBlock().statement("splitCandidate()").statement("splitCandidate = true").end();
             builder.end();
         }
 
