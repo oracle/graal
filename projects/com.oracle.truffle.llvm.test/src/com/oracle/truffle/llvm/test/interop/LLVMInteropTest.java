@@ -900,6 +900,14 @@ public final class LLVMInteropTest {
     }
 
     @Test
+    public void testIsHandle() {
+        Runner runner = new Runner("isHandle");
+        Object a = new Object();
+        runner.export(a, "object");
+        Assert.assertEquals(0, runner.run());
+    }
+
+    @Test
     public void testStrlen() throws Exception {
         Runner runner = new Runner("strlen");
         runner.run();
