@@ -34,8 +34,10 @@ import org.graalvm.compiler.asm.sparc.SPARCAddress;
 import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler;
 import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.hotspot.sparc.SPARCHotSpotMove;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.DataBuilder;
 import org.graalvm.compiler.lir.asm.FrameContext;
@@ -46,7 +48,6 @@ import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrume
 import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory;
 
 import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
 
 @ServiceProvider(TruffleCallBoundaryInstrumentationFactory.class)
@@ -55,22 +56,28 @@ public class SPARCTruffleCallBoundaryInstumentationFactory extends TruffleCallBo
     @Override
     public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
                     OptionValues options, DebugContext debug, CompilationResult compilationResult) {
-        return new TruffleCallBoundaryInstrumentation(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, config, registers) {
+        return new TruffleCallBoundaryInstrumentation(metaAccess, codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, config, registers) {
             @Override
-            protected void injectTailCallCode() {
-                @SuppressWarnings("hiding")
-                SPARCMacroAssembler asm = (SPARCMacroAssembler) this.asm;
-                try (ScratchRegister scratch = asm.getScratchRegister()) {
+            protected void injectTailCallCode(int installedCodeOffset, int entryPointOffset) {
+                SPARCMacroAssembler masm = (SPARCMacroAssembler) this.asm;
+                try (ScratchRegister scratch = masm.getScratchRegister()) {
                     Register thisRegister = codeCache.getRegisterConfig().getCallingConventionRegisters(JavaCall, Object).get(0);
                     Register spillRegister = scratch.getRegister();
                     Label doProlog = new Label();
-                    SPARCAddress entryPointAddress = new SPARCAddress(thisRegister, getFieldOffset("entryPoint", InstalledCode.class));
 
-                    asm.ldx(entryPointAddress, spillRegister);
-                    asm.compareBranch(spillRegister, 0, Equal, Xcc, doProlog, PREDICT_NOT_TAKEN, null);
-                    asm.jmp(spillRegister);
-                    asm.nop();
-                    asm.bind(doProlog);
+                    if (config.useCompressedOops) {
+                        CompressEncoding encoding = config.getOopEncoding();
+                        masm.ld(new SPARCAddress(thisRegister, installedCodeOffset), spillRegister, 4, false);
+                        Register baseReg = encoding.hasBase() ? registers.getHeapBaseRegister() : null;
+                        SPARCHotSpotMove.UncompressPointer.emitUncompressCode(masm, spillRegister, spillRegister, baseReg, encoding.getShift(), true);
+                    } else {
+                        masm.ldx(new SPARCAddress(thisRegister, installedCodeOffset), spillRegister);
+                    }
+                    masm.ldx(new SPARCAddress(spillRegister, entryPointOffset), spillRegister);
+                    masm.compareBranch(spillRegister, 0, Equal, Xcc, doProlog, PREDICT_NOT_TAKEN, null);
+                    masm.jmp(spillRegister);
+                    masm.nop();
+                    masm.bind(doProlog);
                 }
             }
         };

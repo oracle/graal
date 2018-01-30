@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,23 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.common.hotspot;
+package org.graalvm.compiler.truffle.common;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-public interface HotSpotTruffleCompilerRuntime extends TruffleCompilerRuntime {
-    /**
-     * Gets all methods denoted as a Truffle call boundary (such as being annotated by
-     * {@code TruffleCallBoundary}).
-     */
-    Iterable<ResolvedJavaMethod> getTruffleCallBoundaryMethods();
+/**
+ * An entity whose validity depends on an assumption.
+ */
+public interface OptimizedAssumptionDependency {
 
     /**
-     * Notifies this runtime once {@code installedCode} has been installed in the code cache.
-     *
-     * @param installedCode code that has just been installed in the code cache
+     * Invalidates the entity represented by this object.
      */
-    void onCodeInstallation(HotSpotTruffleInstalledCode installedCode);
+    void invalidate();
+
+    /**
+     * Gets the Truffle AST whose machine code is represented by this object. May be {@code null}.
+     */
+    default CompilableTruffleAST getCompilable() {
+        return null;
+    }
+
+    interface Access {
+        OptimizedAssumptionDependency getDependency();
+    }
 }

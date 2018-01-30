@@ -104,7 +104,7 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
             assertEquals(expectedCounters, tester.getReturnCount());
 
             // Deoptimize enter:
-            enterTarget.invalidate();
+            enterTarget.invalidate(this, "test");
             assertNotCompiled(enterTarget);
             enterTarget.call();
             assertCompiled(returnTarget);
@@ -116,7 +116,7 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
             assertCompiled(returnTarget);
 
             // Deoptimize return:
-            returnTarget.invalidate();
+            returnTarget.invalidate(this, "test");
             assertCompiled(enterTarget);
             enterTarget.call();
             assertNotCompiled(returnTarget);
@@ -128,8 +128,8 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
             assertCompiled(returnTarget);
 
             // Deoptimize both:
-            enterTarget.invalidate();
-            returnTarget.invalidate();
+            enterTarget.invalidate(this, "test");
+            returnTarget.invalidate(this, "test");
             assertNotCompiled(enterTarget);
             enterTarget.call();
             assertNotCompiled(returnTarget);
@@ -151,7 +151,7 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
         value[0] = null;
         boolean expectedFailure = true;
         // Deoptimize for assertions to be active
-        enterTarget.invalidate();
+        enterTarget.invalidate(this, "test");
         try {
             enterTarget.call();
             expectedFailure = false;
@@ -161,7 +161,7 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
         assertTrue("onEnter(null) did not fail!", expectedFailure);
 
         // Deoptimize for assertions to be active
-        returnTarget.invalidate();
+        returnTarget.invalidate(this, "test");
 
         value[0] = Long.MIN_VALUE;
         try {

@@ -36,6 +36,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 
 @SuppressWarnings("try")
@@ -193,13 +194,13 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
         Assert.assertFalse(rootNode.deoptimized);
     }
 
-    /*
-     * Tests that a CallTarget will not deoptimize if it calls (using an IndirectCallNode) a target
-     * previously compiled with a different argument assumption and also inlined into another
-     * compiled target.
+    /**
+     * Tests that a {@link CallTarget} will not deoptimize if it calls (using an
+     * {@link IndirectCallNode}) a target previously compiled with a different argument assumption
+     * and also inlined into another compiled target.
      */
     @Test
-    public void testIndirectCallNodeDoesNotDeopOnTypeChangeWithInlining1() {
+    public void testIndirectCallNodeDoesNotDeoptOnTypeChangeWithInlining1() {
         try (TruffleCompilerOptions.TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleFunctionInlining, true)) {
             final int compilationThreshold = TruffleCompilerOptions.getValue(TruffleCompilationThreshold);
 
@@ -228,14 +229,14 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
 
             assertCompiled(targetWithIndirectCall);
 
-            // targetWithDirectCall is unaffected due to inlining
+            // targetWithDirectCall is unaffected by inlining
             assertCompiled(targetWithDirectCall);
             assertNotDeoptimized(targetWithDirectCall);
 
             // saveArgumentToGlobalState compilation is delayed by the invalidation
             assertNotCompiled(saveArgumentToGlobalState);
             assertNotDeoptimized(saveArgumentToGlobalState);
-            Assert.assertEquals("saveArgumentToGlobalState was not invlidated!", 1, saveArgumentToGlobalState.getCompilationProfile().getInvalidationCount());
+            Assert.assertEquals("saveArgumentToGlobalState was not invalidated!", 1, saveArgumentToGlobalState.getCompilationProfile().getInvalidationCount());
         }
     }
 }

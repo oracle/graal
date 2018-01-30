@@ -22,13 +22,14 @@
  */
 package com.oracle.svm.truffle.api;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
+import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -36,20 +37,12 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements SubstrateInstalledCode {
+public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements SubstrateInstalledCode, OptimizedAssumptionDependency {
+
+    protected long address;
 
     public SubstrateOptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         super(sourceCallTarget, rootNode);
-    }
-
-    @Override
-    public long getStart() {
-        throw shouldNotReachHere("No implementation in Substrate VM");
-    }
-
-    @Override
-    public byte[] getCode() {
-        throw shouldNotReachHere("No implementation in Substrate VM");
     }
 
     @SuppressWarnings("sync-override")
@@ -59,15 +52,46 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
     }
 
     @Override
-    public void setAddress(long address, ResolvedJavaMethod m) {
+    public void invalidate() {
+        invalidate(null, null);
+    }
+
+    @Override
+    public CompilableTruffleAST getCompilable() {
+        return this;
+    }
+
+    @Override
+    protected void invalidateCode() {
+        CodeInfoTable.invalidateInstalledCode(this);
+    }
+
+    @Override
+    public boolean isValid() {
+        return address != 0;
+    }
+
+    @Override
+    public long getAddress() {
+        return address;
+    }
+
+    @Override
+    public long getCodeAddress() {
+        return getAddress();
+    }
+
+    /**
+     * @param method
+     */
+    @Override
+    public void setAddress(long address, ResolvedJavaMethod method) {
         this.address = address;
-        this.entryPoint = address;
     }
 
     @Override
     public void clearAddress() {
         this.address = 0;
-        this.entryPoint = 0;
     }
 
     @Override

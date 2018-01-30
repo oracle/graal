@@ -24,6 +24,7 @@ package com.oracle.svm.core.graal.meta;
 
 import static com.oracle.svm.core.util.VMError.unimplemented;
 
+import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -56,8 +57,14 @@ public class SubstrateCodeCacheProvider implements CodeCacheProvider {
     public InstalledCode installCode(ResolvedJavaMethod method, CompiledCode compiledCode, InstalledCode predefinedInstalledCode, SpeculationLog log, boolean isDefault) {
         VMError.guarantee(!isDefault);
 
-        InstalledCodeBuilder builder = new InstalledCodeBuilder((SharedRuntimeMethod) method, ((SubstrateCompiledCode) compiledCode).getCompilationResult(),
-                        (SubstrateInstalledCode) predefinedInstalledCode, null);
+        SubstrateInstalledCode substrateInstalledCode;
+        if (predefinedInstalledCode instanceof SubstrateInstalledCode.Access) {
+            substrateInstalledCode = ((SubstrateInstalledCode.Access) predefinedInstalledCode).getSubstrateInstalledCode();
+        } else {
+            substrateInstalledCode = (SubstrateInstalledCode) predefinedInstalledCode;
+        }
+        CompilationResult compResult = ((SubstrateCompiledCode) compiledCode).getCompilationResult();
+        InstalledCodeBuilder builder = new InstalledCodeBuilder((SharedRuntimeMethod) method, compResult, substrateInstalledCode, null);
         builder.install();
         return predefinedInstalledCode;
     }

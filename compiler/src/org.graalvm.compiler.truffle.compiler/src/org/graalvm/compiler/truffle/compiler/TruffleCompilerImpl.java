@@ -58,7 +58,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Scope;
 import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.debug.MemUseTrackerKey;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
@@ -75,6 +74,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
@@ -180,10 +180,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
             }
         }
         return instrumentation;
-    }
-
-    public void log(String message) {
-        TTY.out().println(message);
     }
 
     /**
@@ -443,19 +439,21 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
             throw debug.handle(e);
         }
 
-        InstalledCode predefinedInstalledCode = compilable.getInstalledCode();
         if (listener != null) {
             listener.onGraalTierFinished(compilable, new GraphInfoImpl(graph));
         }
 
         try (DebugCloseable a = CodeInstallationTime.start(debug); DebugCloseable c = CodeInstallationMemUse.start(debug)) {
-            backend.createInstalledCode(debug, graph.method(), compilationRequest, result, graph.getSpeculationLog(), predefinedInstalledCode, false);
+            InstalledCode installedCode = createInstalledCode(compilable);
+            backend.createInstalledCode(debug, graph.method(), compilationRequest, result, graph.getSpeculationLog(), installedCode, false);
         } catch (Throwable e) {
             throw debug.handle(e);
         }
 
         return result;
     }
+
+    protected abstract InstalledCode createInstalledCode(CompilableTruffleAST compilable);
 
     protected CompilationResult createCompilationResult(String name, CompilationIdentifier compilationIdentifier) {
         return new CompilationResult(compilationIdentifier, name);
@@ -514,12 +512,20 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         }
     }
 
+    /**
+     * Encapsulates custom tasks done before and after installing code that may completely or
+     * partially be the result of compiling some Truffle AST.
+     */
     private final class TruffleCodeInstallationTask extends Backend.CodeInstallationTask {
 
-        private final List<Consumer<InstalledCode>> installedCodeEntries = new ArrayList<>();
+        /**
+         * The list of consumers associated with the {@code OptimizedAssumption}s that must be
+         * notified once the code is installed.
+         */
+        private final List<Consumer<OptimizedAssumptionDependency>> optimizedAssumptions = new ArrayList<>();
 
         @Override
-        public void preProcess(CompilationResult result) {
+        public void preProcess(CompilationResult result, InstalledCode predefinedInstalledCode) {
             if (result == null || result.getAssumptions() == null) {
                 return;
             }
@@ -528,8 +534,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
             for (Assumption assumption : result.getAssumptions()) {
                 if (assumption != null && assumption instanceof TruffleAssumption) {
                     TruffleAssumption truffleAssumption = (TruffleAssumption) assumption;
-                    Consumer<InstalledCode> entry = runtime.registerInstalledCodeEntryForAssumption(truffleAssumption.getAssumption());
-                    installedCodeEntries.add(entry);
+                    optimizedAssumptions.add(runtime.registerOptimizedAssumptionDependency(truffleAssumption.getAssumption()));
                 } else {
                     newAssumptions.add(assumption);
                 }
@@ -539,20 +544,44 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
 
         @Override
         public void postProcess(InstalledCode installedCode) {
-            for (Consumer<InstalledCode> entry : installedCodeEntries) {
-                entry.accept(installedCode);
+            afterCodeInstallation(installedCode);
+            OptimizedAssumptionDependency dependency;
+            if (installedCode instanceof OptimizedAssumptionDependency) {
+                dependency = (OptimizedAssumptionDependency) installedCode;
+            } else if (installedCode instanceof OptimizedAssumptionDependency.Access) {
+                dependency = ((OptimizedAssumptionDependency.Access) installedCode).getDependency();
+            } else {
+                dependency = new OptimizedAssumptionDependency() {
+                    @Override
+                    public void invalidate() {
+                        installedCode.invalidate();
+                    }
+                };
+            }
+
+            for (Consumer<OptimizedAssumptionDependency> entry : optimizedAssumptions) {
+                entry.accept(dependency);
             }
         }
 
         @Override
         public void installFailed(Throwable t) {
-            for (Consumer<InstalledCode> entry : installedCodeEntries) {
+            for (Consumer<OptimizedAssumptionDependency> entry : optimizedAssumptions) {
                 entry.accept(null);
             }
         }
     }
 
+    /**
+     * Notifies this object once {@code installedCode} has been installed in the code cache.
+     *
+     * @param installedCode code that has just been installed in the code cache
+     */
+    protected void afterCodeInstallation(InstalledCode installedCode) {
+    }
+
     private class TrufflePostCodeInstallationTaskFactory extends Backend.CodeInstallationTaskFactory {
+
         @Override
         public Backend.CodeInstallationTask create() {
             return new TruffleCodeInstallationTask();

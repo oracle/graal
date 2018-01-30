@@ -22,15 +22,12 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot;
 
-import static org.graalvm.compiler.truffle.compiler.hotspot.UnsafeAccess.UNSAFE;
-
-import java.lang.reflect.Field;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
 
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -41,7 +38,12 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 
 import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.site.Mark;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Mechanism for injecting special code into
@@ -50,10 +52,13 @@ import jdk.vm.ci.code.site.Mark;
 public abstract class TruffleCallBoundaryInstrumentation extends CompilationResultBuilder {
     protected final GraalHotSpotVMConfig config;
     protected final HotSpotRegistersProvider registers;
+    protected final MetaAccessProvider metaAccess;
 
-    public TruffleCallBoundaryInstrumentation(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
+    public TruffleCallBoundaryInstrumentation(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder,
+                    FrameContext frameContext,
                     OptionValues options, DebugContext debug, CompilationResult compilationResult, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers) {
         super(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult);
+        this.metaAccess = metaAccess;
         this.config = config;
         this.registers = registers;
     }
@@ -62,22 +67,28 @@ public abstract class TruffleCallBoundaryInstrumentation extends CompilationResu
     public Mark recordMark(Object id) {
         Mark mark = super.recordMark(id);
         if ((int) id == config.MARKID_VERIFIED_ENTRY) {
-            injectTailCallCode();
+            ResolvedJavaType optimizedCallTargetType = getRuntime().resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotOptimizedCallTarget");
+            int installedCodeOffset = getFieldOffset("installedCode", optimizedCallTargetType);
+            int entryPointOffset = getFieldOffset("entryPoint", metaAccess.lookupJavaType(InstalledCode.class));
+            injectTailCallCode(installedCodeOffset, entryPointOffset);
         }
         return mark;
     }
 
-    protected static int getFieldOffset(String name, Class<?> declaringClass) {
-        try {
-            Field field = declaringClass.getDeclaredField(name);
-            return (int) UNSAFE.objectFieldOffset(field);
-        } catch (NoSuchFieldException | SecurityException e) {
-            throw GraalError.shouldNotReachHere();
+    private static int getFieldOffset(String name, ResolvedJavaType declaringType) {
+        for (ResolvedJavaField field : declaringType.getInstanceFields(false)) {
+            if (field.getName().equals(name)) {
+                return ((HotSpotResolvedJavaField) field).offset();
+            }
         }
+        throw new NoSuchFieldError(declaringType.toJavaName() + "." + name);
     }
 
     /**
      * Injects code into the verified entry point of that makes a tail-call to the target callee.
+     *
+     * @param entryPointOffset offset of the field {@code HotSpotOptimizedCallTarget.installedCode}
+     * @param installedCodeOffset offset of the field {@code InstalledCode.entryPoint}
      */
-    protected abstract void injectTailCallCode();
+    protected abstract void injectTailCallCode(int installedCodeOffset, int entryPointOffset);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,34 @@
  */
 package org.graalvm.compiler.truffle.common.hotspot;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.runtime.JVMCI;
 
-public interface HotSpotTruffleCompilerRuntime extends TruffleCompilerRuntime {
-    /**
-     * Gets all methods denoted as a Truffle call boundary (such as being annotated by
-     * {@code TruffleCallBoundary}).
-     */
-    Iterable<ResolvedJavaMethod> getTruffleCallBoundaryMethods();
+public class HotSpotTruffleInstalledCode extends InstalledCode implements OptimizedAssumptionDependency {
+    private final CompilableTruffleAST compilable;
 
-    /**
-     * Notifies this runtime once {@code installedCode} has been installed in the code cache.
-     *
-     * @param installedCode code that has just been installed in the code cache
-     */
-    void onCodeInstallation(HotSpotTruffleInstalledCode installedCode);
+    public HotSpotTruffleInstalledCode(CompilableTruffleAST compilable) {
+        super(compilable == null ? null : compilable.getName());
+        this.compilable = compilable;
+    }
+
+    @Override
+    public CompilableTruffleAST getCompilable() {
+        return compilable;
+    }
+
+    @Override
+    public void invalidate() {
+        if (isValid()) {
+            JVMCI.getRuntime().getHostJVMCIBackend().getCodeCache().invalidateInstalledCode(this);
+        }
+    }
+
+    @Override
+    public String toString() {
+        return compilable == null ? super.toString() : compilable.toString();
+    }
 }

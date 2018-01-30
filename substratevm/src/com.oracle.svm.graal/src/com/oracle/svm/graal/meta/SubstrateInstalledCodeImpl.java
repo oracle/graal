@@ -36,8 +36,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Represents the installed code of a runtime compiled method. Note that Truffle uses its own
- * subclass of InstalledCode, so no code within Substrate VM must assume that this is the only
- * representation of runtime compiled code.
+ * implementation of {@link SubstrateInstalledCode}, so no code within Substrate VM must assume that
+ * this is the only representation of runtime compiled code.
  *
  * Metadata for the code is maintained by the class {@link RuntimeMethodInfo}.
  */

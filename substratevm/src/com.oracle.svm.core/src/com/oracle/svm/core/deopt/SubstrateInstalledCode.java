@@ -39,4 +39,8 @@ public interface SubstrateInstalledCode {
     void invalidate();
 
     SubstrateSpeculationLog getSpeculationLog();
+
+    interface Access {
+        SubstrateInstalledCode getSubstrateInstalledCode();
+    }
 }

@@ -50,6 +50,8 @@ import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.truffle.SubstrateTruffleCompilationIdentifier;
 import com.oracle.svm.truffle.TruffleFeature;
 
+import jdk.vm.ci.code.InstalledCode;
+
 public class SubstrateTruffleCompiler extends TruffleCompilerImpl {
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -91,5 +93,10 @@ public class SubstrateTruffleCompiler extends TruffleCompilerImpl {
     @Override
     protected Map<ExceptionAction, Integer> getCompilationProblemsPerAction() {
         return GraalSupport.get().getCompilationProblemsPerAction();
+    }
+
+    @Override
+    protected InstalledCode createInstalledCode(CompilableTruffleAST compilable) {
+        return new SubstrateTruffleInstalledCodeBridge((SubstrateOptimizedCallTarget) compilable);
     }
 }

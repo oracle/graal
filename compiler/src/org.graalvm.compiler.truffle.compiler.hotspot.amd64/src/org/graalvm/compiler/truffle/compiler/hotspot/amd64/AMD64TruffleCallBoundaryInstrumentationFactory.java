@@ -30,9 +30,11 @@ import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.amd64.AMD64HotSpotBackend;
+import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.DataBuilder;
 import org.graalvm.compiler.lir.asm.FrameContext;
@@ -44,7 +46,6 @@ import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrume
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -54,28 +55,32 @@ public class AMD64TruffleCallBoundaryInstrumentationFactory extends TruffleCallB
     @Override
     public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
                     OptionValues options, DebugContext debug, CompilationResult compilationResult) {
-        return new TruffleCallBoundaryInstrumentation(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, config, registers) {
+        return new TruffleCallBoundaryInstrumentation(metaAccess, codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, config, registers) {
             @Override
-            protected void injectTailCallCode() {
-                @SuppressWarnings("hiding")
-                AMD64MacroAssembler asm = (AMD64MacroAssembler) this.asm;
+            protected void injectTailCallCode(int installedCodeOffset, int entryPointOffset) {
+                AMD64MacroAssembler masm = (AMD64MacroAssembler) this.asm;
                 Register thisRegister = codeCache.getRegisterConfig().getCallingConventionRegisters(JavaCall, JavaKind.Object).get(0);
                 Register spillRegister = AMD64.r10;
                 Label doProlog = new Label();
-                int pos = asm.position();
+                int pos = masm.position();
 
-                AMD64Address codeBlobAddress = new AMD64Address(thisRegister, getFieldOffset("entryPoint", InstalledCode.class));
-                /*
-                 * The first instruction must be at least 5 bytes long to be safe for not entrant
-                 * patching, so force a wider encoding of the movq instruction.
-                 */
-                asm.movq(spillRegister, codeBlobAddress, true);
-                assert asm.position() - pos >= AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
-                asm.testq(spillRegister, spillRegister);
-                asm.jcc(ConditionFlag.Equal, doProlog);
-                asm.jmp(spillRegister);
-
-                asm.bind(doProlog);
+                if (config.useCompressedOops) {
+                    // First instruction must be at least 5 bytes long to be safe for patching
+                    masm.movl(spillRegister, new AMD64Address(thisRegister, installedCodeOffset), true);
+                    assert masm.position() - pos >= AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
+                    CompressEncoding encoding = config.getOopEncoding();
+                    Register heapBaseRegister = AMD64Move.UncompressPointerOp.hasBase(options, encoding) ? registers.getHeapBaseRegister() : null;
+                    AMD64Move.UncompressPointerOp.emitUncompressCode(masm, spillRegister, encoding.getShift(), heapBaseRegister, true);
+                } else {
+                    // First instruction must be at least 5 bytes long to be safe for patching
+                    masm.movq(spillRegister, new AMD64Address(thisRegister, installedCodeOffset), true);
+                    assert masm.position() - pos >= AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
+                }
+                masm.movq(spillRegister, new AMD64Address(spillRegister, entryPointOffset));
+                masm.testq(spillRegister, spillRegister);
+                masm.jcc(ConditionFlag.Equal, doProlog);
+                masm.jmp(spillRegister);
+                masm.bind(doProlog);
             }
         };
     }

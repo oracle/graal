@@ -75,7 +75,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * Note: {@code PartialEvaluator} looks up this class and a number of its methods by name.
  */
 @SuppressWarnings("deprecation")
-public class OptimizedCallTarget extends InstalledCode implements CompilableTruffleAST, RootCallTarget, ReplaceObserver, com.oracle.truffle.api.LoopCountReceiver {
+public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootCallTarget, ReplaceObserver, com.oracle.truffle.api.LoopCountReceiver {
 
     private static final String NODE_REWRITING_ASSUMPTION_NAME = "nodeRewritingAssumption";
     static final String CALL_BOUNDARY_METHOD_NAME = "callProxy";
@@ -91,6 +91,7 @@ public class OptimizedCallTarget extends InstalledCode implements CompilableTruf
 
     /** Only set for a source CallTarget with a clonable RootNode. */
     private volatile RootNode uninitializedRootNode;
+
     private volatile int cachedNonTrivialNodeCount = -1;
     private volatile SpeculationLog speculationLog;
     private volatile int callSitesKnown;
@@ -107,7 +108,6 @@ public class OptimizedCallTarget extends InstalledCode implements CompilableTruf
     @CompilationFinal private volatile String nameCache;
 
     public OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
-        super(null);
         assert sourceCallTarget == null || sourceCallTarget.sourceCallTarget == null : "Cannot create a clone of a cloned CallTarget";
         this.sourceCallTarget = sourceCallTarget;
         this.speculationLog = sourceCallTarget != null ? sourceCallTarget.getSpeculationLog() : null;
@@ -209,6 +209,13 @@ public class OptimizedCallTarget extends InstalledCode implements CompilableTruf
         return callBoundary(args);
     }
 
+    /**
+     * Intrinsifiable compiler directive to tighten the type information for {@code args}.
+     *
+     */
+    void callBoundaryEntry() {
+    }
+
     @TruffleCallBoundary
     protected final Object callBoundary(Object[] args) {
         if (CompilerDirectives.inInterpreter()) {
@@ -216,7 +223,7 @@ public class OptimizedCallTarget extends InstalledCode implements CompilableTruf
             getCompilationProfile().interpreterCall(this);
             if (isValid()) {
                 // Stubs were deoptimized => reinstall.
-                runtime().bypassedCompiledCode();
+                runtime().bypassedInstalledCode();
             }
         } else {
             // We come here from compiled code
@@ -326,15 +333,37 @@ public class OptimizedCallTarget extends InstalledCode implements CompilableTruf
         return false;
     }
 
-    @Override
-    public void invalidate() {
-        invalidate(null, null);
-    }
+    /**
+     * Gets the address of the machine code for this call target. A non-zero return value denotes
+     * the contiguous memory block containing the machine code but does not necessarily represent an
+     * entry point for the machine code or even the address of executable instructions. This value
+     * is only for informational purposes (e.g., use in a log message).
+     */
+    public abstract long getCodeAddress();
 
-    protected void invalidate(Object source, CharSequence reason) {
+    /**
+     * Invalidates any machine code attached to this call target.
+     */
+    protected abstract void invalidateCode();
+
+    /**
+     * Determines if this call target has valid machine code attached to it.
+     */
+    public abstract boolean isValid();
+
+    /**
+     * Invalidates this call target by invalidating any machine code attached to it.
+     *
+     * @param source the source object that caused the machine code to be invalidated. For example
+     *            the source {@link Node} object. May be {@code null}.
+     * @param reason a textual description of the reason why the machine code was invalidated. May
+     *            be {@code null}.
+     */
+    public void invalidate(Object source, CharSequence reason) {
         cachedNonTrivialNodeCount = -1;
         if (isValid()) {
-            runtime().invalidateInstalledCode(this, source, reason);
+            invalidateCode();
+            runtime().getListener().onCompilationInvalidated(this, source, reason);
         }
         runtime().cancelInstalledTask(this, source, reason);
     }
@@ -619,10 +648,5 @@ public class OptimizedCallTarget extends InstalledCode implements CompilableTruf
 
     public <T> T getOptionValue(OptionKey<T> key) {
         return PolyglotCompilerOptions.getValue(rootNode, key);
-    }
-
-    @Override
-    public InstalledCode getInstalledCode() {
-        return this;
     }
 }
