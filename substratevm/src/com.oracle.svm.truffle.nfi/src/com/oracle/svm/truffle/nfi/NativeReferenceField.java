@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,21 @@
  */
 package com.oracle.svm.truffle.nfi;
 
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
-import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
+import com.oracle.svm.core.util.VMError;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
-@TargetClass(className = "com.oracle.truffle.nfi.impl.NativePointer", onlyWith = TruffleNFIFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_nfi_impl_NativePointer {
+/**
+ * Fields that contain native pointers are annotated with {@link RecomputeFieldValue}, with this
+ * class as {@link CustomFieldValueComputer}. Objects containing such fields can not be part of the
+ * image heap, because the native pointers refer to allocations from the image builder, and are not
+ * valid anymore at runtime.
+ */
+public final class NativeReferenceField implements CustomFieldValueComputer {
 
-    @Alias
-    Target_com_oracle_truffle_nfi_impl_NativePointer(@SuppressWarnings("unused") long pointer) {
+    @Override
+    public Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        throw VMError.unsupportedFeature(String.format("Native object (%s) stored in pre-initialized context.", original.getDeclaringClass().getName()));
     }
-
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NativeReferenceField.class) long nativePointer;
 }

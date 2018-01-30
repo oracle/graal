@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,9 @@
  */
 package com.oracle.svm.truffle.nfi;
 
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.WordFactory;
 
@@ -32,10 +35,18 @@ import com.oracle.svm.truffle.nfi.libffi.LibFFI;
 @TargetClass(className = "com.oracle.truffle.nfi.impl.ClosureNativePointer", onlyWith = TruffleNFIFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_nfi_impl_ClosureNativePointer {
 
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NativeReferenceField.class) long codePointer;
+
     @Substitute
     private static void freeClosure(long closure) {
         com.oracle.svm.truffle.nfi.LibFFI.ClosureData data = WordFactory.pointer(closure);
         ImageSingletons.lookup(TruffleNFISupport.class).destroyClosureHandle(data.nativeClosureHandle());
         LibFFI.ffi_closure_free(data);
     }
+}
+
+@TargetClass(className = "com.oracle.truffle.nfi.impl.ClosureNativePointer", innerClass = "NativeDestructor", onlyWith = TruffleNFIFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_nfi_impl_ClosureNativePointer_NativeDestructor {
+
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NativeReferenceField.class) long nativeClosure;
 }
