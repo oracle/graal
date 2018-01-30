@@ -302,19 +302,18 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
         HotSpotProviders providers = getProviders();
         HotSpotFrameContext frameContext = (HotSpotFrameContext) crb.frameContext;
         if (!frameContext.isStub) {
+            HotSpotForeignCallsProvider foreignCalls = providers.getForeignCalls();
             try (ScratchRegister sc = masm.getScratchRegister()) {
                 Register scratch = sc.getRegister();
-                HotSpotForeignCallsProvider foreignCalls = providers.getForeignCalls();
                 crb.recordMark(config.MARKID_EXCEPTION_HANDLER_ENTRY);
                 ForeignCallLinkage linkage = foreignCalls.lookupForeignCall(EXCEPTION_HANDLER);
                 Register helper = AArch64Call.isNearCall(linkage) ? null : scratch;
                 AArch64Call.directCall(crb, masm, linkage, helper, null);
-
-                crb.recordMark(config.MARKID_DEOPT_HANDLER_ENTRY);
-                linkage = foreignCalls.lookupForeignCall(DEOPTIMIZATION_HANDLER);
-                helper = AArch64Call.isNearCall(linkage) ? null : scratch;
-                AArch64Call.directCall(crb, masm, linkage, helper, null);
             }
+            crb.recordMark(config.MARKID_DEOPT_HANDLER_ENTRY);
+            ForeignCallLinkage linkage = foreignCalls.lookupForeignCall(DEOPTIMIZATION_HANDLER);
+            masm.adr(lr, 0); // Warning: the argument is an offset from the instruction!
+            AArch64Call.directJmp(crb, masm, linkage);
         } else {
             // No need to emit the stubs for entries back into the method since
             // it has no calls that can cause such "return" entries
