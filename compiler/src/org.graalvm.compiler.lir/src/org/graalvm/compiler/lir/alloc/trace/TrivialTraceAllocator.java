@@ -26,7 +26,6 @@ import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static org.graalvm.compiler.lir.alloc.trace.TraceUtil.isTrivialTrace;
 
-import java.util.Arrays;
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.alloc.Trace;
@@ -58,79 +57,51 @@ final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPh
         AbstractBlockBase<?> pred = block.getPredecessors()[0];
 
         GlobalLivenessInfo livenessInfo = context.livenessInfo;
-        Value[] variableMap = new Value[lir.numVariables()];
-        collectMapping(block, pred, livenessInfo, variableMap);
-        assignLocations(lir, block, livenessInfo, variableMap);
-        allocate(lir, block, pred, livenessInfo, livenessInfo.getInLocation(block), livenessInfo.getOutLocation(block), variableMap);
+        allocate(lir, block, pred, livenessInfo);
     }
 
-    private static void allocate(LIR lir, AbstractBlockBase<?> block, AbstractBlockBase<?> pred, GlobalLivenessInfo livenessInfo, Value[] otherIn, Value[] otherOut, Value[] otherMap) {
+    private static void allocate(LIR lir, AbstractBlockBase<?> block, AbstractBlockBase<?> pred, GlobalLivenessInfo livenessInfo) {
         assert TraceAssertions.liveSetsAreSorted(livenessInfo, block);
         assert TraceAssertions.liveSetsAreSorted(livenessInfo, pred);
+
+        // If we have Phis, we need to create a map from variables to locations.
         boolean hasPhis = SSAUtil.numPhiOut(lir, block) > 0;
         Value[] variableMap = hasPhis ? new Value[lir.numVariables()] : null;
 
+        // setup incoming variables/locations
         final int[] blockIn = livenessInfo.getBlockIn(block);
         final Value[] predLocOut = livenessInfo.getOutLocation(pred);
         int inLenght = blockIn.length;
-        final Value[] locationIn = new Value[inLenght];
 
+        // setup outgoing variables/locations
         final int[] blockOut = livenessInfo.getBlockOut(block);
         int outLength = blockOut.length;
         final Value[] locationOut = new Value[outLength];
 
-        assert outLength <= inLenght;
+        assert outLength <= inLenght : "Trivial Trace! There cannot be more outgoing values than incoming.";
         int outIdx = 0;
         for (int inIdx = 0; inIdx < inLenght; inIdx++) {
-            Value value = locationIn[inIdx] = predLocOut[inIdx];
+            Value value = predLocOut[inIdx];
             if (hasPhis) {
+                // collect mapping for Phi resolution
                 variableMap[blockIn[inIdx]] = value;
             }
             if (outIdx < outLength && blockOut[outIdx] == blockIn[inIdx]) {
+                // set the outgoing location to the incoming value
                 locationOut[outIdx++] = value;
             }
         }
         assert outIdx == outLength;
 
-        assert Arrays.equals(locationIn, otherIn);
-        assert Arrays.equals(locationOut, otherOut);
-        assert !hasPhis | Arrays.equals(variableMap, otherMap);
-    }
-
-    /**
-     * Collects the mapping from variable to location. Additionally the
-     * {@link GlobalLivenessInfo#setInLocations incoming location array} is set.
-     */
-    private static void collectMapping(AbstractBlockBase<?> block, AbstractBlockBase<?> pred, GlobalLivenessInfo livenessInfo, Value[] variableMap) {
-        final int[] blockIn = livenessInfo.getBlockIn(block);
-        final Value[] predLocOut = livenessInfo.getOutLocation(pred);
-        final Value[] locationIn = new Value[blockIn.length];
-        for (int i = 0; i < blockIn.length; i++) {
-            int varNum = blockIn[i];
-            if (varNum >= 0) {
-                Value location = predLocOut[i];
-                variableMap[varNum] = location;
-                locationIn[i] = location;
-            } else {
-                locationIn[i] = Value.ILLEGAL;
-            }
-        }
-        livenessInfo.setInLocations(block, locationIn);
-    }
-
-    /**
-     * Assigns the outgoing locations according to the {@link #collectMapping variable mapping}.
-     */
-    private static void assignLocations(LIR lir, AbstractBlockBase<?> block, GlobalLivenessInfo livenessInfo, Value[] variableMap) {
-        final int[] blockOut = livenessInfo.getBlockOut(block);
-        final Value[] locationOut = new Value[blockOut.length];
-        for (int i = 0; i < blockOut.length; i++) {
-            int varNum = blockOut[i];
-            locationOut[i] = variableMap[varNum];
-        }
+        /*
+         * Since we do not change any of the location we can just use the outgoing of the
+         * predecessor.
+         */
+        livenessInfo.setInLocations(block, predLocOut);
         livenessInfo.setOutLocations(block, locationOut);
-
-        handlePhiOut(lir, block, variableMap);
+        if (hasPhis) {
+            handlePhiOut(lir, block, variableMap);
+        }
     }
 
     private static void handlePhiOut(LIR lir, AbstractBlockBase<?> block, Value[] variableMap) {
