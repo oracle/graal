@@ -319,12 +319,12 @@ public final class Context implements AutoCloseable {
      * When Java host objects are passed to guest languages, their public methods and fields are
      * provided as {@link Value#getMember(String) members}. Methods and fields are grouped by name,
      * so only one member is exposed for each name.
-     *
+     * <p>
      * When an argument value needs to be mapped to match a required Java method parameter type then
      * the semantics of {@link Value#as(Class) host value mapping} is used. The result of the
      * mapping is equivalent of calling {@link Value#as(Class)} with the parameter type. Therefore a
-     * {@link ClassCastException} is thrown if a parameter value cannot be cast to the required
-     * parameter type.
+     * {@link ClassCastException} or {@link NullPointerException} is thrown if a parameter value
+     * cannot be cast to the required parameter type.
      * <p>
      * Overloaded java methods are selected based on the arguments that are provided. In case
      * multiple mapped Java methods with the same name are applicable for
@@ -341,8 +341,8 @@ public final class Context implements AutoCloseable {
      * Double, Number, Object
      * <li>Other values are resolved based on their Java type hierarchy.
      * </ul>
-     * If there are multiple most concrete methods or too many arguments were provided then a
-     * {@link IllegalArgumentException} will be thrown.
+     * If there are multiple most concrete methods or too many arguments were provided then an
+     * illegal argument type error will be raised.
      * <p>
      * <b>Advanced Example:</b>
      *

@@ -556,6 +556,10 @@ public final class JavaInterop {
         }
     }
 
+    static boolean isJavaFunction(Object o) {
+        return o instanceof JavaFunctionObject;
+    }
+
     @CompilerDirectives.TruffleBoundary
     static boolean isJavaFunctionInterface(Class<?> type) {
         if (!type.isInterface() || type == TruffleObject.class) {

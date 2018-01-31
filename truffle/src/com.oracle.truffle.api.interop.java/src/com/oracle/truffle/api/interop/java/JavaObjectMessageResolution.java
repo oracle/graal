@@ -219,7 +219,8 @@ class JavaObjectMessageResolution {
                     return doExecute.execute(method, null, args, receiver.languageContext);
                 }
             }
-            throw UnsupportedTypeException.raise(new Object[]{receiver});
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedMessageException.raise(Message.createNew(0));
         }
     }
 

@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.interop.java;
 
 import java.lang.reflect.Type;
+import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -79,9 +80,15 @@ class JavaInteropErrors {
 
     @TruffleBoundary
     static RuntimeException invalidMapIdentifier(Object context, Object receiver, Type keyType, Type valueType, Object identifier) {
-        throw newIllegalArgumentException(
-                        String.format("Invalid or unmodifiable value for identifier '%s' for Map<%s, %s> %s.", identifier, formatComponentType(keyType),
-                                        formatComponentType(valueType), getValueInfo(context, receiver)));
+        if (identifier instanceof Number || identifier instanceof String) {
+            throw newIllegalArgumentException(
+                            String.format("Invalid or unmodifiable value for identifier '%s' for Map<%s, %s> %s.", identifier, formatComponentType(keyType),
+                                            formatComponentType(valueType), getValueInfo(context, receiver)));
+        } else {
+            throw newIllegalArgumentException(
+                            String.format("Illegal identifier type '%s' for Map<%s, %s> %s.", identifier == null ? "null" : identifier.getClass().getTypeName(), formatComponentType(keyType),
+                                            formatComponentType(valueType), getValueInfo(context, receiver)));
+        }
     }
 
     @TruffleBoundary
@@ -91,7 +98,47 @@ class JavaInteropErrors {
                                         getValueInfo(context, value), formatComponentType(componentType), getValueInfo(context, receiver), identifier));
     }
 
-    private static String getValueInfo(Object languageContext, Object value) {
+    static RuntimeException invalidExecuteArgumentType(Object context, Object receiver, Object[] arguments) {
+        String[] formattedArgs = formatArgs(context, arguments);
+        String message = String.format("Invalid argument when executing %s with arguments %s.", getValueInfo(context, receiver), Arrays.asList(formattedArgs));
+        throw newIllegalArgumentException(message);
+    }
+
+    static RuntimeException invalidInstantiateArgumentType(Object context, Object receiver, Object[] arguments) {
+        String[] formattedArgs = formatArgs(context, arguments);
+        String message = String.format("Invalid argument when instantiating %s with arguments %s.", getValueInfo(context, receiver), Arrays.asList(formattedArgs));
+        throw newIllegalArgumentException(message);
+    }
+
+    static RuntimeException invalidInstantiateArity(Object context, Object receiver, Object[] arguments, int expected, int actual) {
+        String[] formattedArgs = formatArgs(context, arguments);
+        String message = String.format("Invalid argument count when instantiating %s with arguments %s. Expected %s argument(s) but got %s.",
+                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), expected, actual);
+        throw newIllegalArgumentException(message);
+    }
+
+    static RuntimeException invalidExecuteArity(Object context, Object receiver, Object[] arguments, int expected, int actual) {
+        String[] formattedArgs = formatArgs(context, arguments);
+        String message = String.format("Invalid argument count when executing %s with arguments %s. Expected %s argument(s) but got %s.",
+                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), expected, actual);
+        throw newIllegalArgumentException(message);
+    }
+
+    @TruffleBoundary
+    static RuntimeException executeUnsupported(Object context, Object receiver) {
+        String message = String.format("Unsupported operation for object %s. Object is not executable or instantiable.", getValueInfo(context, receiver));
+        throw newUnsupportedOperationException(message);
+    }
+
+    private static String[] formatArgs(Object context, Object[] arguments) {
+        String[] formattedArgs = new String[arguments.length];
+        for (int i = 0; i < arguments.length; i++) {
+            formattedArgs[i] = getValueInfo(context, arguments[i]);
+        }
+        return formattedArgs;
+    }
+
+    static String getValueInfo(Object languageContext, Object value) {
         EngineSupport engine = JavaInterop.ACCESSOR.engine();
         if (engine == null) {
             return value.toString();

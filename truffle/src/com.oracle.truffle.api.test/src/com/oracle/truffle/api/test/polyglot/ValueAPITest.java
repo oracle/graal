@@ -37,6 +37,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -69,6 +70,7 @@ import org.graalvm.polyglot.proxy.ProxyPrimitive;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.ComparisonFailure;
 import org.junit.Test;
 
 public class ValueAPITest {
@@ -988,6 +990,9 @@ public class ValueAPITest {
         map.put("value", 43);
         assertEquals(43, map.get("value"));
 
+        assertFails(() -> map.put(new Object(), ""), IllegalArgumentException.class,
+                        "Illegal identifier type 'java.lang.Object' for Map<Object, Object> 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
+
         Map<String, String> stringMap = v.as(STRING_MAP);
 
         assertFails(() -> stringMap.get("value"), ClassCastException.class,
@@ -1007,13 +1012,119 @@ public class ValueAPITest {
 
     }
 
+    @FunctionalInterface
+    public interface ExecutableInterface {
+
+        String execute(String argument);
+
+    }
+
+    @FunctionalInterface
+    public interface OtherInterface0 {
+
+        Object execute();
+
+    }
+
+    @FunctionalInterface
+    public interface OtherInterface1 {
+
+        Object execute(Object s);
+
+    }
+
+    @FunctionalInterface
+    public interface OtherInterface2 {
+
+        Object execute(String s, String s2);
+
+    }
+
+    @SuppressWarnings("unused")
+    public static class AmbiguousType {
+
+        public String f(int a, byte b) {
+            return "1";
+        }
+
+        public String f(byte a, int b) {
+            return "2";
+        }
+    }
+
+    @Test
+    public void testExecutableErrors() {
+        ExecutableInterface executable = new ExecutableInterface() {
+
+            public String execute(String argument) {
+                return argument;
+            }
+
+            @Override
+            public String toString() {
+                return "testExecutable";
+            }
+        };
+
+        Value v = context.asValue(executable);
+
+        assertTrue(v.canExecute());
+        assertEquals("", v.execute("").as(Object.class));
+        assertEquals("", v.execute("").asString());
+
+        assertFails(() -> v.execute("", ""), IllegalArgumentException.class,
+                        "Invalid argument count when executing 'testExecutable'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$9) " +
+                                        "with arguments [''(language: Java, type: java.lang.String), ''(language: Java, type: java.lang.String)]. Expected 1 argument(s) but got 2.");
+
+        assertFails(() -> v.execute(), IllegalArgumentException.class,
+                        "Invalid argument count when executing 'testExecutable'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$9) with arguments []." +
+                                        " Expected 1 argument(s) but got 0.");
+
+        assertFails(() -> v.execute(42), IllegalArgumentException.class,
+                        "Invalid argument when executing 'testExecutable'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$9) " +
+                                        "with arguments ['42'(language: Java, type: java.lang.Integer)].");
+
+        assertFails(() -> context.asValue("").execute(), UnsupportedOperationException.class,
+                        "Unsupported operation Value.execute(Object...) for ''(language: Java, type: java.lang.String). You can ensure that the operation " +
+                                        "is supported using Value.canExecute().");
+
+        assertFails(() -> v.as(OtherInterface0.class).execute(), IllegalArgumentException.class,
+                        "Invalid argument count when executing 'testExecutable'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$9) " +
+                                        "with arguments []. Expected 1 argument(s) but got 0.");
+
+        assertEquals("", v.as(OtherInterface1.class).execute(""));
+
+        assertFails(() -> v.as(OtherInterface1.class).execute(42), IllegalArgumentException.class,
+                        "Invalid argument when executing 'testExecutable'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$9) " +
+                                        "with arguments ['42'(language: Java, type: java.lang.Integer)].");
+
+        assertFails(() -> v.as(OtherInterface2.class).execute("", ""), IllegalArgumentException.class,
+                        "Invalid argument count when executing 'testExecutable'(language: Java, " +
+                                        "type: com.oracle.truffle.api.test.polyglot.ValueAPITest$9) with arguments [''(language: Java, type: java.lang.String), " +
+                                        "''(language: Java, type: java.lang.String)]. Expected 1 argument(s) but got 2.");
+
+        assertSame(executable, v.as(ExecutableInterface.class));
+
+        Value value = context.asValue(new AmbiguousType());
+        assertFails(() -> value.getMember("f").execute(1, 2), IllegalArgumentException.class,
+                        "Invalid argument when executing 'com.oracle.truffle.api.test.polyglot.ValueAPITest$AmbiguousType.f'" +
+                                        "(language: Java, type: Bound Method) with arguments ['1'(language: Java, type: java.lang.Integer), " +
+                                        "'2'(language: Java, type: java.lang.Integer)].");
+    }
+
     private static void assertFails(Runnable r, Class<?> hostExceptionType, String message) {
         try {
             r.run();
             Assert.fail("No error but expected " + hostExceptionType);
         } catch (Exception e) {
-            assertTrue(e.getClass().getName() + ":" + e.getMessage(), hostExceptionType.isInstance(e));
-            assertEquals(message, e.getMessage());
+            if (!hostExceptionType.isInstance(e)) {
+                throw new AssertionError(e.getClass().getName() + ":" + e.getMessage(), e);
+            }
+            if (!message.equals(e.getMessage())) {
+                ComparisonFailure f = new ComparisonFailure(null, message, e.getMessage());
+                f.initCause(e);
+                throw f;
+            }
         }
     }
 

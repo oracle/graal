@@ -60,4 +60,14 @@ final class JavaFunctionObject implements TruffleObject {
     public int hashCode() {
         return method.hashCode();
     }
+
+    String getDescription() {
+        if (obj == null) {
+            return "null";
+        }
+        String typeName = "";
+        typeName = obj.getClass().getTypeName();
+        return typeName + "." + method.getName();
+    }
+
 }

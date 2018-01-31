@@ -535,7 +535,7 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
                     }
                 }
                 CompilerDirectives.transferToInterpreter();
-                if (cache.keyClass.isInstance(key)) {
+                if (cache.keyClass.isInstance(key) && (key instanceof Number || key instanceof String)) {
                     throw JavaInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "put");
                 } else {
                     throw JavaInteropErrors.invalidMapIdentifier(languageContext, receiver, cache.keyClass, cache.valueType, key);

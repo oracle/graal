@@ -67,24 +67,34 @@ final class TruffleExecuteNode extends Node {
         }
         Object[] functionArgs = toGuests.apply(languageContext, argsArray);
         Object result;
+        boolean executable = condition.profile(sendIsExecutable(isExecutable, function));
         try {
-            if (condition.profile(sendIsExecutable(isExecutable, function))) {
+            if (executable) {
                 result = sendExecute(execute, function, functionArgs);
             } else if (sendIsInstantiable(isInstantiable, function)) {
                 result = sendNew(instantiate, function, functionArgs);
             } else {
                 CompilerDirectives.transferToInterpreter();
-                throw HostEntryRootNode.newUnsupportedOperationException("Unsupported operation.");
+                throw JavaInteropErrors.executeUnsupported(languageContext, function);
             }
         } catch (UnsupportedTypeException e) {
+
             CompilerDirectives.transferToInterpreter();
-            throw HostEntryRootNode.newIllegalArgumentException("Illegal argument provided.");
+            if (executable) {
+                throw JavaInteropErrors.invalidExecuteArgumentType(languageContext, function, functionArgs);
+            } else {
+                throw JavaInteropErrors.invalidInstantiateArgumentType(languageContext, function, functionArgs);
+            }
         } catch (ArityException e) {
             CompilerDirectives.transferToInterpreter();
-            throw HostEntryRootNode.newIllegalArgumentException(String.format("Illegal number of arguments. Expected %s got %s.", e.getExpectedArity(), e.getActualArity()));
+            if (executable) {
+                throw JavaInteropErrors.invalidExecuteArity(languageContext, function, functionArgs, e.getExpectedArity(), e.getActualArity());
+            } else {
+                throw JavaInteropErrors.invalidInstantiateArity(languageContext, function, functionArgs, e.getExpectedArity(), e.getActualArity());
+            }
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
-            throw HostEntryRootNode.newUnsupportedOperationException("Unsupported operation.");
+            throw JavaInteropErrors.executeUnsupported(languageContext, function);
         }
         return toHost.execute(result, resultClass, resultType, languageContext);
     }

@@ -111,6 +111,10 @@ public abstract class Accessor {
         public abstract Object toJava(Node toJavaNode, Class<?> rawType, Type genericType, Object value, Object polyglotContext);
 
         public abstract Object toJavaGuestObject(Object obj, Object languageContext);
+
+        public abstract boolean isJavaFunction(Object object);
+
+        public abstract String javaFunctionToString(Object object);
     }
 
     public abstract static class EngineSupport {

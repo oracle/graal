@@ -63,7 +63,7 @@ abstract class ExecuteMethodNode extends Node {
             return executeImpl(method, obj, args, languageContext);
         } catch (ClassCastException | NullPointerException e) {
             // conversion failed by ToJavaNode
-            throw UnsupportedTypeException.raise(e, args);
+            throw UnsupportedTypeException.raise(args);
         } catch (InteropException e) {
             throw e.raise();
         } catch (Throwable e) {
@@ -632,7 +632,7 @@ abstract class ExecuteMethodNode extends Node {
     }
 
     private static RuntimeException ambiguousOverloadsException(List<SingleMethodDesc> candidates, Object[] args) {
-        String message = String.format("no single overload found (candidates: %s, arguments: %s)", candidates, arrayToStringWithTypes(args));
+        String message = String.format("Multiple applicable overloads found for method name %s (candidates: %s, arguments: %s)", candidates.get(0).getName(), candidates, arrayToStringWithTypes(args));
         return UnsupportedTypeException.raise(new IllegalArgumentException(message), args);
     }
 
