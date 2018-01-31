@@ -79,7 +79,7 @@ public class ContextPreInitializationTest {
     public void tearDown() throws Exception {
         ContextPreInitializationTestFirstLanguage.callDependentLanguage = false;
         ContextPreInitializationTestSecondLanguage.callDependentLanguage = false;
-        ContextPreInitializationTestFirstLanguage.patchException = null;
+        ContextPreInitializationTestFirstLanguage.patchException = false;
         BaseLanguage.parseStdOutOutput.clear();
         BaseLanguage.parseStdErrOutput.clear();
         resetSystemPropertiesOptions();
@@ -713,7 +713,7 @@ public class ContextPreInitializationTest {
     @Test
     public void testSingleLanguageExceptionFromContextPatch() throws Exception {
         setPatchable(FIRST);
-        ContextPreInitializationTestFirstLanguage.patchException = new RuntimeException();
+        ContextPreInitializationTestFirstLanguage.patchException = true;
         doContextPreinitialize(FIRST);
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
         assertEquals(1, contexts.size());
@@ -766,7 +766,7 @@ public class ContextPreInitializationTest {
     @Test
     public void testMoreLanguagesExceptionFromContextPatch() throws Exception {
         setPatchable(FIRST, SECOND);
-        ContextPreInitializationTestFirstLanguage.patchException = new RuntimeException();
+        ContextPreInitializationTestFirstLanguage.patchException = true;
         doContextPreinitialize(FIRST, SECOND);
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
         assertEquals(2, contexts.size());
@@ -1032,7 +1032,7 @@ public class ContextPreInitializationTest {
         @Option(category = OptionCategory.USER, help = "Option 1") public static final OptionKey<Boolean> Option1 = new OptionKey<>(false);
         @Option(category = OptionCategory.USER, help = "Option 2") public static final OptionKey<Boolean> Option2 = new OptionKey<>(false);
         private static boolean callDependentLanguage;
-        private static RuntimeException patchException;
+        private static boolean patchException = false;
 
         @Override
         protected CountingContext createContext(Env env) {
@@ -1055,8 +1055,8 @@ public class ContextPreInitializationTest {
             context.optionValues.put(Option1, newEnv.getOptions().get(Option1));
             context.optionValues.put(Option2, newEnv.getOptions().get(Option2));
             final boolean result = super.patchContext(context, newEnv);
-            if (patchException != null) {
-                throw patchException;
+            if (patchException) {
+                throw new RuntimeException("patchContext() exception");
             }
             return result;
         }
