@@ -26,6 +26,7 @@ package com.oracle.truffle.api.interop.java;
 
 import java.lang.reflect.Type;
 
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -61,6 +62,9 @@ final class JavaInteropAccessor extends Accessor {
 
             @Override
             public String javaFunctionToString(Object object) {
+                if (TruffleOptions.AOT) {
+                    return "";
+                }
                 return ((JavaFunctionObject) object).getDescription();
             }
         };

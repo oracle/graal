@@ -557,6 +557,9 @@ public final class JavaInterop {
     }
 
     static boolean isJavaFunction(Object o) {
+        if (TruffleOptions.AOT) {
+            return false;
+        }
         return o instanceof JavaFunctionObject;
     }
 
