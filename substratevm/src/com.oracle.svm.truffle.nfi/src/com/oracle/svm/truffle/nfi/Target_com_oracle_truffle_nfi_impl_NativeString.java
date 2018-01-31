@@ -25,8 +25,6 @@ package com.oracle.svm.truffle.nfi;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -34,7 +32,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 @TargetClass(className = "com.oracle.truffle.nfi.impl.NativeString", onlyWith = TruffleNFIFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_nfi_impl_NativeString {
 
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NativeReferenceField.class) long nativePointer;
+    @Alias long nativePointer;
 
     @Substitute
     @TruffleBoundary

@@ -23,8 +23,6 @@
 package com.oracle.svm.truffle.nfi;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
 
 @TargetClass(className = "com.oracle.truffle.nfi.impl.LibFFIType", onlyWith = TruffleNFIFeature.IsEnabled.class)
@@ -34,7 +32,7 @@ final class Target_com_oracle_truffle_nfi_impl_LibFFIType {
     @Alias protected int alignment;
     @Alias protected int objectCount;
 
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NativeReferenceField.class) protected long type;
+    @Alias protected long type;
 }
 
 @TargetClass(className = "com.oracle.truffle.nfi.impl.LibFFIType", innerClass = "StringType", onlyWith = TruffleNFIFeature.IsEnabled.class)
