@@ -161,13 +161,33 @@ public class InliningLog {
         }
     }
 
+    public void addLog(UnmodifiableEconomicMap<Node, Node> replacements, InliningLog replacementLog) {
+        EconomicMap<Callsite, Callsite> mapping = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+        for (Callsite calleeChild : replacementLog.root.children) {
+            Callsite child = root.addChild(calleeChild.invoke);
+            copyTree(child, calleeChild, replacements, mapping);
+        }
+        MapCursor<Invokable, Callsite> entries = replacementLog.leaves.getEntries();
+        while (entries.advance()) {
+            Invokable replacementInvoke = entries.getKey();
+            Callsite replacementCallsite = entries.getValue();
+            if (replacementInvoke.asFixedNode().isDeleted()) {
+                // Some invoke nodes could have been removed by optimizations.
+                continue;
+            }
+            Invokable invoke = (Invokable) replacements.get(replacementInvoke.asFixedNode());
+            Callsite callsite = mapping.get(replacementCallsite);
+            leaves.put(invoke, callsite);
+        }
+    }
+
     public void replaceLog(UnmodifiableEconomicMap<Node, Node> replacements, InliningLog replacementLog) {
         assert root.decisions.isEmpty();
         assert root.children.isEmpty();
         assert leaves.isEmpty();
-        MapCursor<Invokable, Callsite> replacementEntries = replacementLog.leaves.getEntries();
         EconomicMap<Callsite, Callsite> mapping = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
         copyTree(root, replacementLog.root, replacements, mapping);
+        MapCursor<Invokable, Callsite> replacementEntries = replacementLog.leaves.getEntries();
         while (replacementEntries.advance()) {
             Invokable replacementInvoke = replacementEntries.getKey();
             Callsite replacementSite = replacementEntries.getValue();
