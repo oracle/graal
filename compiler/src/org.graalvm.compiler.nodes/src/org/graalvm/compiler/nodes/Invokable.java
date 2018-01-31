@@ -28,6 +28,8 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 
+import java.util.function.BiConsumer;
+
 /**
  * A marker interface for nodes that represent calls to other methods.
  */
@@ -38,6 +40,12 @@ public interface Invokable {
 
     FixedNode asFixedNode();
 
+    /**
+     * Called on a {@link Invokable} node after it is registered with a graph.
+     *
+     * To override the default functionality, code that creates an {@link Invokable}
+     * should set the {@link InliningLog#createUpdateScope} dynamic variable.
+     */
     default void updateInliningLogAfterRegister(StructuredGraph newGraph) {
         if (newGraph.getInliningLog().getUpdateScope() != null) {
             newGraph.getInliningLog().getUpdateScope().accept(null, this);
@@ -47,6 +55,14 @@ public interface Invokable {
         }
     }
 
+    /**
+     * Called on a {@link Invokable} node after it was cloned from another node.
+     *
+     * This call is always preceded with a call to {@link Invokable#updateInliningLogAfterRegister}.
+     *
+     * To override the default functionality, code that creates an {@link Invokable}
+     * should set the {@link InliningLog#createUpdateScope} dynamic variable.
+     */
     default void updateInliningLogAfterClone(Node other) {
         if (GraalOptions.TraceInlining.getValue(asFixedNode().getOptions()).isTracing()) {
             // At this point, the invokable node was already added to the inlining log

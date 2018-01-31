@@ -29,7 +29,6 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 
 import java.util.ArrayList;
@@ -132,6 +131,14 @@ public class InliningLog {
         this.leaves = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
     }
 
+    /**
+     * Add an inlining decision for the specified invoke.
+     *
+     * An inlining decision can be either positive or negative.
+     * A positive inlining decision must be logged after replacing an {@link Invoke} with a graph.
+     * In this case, the node replacement map and the {@link InliningLog} of the inlined graph
+     * must be provided.
+     */
     public void addDecision(Invokable invoke, boolean positive, String reason, String phase, EconomicMap<Node, Node> replacements, InliningLog calleeLog) {
         assert leaves.containsKey(invoke);
         assert (!positive && replacements == null && calleeLog == null) || (positive && replacements != null && calleeLog != null);
@@ -161,6 +168,14 @@ public class InliningLog {
         }
     }
 
+    /**
+     * Append the inlining decision tree from the specified log.
+     *
+     * The subtrees of the specified log are appended below the root of this log.
+     * This is usually called when a node in the graph is replaced with its snippet.
+     *
+     * @see InliningLog#addDecision
+     */
     public void addLog(UnmodifiableEconomicMap<Node, Node> replacements, InliningLog replacementLog) {
         EconomicMap<Callsite, Callsite> mapping = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
         for (Callsite calleeChild : replacementLog.root.children) {
@@ -181,6 +196,14 @@ public class InliningLog {
         }
     }
 
+    /**
+     * Completely replace the current log with the copy of the specified log.
+     *
+     * The precondition is that the current inlining log is completely empty.
+     * This is usually called when copying the entire graph.
+     *
+     * @see InliningLog#addDecision
+     */
     public void replaceLog(UnmodifiableEconomicMap<Node, Node> replacements, InliningLog replacementLog) {
         assert root.decisions.isEmpty();
         assert root.children.isEmpty();
@@ -226,10 +249,14 @@ public class InliningLog {
 
     private UpdateScope activated = null;
 
+    /**
+     * Used to designate scopes in which {@link Invokable} registration or cloning
+     * should be handled differently.
+     */
     public class UpdateScope implements AutoCloseable {
         private BiConsumer<Invokable, Invokable> updater;
 
-        public UpdateScope(BiConsumer<Invokable, Invokable> updater) {
+        private UpdateScope(BiConsumer<Invokable, Invokable> updater) {
             this.updater = updater;
             if (activated != null) {
                 throw GraalError.shouldNotReachHere("InliningLog updating already set.");
@@ -255,6 +282,15 @@ public class InliningLog {
         return activated.getUpdater();
     }
 
+    /**
+     * Creates and sets a new update scope for the log.
+     *
+     * The specified lambda is invoked when an {@link Invokable} node is registered or cloned.
+     * If the node is newly registered, then the first argument to the lambda is {@code null}
+     * If the node is cloned, then the first argument is the node it was cloned from.
+     *
+     * @param updater a lambda taking a null (or the original node), and the registered (or cloned) {@link Invokable}
+     */
     public UpdateScope createUpdateScope(BiConsumer<Invokable, Invokable> updater) {
         return new UpdateScope(updater);
     }
