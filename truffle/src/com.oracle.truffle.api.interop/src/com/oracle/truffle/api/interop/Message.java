@@ -519,7 +519,7 @@ public abstract class Message {
      * <p>
      * The return value from using this message is another {@link TruffleObject} that responds to
      * {@link #HAS_SIZE} message and its indexes 0 to {@link #GET_SIZE} - 1 contain {@link String}
-     * names of individual properties.
+     * names of individual properties. The properties should be provided in deterministic order.
      *
      * @since 0.18
      */
