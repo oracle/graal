@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -294,42 +295,6 @@ public class UniverseBuilder {
         hUniverse.fields.put(aField, hField);
     }
 
-    private static final Comparator<HostedType> TYPE_COMPARATOR = new Comparator<HostedType>() {
-
-        private int idx(HostedType t) {
-            if (t.isInterface()) {
-                return 4;
-            } else if (t.isArray()) {
-                return 3;
-            } else if (t.isInstanceClass()) {
-                return 2;
-            } else if (t.getJavaKind() != JavaKind.Object) {
-                return 1;
-            } else {
-                throw shouldNotReachHere();
-            }
-        }
-
-        @Override
-        public int compare(HostedType t1, HostedType t2) {
-            if (t1.equals(t2)) {
-                return 0;
-            }
-            int result = idx(t1) - idx(t2);
-            if (result == 0) {
-                if (t1.getJavaKind() != JavaKind.Object) {
-                    result = t1.getJavaKind().ordinal() - t2.getJavaKind().ordinal();
-                } else if (t1.isArray()) {
-                    result = compare(t1.getComponentType(), t2.getComponentType());
-                } else {
-                    result = t1.getName().compareTo(t2.getName());
-                }
-            }
-            assert result != 0 : "Types not distinguishable: " + t1 + ", " + t2;
-            return result;
-        }
-    };
-
     public static final Comparator<HostedMethod> METHOD_COMPARATOR = (m1, m2) -> {
         if (m1.equals(m2)) {
             return 0;
@@ -343,7 +308,7 @@ public class UniverseBuilder {
         int result = Boolean.compare(m1.compilationInfo.isDeoptTarget(), m2.compilationInfo.isDeoptTarget());
 
         if (result == 0) {
-            result = TYPE_COMPARATOR.compare(m1.getDeclaringClass(), m2.getDeclaringClass());
+            result = m1.getDeclaringClass().compareTo(m2.getDeclaringClass());
         }
         if (result == 0) {
             result = m1.getName().compareTo(m2.getName());
@@ -353,14 +318,14 @@ public class UniverseBuilder {
         }
         if (result == 0) {
             for (int i = 0; i < m1.getSignature().getParameterCount(false); i++) {
-                result = TYPE_COMPARATOR.compare((HostedType) m1.getSignature().getParameterType(i, null), (HostedType) m2.getSignature().getParameterType(i, null));
+                result = ((HostedType) m1.getSignature().getParameterType(i, null)).compareTo((HostedType) m2.getSignature().getParameterType(i, null));
                 if (result != 0) {
                     break;
                 }
             }
         }
         if (result == 0) {
-            result = TYPE_COMPARATOR.compare((HostedType) m1.getSignature().getReturnType(null), (HostedType) m2.getSignature().getReturnType(null));
+            result = ((HostedType) m1.getSignature().getReturnType(null)).compareTo((HostedType) m2.getSignature().getReturnType(null));
         }
         assert result != 0;
         return result;
@@ -400,7 +365,7 @@ public class UniverseBuilder {
         for (HostedType type : hUniverse.types.values()) {
             Set<HostedType> subTypesSet = allSubTypes.get(type);
             HostedType[] subTypes = subTypesSet.toArray(new HostedType[subTypesSet.size()]);
-            Arrays.sort(subTypes, TYPE_COMPARATOR);
+            Arrays.sort(subTypes);
             type.subTypes = subTypes;
         }
     }
@@ -1283,8 +1248,8 @@ public class UniverseBuilder {
     private static boolean assertSame(Collection<HostedType> c1, Collection<HostedType> c2) {
         List<HostedType> list1 = new ArrayList<>(c1);
         List<HostedType> list2 = new ArrayList<>(c2);
-        list1.sort(TYPE_COMPARATOR);
-        list2.sort(TYPE_COMPARATOR);
+        Collections.sort(list1);
+        Collections.sort(list2);
 
         for (int i = 0; i < Math.min(list1.size(), list2.size()); i++) {
             assert list1.get(i) == list2.get(i);

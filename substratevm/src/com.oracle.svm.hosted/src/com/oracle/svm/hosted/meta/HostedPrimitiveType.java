@@ -85,4 +85,10 @@ public class HostedPrimitiveType extends HostedType {
     public boolean isMember() {
         return false;
     }
+
+    @Override
+    int compareToEqualClass(HostedType other) {
+        assert getClass().equals(other.getClass());
+        return getJavaKind().ordinal() - other.getJavaKind().ordinal();
+    }
 }
