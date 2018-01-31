@@ -678,6 +678,7 @@ public final class LLVMInteropTest {
         Assert.assertEquals(102, a[1]);
     }
 
+    @Ignore
     @Test
     public void test059() {
         Runner runner = new Runner("interop059");
