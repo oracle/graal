@@ -147,7 +147,7 @@ public class UniverseBuilder {
             setConstantFieldValues();
 
             hUniverse.orderedMethods = new ArrayList<>(hUniverse.methods.values());
-            hUniverse.orderedMethods.sort(METHOD_COMPARATOR);
+            Collections.sort(hUniverse.orderedMethods);
             hUniverse.orderedFields = new ArrayList<>(hUniverse.fields.values());
             hUniverse.orderedFields.sort(FIELD_COMPARATOR);
             profilingInformationBuildTask.join();
@@ -294,42 +294,6 @@ public class UniverseBuilder {
         assert !hUniverse.fields.containsKey(aField);
         hUniverse.fields.put(aField, hField);
     }
-
-    public static final Comparator<HostedMethod> METHOD_COMPARATOR = (m1, m2) -> {
-        if (m1.equals(m2)) {
-            return 0;
-        }
-
-        /*
-         * Sort deoptimization targets towards the end of the code cache. They are rarely executed,
-         * and we do not want a deoptimization target as the first method (because offset 0 means no
-         * deoptimization target available).
-         */
-        int result = Boolean.compare(m1.compilationInfo.isDeoptTarget(), m2.compilationInfo.isDeoptTarget());
-
-        if (result == 0) {
-            result = m1.getDeclaringClass().compareTo(m2.getDeclaringClass());
-        }
-        if (result == 0) {
-            result = m1.getName().compareTo(m2.getName());
-        }
-        if (result == 0) {
-            result = m1.getSignature().getParameterCount(false) - m2.getSignature().getParameterCount(false);
-        }
-        if (result == 0) {
-            for (int i = 0; i < m1.getSignature().getParameterCount(false); i++) {
-                result = ((HostedType) m1.getSignature().getParameterType(i, null)).compareTo((HostedType) m2.getSignature().getParameterType(i, null));
-                if (result != 0) {
-                    break;
-                }
-            }
-        }
-        if (result == 0) {
-            result = ((HostedType) m1.getSignature().getReturnType(null)).compareTo((HostedType) m2.getSignature().getReturnType(null));
-        }
-        assert result != 0;
-        return result;
-    };
 
     private void buildProfilingInformation() {
         /* Convert profiling information after all types and methods have been created. */
@@ -963,7 +927,7 @@ public class UniverseBuilder {
         for (HostedType type : hUniverse.orderedTypes) {
             List<HostedMethod> list = methodsOfType[type.getTypeID()];
             if (list != null) {
-                list.sort(METHOD_COMPARATOR);
+                Collections.sort(list);
                 type.allDeclaredMethods = list.toArray(new HostedMethod[list.size()]);
             } else {
                 type.allDeclaredMethods = noMethods;
@@ -976,7 +940,7 @@ public class UniverseBuilder {
 
             // Reuse the implementations from the analysis method.
             method.implementations = hUniverse.lookup(method.wrapped.getImplementations());
-            Arrays.sort(method.implementations, METHOD_COMPARATOR);
+            Arrays.sort(method.implementations);
         }
     }
 
