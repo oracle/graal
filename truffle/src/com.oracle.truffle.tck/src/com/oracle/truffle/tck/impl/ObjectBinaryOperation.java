@@ -26,8 +26,9 @@ package com.oracle.truffle.tck.impl;
 
 /**
  * Binary operation on any objects. Mimics "functional interface" - e.g. has just a single method,
- * so it should be easily usable with lamdas.
+ * so it should be easily usable with lambdas.
  */
+@FunctionalInterface
 public interface ObjectBinaryOperation {
     Object compute(Object a, Object b);
 }

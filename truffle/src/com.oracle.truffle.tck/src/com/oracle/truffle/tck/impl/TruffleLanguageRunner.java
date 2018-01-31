@@ -24,54 +24,55 @@
  */
 package com.oracle.truffle.tck.impl;
 
+import org.graalvm.polyglot.Engine;
 import org.junit.runner.Description;
 import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
 
-import com.oracle.truffle.api.vm.PolyglotEngine;
-
 public abstract class TruffleLanguageRunner extends BlockJUnit4ClassRunner {
 
-    private final String mimeType;
+    private final String languageId;
 
-    private TruffleLanguageRunner(Class<?> klass, String mimeType) throws InitializationError {
+    private TruffleLanguageRunner(Class<?> klass, String languageId) throws InitializationError {
         super(klass);
-        this.mimeType = mimeType;
+        this.languageId = languageId;
     }
 
     @Override
     protected void runChild(FrameworkMethod method, RunNotifier notifier) {
-        if (skipOnMissingLanguage(mimeType)) {
+        if (skipOnMissingLanguage(languageId)) {
             notifier.fireTestIgnored(Description.createTestDescription(method.getType(), method.getName()));
         } else {
             super.runChild(method, notifier);
         }
     }
 
-    private static boolean skipOnMissingLanguage(String mimeType) {
-        return !PolyglotEngine.newBuilder().build().getLanguages().containsKey(mimeType);
+    private static boolean skipOnMissingLanguage(String languageId) {
+        try (Engine engine = Engine.create()) {
+            return !engine.getLanguages().containsKey(languageId);
+        }
     }
 
     public static final class JavaScriptRunner extends TruffleLanguageRunner {
 
         public JavaScriptRunner(Class<?> klass) throws InitializationError {
-            super(klass, "text/javascript");
+            super(klass, "js");
         }
     }
 
     public static final class RubyRunner extends TruffleLanguageRunner {
 
         public RubyRunner(Class<?> klass) throws InitializationError {
-            super(klass, "application/x-ruby");
+            super(klass, "ruby");
         }
     }
 
     public static final class RRunner extends TruffleLanguageRunner {
 
         public RRunner(Class<?> klass) throws InitializationError {
-            super(klass, "text/x-r");
+            super(klass, "R");
         }
     }
 }
