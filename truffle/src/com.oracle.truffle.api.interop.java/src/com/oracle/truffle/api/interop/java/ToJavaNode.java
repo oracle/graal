@@ -54,6 +54,12 @@ abstract class ToJavaNode extends Node {
     @Child private Node hasKeysNode = Message.HAS_KEYS.createNode();
     @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
 
+    private final boolean useInteropErrors;
+
+    ToJavaNode(boolean useInteropErrors) {
+        this.useInteropErrors = useInteropErrors;
+    }
+
     public abstract Object execute(Object value, Class<?> targetType, Type genericType, Object languageContext);
 
     @SuppressWarnings("unused")
