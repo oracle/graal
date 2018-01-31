@@ -98,6 +98,12 @@ class JavaInteropErrors {
                                         getValueInfo(context, value), formatComponentType(componentType), getValueInfo(context, receiver), identifier));
     }
 
+    static RuntimeException invalidExecuteInvalidIdentifier(Object context, Object receiver, Object[] arguments) {
+        String[] formattedArgs = formatArgs(context, arguments);
+        String message = String.format("Invalid argument when executing %s with arguments %s.", getValueInfo(context, receiver), Arrays.asList(formattedArgs));
+        throw newIllegalArgumentException(message);
+    }
+
     static RuntimeException invalidExecuteArgumentType(Object context, Object receiver, Object[] arguments) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument when executing %s with arguments %s.", getValueInfo(context, receiver), Arrays.asList(formattedArgs));
@@ -122,6 +128,12 @@ class JavaInteropErrors {
         String message = String.format("Invalid argument count when executing %s with arguments %s. Expected %s argument(s) but got %s.",
                         getValueInfo(context, receiver), Arrays.asList(formattedArgs), expected, actual);
         throw newIllegalArgumentException(message);
+    }
+
+    @TruffleBoundary
+    static RuntimeException invokeUnsupported(Object context, Object receiver, String identifier) {
+        String message = String.format("Unsupported operation identifier '%s' and  object %s. Identifier is not executable or instantiable.", identifier, getValueInfo(context, receiver));
+        throw newUnsupportedOperationException(message);
     }
 
     @TruffleBoundary

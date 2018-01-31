@@ -28,7 +28,6 @@ import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
@@ -53,16 +52,6 @@ abstract class HostEntryRootNode<T> extends ExecutableNode implements Supplier<S
         result = executeImpl(languageContext, receiver, arguments, 2);
         assert languageContext == null || !(result instanceof TruffleObject);
         return result;
-    }
-
-    protected static final RuntimeException newUnsupportedOperationException(String message) {
-        CompilerDirectives.transferToInterpreter();
-        return JavaInterop.ACCESSOR.engine().newUnsupportedOperationException(message, null);
-    }
-
-    protected static final RuntimeException newIllegalArgumentException(String message) {
-        CompilerDirectives.transferToInterpreter();
-        return JavaInterop.ACCESSOR.engine().newIllegalArgumentException(message, null);
     }
 
     protected abstract Object executeImpl(Object languageContext, T receiver, Object[] args, int offset);
