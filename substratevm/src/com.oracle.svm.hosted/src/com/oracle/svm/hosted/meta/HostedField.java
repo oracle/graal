@@ -37,7 +37,7 @@ import jdk.vm.ci.meta.JavaTypeProfile;
 /**
  * Store the compile-time information for a field in the Substrate VM, such as the field offset.
  */
-public class HostedField implements ReadableJavaField, SharedField {
+public class HostedField implements ReadableJavaField, SharedField, Comparable<HostedField> {
 
     private final HostedUniverse universe;
     private final HostedMetaAccess metaAccess;
@@ -223,5 +223,30 @@ public class HostedField implements ReadableJavaField, SharedField {
     @Override
     public JavaKind getStorageKind() {
         return getType().getStorageKind();
+    }
+
+    @Override
+    public int compareTo(HostedField other) {
+        if (this.equals(other)) {
+            return 0;
+        }
+        /*
+         * Order by JavaKind. This is required, since we want instance fields of the same size and
+         * kind consecutive.
+         */
+        int result = other.getJavaKind().ordinal() - this.getJavaKind().ordinal();
+
+        if (result == 0) {
+            /*
+             * Make the field order deterministic by sorting by name. This is arbitrary, we can come
+             * up with any better ordering.
+             */
+            result = this.getDeclaringClass().getName().compareTo(other.getDeclaringClass().getName());
+            if (result == 0) {
+                result = this.getName().compareTo(other.getName());
+            }
+        }
+        assert result != 0 : "Fields not distinguishable: " + this + ", " + other;
+        return result;
     }
 }
