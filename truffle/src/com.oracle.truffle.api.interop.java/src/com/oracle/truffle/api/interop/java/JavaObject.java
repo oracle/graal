@@ -29,15 +29,11 @@ import com.oracle.truffle.api.interop.TruffleObject;
 
 final class JavaObject implements TruffleObject {
 
-    static final JavaObject NULL = new JavaObject(null, Object.class);
+    static final JavaObject NULL = new JavaObject(null, Object.class, null);
 
     final Object obj;
     final Class<?> clazz;
     final Object languageContext;
-
-    JavaObject(Object obj, Class<?> clazz) {
-        this(obj, clazz, null);
-    }
 
     JavaObject(Object obj, Class<?> clazz, Object languageContext) {
         this.obj = obj;
@@ -55,14 +51,14 @@ final class JavaObject implements TruffleObject {
 
     static boolean isJavaInstance(Class<?> targetType, Object javaObject) {
         if (javaObject instanceof JavaObject) {
-            final Object value = valueOf(javaObject);
+            final Object value = valueOf((JavaObject) javaObject);
             return targetType.isInstance(value);
         } else {
             return false;
         }
     }
 
-    static Object valueOf(Object value) {
+    static Object valueOf(TruffleObject value) {
         final JavaObject obj = (JavaObject) value;
         if (obj.isClass()) {
             return obj.clazz;
@@ -81,11 +77,11 @@ final class JavaObject implements TruffleObject {
         return System.identityHashCode(obj);
     }
 
-    public boolean isClass() {
+    boolean isClass() {
         return NULL != this && obj == null;
     }
 
-    public boolean isArray() {
+    boolean isArray() {
         return obj != null && obj.getClass().isArray();
     }
 
@@ -94,10 +90,22 @@ final class JavaObject implements TruffleObject {
     }
 
     @Override
-    public boolean equals(Object other) {
-        if (other instanceof JavaObject) {
-            return obj == ((JavaObject) other).obj && clazz == ((JavaObject) other).clazz;
+    public boolean equals(Object o) {
+        if (o instanceof JavaObject) {
+            JavaObject other = (JavaObject) o;
+            return this.obj == other.obj && clazz == other.clazz && this.languageContext == other.languageContext;
         }
         return false;
+    }
+
+    @Override
+    public String toString() {
+        if (obj == NULL) {
+            return "null";
+        }
+        if (isClass()) {
+            return "JavaClass[" + clazz.getTypeName() + "]";
+        }
+        return "JavaObject[" + obj + " (" + clazz.getTypeName() + ")" + "]";
     }
 }

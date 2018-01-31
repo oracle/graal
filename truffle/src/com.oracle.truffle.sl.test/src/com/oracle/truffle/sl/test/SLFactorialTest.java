@@ -40,12 +40,14 @@
  */
 package com.oracle.truffle.sl.test;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import org.junit.After;
 import static org.junit.Assert.assertEquals;
+
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.PolyglotEngine;
 
 public class SLFactorialTest {
 

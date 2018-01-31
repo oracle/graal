@@ -24,16 +24,19 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 
 final class ToPrimitiveNode extends Node {
+    private static final double DOUBLE_MAX_SAFE_INTEGER = 9007199254740991d; // 2 ** 53 - 1
+    private static final long LONG_MAX_SAFE_DOUBLE = 9007199254740991L; // 2 ** 53 - 1
+    private static final float FLOAT_MAX_SAFE_INTEGER = 16777215f; // 2 ** 24 - 1
+    private static final int INT_MAX_SAFE_FLOAT = 16777215; // 2 ** 24 - 1
+
     @Child Node isNullNode;
     @Child Node isBoxedNode;
     @Child Node hasKeysNode;
@@ -52,75 +55,283 @@ final class ToPrimitiveNode extends Node {
         return new ToPrimitiveNode();
     }
 
-    static ToPrimitiveNode temporary() {
-        CompilerAsserts.neverPartOfCompilation();
-        return new ToPrimitiveNode();
-    }
-
     Object toPrimitive(Object value, Class<?> requestedType) {
         Object attr;
         if (value instanceof JavaObject) {
             attr = ((JavaObject) value).obj;
         } else if (value instanceof TruffleObject) {
-            boolean isBoxed = ForeignAccess.sendIsBoxed(isBoxedNode, (TruffleObject) value);
-            if (!isBoxed) {
-                return null;
-            }
-            try {
-                attr = ForeignAccess.send(unboxNode, (TruffleObject) value);
-            } catch (InteropException e) {
-                throw new IllegalStateException();
-            }
+            attr = unbox((TruffleObject) value);
         } else {
             attr = value;
         }
-        if (attr instanceof Number) {
-            if (requestedType != null) {
+
+        if (requestedType == boolean.class || requestedType == Boolean.class) {
+            if (attr instanceof Boolean) {
+                Boolean z = (Boolean) attr;
+                return z;
+            }
+        } else if (requestedType == byte.class || requestedType == Byte.class) {
+            return toByte(attr);
+        } else if (requestedType == short.class || requestedType == Short.class) {
+            return toShort(attr);
+        } else if (requestedType == int.class || requestedType == Integer.class) {
+            return toInt(attr);
+        } else if (requestedType == long.class || requestedType == Long.class) {
+            return toLong(attr);
+        } else if (requestedType == float.class || requestedType == Float.class) {
+            return toFloat(attr);
+        } else if (requestedType == double.class || requestedType == Double.class) {
+            return toDouble(attr);
+        } else if (requestedType == Number.class) {
+            if (attr instanceof Number) {
                 Number n = (Number) attr;
-                if (requestedType == byte.class || requestedType == Byte.class) {
-                    return byteValue(n);
-                }
-                if (requestedType == short.class || requestedType == Short.class) {
-                    return shortValue(n);
-                }
-                if (requestedType == int.class || requestedType == Integer.class) {
-                    return intValue(n);
-                }
-                if (requestedType == long.class || requestedType == Long.class) {
-                    return longValue(n);
-                }
-                if (requestedType == float.class || requestedType == Float.class) {
-                    return floatValue(n);
-                }
-                if (requestedType == double.class || requestedType == Double.class) {
-                    return doubleValue(n);
-                }
-                if (requestedType == char.class || requestedType == Character.class) {
-                    return (char) intValue(n);
-                }
+                return n;
             }
-            if (JavaInterop.isPrimitive(attr)) {
-                return attr;
-            } else {
-                return null;
-            }
-        }
-        if (attr instanceof String) {
-            String str = (String) attr;
-            if (requestedType == char.class || requestedType == Character.class) {
+        } else if (requestedType == char.class || requestedType == Character.class) {
+            if (attr instanceof Character) {
+                Character c = (Character) attr;
+                return c;
+            } else if (attr instanceof String) {
+                String str = (String) attr;
                 if (str.length() == 1) {
                     return str.charAt(0);
                 }
             }
-            return str;
-        }
-        if (attr instanceof Character) {
-            return attr;
-        }
-        if (attr instanceof Boolean) {
-            return attr;
+        } else if (requestedType == String.class || requestedType == CharSequence.class) {
+            if (attr instanceof String) {
+                String str = (String) attr;
+                return str;
+            } else if (attr instanceof Character) {
+                return String.valueOf((char) attr);
+            }
         }
         return null;
+    }
+
+    private static Object toByte(Object value) {
+        if (value instanceof Byte) {
+            Byte b = (Byte) value;
+            return b;
+        } else if (value instanceof Short) {
+            short s = (short) value;
+            byte b = (byte) s;
+            if (b == s) {
+                return b;
+            }
+        } else if (value instanceof Integer) {
+            int i = (int) value;
+            byte b = (byte) i;
+            if (b == i) {
+                return b;
+            }
+        } else if (value instanceof Long) {
+            long l = (long) value;
+            byte b = (byte) l;
+            if (b == l) {
+                return b;
+            }
+        } else if (value instanceof Float) {
+            float f = (float) value;
+            byte b = (byte) f;
+            if (b == f && !isNegativeZero(f)) {
+                return b;
+            }
+        } else if (value instanceof Double) {
+            double d = (double) value;
+            byte b = (byte) d;
+            if (b == d && !isNegativeZero(d)) {
+                return b;
+            }
+        }
+        return null;
+    }
+
+    private static Object toShort(Object value) {
+        if (value instanceof Short) {
+            Short s = (Short) value;
+            return s;
+        } else if (value instanceof Byte) {
+            byte b = (byte) value;
+            return (short) b;
+        } else if (value instanceof Integer) {
+            int i = (int) value;
+            short s = (short) i;
+            if (s == i) {
+                return s;
+            }
+        } else if (value instanceof Long) {
+            long l = (long) value;
+            short s = (short) l;
+            if (s == l) {
+                return s;
+            }
+        } else if (value instanceof Float) {
+            float f = (float) value;
+            short s = (short) f;
+            if (s == f && !isNegativeZero(f)) {
+                return s;
+            }
+        } else if (value instanceof Double) {
+            double d = (double) value;
+            short s = (short) d;
+            if (s == d && !isNegativeZero(d)) {
+                return s;
+            }
+        }
+        return null;
+    }
+
+    private static Object toInt(Object value) {
+        if (value instanceof Integer) {
+            Integer i = (Integer) value;
+            return i;
+        } else if (value instanceof Byte) {
+            byte b = (byte) value;
+            return (int) b;
+        } else if (value instanceof Short) {
+            short s = (short) value;
+            return (int) s;
+        } else if (value instanceof Long) {
+            long l = (long) value;
+            int i = (int) l;
+            if (i == l) {
+                return i;
+            }
+        } else if (value instanceof Float) {
+            float f = (float) value;
+            if (inSafeIntegerRange(f) && !isNegativeZero(f)) {
+                int i = (int) f;
+                if (i == f) {
+                    return i;
+                }
+            }
+        } else if (value instanceof Double) {
+            double d = (double) value;
+            int i = (int) d;
+            if (i == d && !isNegativeZero(d)) {
+                return i;
+            }
+        }
+        return null;
+    }
+
+    private static Object toLong(Object value) {
+        if (value instanceof Long) {
+            Long l = (Long) value;
+            return l;
+        } else if (value instanceof Byte) {
+            byte b = (byte) value;
+            return (long) b;
+        } else if (value instanceof Short) {
+            short s = (short) value;
+            return (long) s;
+        } else if (value instanceof Integer) {
+            int i = (int) value;
+            return (long) i;
+        } else if (value instanceof Float) {
+            float f = (float) value;
+            if (inSafeIntegerRange(f) && !isNegativeZero(f)) {
+                long l = (long) f;
+                if (l == f) {
+                    return l;
+                }
+            }
+        } else if (value instanceof Double) {
+            double d = (double) value;
+            if (inSafeIntegerRange(d) && !isNegativeZero(d)) {
+                long l = (long) d;
+                if (l == d) {
+                    return l;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static Object toFloat(Object value) {
+        if (value instanceof Float) {
+            Float f = (Float) value;
+            return f;
+        } else if (value instanceof Byte) {
+            byte b = (byte) value;
+            return (float) b;
+        } else if (value instanceof Short) {
+            short s = (short) value;
+            return (float) s;
+        } else if (value instanceof Integer) {
+            int i = (int) value;
+            if (inSafeFloatRange(i)) {
+                return (float) i;
+            }
+        } else if (value instanceof Long) {
+            long l = (long) value;
+            if (inSafeFloatRange(l)) {
+                return (float) l;
+            }
+        } else if (value instanceof Double) {
+            double d = (double) value;
+            float f = (float) d;
+            if (!Double.isFinite(d) || f == d) {
+                return f;
+            }
+        }
+        return null;
+    }
+
+    private static Object toDouble(Object value) {
+        if (value instanceof Double) {
+            Double d = (Double) value;
+            return d;
+        } else if (value instanceof Byte) {
+            byte b = (byte) value;
+            return (double) b;
+        } else if (value instanceof Short) {
+            short s = (short) value;
+            return (double) s;
+        } else if (value instanceof Integer) {
+            int i = (int) value;
+            return (double) i;
+        } else if (value instanceof Long) {
+            long l = (long) value;
+            if (inSafeDoubleRange(l)) {
+                return (double) l;
+            }
+        } else if (value instanceof Float) {
+            float f = (float) value;
+            double d = f;
+            if (!Float.isFinite(f) || d == f) {
+                return d;
+            }
+        }
+        return null;
+    }
+
+    private static boolean inSafeIntegerRange(double d) {
+        return d >= -DOUBLE_MAX_SAFE_INTEGER && d <= DOUBLE_MAX_SAFE_INTEGER;
+    }
+
+    private static boolean inSafeDoubleRange(long l) {
+        return l >= -LONG_MAX_SAFE_DOUBLE && l <= LONG_MAX_SAFE_DOUBLE;
+    }
+
+    private static boolean inSafeIntegerRange(float f) {
+        return f >= -FLOAT_MAX_SAFE_INTEGER && f <= FLOAT_MAX_SAFE_INTEGER;
+    }
+
+    private static boolean inSafeFloatRange(int i) {
+        return i >= -INT_MAX_SAFE_FLOAT && i <= INT_MAX_SAFE_FLOAT;
+    }
+
+    private static boolean inSafeFloatRange(long l) {
+        return l >= -INT_MAX_SAFE_FLOAT && l <= INT_MAX_SAFE_FLOAT;
+    }
+
+    private static boolean isNegativeZero(double d) {
+        return d == 0d && Double.doubleToRawLongBits(d) == Double.doubleToRawLongBits(-0d);
+    }
+
+    private static boolean isNegativeZero(float f) {
+        return f == 0f && Float.floatToRawIntBits(f) == Float.floatToRawIntBits(-0f);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -165,8 +376,16 @@ final class ToPrimitiveNode extends Node {
         return ForeignAccess.sendIsNull(isNullNode, ret);
     }
 
-    Object unbox(TruffleObject ret) throws UnsupportedMessageException {
-        Object result = ForeignAccess.sendUnbox(unboxNode, ret);
+    Object unbox(TruffleObject value) {
+        if (!ForeignAccess.sendIsBoxed(isBoxedNode, value)) {
+            return null;
+        }
+        Object result;
+        try {
+            result = ForeignAccess.sendUnbox(unboxNode, value);
+        } catch (UnsupportedMessageException e) {
+            return null;
+        }
         if (result instanceof TruffleObject && isNull((TruffleObject) result)) {
             return null;
         } else {

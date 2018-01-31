@@ -26,9 +26,11 @@ package com.oracle.truffle.api.impl;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import org.graalvm.options.OptionDescriptors;
@@ -103,11 +105,16 @@ public abstract class Accessor {
     }
 
     public abstract static class JavaInteropSupport {
+
         public abstract Node createToJavaNode();
 
-        public abstract Object toJava(Node toJavaNode, Class<?> type, Object value);
+        public abstract Object toJava(Node toJavaNode, Class<?> rawType, Type genericType, Object value, Object polyglotContext);
 
         public abstract Object toJavaGuestObject(Object obj, Object languageContext);
+
+        public abstract boolean isJavaFunction(Object object);
+
+        public abstract String javaFunctionToString(Object object);
     }
 
     public abstract static class EngineSupport {
@@ -140,7 +147,9 @@ public abstract class Accessor {
 
         public abstract Object findOriginalObject(Object truffleObject);
 
-        public abstract CallTarget lookupOrRegisterComputation(Object truffleObject, RootNode symbolNode, Object... keyOrKeys);
+        public abstract <T> T lookupJavaInteropCodeCache(Object languageContext, Object key, Class<T> expectedType);
+
+        public abstract <T> T installJavaInteropCodeCache(Object languageContext, Object key, T value, Class<T> expectedType);
 
         @SuppressWarnings("static-method")
         public final void attachOutputConsumer(DispatchOutputStream dos, OutputStream out) {
@@ -222,15 +231,35 @@ public abstract class Accessor {
 
         public abstract RuntimeException wrapHostException(Throwable exception);
 
+        public abstract RootNode wrapHostBoundary(ExecutableNode executableNode, Supplier<String> name);
+
+        public abstract BiFunction<Object, Object, Object> createToGuestValueNode();
+
+        public abstract BiFunction<Object, Object[], Object[]> createToGuestValuesNode();
+
         public abstract boolean isHostException(Throwable exception);
 
         public abstract Throwable asHostException(Throwable exception);
+
+        public abstract ClassCastException newClassCastException(String message, Throwable cause);
+
+        public abstract NullPointerException newNullPointerException(String message, Throwable cause);
+
+        public abstract UnsupportedOperationException newUnsupportedOperationException(String message, Throwable cause);
+
+        public abstract IllegalArgumentException newIllegalArgumentException(String message, Throwable cause);
+
+        public abstract ArrayIndexOutOfBoundsException newArrayIndexOutOfBounds(String message, Throwable cause);
+
+        public abstract Object getCurrentHostContext();
 
         public abstract Object legacyTckEnter(Object vm);
 
         public abstract void legacyTckLeave(Object vm, Object prev);
 
         public abstract <T> T getOrCreateRuntimeData(Object sourceVM, Supplier<T> constructor);
+
+        public abstract String getValueInfo(Object languageContext, Object value);
     }
 
     public abstract static class LanguageSupport {

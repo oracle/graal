@@ -33,9 +33,11 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeTrue;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -44,9 +46,9 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.Callable;
 
-import org.graalvm.polyglot.Engine;
 import org.hamcrest.CoreMatchers;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -69,10 +71,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ReflectionUtils;
 
 public class JavaInteropTest {
-    static {
-        // ensure engine is initialized
-        Engine.newBuilder().build().close();
-    }
 
     public class Data {
         public int x;
@@ -571,6 +569,39 @@ public class JavaInteropTest {
         String toString();
 
         Object call(Object... args);
+    }
+
+    @Test
+    public void executableAsFunctionalInterface1() throws Exception {
+        TruffleObject executable = new FunctionObject();
+        FunctionalWithDefaults f = JavaInterop.asJavaFunction(FunctionalWithDefaults.class, executable);
+        assertEquals(50, f.call((Object) 13, (Object) 37));
+        f.hashCode();
+        f.equals(null);
+        f.toString();
+    }
+
+    @Test
+    public void executableAsFunctionalInterface2() throws Exception {
+        TruffleObject executable = new FunctionObject();
+        FunctionalWithObjectMethodOverrides f = JavaInterop.asJavaFunction(FunctionalWithObjectMethodOverrides.class, executable);
+        assertEquals(50, f.call(13, 37));
+        f.hashCode();
+        f.equals(null);
+        f.toString();
+    }
+
+    @Ignore("Interface not accessible")
+    @Test
+    public void executableAsFunctionalInterface3() throws Exception {
+        assumeTrue("JDK 9 or later", System.getProperty("java.specification.version").compareTo("1.9") >= 0);
+        TruffleObject executable = new FunctionObject();
+        FunctionalWithDefaults f = JavaInterop.asJavaFunction(FunctionalWithDefaults.class, executable);
+        assertEquals(42, f.call((Object) 13, (Object) 29));
+        assertEquals(50, f.call(13, 37));
+        f.hashCode();
+        f.equals(null);
+        f.toString();
     }
 
     @Test
@@ -1227,6 +1258,34 @@ public class JavaInteropTest {
                     return KeyInfo.newBuilder().setReadable(readable).setWritable(writable).setInvocable(invocable).setInternal(internal).build();
                 }
             }
+        }
+    }
+
+    @MessageResolution(receiverType = FunctionObject.class)
+    static final class FunctionObject implements TruffleObject {
+        @Resolve(message = "IS_EXECUTABLE")
+        abstract static class IsExecutable extends Node {
+            @SuppressWarnings("unused")
+            protected Object access(FunctionObject obj) {
+                return true;
+            }
+        }
+
+        @Resolve(message = "EXECUTE")
+        @SuppressWarnings("unused")
+        abstract static class Execute extends Node {
+            protected Object access(FunctionObject obj, Object[] args) {
+                return Arrays.stream(args).mapToInt(o -> (int) o).sum();
+            }
+        }
+
+        static boolean isInstance(TruffleObject obj) {
+            return obj instanceof FunctionObject;
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return FunctionObjectForeign.ACCESS;
         }
     }
 }

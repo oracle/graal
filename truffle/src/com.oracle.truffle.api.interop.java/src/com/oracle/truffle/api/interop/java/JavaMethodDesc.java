@@ -36,4 +36,5 @@ interface JavaMethodDesc {
     boolean isMethod();
 
     boolean isConstructor();
+
 }

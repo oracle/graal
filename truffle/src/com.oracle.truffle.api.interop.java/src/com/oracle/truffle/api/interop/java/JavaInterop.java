@@ -31,8 +31,6 @@ import java.util.Map;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -47,7 +45,6 @@ import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
@@ -286,7 +283,7 @@ public final class JavaInterop {
      * @since 0.9
      */
     public static TruffleObject asTruffleObject(Object obj) {
-        return asTruffleObject(obj, null);
+        return asTruffleObject(obj, currentPolyglotContext());
     }
 
     /**
@@ -298,20 +295,23 @@ public final class JavaInterop {
     static TruffleObject asTruffleObject(Object obj, Object languageContext) {
         if (obj instanceof TruffleObject) {
             return ((TruffleObject) obj);
-        }
-        if (obj instanceof Class) {
+        } else if (obj instanceof Class) {
             return new JavaObject(null, (Class<?>) obj, languageContext);
-        }
-        if (obj == null) {
+        } else if (obj == null) {
             return JavaObject.NULL;
-        }
-        if (obj.getClass().isArray()) {
+        } else if (obj.getClass().isArray()) {
             return new JavaObject(obj, obj.getClass(), languageContext);
-        }
-        if (TruffleOptions.AOT) {
+        } else if (obj instanceof TruffleList) {
+            return ((TruffleList<?>) obj).guestObject;
+        } else if (obj instanceof TruffleMap) {
+            return ((TruffleMap<?, ?>) obj).guestObject;
+        } else if (obj instanceof TruffleFunction) {
+            return ((TruffleFunction<?, ?>) obj).guestObject;
+        } else if (TruffleOptions.AOT) {
             return new JavaObject(obj, obj.getClass(), languageContext);
+        } else {
+            return JavaInteropReflect.asTruffleViaReflection(obj, languageContext);
         }
-        return JavaInteropReflect.asTruffleViaReflection(obj, languageContext);
     }
 
     /**
@@ -402,7 +402,7 @@ public final class JavaInterop {
      * @since 0.9
      */
     public static <T> TruffleObject asTruffleFunction(Class<T> functionalType, T implementation) {
-        return asTruffleFunction(functionalType, implementation, null);
+        return asTruffleFunction(functionalType, implementation, currentPolyglotContext());
     }
 
     static <T> TruffleObject asTruffleFunction(Class<T> functionalType, T implementation, Object languageContext) {
@@ -414,110 +414,6 @@ public final class JavaInterop {
             throw new IllegalArgumentException();
         }
         return new JavaFunctionObject(SingleMethodDesc.unreflect(method), implementation, languageContext);
-    }
-
-    /**
-     * Test whether the object represents a <code>null</code> value.
-     *
-     * @param foreignObject object coming from a {@link TruffleObject Truffle language}, can be
-     *            <code>null</code>.
-     * @return <code>true</code> when the object represents a <code>null</code> value,
-     *         <code>false</code> otherwise.
-     * @see Message#IS_NULL
-     * @since 0.18
-     * @deprecated use {@link ForeignAccess#sendIsNull(Node, TruffleObject)} instead.
-     */
-    @Deprecated
-    public static boolean isNull(TruffleObject foreignObject) {
-        if (foreignObject == null) {
-            return true;
-        }
-        return ToPrimitiveNode.temporary().isNull(foreignObject);
-    }
-
-    /**
-     * Test whether the object represents an array. When an object has a size, it represents an
-     * array and can be converted to a list of array elements by:
-     *
-     * <pre>
-     * {@link #asJavaObject(java.lang.Class, com.oracle.truffle.api.interop.TruffleObject) asJavaObject}(java.util.List.<b>class</b>, foreignObject);
-     * </pre>
-     *
-     * @param foreignObject object coming from a {@link TruffleObject Truffle language}, can be
-     *            <code>null</code>.
-     * @return <code>true</code> when the object represents an array, <code>false</code> otherwise.
-     * @see Message#HAS_SIZE
-     * @since 0.18
-     * @deprecated use {@link ForeignAccess#sendHasSize(Node, TruffleObject)} instead.
-     */
-    @Deprecated
-    public static boolean isArray(TruffleObject foreignObject) {
-        if (foreignObject == null) {
-            return false;
-        }
-        return ToPrimitiveNode.temporary().hasSize(foreignObject);
-    }
-
-    /**
-     * Test whether the object represents a boxed primitive type.
-     *
-     * @param foreignObject object coming from a {@link TruffleObject Truffle language}, can be
-     *            <code>null</code>.
-     * @return <code>true</code> when the object represents a boxed primitive type,
-     *         <code>false</code> otherwise.
-     * @see Message#IS_BOXED
-     * @since 0.18
-     * @deprecated use {@link ForeignAccess#sendIsBoxed(Node, TruffleObject)} instead.
-     */
-    @Deprecated
-    public static boolean isBoxed(TruffleObject foreignObject) {
-        if (foreignObject == null) {
-            return false;
-        }
-        return ToPrimitiveNode.temporary().isBoxed(foreignObject);
-    }
-
-    /**
-     * Convert the object into a Java primitive type. Primitive types are subclasses of Number,
-     * Boolean, Character and String.
-     *
-     * @param foreignObject object coming from a {@link TruffleObject Truffle language}, which is
-     *            known (check {@link #isBoxed(com.oracle.truffle.api.interop.TruffleObject)}) to be
-     *            a boxed Java primitive type.
-     * @return An object representation of Java primitive type, or <code>null<code> when the
-     *         unboxing was not possible.
-     * @see Message#UNBOX
-     * @since 0.18
-     * @deprecated use {@link ForeignAccess#sendUnbox(Node, TruffleObject)} instead.
-     */
-    @Deprecated
-    public static Object unbox(TruffleObject foreignObject) {
-        if (foreignObject == null) {
-            return null;
-        }
-        try {
-            return ToPrimitiveNode.temporary().unbox(foreignObject);
-        } catch (InteropException iex) {
-            return null;
-        }
-    }
-
-    /**
-     * Get information about an object property.
-     *
-     * @param foreignObject object coming from a {@link TruffleObject Truffle language}
-     * @param propertyName name of a property or index of an array
-     * @return an integer representing {@link KeyInfo} bit flags.
-     * @see Message#KEY_INFO
-     * @see KeyInfo
-     * @since 0.26
-     * @deprecated use {@link ForeignAccess#sendKeyInfo(Node, TruffleObject, Object)} instead.
-     */
-    @Deprecated
-    public static int getKeyInfo(TruffleObject foreignObject, Object propertyName) {
-        CompilerAsserts.neverPartOfCompilation();
-        int infoBits = ForeignAccess.sendKeyInfo(Message.KEY_INFO.createNode(), foreignObject, propertyName);
-        return infoBits;
     }
 
     /**
@@ -615,7 +511,7 @@ public final class JavaInterop {
         throw new IllegalArgumentException("Not a HostException");
     }
 
-    private static <T> Method functionalInterfaceMethod(Class<T> functionalType) {
+    static <T> Method functionalInterfaceMethod(Class<T> functionalType) {
         if (!functionalType.isInterface()) {
             return null;
         }
@@ -656,8 +552,15 @@ public final class JavaInterop {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return node.execute(value, type, null);
+            return node.execute(value, type, null, currentPolyglotContext());
         }
+    }
+
+    static boolean isJavaFunction(Object o) {
+        if (TruffleOptions.AOT) {
+            return false;
+        }
+        return o instanceof JavaFunctionObject;
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -668,18 +571,7 @@ public final class JavaInterop {
         if (type.getAnnotation(FunctionalInterface.class) != null) {
             return true;
         }
-        return type.getMethods().length == 1;
-    }
-
-    static CallTarget lookupOrRegisterComputation(Object truffleObject, RootNode symbolNode, Object... keyOrKeys) {
-        EngineSupport engine = ACCESSOR.engine();
-        if (engine == null) {
-            if (symbolNode == null) {
-                return null;
-            }
-            return Truffle.getRuntime().createCallTarget(symbolNode);
-        }
-        return engine.lookupOrRegisterComputation(truffleObject, symbolNode, keyOrKeys);
+        return false;
     }
 
     static Value toHostValue(Object obj, Object languageContext) {
@@ -721,6 +613,14 @@ public final class JavaInterop {
             return exception;
         }
         return engine.wrapHostException(exception);
+    }
+
+    static Object currentPolyglotContext() {
+        EngineSupport engine = ACCESSOR.engine();
+        if (engine == null) {
+            return null;
+        }
+        return engine.getCurrentHostContext();
     }
 
     static final JavaInteropAccessor ACCESSOR = new JavaInteropAccessor();

@@ -24,9 +24,15 @@
  */
 package org.graalvm.polyglot;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
+import org.graalvm.polyglot.proxy.Proxy;
 
 /**
  * Represents a polyglot value that can be accessed using a set of language agnostic operations.
@@ -70,7 +76,6 @@ public final class Value {
     }
 
     /**
-     *
      *
      * @since 1.0
      */
@@ -166,6 +171,9 @@ public final class Value {
      * @throws PolyglotException if a guest language error occurred during execution.
      * @see #executeVoid(Object...)
      *
+     *      All arguments are subject to polylgot value mapping rules as described in
+     *      {@link Context#asValue(Object)}.
+     *
      * @since 1.0
      */
     public Value execute(Object... arguments) {
@@ -230,6 +238,7 @@ public final class Value {
      *
      * @since 1.0
      */
+    // TODO document may return null if #isNull().
     public String asString() {
         return impl.asString(receiver);
     }
@@ -356,6 +365,24 @@ public final class Value {
      *
      * @since 1.0
      */
+    public boolean fitsInShort() {
+        return impl.fitsInShort(receiver);
+    }
+
+    /**
+     *
+     *
+     * @since 1.0
+     */
+    public short asShort() {
+        return impl.asShort(receiver);
+    }
+
+    /**
+     *
+     *
+     * @since 1.0
+     */
     public boolean isNull() {
         return impl.isNull(receiver);
     }
@@ -397,6 +424,223 @@ public final class Value {
     @SuppressWarnings("unchecked")
     public <T> T asHostObject() {
         return (T) impl.asHostObject(receiver);
+    }
+
+    /**
+     * Returns <code>true</code> whether this value represents a {@link Proxy}. The proxy instance
+     * can be unboxed using {@link #asProxyObject()}.
+     *
+     * @since 1.0
+     */
+    public boolean isProxyObject() {
+        return impl.isProxyObject(receiver);
+    }
+
+    /**
+     * Returns the unboxed instance of the {@link Proxy}. Proxies are not automatically boxed to
+     * {@link #isHostObject() host objects} on host language call boundaries (Java methods).
+     *
+     * @since 1.0
+     */
+    @SuppressWarnings("unchecked")
+    public <T extends Proxy> T asProxyObject() {
+        return (T) impl.asProxyObject(receiver);
+    }
+
+    /**
+     * Maps a polyglot value to a value with a given Java target type.
+     *
+     * <h1>Target type mapping</h1>
+     *
+     * The following target types are supported and interpreted in the following order:
+     * <ul>
+     * <li><code>{@link Value}.class</code> is always supported and returns this instance.
+     * <li>If the value represents a {@link #isHostObject() host object} then all classes
+     * implemented or extended by the host object can be used as target type.
+     * <li><code>{@link String}.class</code> is supported if the value is a {@link #isString()
+     * string}.
+     * <li><code>{@link Character}.class</code> is supported if the value is a {@link #isString()
+     * string} of length one.
+     * <li><code>{@link Number}.class</code> is supported if the value is a {@link #isNumber()
+     * number}. {@link Byte}, {@link Short}, {@link Integer}, {@link Long}, {@link Float} and
+     * {@link Double} are allowed if they fit without conversion. If a conversion is necessary then
+     * a {@link ClassCastException} is thrown. Primitive class literals throw a
+     * {@link NullPointerException} if the value represents {@link #isNull() null}.
+     * <li><code>{@link Boolean}.class</code> is supported if the value is a {@link #isBoolean()
+     * boolean}. Primitive {@link Boolean boolean.class} literal is also supported. The primitive
+     * class literal throws a {@link NullPointerException} if the value represents {@link #isNull()
+     * null}.
+     * <li>Any Java type in the type hierarchy of a {@link #isHostObject() host object}.
+     * <li><code>{@link Object}.class</code> is always supported. See section Object mapping rules.
+     * <li><code>{@link Map}.class</code> is supported if the value has {@link #hasMembers()
+     * members} or {@link #hasArrayElements() array elements}. The returned map can be safely cast
+     * to Map<Object, Object>. The key type in such a case is either {@link String} or {@link Long}.
+     * It is recommended to use {@link #as(TypeLiteral) type literals} to specify the expected
+     * collection component types. With type literals the value type can be restricted, for example
+     * to <code>Map<String, String></code>. If the raw <code>{@link Map}.class</code> or an Object
+     * component type is used, then the return types of the the list are subject to Object target
+     * type mapping rules recursively.
+     * <li><code>{@link List}.class</code> is supported if the value has {@link #hasArrayElements()
+     * array elements} and it has an {@link Value#getArraySize() array size} that is smaller or
+     * equal than {@link Integer#MAX_VALUE}. The returned list can be safely cast to
+     * <code>List<Object></code>. It is recommended to use {@link #as(TypeLiteral) type literals} to
+     * specify the expected component type. With type literals the value type can be restricted to
+     * any supported target type, for example to <code>List<Integer></code>. If the raw
+     * <code>{@link List}.class</code> or an Object component type is used, then the return types of
+     * the the list are recursively subject to Object target type mapping rules.
+     * <li>Any Java array type of a supported target type. The values of the value will be eagerly
+     * coerced and copied into a new instance of the provided array type. This means that changes in
+     * returned array will not be reflected in the original value. Since conversion to a Java array
+     * might be an expensive operation it is recommended to use the `List` or `Collection` target
+     * type if possible.
+     * <li>Any {@link FunctionalInterface functional} interface if the value can be
+     * {@link #canExecute() executed} or {@link #canInstantiate() instantiated}. In case a value can
+     * be executed and instantiated then the returned implementation of the interface will be
+     * {@link #execute(Object...) executed}. The coercion to the parameter types of functional
+     * interface method is converted using the semantics of {@link #as(Class)}. If a standard
+     * functional interface like {@link Function} are used, is recommended to use
+     * {@link #as(TypeLiteral) type literals} to specify the expected generic method parameter and
+     * return type.
+     * <li>Any interface if the value {@link #hasMembers()}. Each method or field name maps to one
+     * {@link #getMember(String) member} of the value. Whenever a method of the interface is
+     * executed a member with the method or field name must exist otherwise a
+     * {@link UnsupportedOperationException} is thrown when the method is executed. If one of the
+     * parameters cannot be mapped to the target type a {@link ClassCastException} or a
+     * {@link NullPointerException} is thrown.
+     * </ul>
+     * A {@link ClassCastException} is thrown for other unsupported target types.
+     * <p>
+     * <b>JavaScript Usage Examples:</b>
+     *
+     * <pre>
+     * Context context = Context.create();
+     * assert context.eval("js", "undefined").as(Object.class) == null;
+     * assert context.eval("js", "'foobar'").as(String.class).equals("foobar");
+     * assert context.eval("js", "42").as(Integer.class) == 42;
+     * assert context.eval("js", "{foo:'bar'}").as(Map.class).get("foo").equals("bar");
+     * assert context.eval("js", "[42]").as(List.class).get(0).equals(42);
+     * assert ((Map<String, Object>)context.eval("js", "[{foo:'bar'}]").as(List.class).get(0)).get("foo").equals("bar");
+     *
+     * &#64;FunctionalInterface interface IntFunction { int foo(int value); }
+     * assert context.eval("js", "(function(a){a})").as(IntFunction.class).foo(42) == 42;
+     *
+     * &#64;FunctionalInterface interface StringListFunction { int foo(List<String> value); }
+     * assert context.eval("js", "(function(a){a.length})").as(StringListFunction.class)
+     *                                                     .foo(new String[]{"42"}) == 1;
+     * </pre>
+     *
+     * <h1>Object target type mapping</h1>
+     *
+     * Object target mapping is useful to map polyglot values to its closest corresponding standard
+     * JDK type.
+     *
+     * The following rules apply when <code>Object</code> is used as a target type:
+     * <ol>
+     * <li>If the value represents {@link #isNull() null} then <code>null</code> is returned.
+     * <li>If the value is a {@link #isHostObject() host object} then the value is coerced to
+     * {@link #asHostObject() host object value}.
+     * <li>If the value is a {@link #isString() string} then the value is coerced to {@link String}
+     * or {@link Character}.
+     * <li>If the value is a {@link #isBoolean() boolean} then the value is coerced to
+     * {@link Boolean}.
+     * <li>If the value is a {@link #isNumber() number} then the value is coerced to {@link Number}.
+     * The specific sub type of the {@link Number} is not specified. Users need to be prepared for
+     * any Number subclass including {@link BigInteger} or {@link BigDecimal}. It is recommended to
+     * cast to {@link Number} and then convert to a Java primitive like with
+     * {@link Number#longValue()}.
+     * <li>If the value {@link #hasMembers() has members} then the result value will implement
+     * {@link Map}. If this value {@link #hasMembers() has members} then all members are accessible
+     * using {@link String} keys. The {@link Map#size() size} of the returned {@link Map} is equal
+     * to the count of all members. The returned value may also implement {@link Function} if the
+     * value can be {@link #canExecute() executed} or {@link #canInstantiate() instantiated}.
+     * <li>If the value has {@link #hasArrayElements() array elements} and it has an
+     * {@link Value#getArraySize() array size} that is smaller or equal than
+     * {@link Integer#MAX_VALUE} then the result value will implement {@link List}. Every array
+     * element of the value maps to one list element. The size of the returned list maps to the
+     * array size of the value. The returned value may also implement {@link Function} if the value
+     * can be {@link #canExecute() executed} or {@link #canInstantiate() instantiated}.
+     * <li>If the value can be {@link #canExecute() executed} or {@link #canInstantiate()
+     * instantiated} then the result value implements {@link Function Function}. By default the
+     * argument of the function will be used as single argument to the function when executed. If a
+     * value of type {@link Object Object[]} is provided then the function will executed with those
+     * arguments. The returned function may also implement {@link Map} if the value has
+     * {@link #hasArrayElements() array elements} or {@link #hasMembers() members}.
+     * <li>If none of the above rules apply then this {@link Value} instance is returned.
+     * </ol>
+     * Returned {@link #isHostObject() host objects}, {@link String}, {@link Number},
+     * {@link Boolean} and <code>null</code> values have unlimited lifetime. Other values will throw
+     * an {@link IllegalStateException} for any operation if their originating {@link Context
+     * context} was closed.
+     * <p>
+     * If a {@link Map} element is modified, a {@link List} element is modified or a
+     * {@link Function} argument is provided then these values are interpreted according to the
+     * {@link Context#asValue(Object) host to polyglot value mapping rules}.
+     * <p>
+     * <b>JavaScript Usage Examples:</b>
+     *
+     * <pre>
+     * Context context = Context.create();
+     * assert context.eval("js", "undefined").as(Object.class) == null;
+     * assert context.eval("js", "'foobar'").as(Object.class) instanceof String;
+     * assert context.eval("js", "42").as(Object.class) instanceof Number;
+     * assert context.eval("js", "[]").as(Object.class) instanceof Map;
+     * assert context.eval("js", "{}").as(Object.class) instanceof Map;
+     * assert ((Map<Object, Object>) context.eval("js", "[{}]").as(Object.class)).get(0) instanceof Map;
+     * assert context.eval("js", "(function(){})").as(Object.class) instanceof Function;
+     * </pre>
+     *
+     * <h1>Object Identity</h1>
+     *
+     * If polyglot values are mapped as Java primitives such as {@link Boolean}, <code>null</code>,
+     * {@link String}, {@link Character} or {@link Number}, then the identity of the polyglot value
+     * is not preserved. All other results can be converted back to a {@link Value polyglot value}
+     * using {@link Context#asValue(Object)}.
+     *
+     * <b>Mapping Example using JavaScript:</b> This example first creates a new JavaScript object
+     * and maps it to a {@link Map}. Using the {@link Context#asValue(Object)} it is possible to
+     * recreate the {@link Value polyglot value} from the Java map. The JavaScript object identity
+     * is preserved in the process.
+     *
+     * <pre>
+     * Context context = Context.create();
+     * Map<Object, Object> javaMap = context.eval("js", "{}").as(Map.class);
+     * Value polyglotValue = context.asValue(javaMap);
+     * </pre>
+     *
+     * @see #as(TypeLiteral) to map to generic type signatures.
+     * @param targetType the target Java type to map
+     * @throws ClassCastException if polyglot value could not be mapped to the target type.
+     * @throws PolyglotException if the conversion triggered a guest language error.
+     * @throws IllegalStateException if the underlying context is already closed.
+     * @since 1.0
+     */
+    public <T> T as(Class<T> targetType) throws ClassCastException, IllegalStateException, PolyglotException {
+        if (targetType == Value.class) {
+            return targetType.cast(this);
+        }
+        return impl.as(receiver, targetType);
+    }
+
+    /**
+     * Maps a polyglot value to a given Java target type literal. For usage instructions see
+     * {@link TypeLiteral}.
+     * <p>
+     * Usage example:
+     *
+     * <pre>
+     * static final TypeLiteral<List<String>> STRING_LIST = new TypeLiteral<List<String>>() {
+     * };
+     *
+     * Context context = Context.create();
+     * List<String> javaList = context.eval("js", "['foo', 'bar', 'bazz']").as(STRING_LIST);
+     * assert javaList.get(0).equals("foo");
+     * </pre>
+     *
+     * @see #as(Class) for documetnation on
+     * @since 1.0
+     */
+    public <T> T as(TypeLiteral<T> targetType) {
+        return impl.as(receiver, targetType);
     }
 
     /**

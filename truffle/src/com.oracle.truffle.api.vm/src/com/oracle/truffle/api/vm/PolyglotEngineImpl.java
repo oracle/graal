@@ -46,6 +46,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
@@ -123,6 +124,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     private volatile CancelHandler cancelHandler;
     // Data used by the runtime to enable "global" state per Engine
     volatile Object runtimeData;
+    final Map<Object, Object> javaInteropCodeCache = new ConcurrentHashMap<>();
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options, long timeout, TimeUnit timeoutUnit,
                     boolean sandbox, boolean useSystemProperties, ClassLoader contextClassLoader, boolean boundEngine) {
@@ -509,7 +511,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             listener.onContextCreated(context.truffleContext);
             for (PolyglotLanguageContext lc : context.contexts) {
                 LanguageInfo language = lc.language.info;
-                if (lc.env != null) {
+                if (lc.eventsEnabled && lc.env != null) {
                     listener.onLanguageContextCreated(context.truffleContext, language);
                     if (lc.isInitialized()) {
                         listener.onLanguageContextInitialized(context.truffleContext, language);
