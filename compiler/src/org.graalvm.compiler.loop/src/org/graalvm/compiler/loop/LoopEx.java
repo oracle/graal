@@ -394,8 +394,8 @@ public class LoopEx {
                 } else {
                     boolean isValidConvert = op instanceof PiNode || op instanceof SignExtendNode;
                     if (!isValidConvert && op instanceof ZeroExtendNode) {
-                        IntegerStamp inputStamp = (IntegerStamp) ((ZeroExtendNode) op).getValue().stamp(NodeView.DEFAULT);
-                        isValidConvert = inputStamp.isPositive();
+                        ZeroExtendNode zeroExtendNode = (ZeroExtendNode) op;
+                        isValidConvert = zeroExtendNode.isInputAlwaysPositive() || ((IntegerStamp) zeroExtendNode.stamp(NodeView.DEFAULT)).isPositive();
                     }
 
                     if (isValidConvert) {

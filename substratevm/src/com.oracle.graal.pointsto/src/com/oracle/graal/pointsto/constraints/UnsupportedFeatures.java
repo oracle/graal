@@ -109,7 +109,7 @@ public class UnsupportedFeatures {
                     ShortestInvokeChainPrinter.print(bb, entry.method, printStream);
                     printStream.println();
                 }
-                if (entry.originalException != null) {
+                if (entry.originalException != null && !(entry.originalException instanceof UnsupportedFeatureException)) {
                     printStream.print("Original exception that caused the problem: ");
                     entry.originalException.printStackTrace(printStream);
                 }

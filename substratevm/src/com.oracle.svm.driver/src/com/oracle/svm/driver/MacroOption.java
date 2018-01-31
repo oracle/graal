@@ -87,25 +87,27 @@ final class MacroOption {
         }
 
         private String resolvePropertyValue(String val) {
-            if (optionArg == null) {
-                return val;
-            }
-            /* Substitute ${*} -> optionArg in resultVal (always possible) */
-            String resultVal = val.replace("${*}", optionArg);
-            /*
-             * If optionArg consists of "<argName>:<argValue>,..." additionally perform
-             * substitutions of kind ${<argName>} -> <argValue> on resultVal.
-             */
-            for (String argNameValue : optionArg.split(",")) {
-                String[] splitted = argNameValue.split(":");
-                if (splitted.length == 2) {
-                    String argName = splitted[0];
-                    String argValue = splitted[1];
-                    if (!argName.isEmpty()) {
-                        resultVal = resultVal.replace("${" + argName + "}", argValue);
+            String resultVal = val;
+            if (optionArg != null) {
+                /* Substitute ${*} -> optionArg in resultVal (always possible) */
+                resultVal = resultVal.replace("${*}", optionArg);
+                /*
+                 * If optionArg consists of "<argName>:<argValue>,..." additionally perform
+                 * substitutions of kind ${<argName>} -> <argValue> on resultVal.
+                 */
+                for (String argNameValue : optionArg.split(",")) {
+                    String[] splitted = argNameValue.split(":");
+                    if (splitted.length == 2) {
+                        String argName = splitted[0];
+                        String argValue = splitted[1];
+                        if (!argName.isEmpty()) {
+                            resultVal = resultVal.replace("${" + argName + "}", argValue);
+                        }
                     }
                 }
             }
+            /* Substitute ${.} -> absolute path to optionDirectory */
+            resultVal = resultVal.replace("${.}", getOption().optionDirectory.toString());
             return resultVal;
         }
 

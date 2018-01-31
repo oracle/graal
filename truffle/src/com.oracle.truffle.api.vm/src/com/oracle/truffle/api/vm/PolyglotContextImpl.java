@@ -1048,13 +1048,18 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
             }
             languageOptions.put(optionKey, newOptions.get(optionKey));
         }
-        for (int i = 1; i < this.contexts.length; i++) {
-            final PolyglotLanguageContext context = this.contexts[i];
-            if (!context.patch(optionsByLanguage.get(context.language.getId()), newApplicationArguments.get(context.language.getId()))) {
-                return false;
-            }
-        }
         initializeStaticContext(this);
+        final Object prev = enter();
+        try {
+            for (int i = 1; i < this.contexts.length; i++) {
+                final PolyglotLanguageContext context = this.contexts[i];
+                if (!context.patch(optionsByLanguage.get(context.language.getId()), newApplicationArguments.get(context.language.getId()))) {
+                    return false;
+                }
+            }
+        } finally {
+            leave(prev);
+        }
         return true;
     }
 

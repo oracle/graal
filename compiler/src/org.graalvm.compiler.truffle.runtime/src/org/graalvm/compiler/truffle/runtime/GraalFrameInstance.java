@@ -74,26 +74,17 @@ public final class GraalFrameInstance implements FrameInstance {
         if (access == FrameAccess.NONE) {
             return null;
         }
-        switch (access) {
-            case READ_ONLY: {
-                Frame frame = (Frame) callTargetFrame.getLocal(CALL_TARGET_FRAME_INDEX);
-                // assert that it is really used read only
-                assert (frame = new ReadOnlyFrame(frame)) != null;
-                return frame;
+
+        if (access == FrameAccess.READ_WRITE || access == FrameAccess.MATERIALIZE) {
+            if (callTargetFrame.isVirtual(CALL_TARGET_FRAME_INDEX)) {
+                callTargetFrame.materializeVirtualObjects(false);
             }
-            case READ_WRITE:
-            case MATERIALIZE:
-                if (callTargetFrame.isVirtual(CALL_TARGET_FRAME_INDEX)) {
-                    callTargetFrame.materializeVirtualObjects(false);
-                }
-                Frame frame = (Frame) callTargetFrame.getLocal(CALL_TARGET_FRAME_INDEX);
-                if (access == FrameAccess.MATERIALIZE) {
-                    frame = frame.materialize();
-                }
-                return frame;
-            default:
-                throw GraalError.unimplemented();
         }
+        Frame frame = (Frame) callTargetFrame.getLocal(CALL_TARGET_FRAME_INDEX);
+        if (access == FrameAccess.MATERIALIZE) {
+            frame = frame.materialize();
+        }
+        return frame;
     }
 
     @Override

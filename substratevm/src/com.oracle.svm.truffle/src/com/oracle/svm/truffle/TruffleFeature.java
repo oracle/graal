@@ -43,6 +43,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -55,6 +56,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -96,7 +98,10 @@ import com.oracle.svm.graal.hosted.GraalFeature.CallTreeNode;
 import com.oracle.svm.graal.hosted.GraalFeature.RuntimeBytecodeParser;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.truffle.api.SubstrateOptimizedCallTarget;
 import com.oracle.svm.truffle.api.SubstratePartialEvaluator;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
@@ -105,6 +110,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -116,6 +122,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticFeature
 public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
@@ -161,6 +168,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     public static class Options {
         @Option(help = "Print a warning message and stack trace when CompilerAsserts.neverPartOfCompilation is reachable")//
         public static final HostedOptionKey<Boolean> TruffleCheckNeverPartOfCompilation = new HostedOptionKey<>(false);
+
+        @Option(help = "Enforce that the Truffle runtime provides the only implementation of Frame")//
+        public static final HostedOptionKey<Boolean> TruffleCheckFrameImplementation = new HostedOptionKey<>(true);
     }
 
     public static class Support {
@@ -585,6 +595,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess config) {
+        BeforeCompilationAccessImpl access = (BeforeCompilationAccessImpl) config;
+
         if (GraalFeature.Options.PrintRuntimeCompileMethods.getValue() && blacklistViolations.size() > 0) {
             System.out.println();
             System.out.println("=== Found " + blacklistViolations.size() + " compilation blacklist violations ===");
@@ -634,6 +646,42 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                 }
             }
             throw VMError.shouldNotReachHere("CompilerAsserts.neverPartOfCompilation reachable for runtime compilation");
+        }
+
+        if (Options.TruffleCheckFrameImplementation.getValue() && useTruffleCompiler()) {
+            /*
+             * Check that only one Frame implementation is seen as instantiated by the static
+             * analysis. That allows de-virtualization of all calls to Frame methods in the
+             * interpreter.
+             *
+             * The DefaultTruffleRuntime uses multiple Frame implementations (DefaultVirtualFrame,
+             * DefaultMaterializedFrame, ReadOnlyFrame) to detect wrong usages of the Frame API, so
+             * we can only check when running with compilation enabled.
+             */
+            Optional<? extends ResolvedJavaType> optionalFrameType = access.getMetaAccess().optionalLookupJavaType(Frame.class);
+            if (optionalFrameType.isPresent()) {
+                HostedType frameType = (HostedType) optionalFrameType.get();
+                Set<HostedType> implementations = new HashSet<>();
+                collectImplementations(frameType, implementations);
+
+                if (implementations.size() > 1) {
+                    throw UserError.abort("More than one implementation of " + Frame.class.getTypeName() +
+                                    " found. For performance reasons, Truffle languages must not provide new implementations, and instead only use the single implementation provided by the Truffle runtime. " +
+                                    "To disable this check, add " + HostedOptionParser.commandArgument(Options.TruffleCheckFrameImplementation, "-") + " to the native-image command line. " +
+                                    "Found classes: " + implementations.stream().map(m -> m.toJavaName(true)).collect(Collectors.joining(", ")));
+                } else {
+                    assert implementations.size() == 0 || implementations.iterator().next() == frameType.getSingleImplementor();
+                }
+            }
+        }
+    }
+
+    private static void collectImplementations(HostedType type, Set<HostedType> implementations) {
+        for (HostedType subType : type.getSubTypes()) {
+            if (!subType.isAbstract()) {
+                implementations.add(subType);
+            }
+            collectImplementations(subType, implementations);
         }
     }
 }

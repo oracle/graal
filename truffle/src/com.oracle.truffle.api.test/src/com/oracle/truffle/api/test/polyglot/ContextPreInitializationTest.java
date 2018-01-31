@@ -955,6 +955,7 @@ public class ContextPreInitializationTest {
 
         @Override
         protected boolean patchContext(CountingContext context, TruffleLanguage.Env newEnv) {
+            assertNotNull(getContextReference().get());
             context.patchContextCount++;
             context.patchContextOrder = nextId();
             context.environment(newEnv);

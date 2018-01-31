@@ -213,9 +213,14 @@ def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution
     run_java(bootstrap_command)
     mx.logv('Built ' + native_image_path(native_image_root))
 
-    def native_image_layout_dists(subdir, dists):
-        native_image_dists = [mx.dependency(dist_name) for dist_name in dists]
-        native_image_layout(native_image_dists, subdir, native_image_root)
+    def names_to_dists(dist_names):
+        return [mx.dependency(dist_name) for dist_name in dist_names]
+
+    def native_image_layout_dists(subdir, dist_names):
+        native_image_layout(names_to_dists(dist_names), subdir, native_image_root)
+
+    def native_image_extract_dists(subdir, dist_names):
+        native_image_extract(names_to_dists(dist_names), subdir, native_image_root)
 
     # Create native-image layout for sdk parts
     native_image_layout_dists(join('lib', 'boot'), ['sdk:GRAAL_SDK'])
@@ -236,6 +241,7 @@ def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution
     native_image_option_properties('tools', 'junit', native_image_root)
     native_image_option_properties('tools', 'truffle', native_image_root)
     native_image_layout_dists(join('tools', 'nfi', 'builder'), ['truffle:TRUFFLE_NFI'])
+    native_image_extract_dists(join('tools', 'nfi'), ['truffle:TRUFFLE_NFI_NATIVE'])
     native_image_option_properties('tools', 'nfi', native_image_root)
 
     # Create native-image layout for svm parts
@@ -456,9 +462,10 @@ def native_image_context(common_args=None, hosted_assertions=True):
     def native_image_func(args):
         mx.run([native_image_path(suite_native_image_root())] + base_args + common_args + args)
     try:
+        native_image_func(['-server-wipe'])
         yield native_image_func
     finally:
-        mx.run([native_image_path(suite_native_image_root()), '-server-shutdown'])
+        native_image_func(['-server-shutdown'])
 
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
 
