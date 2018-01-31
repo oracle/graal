@@ -26,6 +26,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static org.graalvm.compiler.lir.alloc.trace.TraceUtil.isTrivialTrace;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.alloc.Trace;
@@ -56,10 +57,44 @@ final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPh
         assert block.getPredecessorCount() == 1 : "Trace head with more than one predecessor?!" + trace;
         AbstractBlockBase<?> pred = block.getPredecessors()[0];
 
-        Value[] variableMap = new Value[lir.numVariables()];
         GlobalLivenessInfo livenessInfo = context.livenessInfo;
+        Value[] variableMap = new Value[lir.numVariables()];
         collectMapping(block, pred, livenessInfo, variableMap);
         assignLocations(lir, block, livenessInfo, variableMap);
+        allocate(lir, block, pred, livenessInfo, livenessInfo.getInLocation(block), livenessInfo.getOutLocation(block), variableMap);
+    }
+
+    private static void allocate(LIR lir, AbstractBlockBase<?> block, AbstractBlockBase<?> pred, GlobalLivenessInfo livenessInfo, Value[] otherIn, Value[] otherOut, Value[] otherMap) {
+        assert TraceAssertions.liveSetsAreSorted(livenessInfo, block);
+        assert TraceAssertions.liveSetsAreSorted(livenessInfo, pred);
+        boolean hasPhis = SSAUtil.numPhiOut(lir, block) > 0;
+        Value[] variableMap = hasPhis ? new Value[lir.numVariables()] : null;
+
+        final int[] blockIn = livenessInfo.getBlockIn(block);
+        final Value[] predLocOut = livenessInfo.getOutLocation(pred);
+        int inLenght = blockIn.length;
+        final Value[] locationIn = new Value[inLenght];
+
+        final int[] blockOut = livenessInfo.getBlockOut(block);
+        int outLength = blockOut.length;
+        final Value[] locationOut = new Value[outLength];
+
+        assert outLength <= inLenght;
+        int outIdx = 0;
+        for (int inIdx = 0; inIdx < inLenght; inIdx++) {
+            Value value = locationIn[inIdx] = predLocOut[inIdx];
+            if (hasPhis) {
+                variableMap[blockIn[inIdx]] = value;
+            }
+            if (outIdx < outLength && blockOut[outIdx] == blockIn[inIdx]) {
+                locationOut[outIdx++] = value;
+            }
+        }
+        assert outIdx == outLength;
+
+        assert Arrays.equals(locationIn, otherIn);
+        assert Arrays.equals(locationOut, otherOut);
+        assert !hasPhis | Arrays.equals(variableMap, otherMap);
     }
 
     /**
@@ -95,6 +130,10 @@ final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPh
         }
         livenessInfo.setOutLocations(block, locationOut);
 
+        handlePhiOut(lir, block, variableMap);
+    }
+
+    private static void handlePhiOut(LIR lir, AbstractBlockBase<?> block, Value[] variableMap) {
         // handle outgoing phi values
         ValueProcedure outputConsumer = new ValueProcedure() {
             @Override

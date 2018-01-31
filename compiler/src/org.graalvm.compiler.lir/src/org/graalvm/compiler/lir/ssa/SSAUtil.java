@@ -181,4 +181,19 @@ public final class SSAUtil {
         return -1;
     }
 
+    public static int numPhiOut(LIR lir, AbstractBlockBase<?> block) {
+        if (block.getSuccessorCount() != 1) {
+            // cannot be a phi_out block
+            return 0;
+        }
+        return numPhiIn(lir, block.getSuccessors()[0]);
+    }
+
+    private static int numPhiIn(LIR lir, AbstractBlockBase<?> block) {
+        if (!isMerge(block)) {
+            return 0;
+        }
+        return phiIn(lir, block).getPhiSize();
+    }
+
 }
