@@ -53,7 +53,7 @@ final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPh
         LIR lir = lirGenRes.getLIR();
         assert isTrivialTrace(lir, trace) : "Not a trivial trace! " + trace;
         AbstractBlockBase<?> block = trace.getBlocks()[0];
-        assert block.getPredecessorCount() == 1 : "Trace head with more than one predecessor?!" + trace;
+        assert TraceAssertions.singleHeadPredecessor(trace) : "Trace head with more than one predecessor?!" + trace;
         AbstractBlockBase<?> pred = block.getPredecessors()[0];
 
         GlobalLivenessInfo livenessInfo = context.livenessInfo;

@@ -22,10 +22,12 @@
  */
 package org.graalvm.compiler.lir.alloc.trace;
 
+import org.graalvm.compiler.core.common.alloc.Trace;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 
 /**
- * A collection of assertions that are assumed in various places of the Trace Register Allocation.
+ * A collection of assertions that are assumed to hold in various places of the Trace Register
+ * Allocation.
  *
  * The main goal is document pieces of code that rely on specific properties of traces. In case an
  * assumption is no longer valid, this makes it easy (in case the assumptions are used correctly) to
@@ -34,7 +36,7 @@ import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 final class TraceAssertions {
 
     /**
-     * Ensure that variable indices are properly sorted.
+     * Asserts that variable indices are properly sorted.
      */
     public static boolean liveSetsAreSorted(GlobalLivenessInfo livenessInfo, AbstractBlockBase<?> block) {
         return isSorted(livenessInfo.getBlockIn(block)) && isSorted(livenessInfo.getBlockOut(block));
@@ -53,5 +55,15 @@ final class TraceAssertions {
             }
         }
         return true;
+    }
+
+    /**
+     * Asserts that a trace head has only a single predecessor.
+     *
+     * This is not true for every trace-building algorithm (for example
+     * {@link TraceBuilderPhase.TraceBuilder#SingleBlock}).
+     */
+    public static boolean singleHeadPredecessor(Trace trace) {
+        return trace.getBlocks()[0].getPredecessorCount() == 1;
     }
 }
