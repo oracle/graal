@@ -68,7 +68,6 @@ public class ELFObjectFile extends ObjectFile {
     private char abiVersion;
     private ELFClass fileClass = ELFClass.getSystemNativeValue();
     private ELFMachine machine = ELFMachine.getSystemNativeValue();
-    private ELFSymtab.Entry entryPoint;
     private long processorSpecificFlags; // FIXME: to encapsulate (EF_* in elf.h)
     private final boolean runtimeDebugInfoGeneration;
 
@@ -566,7 +565,6 @@ public class ELFObjectFile extends ObjectFile {
             // FIXME: is it really appropriate to initialize the owning ELFObjectFile's fields here?
             ELFObjectFile.this.machine = ELFMachine.X86_64;
             ELFObjectFile.this.version = 1;
-            ELFObjectFile.this.entryPoint = null;
             ELFObjectFile.this.processorSpecificFlags = 0;
         }
 
@@ -594,12 +592,6 @@ public class ELFObjectFile extends ObjectFile {
             dependencies.add(BuildDependency.createOrGet(ourContent, shtSize));
             dependencies.add(BuildDependency.createOrGet(ourContent, shtOffset));
 
-            // if we have an entry point, we depend on the vaddr of its section
-            if (entryPoint != null) {
-                ELFSection es = entryPoint.getReferencedSection();
-                dependencies.add(BuildDependency.createOrGet(ourContent, decisions.get(es).getDecision(LayoutDecision.Kind.VADDR)));
-            }
-
             return dependencies;
         }
 
@@ -618,12 +610,7 @@ public class ELFObjectFile extends ObjectFile {
             contents.type = getType();
             contents.machine = getMachine();
             contents.version = getVersion();
-            if (getEntryPointSymbol() != null) {
-                long sectionVaddr = (int) alreadyDecided.get(getEntryPointSymbol().getReferencedSection()).getDecidedValue(LayoutDecision.Kind.VADDR);
-                contents.entry = sectionVaddr + getEntryPointSymbol().value;
-            } else {
-                contents.entry = 0;
-            }
+            contents.entry = 0;
             contents.shoff = (int) alreadyDecided.get(sht).getDecidedValue(LayoutDecision.Kind.OFFSET);
             contents.flags = (int) getFlags();
             // NOTE: header size depends on ident contents (32/64)
@@ -1121,10 +1108,6 @@ public class ELFObjectFile extends ObjectFile {
 
     public void setMachine(ELFMachine machine) {
         this.machine = machine;
-    }
-
-    public ELFSymtab.Entry getEntryPointSymbol() {
-        return entryPoint;
     }
 
     public long getFlags() {

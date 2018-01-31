@@ -23,46 +23,12 @@
 
 package com.oracle.objectfile;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 import com.oracle.objectfile.ObjectFile.Symbol;
 
 public interface SymbolTable extends Iterable<Symbol> {
-    boolean containsSymbolWithName(String symName);
-
-    List<Symbol> symbolsWithName(String symName);
+    Symbol getSymbol(String name);
 
     Symbol newDefinedEntry(String name, ObjectFile.Section referencedSection, long referencedOffset, long size, boolean isGlobal, boolean isCode);
 
     Symbol newUndefinedEntry(String name, boolean isCode);
-
-    int indexOf(Symbol sym);
-
-    Symbol get(int n);
-
-    boolean contains(Symbol symbol);
-
-    default Symbol uniqueDefinedSymbolWithName(String symName) {
-        Symbol match = null;
-        for (Symbol s : symbolsWithName(symName)) {
-            if (s.isDefined()) {
-                if (match == null) {
-                    match = s;
-                } else {
-                    throw new IllegalStateException("multiple definitions for symbol " + symName);
-                }
-            }
-        }
-        return match;
-    }
-
-    default Set<Integer> symbolIndicesForName(String symName) {
-        HashSet<Integer> s = new HashSet<>();
-        for (Symbol sym : symbolsWithName(symName)) {
-            s.add(indexOf(sym));
-        }
-        return s;
-    }
 }

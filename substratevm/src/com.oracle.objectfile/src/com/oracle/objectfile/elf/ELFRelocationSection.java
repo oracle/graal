@@ -165,34 +165,21 @@ public class ELFRelocationSection extends ELFSection {
     }
 
     private final boolean withExplicitAddends;
-    private ELFSection relocated;
-    private ELFSymtab syms;
+    private final ELFSection relocated;
+    private final ELFSymtab syms;
     private final Map<Entry, Entry> entries = new TreeMap<>(Comparator.comparingLong(Entry::getOffset));
 
-    public ELFRelocationSection(ELFObjectFile owner, String name, ELFSection relocated, ELFSymtab syms, boolean withExplicitAddends) {
-        this(owner, name, relocated, syms, withExplicitAddends, -1);
-    }
-
-    public ELFRelocationSection(ELFObjectFile owner, String name, ELFSection relocated, ELFSymtab syms, boolean withExplicitAddends, int sectionIndex) {
-        owner.super(name, owner.getWordSizeInBytes(), withExplicitAddends ? SectionType.RELA : SectionType.REL, EnumSet.noneOf(ELFSectionFlag.class), sectionIndex);
+    ELFRelocationSection(ELFObjectFile owner, String name, ELFSection relocated, ELFSymtab syms, boolean withExplicitAddends) {
+        owner.super(name, owner.getWordSizeInBytes(), withExplicitAddends ? SectionType.RELA : SectionType.REL, EnumSet.noneOf(ELFSectionFlag.class), -1);
         this.withExplicitAddends = withExplicitAddends;
-        setRelocatedSection(relocated);
-        setSymtab(syms);
-        // we ensure this property in ELFObjectFile.getOrCreateRelocationSection
-        assert relocated == null || name.equals((withExplicitAddends ? ".rela" : ".rel") + relocated.getName());
-    }
-
-    public void setRelocatedSection(ELFSection relocated) {
+        this.syms = syms;
         this.relocated = relocated; // may be null for rel(a?).dyn
         if (relocated == null) {
-            assert syms == null || syms.isDynamic(); // quick sanity check for now
+            assert syms == null || syms.isDynamic();
             flags.add(ELFSectionFlag.ALLOC); // rel.dyn sections are allocated
+        } else {
+            assert name.equals((withExplicitAddends ? ".rela" : ".rel") + relocated.getName());
         }
-    }
-
-    public void setSymtab(ELFSymtab syms) {
-        this.syms = syms;
-        assert relocated != null || syms == null || syms.isDynamic(); // only dynsyms
     }
 
     public Entry addEntry(ELFSection s, long offset, ELFRelocationMethod t, ELFSymtab.Entry sym, Long explicitAddend) {
@@ -269,10 +256,10 @@ public class ELFRelocationSection extends ELFSection {
             long info;
             switch (getOwner().getFileClass()) {
                 case ELFCLASS32:
-                    info = ((syms.getEntries().indexOf(ent.sym) << 8) & 0xffffffffL) + (ent.t.toLong() & 0xffL);
+                    info = ((syms.indexOf(ent.sym) << 8) & 0xffffffffL) + (ent.t.toLong() & 0xffL);
                     break;
                 case ELFCLASS64:
-                    info = (((long) syms.getEntries().indexOf(ent.sym)) << 32) + (ent.t.toLong() & 0xffffffffL);
+                    info = (((long) syms.indexOf(ent.sym)) << 32) + (ent.t.toLong() & 0xffffffffL);
                     break;
                 default:
                     throw new RuntimeException(getOwner().getFileClass().toString());

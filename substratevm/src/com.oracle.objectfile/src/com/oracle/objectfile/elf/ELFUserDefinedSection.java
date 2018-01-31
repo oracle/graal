@@ -25,7 +25,6 @@ package com.oracle.objectfile.elf;
 
 import java.nio.ByteBuffer;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Map;
 
 import com.oracle.objectfile.BuildDependency;
@@ -155,19 +154,13 @@ public class ELFUserDefinedSection extends ELFSection implements ObjectFile.Relo
         ELFRelocationSection rs = (ELFRelocationSection) getOrCreateRelocationElement(useImplicitAddend);
         ELFSymtab.Entry ent;
         if (symbolName != null) {
-            List<ELFSymtab.Entry> ents = syms.entriesWithName(symbolName);
-            if (ents.size() == 0) {
-                throw new IllegalStateException("symtab does not contain a symbol named " + symbolName);
-            } else if (ents.size() > 1) {
-                throw new IllegalStateException("symtab contains multiple symbols named " + symbolName);
-            }
-            ent = ents.get(0);
+            ent = syms.getSymbol(symbolName);
         } else {
             // else we're a reloc type that doesn't need a symbol
             // assert this about the reloc type
             assert !k.usesSymbolValue();
             // use the null symtab entry
-            ent = syms.get(0);
+            ent = syms.getNullEntry();
             assert ent.isNull();
         }
         return rs.addEntry(this, offset, ELFMachine.getRelocation(getOwner().getMachine(), k, length), ent, explicitAddend);

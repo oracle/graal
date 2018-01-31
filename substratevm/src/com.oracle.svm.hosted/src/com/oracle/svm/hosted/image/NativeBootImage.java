@@ -52,7 +52,6 @@ import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.ObjectFile.ProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.objectfile.ObjectFile.Section;
-import com.oracle.objectfile.ObjectFile.Symbol;
 import com.oracle.objectfile.SectionName;
 import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
@@ -396,7 +395,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
                 if (data.bytesSupplier != null || data.sizeSupplier != null) { // Create symbol
                     objectFile.createDefinedSymbol(data.symbolName, rwDataSection, offsetInSection, false);
                 } else { // No data, so this is purely a symbol reference: create relocation
-                    if (!objectFile.getSymbolTable().containsSymbolWithName(data.symbolName)) {
+                    if (objectFile.getSymbolTable().getSymbol(data.symbolName) == null) {
                         objectFile.createUndefinedSymbol(data.symbolName, true);
                     }
                     ProgbitsSectionImpl baseSectionImpl = (ProgbitsSectionImpl) rwDataSection.getImpl();
@@ -704,8 +703,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
                     } else {
                         methodsBySignature.put(signatureString, current);
                     }
-                    final Symbol sym = objectFile.createDefinedSymbol(symName, textSection, current.getCodeAddressOffset(), ent.getValue().getTargetCode().length, true, true);
-                    assert sym.getOwningSymbolTable().contains(sym);
+                    objectFile.createDefinedSymbol(symName, textSection, current.getCodeAddressOffset(), ent.getValue().getTargetCode().length, true, true);
                 }
                 // 2. fq without return type -- only for entry points!
                 for (Map.Entry<String, HostedMethod> ent : methodsBySignature.entrySet()) {
@@ -721,16 +719,14 @@ public abstract class NativeBootImage extends AbstractBootImage {
                         final String mangledSignature = mangleName(ent.getKey());
                         assert mangledSignature.equals(globalSymbolNameForMethod(method));
                         final CompilationResult methodWithSignature = codeCache.getCompilations().get(method);
-                        final Symbol sym = objectFile.createDefinedSymbol(mangledSignature, textSection, method.getCodeAddressOffset(), 0, true, true);
-                        assert sym.getOwningSymbolTable().contains(sym);
+                        objectFile.createDefinedSymbol(mangledSignature, textSection, method.getCodeAddressOffset(), 0, true, true);
 
                         // 3. Also create @CEntryPoint linkage names in this case
                         if (cEntryData != null) {
                             assert !cEntryData.getSymbolName().isEmpty();
                             // no need for mangling: name must already be a valid external name
-                            final Symbol extraSym = objectFile.createDefinedSymbol(cEntryData.getSymbolName(), textSection, method.getCodeAddressOffset(),
+                            objectFile.createDefinedSymbol(cEntryData.getSymbolName(), textSection, method.getCodeAddressOffset(),
                                             methodWithSignature.getTargetCode().length, true, true);
-                            assert sym.getOwningSymbolTable().contains(extraSym);
                         }
                     }
                 }

@@ -1686,8 +1686,6 @@ public abstract class ObjectFile {
 
         long getDefinedAbsoluteValue();
 
-        SymbolTable getOwningSymbolTable();
-
         boolean isFunction();
     }
 

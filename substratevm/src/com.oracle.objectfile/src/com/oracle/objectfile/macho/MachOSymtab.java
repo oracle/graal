@@ -22,15 +22,14 @@
  */
 package com.oracle.objectfile.macho;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.function.Predicate;
 
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.ElementImpl;
@@ -44,7 +43,6 @@ import com.oracle.objectfile.ObjectFile.ValueEnum;
 import com.oracle.objectfile.StringTable;
 import com.oracle.objectfile.SymbolTable;
 import com.oracle.objectfile.io.AssemblyBuffer;
-import com.oracle.objectfile.io.InputDisassembler;
 import com.oracle.objectfile.io.OutputAssembler;
 import com.oracle.objectfile.macho.MachOObjectFile.LinkEditSegment64Command;
 import com.oracle.objectfile.macho.MachOObjectFile.MachOSection;
@@ -58,51 +56,44 @@ public class MachOSymtab extends MachOObjectFile.LinkEditElement implements Symb
      * LC_SYMTAB command points to them.
      *
      * (The same goes for strtabs!)
-     *
-     * Also, note that we keep the 'entries' list sorted by certain criteria (see sort()). This
-     * means that a SymbolTable is not a List<Symbol> -- it is more constrained than that, because
-     * we cannot insert any Symbol in any position. But we use an ArrayList as our representation,
-     * and maintain the invariant by calling sort() on additions.
      */
 
     MachOStrtab strtab;
 
-    ArrayList<Entry> entries = new ArrayList<>();
-    boolean entriesAreSorted = true;
-    HashMap<String, List<Entry>> entriesByName = new HashMap<>();
+    SortedSet<Entry> entries = new TreeSet<>(MachOSymtab::compareEntries);
+
+    private static int compareEntries(Entry a, Entry b) {
+        /*
+         * Sort entries so that they are grouped into the following categories, in that order, and
+         * sorted by name within their category: locals - defined externals - undefined externals.
+         */
+        int cmp = Boolean.compare(a.isLocal(), b.isLocal());
+        if (cmp == 0) {
+            cmp = Boolean.compare(a.isDefined() && a.isExternal(), b.isDefined() && b.isExternal());
+        }
+        if (cmp == 0) {
+            cmp = Boolean.compare(!a.isDefined() && a.isExternal(), !b.isDefined() && b.isExternal());
+        }
+        if (cmp == 0) {
+            cmp = a.getName().compareTo(b.getName());
+        }
+        return cmp;
+    }
+
+    private HashMap<String, Entry> entriesByName = new HashMap<>();
 
     public MachOSymtab(String name, MachOObjectFile objectFile, Segment64Command containingSegment, MachOStrtab strtab) {
         objectFile.super(name, containingSegment, objectFile.getWordSizeInBytes());
         setStrtab(strtab);
     }
 
+    public SortedSet<Entry> getEntries() {
+        return entries;
+    }
+
     public void setStrtab(MachOStrtab strtab) {
         this.strtab = strtab;
-        strtab.setContentProvider(new Iterable<String>() {
-
-            @Override
-            public Iterator<String> iterator() {
-                final Iterator<Entry> underlying = sortedEntries().iterator();
-                return new Iterator<String>() {
-
-                    @Override
-                    public boolean hasNext() {
-                        return underlying.hasNext();
-                    }
-
-                    @Override
-                    public String next() {
-                        Entry ent = underlying.next();
-                        return ent.getNameInObject();
-                    }
-
-                    @Override
-                    public void remove() {
-                        throw new UnsupportedOperationException();
-                    }
-                };
-            }
-        });
+        strtab.setContentProvider(entries.stream().map(Entry::getNameInObject)::iterator);
     }
 
     enum ReferenceType {
@@ -160,14 +151,27 @@ public class MachOSymtab extends MachOObjectFile.LinkEditElement implements Symb
         }
     }
 
-    class Entry implements Symbol {
-
+    static final class Entry implements Symbol {
         /*
          * In Mach-O-speak, this class is modelling an 'nlist64', but I couldn't bring myself to
          * call it that.
          */
 
-        boolean isCode;
+        private final boolean isCode;
+        private final String name;
+        private final MachOSection section; // use null for NO_SECT
+
+        // these three fields model the content of 'n_type' (we ignore STABS stuff)
+        private final boolean privateExtern;
+        private final boolean extern;
+        private final SymbolType type;
+
+        // these two fields model the content of 'n_desc'
+        private final ReferenceType refType;
+        private final EnumSet<DescFlag> descFlags;
+
+        // the symbol value
+        private final long value;
 
         /**
          * Constructs an undefined symbol table entry.
@@ -176,7 +180,7 @@ public class MachOSymtab extends MachOObjectFile.LinkEditElement implements Symb
          * @param isCode whether the symbol is expected to mark a code location
          */
         Entry(String name, boolean isCode) {
-            this(name, null, 0, false, /* isExtern */true, SymbolType.UNDF, ReferenceType.REFERENCE_FLAG_UNDEFINED_LAZY, EnumSet.noneOf(DescFlag.class), 0, isCode);
+            this(name, null, false, /* isExtern */true, SymbolType.UNDF, ReferenceType.REFERENCE_FLAG_UNDEFINED_LAZY, EnumSet.noneOf(DescFlag.class), 0, isCode);
         }
 
         /**
@@ -186,25 +190,20 @@ public class MachOSymtab extends MachOObjectFile.LinkEditElement implements Symb
          * @param isCode whether the symbol marks a code location
          */
         Entry(String name, Section referencedSection, long referencedOffset, boolean isGlobal, boolean isCode) {
-            this(name, (MachOSection) referencedSection, 0, false, isGlobal, SymbolType.SECT, ReferenceType.REFERENCE_FLAG_DEFINED, EnumSet.noneOf(DescFlag.class), (int) referencedOffset, isCode);
+            this(name, (MachOSection) referencedSection, false, isGlobal, SymbolType.SECT, ReferenceType.REFERENCE_FLAG_DEFINED, EnumSet.noneOf(DescFlag.class), (int) referencedOffset, isCode);
         }
 
-        /**
-         * Constructs a defined symbol table entry.
-         *
-         * @param isGlobal whether the symbol should be visible outside the defining object
-         * @param isCode whether the symbol marks a code location
-         */
-        Entry(String name, int referencedSectionIndex, long referencedOffset, boolean isGlobal, boolean isCode) {
-            this(name, null, referencedSectionIndex, false, isGlobal, SymbolType.SECT, ReferenceType.REFERENCE_FLAG_DEFINED, EnumSet.noneOf(DescFlag.class), (int) referencedOffset, isCode);
-        }
-
-        boolean isStabs() {
-            return false; // we're not planning stabs support
-        }
-
-        byte stabValue() {
-            throw new IllegalStateException();
+        // private constructor initializing all fields and adding to the entries list
+        private Entry(String name, MachOSection section, boolean privateExtern, boolean extern, SymbolType type, ReferenceType refType, EnumSet<DescFlag> descFlags, long value, boolean isCode) {
+            this.name = name;
+            this.section = section;
+            this.privateExtern = privateExtern;
+            this.extern = extern;
+            this.type = type;
+            this.refType = refType;
+            this.descFlags = descFlags;
+            this.value = value;
+            this.isCode = isCode;
         }
 
         boolean isPrivateExtern() {
@@ -213,51 +212,6 @@ public class MachOSymtab extends MachOObjectFile.LinkEditElement implements Symb
 
         boolean isExternal() {
             return privateExtern || extern;
-        }
-
-        String name;
-
-        MachOSection section; // use null for NO_SECT
-        int sectionIndex; // used when our section might not be constructed yet
-
-        // these three fields model the content of 'n_type' (we ignore STABS stuff)
-        boolean privateExtern;
-        boolean extern;
-        SymbolType type;
-
-        // these two fields model the content of 'n_desc'
-        ReferenceType refType;
-        EnumSet<DescFlag> descFlags;
-
-        // the symbol value
-        long value;
-
-        // private constructor initializing all fields and adding to the entries list
-        private Entry(String name, MachOSection section, int sectionIndex, boolean privateExtern, boolean extern, SymbolType type, ReferenceType refType, EnumSet<DescFlag> descFlags, long value,
-                        boolean isCode) {
-            this.name = name;
-            this.section = section;
-            this.sectionIndex = sectionIndex;
-            this.privateExtern = privateExtern;
-            this.extern = extern;
-            this.type = type;
-            this.refType = refType;
-            this.descFlags = descFlags;
-            this.value = value;
-
-            this.isCode = isCode;
-
-            List<Entry> entriesWithName = entriesByName.computeIfAbsent(name, k -> new ArrayList<>());
-            if (!entriesWithName.isEmpty()) {
-                throw new RuntimeException("Duplicate symbol with name: " + name);
-            }
-            entriesWithName.add(this);
-            entries.add(this);
-            entriesAreSorted = false;
-        }
-
-        int getLibraryOrdinal() {
-            return -1;
         }
 
         @Override
@@ -274,18 +228,7 @@ public class MachOSymtab extends MachOObjectFile.LinkEditElement implements Symb
 
         @Override
         public Section getDefinedSection() {
-            if (section != null) {
-                return section;
-            } else if (sectionIndex != 0) {
-                this.section = (MachOSection) getOwner().getSections().get(sectionIndex);
-                if (this.section == null) {
-                    throw new IllegalStateException("symbol references nonexistent section");
-                }
-                return section;
-            } else {
-                return null;
-            }
-
+            return section;
         }
 
         public String getNameInObject() {
@@ -297,7 +240,6 @@ public class MachOSymtab extends MachOObjectFile.LinkEditElement implements Symb
              * dlsym() "foo" just fine. It's only in the encoded object file that the underscore
              * exists, so we hide it here.
              */
-
             if (isExternal()) {
                 return "_" + name;
             } else {
@@ -308,11 +250,6 @@ public class MachOSymtab extends MachOObjectFile.LinkEditElement implements Symb
         @Override
         public String getName() {
             return name;
-        }
-
-        @Override
-        public SymbolTable getOwningSymbolTable() {
-            return MachOSymtab.this;
         }
 
         @Override
@@ -351,13 +288,9 @@ public class MachOSymtab extends MachOObjectFile.LinkEditElement implements Symb
 
         @Override
         public String toString() {
-            return "symbol '" + name + "', value " + value; // FIXME: more detail please
+            return "symbol '" + name + "', value " + value;
         }
     }
-
-    // public Iterable<String> getContentProvider() {
-    // return entriesByName.keySet();
-    // }
 
     static class EntryStruct {
 
@@ -389,18 +322,8 @@ public class MachOSymtab extends MachOObjectFile.LinkEditElement implements Symb
             oa.write8Byte(value);
         }
 
-        void read(InputDisassembler in) {
-            this.strx = in.read4Byte();
-            this.type = in.readByte();
-            this.sect = in.readByte();
-            this.desc = in.read2Byte();
-            this.value = in.read8Byte();
-        }
-
-        int getWrittenSize() {
-            OutputAssembler oa = AssemblyBuffer.createOutputAssembler();
-            this.write(oa);
-            return oa.pos();
+        static int getWrittenSize() {
+            return 16;
         }
     }
 
@@ -415,7 +338,7 @@ public class MachOSymtab extends MachOObjectFile.LinkEditElement implements Symb
          * We also depend on the vaddr of any referenced defined symbol. It doesn't matter whether
          * we're dynamic! Every Mach-O section has a vaddr, even in a relocatable file.
          */
-        for (Entry e : sortedEntries()) {
+        for (Entry e : entries) {
             Section s = e.getDefinedSection();
             if (s != null) {
                 deps.add(BuildDependency.createOrGet(ourContent, decisions.get(s).getDecision(LayoutDecision.Kind.VADDR)));
@@ -430,7 +353,7 @@ public class MachOSymtab extends MachOObjectFile.LinkEditElement implements Symb
     }
 
     private int getWrittenSize() {
-        return entries.size() * (new EntryStruct()).getWrittenSize();
+        return entries.size() * EntryStruct.getWrittenSize();
     }
 
     @Override
@@ -438,149 +361,56 @@ public class MachOSymtab extends MachOObjectFile.LinkEditElement implements Symb
         return getWrittenSize();
     }
 
-    private static int symbolRunNumber(Entry e) {
-        if (e.isLocal()) {
-            return 0;
-        } else if (e.isDefined() && e.isExternal()) {
-            return 1;
-        } else if (!e.isDefined() && e.isExternal()) {
-            return 2;
-        } else {
-            throw new AssertionError("unreachable");
-        }
-    }
-
-    private void sort() {
-        /*
-         * We need to sort entries s.t. it is chunked by the following categories:
-         *
-         * - locals
-         *
-         * - defined externals
-         *
-         * - undefined externals.
-         *
-         * We put them in exactly this order, for now. (Round-tripping would dictate that any
-         * permutation of this order should be generable.) Use the {@link symbolRunNumber} helper to
-         * do this. If they're in the same chunk, we sort by name
-         */
-        if (!entriesAreSorted) {
-            entriesAreSorted = true;
-
-            Collections.sort(entries, new Comparator<Entry>() {
-
-                @Override
-                public int compare(Entry ent0, Entry ent1) {
-                    int chunkCompare = Integer.compare(symbolRunNumber(ent0), symbolRunNumber(ent1));
-                    if (chunkCompare != 0) {
-                        return chunkCompare;
-                    } else {
-                        /* sort by name */
-                        return ent0.name.compareTo(ent1.name);
-                    }
-                }
-            });
-        }
-    }
-
-    public List<Entry> sortedEntries() {
-        sort();
-        return entries;
-    }
-
-    interface EntryPredicate {
-
-        boolean apply(Entry e);
-    }
-
-    int firstIndexMatching(EntryPredicate p) {
-        int i = -1;
-        for (Entry e : sortedEntries()) {
-            ++i;
-            if (p.apply(e)) {
+    private int firstIndexMatching(Predicate<Entry> p) {
+        int i = 0;
+        for (Entry e : entries) {
+            if (p.test(e)) {
                 return i;
             }
+            i++;
         }
         return -1;
     }
 
-    int firstIndexMatchingOrZero(EntryPredicate p) {
+    private int firstIndexMatchingOrZero(Predicate<Entry> p) {
         int firstIndex = firstIndexMatching(p);
-        if (firstIndex == -1) {
-            return 0;
-        } else {
-            return firstIndex;
-        }
+        return (firstIndex != -1) ? firstIndex : 0;
     }
 
-    int nContiguousMatching(EntryPredicate p) {
+    private int nContiguousMatching(Predicate<Entry> p) {
         int n = 0;
-        for (int i = firstIndexMatching(p); i != -1 && i < entries.size() && p.apply(entries.get(i)); ++i) {
-            ++n;
+        for (Entry e : entries) {
+            if (p.test(e)) {
+                n++;
+            } else if (n != 0) {
+                return n;
+            }
         }
         return n;
     }
 
     int firstLocal() {
-        return firstIndexMatchingOrZero(new EntryPredicate() {
-
-            @Override
-            public boolean apply(Entry e) {
-                return e.isLocal();
-            }
-        });
-
+        return firstIndexMatchingOrZero(Entry::isLocal);
     }
 
     int nLocals() {
-        return nContiguousMatching(new EntryPredicate() {
-
-            @Override
-            public boolean apply(Entry e) {
-                return e.isLocal();
-            }
-        });
-
+        return nContiguousMatching(Entry::isLocal);
     }
 
     int firstExtDef() {
-        return firstIndexMatchingOrZero(new EntryPredicate() {
-
-            @Override
-            public boolean apply(Entry e) {
-                return e.isExternal() && e.isDefined();
-            }
-        });
+        return firstIndexMatchingOrZero(e -> e.isExternal() && e.isDefined());
     }
 
     int nExtDef() {
-        return nContiguousMatching(new EntryPredicate() {
-
-            @Override
-            public boolean apply(Entry e) {
-                return e.isExternal() && e.isDefined();
-            }
-        });
+        return nContiguousMatching(e -> e.isExternal() && e.isDefined());
     }
 
     int firstUndef() {
-        return firstIndexMatchingOrZero(new EntryPredicate() {
-
-            @Override
-            public boolean apply(Entry e) {
-                return !e.isDefined();
-            }
-        });
+        return firstIndexMatchingOrZero(e -> !e.isDefined());
     }
 
     int nUndef() {
-        return nContiguousMatching(new EntryPredicate() {
-
-            @Override
-            public boolean apply(Entry e) {
-                return !e.isDefined();
-            }
-        });
+        return nContiguousMatching(e -> !e.isDefined());
     }
 
     @SuppressWarnings({"unused", "static-method"})
@@ -604,7 +434,7 @@ public class MachOSymtab extends MachOObjectFile.LinkEditElement implements Symb
         StringTable t = new StringTable(strtabContent);
         EntryStruct s = new EntryStruct();
 
-        for (Entry e : sortedEntries()) {
+        for (Entry e : entries) {
             s.strx = t.indexFor(e.getNameInObject());
             assert s.strx != -1;
             s.type = (byte) (e.type.value() | (e.privateExtern ? EntryStruct.N_PEXT : 0) | (e.extern ? EntryStruct.N_EXT : 0));
@@ -638,33 +468,23 @@ public class MachOSymtab extends MachOObjectFile.LinkEditElement implements Symb
 
     @Override
     public Symbol newDefinedEntry(String name, Section referencedSection, long referencedOffset, long size, boolean isGlobal, boolean isCode) {
-        return new Entry(name, referencedSection, referencedOffset, isGlobal, isCode);
+        return addEntry(new Entry(name, referencedSection, referencedOffset, isGlobal, isCode));
     }
 
     @Override
     public Symbol newUndefinedEntry(String name, boolean isCode) {
-        return new Entry(name, isCode);
+        return addEntry(new Entry(name, isCode));
     }
 
-    public List<Entry> entriesWithName(String symName) {
-        List<Entry> found = entriesByName.get(symName);
-        if (found == null) {
-            found = new ArrayList<>();
-            entriesByName.put(symName, found);
-        }
-        return Collections.unmodifiableList(found);
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    @Override
-    public List<Symbol> symbolsWithName(String symName) {
-        return (List) entriesWithName(symName);
+    private Entry addEntry(Entry entry) {
+        entries.add(entry);
+        entriesByName.put(entry.getName(), entry);
+        return entry;
     }
 
     @Override
-    public boolean containsSymbolWithName(String symName) {
-        List<Entry> matches = entriesByName.get(symName);
-        return matches != null && !matches.isEmpty();
+    public Symbol getSymbol(String name) {
+        return entriesByName.get(name);
     }
 
     @Override
@@ -681,49 +501,18 @@ public class MachOSymtab extends MachOObjectFile.LinkEditElement implements Symb
         return segment instanceof LinkEditSegment64Command;
     }
 
-    // begin generated methods
-
-    @Override
-    public boolean contains(Symbol o) {
-        return entries.contains(o);
-    }
-
-    @Override
-    public boolean equals(Object arg0) {
-        if (!(arg0 instanceof MachOSymtab)) {
-            return false;
+    public int indexOf(Symbol sym) {
+        SortedSet<Entry> headSet = entries.headSet((Entry) sym);
+        int before = headSet.size();
+        if (before == 0) { // empty headSet means either the symbol is first, or that it is unknown
+            return entries.contains(sym) ? 0 : -1;
         }
-        MachOSymtab other = (MachOSymtab) arg0;
-        if (other == this) {
-            return true;
-        }
-        sort();
-        other.sort();
-        return entries.equals(other.entries);
-    }
-
-    @Override
-    public Symbol get(int n) {
-        return sortedEntries().get(n);
-    }
-
-    @Override
-    public int hashCode() {
-        return entries.hashCode();
-    }
-
-    @Override
-    public int indexOf(Symbol arg0) {
-        return sortedEntries().indexOf(arg0);
+        return before;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
     public Iterator<Symbol> iterator() {
-        return (Iterator) sortedEntries().iterator();
-    }
-
-    public void trimToSize() {
-        entries.trimToSize();
+        return (Iterator) entries.iterator();
     }
 }
