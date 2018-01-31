@@ -167,7 +167,7 @@ def native_image_option_properties(option_kind, option_flag, native_image_root):
         relsymlink(option_properties, target_path)
 
 flag_suitename_map = {
-    'js' : ('graal-js', ['GRAALJS', 'GRAALJS_LAUNCHER', 'ICU4J'], ['ICU4J-DIST']),
+    'js' : ('graal-js', ['GRAALJS', 'GRAALJS_LAUNCHER', 'ICU4J'], ['ICU4J-DIST'], 'js'),
     'ruby' : ('truffleruby', ['TRUFFLERUBY', 'TRUFFLERUBY-LAUNCHER'], ['TRUFFLERUBY-ZIP']),
     'sulong' : ('sulong', ['SULONG'], ['SULONG_LIBS', 'SULONG_DOC']),
     'python': ('graalpython', ['GRAALPYTHON', 'GRAALPYTHON-LAUNCHER', 'GRAALPYTHON-ENV'], ['GRAALPYTHON-ZIP'])
@@ -353,7 +353,10 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None)
     if language_flag not in flag_suitename_map:
         mx.abort('No truffle-language uses language_flag \'' + language_flag + '\'')
 
-    language_suite_name = flag_suitename_map[language_flag][0]
+    language_entry = flag_suitename_map[language_flag]
+
+    language_suite_name = language_entry[0]
+    language_repo_name = language_entry[3] if len(language_entry) > 3 else None
 
     urlinfos = [
         mx.SuiteImportURLInfo(mx_urlrewrites.rewriteurl('https://curio.ssw.jku.at/nexus/content/repositories/snapshots'),
@@ -364,9 +367,10 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None)
     if not version:
         # If no specific version requested use binary import of last recently deployed master version
         version = 'git-bref:binary'
+        repo_suite_name = language_repo_name if language_repo_name else language_suite_name
         urlinfos.append(
             mx.SuiteImportURLInfo(
-                mx_urlrewrites.rewriteurl('https://github.com/graalvm/{0}.git'.format(language_suite_name)),
+                mx_urlrewrites.rewriteurl('https://github.com/graalvm/{0}.git'.format(repo_suite_name)),
                 'source',
                 mx.vc_system('git')
             )
@@ -376,7 +380,8 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None)
         language_suite_name,
         version=version,
         urlinfos=urlinfos,
-        kind=None
+        kind=None,
+        in_subdir=bool(language_repo_name)
     )
 
     if not language_suite:
@@ -384,11 +389,11 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None)
 
     language_dir = join('languages', language_flag)
 
-    language_suite_depnames = flag_suitename_map[language_flag][1]
+    language_suite_depnames = language_entry[1]
     language_deps = [dep for dep in language_suite.dists + language_suite.libs if dep.name in language_suite_depnames]
     native_image_layout(language_deps, language_dir, native_image_root)
 
-    language_suite_nativedistnames = flag_suitename_map[language_flag][2]
+    language_suite_nativedistnames = language_entry[2]
     language_nativedists = [dist for dist in language_suite.dists if dist.name in language_suite_nativedistnames]
     native_image_extract(language_nativedists, language_dir, native_image_root)
 
