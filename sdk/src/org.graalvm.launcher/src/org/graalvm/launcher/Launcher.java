@@ -1104,10 +1104,13 @@ public abstract class Launcher {
                 }
                 if (isBooleanOption(descriptor)) {
                     Boolean val = (Boolean) descriptor.getKey().getDefaultValue();
+                    if (helpLen != 0) {
+                        helpMsg += ' ';
+                    }
                     if (val == null || !((boolean) val)) {
-                        helpMsg += " Default: - (disabled).";
+                        helpMsg += "Default: - (disabled).";
                     } else {
-                        helpMsg += " Default: + (enabled).";
+                        helpMsg += "Default: + (enabled).";
                     }
                     printOption("--native.XX:\u00b1" + entry.getKey(), helpMsg);
                 } else {
