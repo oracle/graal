@@ -22,6 +22,8 @@
  */
 package org.graalvm.compiler.nodes.calc;
 
+import static jdk.vm.ci.code.CodeUtil.mask;
+
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -278,7 +280,7 @@ public abstract class IntegerLowerThanNode extends CompareNode {
                     }
                     low += 1;
                 }
-                if (compare(low, lowerBound(xStamp)) > 0) {
+                if (compare(low, lowerBound(xStamp)) > 0 || upperBound(xStamp) != (xStamp.upperBound() & mask(xStamp.getBits()))) {
                     return forInteger(bits, low, upperBound(xStamp));
                 }
             } else {
@@ -290,7 +292,7 @@ public abstract class IntegerLowerThanNode extends CompareNode {
                     }
                     low -= 1;
                 }
-                if (compare(low, upperBound(xStamp)) < 0) {
+                if (compare(low, upperBound(xStamp)) < 0 || lowerBound(xStamp) != (xStamp.lowerBound() & mask(xStamp.getBits()))) {
                     return forInteger(bits, lowerBound(xStamp), low);
                 }
             }

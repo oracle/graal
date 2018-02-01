@@ -41,8 +41,8 @@ public abstract class AbstractFixedGuardNode extends DeoptimizingFixedWithNextNo
 
     public static final NodeClass<AbstractFixedGuardNode> TYPE = NodeClass.create(AbstractFixedGuardNode.class);
     @Input(InputType.Condition) protected LogicNode condition;
-    protected final DeoptimizationReason reason;
-    protected final DeoptimizationAction action;
+    protected DeoptimizationReason reason;
+    protected DeoptimizationAction action;
     protected JavaConstant speculation;
     protected boolean negated;
 
@@ -133,5 +133,15 @@ public abstract class AbstractFixedGuardNode extends DeoptimizingFixedWithNextNo
     @Override
     public boolean canDeoptimize() {
         return true;
+    }
+
+    @Override
+    public void setAction(DeoptimizationAction action) {
+        this.action = action;
+    }
+
+    @Override
+    public void setReason(DeoptimizationReason reason) {
+        this.reason = reason;
     }
 }
