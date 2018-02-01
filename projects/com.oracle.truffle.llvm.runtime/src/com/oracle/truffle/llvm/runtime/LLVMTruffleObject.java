@@ -171,20 +171,26 @@ public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider
 
         protected abstract long executeToPointer(VirtualFrame frame, Object object, LLVMObjectNativeLibrary lib);
 
-        @Specialization(guards = "lib.isPointer(frame, object)")
+        @Specialization(guards = "object == null")
+        @SuppressWarnings("unused")
+        protected long doNull(Object object, LLVMObjectNativeLibrary lib) {
+            return 0;
+        }
+
+        @Specialization(guards = {"object != null", "checkNull(isNull, object)"})
+        @SuppressWarnings("unused")
+        protected long doNull(TruffleObject object, LLVMObjectNativeLibrary lib,
+                        @Cached("createIsNull()") Node isNull) {
+            return 0;
+        }
+
+        @Specialization(guards = {"object != null", "lib.isPointer(frame, object)"})
         protected long doPointer(VirtualFrame frame, Object object, LLVMObjectNativeLibrary lib) {
             try {
                 return lib.asPointer(frame, object);
             } catch (InteropException ex) {
                 throw ex.raise();
             }
-        }
-
-        @Specialization(guards = "checkNull(isNull, object)")
-        @SuppressWarnings("unused")
-        protected long doNull(TruffleObject object, LLVMObjectNativeLibrary lib,
-                        @Cached("createIsNull()") Node isNull) {
-            return 0;
         }
 
         static Node createIsNull() {
