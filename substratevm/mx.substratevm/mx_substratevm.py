@@ -130,9 +130,6 @@ def native_image_layout(dists, subdir, native_image_root):
         relsymlink(jar_path, join(dest_path, basename(jar_path)))
     for dist in dists:
         mx.logv('Add ' + type(dist).__name__ + ' '  + str(dist) + ' to ' + dest_path)
-        if dist.isLibrary():
-            dist.get_path(resolve=True)
-            dist.get_source_path(resolve=True)
         symlink_jar(dist.path)
         if not dist.isLibrary():
             symlink_jar(dist.sourcesPath)
