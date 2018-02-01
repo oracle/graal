@@ -75,7 +75,7 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
     }
 
     @Override
-    protected void afterClone(@SuppressWarnings("unused") Node other) {
+    protected void afterClone(Node other) {
         updateInliningLogAfterClone(other);
     }
 

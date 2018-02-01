@@ -39,6 +39,7 @@ public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDur
 
     CallTargetNode callTarget();
 
+    @Override
     int bci();
 
     Node predecessor();
@@ -60,6 +61,7 @@ public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDur
 
     void setPolymorphic(boolean value);
 
+    @Override
     default ResolvedJavaMethod getTargetMethod() {
         return callTarget() != null ? callTarget().targetMethod() : null;
     }

@@ -332,8 +332,15 @@ public class InliningLog {
 
     private void formatAsTree(Callsite site, String indent, StringBuilder builder) {
         String position = site.positionString();
-        String decision = String.join(System.lineSeparator() + indent + "    ", site.decisions.stream().map(d -> d.toString()).collect(Collectors.toList()));
-        builder.append(indent).append("at ").append(position).append(": ").append(decision).append(System.lineSeparator());
+        builder.append(indent).append("at ").append(position).append(": ");
+        if (site.decisions.isEmpty()) {
+            builder.append(System.lineSeparator());
+        } else {
+            for (Decision decision : site.decisions) {
+                builder.append(decision.toString());
+                builder.append(System.lineSeparator());
+            }
+        }
         for (Callsite child : site.children) {
             formatAsTree(child, indent + "  ", builder);
         }

@@ -93,7 +93,7 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     }
 
     @Override
-    protected void afterClone(@SuppressWarnings("unused") Node other) {
+    protected void afterClone(Node other) {
         updateInliningLogAfterClone(other);
     }
 

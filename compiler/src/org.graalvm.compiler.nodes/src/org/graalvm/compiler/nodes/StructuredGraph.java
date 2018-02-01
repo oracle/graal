@@ -457,6 +457,13 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return inliningLog;
     }
 
+    public void logInliningTree() {
+        switch (GraalOptions.TraceInlining.getValue(getOptions())) {
+            case Tree:
+                getDebug().log(DebugContext.BASIC_LEVEL, getInliningLog().formatAsTree());
+        }
+    }
+
     /**
      * Creates a copy of this graph.
      *
