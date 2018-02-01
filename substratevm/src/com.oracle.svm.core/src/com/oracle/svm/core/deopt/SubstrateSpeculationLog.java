@@ -50,7 +50,9 @@ public class SubstrateSpeculationLog implements SpeculationLog {
 
     @Override
     public JavaConstant speculate(SpeculationReason reason) {
-        assert maySpeculate(reason);
+        if (!maySpeculate(reason)) {
+            throw new IllegalArgumentException("Cannot make speculation with reason " + reason + " as it is known to fail");
+        }
         return SubstrateObjectConstant.forObject(reason);
     }
 

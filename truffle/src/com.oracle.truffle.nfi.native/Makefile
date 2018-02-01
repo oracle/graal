@@ -31,6 +31,7 @@ QUIETLY$(MX_VERBOSE)  = @
 
 OBJECTS=api.o \
 	closure.o \
+	intrinsics.o \
 	jni.o \
 	lookup.o \
 	signature.o
@@ -38,15 +39,14 @@ OBJECTS=api.o \
 default: bin/${LIBTRUFFLENFI}
 
 OBJECTFILES=${OBJECTS:%.o=bin/%.o}
-CPPFLAGS+= -I${VPATH}/include -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${OS} -Ilibffi-build/include
-
+CPPFLAGS+= -I${VPATH}/include -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${OS} -Ilibffi-build/include -DOS_${OS}
 CFLAGS=-g -fPIC
 LDFLAGS=-g -ldl
 LIBFFI_LIB=libffi-build/.libs/libffi.a
 
 ifeq (${OS},solaris)
-CFLAGS+=-m64
-LDFLAGS+=-m64
+CFLAGS+=-m64 -pthread
+LDFLAGS+=-m64 -pthread
 endif
 
 

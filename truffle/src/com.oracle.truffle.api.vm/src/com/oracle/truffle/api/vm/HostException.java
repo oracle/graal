@@ -28,7 +28,7 @@ import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- * Exception wrapper for an error occured in the host language.
+ * Exception wrapper for an error occurred in the host language.
  */
 @SuppressWarnings("serial")
 final class HostException extends RuntimeException implements TruffleException {

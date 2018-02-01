@@ -30,6 +30,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -106,13 +107,7 @@ final class ArrayTruffleObject implements TruffleObject, ForeignAccess.StandardF
 
     @Override
     public CallTarget accessInvoke(int argumentsLength) {
-        if (argumentsLength == 0) {
-            return target(new DuplNode());
-        }
-        if (argumentsLength == 1) {
-            return target(new InvokeNode());
-        }
-        return null;
+        return target(new InvokeNode());
     }
 
     @Override
@@ -122,7 +117,7 @@ final class ArrayTruffleObject implements TruffleObject, ForeignAccess.StandardF
 
     @Override
     public CallTarget accessKeyInfo() {
-        return null;
+        return target(RootNode.createConstantNode(KeyInfo.newBuilder().setInvocable(true).setReadable(true).build()));
     }
 
     @Override
@@ -168,31 +163,19 @@ final class ArrayTruffleObject implements TruffleObject, ForeignAccess.StandardF
         @Override
         public Object execute(VirtualFrame frame) {
             final List<Object> args = ForeignAccess.getArguments(frame);
-            if (!"get".equals(args.get(0))) {
-                return null;
-            }
-            int index = ((Number) args.get(1)).intValue();
-            if (values[index] instanceof Object[]) {
-                return new ArrayTruffleObject((Object[]) values[index]);
+            if ("get".equals(args.get(0))) {
+                int index = ((Number) args.get(1)).intValue();
+                if (values[index] instanceof Object[]) {
+                    return new ArrayTruffleObject((Object[]) values[index]);
+                } else {
+                    return values[index];
+                }
+            } else if ("dupl".equals(args.get(0))) {
+                assertNotEquals("Cannot allocate duplicate on forbidden thread", forbiddenDupl, Thread.currentThread());
+                return new ArrayTruffleObject(values);
             } else {
-                return values[index];
+                throw new AssertionError();
             }
-        }
-    }
-
-    private final class DuplNode extends RootNode {
-        DuplNode() {
-            super(null);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            final List<Object> args = ForeignAccess.getArguments(frame);
-            if (!"dupl".equals(args.get(0))) {
-                return null;
-            }
-            assertNotEquals("Cannot allocate duplicate on forbidden thread", forbiddenDupl, Thread.currentThread());
-            return new ArrayTruffleObject(values);
         }
     }
 

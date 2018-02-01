@@ -32,9 +32,9 @@
 #ifndef __TRUFFLE_NATIVE_H
 #define __TRUFFLE_NATIVE_H
 
-#include "com_oracle_truffle_nfi_NativeAllocation.h"
-#include "com_oracle_truffle_nfi_NFIContext.h"
-#include "com_oracle_truffle_nfi_ClosureNativePointer.h"
-#include "com_oracle_truffle_nfi_NativeString.h"
+#include "com_oracle_truffle_nfi_impl_NativeAllocation.h"
+#include "com_oracle_truffle_nfi_impl_NFIContext.h"
+#include "com_oracle_truffle_nfi_impl_ClosureNativePointer.h"
+#include "com_oracle_truffle_nfi_impl_NativeString.h"
 
 #endif

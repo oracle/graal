@@ -30,7 +30,6 @@ import static com.oracle.truffle.api.vm.VMAccessor.NODES;
 
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.reflect.Method;
 import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Collections;
@@ -40,6 +39,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import org.graalvm.options.OptionValues;
@@ -48,17 +49,15 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
-import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.Scope;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
@@ -66,13 +65,14 @@ import com.oracle.truffle.api.impl.TruffleLocator;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-import java.util.concurrent.atomic.AtomicReference;
+import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValueNode;
+import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValuesNode;
 
 /*
  * This class is exported to the Graal SDK. Keep that in mind when changing its class or package name.
@@ -233,8 +233,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             throw ((EngineException) e).e;
         } else if (e instanceof PolyglotUnsupportedException) {
             throw (PolyglotUnsupportedException) e;
+        } else if (e instanceof PolyglotClassCastException) {
+            throw (PolyglotClassCastException) e;
         } else if (e instanceof PolyglotIllegalStateException) {
             throw (PolyglotIllegalStateException) e;
+        } else if (e instanceof PolyglotNullPointerException) {
+            throw (PolyglotNullPointerException) e;
+        } else if (e instanceof PolyglotIllegalArgumentException) {
+            throw (PolyglotIllegalArgumentException) e;
+        } else if (e instanceof PolyglotArrayIndexOutOfBoundsException) {
+            throw (PolyglotArrayIndexOutOfBoundsException) e;
         } else {
             // fallthrough
         }
@@ -403,27 +411,35 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             return languageContext.env;
         }
 
-        @Override
-        public LanguageInfo getObjectLanguage(Object obj, Object vmObject) {
-            PolyglotLanguageContext[] contexts = PolyglotContextImpl.requireContext().contexts;
-            for (PolyglotLanguageContext context : contexts) {
-                PolyglotLanguage language = context.language;
+        static PolyglotLanguage findObjectLanguage(PolyglotContextImpl context, Object value) {
+            PolyglotLanguageContext[] contexts = context.contexts;
+            for (PolyglotLanguageContext languageContext : contexts) {
+                PolyglotLanguage language = languageContext.language;
                 if (!language.initialized) {
                     continue;
                 }
                 if (language.cache.singletonLanguage instanceof HostLanguage) {
                     // The HostLanguage might not have context created even when JavaObjects exist
                     // Check it separately:
-                    if (((HostLanguage) language.cache.singletonLanguage).isObjectOfLanguage(obj)) {
-                        return language.info;
+                    if (((HostLanguage) language.cache.singletonLanguage).isObjectOfLanguage(value)) {
+                        return language;
                     } else {
                         continue;
                     }
                 }
-                Env env = context.env;
-                if (env != null && LANGUAGE.isObjectOfLanguage(env, obj)) {
-                    return language.info;
+                Env env = languageContext.env;
+                if (env != null && LANGUAGE.isObjectOfLanguage(env, value)) {
+                    return language;
                 }
+            }
+            return null;
+        }
+
+        @Override
+        public LanguageInfo getObjectLanguage(Object obj, Object vmObject) {
+            PolyglotLanguage language = findObjectLanguage(PolyglotContextImpl.requireContext(), obj);
+            if (language != null) {
+                return language.info;
             }
             return null;
         }
@@ -564,81 +580,26 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             return truffleObject;
         }
 
-        private static boolean assertKeyType(Object key) {
-            assert key instanceof Class || key instanceof Method || key instanceof Message : "Unexpected key: " + key;
-            return true;
+        @Override
+        public <T> T installJavaInteropCodeCache(Object languageContext, Object key, T value, Class<T> expectedType) {
+            if (languageContext == null) {
+                return value;
+            }
+            T result = expectedType.cast(((PolyglotLanguageContext) languageContext).context.engine.javaInteropCodeCache.putIfAbsent(key, value));
+            if (result != null) {
+                return result;
+            } else {
+                return value;
+            }
         }
 
         @Override
-        public CallTarget lookupOrRegisterComputation(Object truffleObject, RootNode computation, Object... keys) {
-            CompilerAsserts.neverPartOfCompilation();
-            assert keys.length > 0;
-            Object key;
-            if (keys.length == 1) {
-                key = keys[0];
-                assert TruffleOptions.AOT || assertKeyType(key);
-            } else {
-                Pair p = null;
-                for (Object k : keys) {
-                    assert TruffleOptions.AOT || assertKeyType(k);
-                    p = new Pair(k, p);
-                }
-                key = p;
-            }
-            PolyglotContextImpl context = PolyglotContextImpl.current();
-            if (context == null) {
-                if (computation != null) {
-                    return Truffle.getRuntime().createCallTarget(computation);
-                } else {
-                    return null;
-                }
-            } else {
-                synchronized (context) {
-                    CallTarget cachedTarget = context.javaInteropCache.get(key);
-                    if (cachedTarget == null && computation != null) {
-                        cachedTarget = Truffle.getRuntime().createCallTarget(computation);
-                        context.javaInteropCache.put(key, cachedTarget);
-                    }
-                    return cachedTarget;
-                }
-            }
-        }
-
-        private static final class Pair {
-            final Object key;
-            final Pair next;
-
-            Pair(Object key, Pair next) {
-                this.key = key;
-                this.next = next;
+        public <T> T lookupJavaInteropCodeCache(Object languageContext, Object key, Class<T> expectedType) {
+            if (languageContext == null) {
+                return null;
             }
 
-            @Override
-            public int hashCode() {
-                return this.key.hashCode() + (next == null ? 3754 : next.hashCode());
-            }
-
-            @Override
-            public boolean equals(Object obj) {
-                if (this == obj) {
-                    return true;
-                }
-                if (obj == null) {
-                    return false;
-                }
-                if (getClass() != obj.getClass()) {
-                    return false;
-                }
-                final Pair other = (Pair) obj;
-                if (!Objects.equals(this.key, other.key)) {
-                    return false;
-                }
-                if (!Objects.equals(this.next, other.next)) {
-                    return false;
-                }
-                return true;
-            }
-
+            return expectedType.cast(((PolyglotLanguageContext) languageContext).context.engine.javaInteropCodeCache.get(key));
         }
 
         @Override
@@ -752,6 +713,21 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
+        public RootNode wrapHostBoundary(ExecutableNode executableNode, Supplier<String> name) {
+            return new PolyglotBoundaryRootNode(name, executableNode);
+        }
+
+        @Override
+        public BiFunction<Object, Object, Object> createToGuestValueNode() {
+            return ToGuestValueNode.create();
+        }
+
+        @Override
+        public BiFunction<Object, Object[], Object[]> createToGuestValuesNode() {
+            return ToGuestValuesNode.create();
+        }
+
+        @Override
         public boolean isHostException(Throwable exception) {
             return exception instanceof HostException;
         }
@@ -759,6 +735,46 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public Throwable asHostException(Throwable exception) {
             return ((HostException) exception).getOriginal();
+        }
+
+        @Override
+        public ClassCastException newClassCastException(String message, Throwable cause) {
+            return cause == null ? new PolyglotClassCastException(message) : new PolyglotClassCastException(message, cause);
+        }
+
+        @Override
+        public NullPointerException newNullPointerException(String message, Throwable cause) {
+            return cause == null ? new PolyglotNullPointerException(message) : new PolyglotNullPointerException(message, cause);
+        }
+
+        @Override
+        public IllegalArgumentException newIllegalArgumentException(String message, Throwable cause) {
+            return cause == null ? new PolyglotIllegalArgumentException(message) : new PolyglotIllegalArgumentException(message, cause);
+        }
+
+        @Override
+        public UnsupportedOperationException newUnsupportedOperationException(String message, Throwable cause) {
+            return cause == null ? new PolyglotUnsupportedException(message) : new PolyglotUnsupportedException(message, cause);
+        }
+
+        @Override
+        public ArrayIndexOutOfBoundsException newArrayIndexOutOfBounds(String message, Throwable cause) {
+            return cause == null ? new PolyglotArrayIndexOutOfBoundsException(message) : new PolyglotArrayIndexOutOfBoundsException(message, cause);
+        }
+
+        @Override
+        public Object getCurrentHostContext() {
+            PolyglotContextImpl polyglotContext = PolyglotContextImpl.current();
+            return polyglotContext == null ? null : polyglotContext.getHostContext();
+        }
+
+        @Override
+        public String getValueInfo(Object languageContext, Object value) {
+            PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+            if (context == null) {
+                return Objects.toString(value);
+            }
+            return PolyglotValue.getValueInfo(context, value);
         }
 
         @Override

@@ -118,6 +118,26 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
         return mx.get_jdk(tag=mx_compiler._JVMCI_JDK_TAG).run_java(
             args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
 
+    def rules(self, output, benchmarks, bmSuiteArgs):
+        if benchmarks and len(benchmarks) == 1:
+            return [
+                mx_benchmark.StdOutRule(
+                    # r"Statistics for (?P<methods>[0-9]+) bytecoded nmethods for JVMCI:\n total in heap  = (?P<value>[0-9]+)",
+                    r"Statistics for (?P<methods>[0-9]+) bytecoded nmethods for JVMCI:\n total in heap  = (?P<value>[0-9]+)",
+                    {
+                        "benchmark": benchmarks[0],
+                        "vm": "jvmci",
+                        "metric.name": "code-size",
+                        "metric.value": ("<value>", int),
+                        "metric.unit": "B",
+                        "metric.type": "numeric",
+                        "metric.score-function": "id",
+                        "metric.better": "lower",
+                        "metric.iteration": 0,
+                    })
+            ]
+        return []
+
 
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-EnableJVMCI']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']), _suite, 3)

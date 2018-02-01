@@ -195,8 +195,8 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             enclosingConstructor = clazz.getEnclosingConstructor();
         } catch (InternalError ex) {
             // Checkstyle: stop
-            System.err.println("GR-7731 Error retrieving enclosing method for " + clazz);
-            ex.printStackTrace();
+            System.err.println("GR-7731: Could not find the enclosing method of class " + clazz.getTypeName() +
+                            ". This is a known transient error and most likely does not cause any problems, unless your code relies on the enclosing method of exactly this class. If you can reliably reproduce this problem, please send us a test case.");
             // Checkstyle: resume
             return null;
         }

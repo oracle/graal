@@ -247,7 +247,7 @@ public class OptimizedCallTarget extends InstalledCode implements CompilableTruf
             throw rethrow(compilationProfile.profileExceptionType(t));
         } catch (Throwable t) {
             Throwable profiledT = compilationProfile.profileExceptionType(t);
-            runtime().getTvmci().onThrowable(rootNode, profiledT);
+            runtime().getTvmci().onThrowable(null, this, profiledT, frame);
             throw rethrow(profiledT);
         } finally {
             // this assertion is needed to keep the values from being cleared as non-live locals
@@ -374,7 +374,7 @@ public class OptimizedCallTarget extends InstalledCode implements CompilableTruf
     }
 
     @SuppressWarnings({"unchecked"})
-    private static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
+    static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
         throw (E) ex;
     }
 

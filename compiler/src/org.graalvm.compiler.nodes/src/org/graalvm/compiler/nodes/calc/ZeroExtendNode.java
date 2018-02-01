@@ -50,31 +50,42 @@ public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend, Narrow>
 
     public static final NodeClass<ZeroExtendNode> TYPE = NodeClass.create(ZeroExtendNode.class);
 
+    private final boolean inputAlwaysPositive;
+
     public ZeroExtendNode(ValueNode input, int resultBits) {
-        this(input, PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)), resultBits);
+        this(input, PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)), resultBits, false);
         assert 0 < PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)) && PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)) <= resultBits;
     }
 
-    public ZeroExtendNode(ValueNode input, int inputBits, int resultBits) {
+    public ZeroExtendNode(ValueNode input, int inputBits, int resultBits, boolean inputAlwaysPositive) {
         super(TYPE, ArithmeticOpTable::getZeroExtend, ArithmeticOpTable::getNarrow, inputBits, resultBits, input);
+        this.inputAlwaysPositive = inputAlwaysPositive;
     }
 
     public static ValueNode create(ValueNode input, int resultBits, NodeView view) {
-        return create(input, PrimitiveStamp.getBits(input.stamp(view)), resultBits, view);
+        return create(input, PrimitiveStamp.getBits(input.stamp(view)), resultBits, view, false);
     }
 
     public static ValueNode create(ValueNode input, int inputBits, int resultBits, NodeView view) {
+        return create(input, inputBits, resultBits, view, false);
+    }
+
+    public static ValueNode create(ValueNode input, int inputBits, int resultBits, NodeView view, boolean alwaysPositive) {
         IntegerConvertOp<ZeroExtend> signExtend = ArithmeticOpTable.forStamp(input.stamp(view)).getZeroExtend();
         ValueNode synonym = findSynonym(signExtend, input, inputBits, resultBits, signExtend.foldStamp(inputBits, resultBits, input.stamp(view)));
         if (synonym != null) {
             return synonym;
         }
-        return canonical(null, input, inputBits, resultBits, view);
+        return canonical(null, input, inputBits, resultBits, view, alwaysPositive);
     }
 
     @Override
     public boolean isLossless() {
         return true;
+    }
+
+    public boolean isInputAlwaysPositive() {
+        return inputAlwaysPositive;
     }
 
     @Override
@@ -95,16 +106,16 @@ public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend, Narrow>
             return ret;
         }
 
-        return canonical(this, forValue, getInputBits(), getResultBits(), view);
+        return canonical(this, forValue, getInputBits(), getResultBits(), view, inputAlwaysPositive);
     }
 
-    private static ValueNode canonical(ZeroExtendNode zeroExtendNode, ValueNode forValue, int inputBits, int resultBits, NodeView view) {
+    private static ValueNode canonical(ZeroExtendNode zeroExtendNode, ValueNode forValue, int inputBits, int resultBits, NodeView view, boolean alwaysPositive) {
         ZeroExtendNode self = zeroExtendNode;
         if (forValue instanceof ZeroExtendNode) {
             // xxxx -(zero-extend)-> 0000 xxxx -(zero-extend)-> 00000000 0000xxxx
             // ==> xxxx -(zero-extend)-> 00000000 0000xxxx
             ZeroExtendNode other = (ZeroExtendNode) forValue;
-            return new ZeroExtendNode(other.getValue(), other.getInputBits(), resultBits);
+            return new ZeroExtendNode(other.getValue(), other.getInputBits(), resultBits, other.isInputAlwaysPositive());
         }
         if (forValue instanceof NarrowNode) {
             NarrowNode narrow = (NarrowNode) forValue;
@@ -132,7 +143,7 @@ public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend, Narrow>
         }
 
         if (self == null) {
-            self = new ZeroExtendNode(forValue, inputBits, resultBits);
+            self = new ZeroExtendNode(forValue, inputBits, resultBits, alwaysPositive);
         }
         return self;
     }

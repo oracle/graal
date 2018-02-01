@@ -324,12 +324,32 @@ public class CompilationResultBuilder {
     }
 
     /**
-     * Notifies this object of a branch instruction at offset {@code pos} in the code.
+     * Notifies this object of a branch instruction at offset {@code pcOffset} in the code.
      *
      * @param isNegated negation status of the branch's condition.
      */
     @SuppressWarnings("unused")
-    public void recordBranch(int pos, boolean isNegated) {
+    public void recordBranch(int pcOffset, boolean isNegated) {
+    }
+
+    /**
+     * Notifies this object of a call instruction belonging to an INVOKEVIRTUAL or INVOKEINTERFACE
+     * at offset {@code pcOffset} in the code.
+     *
+     * @param nodeSourcePosition source position of the corresponding invoke.
+     */
+    @SuppressWarnings("unused")
+    public void recordInvokeVirtualOrInterfaceCallOp(int pcOffset, NodeSourcePosition nodeSourcePosition) {
+    }
+
+    /**
+     * Notifies this object of a call instruction belonging to an INLINE_INVOKE at offset
+     * {@code pcOffset} in the code.
+     *
+     * @param nodeSourcePosition source position of the corresponding invoke.
+     */
+    @SuppressWarnings("unused")
+    public void recordInlineInvokeCallOp(int pcOffset, NodeSourcePosition nodeSourcePosition) {
     }
 
     /**

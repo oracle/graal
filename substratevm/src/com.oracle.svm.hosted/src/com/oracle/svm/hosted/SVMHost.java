@@ -32,6 +32,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -53,6 +54,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
+import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -143,12 +145,16 @@ public final class SVMHost implements HostVM {
     }
 
     @Override
-    public void registerType(AnalysisType analysisType) {
+    public void registerType(AnalysisType analysisType, ResolvedJavaType hostType) {
         DynamicHub hub = createHub(analysisType);
         Object existing = typeToHub.put(analysisType, hub);
         assert existing == null;
         existing = hubToType.put(hub, analysisType);
         assert existing == null;
+
+        /* Compute the automatic substitutions. */
+        UnsafeAutomaticSubstitutionProcessor automaticSubstitutions = ImageSingletons.lookup(UnsafeAutomaticSubstitutionProcessor.class);
+        automaticSubstitutions.computeSubstitutions(hostType, options);
     }
 
     @Override

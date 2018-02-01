@@ -188,7 +188,7 @@ public class ThreadsEventsTest {
             TestThreadsInstrument.includeStartedThreads = true;
             final List<ThreadEvent> events;
             try (Context context = Context.newBuilder().allowCreateThread(true).build()) {
-                context.eval(Source.create(InstrumentationTestLanguage.ID, "ROOT(DEFINE(f1, EXPRESSION), SPAWN(f1))"));
+                context.eval(Source.create(InstrumentationTestLanguage.ID, "ROOT(DEFINE(f1, EXPRESSION), SPAWN(f1), JOIN())"));
                 Instrument testBlockOnStatementsInstrument = context.getEngine().getInstruments().get("testBlockOnStatementsInstrument");
                 TestBlockOnStatementsInstrument testBlock = testBlockOnStatementsInstrument.lookup(TestBlockOnStatementsInstrument.class);
                 CountDownLatch latch = new CountDownLatch(1);

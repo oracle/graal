@@ -22,8 +22,10 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added [SuspendedEvent.prepareUnwindFrame](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/debug/SuspendedEvent.html#prepareUnwindFrame-com.oracle.truffle.api.debug.DebugStackFrame-) to unwind frame(s) during debugging.
 * Added [DebuggerTester](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerTester.html#DebuggerTester-org.graalvm.polyglot.Context.Builder-) constructor that takes `Context.Builder`.
 * Removed deprecated [DebuggerTester](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerTester.html) constructor that takes the legacy `PolyglotEngine.Builder`.
+* Removed deprecated methods in `JavaInterop`: `isNull`, `isArray`, `isBoxed`, `unbox`, `getKeyInfo`.
 * Disallowed `null` as `FrameSlot` identifier.
 * Removed deprecated `FrameSlot` constructor and `FrameDescriptor.create` methods.
+* Changed the behavior of exception handling (TruffleException) to capture stack frames lazily
 
 ## Version 0.30
 

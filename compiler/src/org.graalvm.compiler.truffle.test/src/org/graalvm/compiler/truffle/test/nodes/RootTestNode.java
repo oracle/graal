@@ -31,12 +31,21 @@ import com.oracle.truffle.api.nodes.RootNode;
 public class RootTestNode extends RootNode {
 
     private final String name;
-    @Child AbstractTestNode node;
+    private final boolean internal;
+    private final boolean captureFramesForTrace;
+
+    @Child private AbstractTestNode node;
 
     public RootTestNode(FrameDescriptor descriptor, String name, AbstractTestNode node) {
+        this(descriptor, name, node, false, false);
+    }
+
+    public RootTestNode(FrameDescriptor descriptor, String name, AbstractTestNode node, boolean internal, boolean captureFramesForTrace) {
         super(null, descriptor);
         this.name = name;
         this.node = node;
+        this.internal = internal;
+        this.captureFramesForTrace = captureFramesForTrace;
     }
 
     @Override
@@ -47,5 +56,15 @@ public class RootTestNode extends RootNode {
     @Override
     public String toString() {
         return name;
+    }
+
+    @Override
+    public boolean isInternal() {
+        return internal;
+    }
+
+    @Override
+    public boolean isCaptureFramesForTrace() {
+        return captureFramesForTrace;
     }
 }

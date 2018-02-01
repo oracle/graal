@@ -133,13 +133,14 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
         int recursions = countRecursions(callStack);
         int deepNodeCount = nodeCount;
 
-        if (++visitedNodes[0] < (100 * TruffleCompilerOptions.getValue(TruffleInliningMaxCallerSize)) &&
+        if (visitedNodes[0] < (100 * TruffleCompilerOptions.getValue(TruffleInliningMaxCallerSize)) &&
                         callStack.size() < 15 &&
                         recursions <= TruffleCompilerOptions.getValue(TruffleMaximumRecursiveInlining)) {
             /*
              * We make a preliminary optimistic inlining decision with best possible characteristics
              * to avoid the exploration of unnecessary paths in the inlining tree.
              */
+            visitedNodes[0]++;
             final CompilerOptions options = callNode.getCompilerOptions();
             if (policy.isAllowed(new TruffleInliningProfile(callNode, nodeCount, nodeCount, frequency, recursions), callStackNodeCount, options)) {
                 List<TruffleInliningDecision> exploredCallSites = exploreCallSites(callStack, callStackNodeCount + nodeCount, policy, visitedNodes, rejectedDecisionsCache);

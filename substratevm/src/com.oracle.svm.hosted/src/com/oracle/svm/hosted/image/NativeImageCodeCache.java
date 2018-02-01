@@ -447,9 +447,8 @@ public class NativeImageCodeCache {
 
     public void writeConstants(RelocatableBuffer buffer) {
         ByteBuffer bb = buffer.getBuffer();
-        dataSection.buildDataSection(bb, constant -> {
-            int bbOffset = bb.position();
-            WriteUtils.writeReference(buffer, bbOffset, SubstrateObjectConstant.asObject(constant), imageHeap, "VMConstant: " + constant);
+        dataSection.buildDataSection(bb, (position, constant) -> {
+            WriteUtils.writeReference(buffer, position, SubstrateObjectConstant.asObject(constant), imageHeap, "VMConstant: " + constant);
         });
     }
 

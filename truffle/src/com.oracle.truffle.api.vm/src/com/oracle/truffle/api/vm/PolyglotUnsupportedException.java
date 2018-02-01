@@ -29,10 +29,20 @@ class PolyglotUnsupportedException extends UnsupportedOperationException {
 
     PolyglotUnsupportedException(String message) {
         super(message);
+        // prevent polyglot stack trace to be attached.
+        initCause(null);
     }
 
     PolyglotUnsupportedException(String message, Throwable cause) {
         super(message, cause);
+    }
+
+    @Override
+    public String toString() {
+        // make it look like normal unsupported operation.
+        String s = UnsupportedOperationException.class.getName();
+        String message = getLocalizedMessage();
+        return (message != null) ? (s + ": " + message) : s;
     }
 
 }

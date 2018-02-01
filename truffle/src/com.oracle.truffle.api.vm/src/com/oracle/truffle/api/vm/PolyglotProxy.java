@@ -40,6 +40,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
@@ -48,7 +49,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
 
 final class PolyglotProxy {
 
@@ -229,6 +229,7 @@ final class PolyglotProxy {
     }
 
     private static final class ProxyKeysNode extends ProxyRootNode {
+        @Child private Node hasSize = Message.HAS_SIZE.createNode();
 
         private static final ProxyArray EMPTY = new ProxyArray() {
 
@@ -258,7 +259,13 @@ final class PolyglotProxy {
             } else {
                 result = EMPTY;
             }
-            return context.toGuestValue(result);
+            Object guestValue = context.toGuestValue(result);
+            if (!(guestValue instanceof TruffleObject) || !ForeignAccess.sendHasSize(hasSize, (TruffleObject) guestValue)) {
+                throw PolyglotImpl.wrapHostException(new IllegalStateException(
+                                String.format("getMemberKeys() returned invalid value %s but must return an array of member key Strings.",
+                                                context.toHostValue(guestValue).toString())));
+            }
+            return guestValue;
         }
     }
 

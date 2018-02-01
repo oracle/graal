@@ -140,17 +140,17 @@ public class EvalLauncher {
         }
     }
 
-    @Test
+    @MyTest
     public void testPrintHelp() {
         main(new String[]{"--help"});
     }
 
-    @Test
+    @MyTest
     public void testPrintVersion() {
         main(new String[]{"--version"});
     }
 
-    @Test
+    @MyTest
     public void testEval() {
         main(new String[]{"js:42"});
     }

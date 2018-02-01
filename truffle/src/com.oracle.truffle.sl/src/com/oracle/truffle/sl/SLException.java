@@ -68,6 +68,12 @@ public class SLException extends RuntimeException implements TruffleException {
         this.location = location;
     }
 
+    @SuppressWarnings("sync-override")
+    @Override
+    public Throwable fillInStackTrace() {
+        return null;
+    }
+
     public Node getLocation() {
         return location;
     }

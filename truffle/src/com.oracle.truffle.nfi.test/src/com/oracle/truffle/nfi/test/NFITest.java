@@ -53,7 +53,15 @@ public class NFITest {
     private static CallTarget lookupAndBind;
 
     private static TruffleObject loadLibrary(String lib) {
-        Source source = Source.newBuilder(lib).name("loadLibrary").mimeType("application/x-native").build();
+        String testBackend = System.getProperty("native.test.backend");
+        String sourceString;
+        if (testBackend != null) {
+            sourceString = String.format("with %s %s", testBackend, lib);
+        } else {
+            sourceString = lib;
+        }
+
+        Source source = Source.newBuilder(sourceString).name("loadLibrary").mimeType("application/x-native").build();
         CallTarget target = runWithPolyglot.getTruffleTestEnv().parse(source);
         return (TruffleObject) target.call();
     }

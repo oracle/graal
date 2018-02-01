@@ -32,7 +32,6 @@ import static com.oracle.truffle.api.vm.VMAccessor.engine;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.lang.reflect.Method;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -47,7 +46,9 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import org.graalvm.options.OptionValues;
@@ -58,19 +59,19 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -245,6 +246,8 @@ public class PolyglotEngine {
     }
     private List<Object[]> config;
     private HashMap<String, Object> globals;
+
+    private final Map<Object, Object> javaInteropCodeCache = new ConcurrentHashMap<>();
 
     /**
      * Private & temporary only constructor.
@@ -1727,6 +1730,56 @@ public class PolyglotEngine {
             };
         }
 
+        @Override
+        public BiFunction<Object, Object, Object> createToGuestValueNode() {
+            return new BiFunction<Object, Object, Object>() {
+                @TruffleBoundary
+                public Object apply(Object t, Object u) {
+                    return toGuestValue(u, t);
+                }
+            };
+        }
+
+        @Override
+        public BiFunction<Object, Object[], Object[]> createToGuestValuesNode() {
+            return new BiFunction<Object, Object[], Object[]>() {
+                @TruffleBoundary
+                public Object[] apply(Object t, Object[] u) {
+                    for (int i = 0; i < u.length; i++) {
+                        u[i] = toGuestValue(u[i], t);
+                    }
+                    return u;
+                }
+            };
+        }
+
+        @Override
+        public RootNode wrapHostBoundary(ExecutableNode executableNode, Supplier<String> name) {
+            final PolyglotEngine engine = PolyglotEngine.GLOBAL_PROFILE.get();
+            return new RootNode(null) {
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    Object prev = null;
+                    if (engine != null) {
+                        prev = engine.enter();
+                    }
+                    try {
+                        return executableNode.execute(frame);
+                    } finally {
+                        if (engine != null) {
+                            engine.leave(prev);
+                        }
+                    }
+                }
+
+                @Override
+                public String getName() {
+                    return name.get();
+                }
+            };
+        }
+
         @SuppressWarnings("deprecation")
         @Override
         public <C> com.oracle.truffle.api.impl.FindContextNode<C> createFindContextNode(TruffleLanguage<C> lang) {
@@ -1753,35 +1806,39 @@ public class PolyglotEngine {
         }
 
         @Override
-        public CallTarget lookupOrRegisterComputation(Object truffleObject, RootNode computation, Object... keys) {
-            CompilerAsserts.neverPartOfCompilation();
-            assert keys.length > 0;
-            Object key;
-            if (keys.length == 1) {
-                key = keys[0];
-                assert TruffleOptions.AOT || assertKeyType(key);
-            } else {
-                Pair p = null;
-                for (Object k : keys) {
-                    assert TruffleOptions.AOT || assertKeyType(k);
-                    p = new Pair(k, p);
-                }
-                key = p;
-            }
-            if (truffleObject instanceof EngineTruffleObject) {
-                PolyglotEngine engine = ((EngineTruffleObject) truffleObject).engine();
-                return engine.cachedTargets.lookupComputation(key, computation);
-            }
-
-            if (computation == null) {
-                return null;
-            }
-            return Truffle.getRuntime().createCallTarget(computation);
+        public NullPointerException newNullPointerException(String message, Throwable cause) {
+            NullPointerException npe = new NullPointerException(message);
+            npe.initCause(cause);
+            return npe;
         }
 
-        private static boolean assertKeyType(Object key) {
-            assert key instanceof Class || key instanceof Method || key instanceof Message : "Unexpected key: " + key;
-            return true;
+        @Override
+        public <T> T installJavaInteropCodeCache(Object languageContext, Object key, T value, Class<T> expectedType) {
+            PolyglotEngine engine = (PolyglotEngine) languageContext;
+            if (engine == null) {
+                engine = PolyglotEngine.GLOBAL_PROFILE.get();
+            }
+            if (engine == null) {
+                return value;
+            }
+            T result = expectedType.cast(engine.javaInteropCodeCache.putIfAbsent(key, value));
+            if (result != null) {
+                return result;
+            } else {
+                return value;
+            }
+        }
+
+        @Override
+        public <T> T lookupJavaInteropCodeCache(Object languageContext, Object key, Class<T> expectedType) {
+            PolyglotEngine engine = (PolyglotEngine) languageContext;
+            if (engine == null) {
+                engine = PolyglotEngine.GLOBAL_PROFILE.get();
+            }
+            if (engine == null) {
+                return null;
+            }
+            return expectedType.cast(engine.javaInteropCodeCache.get(key));
         }
 
         private static LanguageShared findVMObject(Object obj) {
@@ -1869,6 +1926,31 @@ public class PolyglotEngine {
         }
 
         @Override
+        public ClassCastException newClassCastException(String message, Throwable cause) {
+            return cause == null ? new PolyglotClassCastException(message) : new PolyglotClassCastException(message, cause);
+        }
+
+        @Override
+        public IllegalArgumentException newIllegalArgumentException(String message, Throwable cause) {
+            return cause == null ? new PolyglotIllegalArgumentException(message) : new PolyglotIllegalArgumentException(message, cause);
+        }
+
+        @Override
+        public UnsupportedOperationException newUnsupportedOperationException(String message, Throwable cause) {
+            return cause == null ? new PolyglotUnsupportedException(message) : new PolyglotUnsupportedException(message, cause);
+        }
+
+        @Override
+        public ArrayIndexOutOfBoundsException newArrayIndexOutOfBounds(String message, Throwable cause) {
+            return cause == null ? new PolyglotArrayIndexOutOfBoundsException(message) : new PolyglotArrayIndexOutOfBoundsException(message, cause);
+        }
+
+        @Override
+        public Object getCurrentHostContext() {
+            return null;
+        }
+
+        @Override
         public Object legacyTckEnter(Object vm) {
             return ((PolyglotEngine) vm).enter();
         }
@@ -1893,43 +1975,10 @@ public class PolyglotEngine {
             throw new UnsupportedOperationException("Not supported in legacy engine.");
         }
 
-    }
-
-    private static final class Pair {
-        final Object key;
-        final Pair next;
-
-        Pair(Object key, Pair next) {
-            this.key = key;
-            this.next = next;
-        }
-
         @Override
-        public int hashCode() {
-            return this.key.hashCode() + (next == null ? 3754 : next.hashCode());
+        public String getValueInfo(Object languageContext, Object value) {
+            return Objects.toString(value);
         }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null) {
-                return false;
-            }
-            if (getClass() != obj.getClass()) {
-                return false;
-            }
-            final Pair other = (Pair) obj;
-            if (!Objects.equals(this.key, other.key)) {
-                return false;
-            }
-            if (!Objects.equals(this.next, other.next)) {
-                return false;
-            }
-            return true;
-        }
-
     }
 
 }

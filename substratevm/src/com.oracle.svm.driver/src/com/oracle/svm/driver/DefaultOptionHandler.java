@@ -74,10 +74,22 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 args.poll();
                 nativeImage.setVerbose(true);
                 return true;
-            case "-debug-attach":
-                args.poll();
-                nativeImage.addImageBuilderJavaArgs("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,address=8000,suspend=y");
-                return true;
+        }
+
+        String debugAttach = "-debug-attach";
+        if (headArg.startsWith(debugAttach)) {
+            String debugAttachArg = args.poll();
+            String portSuffix = debugAttachArg.substring(debugAttach.length());
+            int debugPort = 8000;
+            if (!portSuffix.isEmpty()) {
+                try {
+                    debugPort = Integer.parseInt(portSuffix.substring(1));
+                } catch (NumberFormatException e) {
+                    NativeImage.showError("Invalid -debug-attach option: " + debugAttachArg);
+                }
+            }
+            nativeImage.addImageBuilderJavaArgs("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,address=" + debugPort + ",suspend=y");
+            return true;
         }
 
         if (headArg.startsWith(NativeImage.oH) || headArg.startsWith(NativeImage.oR)) {

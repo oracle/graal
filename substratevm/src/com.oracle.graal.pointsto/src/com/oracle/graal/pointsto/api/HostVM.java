@@ -66,7 +66,7 @@ public interface HostVM {
 
     boolean platformSupported(ResolvedJavaType type);
 
-    void registerType(AnalysisType newValue);
+    void registerType(AnalysisType newValue, ResolvedJavaType hostType);
 
     Optional<AnalysisMethod> handleForeignCall(ForeignCallDescriptor foreignCallDescriptor, ForeignCallsProvider foreignCallsProvider);
 
