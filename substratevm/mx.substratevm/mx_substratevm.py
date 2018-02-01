@@ -31,7 +31,6 @@ import re
 import tarfile
 import zipfile
 import tempfile
-import urllib2
 from contextlib import contextmanager
 from distutils.dir_util import mkpath, copy_tree, remove_tree # pylint: disable=no-name-in-module
 from os.path import join, exists, basename, dirname, islink
@@ -131,9 +130,6 @@ def native_image_layout(dists, subdir, native_image_root):
         relsymlink(jar_path, join(dest_path, basename(jar_path)))
     for dist in dists:
         mx.logv('Add ' + type(dist).__name__ + ' '  + str(dist) + ' to ' + dest_path)
-        if dist.isLibrary():
-            dist.get_path(resolve=True)
-            dist.get_source_path(resolve=True)
         symlink_jar(dist.path)
         if not dist.isLibrary():
             symlink_jar(dist.sourcesPath)
@@ -168,7 +164,7 @@ def native_image_option_properties(option_kind, option_flag, native_image_root):
         relsymlink(option_properties, target_path)
 
 flag_suitename_map = {
-    'js' : ('graal-js', ['GRAALJS', 'GRAALJS_LAUNCHER', 'ICU4J'], ['ICU4J-DIST']),
+    'js' : ('graal-js', ['GRAALJS', 'GRAALJS_LAUNCHER', 'ICU4J'], ['ICU4J-DIST'], 'js'),
     'ruby' : ('truffleruby', ['TRUFFLERUBY', 'TRUFFLERUBY-LAUNCHER'], ['TRUFFLERUBY-ZIP']),
     'sulong' : ('sulong', ['SULONG'], ['SULONG_LIBS', 'SULONG_DOC']),
     'python': ('graalpython', ['GRAALPYTHON', 'GRAALPYTHON-LAUNCHER', 'GRAALPYTHON-ENV'], ['GRAALPYTHON-ZIP'])
@@ -335,18 +331,15 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
     def newestOutput(self):
         return mx.TimeStampFile(native_image_path(self.subject.native_image_root))
 
-# Needs to be a global variable to ensure we are never updating to newer language versions within the same gate run
-session_language = {}
-
 def truffle_language_ensure(language_flag, version=None, native_image_root=None):
-    '''
+    """
     Ensures that we have a valid suite for the given language_flag, by downloading a binary if necessary
     and providing the suite distribution artifacts in the native-image directory hierachy (via symlinks).
     :param language_flag: native-image language_flag whose truffle-language we want to use
     :param version: if not specified and no TRUFFLE_<LANG>_VERSION set latest binary deployed master revision gets downloaded
     :param native_image_root: the native_image_root directory where the the artifacts get installed to
     :return: language suite for the given language_flag
-    '''
+    """
     if not native_image_root:
         native_image_root = suite_native_image_root()
 
@@ -356,63 +349,48 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None)
 
     if language_flag not in flag_suitename_map:
         mx.abort('No truffle-language uses language_flag \'' + language_flag + '\'')
-    if language_flag in session_language:
-        language_suite = session_language[language_flag]
-        mx.log('Reusing ' + language_flag + '.version=' + str(language_suite.version()))
-        return language_suite
 
-    language_suite_name = flag_suitename_map[language_flag][0]
+    language_entry = flag_suitename_map[language_flag]
 
-    # Accessing truffle_language as source suite (--dynamicimports) has priority over binary suite import
-    language_suite = suite.import_suite(language_suite_name)
+    language_suite_name = language_entry[0]
+    language_repo_name = language_entry[3] if len(language_entry) > 3 else None
 
-    if not language_suite:
-        # Get the truffle_language suite via binary suite import
+    urlinfos = [
+        mx.SuiteImportURLInfo(mx_urlrewrites.rewriteurl('https://curio.ssw.jku.at/nexus/content/repositories/snapshots'),
+                              'binary',
+                              mx.vc_system('binary'))
+    ]
 
-        urlinfos = [
-            mx.SuiteImportURLInfo(mx_urlrewrites.rewriteurl('https://curio.ssw.jku.at/nexus/content/repositories/snapshots'),
-                                  'binary',
-                                  mx.vc_system('binary'))
-        ]
-
-        if not version:
-            # If no specific version requested use binary import of last recently deployed master version
-            version = 'git-bref:binary'
-            urlinfos.append(
-                mx.SuiteImportURLInfo(
-                    mx_urlrewrites.rewriteurl('https://github.com/graalvm/{0}.git'.format(language_suite_name)),
-                    'source',
-                    mx.vc_system('git')
-                )
+    if not version:
+        # If no specific version requested use binary import of last recently deployed master version
+        version = 'git-bref:binary'
+        repo_suite_name = language_repo_name if language_repo_name else language_suite_name
+        urlinfos.append(
+            mx.SuiteImportURLInfo(
+                mx_urlrewrites.rewriteurl('https://github.com/graalvm/{0}.git'.format(repo_suite_name)),
+                'source',
+                mx.vc_system('git')
             )
+        )
 
-        try:
-            language_suite = suite.import_suite(
-                language_suite_name,
-                version=version,
-                urlinfos=urlinfos,
-                kind=None
-            )
-        except (urllib2.URLError, SystemExit):
-            language_suite = suite.import_suite(language_suite_name)
-            if language_suite:
-                if version and session_language[language_flag] and session_language[language_flag].version() != version:
-                    mx.abort('Cannot switch to ' + language_flag + '.version=' + str(version) + ' without maven access.')
-                else:
-                    mx.log('No maven access. Using already downloaded ' + language_suite_name + ' binary suite.')
-            else:
-                mx.abort('No maven access and no local copy of ' + language_suite_name + ' binary suite available.')
+    language_suite = suite.import_suite(
+        language_suite_name,
+        version=version,
+        urlinfos=urlinfos,
+        kind=None,
+        in_subdir=bool(language_repo_name)
+    )
 
     if not language_suite:
         mx.abort('Binary suite not found and no local copy of ' + language_suite_name + ' available.')
 
     language_dir = join('languages', language_flag)
 
-    language_suite_depnames = flag_suitename_map[language_flag][1]
+    language_suite_depnames = language_entry[1]
     language_deps = [dep for dep in language_suite.dists + language_suite.libs if dep.name in language_suite_depnames]
     native_image_layout(language_deps, language_dir, native_image_root)
 
-    language_suite_nativedistnames = flag_suitename_map[language_flag][2]
+    language_suite_nativedistnames = language_entry[2]
     language_nativedists = [dist for dist in language_suite.dists if dist.name in language_suite_nativedistnames]
     native_image_extract(language_nativedists, language_dir, native_image_root)
 
@@ -425,9 +403,8 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None)
         relsymlink(option_properties, target_path)
     else:
         native_image_option_properties('languages', language_flag, native_image_root)
-
-    session_language[language_flag] = language_suite
     return language_suite
+
 
 def locale_US_args():
     return ['-Duser.country=US', '-Duser.language=en']
