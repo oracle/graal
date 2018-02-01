@@ -101,9 +101,6 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
             final TruffleInlining inlining = truffleTreeDump.inlining;
             if (inlining.countInlinedCalls() > 0) {
                 dumpInlinedTrees(astOutput, callTarget, inlining, new ArrayList<>());
-                // TODO why is this needed? It would be preferred to just call inline on the old
-                // graph.
-                ast = new AST(callTarget);
                 ast.inline(truffleTreeDump.inlining);
                 astOutput.print(ast, null, 1, AFTER_INLINING);
             }
@@ -318,6 +315,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
                             final RootNode targetRootNode = ((OptimizedCallTarget) inlinedCallTarget).getRootNode();
                             final ASTNode astTargetRootNode = ast.makeASTNode(targetRootNode);
                             astNode.edges.add(new ASTEdge(astTargetRootNode, inlinedCallTarget.toString()));
+                            astNode.setNewClass();
                             final ASTBlock newBlock = ast.makeASTBlock();
                             if (currentBlock != null) {
                                 currentBlock.successors.add(newBlock);
@@ -336,6 +334,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         List<ASTEdge> edges = new ArrayList<>();
         final int id;
         Map<String, ? super Object> properties = new HashMap<>();
+        ASTNodeClass nodeClass;
 
         ASTNode(Node source, int id) {
             this.source = source;
@@ -343,6 +342,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
             String className = className(source.getClass());
             properties.put("label", dropNodeSuffix(className));
             NodeInfo nodeInfo = source.getClass().getAnnotation(NodeInfo.class);
+            setNewClass();
             if (nodeInfo != null) {
                 properties.put("cost", nodeInfo.cost());
                 if (!nodeInfo.shortName().isEmpty()) {
@@ -363,6 +363,10 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         private static String dropNodeSuffix(String className) {
             return className.replaceFirst("Node$", "");
         }
+
+        void setNewClass() {
+            nodeClass = new ASTNodeClass(this);
+        }
     }
 
     static class ASTEdge {
@@ -379,6 +383,14 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         EDGE_TYPE;
     }
 
+    static class ASTNodeClass {
+        final ASTNode node;
+
+        ASTNodeClass(ASTNode node) {
+            this.node = node;
+        }
+    }
+
     static class ASTBlock {
         final int id;
         final List<ASTBlock> successors = new ArrayList<>();
@@ -389,7 +401,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         }
     }
 
-    static class ASTDumpStructure implements GraphStructure<AST, ASTNode, ASTNode, List<ASTEdge>>, GraphBlocks<AST, ASTBlock, ASTNode> {
+    static class ASTDumpStructure implements GraphStructure<AST, ASTNode, ASTNodeClass, List<ASTEdge>>, GraphBlocks<AST, ASTBlock, ASTNode> {
 
         @Override
         public AST graph(AST currentGraph, Object obj) {
@@ -427,33 +439,33 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         }
 
         @Override
-        public ASTNode nodeClass(Object obj) {
-            return obj instanceof ASTNode ? (ASTNode) obj : null;
+        public ASTNodeClass nodeClass(Object obj) {
+            return obj instanceof ASTNodeClass ? ((ASTNodeClass) obj) : null;
         }
 
         @Override
-        public ASTNode classForNode(ASTNode node) {
-            return node;
+        public ASTNodeClass classForNode(ASTNode node) {
+            return node.nodeClass;
         }
 
         @Override
-        public String nameTemplate(ASTNode nodeClass) {
+        public String nameTemplate(ASTNodeClass nodeClass) {
             return "{p#label}";
         }
 
         @Override
-        public Object nodeClassType(ASTNode nodeClass) {
-            return nodeClass.source.getClass();
+        public Object nodeClassType(ASTNodeClass nodeClass) {
+            return nodeClass.getClass();
         }
 
         @Override
-        public List<ASTEdge> portInputs(ASTNode nodeClass) {
+        public List<ASTEdge> portInputs(ASTNodeClass nodeClass) {
             return Collections.emptyList();
         }
 
         @Override
-        public List<ASTEdge> portOutputs(ASTNode nodeClass) {
-            return nodeClass.edges;
+        public List<ASTEdge> portOutputs(ASTNodeClass nodeClass) {
+            return nodeClass.node.edges;
         }
 
         @Override
