@@ -866,7 +866,15 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         PolyglotContextImpl contextImpl = preInitializedContext;
         preInitializedContext = null;
         if (contextImpl != null) {
-            if (!contextImpl.patch(out, err, in, allowHostAccess, allowCreateThread, classFilter, options, arguments, allowedLanguages)) {
+            boolean patchResult;
+            try {
+                patchResult = contextImpl.patch(out, err, in, allowHostAccess, allowCreateThread, classFilter, options, arguments, allowedLanguages);
+            } catch (RuntimeException re) {
+                contextImpl.closeImpl(false, false);
+                PolyglotContextImpl.disposeStaticContext(null);
+                throw re;
+            }
+            if (!patchResult) {
                 contextImpl.closeImpl(false, false);
                 contextImpl = null;
                 PolyglotContextImpl.disposeStaticContext(contextImpl);
