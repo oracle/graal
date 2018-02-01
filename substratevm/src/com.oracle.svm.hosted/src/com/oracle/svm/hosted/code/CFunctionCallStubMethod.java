@@ -42,10 +42,9 @@ import org.graalvm.nativeimage.c.constant.CEnumLookup;
 import org.graalvm.nativeimage.c.constant.CEnumValue;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.util.UserError;
@@ -69,11 +68,11 @@ import jdk.vm.ci.meta.Signature;
  */
 public final class CFunctionCallStubMethod extends CustomSubstitutionMethod {
 
-    private final CGlobalData<CFunctionPointer> linkage;
+    private final CGlobalDataInfo linkage;
 
     private static final JavaKind cEnumKind = JavaKind.Int;
 
-    CFunctionCallStubMethod(ResolvedJavaMethod original, CGlobalData<CFunctionPointer> linkage) {
+    CFunctionCallStubMethod(ResolvedJavaMethod original, CGlobalDataInfo linkage) {
         super(original);
         this.linkage = linkage;
     }

@@ -35,12 +35,13 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class CFunctionLinkages {
-    private final ConcurrentMap<String, CGlobalData<CFunctionPointer>> nameToFunction;
+    private final ConcurrentMap<String, CGlobalDataInfo> nameToFunction;
 
     CFunctionLinkages() {
         nameToFunction = new ConcurrentHashMap<>();
@@ -50,14 +51,13 @@ public final class CFunctionLinkages {
         return ImageSingletons.lookup(CFunctionLinkages.class);
     }
 
-    public CGlobalData<CFunctionPointer> addOrLookupMethod(ResolvedJavaMethod method) {
+    public CGlobalDataInfo addOrLookupMethod(ResolvedJavaMethod method) {
         if (method.getAnnotation(NodeIntrinsic.class) != null || method.getAnnotation(Word.Operation.class) != null) {
             return null;
         }
         return nameToFunction.computeIfAbsent(linkageName(method), symbolName -> {
             CGlobalData<CFunctionPointer> linkage = CGlobalDataFactory.forSymbol(symbolName);
-            CGlobalDataFeature.singleton().registerAsAccessed(linkage);
-            return linkage;
+            return CGlobalDataFeature.singleton().registerAsAccessed(linkage);
         });
     }
 

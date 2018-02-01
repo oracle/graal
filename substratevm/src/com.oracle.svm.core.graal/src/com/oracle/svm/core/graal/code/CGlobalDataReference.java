@@ -22,29 +22,27 @@
  */
 package com.oracle.svm.core.graal.code;
 
-import com.oracle.svm.core.c.CGlobalData;
-
 import jdk.vm.ci.code.site.Reference;
 
 public final class CGlobalDataReference extends Reference {
 
-    private final CGlobalData<?> data;
+    private final CGlobalDataInfo dataInfo;
 
-    public CGlobalDataReference(CGlobalData<?> data) {
-        this.data = data;
+    public CGlobalDataReference(CGlobalDataInfo dataInfo) {
+        this.dataInfo = dataInfo;
     }
 
-    public CGlobalData<?> getData() {
-        return data;
+    public CGlobalDataInfo getDataInfo() {
+        return dataInfo;
     }
 
     @Override
     public int hashCode() {
-        return System.identityHashCode(data);
+        return System.identityHashCode(dataInfo);
     }
 
     @Override
     public boolean equals(Object obj) {
-        return (obj == this) || ((obj instanceof CGlobalDataReference) && data == ((CGlobalDataReference) obj).data);
+        return (obj == this) || ((obj instanceof CGlobalDataReference) && dataInfo == ((CGlobalDataReference) obj).dataInfo);
     }
 }

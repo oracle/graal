@@ -30,8 +30,10 @@ import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.c.CGlobalDataImpl;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 
 import jdk.vm.ci.meta.AllocatableValue;
@@ -41,26 +43,36 @@ public final class AMD64CGlobalDataLoadAddressOp extends AMD64LIRInstruction {
 
     @Def(REG) private AllocatableValue result;
 
-    private final CGlobalDataImpl<?> data;
+    private final CGlobalDataInfo dataInfo;
 
-    AMD64CGlobalDataLoadAddressOp(CGlobalDataImpl<?> data, AllocatableValue result) {
+    AMD64CGlobalDataLoadAddressOp(CGlobalDataInfo dataInfo, AllocatableValue result) {
         super(TYPE);
-        this.data = data;
+        this.dataInfo = dataInfo;
         this.result = result;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        int before = masm.position();
-        AMD64Address address = masm.getPlaceholder(before);
-        if (data.bytesSupplier != null || data.sizeSupplier != null) {
-            // Data: load its address
-            masm.leaq(asRegister(result), address);
+        if (SubstrateUtil.HOSTED) {
+            // AOT compilation: record patch that is fixed up later
+            int before = masm.position();
+            AMD64Address address = masm.getPlaceholder(before);
+            if (dataInfo.isSymbolReference()) {
+                // Pure symbol reference: the data contains the symbol's address, load it
+                masm.movq(asRegister(result), address);
+            } else {
+                // Data: load its address
+                masm.leaq(asRegister(result), address);
+            }
+            crb.compilationResult.recordDataPatch(before, new CGlobalDataReference(dataInfo));
         } else {
-            // Pure symbol reference: the data contains the symbol's address, load it
-            assert data.symbolName != null;
-            masm.movq(asRegister(result), address);
+            // Runtime compilation: compute the actual address
+            Pointer globalsBase = CGlobalDataInfo.CGLOBALDATA_RUNTIME_BASE_ADDRESS.get();
+            Pointer address = globalsBase.add(dataInfo.getOffset());
+            masm.movq(asRegister(result), address.rawValue());
+            if (dataInfo.isSymbolReference()) { // load data, which contains symbol's address
+                masm.movq(asRegister(result), new AMD64Address(asRegister(result)));
+            }
         }
-        crb.compilationResult.recordDataPatch(before, new CGlobalDataReference(data));
     }
 }

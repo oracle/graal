@@ -59,6 +59,7 @@ import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.c.NativeImageHeaderPreamble;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.NativeImageOptions.CStandards;
@@ -262,7 +263,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
             codeCache.writeConstants(roDataBuffer);
             // - Non-heap global data goes at the beginning of the read-write data section.
             cGlobals.writeData(rwDataBuffer);
-            objectFile.createDefinedSymbol("__svm_cglobaldata_base", rwDataSection.getElement(), Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET), false);
+            objectFile.createDefinedSymbol(CGlobalDataInfo.CGLOBALDATA_BASE_SYMBOL_NAME, rwDataSection.getElement(), Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET), false);
             // The read-only and writable partitions of the native image heap follow in the
             // read-only and read-write sections, respectively.
             heap.writeHeap(debug, roDataBuffer, rwDataBuffer);
@@ -386,12 +387,12 @@ public abstract class NativeBootImage extends AbstractBootImage {
             sectionImpl.markRelocationSite(offset, info.getRelocationSize(), info.getRelocationKind(), roDataSection.getName(), false, addend);
         } else if (target instanceof CGlobalDataReference) {
             CGlobalDataReference ref = (CGlobalDataReference) target;
-            CGlobalDataImpl<?> data = (CGlobalDataImpl<?>) ref.getData();
-            int offsetInGlobalData = CGlobalDataFeature.singleton().getOffsetOf(data);
-            long addend = RWDATA_CGLOBALS_PARTITION_OFFSET + offsetInGlobalData - info.getExplicitAddend();
+            CGlobalDataInfo dataInfo = ref.getDataInfo();
+            CGlobalDataImpl<?> data = dataInfo.getData();
+            long addend = RWDATA_CGLOBALS_PARTITION_OFFSET + dataInfo.getOffset() - info.getExplicitAddend();
             sectionImpl.markRelocationSite(offset, info.getRelocationSize(), info.getRelocationKind(), rwDataSection.getName(), false, addend);
             if (data.symbolName != null) {
-                int offsetInSection = Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET + offsetInGlobalData);
+                int offsetInSection = Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET + dataInfo.getOffset());
                 if (data.bytesSupplier != null || data.sizeSupplier != null) { // Create symbol
                     objectFile.createDefinedSymbol(data.symbolName, rwDataSection, offsetInSection, false);
                 } else { // No data, so this is purely a symbol reference: create relocation

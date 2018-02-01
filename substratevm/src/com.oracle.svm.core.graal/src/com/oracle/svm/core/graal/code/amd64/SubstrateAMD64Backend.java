@@ -462,7 +462,7 @@ public class SubstrateAMD64Backend extends Backend {
         @Override
         public void emitCGlobalDataLoadAddress(CGlobalDataLoadAddressNode node) {
             Variable result = gen.newVariable(gen.getLIRKindTool().getWordKind());
-            append(new AMD64CGlobalDataLoadAddressOp(node.getData(), result));
+            append(new AMD64CGlobalDataLoadAddressOp(node.getDataInfo(), result));
             setResult(node, result);
         }
 

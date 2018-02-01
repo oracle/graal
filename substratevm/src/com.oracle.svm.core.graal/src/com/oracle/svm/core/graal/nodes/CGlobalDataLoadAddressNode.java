@@ -31,23 +31,23 @@ import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import com.oracle.svm.core.amd64.FrameAccess;
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataImpl;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.SubstrateNodeLIRBuilder;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1, sizeRationale = "same as LoadAddressNode")
 public final class CGlobalDataLoadAddressNode extends FloatingNode implements LIRLowerable {
     public static final NodeClass<CGlobalDataLoadAddressNode> TYPE = NodeClass.create(CGlobalDataLoadAddressNode.class);
 
-    private final CGlobalDataImpl<?> data;
+    private final CGlobalDataInfo dataInfo;
 
-    public CGlobalDataLoadAddressNode(CGlobalData<?> data) {
+    public CGlobalDataLoadAddressNode(CGlobalDataInfo dataInfo) {
         super(TYPE, FrameAccess.getWordStamp());
-        this.data = (CGlobalDataImpl<?>) data;
+        assert dataInfo != null;
+        this.dataInfo = dataInfo;
     }
 
-    public CGlobalDataImpl<?> getData() {
-        return data;
+    public CGlobalDataInfo getDataInfo() {
+        return dataInfo;
     }
 
     @Override
