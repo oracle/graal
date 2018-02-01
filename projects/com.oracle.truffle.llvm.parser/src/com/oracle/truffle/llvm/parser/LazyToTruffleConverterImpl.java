@@ -71,7 +71,6 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     private final FrameDescriptor frame;
     private final Map<InstructionBlock, List<Phi>> phis;
     private final Map<String, Integer> labels;
-    private final List<FrameSlot> notNullable = new ArrayList<>();
 
     LazyToTruffleConverterImpl(LLVMParserRuntime runtime, LLVMContext context, NodeFactory nodeFactory, FunctionDefinition method, Source source, FrameDescriptor frame,
                     Map<InstructionBlock, List<Phi>> phis,
@@ -92,6 +91,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
         LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(frame, context, phis, method);
         LLVMSymbolReadResolver symbols = new LLVMSymbolReadResolver(runtime, method, frame, labels);
+        List<FrameSlot> notNullable = new ArrayList<>();
 
         LLVMRuntimeDebugInformation dbgInfoHandler = new LLVMRuntimeDebugInformation(frame, nodeFactory, context, notNullable, symbols, runtime);
         dbgInfoHandler.registerStaticDebugSymbols(method);
@@ -99,8 +99,8 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         LLVMBitcodeFunctionVisitor visitor = new LLVMBitcodeFunctionVisitor(runtime, frame, labels, phis, nodeFactory, method.getParameters().size(),
                         symbols, method, liveness, notNullable, dbgInfoHandler);
         method.accept(visitor);
-        FrameSlot[][] nullableBeforeBlock = getNullableFrameSlots(liveness.getNullableBeforeBlock());
-        FrameSlot[][] nullableAfterBlock = getNullableFrameSlots(liveness.getNullableAfterBlock());
+        FrameSlot[][] nullableBeforeBlock = getNullableFrameSlots(liveness.getNullableBeforeBlock(), notNullable);
+        FrameSlot[][] nullableAfterBlock = getNullableFrameSlots(liveness.getNullableAfterBlock(), notNullable);
         LLVMSourceLocation location = method.getLexicalScope();
 
         List<LLVMExpressionNode> copyArgumentsToFrame = copyArgumentsToFrame();
@@ -113,7 +113,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         return Truffle.getRuntime().createCallTarget(rootNode);
     }
 
-    private FrameSlot[][] getNullableFrameSlots(BitSet[] nullableBeforeBlock) {
+    private FrameSlot[][] getNullableFrameSlots(BitSet[] nullableBeforeBlock, List<FrameSlot> notNullable) {
         List<? extends FrameSlot> frameSlots = frame.getSlots();
         FrameSlot[][] result = new FrameSlot[nullableBeforeBlock.length][];
 
