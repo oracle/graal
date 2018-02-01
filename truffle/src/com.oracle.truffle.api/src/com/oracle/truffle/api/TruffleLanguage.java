@@ -472,7 +472,18 @@ public abstract class TruffleLanguage<C> {
 
     /**
      * Notifies the language with pre-initialized context about {@link Env} change. See
-     * {@link org.graalvm.polyglot.Context} for pre-initialization details.
+     * {@link org.graalvm.polyglot.Context} for information how to enable the Context
+     * pre-initialization.
+     * <p>
+     * During the pre-initialization (in the native compilation time) the
+     * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)} and
+     * {@link #initializeContext(java.lang.Object)} methods are called. In the image execution time
+     * the {@link #patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)} is
+     * called as a consequence of {@link org.graalvm.polyglot.Context#create(java.lang.String...)}
+     * invocation. If the
+     * {@link #patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)} is
+     * successful for all pre-initialized languages the pre-initialized context is used, otherwise a
+     * new context is created.
      * <p>
      * Typical implementation looks like:
      *
