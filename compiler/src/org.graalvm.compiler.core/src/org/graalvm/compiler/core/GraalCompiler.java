@@ -240,6 +240,10 @@ public class GraalCompiler {
             debug.dump(DebugContext.BASIC_LEVEL, graph, "After low tier");
 
             debug.dump(DebugContext.BASIC_LEVEL, graph.getLastSchedule(), "Final HIR schedule");
+            switch (GraalOptions.TraceInlining.getValue(graph.getOptions())) {
+                case Tree:
+                    debug.log(DebugContext.BASIC_LEVEL, graph.getInliningLog().formatAsTree());
+            }
         } catch (Throwable e) {
             throw debug.handle(e);
         } finally {

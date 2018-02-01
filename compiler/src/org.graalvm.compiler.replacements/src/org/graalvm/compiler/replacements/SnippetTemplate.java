@@ -757,7 +757,8 @@ public class SnippetTemplate {
                 }
             }
             if (GraalOptions.TraceInlining.getValue(snippetCopy.getOptions()).isTracing()) {
-                try (InliningLog.UpdateScope ignored = snippetCopy.getInliningLog().createUpdateScope((oldNode, newNode) -> { })) {
+                try (InliningLog.UpdateScope ignored = snippetCopy.getInliningLog().createUpdateScope((oldNode, newNode) -> {
+                })) {
                     UnmodifiableEconomicMap<Node, Node> duplicates = snippetCopy.addDuplicates(snippetGraph.getNodes(), snippetGraph, snippetGraph.getNodeCount(), nodeReplacements);
                     snippetCopy.getInliningLog().replaceLog(duplicates, snippetGraph.getInliningLog());
                 }

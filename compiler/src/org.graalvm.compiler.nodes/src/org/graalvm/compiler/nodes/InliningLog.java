@@ -134,10 +134,9 @@ public class InliningLog {
     /**
      * Add an inlining decision for the specified invoke.
      *
-     * An inlining decision can be either positive or negative.
-     * A positive inlining decision must be logged after replacing an {@link Invoke} with a graph.
-     * In this case, the node replacement map and the {@link InliningLog} of the inlined graph
-     * must be provided.
+     * An inlining decision can be either positive or negative. A positive inlining decision must be
+     * logged after replacing an {@link Invoke} with a graph. In this case, the node replacement map
+     * and the {@link InliningLog} of the inlined graph must be provided.
      */
     public void addDecision(Invokable invoke, boolean positive, String reason, String phase, EconomicMap<Node, Node> replacements, InliningLog calleeLog) {
         assert leaves.containsKey(invoke);
@@ -171,8 +170,8 @@ public class InliningLog {
     /**
      * Append the inlining decision tree from the specified log.
      *
-     * The subtrees of the specified log are appended below the root of this log.
-     * This is usually called when a node in the graph is replaced with its snippet.
+     * The subtrees of the specified log are appended below the root of this log. This is usually
+     * called when a node in the graph is replaced with its snippet.
      *
      * @see InliningLog#addDecision
      */
@@ -199,8 +198,8 @@ public class InliningLog {
     /**
      * Completely replace the current log with the copy of the specified log.
      *
-     * The precondition is that the current inlining log is completely empty.
-     * This is usually called when copying the entire graph.
+     * The precondition is that the current inlining log is completely empty. This is usually called
+     * when copying the entire graph.
      *
      * @see InliningLog#addDecision
      */
@@ -250,8 +249,8 @@ public class InliningLog {
     private UpdateScope activated = null;
 
     /**
-     * Used to designate scopes in which {@link Invokable} registration or cloning
-     * should be handled differently.
+     * Used to designate scopes in which {@link Invokable} registration or cloning should be handled
+     * differently.
      */
     public class UpdateScope implements AutoCloseable {
         private BiConsumer<Invokable, Invokable> updater;
@@ -285,11 +284,12 @@ public class InliningLog {
     /**
      * Creates and sets a new update scope for the log.
      *
-     * The specified lambda is invoked when an {@link Invokable} node is registered or cloned.
-     * If the node is newly registered, then the first argument to the lambda is {@code null}
-     * If the node is cloned, then the first argument is the node it was cloned from.
+     * The specified lambda is invoked when an {@link Invokable} node is registered or cloned. If
+     * the node is newly registered, then the first argument to the lambda is {@code null} If the
+     * node is cloned, then the first argument is the node it was cloned from.
      *
-     * @param updater a lambda taking a null (or the original node), and the registered (or cloned) {@link Invokable}
+     * @param updater a lambda taking a null (or the original node), and the registered (or cloned)
+     *            {@link Invokable}
      */
     public UpdateScope createUpdateScope(BiConsumer<Invokable, Invokable> updater) {
         return new UpdateScope(updater);

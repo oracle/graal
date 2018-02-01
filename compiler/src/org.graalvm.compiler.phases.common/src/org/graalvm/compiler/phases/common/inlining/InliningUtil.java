@@ -359,7 +359,8 @@ public class InliningUtil extends ValueMergeUtil {
         // Do not update the inlining log when adding the duplicates.
         // Instead, attach the inlining log of the child graph to the current inlining log.
         EconomicMap<Node, Node> duplicates;
-        try (InliningLog.UpdateScope ignored = graph.getInliningLog().createUpdateScope((oldNode, newNode) -> { })) {
+        try (InliningLog.UpdateScope ignored = graph.getInliningLog().createUpdateScope((oldNode, newNode) -> {
+        })) {
             duplicates = graph.addDuplicates(nodes, inlineGraph, inlineGraph.getNodeCount(), localReplacement);
         }
         if (GraalOptions.TraceInlining.getValue(graph.getOptions()).isTracing()) {

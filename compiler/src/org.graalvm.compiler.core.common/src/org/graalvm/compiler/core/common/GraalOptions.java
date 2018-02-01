@@ -275,7 +275,7 @@ public final class GraalOptions {
     @Option(help = "Enable experimental Trace Register Allocation.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceRA = new OptionKey<>(false);
 
-    @Option(help = "How to trace inlining decisions, one of: None, Linear, Tree", type = OptionType.Debug)
+    @Option(help = "How to trace inlining decisions, one of: None, Tree", type = OptionType.Debug)
     public static final OptionKey<TraceInliningMode> TraceInlining = new EnumOptionKey<>(TraceInliningMode.None);
 
 }

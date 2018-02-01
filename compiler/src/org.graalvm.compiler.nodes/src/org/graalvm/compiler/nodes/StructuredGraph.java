@@ -480,7 +480,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         replacements.put(start, copy.start);
         UnmodifiableEconomicMap<Node, Node> duplicates;
         if (GraalOptions.TraceInlining.getValue(getOptions()).isTracing()) {
-            try (InliningLog.UpdateScope ignored = copy.getInliningLog().createUpdateScope((oldNode, newNode) -> { })) {
+            try (InliningLog.UpdateScope ignored = copy.getInliningLog().createUpdateScope((oldNode, newNode) -> {
+            })) {
                 duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), replacements);
             }
             copy.getInliningLog().replaceLog(duplicates, this.getInliningLog());

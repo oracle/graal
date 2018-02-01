@@ -24,7 +24,6 @@ package org.graalvm.compiler.core.common;
 
 public enum TraceInliningMode {
     None(false),
-    Linear(true),
     Tree(true);
 
     private final boolean tracing;
