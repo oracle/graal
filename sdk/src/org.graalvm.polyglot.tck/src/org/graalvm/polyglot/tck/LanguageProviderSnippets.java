@@ -32,6 +32,7 @@ import java.util.Collection;
 import java.util.Collections;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
 
 final class LanguageProviderSnippets {
@@ -157,6 +158,43 @@ final class LanguageProviderSnippets {
             }
         }
         // END: LanguageProviderSnippets#JsSnippets#createScripts
+        // @formatter:on
+
+        // @formatter:off
+        // BEGIN: LanguageProviderSnippets#JsSnippets#createInlineScripts
+        @Override
+        public Collection<? extends InlineSnippet>
+                    createInlineScripts(Context context) {
+            final Collection<InlineSnippet> inlineScripts = new ArrayList<>();
+            Snippet.Builder scriptBuilder = Snippet.newBuilder(
+                    "factorial",
+                    context.eval(
+                            "js",
+                            "(function (){\n" +
+                            "  let factorial = function(n) {\n" +
+                            "    let f = 1;\n" +
+                            "    for (let i = 2; i <= n; i++) {\n" +
+                            "      f *= i;\n" +
+                            "    }\n" +
+                            "  };\n" +
+                            "  return factorial(10);\n" +
+                            "})"),
+                    TypeDescriptor.NUMBER);
+            InlineSnippet.Builder builder = InlineSnippet.newBuilder(
+                    scriptBuilder.build(),
+                    "n * n").
+                locationPredicate((SourceSection section) -> {
+                    int line = section.getStartLine();
+                    return 3 <= line && line <= 6;
+                });
+            inlineScripts.add(builder.build());
+            builder = InlineSnippet.newBuilder(
+                    scriptBuilder.build(),
+                    "Math.sin(Math.PI)");
+            inlineScripts.add(builder.build());
+            return inlineScripts;
+        }
+        // END: LanguageProviderSnippets#JsSnippets#createInlineScripts
         // @formatter:on
 
         // @formatter:off

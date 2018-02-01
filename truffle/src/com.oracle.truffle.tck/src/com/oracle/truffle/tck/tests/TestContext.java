@@ -40,11 +40,15 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import org.junit.Assert;
+
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.tck.InlineSnippet;
 import org.graalvm.polyglot.tck.Snippet;
 import org.graalvm.polyglot.tck.TypeDescriptor;
 import org.graalvm.polyglot.tck.LanguageProvider;
-import org.junit.Assert;
 
 final class TestContext implements Closeable {
     private Map<String, LanguageProvider> providers;
@@ -52,7 +56,9 @@ final class TestContext implements Closeable {
     private final Map<String, Collection<? extends Snippet>> expressions;
     private final Map<String, Collection<? extends Snippet>> statements;
     private final Map<String, Collection<? extends Snippet>> scripts;
+    private final Map<String, Collection<? extends InlineSnippet>> inlineScripts;
     private Context context;
+    private VerifierInstrument verifierInstrument;
     private State state;
 
     TestContext() {
@@ -61,6 +67,7 @@ final class TestContext implements Closeable {
         this.expressions = new HashMap<>();
         this.statements = new HashMap<>();
         this.scripts = new HashMap<>();
+        this.inlineScripts = new HashMap<>();
     }
 
     Map<String, ? extends LanguageProvider> getInstalledProviders() {
@@ -97,7 +104,8 @@ final class TestContext implements Closeable {
         checkState(State.NEW, State.INITIALIZING, State.INITIALIZED);
         if (context == null) {
             this.context = Context.newBuilder().out(NullOutputStream.INSTANCE).err(NullOutputStream.INSTANCE).build();
-            Assert.assertNotNull(context.getEngine().getInstruments().get(VerifierInstrument.ID).lookup(VerifierInstrument.class));
+            this.verifierInstrument = context.getEngine().getInstruments().get(VerifierInstrument.ID).lookup(VerifierInstrument.class);
+            Assert.assertNotNull(this.verifierInstrument);
         }
         return context;
     }
@@ -171,17 +179,35 @@ final class TestContext implements Closeable {
                         });
     }
 
-    private Collection<? extends Snippet> filter(
-                    final Map<String, Collection<? extends Snippet>> cache,
+    Collection<? extends InlineSnippet> getInlineScripts(String... ids) {
+        return filter(
+                        inlineScripts,
+                        LanguageIdPredicate.create(ids),
+                        new Predicate<InlineSnippet>() {
+                            @Override
+                            public boolean test(InlineSnippet s) {
+                                return true;
+                            }
+                        },
+                        new Function<LanguageProvider, Collection<? extends InlineSnippet>>() {
+                            @Override
+                            public Collection<? extends InlineSnippet> apply(LanguageProvider tli) {
+                                return tli.createInlineScripts(context);
+                            }
+                        });
+    }
+
+    private <S> Collection<? extends S> filter(
+                    final Map<String, Collection<? extends S>> cache,
                     final Predicate<Map.Entry<String, ? extends LanguageProvider>> idPredicate,
-                    final Predicate<Snippet> typePredicate,
-                    final Function<LanguageProvider, Collection<? extends Snippet>> provider) {
-        return getInstalledProviders().entrySet().stream().filter(idPredicate).flatMap(new Function<Map.Entry<String, ? extends LanguageProvider>, Stream<? extends Snippet>>() {
+                    final Predicate<S> typePredicate,
+                    final Function<LanguageProvider, Collection<? extends S>> provider) {
+        return getInstalledProviders().entrySet().stream().filter(idPredicate).flatMap(new Function<Map.Entry<String, ? extends LanguageProvider>, Stream<? extends S>>() {
             @Override
-            public Stream<? extends Snippet> apply(Map.Entry<String, ? extends LanguageProvider> e) {
-                return cache.computeIfAbsent(e.getKey(), new Function<String, Collection<? extends Snippet>>() {
+            public Stream<? extends S> apply(Map.Entry<String, ? extends LanguageProvider> e) {
+                return cache.computeIfAbsent(e.getKey(), new Function<String, Collection<? extends S>>() {
                     @Override
-                    public Collection<? extends Snippet> apply(String k) {
+                    public Collection<? extends S> apply(String k) {
                         return provider.apply(e.getValue());
                     }
                 }).stream();
@@ -204,6 +230,19 @@ final class TestContext implements Closeable {
 
     private static boolean isHost(LanguageProvider provider) {
         return provider.getClass() == JavaHostLanguageProvider.class;
+    }
+
+    Value getValue(Object object) {
+        String conversionSymbol = "tmp_conversionSymbol";
+        Value old = context.importSymbol(conversionSymbol);
+        context.exportSymbol(conversionSymbol, object);
+        Value value = context.importSymbol(conversionSymbol);
+        context.exportSymbol(conversionSymbol, old);
+        return value;
+    }
+
+    void setInlineSnippet(String languageId, InlineSnippet inlineSnippet, InlineResultVerifier verifier) {
+        verifierInstrument.setInlineSnippet(languageId, inlineSnippet, verifier);
     }
 
     private enum State {

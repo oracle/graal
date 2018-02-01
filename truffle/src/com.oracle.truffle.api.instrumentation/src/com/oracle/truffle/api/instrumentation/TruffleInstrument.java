@@ -46,7 +46,9 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AccessorInstrumentHandler;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
 import com.oracle.truffle.api.nodes.ExecutableNode;
@@ -197,6 +199,10 @@ public abstract class TruffleInstrument {
             this.in = in;
             this.err = err;
             this.out = out;
+        }
+
+        Object getVMObject() {
+            return vmObject;
         }
 
         /**
@@ -383,7 +389,30 @@ public abstract class TruffleInstrument {
             // Assert that the languages match:
             assert AccessorInstrumentHandler.langAccess().getLanguageInfo(env) == node.getRootNode().getLanguageInfo();
             ExecutableNode fragment = AccessorInstrumentHandler.langAccess().parseInline(env, source, node, frame);
+            if (fragment != null) {
+                TruffleLanguage<?> languageSPI = AccessorInstrumentHandler.langAccess().getSPI(env);
+                fragment = new GuardedExecutableNode(languageSPI, fragment, frame);
+            }
             return fragment;
+        }
+
+        private static class GuardedExecutableNode extends ExecutableNode {
+
+            private final FrameDescriptor frameDescriptor;
+            @Child private ExecutableNode fragment;
+
+            GuardedExecutableNode(TruffleLanguage<?> languageSPI, ExecutableNode fragment, MaterializedFrame frameLocation) {
+                super(languageSPI);
+                this.frameDescriptor = (frameLocation != null) ? frameLocation.getFrameDescriptor() : null;
+                this.fragment = fragment;
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                assert frameDescriptor == null || frameDescriptor == frame.getFrameDescriptor();
+                return fragment.execute(frame);
+            }
+
         }
 
         /**

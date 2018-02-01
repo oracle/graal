@@ -1784,6 +1784,12 @@ final class InstrumentationHandler {
             }
 
             @Override
+            public org.graalvm.polyglot.SourceSection createSourceSection(Object instrumentEnv, org.graalvm.polyglot.Source source, com.oracle.truffle.api.source.SourceSection ss) {
+                TruffleInstrument.Env env = (TruffleInstrument.Env) instrumentEnv;
+                return engineAccess().createSourceSection(env.getVMObject(), source, ss);
+            }
+
+            @Override
             public void patchInstrumentationHandler(Object vm, DispatchOutputStream out, DispatchOutputStream err, InputStream in) {
                 final InstrumentationHandler instrumentationHandler = (InstrumentationHandler) vm;
                 instrumentationHandler.patch(out, err, in);
