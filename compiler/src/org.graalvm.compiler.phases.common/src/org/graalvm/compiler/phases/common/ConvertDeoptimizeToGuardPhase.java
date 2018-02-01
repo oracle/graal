@@ -116,7 +116,6 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
         }
     }
 
-    @SuppressWarnings("try")
     private void processFixedGuardAndPhis(FixedGuardNode fixedGuard, PhaseContext context, CompareNode compare, ValueNode x, ValuePhiNode xPhi, ValueNode y, ValuePhiNode yPhi) {
         AbstractBeginNode pred = AbstractBeginNode.prevBegin(fixedGuard);
         if (pred instanceof AbstractMergeNode) {

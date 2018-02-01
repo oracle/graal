@@ -46,7 +46,24 @@ public class NodeSourcePosition extends BytecodePosition {
      */
     private final JavaConstant receiver;
     private final int hashCode;
-    private final Marker special;
+    private final Marker marker;
+
+    /**
+     * Remove marker frames.
+     */
+    public NodeSourcePosition trim() {
+        if (marker != None) {
+            return null;
+        }
+        NodeSourcePosition caller = getCaller();
+        if (caller != null) {
+            caller = caller.trim();
+        }
+        if (caller != getCaller()) {
+            return new NodeSourcePosition(receiver, caller, getMethod(), getBCI());
+        }
+        return this;
+    }
 
     enum Marker {
         None,
@@ -58,7 +75,7 @@ public class NodeSourcePosition extends BytecodePosition {
         this(receiver, caller, method, bci, None);
     }
 
-    public NodeSourcePosition(JavaConstant receiver, NodeSourcePosition caller, ResolvedJavaMethod method, int bci, Marker special) {
+    public NodeSourcePosition(JavaConstant receiver, NodeSourcePosition caller, ResolvedJavaMethod method, int bci, Marker marker) {
         super(caller, method, bci);
         if (caller == null) {
             this.hashCode = 31 * bci + method.hashCode();
@@ -66,8 +83,8 @@ public class NodeSourcePosition extends BytecodePosition {
             this.hashCode = caller.hashCode * 7 + 31 * bci + method.hashCode();
         }
         this.receiver = receiver;
-        this.special = special;
-        assert receiver == null || special != None || method.getDeclaringClass().isInstance(receiver) : this;
+        this.marker = marker;
+        assert receiver == null || marker != None || method.getDeclaringClass().isInstance(receiver) : this;
         // assert bci >= -1 : this;
     }
 
@@ -80,7 +97,7 @@ public class NodeSourcePosition extends BytecodePosition {
     }
 
     public boolean isPlaceholder() {
-        return special == Placeholder;
+        return marker == Placeholder;
     }
 
     public static NodeSourcePosition substitution(ResolvedJavaMethod method) {
@@ -92,7 +109,7 @@ public class NodeSourcePosition extends BytecodePosition {
     }
 
     public boolean isSubstitution() {
-        return special == Substitution;
+        return marker == Substitution;
     }
 
     @Override
@@ -207,22 +224,16 @@ public class NodeSourcePosition extends BytecodePosition {
             return true;
         }
         int opcode = BytecodeDisassembler.getBytecodeAt(caller.getMethod(), caller.getBCI());
-        if (opcode == Bytecodes.GETSTATIC) {
-            System.err.println(current.shallowToString() + " " + caller.shallowToString());
-            return true;
-        }
         JavaMethod method = BytecodeDisassembler.getInvokedMethodAt(caller.getMethod(), caller.getBCI());
         /*
          * It's not really possible to match the declaring classes since this might be an interface
          * invoke. Matching name and signature probably provides enough accuracy.
          */
-        assert method == null || method.getName().equals(current.getMethod().getName()) &&
-                        method.getSignature().equals(current.getMethod().getSignature()) ||
+        assert method == null || (method.getName().equals(current.getMethod().getName()) &&
+                        method.getSignature().equals(current.getMethod().getSignature())) ||
                         caller.getMethod().getName().equals("linkToTargetMethod") ||
                         opcode == Bytecodes.INVOKEDYNAMIC ||
                         caller.getMethod().getDeclaringClass().getName().startsWith("Ljava/lang/invoke/LambdaForm$") ||
-                        (caller.getMethod().getDeclaringClass().equals(method.getDeclaringClass()) &&
-                                        method.getName().equals("callProxy") && current.getMethod().getName().equals("callRoot")) ||
                         current.getMethod().getName().equals("callInlined") : "expected " + method + " but found " +
                                         current.getMethod();
         return true;

@@ -218,9 +218,11 @@ public class HotSpotCompiledCodeBuilder {
              * unless -XX:+DebugNonSafepoints is enabled, so don't emit them in that case.
              */
             for (SourceMapping source : target.getSourceMappings()) {
-                assert source.getSourcePosition().verify();
-                sites.add(new Infopoint(source.getEndOffset(), new DebugInfo(source.getSourcePosition()), InfopointReason.BYTECODE_POSITION));
-                assert verifySourcePositionReceivers(source.getSourcePosition());
+                NodeSourcePosition sourcePosition = source.getSourcePosition();
+                assert sourcePosition.verify();
+                sourcePosition = sourcePosition.trim();
+                sites.add(new Infopoint(source.getEndOffset(), new DebugInfo(sourcePosition), InfopointReason.BYTECODE_POSITION));
+                assert verifySourcePositionReceivers(sourcePosition);
             }
         }
 

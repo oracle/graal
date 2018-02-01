@@ -177,18 +177,25 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public NodeSourcePosition getCallerBytecodePosition() {
+        public NodeSourcePosition getCallerBytecodePosition(NodeSourcePosition position) {
             if (caller == null) {
-                return null;
+                return position;
             }
             if (callerBytecodePosition == null) {
-                NodeSourcePosition callerPosition = caller.getCallerBytecodePosition();
                 NodeSourcePosition invokePosition = invokeData.invoke.asNode().getNodeSourcePosition();
+                if (invokePosition == null) {
+                    assert position == null : "should only happen when tracking is disabled";
+                    return null;
+                }
                 JavaConstant constantReceiver = caller.invokeData == null ? null : caller.invokeData.constantReceiver;
                 if (constantReceiver != null) {
-                    invokePosition.addCaller(constantReceiver, null);
+                    invokePosition = new NodeSourcePosition(constantReceiver, invokePosition.getCaller(), invokePosition.getMethod(), invokePosition.getBCI());
                 }
-                callerBytecodePosition = invokePosition != null ? invokePosition : callerPosition;
+
+                callerBytecodePosition = invokePosition;
+            }
+            if (position != null) {
+                return position.addCaller(callerBytecodePosition);
             }
             return callerBytecodePosition;
         }
@@ -366,7 +373,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         private DebugCloseable withNodeSoucePosition() {
             if (getGraph().trackNodeSourcePosition()) {
-                return getGraph().withNodeSourcePosition(methodScope.getCallerBytecodePosition());
+                NodeSourcePosition callerBytecodePosition = methodScope.getCallerBytecodePosition();
+                if (callerBytecodePosition != null) {
+                    return getGraph().withNodeSourcePosition(callerBytecodePosition);
+                }
             }
             return null;
         }

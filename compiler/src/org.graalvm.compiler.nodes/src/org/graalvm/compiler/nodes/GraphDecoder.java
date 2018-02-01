@@ -148,7 +148,11 @@ public class GraphDecoder {
         }
 
         public NodeSourcePosition getCallerBytecodePosition() {
-            return null;
+            return getCallerBytecodePosition(null);
+        }
+
+        public NodeSourcePosition getCallerBytecodePosition(NodeSourcePosition position) {
+            return position;
         }
 
     }
@@ -1007,13 +1011,6 @@ public class GraphDecoder {
 
     protected void readProperties(MethodScope methodScope, Node node) {
         NodeSourcePosition position = (NodeSourcePosition) readObject(methodScope);
-        if (graph.trackNodeSourcePosition() && position != null) {
-            NodeSourcePosition caller = methodScope.getCallerBytecodePosition();
-            if (caller != null) {
-                position = position.addCaller(caller);
-            }
-            node.setNodeSourcePosition(position);
-        }
         Fields fields = node.getNodeClass().getData();
         for (int pos = 0; pos < fields.getCount(); pos++) {
             if (fields.getType(pos).isPrimitive()) {
@@ -1023,6 +1020,9 @@ public class GraphDecoder {
                 Object value = readObject(methodScope);
                 fields.putObject(node, pos, value);
             }
+        }
+        if (graph.trackNodeSourcePosition() && position != null) {
+            node.setNodeSourcePosition(methodScope.getCallerBytecodePosition(position));
         }
     }
 

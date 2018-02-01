@@ -2123,6 +2123,7 @@ public class BytecodeParser implements GraphBuilderContext {
      * Tries to inline {@code targetMethod} if it is an instance field accessor. This avoids the
      * overhead of creating and using a nested {@link BytecodeParser} object.
      */
+    @SuppressWarnings("try")
     private boolean tryFastInlineAccessor(ValueNode[] args, ResolvedJavaMethod targetMethod) {
         byte[] bytecode = targetMethod.getCode();
         if (bytecode != null && bytecode.length == ACCESSOR_BYTECODE_LENGTH &&
@@ -2135,10 +2136,12 @@ public class BytecodeParser implements GraphBuilderContext {
                 if (field instanceof ResolvedJavaField) {
                     ValueNode receiver = invocationPluginReceiver.init(targetMethod, args).get();
                     ResolvedJavaField resolvedField = (ResolvedJavaField) field;
-                    genGetField(resolvedField, receiver);
-                    notifyBeforeInline(targetMethod);
-                    printInlining(targetMethod, targetMethod, true, "inline accessor method (bytecode parsing)");
-                    notifyAfterInline(targetMethod);
+                    try (DebugCloseable context = openNodeContext(targetMethod, 1)) {
+                        genGetField(resolvedField, receiver);
+                        notifyBeforeInline(targetMethod);
+                        printInlining(targetMethod, targetMethod, true, "inline accessor method (bytecode parsing)");
+                        notifyAfterInline(targetMethod);
+                    }
                     return true;
                 }
             }
@@ -3041,8 +3044,12 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private DebugCloseable openNodeContext(ResolvedJavaMethod targetMethod) {
+        return openNodeContext(targetMethod, -1);
+    }
+
+    private DebugCloseable openNodeContext(ResolvedJavaMethod targetMethod, int bci) {
         if (graph.trackNodeSourcePosition()) {
-            return graph.withNodeSourcePosition(new NodeSourcePosition(null, createBytecodePosition(), targetMethod, -1));
+            return graph.withNodeSourcePosition(new NodeSourcePosition(null, createBytecodePosition(), targetMethod, bci));
         }
         return null;
     }
@@ -3482,6 +3489,7 @@ public class BytecodeParser implements GraphBuilderContext {
         frameState.push(kind, value);
     }
 
+    @SuppressWarnings("try")
     public void loadLocalObject(int index) {
         ValueNode value = frameState.loadLocal(index, JavaKind.Object);
 
@@ -3489,7 +3497,9 @@ public class BytecodeParser implements GraphBuilderContext {
         int nextBC = stream.readUByte(nextBCI);
         if (nextBCI <= currentBlock.endBci && nextBC == Bytecodes.GETFIELD) {
             stream.next();
-            genGetField(stream.readCPI(), Bytecodes.GETFIELD, value);
+            try (DebugCloseable ignored = openNodeContext()) {
+                genGetField(stream.readCPI(), Bytecodes.GETFIELD, value);
+            }
         } else {
             frameState.push(JavaKind.Object, value);
         }
