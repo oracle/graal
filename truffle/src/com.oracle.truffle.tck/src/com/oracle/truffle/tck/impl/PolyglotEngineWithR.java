@@ -26,35 +26,32 @@ package com.oracle.truffle.tck.impl;
 
 import static org.junit.Assert.assertEquals;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.tck.impl.TruffleLanguageRunner.RRunner;
 
 /**
- * Tests with code snippets in R language. They are used from {@link PolyglotEngine} & co. classes,
- * but executed only when an implementation of R is around.
+ * Tests with code snippets in R language (executed only when an implementation of R is around).
  */
 @RunWith(RRunner.class)
 public class PolyglotEngineWithR {
 
-    private PolyglotEngine engine;
+    private Context engine;
 
     @Before
     public void initEngine() {
-        engine = PolyglotEngine.newBuilder().build();
+        engine = Context.newBuilder().build();
     }
 
     @After
     public void disposeEngine() {
-        engine.dispose();
+        engine.close();
     }
-
-// @formatter:off
 
     @Test
     public void testCallRtFunctionFromJava() {
@@ -68,8 +65,7 @@ public class PolyglotEngineWithR {
     }
 
     public void callRFunctionFromJava() {
-        Source src = Source.newBuilder("qbinom").
-                mimeType("text/x-r").name("qbinom.R").build();
+        Source src = Source.newBuilder("R", "qbinom", "qbinom.R").buildLiteral();
         BinomQuantile func = engine.eval(src).as(BinomQuantile.class);
         assertEquals(4, func.qbinom(0.37, 10, 0.5));
     }

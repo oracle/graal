@@ -105,8 +105,10 @@ import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.SubstrateCompiledCode;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
 import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
+import com.oracle.svm.core.graal.code.SubstrateNodeLIRBuilder;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
+import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.SubstrateReferenceMapBuilder;
 import com.oracle.svm.core.meta.CompressedNullConstant;
@@ -401,7 +403,7 @@ public class SubstrateAMD64Backend extends Backend {
         }
     }
 
-    public static final class SubstrateAMD64NodeLIRBuilder extends AMD64NodeLIRBuilder {
+    public static final class SubstrateAMD64NodeLIRBuilder extends AMD64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
 
         private final SharedMethod method;
 
@@ -455,6 +457,13 @@ public class SubstrateAMD64Backend extends Backend {
             } else {
                 super.emitBranch(node, trueSuccessor, falseSuccessor, trueSuccessorProbability);
             }
+        }
+
+        @Override
+        public void emitCGlobalDataLoadAddress(CGlobalDataLoadAddressNode node) {
+            Variable result = gen.newVariable(gen.getLIRKindTool().getWordKind());
+            append(new AMD64CGlobalDataLoadAddressOp(node.getDataInfo(), result));
+            setResult(node, result);
         }
 
         @Override
