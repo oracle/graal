@@ -56,8 +56,11 @@ public class CGlobalDataFeature implements GraalFeature {
     }
 
     private Map<CGlobalDataImpl<?>, CGlobalDataInfo> map = new ConcurrentHashMap<>();
-    private boolean layouted = false;
-    private int totalSize;
+    private int totalSize = -1;
+
+    private boolean isLayouted() {
+        return totalSize != -1;
+    }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -86,7 +89,7 @@ public class CGlobalDataFeature implements GraalFeature {
 
     public CGlobalDataInfo registerAsAccessed(CGlobalData<?> obj) {
         CGlobalDataImpl<?> data = (CGlobalDataImpl<?>) obj;
-        assert !layouted || map.containsKey(data) : "CGlobalData instance must have been discovered/registered before or during analysis";
+        assert !isLayouted() || map.containsKey(data) : "CGlobalData instance must have been discovered/registered before or during analysis";
         return map.computeIfAbsent((CGlobalDataImpl<?>) obj, o -> new CGlobalDataInfo(data));
     }
 
@@ -98,7 +101,7 @@ public class CGlobalDataFeature implements GraalFeature {
     }
 
     private void layout() {
-        assert !layouted : "Already layouted";
+        assert !isLayouted() : "Already layouted";
         final int wordSize = ConfigurationValues.getTarget().wordSize;
         int offset = 0;
         for (Entry<CGlobalDataImpl<?>, CGlobalDataInfo> entry : map.entrySet()) {
@@ -128,16 +131,16 @@ public class CGlobalDataFeature implements GraalFeature {
             offset = (offset + (wordSize - 1)) & ~(wordSize - 1); // align
         }
         totalSize = offset;
-        layouted = true;
+        assert isLayouted();
     }
 
     public int getSize() {
-        assert layouted : "Not layouted yet";
+        assert isLayouted() : "Not layouted yet";
         return totalSize;
     }
 
     public void writeData(RelocatableBuffer buffer) {
-        assert layouted : "Not layouted yet";
+        assert isLayouted() : "Not layouted yet";
         int start = buffer.getPosition();
         assert IntStream.range(0, totalSize).allMatch(i -> buffer.getByte(i) == 0) : "Buffer must be zero-initialized";
         for (CGlobalDataInfo info : map.values()) {

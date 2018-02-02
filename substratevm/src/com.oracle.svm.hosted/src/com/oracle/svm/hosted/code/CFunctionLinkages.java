@@ -22,8 +22,8 @@
  */
 package com.oracle.svm.hosted.code;
 
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.word.Word;
@@ -41,14 +41,13 @@ import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class CFunctionLinkages {
-    private final ConcurrentMap<String, CGlobalDataInfo> nameToFunction;
-
-    CFunctionLinkages() {
-        nameToFunction = new ConcurrentHashMap<>();
+    public static CFunctionLinkages singleton() {
+        return ImageSingletons.lookup(CFunctionLinkages.class);
     }
 
-    public static CFunctionLinkages get() {
-        return ImageSingletons.lookup(CFunctionLinkages.class);
+    private final Map<String, CGlobalDataInfo> nameToFunction = new ConcurrentHashMap<>();
+
+    CFunctionLinkages() {
     }
 
     public CGlobalDataInfo addOrLookupMethod(ResolvedJavaMethod method) {
