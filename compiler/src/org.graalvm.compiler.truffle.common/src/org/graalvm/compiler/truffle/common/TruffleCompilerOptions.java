@@ -186,6 +186,9 @@ public class TruffleCompilerOptions {
     @Option(help = "Used for debugging the splitting implementation. Prints splitting information directly to stdout", type = OptionType.Expert)
     public static final OptionKey<Boolean> TruffleDirectTraceSplitting = new OptionKey<>(false);
 
+    @Option(help = "Used for debugging the splitting implementation. Prints splitting summary directly to stdout on shutdown", type = OptionType.Expert)
+    public static final OptionKey<Boolean> TruffleTraceSplittingSummary = new OptionKey<>(false);
+
     @Option(help = "Enable asynchronous truffle compilation in background thread", type = OptionType.Expert)
     public static final OptionKey<Boolean> TruffleBackgroundCompilation = new OptionKey<>(true);
 
