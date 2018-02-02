@@ -36,11 +36,22 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.word.WordBase;
+
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.api.HostVM;
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
+import com.oracle.graal.pointsto.util.AnalysisError;
+
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
@@ -52,17 +63,6 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.word.WordBase;
-
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.api.HostVM;
-import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-import com.oracle.graal.pointsto.util.AnalysisError;
-
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
 
 public class AnalysisUniverse implements Universe {
 
@@ -184,18 +184,18 @@ public class AnalysisUniverse implements Universe {
         }
         assert !(rawType instanceof AnalysisType) : "lookupAllowUnresolved does not support analysis types.";
 
-        ResolvedJavaType type = (ResolvedJavaType) rawType;
-        type = substitutions.lookup(type);
+        ResolvedJavaType hostType = (ResolvedJavaType) rawType;
+        ResolvedJavaType type = substitutions.lookup(hostType);
         AnalysisType result = optionalLookup(type);
         if (result == null) {
-            result = createType(type);
+            result = createType(type, hostType);
         }
         assert typesById[result.getId()].equals(result);
         return result;
     }
 
     @SuppressFBWarnings(value = {"ES_COMPARING_STRINGS_WITH_EQ"}, justification = "Bug in findbugs")
-    private AnalysisType createType(ResolvedJavaType type) {
+    private AnalysisType createType(ResolvedJavaType type, ResolvedJavaType hostType) {
         if (!hostVM.platformSupported(type)) {
             throw new UnsupportedFeatureException("type is not available in this platform: " + type.toJavaName(true));
         }
@@ -251,7 +251,7 @@ public class AnalysisUniverse implements Universe {
         try {
             JavaKind storageKind = getStorageKind(type, originalMetaAccess, getTarget());
             AnalysisType newValue = new AnalysisType(this, type, storageKind, objectClass);
-            hostVM.registerType(newValue);
+            hostVM.registerType(newValue, hostType);
 
             synchronized (this) {
                 /*
@@ -327,6 +327,16 @@ public class AnalysisUniverse implements Universe {
         assert !(rawField instanceof AnalysisField);
 
         ResolvedJavaField field = (ResolvedJavaField) rawField;
+
+        if (!sealed) {
+            /*
+             * Lookup the field declaring class eagerly to trigger computation of automatic
+             * substitutions. There might be an automatic substitution for the current field and we
+             * want to register it before the analysis field is created.
+             */
+            lookup(field.getDeclaringClass());
+        }
+
         field = substitutions.lookup(field);
         AnalysisField result = fields.get(field);
         if (result == null) {

@@ -24,6 +24,7 @@
  */
 #include "native.h"
 
+#include <errno.h>
 #include <stdlib.h>
 #include <ffi.h>
 #include "internal.h"
@@ -137,7 +138,11 @@ static void executeHelper(JNIEnv *env, TruffleContext *ctx, void *ret, ffi_cif *
         (*env)->ReleaseIntArrayElements(env, patch, patches, JNI_ABORT);
     }
 
+    errno = errnoMirror;
+
     ffi_call(cif, (void (*)()) address, ret, argPtrs);
+
+    errnoMirror = errno;
 
     (*env)->ReleaseByteArrayElements(env, primArgs, primArgValues, JNI_ABORT);
 

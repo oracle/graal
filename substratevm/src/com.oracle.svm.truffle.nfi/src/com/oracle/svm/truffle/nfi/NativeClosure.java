@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,6 +47,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
+import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.truffle.nfi.LibFFI.ClosureData;
 import com.oracle.svm.truffle.nfi.LibFFI.NativeClosureHandle;
@@ -55,6 +56,7 @@ import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_arg;
 import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_cif;
 import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_closure_callback;
 import com.oracle.truffle.api.CallTarget;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 
 final class NativeClosure {
 
@@ -68,7 +70,7 @@ final class NativeClosure {
 
         int skipped = 0;
         for (Object type : signature.getArgTypes()) {
-            if (Target_com_oracle_truffle_nfi_LibFFIType_EnvType.class.isInstance(type)) {
+            if (Target_com_oracle_truffle_nfi_impl_LibFFIType_EnvType.class.isInstance(type)) {
                 skipped++;
             }
         }
@@ -111,13 +113,13 @@ final class NativeClosure {
         Object[] args = new Object[length];
         for (int i = 0; i < argTypes.length; i++) {
             Object type = argTypes[i];
-            if (Target_com_oracle_truffle_nfi_LibFFIType_StringType.class.isInstance(type)) {
+            if (Target_com_oracle_truffle_nfi_impl_LibFFIType_StringType.class.isInstance(type)) {
                 CCharPointerPointer argPtr = argPointers.read(i);
                 args[argIdx++] = TruffleNFISupport.utf8ToJavaString(argPtr.read());
-            } else if (Target_com_oracle_truffle_nfi_LibFFIType_ObjectType.class.isInstance(type)) {
+            } else if (Target_com_oracle_truffle_nfi_impl_LibFFIType_ObjectType.class.isInstance(type)) {
                 WordPointer argPtr = argPointers.read(i);
                 args[argIdx++] = ImageSingletons.lookup(TruffleNFISupport.class).resolveHandle(argPtr.read());
-            } else if (Target_com_oracle_truffle_nfi_LibFFIType_EnvType.class.isInstance(type)) {
+            } else if (Target_com_oracle_truffle_nfi_impl_LibFFIType_EnvType.class.isInstance(type)) {
                 // skip
             } else {
                 WordPointer argPtr = argPointers.read(i);
@@ -157,50 +159,78 @@ final class NativeClosure {
     @CEntryPoint
     @CEntryPointOptions(prologue = EnterClosureDataIsolatePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static void invokeClosureBufferRet(@SuppressWarnings("unused") ffi_cif cif, Pointer ret, WordPointer args, ClosureData user) {
-        NativeClosure closure = lookup(user);
-        ByteBuffer retBuffer = closure.createRetBuffer(ret);
-        Target_com_oracle_truffle_nfi_impl_LibFFIClosure_RetPatches patches = (Target_com_oracle_truffle_nfi_impl_LibFFIClosure_RetPatches) closure.call(args, retBuffer);
+        CIntPointer errnoMirror = ErrnoMirror.getErrnoMirrorLocation();
+        errnoMirror.write(Errno.errno());
 
-        if (patches != null) {
-            for (int i = 0; i < patches.count; i++) {
-                Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag tag = getTag(patches.patches[i]);
-                int offset = getOffset(patches.patches[i]);
-                Object obj = patches.objects[i];
+        try {
+            NativeClosure closure = lookup(user);
+            ByteBuffer retBuffer = closure.createRetBuffer(ret);
+            Target_com_oracle_truffle_nfi_impl_LibFFIClosure_RetPatches patches = (Target_com_oracle_truffle_nfi_impl_LibFFIClosure_RetPatches) closure.call(args, retBuffer);
 
-                if (tag == Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.OBJECT) {
-                    WordBase handle = ImageSingletons.lookup(TruffleNFISupport.class).createGlobalHandle(obj);
-                    ret.writeWord(offset, handle);
-                } else if (tag == Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.STRING) {
-                    ret.writeWord(offset, serializeStringRet(obj));
-                } else {
-                    // nothing to do
+            if (patches != null) {
+                for (int i = 0; i < patches.count; i++) {
+                    Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag tag = getTag(patches.patches[i]);
+                    int offset = getOffset(patches.patches[i]);
+                    Object obj = patches.objects[i];
+
+                    if (tag == Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.OBJECT) {
+                        WordBase handle = ImageSingletons.lookup(TruffleNFISupport.class).createGlobalHandle(obj);
+                        ret.writeWord(offset, handle);
+                    } else if (tag == Target_com_oracle_truffle_nfi_impl_NativeArgumentBuffer_TypeTag.STRING) {
+                        ret.writeWord(offset, serializeStringRet(obj));
+                    } else {
+                        // nothing to do
+                    }
                 }
             }
+        } finally {
+            Errno.set_errno(errnoMirror.read());
         }
     }
 
     @CEntryPoint
     @CEntryPointOptions(prologue = EnterClosureDataIsolatePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static void invokeClosureVoidRet(@SuppressWarnings("unused") ffi_cif cif, @SuppressWarnings("unused") WordPointer ret, WordPointer args, ClosureData user) {
-        lookup(user).call(args, null);
+        CIntPointer errnoMirror = ErrnoMirror.getErrnoMirrorLocation();
+        errnoMirror.write(Errno.errno());
+
+        try {
+            lookup(user).call(args, null);
+        } finally {
+            Errno.set_errno(errnoMirror.read());
+        }
     }
 
     @CEntryPoint
     @CEntryPointOptions(prologue = EnterClosureDataIsolatePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static void invokeClosureStringRet(@SuppressWarnings("unused") ffi_cif cif, WordPointer ret, WordPointer args, ClosureData user) {
-        Object retValue = lookup(user).call(args, null);
-        ret.write(serializeStringRet(retValue));
+        CIntPointer errnoMirror = ErrnoMirror.getErrnoMirrorLocation();
+        errnoMirror.write(Errno.errno());
+
+        try {
+            Object retValue = lookup(user).call(args, null);
+            ret.write(serializeStringRet(retValue));
+        } finally {
+            Errno.set_errno(errnoMirror.read());
+        }
     }
 
     @CEntryPoint
     @CEntryPointOptions(prologue = EnterClosureDataIsolatePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static void invokeClosureObjectRet(@SuppressWarnings("unused") ffi_cif cif, WordPointer ret, WordPointer args, ClosureData user) {
-        Object obj = lookup(user).call(args, null);
-        if (obj == null) {
-            ret.write(WordFactory.zero());
-        } else {
-            TruffleObjectHandle handle = ImageSingletons.lookup(TruffleNFISupport.class).createGlobalHandle(obj);
-            ret.write(handle);
+        CIntPointer errnoMirror = ErrnoMirror.getErrnoMirrorLocation();
+        errnoMirror.write(Errno.errno());
+
+        try {
+            Object obj = lookup(user).call(args, null);
+            if (obj == null) {
+                ret.write(WordFactory.zero());
+            } else {
+                TruffleObjectHandle handle = ImageSingletons.lookup(TruffleNFISupport.class).createGlobalHandle(obj);
+                ret.write(handle);
+            }
+        } finally {
+            Errno.set_errno(errnoMirror.read());
         }
     }
 

@@ -164,7 +164,7 @@ public abstract class Launcher {
      * Exits the launcher with the provided exit code.
      *
      * This exits by throwing an {@link AbortException}.
-     * 
+     *
      * @param exitCode the exit code of the launcher process.
      */
     protected final AbortException exit(int exitCode) {
@@ -175,7 +175,7 @@ public abstract class Launcher {
      * Exits the launcher, indicating failure.
      *
      * This aborts by throwing an {@link AbortException}.
-     * 
+     *
      * @param message an error message that will be printed to {@linkplain System#err stderr}. If
      *            null, nothing will be printed.
      */
@@ -187,7 +187,7 @@ public abstract class Launcher {
      * Exits the launcher, with the provided exit code.
      *
      * This aborts by throwing an {@link AbortException}.
-     * 
+     *
      * @param message an error message that will be printed to {@linkplain System#err stderr}. If
      *            null, nothing will be printed.
      * @param exitCode the exit code of the launcher process.
@@ -201,7 +201,7 @@ public abstract class Launcher {
      * Exits the launcher, indicating failure because of the provided {@link Throwable}.
      *
      * This aborts by throwing an {@link AbortException}.
-     * 
+     *
      * @param t the exception that causes the launcher to abort.
      */
     protected final AbortException abort(Throwable t) {
@@ -212,7 +212,7 @@ public abstract class Launcher {
      * Exits the launcher with the provided exit code because of the provided {@link Throwable}.
      *
      * This aborts by throwing an {@link AbortException}.
-     * 
+     *
      * @param t the exception that causes the launcher to abort.
      * @param exitCode the exit code of the launcher process.
      */
@@ -233,7 +233,7 @@ public abstract class Launcher {
      * This tries to build a helpful error message based on exception.
      *
      * This aborts by throwing an {@link AbortException}.
-     * 
+     *
      * @param e the exception that causes the launcher to abort.
      */
     protected final AbortException abort(IOException e) {
@@ -246,7 +246,7 @@ public abstract class Launcher {
      * This tries to build a helpful error message based on exception.
      *
      * This aborts by throwing an {@link AbortException}.
-     * 
+     *
      * @param e the exception that causes the launcher to abort.
      * @param exitCode the exit code of the launcher process
      */
@@ -268,7 +268,7 @@ public abstract class Launcher {
      * Exits the launcher, indicating failure because of an invalid argument.
      *
      * This aborts by throwing an {@link AbortException}.
-     * 
+     *
      * @param argument the problematic argument.
      * @param message an error message that is printed to {@linkplain System#err stderr}.
      */
@@ -329,7 +329,7 @@ public abstract class Launcher {
     /**
      * Prints a help message to {@linkplain System#out stdout}. This only prints options that belong
      * to categories {@code maxCategory or less}.
-     * 
+     *
      * @param maxCategory the maximum category of options that should be printed.
      */
     protected abstract void printHelp(OptionCategory maxCategory);
@@ -341,7 +341,7 @@ public abstract class Launcher {
 
     /**
      * Add all known arguments to the {@code options} list.
-     * 
+     *
      * @param options list to which valid arguments must be added.
      */
     protected abstract void collectArguments(Set<String> options);
@@ -382,7 +382,7 @@ public abstract class Launcher {
      * Returns the name of the main class for this launcher.
      *
      * Typically:
-     * 
+     *
      * <pre>
      * return MyLauncher.class.getName();
      * </pre>
@@ -1052,7 +1052,7 @@ public abstract class Launcher {
                     throw abort("Invalid argument: " + key + " is not a boolean option, set it with --native.XX:" + key + "=...");
                 }
                 value = arg.startsWith("+");
-            } else if (eqIdx >= 0) {
+            } else if (eqIdx > 0) {
                 key = arg.substring(0, eqIdx);
                 OptionDescriptor descriptor = RuntimeOptions.getOptions().get(key);
                 if (descriptor == null) {
@@ -1097,10 +1097,28 @@ public abstract class Launcher {
             }
             for (Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
                 OptionDescriptor descriptor = entry.getValue();
+                String helpMsg = descriptor.getHelp();
+                int helpLen = helpMsg.length();
+                if (helpLen > 0 && helpMsg.charAt(helpLen - 1) != '.') {
+                    helpMsg += '.';
+                }
                 if (isBooleanOption(descriptor)) {
-                    printOption("--native.XX:\u00b1" + entry.getKey(), descriptor.getHelp());
+                    Boolean val = (Boolean) descriptor.getKey().getDefaultValue();
+                    if (helpLen != 0) {
+                        helpMsg += ' ';
+                    }
+                    if (val == null || !((boolean) val)) {
+                        helpMsg += "Default: - (disabled).";
+                    } else {
+                        helpMsg += "Default: + (enabled).";
+                    }
+                    printOption("--native.XX:\u00b1" + entry.getKey(), helpMsg);
                 } else {
-                    printOption("--native.XX:" + entry.getKey() + "=<value>", descriptor.getHelp());
+                    Object def = descriptor.getKey().getDefaultValue();
+                    if (def instanceof String) {
+                        def = '"' + String.valueOf(def) + '"';
+                    }
+                    printOption("--native.XX:" + entry.getKey() + "=" + def, helpMsg);
                 }
             }
             System.out.println("System properties:");

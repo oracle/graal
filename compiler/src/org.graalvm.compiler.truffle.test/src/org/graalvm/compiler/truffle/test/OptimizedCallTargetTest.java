@@ -405,6 +405,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         }
     }
 
+    @Ignore
     @Test
     public void testInCompilationRootDirective() {
         final int compilationThreshold = TruffleCompilerOptions.getValue(TruffleCompilationThreshold);
@@ -418,6 +419,11 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         int[] innerBoundary = {0};
 
         final OptimizedCallTarget innerTarget = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+
+            @Override
+            public String toString() {
+                return "inner";
+            }
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -447,6 +453,11 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         });
         final OptimizedCallTarget outerTarget = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
 
+            @Override
+            public String toString() {
+                return "outer";
+            }
+
             @Child private DirectCallNode child = runtime.createDirectCallNode(innerTarget);
 
             @Override
@@ -469,7 +480,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
 
             @CompilerDirectives.TruffleBoundary
             void outerBoundary() {
-                // TRUE
+                // FALSE
                 if (CompilerDirectives.inCompilationRoot()) {
                     outerBoundary[0]++;
                 }

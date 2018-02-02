@@ -652,6 +652,38 @@ final class Target_java_lang_Shutdown {
     }
 }
 
+@TargetClass(java.lang.Package.class)
+final class Target_java_lang_Package {
+
+    @Alias
+    @SuppressWarnings({"unused"})
+    Target_java_lang_Package(String name,
+                    String spectitle, String specversion, String specvendor,
+                    String impltitle, String implversion, String implvendor,
+                    URL sealbase, ClassLoader loader) {
+    }
+
+    @Substitute
+    static Package getPackage(Class<?> c) {
+        if (c.isPrimitive() || c.isArray()) {
+            /* Arrays and primitives don't have a package. */
+            return null;
+        }
+
+        /* Logic copied from java.lang.Package.getPackage(java.lang.Class). */
+        String name = c.getName();
+        int i = name.lastIndexOf('.');
+        if (i != -1) {
+            name = name.substring(0, i);
+            Target_java_lang_Package pkg = new Target_java_lang_Package(name, null, null, null,
+                            null, null, null, null, null);
+            return KnownIntrinsics.unsafeCast(pkg, Package.class);
+        } else {
+            return null;
+        }
+    }
+}
+
 /** Dummy class to have a class with the file's name. */
 public final class JavaLangSubstitutions {
 }

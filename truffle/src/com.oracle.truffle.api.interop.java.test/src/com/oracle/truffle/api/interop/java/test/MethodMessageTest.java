@@ -28,6 +28,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.function.IntBinaryOperator;
+
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.Message;
@@ -36,12 +38,13 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.interop.java.MethodMessage;
 
 public class MethodMessageTest {
-    interface MathWrap {
+
+    public interface MathWrap {
         @MethodMessage(message = "READ")
-        MaxFunction max();
+        IntBinaryOperator max();
     }
 
-    interface MaxFunction {
+    public interface ArrayWrap {
         @MethodMessage(message = "IS_NULL")
         boolean isNull();
 
@@ -53,20 +56,14 @@ public class MethodMessageTest {
 
         @MethodMessage(message = "IS_EXECUTABLE")
         boolean canExecute();
-
-        @MethodMessage(message = "EXECUTE")
-        Number compute(int a, int b);
     }
 
     @Test
     public void functionTest() throws Exception {
         TruffleObject truffleMath = JavaInterop.asTruffleObject(Math.class);
         MathWrap wrap = JavaInterop.asJavaObject(MathWrap.class, truffleMath);
-        MaxFunction functionArityTwo = wrap.max();
-        assertTrue("function can be executed", functionArityTwo.canExecute());
-        assertFalse("function isn't null", functionArityTwo.isNull());
-        assertFalse("function isn't array", functionArityTwo.isArray());
-        int res = functionArityTwo.compute(10, 5).intValue();
+        IntBinaryOperator maxFunction = wrap.max();
+        int res = maxFunction.applyAsInt(10, 5);
         assertEquals(10, res);
     }
 
@@ -77,7 +74,7 @@ public class MethodMessageTest {
         Boolean itIsAnArray = (Boolean) JavaInteropTest.message(Message.HAS_SIZE, arr);
         assertTrue("Yes, array", itIsAnArray);
 
-        MaxFunction wrap = JavaInterop.asJavaObject(MaxFunction.class, arr);
+        ArrayWrap wrap = JavaInterop.asJavaObject(ArrayWrap.class, arr);
 
         assertTrue("It is an array", wrap.isArray());
         assertFalse("No function", wrap.canExecute());

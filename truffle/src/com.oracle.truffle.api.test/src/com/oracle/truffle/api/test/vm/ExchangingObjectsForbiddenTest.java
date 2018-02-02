@@ -22,6 +22,16 @@
  */
 package com.oracle.truffle.api.test.vm;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
+
+import org.hamcrest.CoreMatchers;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.MessageResolution;
@@ -31,14 +41,6 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.vm.PolyglotEngine;
-import org.junit.After;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import org.junit.Before;
-import org.junit.Test;
 
 public class ExchangingObjectsForbiddenTest {
     private MyObj myObj;
@@ -89,8 +91,7 @@ public class ExchangingObjectsForbiddenTest {
         myEngine = PolyglotEngine.newBuilder().globalSymbol("myObj", myObj).build();
         myObjWrapped = myEngine.findGlobalSymbol("myObj");
         assertNotNull(myObjWrapped.get());
-        assertTrue(myObjWrapped.get() instanceof TruffleObject);
-        assertFalse(myObjWrapped.get() instanceof MyObj);
+        assertThat(myObjWrapped.get(), CoreMatchers.instanceOf(TruffleObject.class));
         myObjCall = myObjWrapped.as(CallWithValue.class);
 
         otherObj = new MyObj();
@@ -121,6 +122,13 @@ public class ExchangingObjectsForbiddenTest {
             protected Object access(MyObj obj, Object... value) {
                 obj.value = value[0];
                 return JavaInterop.asTruffleValue(null);
+            }
+        }
+
+        @Resolve(message = "IS_EXECUTABLE")
+        abstract static class IsExectuableNode extends Node {
+            protected Object access(@SuppressWarnings("unused") MyObj obj) {
+                return true;
             }
         }
     }

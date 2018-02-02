@@ -33,6 +33,7 @@ import java.io.PrintWriter;
 import java.io.Reader;
 import java.net.URI;
 import java.net.URL;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -48,6 +49,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
+import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 
 @SuppressWarnings("unused")
@@ -225,6 +227,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract Engine getEngineImpl();
 
         public abstract void close(boolean interuptExecution);
+
+        public abstract Value asValue(Object hostValue);
 
         public abstract void explicitEnter();
 
@@ -412,7 +416,7 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public Set<String> getMemberKeys(Object receiver) {
-            throw unsupported(receiver, "getMemberKeys()", "hasMembers()");
+            return Collections.emptySet();
         }
 
         public void putMember(Object receiver, String key, Object member) {
@@ -468,7 +472,11 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public String asString(Object receiver) {
-            throw unsupported(receiver, "asString()", "isString()");
+            if (isNull(receiver)) {
+                throw nullCoercion(receiver, String.class, "asString()", "isString()");
+            } else {
+                throw cannotConvert(receiver, String.class, "asString()", "isString()", "Invalid coercion.");
+            }
         }
 
         public boolean isBoolean(Object receiver) {
@@ -476,7 +484,11 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public boolean asBoolean(Object receiver) {
-            throw unsupported(receiver, "asBoolean()", "isBoolean()");
+            if (isNull(receiver)) {
+                throw nullCoercion(receiver, boolean.class, "asBoolean()", "isBoolean()");
+            } else {
+                throw cannotConvert(receiver, boolean.class, "asBoolean()", "isBoolean()", "Invalid or lossy primitive coercion.");
+            }
         }
 
         public boolean fitsInInt(Object receiver) {
@@ -484,7 +496,11 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public int asInt(Object receiver) {
-            throw unsupported(receiver, "asInt()", "isNumber()");
+            if (isNull(receiver)) {
+                throw nullCoercion(receiver, int.class, "asInt()", "fitsInInt()");
+            } else {
+                throw cannotConvert(receiver, int.class, "asInt()", "fitsInInt()", "Invalid or lossy primitive coercion.");
+            }
         }
 
         public boolean fitsInLong(Object receiver) {
@@ -492,7 +508,11 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public long asLong(Object receiver) {
-            throw unsupported(receiver, "asLong()", "isNumber()");
+            if (isNull(receiver)) {
+                throw nullCoercion(receiver, long.class, "asLong()", "fitsInLong()");
+            } else {
+                throw cannotConvert(receiver, long.class, "asLong()", "fitsInLong()", "Invalid or lossy primitive coercion.");
+            }
         }
 
         public boolean fitsInDouble(Object receiver) {
@@ -500,7 +520,11 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public double asDouble(Object receiver) {
-            throw unsupported(receiver, "asDouble()", "isNumber()");
+            if (isNull(receiver)) {
+                throw nullCoercion(receiver, double.class, "asDouble()", "fitsInDouble()");
+            } else {
+                throw cannotConvert(receiver, double.class, "asDouble()", "fitsInDouble()", "Invalid or lossy primitive coercion.");
+            }
         }
 
         public boolean fitsInFloat(Object receiver) {
@@ -508,7 +532,11 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public float asFloat(Object receiver) {
-            throw unsupported(receiver, "asFloat()", "isNumber()");
+            if (isNull(receiver)) {
+                throw nullCoercion(receiver, float.class, "asFloat()", "fitsInFloat()");
+            } else {
+                throw cannotConvert(receiver, float.class, "asFloat()", "fitsInFloat()", "Invalid or lossy primitive coercion.");
+            }
         }
 
         public boolean isNull(Object receiver) {
@@ -519,39 +547,71 @@ public abstract class AbstractPolyglotImpl {
             return false;
         }
 
+        public boolean fitsInByte(Object receiver) {
+            return false;
+        }
+
+        public byte asByte(Object receiver) {
+            if (isNull(receiver)) {
+                throw nullCoercion(receiver, byte.class, "asByte()", "fitsInByte()");
+            } else {
+                throw cannotConvert(receiver, byte.class, "asByte()", "fitsInByte()", "Invalid or lossy primitive coercion.");
+            }
+        }
+
+        public boolean fitsInShort(Object receiver) {
+            return false;
+        }
+
+        public short asShort(Object receiver) {
+            if (isNull(receiver)) {
+                throw nullCoercion(receiver, short.class, "asShort()", "fitsInShort()");
+            } else {
+                throw cannotConvert(receiver, short.class, "asShort()", "fitsInShort()", "Invalid or lossy primitive coercion.");
+            }
+        }
+
         public long asNativePointer(Object receiver) {
             return asNativePointerUnsupported(receiver);
         }
 
         public final long asNativePointerUnsupported(Object receiver) {
-            throw unsupported(receiver, "asNativePointer()", "isNativeObject()");
+            throw cannotConvert(receiver, long.class, "asNativePointer()", "isNativeObject()", "Value cannot be converted to a native pointer.");
         }
 
         public boolean isHostObject(Object receiver) {
             return false;
         }
 
+        public boolean isProxyObject(Object receiver) {
+            return false;
+        }
+
         public Object asHostObject(Object receiver) {
-            throw unsupported(receiver, "asHostObject()", "isHostObject()");
+            throw cannotConvert(receiver, null, "asHostObject()", "isHostObject()", "Value is not a host object.");
+        }
+
+        public Object asProxyObject(Object receiver) {
+            throw cannotConvert(receiver, null, "asProxyObject()", "isProxyObject()", "Value is not a proxy object.");
         }
 
         protected abstract RuntimeException unsupported(Object receiver, String message, String useToCheck);
+
+        protected abstract RuntimeException cannotConvert(Object receiver, Class<?> targetType, String message, String useToCheck, String reason);
+
+        protected abstract RuntimeException nullCoercion(Object receiver, Class<?> targetType, String message, String useToCheck);
 
         public abstract String toString(Object receiver);
 
         public abstract Value getMetaObject(Object receiver);
 
-        public boolean fitsInByte(Object receiver) {
-            return false;
-        }
-
-        public byte asByte(Object receiver) {
-            throw unsupported(receiver, "asByte()", "isNumber()");
-        }
-
         public boolean isNumber(Object receiver) {
             return false;
         }
+
+        public abstract <T> T as(Object receiver, Class<T> targetType);
+
+        public abstract <T> T as(Object receiver, TypeLiteral<T> targetType);
 
     }
 

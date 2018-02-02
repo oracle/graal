@@ -2307,7 +2307,7 @@ public final class MachOObjectFile extends ObjectFile {
     }
 
     @Override
-    public SymbolTable getSymbolTable() {
+    public MachOSymtab getSymbolTable() {
         /*
          * Mach-O symtabs are not sections and do not have names. We find the __LINKEDIT segment so
          * we can sanity-check.

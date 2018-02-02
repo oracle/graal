@@ -22,13 +22,25 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import java.util.concurrent.TimeUnit;
-
+import com.oracle.truffle.api.test.ReflectionUtils;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
+import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
+import org.graalvm.compiler.truffle.runtime.TruffleInliningPolicy;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInliningMaxCallerSize;
 
 public class PerformanceTruffleInliningTest extends TruffleInliningTest {
 
@@ -50,7 +62,8 @@ public class PerformanceTruffleInliningTest extends TruffleInliningTest {
                     calls("three").
                 buildTarget();
         // @formatter:on
-        assertDecidingTakesLessThan(target, 500);
+        assertRootCallsExplored(target, 2);
+        assertBudget(target);
     }
 
     @Test
@@ -66,6 +79,7 @@ public class PerformanceTruffleInliningTest extends TruffleInliningTest {
                     calls("three").
                     calls("two").
                     calls("one").
+                    calls("four").
                 target("two").
                     calls("two").
                     calls("one").
@@ -78,7 +92,8 @@ public class PerformanceTruffleInliningTest extends TruffleInliningTest {
                     calls("four").
                 buildTarget();
         // @formatter:on
-        assertDecidingTakesLessThan(target, 500);
+        assertRootCallsExplored(target, 1);
+        assertBudget(target);
     }
 
     @Test
@@ -91,8 +106,8 @@ public class PerformanceTruffleInliningTest extends TruffleInliningTest {
             }
         }
         OptimizedCallTarget target = builder.target("main").calls("0").buildTarget();
-        assertDecidingTakesLessThan(target, 500);
-
+        assertRootCallsExplored(target, 1);
+        assertBudget(target);
     }
 
     long targetCount = 0;
@@ -112,27 +127,54 @@ public class PerformanceTruffleInliningTest extends TruffleInliningTest {
     }
 
     @Test
-    @Ignore("Flaky. Sometimes (very rarely) takes over 500ms. Seems that this can only be due to outside interference during execution")
     public void testHugeGraph() {
         hugeGraphBuilderHelper(10, 4, "1");
         OptimizedCallTarget target = builder.target("main").calls("1").buildTarget();
-        assertDecidingTakesLessThan(target, 500);
-
+        assertRootCallsExplored(target, 1);
+        assertBudget(target);
     }
 
-    protected void assertDecidingTakesLessThan(OptimizedCallTarget target, long maxDuration) {
-        long duration = Long.MAX_VALUE;
-        for (int i = 0; i < 10; i++) {
-            duration = Math.min(executionTime(target), duration);
+    private static void assertRootCallsExplored(OptimizedCallTarget target, int explored) {
+        final TruffleInlining truffleInliningDecisions = new TruffleInlining(target, POLICY);
+        int knowsCallSites = 0;
+        for (TruffleInliningDecision decision : truffleInliningDecisions) {
+            if (decision.getCallSites().size() > 0) {
+                knowsCallSites++;
+            }
         }
-        Assert.assertTrue("Took too long: " + TimeUnit.NANOSECONDS.toMillis(duration) + "ms", duration < TimeUnit.MILLISECONDS.toNanos(maxDuration));
+        // The exploration brudged should be blown before exploring the other 2 call sites of the
+        // root
+        Assert.assertEquals("Only one target should not know about it's call sites!", explored, knowsCallSites);
     }
 
-    @SuppressWarnings("unused")
-    protected long executionTime(OptimizedCallTarget target) {
-        long start = System.nanoTime();
-        TruffleInlining decisions = new TruffleInlining(target, policy);
-        return System.nanoTime() - start;
+    private static final DefaultInliningPolicy POLICY = new DefaultInliningPolicy();
+
+    private static void assertBudget(OptimizedCallTarget target) {
+        int[] visitedNodes = {0};
+        int nodeCount = target.getNonTrivialNodeCount();
+        try {
+            exploreCallSites.invoke(TruffleInlining.class, new ArrayList<>(Arrays.asList(target)), nodeCount, POLICY, visitedNodes, new HashMap<>());
+            Assert.assertEquals("Budget not in effect! Too many nodes visited!", 100 * TruffleCompilerOptions.getValue(TruffleInliningMaxCallerSize), visitedNodes[0]);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            Assert.assertFalse("Could not invoke exploreCallSites: " + e, true);
+        }
     }
 
+    private static Method exploreCallSites = reflectivelyGetExploreMethod();
+
+    private static Method reflectivelyGetExploreMethod() {
+        try {
+            final Class<?> truffleInliningClass = Class.forName(TruffleInlining.class.getName());
+            final Class<?>[] args = {List.class, int.class, TruffleInliningPolicy.class, int[].class, Map.class};
+            final Method exploreCallSitesMethod = truffleInliningClass.getDeclaredMethod("exploreCallSites", args);
+            ReflectionUtils.setAccessible(exploreCallSitesMethod, true);
+            return exploreCallSitesMethod;
+        } catch (ClassNotFoundException e) {
+            Assert.assertFalse("Could not find TruffleInlining class", true);
+            return null;
+        } catch (NoSuchMethodException e) {
+            Assert.assertFalse("Could not find exploreCallSites method", true);
+            return null;
+        }
+    }
 }

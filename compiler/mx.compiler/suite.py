@@ -1026,10 +1026,11 @@ suite = {
       "workingSets" : "Graal,SPARC",
     },
 
-    "org.graalvm.compiler.core.sparc.test" : {
+    "org.graalvm.compiler.hotspot.sparc.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "org.graalvm.compiler.hotspot",
         "org.graalvm.compiler.lir.jtt",
         "JVMCI_HOTSPOT"
       ],
@@ -1458,11 +1459,11 @@ suite = {
         "org.graalvm.compiler.asm.amd64.test",
         "org.graalvm.compiler.core.aarch64.test",
         "org.graalvm.compiler.core.amd64.test",
-        "org.graalvm.compiler.core.sparc.test",
         "org.graalvm.compiler.debug.test",
         "org.graalvm.compiler.hotspot.aarch64.test",
         "org.graalvm.compiler.hotspot.amd64.test",
         "org.graalvm.compiler.hotspot.lir.test",
+        "org.graalvm.compiler.hotspot.sparc.test",
         "org.graalvm.compiler.options.test",
         "org.graalvm.compiler.jtt",
         "org.graalvm.compiler.lir.jtt",

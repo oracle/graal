@@ -25,12 +25,14 @@
 package com.oracle.truffle.api.interop.java;
 
 import java.lang.reflect.Array;
+import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
@@ -48,15 +50,15 @@ class JavaObjectMessageResolution {
 
         public Object access(JavaObject receiver) {
             Object obj = receiver.obj;
-            if (obj == null) {
-                return 0;
+            if (obj != null) {
+                if (obj.getClass().isArray()) {
+                    return Array.getLength(obj);
+                } else if (obj instanceof List<?>) {
+                    return ((List<?>) obj).size();
+                }
             }
-            try {
-                return Array.getLength(obj);
-            } catch (IllegalArgumentException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw UnsupportedMessageException.raise(Message.GET_SIZE);
-            }
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedMessageException.raise(Message.GET_SIZE);
         }
 
     }
@@ -69,7 +71,7 @@ class JavaObjectMessageResolution {
             if (obj == null) {
                 return false;
             }
-            return obj.getClass().isArray();
+            return obj.getClass().isArray() || obj instanceof List<?>;
         }
 
     }
@@ -197,7 +199,13 @@ class JavaObjectMessageResolution {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         toJava = insert(ToJavaNode.create());
                     }
-                    int length = (int) toJava.execute(args[0], int.class, null, receiver.languageContext);
+                    int length;
+                    try {
+                        length = (int) toJava.execute(args[0], int.class, null, receiver.languageContext);
+                    } catch (ClassCastException | NullPointerException e) {
+                        // conversion failed by ToJavaNode
+                        throw UnsupportedTypeException.raise(e, args);
+                    }
                     return JavaInterop.asTruffleObject(Array.newInstance(receiver.clazz.getComponentType(), length), receiver.languageContext);
                 }
 
@@ -211,7 +219,8 @@ class JavaObjectMessageResolution {
                     return doExecute.execute(method, null, args, receiver.languageContext);
                 }
             }
-            throw UnsupportedTypeException.raise(new Object[]{receiver});
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedMessageException.raise(Message.createNew(0));
         }
     }
 
@@ -265,8 +274,8 @@ class JavaObjectMessageResolution {
         }
 
         public Object access(JavaObject object, String name) {
-            if (TruffleOptions.AOT) {
-                return JavaObject.NULL;
+            if (TruffleOptions.AOT || object == JavaObject.NULL) {
+                throw UnsupportedMessageException.raise(Message.READ);
             }
             JavaFieldDesc foundField = lookupField(object, name);
             if (foundField != null) {
@@ -321,25 +330,34 @@ class JavaObjectMessageResolution {
         @Child private ArrayWriteNode arrayWrite;
         @Child private LookupFieldNode lookupField;
         @Child private WriteFieldNode writeField;
-        @Child private ToJavaNode toJava = ToJavaNode.create();
 
         public Object access(JavaObject receiver, Number index, Object value) {
             if (arrayWrite == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 arrayWrite = insert(ArrayWriteNode.create());
             }
-            return arrayWrite.executeWithTarget(receiver, index, value);
+            try {
+                return arrayWrite.executeWithTarget(receiver, index, value);
+            } catch (ClassCastException | NullPointerException e) {
+                // conversion failed by ToJavaNode
+                throw UnsupportedTypeException.raise(e, new Object[]{value});
+            }
         }
 
         public Object access(JavaObject receiver, String name, Object value) {
-            if (TruffleOptions.AOT) {
+            if (TruffleOptions.AOT || receiver == JavaObject.NULL) {
                 throw UnsupportedMessageException.raise(Message.WRITE);
             }
             JavaFieldDesc f = lookupField(receiver, name);
             if (f == null) {
                 throw UnknownIdentifierException.raise(name);
             }
-            writeField(f, receiver, value);
+            try {
+                writeField(f, receiver, value);
+            } catch (ClassCastException | NullPointerException e) {
+                // conversion failed by ToJavaNode
+                throw UnsupportedTypeException.raise(e, new Object[]{value});
+            }
             return JavaObject.NULL;
         }
 
@@ -380,6 +398,11 @@ class JavaObjectMessageResolution {
     @Resolve(message = "KEY_INFO")
     abstract static class PropertyInfoNode extends Node {
 
+        private static final int READABLE = KeyInfo.newBuilder().setReadable(true).build();
+        private static final int READABLE_WRITABLE = KeyInfo.newBuilder().setReadable(true).setWritable(true).build();
+        private static final int READABLE_WRITABLE_INVOCABLE = KeyInfo.newBuilder().setReadable(true).setWritable(true).setInvocable(true).build();
+        private static final int READABLE_WRITABLE_INVOCABLE_INTERNAL = KeyInfo.newBuilder().setReadable(true).setWritable(true).setInvocable(true).setInternal(true).build();
+
         @TruffleBoundary
         public int access(JavaObject receiver, Number index) {
             int i = index.intValue();
@@ -393,7 +416,12 @@ class JavaObjectMessageResolution {
             if (receiver.isArray()) {
                 int length = Array.getLength(receiver.obj);
                 if (i < length) {
-                    return 0b111;
+                    return READABLE_WRITABLE;
+                }
+            } else if (receiver.obj instanceof List) {
+                int length = ((List<?>) receiver.obj).size();
+                if (i < length) {
+                    return READABLE_WRITABLE;
                 }
             }
             return 0;
@@ -405,17 +433,17 @@ class JavaObjectMessageResolution {
                 return 0;
             }
             if (JavaInteropReflect.isField(receiver, name)) {
-                return 0b111;
+                return READABLE_WRITABLE;
             }
             if (JavaInteropReflect.isMethod(receiver, name)) {
                 if (JavaInteropReflect.isInternalMethod(receiver, name)) {
-                    return 0b11111;
+                    return READABLE_WRITABLE_INVOCABLE_INTERNAL;
                 } else {
-                    return 0b1111;
+                    return READABLE_WRITABLE_INVOCABLE;
                 }
             }
             if (JavaInteropReflect.isMemberType(receiver, name)) {
-                return 0b11;
+                return READABLE;
             }
             return 0;
         }

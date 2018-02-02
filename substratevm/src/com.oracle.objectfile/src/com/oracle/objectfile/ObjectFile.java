@@ -294,8 +294,6 @@ public abstract class ObjectFile {
      */
     public interface RelocationRecord extends RelocationSiteInfo {
 
-        Section getRelocatedSection();
-
         Symbol getReferencedSymbol();
     }
 
@@ -1687,8 +1685,6 @@ public abstract class ObjectFile {
         long getDefinedOffset();
 
         long getDefinedAbsoluteValue();
-
-        SymbolTable getOwningSymbolTable();
 
         boolean isFunction();
     }

@@ -39,8 +39,8 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -206,7 +206,7 @@ public class SplittingStrategyTest {
             final int baseSplitCount = listener.splitCount;
             outside.call(1);
 
-            // Expected 13
+            // Expected 14
             // OUTSIDE MID
             // MID <split> INNER
             // INNER <split> OUTSIDE
@@ -436,7 +436,7 @@ public class SplittingStrategyTest {
     public void testGrowingSplitLimitInContext() {
         Context c = Context.create();
         // Eval a lot to fill out budget
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 1000; i++) {
             c.eval("SplitTestLanguage", "exec");
         }
         final int baseSplitCount = listener.splitCount;
@@ -464,7 +464,7 @@ public class SplittingStrategyTest {
         Context c1 = Context.create();
         Context c2 = Context.create();
         // Use up the c1 budget
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 1000; i++) {
             c1.eval("SplitTestLanguage", "exec");
         }
         final int c1BaseSplitCount = listener.splitCount;

@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "5.119.0",
+    "mxversion": "5.137.0",
     "name": "substratevm",
 
     "defaultLicense" : "GPLv2-CPE",
@@ -198,7 +198,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.hosted",
             ],
-            "checkstyle": "com.oracle.svm.core",
+            "checkstyle": "com.oracle.svm.driver",
             "workingSets": "SVM",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
@@ -325,6 +325,7 @@ suite = {
             "checkstyle": "com.oracle.svm.truffle",
             "javaCompliance": "1.8",
             "annotationProcessors": [
+                "truffle:TRUFFLE_DSL_PROCESSOR",
             ],
             "workingSets": "SVM",
         },

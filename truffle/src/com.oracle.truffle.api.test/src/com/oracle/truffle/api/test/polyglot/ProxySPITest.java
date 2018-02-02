@@ -54,7 +54,10 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
 
-public class ProxyTest {
+/**
+ * Testing the behavior of proxies towards languages.
+ */
+public class ProxySPITest {
 
     static LanguageContext langContext;
 
@@ -90,12 +93,12 @@ public class ProxyTest {
     }
 
     private static Value eval(Context context, Proxy proxy, Function<TruffleObject, Object> f) {
-        ProxyTestLanguage.runinside = (env) -> new TestFunction(f);
+        ProxySPITestLanguage.runinside = (env) -> new TestFunction(f);
         try {
-            Value proxyFunction = context.eval(ProxyTestLanguage.ID, "");
+            Value proxyFunction = context.eval(ProxySPITestLanguage.ID, "");
             return proxyFunction.execute(proxy);
         } finally {
-            ProxyTestLanguage.runinside = null;
+            ProxySPITestLanguage.runinside = null;
         }
     }
 

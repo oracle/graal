@@ -25,6 +25,7 @@
 #include "trufflenfi.h"
 #include "native.h"
 
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ffi.h>
@@ -123,6 +124,8 @@ static void serialize_ret_string(struct __TruffleContextInternal *ctx, JNIEnv *e
 }
 
 static void invoke_closure_buffer_ret(ffi_cif *cif, void *ret, void **args, void *user_data) {
+    errnoMirror = errno;
+
     struct closure_data *data = (struct closure_data *) user_data;
 
     JNIEnv *env;
@@ -173,9 +176,13 @@ static void invoke_closure_buffer_ret(ffi_cif *cif, void *ret, void **args, void
     }
 
     (*env)->PopLocalFrame(env, NULL);
+
+    errno = errnoMirror;
 }
 
 static void invoke_closure_object_ret(ffi_cif *cif, void *ret, void **args, void *user_data) {
+    errnoMirror = errno;
+
     struct closure_data *data = (struct closure_data *) user_data;
 
     JNIEnv *env;
@@ -190,9 +197,13 @@ static void invoke_closure_object_ret(ffi_cif *cif, void *ret, void **args, void
     *((jobject *) ret) = (*env)->NewGlobalRef(env, retObj);
 
     (*env)->PopLocalFrame(env, NULL);
+
+    errno = errnoMirror;
 }
 
 static void invoke_closure_string_ret(ffi_cif *cif, void *ret, void **args, void *user_data) {
+    errnoMirror = errno;
+
     struct closure_data *data = (struct closure_data *) user_data;
 
     JNIEnv *env;
@@ -207,9 +218,13 @@ static void invoke_closure_string_ret(ffi_cif *cif, void *ret, void **args, void
     serialize_ret_string(ctx, env, retObj, ret);
 
     (*env)->PopLocalFrame(env, NULL);
+
+    errno = errnoMirror;
 }
 
 static void invoke_closure_void_ret(ffi_cif *cif, void *ret, void **args, void *user_data) {
+    errnoMirror = errno;
+
     struct closure_data *data = (struct closure_data *) user_data;
 
     JNIEnv *env;
@@ -222,6 +237,8 @@ static void invoke_closure_void_ret(ffi_cif *cif, void *ret, void **args, void *
     (*env)->CallObjectMethod(env, data->callTarget, ctx->CallTarget_call, argBuffers);
 
     (*env)->PopLocalFrame(env, NULL);
+
+    errno = errnoMirror;
 }
 
 jobject prepare_closure(JNIEnv *env, jlong context, jobject signature, jobject callTarget, void (*invoke_closure)(ffi_cif *cif, void *ret, void **args, void *user_data)) {

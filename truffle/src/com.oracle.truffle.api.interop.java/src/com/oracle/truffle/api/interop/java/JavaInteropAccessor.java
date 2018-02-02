@@ -24,6 +24,9 @@
  */
 package com.oracle.truffle.api.interop.java;
 
+import java.lang.reflect.Type;
+
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -42,14 +45,27 @@ final class JavaInteropAccessor extends Accessor {
             }
 
             @Override
-            public Object toJava(Node javaNode, Class<?> type, Object value) {
+            public Object toJava(Node javaNode, Class<?> rawType, Type genericType, Object value, Object polyglotContext) {
                 ToJavaNode toJavaNode = (ToJavaNode) javaNode;
-                return toJavaNode.execute(value, type, null);
+                return toJavaNode.execute(value, rawType, genericType, polyglotContext);
             }
 
             @Override
             public Object toJavaGuestObject(Object obj, Object languageContext) {
                 return JavaInterop.asTruffleObject(obj, languageContext);
+            }
+
+            @Override
+            public boolean isJavaFunction(Object object) {
+                return JavaInterop.isJavaFunction(object);
+            }
+
+            @Override
+            public String javaFunctionToString(Object object) {
+                if (TruffleOptions.AOT) {
+                    return "";
+                }
+                return ((JavaFunctionObject) object).getDescription();
             }
         };
     }

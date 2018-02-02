@@ -26,18 +26,23 @@ package com.oracle.truffle.api.interop.java.test;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.Arrays;
+import java.util.List;
+
+import org.graalvm.polyglot.Context;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.KeyInfo;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.nodes.Node;
 
+@MessageResolution(receiverType = BoxedStringTest.class)
 public class BoxedStringTest implements TruffleObject, ForeignAccess.StandardFactory {
     public interface ExactMatchInterop {
         String stringValue();
@@ -47,6 +52,22 @@ public class BoxedStringTest implements TruffleObject, ForeignAccess.StandardFac
 
     private String value;
     private ExactMatchInterop interop;
+
+    static final List<String> KEYS = Arrays.asList(new String[]{"charValue", "stringValue"});
+
+    private Context context;
+
+    @Before
+    public void enterContext() {
+        context = Context.create();
+        context.enter();
+    }
+
+    @After
+    public void leaveContext() {
+        context.leave();
+        context.close();
+    }
 
     @Before
     public void initObjects() {
@@ -65,116 +86,43 @@ public class BoxedStringTest implements TruffleObject, ForeignAccess.StandardFac
         assertEquals('W', interop.charValue());
     }
 
+    public static boolean isInstance(TruffleObject object) {
+        return object instanceof BoxedStringTest;
+    }
+
     @Override
     public ForeignAccess getForeignAccess() {
-        return ForeignAccess.create(BoxedStringTest.class, this);
+        return BoxedStringTestForeign.ACCESS;
     }
 
-    @Override
-    public CallTarget accessIsNull() {
-        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
+    @Resolve(message = "UNBOX")
+    public abstract static class UnboxNode extends Node {
+        public Object access(BoxedStringTest obj) {
+            return obj.value;
+        }
     }
 
-    @Override
-    public CallTarget accessIsExecutable() {
-        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
+    @Resolve(message = "READ")
+    public abstract static class ReadNode extends Node {
+        public Object access(BoxedStringTest obj, String key) {
+            assert KEYS.contains(key);
+            return obj;
+        }
     }
 
-    @Override
-    public CallTarget accessIsInstantiable() {
-        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
+    @Resolve(message = "KEYS")
+    public abstract static class KeysNode extends Node {
+        @SuppressWarnings("unused")
+        public Object access(BoxedStringTest obj) {
+            return JavaInterop.asTruffleObject(KEYS);
+        }
     }
 
-    @Override
-    public CallTarget accessIsBoxed() {
-        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(true));
+    @Resolve(message = "KEY_INFO")
+    public abstract static class KeyInfoNode extends Node {
+        @SuppressWarnings("unused")
+        public Object access(BoxedStringTest obj, String key) {
+            return KEYS.contains(key) ? KeyInfo.newBuilder().setReadable(true).build() : 0;
+        }
     }
-
-    @Override
-    public CallTarget accessHasSize() {
-        return null;
-    }
-
-    @Override
-    public CallTarget accessGetSize() {
-        return null;
-    }
-
-    @Override
-    public CallTarget accessUnbox() {
-        return Truffle.getRuntime().createCallTarget(new RootNode(null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                BoxedStringTest obj = (BoxedStringTest) ForeignAccess.getReceiver(frame);
-                return obj.value;
-            }
-        });
-    }
-
-    @Override
-    public CallTarget accessRead() {
-        return Truffle.getRuntime().createCallTarget(new RootNode(null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                BoxedStringTest obj = (BoxedStringTest) ForeignAccess.getReceiver(frame);
-                return obj;
-            }
-        });
-    }
-
-    @Override
-    public CallTarget accessWrite() {
-        return null;
-    }
-
-    @Override
-    public CallTarget accessExecute(int argumentsLength) {
-        return null;
-    }
-
-    @Override
-    public CallTarget accessInvoke(int argumentsLength) {
-        return null;
-    }
-
-    @Override
-    public CallTarget accessNew(int argumentsLength) {
-        return null;
-    }
-
-    @Override
-    public CallTarget accessMessage(Message unknown) {
-        return null;
-    }
-
-    @Override
-    public CallTarget accessKeyInfo() {
-        return null;
-    }
-
-    @Override
-    public CallTarget accessKeys() {
-        return null;
-    }
-
-    @Override
-    public CallTarget accessHasKeys() {
-        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
-    }
-
-    @Override
-    public CallTarget accessIsPointer() {
-        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
-    }
-
-    @Override
-    public CallTarget accessAsPointer() {
-        return null;
-    }
-
-    @Override
-    public CallTarget accessToNative() {
-        return null;
-    }
-
 }

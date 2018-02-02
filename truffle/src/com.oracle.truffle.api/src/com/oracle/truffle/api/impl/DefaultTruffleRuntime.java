@@ -245,11 +245,9 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
             }
             Frame localFrame = this.frame;
             switch (access) {
-                case READ_ONLY: {
-                    // assert that it is really used read only
-                    assert (localFrame = new ReadOnlyFrame(localFrame)) != null;
-                    return localFrame;
-                }
+                case READ_ONLY:
+                    /* Verify that it is really used read only. */
+                    return new ReadOnlyFrame(localFrame);
                 case READ_WRITE:
                     return localFrame;
                 case MATERIALIZE:

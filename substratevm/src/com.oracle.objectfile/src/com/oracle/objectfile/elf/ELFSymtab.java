@@ -26,17 +26,15 @@ package com.oracle.objectfile.elf;
 import static java.lang.Math.toIntExact;
 
 import java.nio.ByteBuffer;
-import java.util.AbstractCollection;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.ElementImpl;
@@ -61,47 +59,28 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
         return this;
     }
 
-    // the essential contents of an ELF symbol
-    public class Entry implements ObjectFile.Symbol {
-
-        final String name;
-        final long value;
-        final long size;
-        final SymBinding binding;
-        final SymType symType;
-        // these guys are not final -- see getReferencedSection()
-        private ELFSection referencedSection;
-        private int referencedSectionIndex; // ARGH: see getReferencedSection()
-        final PseudoSection pseudoSection;
+    static final class Entry implements ObjectFile.Symbol {
+        private final String name;
+        private final long value;
+        private final long size;
+        private final SymBinding binding;
+        private final SymType symType;
+        private final ELFSection referencedSection;
+        private final PseudoSection pseudoSection;
 
         @Override
         public boolean isDefined() {
-            if (pseudoSection != null) {
-                assert getReferencedSection() == null;
-                return pseudoSection != PseudoSection.UNDEF;
-            } else {
-                return true;
-            }
+            return pseudoSection == null || pseudoSection != PseudoSection.UNDEF;
         }
 
         @Override
         public boolean isAbsolute() {
-            if (pseudoSection != null) {
-                assert getReferencedSection() == null;
-                return pseudoSection == PseudoSection.ABS;
-            } else {
-                return false;
-            }
+            return pseudoSection != null && pseudoSection == PseudoSection.ABS;
         }
 
         @Override
         public boolean isCommon() {
-            if (pseudoSection != null) {
-                assert getReferencedSection() == null;
-                return pseudoSection == PseudoSection.COMMON;
-            } else {
-                return false;
-            }
+            return pseudoSection != null && pseudoSection == PseudoSection.COMMON;
         }
 
         @Override
@@ -110,7 +89,7 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
         }
 
         public boolean isNull() {
-            return name.equals("") && value == 0 && size == 0 && binding == null && symType == null && referencedSection == null && referencedSectionIndex == 0 && pseudoSection == null;
+            return name.isEmpty() && value == 0 && size == 0 && binding == null && symType == null && referencedSection == null && pseudoSection == null;
         }
 
         @Override
@@ -121,7 +100,7 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
         @Override
         public long getDefinedOffset() {
             if (!isDefined() || isAbsolute()) {
-                throw new IllegalStateException("queried offset of an undefined symbol");
+                throw new IllegalStateException("queried offset of an undefined or absolute symbol");
             } else {
                 return value;
             }
@@ -146,84 +125,34 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
             }
         }
 
-        @Override
-        public SymbolTable getOwningSymbolTable() {
-            return ELFSymtab.this;
-        }
-
-        // non-public constructor setting both referencedSection and pseudoSection
-        Entry(String name, long value, long size, SymBinding binding, SymType type, int referencedSectionIndex, ELFSection referencedSection, PseudoSection pseudoSection) {
+        private Entry(String name, long value, long size, SymBinding binding, SymType type, ELFSection referencedSection, PseudoSection pseudoSection) {
             this.name = name;
             this.value = value;
             this.size = size;
             this.binding = binding;
             this.symType = type;
             this.referencedSection = referencedSection;
-            this.referencedSectionIndex = referencedSectionIndex;
             this.pseudoSection = pseudoSection;
-
-            List<Entry> entriesWithName = entriesByName.computeIfAbsent(name, k -> new ArrayList<>());
-            if (!entriesWithName.isEmpty()) {
-                throw new RuntimeException("Duplicate symbol with name: " + name);
-            }
-            entriesWithName.add(this);
-            entries.add(this);
-            entriesAreSorted = false;
+            assert ((referencedSection == null) != (pseudoSection == null)) || isNull();
         }
 
         // public constructor, for referencing a real section
-        public Entry(String name, long value, long size, SymBinding binding, SymType type, ELFSection referencedSection) {
-            this(name, value, size, binding, type, 0, referencedSection, null);
-            assert referencedSection != null;
-        }
-
-        // public constructor, for referencing a real section that doesn't exist yet
-        public Entry(String name, long value, long size, SymBinding binding, SymType type, int referencedSectionIndex) {
-            this(name, value, size, binding, type, referencedSectionIndex, null, null);
-            assert referencedSectionIndex != 0; // 0 is the null SHT entry, so invalid
+        Entry(String name, long value, long size, SymBinding binding, SymType type, ELFSection referencedSection) {
+            this(name, value, size, binding, type, referencedSection, null);
         }
 
         // public constructor for referencing a pseudosection
-        public Entry(String name, long value, long size, SymBinding binding, SymType type, PseudoSection pseudoSection) {
-            this(name, value, size, binding, type, 0, null, pseudoSection);
-            assert isNull() || pseudoSection != null;
+        Entry(String name, long value, long size, SymBinding binding, SymType type, PseudoSection pseudoSection) {
+            this(name, value, size, binding, type, null, pseudoSection);
         }
 
         private Entry() {
             // represents the null entry
-            this("", 0, 0, null, null, (PseudoSection) null);
-            assert isNull();
+            this("", 0, 0, null, null, null, null);
         }
 
         ELFSection getReferencedSection() {
-            /*
-             * GAH. When reading in a large ELF file, we may want to create references to sections
-             * that don't exist yet. Our hackaround is to keep *two* references: one the index, the
-             * other the object reference. To avoid repeated linear searches (noting that
-             * getSectionByIndex() is currently a linear search), we switch to using the object
-             * reference as soon as we successfully find it.
-             */
-            if (referencedSection != null) {
-                assert referencedSectionIndex == 0;
-                return referencedSection;
-            } else if (referencedSectionIndex != 0) {
-                assert referencedSection == null;
-                ELFSection found = ELFSymtab.this.getOwner().getSectionByIndex(referencedSectionIndex);
-                if (found != null) {
-                    referencedSection = found;
-                    referencedSectionIndex = 0;
-                    return found;
-                } else {
-                    throw new IllegalStateException("referenced section has not yet been constructed");
-                }
-            } else {
-                return null;
-            }
-        }
-
-        void setReferencedSection(ELFSection s) {
-            this.referencedSection = s;
-            this.referencedSectionIndex = 0;
+            return referencedSection;
         }
     }
 
@@ -269,7 +198,6 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
 
     // a Java transcription of the on-disk layout, used for (de)serialization
     class EntryStruct {
-
         int name;
         long value;
         long size;
@@ -278,7 +206,6 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
         short shndx;
 
         public void write(OutputAssembler out) {
-            // FIXME: support 32- and 64-bit
             switch (getOwner().getFileClass()) {
                 case ELFCLASS32:
                     out.write4Byte(name);
@@ -300,9 +227,13 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
         }
 
         public int getWrittenSize() {
-            OutputAssembler oa = AssemblyBuffer.createOutputAssembler(ByteBuffer.allocate(4096));
-            write(oa);
-            return oa.pos();
+            switch (getOwner().getFileClass()) {
+                case ELFCLASS32:
+                    return 16;
+                case ELFCLASS64:
+                    return 24;
+            }
+            throw new IllegalArgumentException();
         }
     }
 
@@ -312,18 +243,35 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
      * Note that we *do* represent the null entry (index 0) explicitly! This is so that indexOf()
      * and get() work as expected. However, clear() must re-create null entry.
      */
-    private ArrayList<Entry> entries = new ArrayList<>();
-    private boolean entriesAreSorted;
-    private Map<String, List<Entry>> entriesByName = new HashMap<>();
 
-    @SuppressWarnings("unused")
-    private void createNullEntry() {
-        assert entries.size() == 0;
-        new Entry(); // adds itself
+    private static int compareEntries(Entry a, Entry b) {
+        int cmp = -Boolean.compare(a.isNull(), b.isNull()); // null symbol first
+        if (cmp == 0) { // local symbols next
+            cmp = -Boolean.compare(a.binding == SymBinding.LOCAL, b.binding == SymBinding.LOCAL);
+        }
+        // order does not matter from here, but try to be reproducible
+        if (cmp == 0) {
+            cmp = Boolean.compare(a.isDefined(), b.isDefined());
+        }
+        if (cmp == 0) {
+            cmp = Boolean.compare(a.isAbsolute(), b.isAbsolute());
+        }
+        if (cmp == 0 && a.isDefined() && !a.isAbsolute()) {
+            cmp = Math.toIntExact(a.getDefinedOffset() - b.getDefinedOffset());
+        }
+        if (cmp == 0) {
+            return a.getName().compareTo(b.getName());
+        }
+        return cmp;
     }
 
-    public List<Entry> getEntries() {
-        return Collections.unmodifiableList(sortedEntries());
+    private SortedSet<Entry> entries = new TreeSet<>(ELFSymtab::compareEntries);
+
+    private Map<String, Entry> entriesByName = new HashMap<>();
+
+    private void createNullEntry() {
+        assert entries.size() == 0;
+        addEntry(new Entry());
     }
 
     @Override
@@ -339,9 +287,7 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
         owner.super(name, dynamic ? ELFObjectFile.SectionType.DYNSYM : ELFObjectFile.SectionType.SYMTAB);
         createNullEntry();
         flags.add(ELFSectionFlag.ALLOC);
-        for (ELFSectionFlag flag : extraFlags) {
-            flags.add(flag);
-        }
+        flags.addAll(extraFlags);
         // NOTE: our SHT info and link entries are handled by overrides below.
         // NOTE: we create a default strtab for ourselves, but the user can replace it
         // FIXME: hmm, this is unclean, because in the case where the user replaces it,
@@ -357,112 +303,40 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
         }
     }
 
-    class SymtabStringCollection extends AbstractCollection<String> {
-
-        @Override
-        public Iterator<String> iterator() {
-            return new Iterator<String>() {
-
-                Iterator<Entry> symbolsIterator = ELFSymtab.this.sortedEntries().iterator();
-                Iterator<String> neededIterator;
-
-                {
-                    // fast-forward the iterator past the initial null entry
-                    Entry first = symbolsIterator.next();
-                    assert first.isNull();
-                }
-
-                @Override
-                public boolean hasNext() {
-                    return symbolsIterator.hasNext() || (neededIterator != null && neededIterator.hasNext());
-                }
-
-                @Override
-                public String next() {
-                    if (symbolsIterator.hasNext()) {
-                        String n = symbolsIterator.next().name;
-                        assert n != null;
-                        return n;
-                    } else if (neededIterator != null && neededIterator.hasNext()) {
-                        return neededIterator.next();
-                    } else {
-                        throw new IllegalStateException("no more entries");
-                    }
-                }
-
-                @Override
-                public void remove() {
-                    throw new UnsupportedOperationException();
-                }
-            };
-        }
-
-        @Override
-        public int size() {
-            return ELFSymtab.this.entries.size();
-        }
-    }
-
     class DefaultStrtabImpl extends ELFStrtab {
 
         DefaultStrtabImpl(ELFObjectFile owner, String name) {
             super(owner, name);
             assert owner == getOwner();
-            addContentProvider(new SymtabStringCollection());
+            addContentProvider(entriesByName.keySet());
         }
-    }
-
-    public ELFStrtab getStrtab() {
-        return strtab;
     }
 
     @Override
     public ELFSection getLinkedSection() {
-        return getStrtab();
-    }
-
-    private int lastLocalIndexCountingFromStart() {
-        int lastLocal = -1;
-        for (int i = 0; i < sortedEntries().size(); ++i) {
-            Entry e = sortedEntries().get(i);
-            if (e.isNull()) {
-                continue;
-            }
-            if (e.binding != SymBinding.LOCAL) {
-                break;
-            }
-            lastLocal = i;
-        }
-        return lastLocal;
-    }
-
-    private int lastLocalIndexCountingFromEnd() {
-        for (int i = sortedEntries().size() - 1; i >= 0; --i) {
-            Entry e = sortedEntries().get(i);
-            if (e.binding == SymBinding.LOCAL) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    public int getInfoValue() {
-        /*
-         * Info should be
-         * "one greater than the symbol table index of the last local symbol (binding STB_LOCAL)."
-         */
-        // FIXME: maintain this value, rather than recomputing it here
-
-        // we check that we're grouped into local/nonlocal, by counting from both ends
-        int countingFromEnd = lastLocalIndexCountingFromEnd();
-        int countingFromStart = lastLocalIndexCountingFromStart();
-        assert countingFromEnd == countingFromStart;
-        return countingFromEnd + 1;
+        return strtab;
     }
 
     @Override
     public long getLinkedInfo() {
-        return getInfoValue();
+        /*
+         * Info should be
+         * "one greater than the symbol table index of the last local symbol (binding STB_LOCAL)."
+         */
+        int lastLocal = -1;
+        int i = 0;
+        for (Entry entry : entries) {
+            if (!entry.isNull()) {
+                if (entry.binding == SymBinding.LOCAL) {
+                    lastLocal = i;
+                } else if (lastLocal != -1) {
+                    // locals are contiguous
+                    break;
+                }
+            }
+            i++;
+        }
+        return lastLocal + 1;
     }
 
     @Override
@@ -473,7 +347,7 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
         ByteBuffer outBuffer = ByteBuffer.allocate(getWrittenSize()).order(getOwner().getByteOrder());
         OutputAssembler out = AssemblyBuffer.createOutputAssembler(outBuffer);
 
-        for (Entry e : sortedEntries()) {
+        for (Entry e : entries) {
             EntryStruct s = new EntryStruct();
             // even the null entry has a non-null name ("")
             assert e.name != null;
@@ -502,9 +376,7 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
             }
             s.size = e.size;
             s.info = SymBinding.createInfoByte(e.symType, e.binding);
-            if (e.isNull()) {
-                assert s.info == 0;
-            }
+            assert !e.isNull() || s.info == 0;
             s.other = (byte) 0;
             s.shndx = (short) getOwner().getIndexForSection(e.getReferencedSection());
             s.write(out);
@@ -513,7 +385,7 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
     }
 
     private int getWrittenSize() {
-        return entries.size() * (new EntryStruct()).getWrittenSize();
+        return entries.size() * getEntrySize();
     }
 
     @Override
@@ -532,18 +404,13 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
 
     @Override
     public Iterable<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
-        ArrayList<BuildDependency> ourDeps = new ArrayList<>();
-        for (BuildDependency d : ObjectFile.defaultDependencies(decisions, this)) {
-            ourDeps.add(d);
-        }
+        ArrayList<BuildDependency> ourDeps = new ArrayList<>(ObjectFile.defaultDependencies(decisions, this));
         // we depend on the contents of our strtab
         ourDeps.add(BuildDependency.createOrGet(decisions.get(this).getDecision(LayoutDecision.Kind.CONTENT), decisions.get(strtab).getDecision(LayoutDecision.Kind.CONTENT)));
-
-        // if we're dynamic,
-        // we also depend on the vaddrs of any sections into which our symbols refer
+        // if we're dynamic, we also depend on vaddrs of any sections into which our symbols refer
         if (isDynamic()) {
             Set<ELFSection> referencedSections = new HashSet<>();
-            for (Entry ent : sortedEntries()) {
+            for (Entry ent : entries) {
                 ELFSection es = ent.getReferencedSection();
                 if (es != null) {
                     referencedSections.add(es);
@@ -553,7 +420,6 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
                 ourDeps.add(BuildDependency.createOrGet(decisions.get(this).getDecision(LayoutDecision.Kind.CONTENT), decisions.get(es).getDecision(LayoutDecision.Kind.VADDR)));
             }
         }
-
         return ourDeps;
     }
 
@@ -563,102 +429,44 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
 
     @Override
     public Symbol newDefinedEntry(String name, Section referencedSection, long referencedOffset, long size, boolean isGlobal, boolean isCode) {
-        return new Entry(name, referencedOffset, size, isGlobal ? SymBinding.GLOBAL : SymBinding.LOCAL, isCode ? SymType.FUNC : SymType.OBJECT, (ELFSection) referencedSection);
+        return addEntry(new Entry(name, referencedOffset, size, isGlobal ? SymBinding.GLOBAL : SymBinding.LOCAL, isCode ? SymType.FUNC : SymType.OBJECT, (ELFSection) referencedSection));
     }
 
     @Override
     public Symbol newUndefinedEntry(String name, boolean isCode) {
-        return new Entry(name, 0, 0, ELFSymtab.SymBinding.GLOBAL, isCode ? ELFSymtab.SymType.FUNC : ELFSymtab.SymType.OBJECT, PseudoSection.UNDEF);
+        return addEntry(new Entry(name, 0, 0, ELFSymtab.SymBinding.GLOBAL, isCode ? ELFSymtab.SymType.FUNC : ELFSymtab.SymType.OBJECT, PseudoSection.UNDEF));
     }
 
-    private void sort() {
-        /*
-         * We need to keep the local symbols sorted so that local symbols appear first.
-         */
-        Comparator<Entry> comp = new Comparator<Entry>() {
-
-            private int mapEntryToInteger(Entry e) {
-                if (e.isNull()) {
-                    return -1;
-                } else if (e.binding == SymBinding.LOCAL) {
-                    return 0;
-                } else {
-                    return 1;
-                }
-            }
-
-            @Override
-            public int compare(Entry arg0, Entry arg1) {
-                return Integer.compare(mapEntryToInteger(arg0), mapEntryToInteger(arg1));
-            }
-        };
-
-        Collections.sort(entries, comp);
+    private Entry addEntry(Entry entry) {
+        entries.add(entry);
+        entriesByName.put(entry.getName(), entry);
+        return entry;
     }
 
-    public List<Entry> sortedEntries() {
-        if (!entriesAreSorted) {
-            sort();
-            entriesAreSorted = true;
+    public Entry getNullEntry() {
+        return entries.iterator().next();
+    }
+
+    public int indexOf(Symbol sym) {
+        int i = 0;
+        for (Entry entry : entries) {
+            if (entry.equals(sym)) {
+                return i;
+            }
+            i++;
         }
-        return entries;
-    }
-
-    // generated delegate methods follow
-
-    @Override
-    public boolean contains(Symbol o) {
-        return entries.contains(o);
-    }
-
-    @Override
-    public Entry get(int index) {
-        return sortedEntries().get(index);
-    }
-
-    @Override
-    public int indexOf(Symbol arg0) {
-        return sortedEntries().indexOf(arg0);
+        return -1;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
     public Iterator<Symbol> iterator() {
-        return (Iterator) sortedEntries().iterator();
+        return (Iterator) entries.iterator();
     }
 
-    public int size() {
-        return entries.size();
-    }
-
-    public List<Entry> entriesWithName(String symName) {
-        List<Entry> found = entriesByName.get(symName);
-        if (found == null) {
-            found = new ArrayList<>();
-            entriesByName.put(symName, found);
-        }
-        return Collections.unmodifiableList(found);
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
-    public List<Symbol> symbolsWithName(String symName) {
-        return (List) entriesWithName(symName);
-    }
-
-    // convenience methods -- these exist mostly because
-    // doing syms.new Entry() generates a warning about the
-    // unused allocated object
-    public Entry addEntry(String name, long value, long size, SymBinding binding, SymType symType, PseudoSection pseudoSection) {
-        return new Entry(name, value, size, binding, symType, pseudoSection);
-    }
-
-    public Entry addEntry(String name, long value, long size, SymBinding binding, SymType symType, ELFSection referencedSection) {
-        return new Entry(name, value, size, binding, symType, referencedSection);
-    }
-
-    public Entry addEntry(String name, long value, long size, SymBinding binding, SymType symType, int referencedSectionIndex) {
-        return new Entry(name, value, size, binding, symType, referencedSectionIndex);
+    public Entry getSymbol(String name) {
+        return entriesByName.get(name);
     }
 
     @Override

@@ -24,12 +24,18 @@
  */
 package org.graalvm.polyglot.proxy;
 
+import org.graalvm.polyglot.PolyglotException;
+
 /**
  * Proxy interfaces allow to mimic guest language objects, arrays, executables, primitives and
  * native objects in Graal languages. Every Graal language will treat instances of proxies like an
  * object of that particular language. Multiple proxy interfaces can be implemented at the same
  * time. For example, it is useful to provide proxy values that are objects with members and arrays
  * at the same time.
+ * <p>
+ * Exceptions thrown by proxies are wrapped with a {@link PolyglotException} when the proxy is
+ * invoked in a guest language. It is possible to unwrap the {@link PolyglotException} using
+ * {@link PolyglotException#asHostException()}.
  *
  * @see ProxyArray to mimic arrays
  * @see ProxyObject to mimic objects with members

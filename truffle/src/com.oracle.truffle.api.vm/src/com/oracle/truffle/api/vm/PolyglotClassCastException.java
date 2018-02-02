@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,22 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.cfunction;
+package com.oracle.truffle.api.vm;
 
-public class CFunctionLinkage {
+@SuppressWarnings("serial")
+class PolyglotClassCastException extends ClassCastException {
 
-    private final String linkageName;
-    int index;
-
-    CFunctionLinkage(String linkageName) {
-        this.linkageName = linkageName;
+    PolyglotClassCastException(String message) {
+        super(message);
+        // prevent polyglot stack trace to be attached.
+        initCause(null);
     }
 
-    public int getIndex() {
-        return index;
+    PolyglotClassCastException(String message, Throwable cause) {
+        super(message);
+        initCause(cause);
     }
 
-    public String getLinkageName() {
-        return linkageName;
+    @Override
+    public String toString() {
+        // make it look like normal unsupported operation.
+        String s = ClassCastException.class.getName();
+        String message = getLocalizedMessage();
+        return (message != null) ? (s + ": " + message) : s;
     }
+
 }

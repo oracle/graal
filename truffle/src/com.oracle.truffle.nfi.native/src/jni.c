@@ -112,6 +112,9 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_initializeNa
     initializeFlag(env, NFIContext, context, "RTLD_LAZY", RTLD_LAZY);
     initializeFlag(env, NFIContext, context, "RTLD_NOW", RTLD_NOW);
 
+
+    initialize_intrinsics(ret);
+
     return (jlong) ret;
 }
 

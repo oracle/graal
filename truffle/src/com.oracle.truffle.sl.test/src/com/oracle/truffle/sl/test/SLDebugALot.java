@@ -42,12 +42,11 @@ package com.oracle.truffle.sl.test;
 
 import java.io.ByteArrayOutputStream;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
+import org.junit.Assert;
+import org.junit.Test;
 
 /**
  * Basic test of debug-a-lot instrument applied to simple language.

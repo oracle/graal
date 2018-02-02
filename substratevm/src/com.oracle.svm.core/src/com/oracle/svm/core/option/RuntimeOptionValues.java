@@ -33,6 +33,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.ModifiableOptionValues;
+import org.graalvm.compiler.options.NestedBooleanOptionKey;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
@@ -130,7 +131,11 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
             }
         }
         OptionKey<T> optionKey = (OptionKey<T>) descriptor.getOptionKey();
-        return new org.graalvm.options.OptionKey<>(optionKey.getDefaultValue(), type);
+        while (optionKey instanceof NestedBooleanOptionKey) {
+            optionKey = (OptionKey<T>) ((NestedBooleanOptionKey) optionKey).getMasterOption();
+        }
+        T defaultValue = optionKey.getDefaultValue();
+        return new org.graalvm.options.OptionKey<>(defaultValue, type);
     }
 
     private static final Map<Class<?>, OptionType<?>> ENUM_TYPE_CACHE = new HashMap<>();

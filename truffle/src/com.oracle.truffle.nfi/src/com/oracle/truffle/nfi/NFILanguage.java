@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,20 +27,35 @@ package com.oracle.truffle.nfi;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.nfi.NFILanguage.Context;
 import com.oracle.truffle.nfi.types.NativeSource;
 import com.oracle.truffle.nfi.types.Parser;
 
 @TruffleLanguage.Registration(id = "nfi", name = "TruffleNFI", version = "0.1", mimeType = NFILanguage.MIME_TYPE, internal = true)
-public class NFILanguage extends TruffleLanguage<Env> {
+public class NFILanguage extends TruffleLanguage<Context> {
 
     public static final String MIME_TYPE = "application/x-native";
 
+    static class Context {
+
+        Env env;
+
+        Context(Env env) {
+            this.env = env;
+        }
+    }
+
     @Override
-    protected Env createContext(Env env) {
-        return env;
+    protected Context createContext(Env env) {
+        return new Context(env);
+    }
+
+    @Override
+    protected boolean patchContext(Context context, Env newEnv) {
+        context.env = newEnv;
+        return true;
     }
 
     @Override
@@ -56,14 +71,14 @@ public class NFILanguage extends TruffleLanguage<Env> {
         }
 
         Source backendSource = Source.newBuilder(source.getLibraryDescriptor()).mimeType("trufflenfi/" + backendId).name("<nfi-impl>").build();
-        CallTarget backendTarget = getContextReference().get().parse(backendSource);
+        CallTarget backendTarget = getContextReference().get().env.parse(backendSource);
         DirectCallNode loadLibrary = DirectCallNode.create(backendTarget);
 
         return Truffle.getRuntime().createCallTarget(new NFIRootNode(this, loadLibrary, source));
     }
 
     @Override
-    protected Object getLanguageGlobal(Env context) {
+    protected Object getLanguageGlobal(Context context) {
         return null;
     }
 

@@ -63,7 +63,7 @@ public final class DefaultCallTarget implements RootCallTarget {
         try {
             return getRootNode().execute(frame);
         } catch (Throwable t) {
-            getRuntime().getTvmci().onThrowable(rootNode, t);
+            getRuntime().getTvmci().onThrowable(callNode, this, t, frame);
             throw t;
         } finally {
             getRuntime().popFrame();
@@ -80,7 +80,7 @@ public final class DefaultCallTarget implements RootCallTarget {
         try {
             return getRootNode().execute(frame);
         } catch (Throwable t) {
-            getRuntime().getTvmci().onThrowable(rootNode, t);
+            getRuntime().getTvmci().onThrowable(null, this, t, frame);
             throw t;
         } finally {
             getRuntime().popFrame();

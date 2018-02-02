@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,14 +26,17 @@ import static org.graalvm.compiler.core.common.GraalOptions.RegisterPressure;
 import static org.graalvm.compiler.core.common.GraalOptions.TraceRA;
 import static org.junit.Assume.assumeTrue;
 
+import org.graalvm.compiler.core.test.backend.AllocatorTest;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.junit.Before;
 import org.junit.Test;
-
-import org.graalvm.compiler.core.test.backend.AllocatorTest;
 
 import jdk.vm.ci.sparc.SPARC;
 
 public class SPARCAllocatorTest extends AllocatorTest {
+
+    private final GraalHotSpotVMConfig config = ((HotSpotBackend) getBackend()).getRuntime().getVMConfig();
 
     @Before
     public void checkSPARC() {
@@ -44,7 +47,7 @@ public class SPARCAllocatorTest extends AllocatorTest {
 
     @Test
     public void test1() {
-        testAllocation("test1snippet", 2, 0, 0);
+        testAllocation("test1snippet", config.threadLocalHandshakes ? 1 : 2, 0, 0);
     }
 
     public static long test1snippet(long x) {
@@ -53,7 +56,7 @@ public class SPARCAllocatorTest extends AllocatorTest {
 
     @Test
     public void test2() {
-        testAllocation("test2snippet", 2, 0, 0);
+        testAllocation("test2snippet", config.threadLocalHandshakes ? 1 : 2, 0, 0);
     }
 
     public static long test2snippet(long x) {
@@ -62,7 +65,7 @@ public class SPARCAllocatorTest extends AllocatorTest {
 
     @Test
     public void test3() {
-        testAllocation("test3snippet", 4, 0, 0);
+        testAllocation("test3snippet", config.threadLocalHandshakes ? 3 : 4, 0, 0);
     }
 
     public static long test3snippet(long x) {

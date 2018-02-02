@@ -39,8 +39,6 @@ import java.util.function.Consumer;
 import com.oracle.shadowed.com.google.gson.Gson;
 import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
 
-import sun.misc.Signal;
-
 public class NativeImageBuildClient {
 
     public static final String COMMAND_PREFIX = "-command=";
@@ -68,9 +66,6 @@ public class NativeImageBuildClient {
         final Optional<Integer> port = NativeImageBuildServer.extractPort(args);
 
         if (port.isPresent() && command.isPresent()) {
-            Signal.handle(new Signal("INT"), sig -> {
-                sendRequest("abort", "image building interrupted by user (Ctrl-C).", port.get(), out, err);
-            });
             return sendRequest(command.get(), String.join(" ", args), port.get(), out, err);
         } else {
             usage(outln);
@@ -99,13 +94,16 @@ public class NativeImageBuildClient {
 
         try {
             SubstrateServerMessage.send(new SubstrateServerMessage(command, payload), os);
+            String line;
             switch (command) {
                 case "version":
-                    SubstrateServerMessage response = new Gson().fromJson(is.readLine(), SubstrateServerMessage.class);
-                    outln.accept(response.payload);
+                    line = is.readLine();
+                    if (line != null) {
+                        SubstrateServerMessage response = new Gson().fromJson(line, SubstrateServerMessage.class);
+                        outln.accept(response.payload);
+                    }
                     break;
                 default: {
-                    String line;
                     while ((line = is.readLine()) != null) {
                         SubstrateServerMessage serverCommand = new Gson().fromJson(line, SubstrateServerMessage.class);
                         Consumer<String> selectedConsumer = null;

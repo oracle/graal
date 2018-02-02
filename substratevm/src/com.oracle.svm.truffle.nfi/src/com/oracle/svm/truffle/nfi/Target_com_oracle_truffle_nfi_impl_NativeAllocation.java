@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,4 +47,10 @@ final class Target_com_oracle_truffle_nfi_impl_NativeAllocation {
      */
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
     static final AtomicReference<Thread> gcThread = new AtomicReference<>(null);
+}
+
+@TargetClass(className = "com.oracle.truffle.nfi.impl.NativeAllocation", innerClass = "FreeDestructor", onlyWith = TruffleNFIFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_nfi_impl_NativeAllocation_FreeDestructor {
+
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NativeReferenceField.class) long address;
 }

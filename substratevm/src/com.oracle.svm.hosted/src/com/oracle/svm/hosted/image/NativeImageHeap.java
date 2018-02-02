@@ -51,7 +51,6 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.graal.cfunction.CFunctionLinkages;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NativeImageInfo;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -88,9 +87,6 @@ public class NativeImageHeap {
 
             debug.log("initial add static fields");
             addStaticFields(debug);
-
-            debug.log("initial add native function entry points");
-            addObject(debug, CFunctionLinkages.get().getEntryPoints(), false, false, "native function entry points");
         }
     }
 

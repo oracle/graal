@@ -24,9 +24,11 @@
  */
 package com.oracle.truffle.api.interop.java.test;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -39,6 +41,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.polyglot.Context;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -54,6 +59,20 @@ import com.oracle.truffle.api.nodes.Node;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class AsCollectionsTest {
+
+    private Context context;
+
+    @Before
+    public void enterContext() {
+        context = Context.create();
+        context.enter();
+    }
+
+    @After
+    public void leaveContext() {
+        context.leave();
+        context.close();
+    }
 
     @Test
     public void testAsList() {
@@ -102,12 +121,11 @@ public class AsCollectionsTest {
         assertEquals("news", interopMap.get("new"));
 
         TruffleObject badMapObject = new JavaInteropTest.HasKeysObject(false);
-        interopMap = JavaInterop.asJavaObject(Map.class, badMapObject);
         try {
-            interopMap.get("isn't a map");
+            interopMap = JavaInterop.asJavaObject(Map.class, badMapObject);
             fail();
         } catch (Exception ex) {
-            assertFalse(ForeignAccess.sendHasKeys(Message.HAS_KEYS.createNode(), badMapObject));
+            assertThat(ex, instanceOf(ClassCastException.class));
         }
     }
 
