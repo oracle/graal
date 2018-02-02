@@ -253,7 +253,7 @@ class UnwindInstrumentationReenterSnippets extends TruffleInstrument {
 
         // Listener that reenters on unwind, attached to root nodes.
         EventBinding<ExecutionEventListener> functionReenter =
-            env.getInstrumenter().attachListener(
+            env.getInstrumenter().attachExecutionEventListener(
                 SourceSectionFilter.newBuilder().
                                     tagIs(StandardTags.RootTag.class).build(),
             new ExecutionEventListener() {
@@ -270,7 +270,7 @@ class UnwindInstrumentationReenterSnippets extends TruffleInstrument {
             });
 
         // Listener that initiates unwind at line 20, attached to statements.
-        env.getInstrumenter().attachListener(
+        env.getInstrumenter().attachExecutionEventListener(
             SourceSectionFilter.newBuilder().
                                 tagIs(StandardTags.StatementTag.class).build(),
             new ExecutionEventListener() {
@@ -300,7 +300,7 @@ class UnwindInstrumentationReturnSnippets extends TruffleInstrument {
     protected void onCreate(TruffleInstrument.Env env) {
         // Register a listener that checks the return value to all call nodes
         // If the return value is not 42, it forces to return 42.
-        env.getInstrumenter().attachListener(
+        env.getInstrumenter().attachExecutionEventListener(
             SourceSectionFilter.newBuilder().
                                 tagIs(StandardTags.CallTag.class).build(),
             new ExecutionEventListener() {

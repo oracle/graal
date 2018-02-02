@@ -122,11 +122,11 @@ public class EventBinding<T> {
         private final SourceSectionFilter inputFilter;
         private final boolean isExecutionEvent;
 
-        Source(AbstractInstrumenter instrumenter, SourceSectionFilter query, SourceSectionFilter inputFilter, T element, boolean isExecutionEvent) {
+        Source(AbstractInstrumenter instrumenter, SourceSectionFilter filterSourceSection, SourceSectionFilter inputFilter, T element, boolean isExecutionEvent) {
             super(instrumenter, element);
             this.instrumenter = instrumenter;
-            this.filterSourceSection = query;
             this.inputFilter = inputFilter;
+            this.filterSourceSection = filterSourceSection;
             this.isExecutionEvent = isExecutionEvent;
         }
 
@@ -140,6 +140,9 @@ public class EventBinding<T> {
             return filterSourceSection;
         }
 
+        SourceSectionFilter getInputFilter() {
+            return inputFilter;
+        }
         boolean isInstrumentedFull(Set<Class<?>> providedTags, RootNode rootNode, Node node, SourceSection nodeSourceSection) {
             if (isInstrumentedLeaf(providedTags, node, nodeSourceSection)) {
                 if (rootNode == null) {

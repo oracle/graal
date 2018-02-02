@@ -375,7 +375,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         TestInstrumentException2.returnedValue = 0;
         assureEnabled(engine.getInstruments().get("testInstrumentException2"));
         run("ROOT(EXPRESSION)");
-        Assert.assertTrue(getErr().contains("MyLanguageException"));
+        String errorText = getErr();
+        Assert.assertTrue(errorText, errorText.contains("MyLanguageException"));
 
         Assert.assertEquals(0, TestInstrumentException2.returnedExceptional);
         Assert.assertEquals(1, TestInstrumentException2.returnedValue);
@@ -709,7 +710,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         protected void onCreate(final Env env) {
             // Not to get error: declares service, but doesn't register it
             env.registerService(new Object());
-            env.getInstrumenter().attachFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventNodeFactory() {
+            env.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventNodeFactory() {
                 @Override
                 public ExecutionEventNode create(EventContext context) {
 
@@ -785,7 +786,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                 }
             });
 
-            env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
+            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
 
                 @Override
                 public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
@@ -858,7 +859,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         protected void onCreate(final Env env) {
             // Not to get error: declares service, but doesn't register it
             env.registerService(new Object());
-            env.getInstrumenter().attachFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventNodeFactory() {
+            env.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventNodeFactory() {
                 @Override
                 public ExecutionEventNode create(EventContext context) {
 

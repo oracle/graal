@@ -724,8 +724,9 @@ public final class ProbeNode extends Node {
 
         final void onInputValue(EventContext context, VirtualFrame frame, EventBinding<?> inputBinding, EventContext inputContext, int inputIndex, Object inputValue) {
             if (next != null) {
-                next.onInputValue(context, frame, binding, inputContext, inputIndex, inputValue);
+                next.onInputValue(context, frame, inputBinding, inputContext, inputIndex, inputValue);
             }
+
             try {
                 if (binding == inputBinding) {
                     innerOnInputValue(context, frame, binding, inputContext, inputIndex, inputValue);
@@ -994,6 +995,7 @@ public final class ProbeNode extends Node {
             super(binding, eventNode);
             this.inputBaseIndex = inputBaseIndex;
             this.inputCount = inputCount;
+
         }
 
         protected final void saveInputValue(VirtualFrame frame, int inputIndex, Object value) {
@@ -1010,6 +1012,9 @@ public final class ProbeNode extends Node {
             lock.lock();
             try {
                 if (inputSlots == null) {
+                    if (InstrumentationHandler.TRACE) {
+                        InstrumentationHandler.trace("SLOTS: Adding %s save slots for binding %s%n", inputCount, getBinding().getElement());
+                    }
                     FrameDescriptor frameDescriptor = getRootNode().getFrameDescriptor();
                     FrameSlot[] slots = new FrameSlot[inputCount];
                     for (int i = 0; i < inputCount; i++) {
@@ -1144,12 +1149,7 @@ public final class ProbeNode extends Node {
                     return false;
                 }
                 SavedInputValueID other = (SavedInputValueID) obj;
-                if (binding != other.binding) {
-                    return false;
-                } else if (index != other.index) {
-                    return false;
-                }
-                return true;
+                return binding == other.binding && index == other.index;
             }
         }
     }
@@ -1212,8 +1212,17 @@ public final class ProbeNode extends Node {
 
         @Override
         EventChainNode find(EventBinding<?> b) {
-            // cannot be found
-            return getNext().find(b);
+            EventChainNode next = getNext();
+            if (next == null) {
+                return null;
+            } else {
+                return next.find(b);
+            }
+        }
+
+        @Override
+        protected Object innerOnUnwind(EventContext context, VirtualFrame frame, Object info) {
+            return null;
         }
 
         @Override

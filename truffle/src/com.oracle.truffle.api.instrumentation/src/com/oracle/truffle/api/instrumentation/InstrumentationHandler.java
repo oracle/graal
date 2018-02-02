@@ -39,6 +39,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -75,7 +76,7 @@ import com.oracle.truffle.api.source.SourceSection;
 final class InstrumentationHandler {
 
     /* Enable trace output to stdout. */
-    private static final boolean TRACE = Boolean.getBoolean("truffle.instrumentation.trace");
+    static final boolean TRACE = Boolean.getBoolean("truffle.instrumentation.trace");
 
     private final Object sourceVM;
 
@@ -488,7 +489,7 @@ final class InstrumentationHandler {
         for (EventBinding.Source<?> binding : executionBindings) {
             if (binding.isChildInstrumentedFull(providedTags, rootNode, parentInstrumentable, parentInstrumentableSourceSection, instrumentedNode, sourceSection)) {
                 if (TRACE) {
-                    trace("  Found input value binding %s, %s%n", binding.getInputFilter(), binding.getElement());
+                    trace("  Found input value binding %s, %s%n", binding.getInputFilter(), System.identityHashCode(binding));
                 }
 
                 EventChainNode next = probeNodeImpl.createParentEventChainCallback(frame, binding, rootNode, providedTags);
@@ -688,7 +689,7 @@ final class InstrumentationHandler {
     }
 
     private <T extends OutputStream> EventBinding<T> attachOutputConsumer(AbstractInstrumenter instrumenter, T stream, boolean errorOutput) {
-        return addOutputBinding(new EventBinding<>(instrumenter, stream), errorOutput);
+        return addOutputBinding(new EventBinding.Source<>(instrumenter, null, null, stream, false), errorOutput);
     }
 
     private <T extends AllocationListener> EventBinding<T> attachAllocationListener(AbstractInstrumenter instrumenter, AllocationEventFilter filter, T listener) {
@@ -786,7 +787,7 @@ final class InstrumentationHandler {
         }
     }
 
-    private static void trace(String message, Object... args) {
+    static void trace(String message, Object... args) {
         PrintStream out = System.out;
         out.printf(message, args);
     }
