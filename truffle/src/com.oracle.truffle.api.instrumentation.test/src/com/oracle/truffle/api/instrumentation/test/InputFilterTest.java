@@ -86,17 +86,13 @@ public class InputFilterTest {
         SourceSectionFilter expressionFilter = SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build();
         instrumenter.attachExecutionEventFactory(expressionFilter, null, factory);
         execute("ROOT(EXPRESSION(EXPRESSION,EXPRESSION))");
-        assertOn(ENTER, (e) -> {
-        });
-        assertOn(ENTER, (e) -> {
-        });
+        assertOn(ENTER);
+        assertOn(ENTER);
         assertOn(RETURN_VALUE, (e) -> {
             assertEquals("()", e.result);
             assertArrayEquals(new Object[0], e.inputs);
         });
-
-        assertOn(ENTER, (e) -> {
-        });
+        assertOn(ENTER);
         assertOn(RETURN_VALUE, (e) -> {
             assertEquals("()", e.result);
             assertArrayEquals(new Object[0], e.inputs);
@@ -119,10 +115,8 @@ public class InputFilterTest {
 
         execute(code); // lazy initialize
 
-        assertOn(ENTER, (e) -> {
-        });
-        assertOn(ENTER, (e) -> {
-        });
+        assertOn(ENTER);
+        assertOn(ENTER);
         assertOn(RETURN_VALUE, (e) -> {
             assertEquals("()", e.result);
             assertArrayEquals(new Object[]{}, e.inputs);
@@ -151,10 +145,8 @@ public class InputFilterTest {
                         "EXPRESSION)" +
                         ")";
         execute(code);
-        assertOn(ENTER, (e) -> {
-        });
-        assertOn(ENTER, (e) -> {
-        });
+        assertOn(ENTER);
+        assertOn(ENTER);
         assertOn(RETURN_VALUE, (e) -> {
             assertEquals("()", e.result);
             assertArrayEquals(new Object[]{}, e.inputs);
@@ -163,8 +155,7 @@ public class InputFilterTest {
             assertEquals(0, e.inputValueIndex);
             assertEquals("()", e.inputValue);
         });
-        assertOn(ENTER, (e) -> {
-        });
+        assertOn(ENTER);
         assertOn(RETURN_VALUE, (e) -> {
             assertEquals("()", e.result);
             assertArrayEquals(new Object[]{}, e.inputs);
@@ -424,12 +415,9 @@ public class InputFilterTest {
         EventBinding<?> binding1 = instrumenter.attachExecutionEventFactory(expressionFilter, expressionFilter, factory);
         execute(code);
 
-        assertOn(ENTER, (e) -> {
-        });
-        assertOn(ENTER, (e) -> {
-        });
-        assertOn(ENTER, (e) -> {
-        });
+        assertOn(ENTER);
+        assertOn(ENTER);
+        assertOn(ENTER);
         assertOn(RETURN_VALUE, (e) -> {
             assertEquals("()", e.result);
             assertArrayEquals(new Object[]{}, e.inputs);
@@ -468,18 +456,12 @@ public class InputFilterTest {
 
         execute(code); // lazy initialize
 
-        assertOn(ENTER, (e) -> {
-        });
-        assertOn(ENTER, (e) -> {
-        });
-        assertOn(ENTER, (e) -> {
-        });
-        assertOn(ENTER, (e) -> {
-        });
-        assertOn(ENTER, (e) -> {
-        });
-        assertOn(ENTER, (e) -> {
-        });
+        assertOn(ENTER);
+        assertOn(ENTER);
+        assertOn(ENTER);
+        assertOn(ENTER);
+        assertOn(ENTER);
+        assertOn(ENTER);
         assertOn(RETURN_VALUE, (e) -> {
             assertEquals("()", e.result);
             assertArrayEquals(new Object[]{}, e.inputs);
@@ -568,6 +550,11 @@ public class InputFilterTest {
 
     private static void assertCharacters(Event e, String s) {
         assertEquals(s, e.context.getInstrumentedSourceSection().getCharacters().toString());
+    }
+
+    private void assertOn(EventKind expectedKind) {
+        assertOn(expectedKind, (e) -> {
+        });
     }
 
     private void assertOn(EventKind expectedKind, Consumer<Event> verify) {
