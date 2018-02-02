@@ -26,10 +26,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static org.graalvm.compiler.lir.alloc.trace.TraceUtil.isTrivialTrace;
 
-import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.Random;
-import java.util.stream.IntStream;
 
 import org.graalvm.compiler.core.common.alloc.Trace;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
@@ -37,7 +34,6 @@ import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
-import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.StandardOp.JumpOp;
 import org.graalvm.compiler.lir.StandardOp.LabelOp;
 import org.graalvm.compiler.lir.ValueProcedure;
@@ -64,8 +60,6 @@ public final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAlloc
         GlobalLivenessInfo livenessInfo = context.livenessInfo;
         allocate(block, pred, livenessInfo, lir.numVariables(), SSAUtil.phiOutOrNull(lir, block));
     }
-
-    private static Random r = new Random(42);
 
     public static void allocate(AbstractBlockBase<?> block, AbstractBlockBase<?> pred, GlobalLivenessInfo livenessInfo, int numVariables, LIRInstruction jump) {
         // exploit that the live sets are sorted
