@@ -107,6 +107,16 @@ public final class CTypeConversion {
     }
 
     /**
+     * Turn a Java boolean into a C boolean.
+     *
+     * @param value the Java boolean value
+     * @return the C boolean value
+     */
+    public static int toCBoolean(boolean value) {
+        return value ? 1 : 0;
+    }
+
+    /**
      * Turn a C int into a Java boolean. E.g., for
      *
      * <pre>
