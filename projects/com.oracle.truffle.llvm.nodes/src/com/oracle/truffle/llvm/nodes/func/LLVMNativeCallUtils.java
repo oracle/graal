@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.func;
 
-import java.util.Arrays;
+import java.util.StringJoiner;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -54,7 +54,7 @@ public final class LLVMNativeCallUtils {
             return (TruffleObject) ForeignAccess.sendInvoke(bindNode, symbol, "bind", signature);
         } catch (Throwable ex) {
             CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(symbol + " " + signature, ex);
+            throw new IllegalStateException("Could not bind " + symbol + " " + signature, ex);
         }
     }
 
@@ -69,8 +69,17 @@ public final class LLVMNativeCallUtils {
             return ForeignAccess.sendExecute(nativeCall, function, nativeArgs);
         } catch (Throwable e) {
             CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(function + Arrays.toString(nativeArgs), e);
+            throw new IllegalStateException("Exception thrown by a callback during the native call " + function + argsToString(nativeArgs), e);
         }
+    }
+
+    @TruffleBoundary
+    private static String argsToString(Object[] nativeArgs) {
+        StringJoiner joiner = new StringJoiner(", ", "(", ")");
+        for (Object arg : nativeArgs) {
+            joiner.add(arg.toString());
+        }
+        return joiner.toString();
     }
 
     @TruffleBoundary
