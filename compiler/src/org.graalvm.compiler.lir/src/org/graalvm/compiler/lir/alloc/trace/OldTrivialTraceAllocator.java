@@ -31,6 +31,7 @@ import java.util.EnumSet;
 import org.graalvm.compiler.core.common.alloc.Trace;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.lir.LIR;
+import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
 import org.graalvm.compiler.lir.StandardOp.JumpOp;
@@ -46,7 +47,7 @@ import jdk.vm.ci.meta.Value;
  * Allocates a trivial trace i.e. a trace consisting of a single block with no instructions other
  * than the {@link LabelOp} and the {@link JumpOp}.
  */
-final class OldTrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPhase.TraceAllocationContext> {
+public final class OldTrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPhase.TraceAllocationContext> {
 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, Trace trace, TraceAllocationContext context) {
@@ -56,10 +57,16 @@ final class OldTrivialTraceAllocator extends TraceAllocationPhase<TraceAllocatio
         assert block.getPredecessorCount() == 1 : "Trace head with more than one predecessor?!" + trace;
         AbstractBlockBase<?> pred = block.getPredecessors()[0];
 
-        Value[] variableMap = new Value[lir.numVariables()];
+        int numVariables = lir.numVariables();
         GlobalLivenessInfo livenessInfo = context.livenessInfo;
+        JumpOp jump = SSAUtil.phiOutOrNull(lir, block);
+        allocate(block, pred, livenessInfo, numVariables, jump);
+    }
+
+    public static void allocate(AbstractBlockBase<?> block, AbstractBlockBase<?> pred, GlobalLivenessInfo livenessInfo, int numVariables, LIRInstruction jump) {
+        Value[] variableMap = new Value[numVariables];
         collectMapping(block, pred, livenessInfo, variableMap);
-        assignLocations(lir, block, livenessInfo, variableMap);
+        assignLocations(jump, block, livenessInfo, variableMap);
     }
 
     /**
@@ -86,7 +93,7 @@ final class OldTrivialTraceAllocator extends TraceAllocationPhase<TraceAllocatio
     /**
      * Assigns the outgoing locations according to the {@link #collectMapping variable mapping}.
      */
-    private static void assignLocations(LIR lir, AbstractBlockBase<?> block, GlobalLivenessInfo livenessInfo, Value[] variableMap) {
+    private static void assignLocations(LIRInstruction jump, AbstractBlockBase<?> block, GlobalLivenessInfo livenessInfo, Value[] variableMap) {
         final int[] blockOut = livenessInfo.getBlockOut(block);
         final Value[] locationOut = new Value[blockOut.length];
         for (int i = 0; i < blockOut.length; i++) {
@@ -95,20 +102,20 @@ final class OldTrivialTraceAllocator extends TraceAllocationPhase<TraceAllocatio
         }
         livenessInfo.setOutLocations(block, locationOut);
 
-        // handle outgoing phi values
-        ValueProcedure outputConsumer = new ValueProcedure() {
-            @Override
-            public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-                if (isVariable(value)) {
-                    return variableMap[asVariable(value).index];
+        if (jump != null) {
+            // handle outgoing phi values
+            ValueProcedure outputConsumer = new ValueProcedure() {
+                @Override
+                public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+                    if (isVariable(value)) {
+                        return variableMap[asVariable(value).index];
+                    }
+                    return value;
                 }
-                return value;
-            }
-        };
-
-        JumpOp jump = SSAUtil.phiOut(lir, block);
-        // Jumps have only alive values (outgoing phi values)
-        jump.forEachAlive(outputConsumer);
+            };
+            // Jumps have only alive values (outgoing phi values)
+            jump.forEachAlive(outputConsumer);
+        }
     }
 
 }

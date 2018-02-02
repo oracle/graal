@@ -26,13 +26,18 @@ import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static org.graalvm.compiler.lir.alloc.trace.TraceUtil.isTrivialTrace;
 
+import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.Random;
+import java.util.stream.IntStream;
 
 import org.graalvm.compiler.core.common.alloc.Trace;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.lir.LIR;
+import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
+import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.StandardOp.JumpOp;
 import org.graalvm.compiler.lir.StandardOp.LabelOp;
 import org.graalvm.compiler.lir.ValueProcedure;
@@ -46,7 +51,7 @@ import jdk.vm.ci.meta.Value;
  * Allocates a trivial trace i.e. a trace consisting of a single block with no instructions other
  * than the {@link LabelOp} and the {@link JumpOp}.
  */
-final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPhase.TraceAllocationContext> {
+public final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPhase.TraceAllocationContext> {
 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, Trace trace, TraceAllocationContext context) {
@@ -57,16 +62,18 @@ final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPh
         AbstractBlockBase<?> pred = block.getPredecessors()[0];
 
         GlobalLivenessInfo livenessInfo = context.livenessInfo;
-        allocate(lir, block, pred, livenessInfo);
+        allocate(block, pred, livenessInfo, lir.numVariables(), SSAUtil.phiOutOrNull(lir, block));
     }
 
-    private static void allocate(LIR lir, AbstractBlockBase<?> block, AbstractBlockBase<?> pred, GlobalLivenessInfo livenessInfo) {
+    private static Random r = new Random(42);
+
+    public static void allocate(AbstractBlockBase<?> block, AbstractBlockBase<?> pred, GlobalLivenessInfo livenessInfo, int numVariables, LIRInstruction jump) {
         assert TraceAssertions.liveSetsAreSorted(livenessInfo, block);
         assert TraceAssertions.liveSetsAreSorted(livenessInfo, pred);
 
         // If we have Phis, we need to create a map from variables to locations.
-        boolean hasPhis = SSAUtil.numPhiOut(lir, block) > 0;
-        Value[] variableMap = hasPhis ? new Value[lir.numVariables()] : null;
+        boolean hasPhis = jump != null;
+        Value[] variableMap = hasPhis ? new Value[numVariables] : null;
 
         // setup incoming variables/locations
         final int[] blockIn = livenessInfo.getBlockIn(block);
@@ -100,11 +107,11 @@ final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPh
         livenessInfo.setInLocations(block, predLocOut);
         livenessInfo.setOutLocations(block, locationOut);
         if (hasPhis) {
-            handlePhiOut(lir, block, variableMap);
+            handlePhiOut(jump, variableMap);
         }
     }
 
-    private static void handlePhiOut(LIR lir, AbstractBlockBase<?> block, Value[] variableMap) {
+    private static void handlePhiOut(LIRInstruction jump, Value[] variableMap) {
         // handle outgoing phi values
         ValueProcedure outputConsumer = new ValueProcedure() {
             @Override
@@ -116,7 +123,6 @@ final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPh
             }
         };
 
-        JumpOp jump = SSAUtil.phiOut(lir, block);
         // Jumps have only alive values (outgoing phi values)
         jump.forEachAlive(outputConsumer);
     }
