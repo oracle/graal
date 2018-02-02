@@ -44,6 +44,8 @@ public abstract class Type {
     @CompilationFinal private Assumption assumption = Truffle.getRuntime().createAssumption();
     @CompilationFinal private LLVMSourceType sourceType = null;
 
+    public static final Type[] EMPTY_ARRAY = {};
+
     public abstract int getBitSize();
 
     public abstract void accept(TypeVisitor visitor);
