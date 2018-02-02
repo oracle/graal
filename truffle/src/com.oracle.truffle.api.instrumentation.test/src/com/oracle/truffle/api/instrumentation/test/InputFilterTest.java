@@ -416,6 +416,73 @@ public class InputFilterTest {
         assertAllEventsConsumed();
     }
 
+    @Test
+    public void testMultipleFactories() {
+        SourceSectionFilter expressionFilter = SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build();
+
+        String code = "EXPRESSION(INTERNAL(EXPRESSION))";
+
+        EventBinding<?> binding1 = instrumenter.attachExecutionEventFactory(expressionFilter, expressionFilter, factory);
+        EventBinding<?> binding2 = instrumenter.attachExecutionEventFactory(expressionFilter, expressionFilter, factory);
+        EventBinding<?> binding3 = instrumenter.attachExecutionEventFactory(expressionFilter, expressionFilter, factory);
+
+        execute(code); // lazy initialize
+
+        assertOn(ENTER, (e) -> {
+        });
+        assertOn(ENTER, (e) -> {
+        });
+        assertOn(ENTER, (e) -> {
+        });
+        assertOn(ENTER, (e) -> {
+        });
+        assertOn(ENTER, (e) -> {
+        });
+        assertOn(ENTER, (e) -> {
+        });
+        assertOn(RETURN_VALUE, (e) -> {
+            assertEquals("()", e.result);
+            assertArrayEquals(new Object[]{}, e.inputs);
+        });
+        assertOn(INPUT_VALUE, (e) -> {
+            assertEquals(0, e.inputValueIndex);
+            assertEquals("()", e.inputValue);
+        });
+        assertOn(RETURN_VALUE, (e) -> {
+            assertEquals("()", e.result);
+            assertArrayEquals(new Object[]{}, e.inputs);
+        });
+        assertOn(INPUT_VALUE, (e) -> {
+            assertEquals(0, e.inputValueIndex);
+            assertEquals("()", e.inputValue);
+        });
+        assertOn(RETURN_VALUE, (e) -> {
+            assertEquals("()", e.result);
+            assertArrayEquals(new Object[]{}, e.inputs);
+        });
+        assertOn(INPUT_VALUE, (e) -> {
+            assertEquals(0, e.inputValueIndex);
+            assertEquals("()", e.inputValue);
+        });
+        assertOn(RETURN_VALUE, (e) -> {
+            assertEquals("(())", e.result);
+            assertArrayEquals(new Object[]{"()"}, e.inputs);
+        });
+        assertOn(RETURN_VALUE, (e) -> {
+            assertEquals("(())", e.result);
+            assertArrayEquals(new Object[]{"()"}, e.inputs);
+        });
+        assertOn(RETURN_VALUE, (e) -> {
+            assertEquals("(())", e.result);
+            assertArrayEquals(new Object[]{"()"}, e.inputs);
+        });
+
+        binding1.dispose();
+        binding2.dispose();
+        binding3.dispose();
+        assertCleanedUp(code);
+    }
+
     private void assertCleanedUp(String code) {
         // first we capture all root nodes used by the code.
         Set<RootNode> rootNodes = new HashSet<>();
