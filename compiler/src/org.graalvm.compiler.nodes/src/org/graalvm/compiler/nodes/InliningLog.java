@@ -28,13 +28,14 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.options.OptionValues;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.stream.Collectors;
 
 /**
  * This class contains all inlining decisions performed on a graph during the compilation.
@@ -55,6 +56,7 @@ import java.util.stream.Collectors;
  * {@link #addDecision} to log negative decisions.
  */
 public class InliningLog {
+
     public static final class Decision {
         private final boolean positive;
         private final String reason;
@@ -124,11 +126,13 @@ public class InliningLog {
 
     private final Callsite root;
     private final EconomicMap<Invokable, Callsite> leaves;
+    private final OptionValues options;
 
-    public InliningLog(ResolvedJavaMethod rootMethod) {
+    public InliningLog(ResolvedJavaMethod rootMethod, OptionValues options) {
         this.root = new Callsite(null, null);
         this.root.target = rootMethod;
         this.leaves = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+        this.options = options;
     }
 
     /**
@@ -246,6 +250,9 @@ public class InliningLog {
         }
     }
 
+    private UpdateScope noUpdates = new UpdateScope((oldNode, newNode) -> {
+    });
+
     private UpdateScope activated = null;
 
     /**
@@ -284,15 +291,29 @@ public class InliningLog {
     /**
      * Creates and sets a new update scope for the log.
      *
-     * The specified lambda is invoked when an {@link Invokable} node is registered or cloned. If
-     * the node is newly registered, then the first argument to the lambda is {@code null} If the
-     * node is cloned, then the first argument is the node it was cloned from.
+     * The specified {@code updater} is invoked when an {@link Invokable} node is registered or cloned. If
+     * the node is newly registered, then the first argument to the {@code updater} is {@code null}.
+     * If the node is cloned, then the first argument is the node it was cloned from.
      *
-     * @param updater a lambda taking a null (or the original node), and the registered (or cloned)
+     * @param updater an operation taking a null (or the original node), and the registered (or cloned)
      *            {@link Invokable}
+     * @return a bound {@link UpdateScope} object, or a {@code null} if tracing is disabled
      */
     public UpdateScope createUpdateScope(BiConsumer<Invokable, Invokable> updater) {
-        return new UpdateScope(updater);
+        if (GraalOptions.TraceInlining.getValue(options)) {
+            return new UpdateScope(updater);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Creates a new update scope that does not update the log.
+     *
+     * @see #createUpdateScope
+     */
+    public UpdateScope createNoUpdateScope() {
+        return noUpdates;
     }
 
     public boolean containsLeafCallsite(Invokable invokable) {

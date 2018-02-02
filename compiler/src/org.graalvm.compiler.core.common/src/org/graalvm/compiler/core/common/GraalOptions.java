@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.core.common;
 
-import org.graalvm.compiler.options.EnumOptionKey;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -275,7 +274,7 @@ public final class GraalOptions {
     @Option(help = "Enable experimental Trace Register Allocation.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceRA = new OptionKey<>(false);
 
-    @Option(help = "How to trace inlining decisions, one of: None, Tree", type = OptionType.Debug)
-    public static final OptionKey<TraceInliningMode> TraceInlining = new EnumOptionKey<>(TraceInliningMode.None);
+    @Option(help = "Whether to trace inlining decision.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> TraceInlining = new OptionKey<>(false);
 
 }

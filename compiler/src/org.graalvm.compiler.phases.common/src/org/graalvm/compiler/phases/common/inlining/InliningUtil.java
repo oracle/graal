@@ -270,7 +270,7 @@ public class InliningUtil extends ValueMergeUtil {
     }
 
     /**
-     * Performs an actual inlining, thereby replacing the given invoke with the given inlineGraph.
+     * Performs an actual inlining, thereby replacing the given invoke with the given {@code inlineGraph}.
      *
      * @param invoke the invoke that will be replaced
      * @param inlineGraph the graph that the invoke will be replaced with
@@ -284,7 +284,7 @@ public class InliningUtil extends ValueMergeUtil {
     }
 
     /**
-     * Performs an actual inlining, thereby replacing the given invoke with the given inlineGraph.
+     * Performs an actual inlining, thereby replacing the given invoke with the given {@code inlineGraph}.
      *
      * @param invoke the invoke that will be replaced
      * @param inlineGraph the graph that the invoke will be replaced with
@@ -359,12 +359,11 @@ public class InliningUtil extends ValueMergeUtil {
         // Do not update the inlining log when adding the duplicates.
         // Instead, attach the inlining log of the child graph to the current inlining log.
         EconomicMap<Node, Node> duplicates;
-        try (InliningLog.UpdateScope ignored = graph.getInliningLog().createUpdateScope((oldNode, newNode) -> {
-        })) {
+        try (InliningLog.UpdateScope scope = graph.getInliningLog().createNoUpdateScope()) {
             duplicates = graph.addDuplicates(nodes, inlineGraph, inlineGraph.getNodeCount(), localReplacement);
-        }
-        if (GraalOptions.TraceInlining.getValue(graph.getOptions()).isTracing()) {
-            graph.getInliningLog().addDecision(invoke, true, reason, phase, duplicates, inlineGraph.getInliningLog());
+            if (scope != null) {
+                graph.getInliningLog().addDecision(invoke, true, reason, phase, duplicates, inlineGraph.getInliningLog());
+            }
         }
 
         FrameState stateAfter = invoke.stateAfter();

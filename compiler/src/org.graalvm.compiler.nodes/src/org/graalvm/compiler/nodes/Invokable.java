@@ -41,14 +41,15 @@ public interface Invokable {
      * Called on a {@link Invokable} node after it is registered with a graph.
      *
      * To override the default functionality, code that creates an {@link Invokable} should set the
-     * {@link InliningLog#createUpdateScope} dynamic variable.
+     * updating logic by calling {@link InliningLog#createUpdateScope}.
      */
     default void updateInliningLogAfterRegister(StructuredGraph newGraph) {
-        if (newGraph.getInliningLog().getUpdateScope() != null) {
-            newGraph.getInliningLog().getUpdateScope().accept(null, this);
+        InliningLog log = newGraph.getInliningLog();
+        if (log.getUpdateScope() != null) {
+            log.getUpdateScope().accept(null, this);
         } else {
-            assert !newGraph.getInliningLog().containsLeafCallsite(this);
-            newGraph.getInliningLog().trackNewCallsite(this);
+            assert !log.containsLeafCallsite(this);
+            log.trackNewCallsite(this);
         }
     }
 
@@ -58,10 +59,10 @@ public interface Invokable {
      * This call is always preceded with a call to {@link Invokable#updateInliningLogAfterRegister}.
      *
      * To override the default functionality, code that creates an {@link Invokable} should set the
-     * {@link InliningLog#createUpdateScope} dynamic variable.
+     * updating logic by calling {@link InliningLog#createUpdateScope}.
      */
     default void updateInliningLogAfterClone(Node other) {
-        if (GraalOptions.TraceInlining.getValue(asFixedNode().getOptions()).isTracing()) {
+        if (GraalOptions.TraceInlining.getValue(asFixedNode().getOptions())) {
             // At this point, the invokable node was already added to the inlining log
             // in the call to updateInliningLogAfterRegister, so we need to remove it.
             InliningLog log = asFixedNode().graph().getInliningLog();

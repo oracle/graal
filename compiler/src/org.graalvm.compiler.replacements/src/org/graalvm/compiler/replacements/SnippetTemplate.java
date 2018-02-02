@@ -756,14 +756,11 @@ public class SnippetTemplate {
                     }
                 }
             }
-            if (GraalOptions.TraceInlining.getValue(snippetCopy.getOptions()).isTracing()) {
-                try (InliningLog.UpdateScope ignored = snippetCopy.getInliningLog().createUpdateScope((oldNode, newNode) -> {
-                })) {
-                    UnmodifiableEconomicMap<Node, Node> duplicates = snippetCopy.addDuplicates(snippetGraph.getNodes(), snippetGraph, snippetGraph.getNodeCount(), nodeReplacements);
+            try (InliningLog.UpdateScope updateScope = snippetCopy.getInliningLog().createNoUpdateScope()) {
+                UnmodifiableEconomicMap<Node, Node> duplicates = snippetCopy.addDuplicates(snippetGraph.getNodes(), snippetGraph, snippetGraph.getNodeCount(), nodeReplacements);
+                if (updateScope != null) {
                     snippetCopy.getInliningLog().replaceLog(duplicates, snippetGraph.getInliningLog());
                 }
-            } else {
-                snippetCopy.addDuplicates(snippetGraph.getNodes(), snippetGraph, snippetGraph.getNodeCount(), nodeReplacements);
             }
 
             debug.dump(DebugContext.INFO_LEVEL, snippetCopy, "Before specialization");
@@ -1406,18 +1403,16 @@ public class SnippetTemplate {
             EconomicMap<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
             replacements.put(entryPointNode, AbstractBeginNode.prevBegin(replacee));
             UnmodifiableEconomicMap<Node, Node> duplicates;
-            if (GraalOptions.TraceInlining.getValue(replaceeGraph.getOptions()).isTracing()) {
-                try (InliningLog.UpdateScope ignored = replaceeGraph.getInliningLog().createUpdateScope((oldNode, newNode) -> {
-                    InliningLog log = replaceeGraph.getInliningLog();
-                    if (oldNode == null) {
-                        log.trackNewCallsite(newNode);
-                    }
-                })) {
-                    duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
+            try (InliningLog.UpdateScope scope = replaceeGraph.getInliningLog().createUpdateScope((oldNode, newNode) -> {
+                InliningLog log = replaceeGraph.getInliningLog();
+                if (oldNode == null) {
+                    log.trackNewCallsite(newNode);
+                }
+            })) {
+                duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
+                if (scope != null) {
                     replaceeGraph.getInliningLog().addLog(duplicates, snippet.getInliningLog());
                 }
-            } else {
-                duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
             }
             debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After inlining snippet %s", snippet.method());
 
@@ -1572,18 +1567,16 @@ public class SnippetTemplate {
             EconomicMap<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
             replacements.put(entryPointNode, tool.getCurrentGuardAnchor().asNode());
             UnmodifiableEconomicMap<Node, Node> duplicates;
-            if (GraalOptions.TraceInlining.getValue(replaceeGraph.getOptions()).isTracing()) {
-                try (InliningLog.UpdateScope ignored = replaceeGraph.getInliningLog().createUpdateScope((oldNode, newNode) -> {
-                    InliningLog log = replaceeGraph.getInliningLog();
-                    if (oldNode == null) {
-                        log.trackNewCallsite(newNode);
-                    }
-                })) {
-                    duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
+            try (InliningLog.UpdateScope ignored = replaceeGraph.getInliningLog().createUpdateScope((oldNode, newNode) -> {
+                InliningLog log = replaceeGraph.getInliningLog();
+                if (oldNode == null) {
+                    log.trackNewCallsite(newNode);
+                }
+            })) {
+                duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
+                if (ignored != null) {
                     replaceeGraph.getInliningLog().addLog(duplicates, snippet.getInliningLog());
                 }
-            } else {
-                duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
             }
             debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After inlining snippet %s", snippet.method());
 
