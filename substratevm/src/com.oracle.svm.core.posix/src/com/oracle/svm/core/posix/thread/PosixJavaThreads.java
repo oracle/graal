@@ -216,12 +216,27 @@ public final class PosixJavaThreads extends JavaThreads {
         setPthreadIdentifier(thread, Pthread.pthread_self());
         singleton().setNativeName(thread, thread.getName());
 
+        boolean daemon = thread.isDaemon();
+        singleton().totalThreads.incrementAndGet();
+        long liveThreads = singleton().liveThreads.incrementAndGet();
+        long peakThreads = singleton().peakThreads.get();
+        if (liveThreads > peakThreads) {
+            singleton().peakThreads.set(liveThreads);
+        }
+        if (!daemon) {
+            singleton().nonDaemonThreads.incrementAndGet();
+        }
+
         try {
             thread.run();
         } catch (Throwable ex) {
             SnippetRuntime.reportUnhandledExceptionJava(ex);
         } finally {
             exit(thread);
+            singleton().liveThreads.decrementAndGet();
+            if (!daemon) {
+                singleton().nonDaemonThreads.decrementAndGet();
+            }
         }
 
         return WordFactory.nullPointer();

@@ -89,6 +89,9 @@ public abstract class JavaThreads {
      */
     protected static final FastThreadLocalObject<Thread> currentThread = FastThreadLocalFactory.createObject(Thread.class);
 
+    protected final AtomicLong totalThreads = new AtomicLong();
+    protected final AtomicLong peakThreads = new AtomicLong();
+    protected final AtomicLong liveThreads = new AtomicLong();
     protected final AtomicLong nonDaemonThreads = new AtomicLong();
 
     /** The group we use for VM threads. */
@@ -163,6 +166,22 @@ public abstract class JavaThreads {
             result = createThread(vmThread);
         }
         return result;
+    }
+
+    public long getTotalThreads() {
+        return totalThreads.get();
+    }
+
+    public long getPeakThreads() {
+        return peakThreads.get();
+    }
+
+    public long getLiveThreads() {
+        return liveThreads.get();
+    }
+
+    public long getNonDaemonThreads() {
+        return nonDaemonThreads.get();
     }
 
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")

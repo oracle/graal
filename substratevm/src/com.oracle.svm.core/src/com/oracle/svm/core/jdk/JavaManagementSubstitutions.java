@@ -44,6 +44,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(java.lang.management.ManagementFactory.class)
@@ -232,22 +233,25 @@ final class SubstrateThreadMXBean implements ThreadMXBean {
 
     @Override
     public int getThreadCount() {
-        throw VMError.unsupportedFeature(MSG);
+        return (int)JavaThreads.singleton().getLiveThreads();
     }
 
     @Override
     public int getPeakThreadCount() {
-        throw VMError.unsupportedFeature(MSG);
+        return (int)JavaThreads.singleton().getPeakThreads();
     }
 
     @Override
     public long getTotalStartedThreadCount() {
-        throw VMError.unsupportedFeature(MSG);
+        return JavaThreads.singleton().getTotalThreads();
     }
 
     @Override
     public int getDaemonThreadCount() {
-        throw VMError.unsupportedFeature(MSG);
+        int liveThreads = (int)JavaThreads.singleton().getLiveThreads();
+        int noDaemonThreads = (int)JavaThreads.singleton().getNonDaemonThreads();
+
+        return Math.max(0, liveThreads - noDaemonThreads);
     }
 
     @Override
