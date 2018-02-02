@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,15 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.graal.code;
 
-package com.oracle.objectfile;
+import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 
-import com.oracle.objectfile.ObjectFile.Symbol;
+public interface SubstrateNodeLIRBuilder {
 
-public interface SymbolTable extends Iterable<Symbol> {
-    Symbol getSymbol(String name);
-
-    Symbol newDefinedEntry(String name, ObjectFile.Section referencedSection, long referencedOffset, long size, boolean isGlobal, boolean isCode);
-
-    Symbol newUndefinedEntry(String name, boolean isCode);
+    void emitCGlobalDataLoadAddress(CGlobalDataLoadAddressNode node);
 }

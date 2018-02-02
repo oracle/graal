@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,22 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.cfunction;
+package com.oracle.svm.core.c;
 
-public class CFunctionLinkage {
+import org.graalvm.word.PointerBase;
 
-    private final String linkageName;
-    int index;
+import com.oracle.svm.core.c.function.CEntryPointOptions;
 
-    CFunctionLinkage(String linkageName) {
-        this.linkageName = linkageName;
-    }
-
-    public int getIndex() {
-        return index;
-    }
-
-    public String getLinkageName() {
-        return linkageName;
+/**
+ * An object of this class represents a chunk of static global data that is located outside the heap
+ * and can be accessed directly {@linkplain PointerBase by address}. No
+ * {@linkplain CEntryPointOptions#prologue()} Java execution context} is required.
+ */
+public abstract class CGlobalData<T extends PointerBase> {
+    /**
+     * @return at runtime, a pointer to the data represented by this object.
+     */
+    public final T get() {
+        throw new IllegalStateException("Cannot access address of global data during native image generation");
     }
 }

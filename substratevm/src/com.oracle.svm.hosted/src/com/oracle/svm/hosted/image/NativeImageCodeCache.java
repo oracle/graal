@@ -66,7 +66,6 @@ import com.oracle.svm.hosted.meta.MethodPointer;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.DataPatch;
-import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -418,7 +417,6 @@ public class NativeImageCodeCache {
                  * Constants are allocated offsets in a separate space, which can be emitted as
                  * read-only (.rodata) section.
                  */
-                int constStart = ((DataSectionReference) dataPatch.reference).getOffset();
                 AMD64InstructionPatcher.PatchData patchData = patcher.findPatchData(dataPatch.pcOffset, 0);
                 /*
                  * The relocation site is some offset into the instruction, which is some offset
@@ -433,7 +431,7 @@ public class NativeImageCodeCache {
                  * are relative to the *next* instruction. So, if the next instruction starts n
                  * bytes from the relocation site, we want to subtract n bytes from our addend.
                  */
-                long addend = constStart - (patchData.nextInstructionPosition - patchData.operandPosition);
+                long addend = (patchData.nextInstructionPosition - patchData.operandPosition);
                 relocs.addPCRelativeRelocationWithAddend((int) siteOffset, patchData.operandSize, addend, dataPatch.reference);
             }
         }

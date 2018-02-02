@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,15 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.graal.code;
 
-package com.oracle.objectfile;
+import jdk.vm.ci.code.site.Reference;
 
-import com.oracle.objectfile.ObjectFile.Symbol;
+public final class CGlobalDataReference extends Reference {
 
-public interface SymbolTable extends Iterable<Symbol> {
-    Symbol getSymbol(String name);
+    private final CGlobalDataInfo dataInfo;
 
-    Symbol newDefinedEntry(String name, ObjectFile.Section referencedSection, long referencedOffset, long size, boolean isGlobal, boolean isCode);
+    public CGlobalDataReference(CGlobalDataInfo dataInfo) {
+        this.dataInfo = dataInfo;
+    }
 
-    Symbol newUndefinedEntry(String name, boolean isCode);
+    public CGlobalDataInfo getDataInfo() {
+        return dataInfo;
+    }
+
+    @Override
+    public int hashCode() {
+        return System.identityHashCode(dataInfo);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return (obj == this) || ((obj instanceof CGlobalDataReference) && dataInfo == ((CGlobalDataReference) obj).dataInfo);
+    }
 }
