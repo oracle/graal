@@ -55,13 +55,13 @@ class MultiLanguageShell {
     private final Context context;
     private final InputStream in;
     private final OutputStream out;
-    private final String startLanguage;
+    private final String defaultStartLanguage;
 
-    MultiLanguageShell(Context context, InputStream in, OutputStream out, String startLanguage) {
+    MultiLanguageShell(Context context, InputStream in, OutputStream out, String defaultStartLanguage) {
         this.context = context;
         this.in = in;
         this.out = out;
-        this.startLanguage = startLanguage;
+        this.defaultStartLanguage = defaultStartLanguage;
     }
 
     public int readEvalPrint() throws IOException {
@@ -103,6 +103,11 @@ class MultiLanguageShell {
         int maxNameLength = 0;
         for (Language language : languages) {
             maxNameLength = Math.max(maxNameLength, language.getName().length());
+        }
+
+        String startLanguage = defaultStartLanguage;
+        if (startLanguage == null) {
+            startLanguage = languages.get(0).getId();
         }
 
         Language currentLanguage = context.getEngine().getLanguages().get(startLanguage);
