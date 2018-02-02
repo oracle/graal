@@ -259,11 +259,14 @@ public class InliningLog {
      * Used to designate scopes in which {@link Invokable} registration or cloning should be handled
      * differently.
      */
-    public class UpdateScope implements AutoCloseable {
+    public final class UpdateScope implements AutoCloseable {
         private BiConsumer<Invokable, Invokable> updater;
 
         private UpdateScope(BiConsumer<Invokable, Invokable> updater) {
             this.updater = updater;
+        }
+
+        public void activate() {
             if (activated != null) {
                 throw GraalError.shouldNotReachHere("InliningLog updating already set.");
             }
@@ -301,9 +304,11 @@ public class InliningLog {
      *            cloned) {@link Invokable}
      * @return a bound {@link UpdateScope} object, or a {@code null} if tracing is disabled
      */
-    public UpdateScope createUpdateScope(BiConsumer<Invokable, Invokable> updater) {
+    public UpdateScope openUpdateScope(BiConsumer<Invokable, Invokable> updater) {
         if (GraalOptions.TraceInlining.getValue(options)) {
-            return new UpdateScope(updater);
+            UpdateScope scope = new UpdateScope(updater);
+            scope.activate();
+            return scope;
         } else {
             return null;
         }
@@ -312,10 +317,15 @@ public class InliningLog {
     /**
      * Creates a new update scope that does not update the log.
      *
-     * @see #createUpdateScope
+     * This update scope will not add a newly created {@code Invokable} to the log, nor will it
+     * amend its position if it was cloned. Instead, users need to update the inlining log with the
+     * new {@code Invokable} on their own.
+     *
+     * @see #openUpdateScope
      */
-    public UpdateScope createNoUpdateScope() {
+    public UpdateScope openDefaultUpdateScope() {
         if (GraalOptions.TraceInlining.getValue(options)) {
+            noUpdates.activate();
             return noUpdates;
         } else {
             return null;

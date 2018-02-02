@@ -361,7 +361,7 @@ public class InliningUtil extends ValueMergeUtil {
         // Do not update the inlining log when adding the duplicates.
         // Instead, attach the inlining log of the child graph to the current inlining log.
         EconomicMap<Node, Node> duplicates;
-        try (InliningLog.UpdateScope scope = graph.getInliningLog().createNoUpdateScope()) {
+        try (InliningLog.UpdateScope scope = graph.getInliningLog().openDefaultUpdateScope()) {
             duplicates = graph.addDuplicates(nodes, inlineGraph, inlineGraph.getNodeCount(), localReplacement);
             if (scope != null) {
                 graph.getInliningLog().addDecision(invoke, true, reason, phase, duplicates, inlineGraph.getInliningLog());

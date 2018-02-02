@@ -756,7 +756,7 @@ public class SnippetTemplate {
                     }
                 }
             }
-            try (InliningLog.UpdateScope updateScope = snippetCopy.getInliningLog().createNoUpdateScope()) {
+            try (InliningLog.UpdateScope updateScope = snippetCopy.getInliningLog().openDefaultUpdateScope()) {
                 UnmodifiableEconomicMap<Node, Node> duplicates = snippetCopy.addDuplicates(snippetGraph.getNodes(), snippetGraph, snippetGraph.getNodeCount(), nodeReplacements);
                 if (updateScope != null) {
                     snippetCopy.getInliningLog().replaceLog(duplicates, snippetGraph.getInliningLog());
@@ -1403,7 +1403,7 @@ public class SnippetTemplate {
             EconomicMap<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
             replacements.put(entryPointNode, AbstractBeginNode.prevBegin(replacee));
             UnmodifiableEconomicMap<Node, Node> duplicates;
-            try (InliningLog.UpdateScope scope = replaceeGraph.getInliningLog().createUpdateScope((oldNode, newNode) -> {
+            try (InliningLog.UpdateScope scope = replaceeGraph.getInliningLog().openUpdateScope((oldNode, newNode) -> {
                 InliningLog log = replaceeGraph.getInliningLog();
                 if (oldNode == null) {
                     log.trackNewCallsite(newNode);
@@ -1567,7 +1567,7 @@ public class SnippetTemplate {
             EconomicMap<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
             replacements.put(entryPointNode, tool.getCurrentGuardAnchor().asNode());
             UnmodifiableEconomicMap<Node, Node> duplicates;
-            try (InliningLog.UpdateScope ignored = replaceeGraph.getInliningLog().createUpdateScope((oldNode, newNode) -> {
+            try (InliningLog.UpdateScope ignored = replaceeGraph.getInliningLog().openUpdateScope((oldNode, newNode) -> {
                 InliningLog log = replaceeGraph.getInliningLog();
                 if (oldNode == null) {
                     log.trackNewCallsite(newNode);

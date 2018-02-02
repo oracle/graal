@@ -41,7 +41,7 @@ public interface Invokable {
      * Called on a {@link Invokable} node after it is registered with a graph.
      *
      * To override the default functionality, code that creates an {@link Invokable} should set the
-     * updating logic by calling {@link InliningLog#createUpdateScope}.
+     * updating logic by calling {@link InliningLog#openUpdateScope}.
      */
     default void updateInliningLogAfterRegister(StructuredGraph newGraph) {
         InliningLog log = newGraph.getInliningLog();
@@ -59,7 +59,7 @@ public interface Invokable {
      * This call is always preceded with a call to {@link Invokable#updateInliningLogAfterRegister}.
      *
      * To override the default functionality, code that creates an {@link Invokable} should set the
-     * updating logic by calling {@link InliningLog#createUpdateScope}.
+     * updating logic by calling {@link InliningLog#openUpdateScope}.
      */
     default void updateInliningLogAfterClone(Node other) {
         if (GraalOptions.TraceInlining.getValue(asFixedNode().getOptions())) {

@@ -500,7 +500,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         EconomicMap<Node, Node> replacements = EconomicMap.create(Equivalence.IDENTITY);
         replacements.put(start, copy.start);
         UnmodifiableEconomicMap<Node, Node> duplicates;
-        try (InliningLog.UpdateScope scope = copy.getInliningLog().createNoUpdateScope()) {
+        try (InliningLog.UpdateScope scope = copy.getInliningLog().openDefaultUpdateScope()) {
             duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), replacements);
             if (scope != null) {
                 copy.getInliningLog().replaceLog(duplicates, this.getInliningLog());
