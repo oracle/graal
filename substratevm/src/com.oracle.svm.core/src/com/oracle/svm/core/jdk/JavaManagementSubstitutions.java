@@ -233,12 +233,12 @@ final class SubstrateThreadMXBean implements ThreadMXBean {
 
     @Override
     public int getThreadCount() {
-        return (int)JavaThreads.singleton().getLiveThreads();
+        return (int) JavaThreads.singleton().getLiveThreads();
     }
 
     @Override
     public int getPeakThreadCount() {
-        return (int)JavaThreads.singleton().getPeakThreads();
+        return (int) JavaThreads.singleton().getPeakThreads();
     }
 
     @Override
@@ -248,8 +248,8 @@ final class SubstrateThreadMXBean implements ThreadMXBean {
 
     @Override
     public int getDaemonThreadCount() {
-        int liveThreads = (int)JavaThreads.singleton().getLiveThreads();
-        int noDaemonThreads = (int)JavaThreads.singleton().getNonDaemonThreads();
+        int liveThreads = (int) JavaThreads.singleton().getLiveThreads();
+        int noDaemonThreads = (int) JavaThreads.singleton().getNonDaemonThreads();
 
         return Math.max(0, liveThreads - noDaemonThreads);
     }
