@@ -270,7 +270,8 @@ public class InliningUtil extends ValueMergeUtil {
     }
 
     /**
-     * Performs an actual inlining, thereby replacing the given invoke with the given {@code inlineGraph}.
+     * Performs an actual inlining, thereby replacing the given invoke with the given
+     * {@code inlineGraph}.
      *
      * @param invoke the invoke that will be replaced
      * @param inlineGraph the graph that the invoke will be replaced with
@@ -284,7 +285,8 @@ public class InliningUtil extends ValueMergeUtil {
     }
 
     /**
-     * Performs an actual inlining, thereby replacing the given invoke with the given {@code inlineGraph}.
+     * Performs an actual inlining, thereby replacing the given invoke with the given
+     * {@code inlineGraph}.
      *
      * @param invoke the invoke that will be replaced
      * @param inlineGraph the graph that the invoke will be replaced with

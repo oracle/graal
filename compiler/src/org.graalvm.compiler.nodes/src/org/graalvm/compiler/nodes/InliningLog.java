@@ -291,12 +291,12 @@ public class InliningLog {
     /**
      * Creates and sets a new update scope for the log.
      *
-     * The specified {@code updater} is invoked when an {@link Invokable} node is registered or cloned. If
-     * the node is newly registered, then the first argument to the {@code updater} is {@code null}.
-     * If the node is cloned, then the first argument is the node it was cloned from.
+     * The specified {@code updater} is invoked when an {@link Invokable} node is registered or
+     * cloned. If the node is newly registered, then the first argument to the {@code updater} is
+     * {@code null}. If the node is cloned, then the first argument is the node it was cloned from.
      *
-     * @param updater an operation taking a null (or the original node), and the registered (or cloned)
-     *            {@link Invokable}
+     * @param updater an operation taking a null (or the original node), and the registered (or
+     *            cloned) {@link Invokable}
      * @return a bound {@link UpdateScope} object, or a {@code null} if tracing is disabled
      */
     public UpdateScope createUpdateScope(BiConsumer<Invokable, Invokable> updater) {
