@@ -48,6 +48,7 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
@@ -150,7 +151,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
     public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT};
     public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "CONTEXT", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE", "ARGUMENT",
-                    "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL"};
+                    "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME"};
 
     // used to test that no getSourceSection calls happen in certain situations
     private static int rootSourceSectionQueryCount;
@@ -408,6 +409,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                     return new JoinNode(childArray);
                 case "INVALIDATE":
                     return new InvalidateNode(childArray);
+                case "INNER_FRAME":
+                    return new InnerFrameNode(childArray);
                 default:
                     throw new AssertionError();
             }
@@ -887,6 +890,25 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }
             return 1;
+        }
+    }
+
+    private static class InnerFrameNode extends InstrumentedNode {
+
+        private final FrameDescriptor innerFrameDescriptor = new FrameDescriptor();
+
+        InnerFrameNode(BaseNode[] children) {
+            super(children);
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return null;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return super.execute(Truffle.getRuntime().createVirtualFrame(frame.getArguments(), innerFrameDescriptor));
         }
     }
 

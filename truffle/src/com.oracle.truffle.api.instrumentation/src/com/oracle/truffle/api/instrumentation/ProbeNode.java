@@ -988,6 +988,7 @@ public final class ProbeNode extends Node {
 
         static final Object[] EMPTY_ARRAY = new Object[0];
         @CompilationFinal(dimensions = 1) private volatile FrameSlot[] inputSlots;
+        private volatile FrameDescriptor sourceFrameDescriptor;
         final int inputBaseIndex;
         final int inputCount;
 
@@ -1002,26 +1003,28 @@ public final class ProbeNode extends Node {
             verifyIndex(inputIndex);
             if (inputSlots == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                initializeSlots();
+                initializeSlots(frame);
             }
+            assert sourceFrameDescriptor == frame.getFrameDescriptor() : "Unstable frame descriptor used by the language.";
             frame.setObject(inputSlots[inputIndex], value);
         }
 
-        private void initializeSlots() {
+        private void initializeSlots(VirtualFrame frame) {
             Lock lock = getLock();
             lock.lock();
             try {
-                if (inputSlots == null) {
+                if (this.inputSlots == null) {
                     if (InstrumentationHandler.TRACE) {
                         InstrumentationHandler.trace("SLOTS: Adding %s save slots for binding %s%n", inputCount, getBinding().getElement());
                     }
-                    FrameDescriptor frameDescriptor = getRootNode().getFrameDescriptor();
+                    FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
                     FrameSlot[] slots = new FrameSlot[inputCount];
                     for (int i = 0; i < inputCount; i++) {
                         int slotIndex = inputBaseIndex + i;
                         slots[i] = frameDescriptor.findOrAddFrameSlot(new SavedInputValueID(getBinding(), slotIndex));
                     }
-                    inputSlots = slots;
+                    this.sourceFrameDescriptor = frameDescriptor;
+                    this.inputSlots = slots;
                 }
             } finally {
                 lock.unlock();
@@ -1083,8 +1086,10 @@ public final class ProbeNode extends Node {
         private void clearSlots(VirtualFrame frame) {
             FrameSlot[] slots = inputSlots;
             if (slots != null) {
-                for (int i = 0; i < slots.length; i++) {
-                    frame.setObject(slots[i], null);
+                if (frame.getFrameDescriptor() == sourceFrameDescriptor) {
+                    for (int i = 0; i < slots.length; i++) {
+                        frame.setObject(slots[i], null);
+                    }
                 }
             }
         }
@@ -1109,14 +1114,19 @@ public final class ProbeNode extends Node {
             if (slots == null) {
                 return EMPTY_ARRAY;
             }
-            Object[] inputValues = new Object[slots.length];
-            for (int i = 0; i < slots.length; i++) {
-                try {
-                    inputValues[i] = frame.getObject(slots[i]);
-                } catch (FrameSlotTypeException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new AssertionError(e);
+            Object[] inputValues;
+            if (frame.getFrameDescriptor() == sourceFrameDescriptor) {
+                inputValues = new Object[slots.length];
+                for (int i = 0; i < slots.length; i++) {
+                    try {
+                        inputValues[i] = frame.getObject(slots[i]);
+                    } catch (FrameSlotTypeException e) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw new AssertionError(e);
+                    }
                 }
+            } else {
+                inputValues = new Object[inputSlots.length];
             }
             return inputValues;
         }

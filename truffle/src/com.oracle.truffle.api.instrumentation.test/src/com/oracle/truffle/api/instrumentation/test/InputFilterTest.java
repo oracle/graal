@@ -417,6 +417,46 @@ public class InputFilterTest {
     }
 
     @Test
+    public void testInnerFrames() {
+        SourceSectionFilter expressionFilter = SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build();
+
+        String code = "EXPRESSION(INNER_FRAME(EXPRESSION(INNER_FRAME(EXPRESSION))))";
+        EventBinding<?> binding1 = instrumenter.attachExecutionEventFactory(expressionFilter, expressionFilter, factory);
+        execute(code);
+
+        assertOn(ENTER, (e) -> {
+        });
+        assertOn(ENTER, (e) -> {
+        });
+        assertOn(ENTER, (e) -> {
+        });
+        assertOn(RETURN_VALUE, (e) -> {
+            assertEquals("()", e.result);
+            assertArrayEquals(new Object[]{}, e.inputs);
+        });
+        assertOn(INPUT_VALUE, (e) -> {
+            assertEquals(0, e.inputValueIndex);
+            assertEquals("()", e.inputValue);
+        });
+        assertOn(RETURN_VALUE, (e) -> {
+            assertEquals("(())", e.result);
+            // the expression value is not recoverable for inner frames.
+            assertArrayEquals(new Object[]{null}, e.inputs);
+        });
+        assertOn(INPUT_VALUE, (e) -> {
+            assertEquals(0, e.inputValueIndex);
+            assertEquals("(())", e.inputValue);
+        });
+        assertOn(RETURN_VALUE, (e) -> {
+            assertEquals("((()))", e.result);
+            assertArrayEquals(new Object[]{null}, e.inputs);
+        });
+        binding1.dispose();
+        assertCleanedUp(code);
+
+    }
+
+    @Test
     public void testMultipleFactories() {
         SourceSectionFilter expressionFilter = SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build();
 
