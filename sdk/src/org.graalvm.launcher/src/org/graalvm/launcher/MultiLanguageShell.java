@@ -95,8 +95,7 @@ class MultiLanguageShell {
         }
 
         if (languages.isEmpty()) {
-            console.println("Error: No Graal languages installed. Exiting shell.");
-            System.exit(1);
+            throw new Launcher.AbortException("Error: No Graal languages installed. Exiting shell.", 1);
         }
 
         printUsage(console, promptsString, false);
@@ -108,8 +107,7 @@ class MultiLanguageShell {
 
         Language currentLanguage = context.getEngine().getLanguages().get(startLanguage);
         if (currentLanguage == null) {
-            console.println("Error: could not find language '" + startLanguage + "'");
-            System.exit(1);
+            throw new Launcher.AbortException("Error: could not find language '" + startLanguage + "'", 1);
         }
         assert languages.indexOf(currentLanguage) >= 0;
         Source bufferSource = null;
