@@ -27,11 +27,11 @@ import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 
 /**
  * A collection of assertions that are assumed to hold in various places of the Trace Register
- * Allocation.
+ * Allocation framework.
  *
- * The main goal is document pieces of code that rely on specific properties of traces. In case an
- * assumption is no longer valid, this makes it easy (in case the assumptions are used correctly) to
- * find places that need adoptions.
+ * The main goal is to document pieces of code that rely on specific properties of traces. In case
+ * an assumption is no longer valid, this makes it easy (assumed they are used correctly) to find
+ * places that need changes.
  */
 final class TraceAssertions {
 

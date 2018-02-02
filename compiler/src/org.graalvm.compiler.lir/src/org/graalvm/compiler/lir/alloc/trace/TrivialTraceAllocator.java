@@ -68,10 +68,11 @@ public final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAlloc
     private static Random r = new Random(42);
 
     public static void allocate(AbstractBlockBase<?> block, AbstractBlockBase<?> pred, GlobalLivenessInfo livenessInfo, int numVariables, LIRInstruction jump) {
+        // exploit that the live sets are sorted
         assert TraceAssertions.liveSetsAreSorted(livenessInfo, block);
         assert TraceAssertions.liveSetsAreSorted(livenessInfo, pred);
 
-        // If we have Phis, we need to create a map from variables to locations.
+        // If there are Phis, we need to create a map from variables to locations.
         boolean hasPhis = jump != null;
         Value[] variableMap = hasPhis ? new Value[numVariables] : null;
 
