@@ -272,8 +272,10 @@ public class InliningLog {
 
         @Override
         public void close() {
-            assert activated != null;
-            activated = null;
+            if (GraalOptions.TraceInlining.getValue(options)) {
+                assert activated != null;
+                activated = null;
+            }
         }
 
         public BiConsumer<Invokable, Invokable> getUpdater() {
@@ -313,7 +315,11 @@ public class InliningLog {
      * @see #createUpdateScope
      */
     public UpdateScope createNoUpdateScope() {
-        return noUpdates;
+        if (GraalOptions.TraceInlining.getValue(options)) {
+            return noUpdates;
+        } else {
+            return null;
+        }
     }
 
     public boolean containsLeafCallsite(Invokable invokable) {
