@@ -76,6 +76,7 @@ import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotNmethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -246,5 +247,22 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
             HotSpotTruffleInstalledCode hotspotTruffleInstalledCode = (HotSpotTruffleInstalledCode) installedCode;
             runtime.onCodeInstallation(hotspotTruffleInstalledCode);
         }
+    }
+
+    /**
+     * {@link HotSpotNmethod#isDefault() Default} nmethods installed by Graal remain valid and can
+     * still be executed once the associated {@link HotSpotNmethod} object becomes unreachable. As
+     * such, these objects must remain strongly reachable from {@code OptimizedAssumption}s they
+     * depend on.
+     */
+    @Override
+    protected boolean unreachabilityDeterminesValidity(InstalledCode installedCode) {
+        if (installedCode instanceof HotSpotNmethod) {
+            HotSpotNmethod nmethod = (HotSpotNmethod) installedCode;
+            if (nmethod.isDefault()) {
+                return false;
+            }
+        }
+        return true;
     }
 }

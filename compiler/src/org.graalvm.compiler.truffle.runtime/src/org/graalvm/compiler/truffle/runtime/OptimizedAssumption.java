@@ -26,6 +26,9 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TraceTr
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TraceTruffleStackTraceLimit;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.debug.TTY;
@@ -43,28 +46,135 @@ import com.oracle.truffle.api.nodes.InvalidAssumptionException;
  */
 public final class OptimizedAssumption extends AbstractAssumption {
 
-    private static class Entry implements Consumer<OptimizedAssumptionDependency> {
-        WeakReference<OptimizedAssumptionDependency> dependencyRef;
+    /**
+     * A daemon thread used to clean up {@link OptimizedAssumptionDependency} objects that may
+     * become invalid by some mechanism other than {@link OptimizedAssumption#invalidate()} and
+     * whose reachability is
+     * {@linkplain OptimizedAssumptionDependency#unreachabilityDeterminesValidity() not correlated}
+     * with the validity of the referenced machine code.
+     */
+    static class Cleaner extends Thread {
+
+        private static final int CLEANING_INTERVAL_MS = 1000;
+
+        Cleaner() {
+            super("OptimizedAssumptionDependencyCleaner");
+            setDaemon(true);
+            setPriority(MIN_PRIORITY);
+            start();
+        }
+
+        @Override
+        public void run() {
+            while (true) {
+                try {
+                    Thread.sleep(CLEANING_INTERVAL_MS);
+                } catch (InterruptedException e) {
+                }
+                clean();
+            }
+        }
+
+        final List<Entry> deps = new ArrayList<>();
+
+        static synchronized void add(Entry e) {
+            if (CLEANER == null) {
+                CLEANER = new Cleaner();
+            }
+            CLEANER.deps.add(e);
+            // Notify that there might be something to clean
+            CLEANER.notify();
+        }
+
+        synchronized void clean() {
+            while (deps.isEmpty()) {
+                try {
+                    // Wait until there might be something to clean
+                    this.wait();
+                } catch (InterruptedException e) {
+                }
+            }
+            Iterator<Entry> iter = deps.iterator();
+            while (iter.hasNext()) {
+                Entry e = iter.next();
+                OptimizedAssumptionDependency dep = e.dependency;
+                if (dep != null && !dep.isValid()) {
+                    e.dependency = INVALID_DEPENDENCY;
+                    iter.remove();
+                }
+            }
+        }
+
+        private static Cleaner CLEANER;
+
+        /**
+         * Replaces a strong reference to machine code once the code becomes invalid.
+         */
+        static final OptimizedAssumptionDependency INVALID_DEPENDENCY = new OptimizedAssumptionDependency() {
+
+            @Override
+            public void invalidate() {
+            }
+
+            @Override
+            public boolean isValid() {
+                return false;
+            }
+
+            @Override
+            public String toString() {
+                return "INVALID_DEPENDENCY";
+            }
+        };
+    }
+
+    /**
+     * Reference to machine code that is dependent on an assumption.
+     */
+    static class Entry implements Consumer<OptimizedAssumptionDependency> {
+        /**
+         * A machine code reference that must be kept reachable as long as the machine code itself
+         * is valid. A {@link Cleaner} is used to clear such strong references to machine code when
+         * the code is invalidated by some mechanism other than
+         * {@link OptimizedAssumption#invalidate()}.
+         */
+        volatile OptimizedAssumptionDependency dependency;
+
+        /**
+         * Machine code that is guaranteed to be invalid once the
+         * {@link OptimizedAssumptionDependency} object becomes unreachable.
+         */
+        WeakReference<OptimizedAssumptionDependency> weakDependency;
+
         Entry next;
 
         @Override
-        public void accept(OptimizedAssumptionDependency dependency) {
+        public void accept(OptimizedAssumptionDependency dep) {
             synchronized (this) {
-                this.dependencyRef = new WeakReference<>(dependency);
+                if (dep.unreachabilityDeterminesValidity()) {
+                    this.weakDependency = new WeakReference<>(dep);
+                } else {
+                    this.dependency = dep;
+                    GraalTruffleRuntime.getRuntime();
+                    Cleaner.add(this);
+                }
                 this.notifyAll();
             }
         }
 
         public OptimizedAssumptionDependency awaitDependency() {
             synchronized (this) {
-                while (dependencyRef == null) {
+                while (dependency == null && weakDependency == null) {
                     try {
                         this.wait();
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     }
                 }
-                return dependencyRef.get();
+                if (dependency != null) {
+                    return dependency;
+                }
+                return weakDependency.get();
             }
         }
     }

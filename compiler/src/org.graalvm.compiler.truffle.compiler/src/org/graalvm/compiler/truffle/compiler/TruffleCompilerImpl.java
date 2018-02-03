@@ -455,6 +455,15 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
 
     protected abstract InstalledCode createInstalledCode(CompilableTruffleAST compilable);
 
+    /**
+     * @see OptimizedAssumptionDependency#unreachabilityDeterminesValidity()
+     *
+     * @param installedCode
+     */
+    protected boolean unreachabilityDeterminesValidity(InstalledCode installedCode) {
+        return true;
+    }
+
     protected CompilationResult createCompilationResult(String name, CompilationIdentifier compilationIdentifier) {
         return new CompilationResult(compilationIdentifier, name);
     }
@@ -545,22 +554,39 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         @Override
         public void postProcess(InstalledCode installedCode) {
             afterCodeInstallation(installedCode);
-            OptimizedAssumptionDependency dependency;
-            if (installedCode instanceof OptimizedAssumptionDependency) {
-                dependency = (OptimizedAssumptionDependency) installedCode;
-            } else if (installedCode instanceof OptimizedAssumptionDependency.Access) {
-                dependency = ((OptimizedAssumptionDependency.Access) installedCode).getDependency();
-            } else {
-                dependency = new OptimizedAssumptionDependency() {
-                    @Override
-                    public void invalidate() {
-                        installedCode.invalidate();
-                    }
-                };
-            }
+            if (!optimizedAssumptions.isEmpty()) {
+                OptimizedAssumptionDependency dependency;
+                if (installedCode instanceof OptimizedAssumptionDependency) {
+                    dependency = (OptimizedAssumptionDependency) installedCode;
+                } else if (installedCode instanceof OptimizedAssumptionDependency.Access) {
+                    dependency = ((OptimizedAssumptionDependency.Access) installedCode).getDependency();
+                } else {
+                    dependency = new OptimizedAssumptionDependency() {
+                        @Override
+                        public void invalidate() {
+                            installedCode.invalidate();
+                        }
 
-            for (Consumer<OptimizedAssumptionDependency> entry : optimizedAssumptions) {
-                entry.accept(dependency);
+                        @Override
+                        public boolean isValid() {
+                            return installedCode.isValid();
+                        }
+
+                        @Override
+                        public boolean unreachabilityDeterminesValidity() {
+                            return TruffleCompilerImpl.this.unreachabilityDeterminesValidity(installedCode);
+                        }
+
+                        @Override
+                        public String toString() {
+                            return installedCode.toString();
+                        }
+                    };
+                }
+
+                for (Consumer<OptimizedAssumptionDependency> entry : optimizedAssumptions) {
+                    entry.accept(dependency);
+                }
             }
         }
 
