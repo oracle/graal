@@ -93,7 +93,7 @@ public interface SnippetReflectionProvider {
 
     /**
      * Get the original Java class corresponding to a {@link ResolvedJavaType}.
-     * 
+     *
      * @param type the type for which the original Java class is requested
      * @return the original Java class corresponding to the {@code type} parameter
      */
