@@ -70,7 +70,7 @@ public class VerifierInstrument extends TruffleInstrument {
     protected void onCreate(Env instrumentEnv) {
         this.env = instrumentEnv;
         instrumentEnv.registerService(this);
-        instrumentEnv.getInstrumenter().attachListener(
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(
                         SourceSectionFilter.newBuilder().tagIs(RootTag.class).build(),
                         new RootFrameChecker(instrumentEnv.getInstrumenter()));
     }
@@ -78,7 +78,7 @@ public class VerifierInstrument extends TruffleInstrument {
     void setInlineSnippet(String languageId, InlineSnippet inlineSnippet, InlineResultVerifier verifier) {
         if (inlineSnippet != null) {
             inlineScriptsRunner = new InlineScriptsRunner();
-            inlineBinding = env.getInstrumenter().attachListener(
+            inlineBinding = env.getInstrumenter().attachExecutionEventListener(
                             SourceSectionFilter.newBuilder().tagIs(StatementTag.class, CallTag.class).build(),
                             inlineScriptsRunner);
             inlineScriptsRunner.setSnippet(languageId, inlineSnippet, verifier);
@@ -204,7 +204,7 @@ public class VerifierInstrument extends TruffleInstrument {
             if (parent == null) {
                 return false;
             }
-            if (instrumenter.queryTags(parent).contains(RootTag.class)) {
+            if (TruffleTCKAccessor.nodesAccess().isTaggedWith(parent, RootTag.class)) {
                 return true;
             }
             return hasParentRootTag(parent);

@@ -32,7 +32,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AccessorInstrumentHandler;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -108,8 +107,9 @@ public final class EventContext {
      *
      * @since 0.12
      */
+    @SuppressWarnings("deprecation")
     public Node getInstrumentedNode() {
-        WrapperNode wrapper = probeNode.findWrapper();
+        com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode wrapper = probeNode.findWrapper();
         return wrapper != null ? wrapper.getDelegateNode() : null;
     }
 
@@ -135,13 +135,12 @@ public final class EventContext {
 
     /**
      * Evaluates source of (potentially different) language using the current context. The names of
-     * arguments are parameters for the resulting {#link CallTarget} that allow the
-     * <code>source</code> to reference the actual parameters passed to
-     * {@link CallTarget#call(java.lang.Object...)}.
+     * arguments are parameters for the resulting {#link CallTarget} that allow the <code>source</code>
+     * to reference the actual parameters passed to {@link CallTarget#call(java.lang.Object...)}.
      *
      * @param source the source to evaluate
-     * @param argumentNames the names of {@link CallTarget#call(java.lang.Object...)} arguments that
-     *            can be referenced from the source
+     * @param argumentNames the names of {@link CallTarget#call(java.lang.Object...)} arguments that can
+     *            be referenced from the source
      * @return the call target representing the parsed result
      * @throws IOException if the parsing or evaluation fails for some reason
      * @since 0.12
@@ -161,9 +160,9 @@ public final class EventContext {
     }
 
     /**
-     * Returns the execution event node that was inserted at this location given an event binding.
-     * This is useful to disambiguate multiple bindings from each other when installed at the same
-     * source location.
+     * Returns the execution event node that was inserted at this location given an event binding. This
+     * is useful to disambiguate multiple bindings from each other when installed at the same source
+     * location.
      *
      * @param binding the binding to lookup
      * @since 0.17
@@ -178,10 +177,10 @@ public final class EventContext {
     }
 
     /**
-     * Create an unwind throwable, that when thrown, abruptly breaks execution of a node and unwinds
-     * it off the execution stack. This is a a shortcut for
-     * {@link #createUnwind(Object, EventBinding)} with the current binding, only the event listener
-     * instance that threw the unwind throwable gets called <code>onUnwind</code>.
+     * Create an unwind throwable, that when thrown, abruptly breaks execution of a node and unwinds it
+     * off the execution stack. This is a a shortcut for {@link #createUnwind(Object, EventBinding)}
+     * with the current binding, only the event listener instance that threw the unwind throwable gets
+     * called <code>onUnwind</code>.
      *
      * @param info an info that is passed into
      *            {@link ExecutionEventListener#onUnwind(EventContext, VirtualFrame, Object)} or
@@ -195,22 +194,21 @@ public final class EventContext {
     }
 
     /**
-     * Create an unwind throwable, that when thrown, abruptly breaks execution of a node and unwinds
-     * it off the execution stack. It's to be thrown in <code>onEnter</code>,
-     * <code>onReturnValue</code> or <code>onReturnExceptional</code> methods of
-     * {@link ExecutionEventListener} or {@link ExecutionEventNode}, to initiate the unwind process.
-     * It acts in connection with
+     * Create an unwind throwable, that when thrown, abruptly breaks execution of a node and unwinds it
+     * off the execution stack. It's to be thrown in <code>onEnter</code>, <code>onReturnValue</code> or
+     * <code>onReturnExceptional</code> methods of {@link ExecutionEventListener} or
+     * {@link ExecutionEventNode}, to initiate the unwind process. It acts in connection with
      * {@link ExecutionEventListener#onUnwind(EventContext, VirtualFrame, Object)} or
-     * {@link ExecutionEventNode#onUnwind(VirtualFrame, Object)}. Only the event listener instance
-     * that is associated with the provided <code>unwindBinding</code> gets called
-     * <code>onUnwind</code>, use {@link #createUnwind(java.lang.Object)} to have the current event
-     * listener called <code>onUnwind</code>. Other bindings that happen to instrument the unwound
-     * nodes get called <code>onReturnExceptional</code>.
+     * {@link ExecutionEventNode#onUnwind(VirtualFrame, Object)}. Only the event listener instance that
+     * is associated with the provided <code>unwindBinding</code> gets called <code>onUnwind</code>, use
+     * {@link #createUnwind(java.lang.Object)} to have the current event listener called
+     * <code>onUnwind</code>. Other bindings that happen to instrument the unwound nodes get called
+     * <code>onReturnExceptional</code>.
      * <p>
      * The returned throwable can be kept and thrown again later to repeat the unwind process. A
-     * repeating unwind process is possible without deoptimization. A single throwable instance
-     * cannot be used on multiple threads concurrently. It can be thrown on a different thread only
-     * after the unwind finishes on the last thread.
+     * repeating unwind process is possible without deoptimization. A single throwable instance cannot
+     * be used on multiple threads concurrently. It can be thrown on a different thread only after the
+     * unwind finishes on the last thread.
      * <p>
      * Usage example of forced return: {@link UnwindInstrumentationReturnSnippets#onCreate}
      * <p>
@@ -231,8 +229,8 @@ public final class EventContext {
     }
 
     /*
-     * TODO (chumer) a way to parse code in the current language and return something like a node
-     * that is directly embeddable into the AST as a @Child.
+     * TODO (chumer) a way to parse code in the current language and return something like a node that
+     * is directly embeddable into the AST as a @Child.
      */
     /** @since 0.12 */
     @Override

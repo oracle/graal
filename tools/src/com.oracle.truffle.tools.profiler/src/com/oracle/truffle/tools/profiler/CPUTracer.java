@@ -57,7 +57,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * etc.) are executed.
  * <p>
  * Usage example: {@link CPUTracerSnippets#example}
- * 
+ *
  * @since 0.30
  */
 public final class CPUTracer implements Closeable {
@@ -116,8 +116,8 @@ public final class CPUTracer implements Closeable {
     }
 
     /**
-     * Sets the {@link SourceSectionFilter filter} for the tracer. This allows the tracer to trace
-     * only parts of the executed source code.
+     * Sets the {@link SourceSectionFilter filter} for the tracer. This allows the tracer to trace only
+     * parts of the executed source code.
      *
      * @param filter The filter describing which part of the source code to trace
      * @since 0.30
@@ -188,7 +188,7 @@ public final class CPUTracer implements Closeable {
         if (f == null) {
             f = DEFAULT_FILTER;
         }
-        this.activeBinding = env.getInstrumenter().attachFactory(f, new ExecutionEventNodeFactory() {
+        this.activeBinding = env.getInstrumenter().attachExecutionEventFactory(f, new ExecutionEventNodeFactory() {
             @Override
             public ExecutionEventNode create(EventContext context) {
                 return new CounterNode(getCounter(context));
@@ -233,8 +233,7 @@ public final class CPUTracer implements Closeable {
         }
 
         /**
-         * @return A set of tags for the {@link SourceLocation} associated with this
-         *         {@link ProfilerNode}
+         * @return A set of tags for the {@link SourceLocation} associated with this {@link ProfilerNode}
          * @since 0.30
          */
         public Set<Class<?>> getTags() {

@@ -26,6 +26,7 @@ package com.oracle.truffle.api.interop;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.interop.ForeignAccess.Factory;
 
 class InteropAccessor extends Accessor {
 
@@ -49,7 +50,31 @@ class InteropAccessor extends Accessor {
             public boolean isTruffleObject(Object value) {
                 return value instanceof TruffleObject;
             }
+
+            @Override
+            public Object createEmptyTruffleObject() {
+                return EmptyTruffleObject.INSTANCE;
+            }
         };
+    }
+
+}
+
+class EmptyTruffleObject implements TruffleObject {
+
+    static final EmptyTruffleObject INSTANCE = new EmptyTruffleObject();
+
+    public ForeignAccess getForeignAccess() {
+        return ForeignAccess.create(new Factory() {
+
+            public boolean canHandle(TruffleObject obj) {
+                return obj == INSTANCE;
+            }
+
+            public CallTarget accessMessage(Message tree) {
+                return null;
+            }
+        });
     }
 
 }

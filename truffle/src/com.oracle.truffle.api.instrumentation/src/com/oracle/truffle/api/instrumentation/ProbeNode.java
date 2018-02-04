@@ -38,7 +38,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
@@ -57,8 +56,9 @@ import com.oracle.truffle.api.source.SourceSection;
  * about execution events.
  * </p>
  *
- * The recommended use of this node for implementing {@link WrapperNode wrapper nodes} looks as
- * follows:
+ * It is strongly recommended to use {@link GenerateWrapper} to generate implementations of wrapper
+ * nodes. If needed to be done manually then the recommended implementation of an execute method
+ * looks as follows:
  *
  * <pre>
  * &#064;Override
@@ -109,8 +109,8 @@ public final class ProbeNode extends Node {
     @Child private volatile ProbeNode.EventChainNode chain;
 
     /*
-     * We cache to ensure that the instrumented tags and source sections are always compilation
-     * final for listeners and factories.
+     * We cache to ensure that the instrumented tags and source sections are always compilation final
+     * for listeners and factories.
      */
     @CompilationFinal private volatile Assumption version;
 
@@ -156,8 +156,8 @@ public final class ProbeNode extends Node {
      * @param exception the exception that occurred during the execution
      * @param frame the current frame of the execution.
      * @since 0.12
-     * @deprecated Use {@link #onReturnExceptionalOrUnwind(VirtualFrame, Throwable, boolean)}
-     *             instead and adjust the wrapper node implementation accordingly.
+     * @deprecated Use {@link #onReturnExceptionalOrUnwind(VirtualFrame, Throwable, boolean)} instead
+     *             and adjust the wrapper node implementation accordingly.
      */
     @Deprecated
     public void onReturnExceptional(VirtualFrame frame, Throwable exception) {
@@ -184,19 +184,18 @@ public final class ProbeNode extends Node {
     }
 
     /**
-     * Should get invoked if the node did not complete successfully and handle a possible unwind.
-     * When a non-<code>null</code> value is returned, a change of the execution path was requested
-     * by an {@link EventContext#createUnwind(Object) unwind}.
+     * Should get invoked if the node did not complete successfully and handle a possible unwind. When a
+     * non-<code>null</code> value is returned, a change of the execution path was requested by an
+     * {@link EventContext#createUnwind(Object) unwind}.
      *
      * @param exception the exception that occurred during the execution
      * @param frame the current frame of the execution.
      * @param isReturnCalled <code>true</code> when {@link #onReturnValue(VirtualFrame, Object)} was
-     *            called already for this node's execution, <code>false</code> otherwise. This helps
-     *            to assure correct pairing of enter/return notifications.
-     * @return <code>null</code> to proceed to throw of the exception,
-     *         {@link #UNWIND_ACTION_REENTER} to reenter the current node, or an interop value to
-     *         return that value early from the current node (void nodes just return, ignoring the
-     *         return value).
+     *            called already for this node's execution, <code>false</code> otherwise. This helps to
+     *            assure correct pairing of enter/return notifications.
+     * @return <code>null</code> to proceed to throw of the exception, {@link #UNWIND_ACTION_REENTER} to
+     *         reenter the current node, or an interop value to return that value early from the current
+     *         node (void nodes just return, ignoring the return value).
      * @since 0.31
      */
     public Object onReturnExceptionalOrUnwind(VirtualFrame frame, Throwable exception, boolean isReturnCalled) {
@@ -287,16 +286,17 @@ public final class ProbeNode extends Node {
         return context;
     }
 
-    WrapperNode findWrapper() throws AssertionError {
+    @SuppressWarnings("deprecation")
+    com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode findWrapper() throws AssertionError {
         Node parent = getParent();
-        if (!(parent instanceof WrapperNode)) {
+        if (!(parent instanceof com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode)) {
             if (parent == null) {
                 throw new AssertionError("Probe node disconnected from AST.");
             } else {
                 throw new AssertionError("ProbeNodes must have a parent Node that implements NodeWrapper.");
             }
         }
-        return (WrapperNode) parent;
+        return (com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode) parent;
     }
 
     synchronized void invalidate() {
@@ -439,12 +439,13 @@ public final class ProbeNode extends Node {
         return visitor.index;
     }
 
+    @SuppressWarnings("deprecation")
     private EventChainNode findParentChain(VirtualFrame frame, EventBinding<?> binding) {
         Node node = getParent().getParent();
         while (node != null) {
             // TODO we should avoid materializing the source section here
-            if (node instanceof WrapperNode) {
-                ProbeNode probe = ((WrapperNode) node).getProbeNode();
+            if (node instanceof com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode) {
+                ProbeNode probe = ((com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode) node).getProbeNode();
                 EventChainNode c = probe.lazyUpdate(frame);
                 if (c != null) {
                     c = c.find(binding);
@@ -477,8 +478,8 @@ public final class ProbeNode extends Node {
                 throw t;
             } else {
                 /*
-                 * Client Instruments are not allowed to disrupt program execution by throwing
-                 * exceptions into the AST.
+                 * Client Instruments are not allowed to disrupt program execution by throwing exceptions into the
+                 * AST.
                  */
                 exceptionEventForClientInstrument(binding, "ProbeNodeFactory.create", t);
                 return null;
@@ -488,8 +489,8 @@ public final class ProbeNode extends Node {
     }
 
     /**
-     * Handles exceptions from non-language instrumentation code that must not be allowed to alter
-     * guest language execution semantics. Normal response is to log and continue.
+     * Handles exceptions from non-language instrumentation code that must not be allowed to alter guest
+     * language execution semantics. Normal response is to log and continue.
      */
     @TruffleBoundary
     static void exceptionEventForClientInstrument(EventBinding.Source<?> b, String eventName, Throwable t) {

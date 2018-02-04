@@ -43,6 +43,7 @@ package com.oracle.truffle.sl.nodes.call;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
@@ -74,10 +75,10 @@ public final class SLInvokeNode extends SLExpressionNode {
         Object function = functionNode.executeGeneric(frame);
 
         /*
-         * The number of arguments is constant for one invoke node. During compilation, the loop is
-         * unrolled and the execute methods of all arguments are inlined. This is triggered by the
-         * ExplodeLoop annotation on the method. The compiler assertion below illustrates that the
-         * array length is really constant.
+         * The number of arguments is constant for one invoke node. During compilation, the loop is unrolled
+         * and the execute methods of all arguments are inlined. This is triggered by the ExplodeLoop
+         * annotation on the method. The compiler assertion below illustrates that the array length is
+         * really constant.
          */
         CompilerAsserts.compilationConstant(argumentNodes.length);
 
@@ -89,10 +90,11 @@ public final class SLInvokeNode extends SLExpressionNode {
     }
 
     @Override
-    protected boolean isTaggedWith(Class<?> tag) {
+    public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == StandardTags.CallTag.class) {
             return true;
         }
-        return super.isTaggedWith(tag);
+        return super.hasTag(tag);
     }
+
 }

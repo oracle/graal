@@ -53,12 +53,10 @@ import javax.tools.Diagnostic.Kind;
 import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
-import com.oracle.truffle.api.instrumentation.Instrumentable;
-import com.oracle.truffle.api.instrumentation.InstrumentableFactory;
-import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.Node.Child;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.SourceSection;
@@ -127,8 +125,8 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                     }
 
                     if (!ElementUtils.isAssignable(element.asType(), instrumentableNode)) {
-                        emitError(element, String.format("Classes annotated with @%s must extend %s.", GenerateWrapper.class.getSimpleName(), InstrumentableNode.class.getSimpleName()));
-                        // continue processing not a fatal error.
+                        emitError(element, String.format("Classes annotated with @%s must implement %s.", GenerateWrapper.class.getSimpleName(), InstrumentableNode.class.getSimpleName()));
+                        continue;
                     } else {
                         boolean createWrapperFound = false;
                         for (ExecutableElement declaredMethod : ElementFilter.methodsIn(element.getEnclosedElements())) {
@@ -138,10 +136,25 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                             }
                         }
                         if (!createWrapperFound) {
-                            emitError(element, String.format("Classes annotated with @%s must declare/override %s.%s and return a new instance of the generated wrapper class called %s.",
-                                            GenerateWrapper.class.getSimpleName(), InstrumentableNode.class.getSimpleName(), CREATE_WRAPPER_NAME, createWrapperClassName((TypeElement) element)));
-                            // continue processing not a fatal error.
+                            emitError(element, String.format("Classes annotated with @%s must declare/override %s.%s and return a new instance of the generated wrapper class called %s." +
+                                            " You may copy the following generated implementation: %n" +
+                                            "  @Override public %s createWrapper(%s probeNode) {%n" +
+                                            "    return new %s(this, probeNode);%n" +
+                                            "  }",
+                                            GenerateWrapper.class.getSimpleName(),
+                                            InstrumentableNode.class.getSimpleName(),
+                                            CREATE_WRAPPER_NAME,
+                                            createWrapperClassName((TypeElement) element),
+                                            com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode.class.getSimpleName(),
+                                            ProbeNode.class.getSimpleName(),
+                                            createWrapperClassName((TypeElement) element)));
+                            continue;
                         }
+                        if (!ElementUtils.isAssignable(element.asType(), context.getType(Node.class))) {
+                            emitError(element, String.format("Classes annotated with @%s must extend %s.", GenerateWrapper.class.getSimpleName(), Node.class.getSimpleName()));
+                            continue;
+                        }
+
                     }
 
                     AnnotationMirror generateWrapperMirror = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), context.getType(GenerateWrapper.class));
@@ -178,14 +191,15 @@ public final class InstrumentableProcessor extends AbstractProcessor {
     /*
      * TO BE REMOVED WITH DEPRECATIONS
      */
+    @SuppressWarnings("deprecation")
     private void processLegacyInstrumentable(RoundEnvironment roundEnv, ProcessorContext context) {
-        for (Element element : roundEnv.getElementsAnnotatedWith(Instrumentable.class)) {
+        for (Element element : roundEnv.getElementsAnnotatedWith(com.oracle.truffle.api.instrumentation.Instrumentable.class)) {
             if (!element.getKind().isClass() && !element.getKind().isInterface()) {
                 continue;
             }
             try {
                 if (element.getKind() != ElementKind.CLASS) {
-                    emitError(element, String.format("Only classes can be annotated with %s.", Instrumentable.class.getSimpleName()));
+                    emitError(element, String.format("Only classes can be annotated with %s.", com.oracle.truffle.api.instrumentation.Instrumentable.class.getSimpleName()));
                     continue;
                 }
 
@@ -194,7 +208,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                     continue;
                 }
 
-                TypeMirror instrumentableType = context.getType(Instrumentable.class);
+                TypeMirror instrumentableType = context.getType(com.oracle.truffle.api.instrumentation.Instrumentable.class);
                 AnnotationMirror instrumentable = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), instrumentableType);
                 if (instrumentable == null) {
                     continue;
@@ -265,18 +279,19 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         return factory;
     }
 
+    @SuppressWarnings("deprecation")
     private static CodeTypeElement generateFactory(ProcessorContext context, Element e, CodeTypeElement wrapper) {
         TypeElement sourceType = (TypeElement) e;
         PackageElement pack = context.getEnvironment().getElementUtils().getPackageOf(sourceType);
         Set<Modifier> typeModifiers = ElementUtils.modifiers(Modifier.PUBLIC, Modifier.FINAL);
         CodeTypeElement factory = new CodeTypeElement(typeModifiers, ElementKind.CLASS, pack, createWrapperClassName(sourceType));
 
-        TypeMirror factoryType = context.reloadType(context.getType(InstrumentableFactory.class));
+        TypeMirror factoryType = context.reloadType(context.getType(com.oracle.truffle.api.instrumentation.InstrumentableFactory.class));
         factory.getImplements().add(new CodeTypeMirror.DeclaredCodeTypeMirror(ElementUtils.fromTypeMirror(factoryType), Arrays.asList(sourceType.asType())));
 
         addGeneratedBy(context, factory, sourceType);
 
-        TypeMirror returnType = context.getType(WrapperNode.class);
+        TypeMirror returnType = context.getType(com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode.class);
         CodeExecutableElement createMethod = new CodeExecutableElement(ElementUtils.modifiers(Modifier.PUBLIC), returnType, "createWrapper");
 
         createMethod.addParameter(new CodeVariableElement(sourceType.asType(), FIELD_DELEGATE));
@@ -311,13 +326,14 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         return sourceType.getSimpleName().toString() + CLASS_SUFFIX;
     }
 
+    @SuppressWarnings("deprecation")
     private CodeTypeElement generateWrapper(ProcessorContext context, Element e, boolean topLevelClass) {
         if (!e.getKind().isClass()) {
             return null;
         }
 
-        if (!e.getModifiers().contains(Modifier.PUBLIC)) {
-            emitError(e, "Class must be public to generate a wrapper.");
+        if (e.getModifiers().contains(Modifier.PRIVATE)) {
+            emitError(e, "Class must not be private to generate a wrapper.");
             return null;
         }
 
@@ -343,7 +359,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         for (ListIterator<ExecutableElement> iterator = constructors.listIterator(); iterator.hasNext();) {
             ExecutableElement c = iterator.next();
             Modifier modifier = ElementUtils.getVisibility(c.getModifiers());
-            if (modifier == null || modifier == Modifier.PRIVATE) {
+            if (modifier == Modifier.PRIVATE) {
                 iterator.remove();
                 continue;
             }
@@ -398,7 +414,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         if (topLevelClass) {
             wrapperType.getImplements().add(context.getType(InstrumentableNode.WrapperNode.class));
         } else {
-            wrapperType.getImplements().add(context.getType(InstrumentableFactory.WrapperNode.class));
+            wrapperType.getImplements().add(context.getType(com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode.class));
         }
 
         addGeneratedBy(context, wrapperType, sourceType);
@@ -432,6 +448,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
             wrapperType.add(getInstrumentationTags);
         }
 
+        List<ExecutableElement> wrappedMethods = new ArrayList<>();
         List<ExecutableElement> wrappedExecuteMethods = new ArrayList<>();
         List<? extends Element> elementList = context.getEnvironment().getElementUtils().getAllMembers(sourceType);
         for (ExecutableElement method : ElementFilter.methodsIn(elementList)) {
@@ -440,19 +457,23 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                 continue;
             }
             Modifier visibility = ElementUtils.getVisibility(modifiers);
-            if (visibility == Modifier.PRIVATE || visibility == null) {
+            if (visibility == Modifier.PRIVATE) {
                 continue;
             }
 
             String methodName = method.getSimpleName().toString();
 
             if (methodName.startsWith(EXECUTE_METHOD_PREFIX)) {
+                VariableElement firstParam = method.getParameters().isEmpty() ? null : method.getParameters().get(0);
+                if (topLevelClass && (firstParam == null || !ElementUtils.isAssignable(firstParam.asType(), context.getType(VirtualFrame.class)))) {
+                    emitError(e, String.format("Wrapped execute method %s must have VirtualFrame as first parameter.", method.getSimpleName().toString()));
+                    return null;
+                }
                 wrappedExecuteMethods.add(method);
             } else {
                 if (modifiers.contains(Modifier.ABSTRACT) && !methodName.equals("getSourceSection") //
                                 && !methodName.equals(METHOD_GET_NODE_COST)) {
-                    emitError(sourceType, String.format("Unable to implement unknown abstract method %s in generated wrapper node.", ElementUtils.createReferenceName(method)));
-                    return null;
+                    wrappedMethods.add(method);
                 }
             }
         }
@@ -562,6 +583,25 @@ public final class InstrumentableProcessor extends AbstractProcessor {
             }
 
             wrapperType.add(wrappedExecute);
+        }
+
+        for (ExecutableElement delegateMethod : wrappedMethods) {
+            CodeExecutableElement generatedMethod = CodeExecutableElement.clone(processingEnv, delegateMethod);
+
+            generatedMethod.getModifiers().remove(Modifier.ABSTRACT);
+
+            CodeTreeBuilder callDelegate = generatedMethod.createBuilder();
+            if (ElementUtils.isVoid(delegateMethod.getReturnType())) {
+                callDelegate.startStatement();
+            } else {
+                callDelegate.startReturn();
+            }
+            callDelegate.startCall("this." + FIELD_DELEGATE, generatedMethod.getSimpleName().toString());
+            for (VariableElement parameter : generatedMethod.getParameters()) {
+                callDelegate.string(parameter.getSimpleName().toString());
+            }
+            callDelegate.end().end();
+            wrapperType.add(generatedMethod);
         }
 
         return wrapperType;

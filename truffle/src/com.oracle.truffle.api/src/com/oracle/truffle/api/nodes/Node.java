@@ -43,7 +43,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.Accessor.InstrumentSupport;
@@ -100,9 +99,9 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Returns a rough estimate for the cost of this {@link Node}. This estimate can be used by
-     * runtime systems or guest languages to implement heuristics based on Truffle ASTs. This method
-     * is intended to be overridden by subclasses. The default implementation returns the value of
+     * Returns a rough estimate for the cost of this {@link Node}. This estimate can be used by runtime
+     * systems or guest languages to implement heuristics based on Truffle ASTs. This method is intended
+     * to be overridden by subclasses. The default implementation returns the value of
      * {@link NodeInfo#cost()} of the {@link NodeInfo} annotation declared at the subclass. If no
      * {@link NodeInfo} annotation is declared the method returns {@link NodeCost#MONOMORPHIC} as a
      * default value.
@@ -118,19 +117,18 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Retrieves the segment of guest language source code that is represented by this Node. The
-     * default implementation of this method returns <code>null</code>. If your node represents a
-     * segment of the source code, override this method and return a <code>final</code> or
-     * {@link CompilationFinal} field in your node to the caller. Can be called on any thread and
-     * without a language context.
+     * Retrieves the segment of guest language source code that is represented by this Node. The default
+     * implementation of this method returns <code>null</code>. If your node represents a segment of the
+     * source code, override this method and return a <code>final</code> or {@link CompilationFinal}
+     * field in your node to the caller. Can be called on any thread and without a language context.
      *
      * To define node with <em>fixed</em> {@link SourceSection} that doesn't change after node
      * construction use:
      *
      * {@link com.oracle.truffle.api.nodes.NodeSnippets.NodeWithFixedSourceSection#section}
      *
-     * To create a node which can associate and change the {@link SourceSection} later at any point
-     * of time use:
+     * To create a node which can associate and change the {@link SourceSection} later at any point of
+     * time use:
      *
      * {@link com.oracle.truffle.api.nodes.NodeSnippets.MutableSourceSectionNode#section}
      *
@@ -142,9 +140,9 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Retrieves the segment of guest language source code that is represented by this Node, if
-     * present; otherwise retrieves the segment represented by the nearest AST ancestor that has
-     * this information. Can be called on any thread and without a language context.
+     * Retrieves the segment of guest language source code that is represented by this Node, if present;
+     * otherwise retrieves the segment represented by the nearest AST ancestor that has this
+     * information. Can be called on any thread and without a language context.
      *
      * @return an approximation of the source code represented by this Node
      * @since 0.8 or earlier
@@ -183,8 +181,8 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     /**
      * Inserts an new node into an AST that was already {@link #adoptChildren() adopted} by a
-     * {@link #getParent() parent}. The new child needs to be assigned to its {@link Child child}
-     * field after insert was called.
+     * {@link #getParent() parent}. The new child needs to be assigned to its {@link Child child} field
+     * after insert was called.
      *
      * @param newChild the new child whose parent should be updated
      * @return the new child
@@ -199,15 +197,16 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Notifies the framework about the insertion of one or more nodes during execution. Otherwise,
-     * the framework assumes that {@link com.oracle.truffle.api.instrumentation.Instrumentable
+     * Notifies the framework about the insertion of one or more nodes during execution. Otherwise, the
+     * framework assumes that {@link com.oracle.truffle.api.instrumentation.Instrumentable
      * instrumentable} nodes remain unchanged after their root node is first
-     * {@link RootNode#execute(com.oracle.truffle.api.frame.VirtualFrame) executed}. Insertions
-     * don't need to be notified if it is known that none of the inserted nodes are instrumentable.
+     * {@link RootNode#execute(com.oracle.truffle.api.frame.VirtualFrame) executed}. Insertions don't
+     * need to be notified if it is known that none of the inserted nodes are
+     * {@link com.oracle.truffle.api.instrumentation.InstrumentableNode instrumentable}.
      * <p>
-     * The provided {@link Node} and its children must be {@link #adoptChildren() adopted} in the
-     * AST before invoking this method. The caller must ensure that this method is invoked only once
-     * for a given node and its children.
+     * The provided {@link Node} and its children must be {@link #adoptChildren() adopted} in the AST
+     * before invoking this method. The caller must ensure that this method is invoked only once for a
+     * given node and its children.
      * <p>
      * Example usage: {@link com.oracle.truffle.api.nodes.NodeSnippets#notifyInserted}
      *
@@ -286,8 +285,8 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Returns properties of this node interesting for debugging and can be overwritten by
-     * subclasses to add their own custom properties.
+     * Returns properties of this node interesting for debugging and can be overwritten by subclasses to
+     * add their own custom properties.
      *
      * @return the properties as a key/value hash map
      * @since 0.8 or earlier
@@ -398,8 +397,8 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Intended to be implemented by subclasses of {@link Node} to receive a notification when the
-     * node is rewritten. This method is invoked before the actual replace has happened.
+     * Intended to be implemented by subclasses of {@link Node} to receive a notification when the node
+     * is rewritten. This method is invoked before the actual replace has happened.
      *
      * @param newNode the replacement node
      * @param reason the reason the replace supplied
@@ -529,8 +528,8 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Returns a lock object that can be used to synchronize modifications to the AST. Only use it
-     * as part of a synchronized block, do not call {@link Object#wait()} or {@link Object#notify()}
+     * Returns a lock object that can be used to synchronize modifications to the AST. Only use it as
+     * part of a synchronized block, do not call {@link Object#wait()} or {@link Object#notify()}
      * manually.
      *
      * @since 0.17
@@ -546,8 +545,8 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Returns a lock object that can be used to synchronize modifications to the AST. Don't lock if
-     * you call into foreign code with potential recursions to avoid deadlocks. Use responsibly.
+     * Returns a lock object that can be used to synchronize modifications to the AST. Don't lock if you
+     * call into foreign code with potential recursions to avoid deadlocks. Use responsibly.
      *
      * @since 0.19
      */
@@ -560,46 +559,12 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Returns <code>true</code> if this node should be considered tagged by a given tag else
-     * <code>false</code>. The method is only invoked for tags which are explicitly declared as
-     * {@link com.oracle.truffle.api.instrumentation.ProvidedTags provided} by the
-     * {@link TruffleLanguage language}. If the {@link #getSourceSection() source section} of the
-     * node returns <code>null</code> then this node is considered to be not tagged by any tag. Can
-     * be called on any thread and without a language context.
-     * <p>
-     * Tags are used by guest languages to indicate that a {@link Node node} is a member of a
-     * certain category of nodes. For example a debugger
-     * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument instrument} might require a
-     * guest language to tag all nodes as halt locations that should be considered as such.
-     * <p>
-     * The node implementor may decide how to implement tagging for nodes. The simplest way to
-     * implement tagging using Java types is by overriding the {@link #isTaggedWith(Class)} method.
-     * This example shows how to tag a node subclass and all its subclasses as expression and
-     * statement:
-     *
-     * {@link com.oracle.truffle.api.nodes.NodeSnippets.ExpressionNode}
-     *
-     * <p>
-     * Often it is impossible to just rely on the node's Java type to implement tagging. This
-     * example shows how to use local state to implement tagging for a node.
-     *
-     * {@link com.oracle.truffle.api.nodes.NodeSnippets.StatementNode#isDebuggerHalt}
-     *
-     * <p>
-     * The implementation of isTaggedWith method must ensure that its result is stable after the
-     * parent {@link RootNode root node} was wrapped in a {@link CallTarget} using
-     * {@link TruffleRuntime#createCallTarget(RootNode)}. The result is stable if the result of
-     * calling this method for a particular tag remains always the same.
-     *
-     * @param tag the class {@link com.oracle.truffle.api.instrumentation.ProvidedTags provided} by
-     *            the {@link TruffleLanguage language}
-     * @return <code>true</code> if the node should be considered tagged by a tag else
-     *         <code>false</code>.
      * @since 0.12
-     * @deprecated implement InstrumentableNode#hasTag instead.
+     * @see com.oracle.truffle.api.instrumentation.InstrumentableNode
+     * @deprecated in 0.32 implement InstrumentableNode#hasTag instead.
      */
     @Deprecated
-    protected boolean isTaggedWith(Class<?> tag) {
+    protected boolean isTaggedWith(@SuppressWarnings("unused") Class<?> tag) {
         return false;
     }
 
@@ -618,13 +583,12 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Returns a string representing the language this node has been implemented for. If the
-     * language is unknown, returns "".
+     * Returns a string representing the language this node has been implemented for. If the language is
+     * unknown, returns "".
      *
      * @since 0.8 or earlier
-     * @deprecated in 0.25 use {@link #getRootNode() getRootNode()}.
-     *             {@link RootNode#getLanguageInfo() getLanguageInfo()}.
-     *             {@link LanguageInfo#getName() getName()} instead
+     * @deprecated in 0.25 use {@link #getRootNode() getRootNode()}. {@link RootNode#getLanguageInfo()
+     *             getLanguageInfo()}. {@link LanguageInfo#getName() getName()} instead
      */
     @Deprecated
     public String getLanguage() {
@@ -776,49 +740,8 @@ class NodeSnippets {
         // END: com.oracle.truffle.api.nodes.NodeSnippets.MutableSourceSectionNode#section
     }
 
-    private static final class Debugger {
-        static class HaltTag {
-        }
-    }
-
-    // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.StatementNode#isDebuggerHalt
-    class StatementNode extends Node {
-        private boolean isDebuggerHalt;
-
-        public void setDebuggerHalt(boolean isDebuggerHalt) {
-            this.isDebuggerHalt = isDebuggerHalt;
-        }
-
-        @Override
-        protected boolean isTaggedWith(Class<?> tag) {
-            if (tag == Debugger.HaltTag.class) {
-                return isDebuggerHalt;
-            }
-            return super.isTaggedWith(tag);
-        }
-    }
-
-    // END: com.oracle.truffle.api.nodes.NodeSnippets.StatementNode#isDebuggerHalt
-
-    static class ExpressionTag {
-    }
-
-    // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.ExpressionNode
-    class ExpressionNode extends Node {
-
-        @Override
-        protected boolean isTaggedWith(Class<?> tag) {
-            if (tag == ExpressionTag.class) {
-                return true;
-            }
-            return super.isTaggedWith(tag);
-        }
-    }
-
-    // END: com.oracle.truffle.api.nodes.NodeSnippets.ExpressionNode
-
     public static void notifyInserted() {
-        class InstrumentableNode extends Node {
+        class InstrumentableLanguageNode extends Node {
             Object execute(@SuppressWarnings("unused") VirtualFrame frame) {
                 return null;
             }
@@ -850,13 +773,13 @@ class NodeSnippets {
                 super(language);
             }
 
-            @Child InstrumentableNode child;
+            @Child InstrumentableLanguageNode child;
 
             @Override
             public Object execute(VirtualFrame frame) {
                 if (child == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    child = insert(new InstrumentableNode());
+                    child = insert(new InstrumentableLanguageNode());
                     notifyInserted(child);
                 }
                 return child.execute(frame);

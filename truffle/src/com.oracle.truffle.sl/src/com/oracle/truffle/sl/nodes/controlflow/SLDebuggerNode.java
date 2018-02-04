@@ -61,18 +61,8 @@ public class SLDebuggerNode extends SLStatementNode {
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == DebuggerTags.AlwaysHalt.class) {
             return true;
-        } else {
-            return super.isTaggedWith(tag);
         }
-    }
-
-    @Override
-    protected boolean isTaggedWith(Class<?> tag) {
-        if (tag == DebuggerTags.AlwaysHalt.class) {
-            return true;
-        } else {
-            return super.isTaggedWith(tag);
-        }
+        return super.hasTag(tag);
     }
 
 }

@@ -103,6 +103,8 @@ public abstract class Accessor {
         public abstract CallTarget canHandleTarget(Object access);
 
         public abstract boolean isTruffleObject(Object value);
+
+        public abstract Object createEmptyTruffleObject();
     }
 
     public abstract static class JavaInteropSupport {

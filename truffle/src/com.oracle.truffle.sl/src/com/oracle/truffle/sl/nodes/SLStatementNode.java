@@ -73,12 +73,11 @@ public abstract class SLStatementNode extends Node implements InstrumentableNode
     private boolean hasRootTag;
 
     /*
-     * The creation of source section can be implemented lazily by looking up the root node source
-     * and then creating the source section object using the indices stored in the node. This avoids
-     * the eager creation of source section objects during parsing and creates them only when they
-     * are needed. Alternatively, if the language uses source sections to implement language
-     * semantics, then it might be more efficient to eagerly create source sections and store it in
-     * the AST.
+     * The creation of source section can be implemented lazily by looking up the root node source and
+     * then creating the source section object using the indices stored in the node. This avoids the
+     * eager creation of source section objects during parsing and creates them only when they are
+     * needed. Alternatively, if the language uses source sections to implement language semantics, then
+     * it might be more efficient to eagerly create source sections and store it in the AST.
      *
      * For more details see {@link InstrumentableNode}.
      */
@@ -175,24 +174,14 @@ public abstract class SLStatementNode extends Node implements InstrumentableNode
     }
 
     @Override
-    protected boolean isTaggedWith(Class<?> tag) {
-        if (tag == StandardTags.StatementTag.class) {
-            return hasStatementTag;
-        } else if (tag == StandardTags.RootTag.class) {
-            return hasRootTag;
-        }
-        return false;
-    }
-
-    @Override
     public String toString() {
         return formatSourceSection(this);
     }
 
     /**
-     * Formats a source section of a node in human readable form. If no source section could be
-     * found it looks up the parent hierarchy until it finds a source section. Nodes where this was
-     * required append a <code>'~'</code> at the end.
+     * Formats a source section of a node in human readable form. If no source section could be found it
+     * looks up the parent hierarchy until it finds a source section. Nodes where this was required
+     * append a <code>'~'</code> at the end.
      *
      * @param node the node to format.
      * @return a formatted source section string

@@ -29,21 +29,39 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
+
 /**
  * Generates a default wrapper subclass of an annotated {@link InstrumentableNode} subclass. The
  * generated subclass is has the same class name as the original class name plus the 'Wrapper'
  * suffix. The generated class has default package visibility. All non-final and non-private methods
  * starting with execute are overridden by the generated wrapper. The generated overrides notifies
- * execution events as required by {@link ProbeNode probes}. No other methods are overridden by the
- * generated wrapper. At least one method starting with execute must be non-private and non-final.
+ * execution events as required by {@link ProbeNode probes}. Other abstract methods are directly
+ * delegated to the wrapped node. No other methods are overridden by the generated wrapper. At least
+ * one method starting with execute must be non-private and non-final. Every execute method must
+ * have {@link VirtualFrame} as the first declared parameter.
+ * <p>
+ * <b>Example Usage:</b>
  *
- * TODO example
+ * <pre>
+ * &#64;GenerateWrapper
+ * abstract class ExpressionNode extends Node implements InstrumentableNode {
+ *
+ *     abstract Object execute(VirtualFrame frame);
+ *
+ *     &#64;Override
+ *     public WrapperNode createWrapper(ProbeNode probeNode) {
+ *         return new ExpressionNodeWrapper(this, probeNode);
+ *     }
+ * }
+ * </pre>
  *
  * @see InstrumentableNode
  * @see ProbeNode
- * @since 0.30
+ * @since 0.32
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface GenerateWrapper {
+
 }

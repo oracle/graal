@@ -42,10 +42,12 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
-import com.oracle.truffle.api.instrumentation.Instrumentable;
-import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.Node;
@@ -80,8 +82,8 @@ public class InstrumentationUpdateTest {
     }
 
     /*
-     * Test that if indexed based filters were applied we are notified if the an instrumentable node
-     * was not contained within a root node's source section. (that was not the case at some point).
+     * Test that if indexed based filters were applied we are notified if the an instrumentable node was
+     * not contained within a root node's source section. (that was not the case at some point).
      */
     @Test
     public void testNotWithinRootSourceSection() {
@@ -131,8 +133,7 @@ public class InstrumentationUpdateTest {
     }
 
     /*
-     * Test that we can change instrumentable nodes after the first execute by notifying the
-     * framework.
+     * Test that we can change instrumentable nodes after the first execute by notifying the framework.
      */
     @Test
     public void testInsertInstrumentableNodes() {
@@ -233,8 +234,8 @@ public class InstrumentationUpdateTest {
         return (T) roots[0];
     }
 
-    @Instrumentable(factory = InstrumentationUpdateNodeWrapper.class)
-    public static class InstrumentationUpdateNode extends Node {
+    @GenerateWrapper
+    public static class InstrumentationUpdateNode extends Node implements InstrumentableNode {
 
         private final SourceSection sourceSection;
         @Child InstrumentationUpdateNode child;
@@ -258,9 +259,9 @@ public class InstrumentationUpdateTest {
             notifyInserted(child);
         }
 
-        public void execute() {
+        public void execute(VirtualFrame frame) {
             if (child != null) {
-                child.execute();
+                child.execute(frame);
             }
         }
 
@@ -268,6 +269,15 @@ public class InstrumentationUpdateTest {
         public SourceSection getSourceSection() {
             return sourceSection;
         }
+
+        public boolean isInstrumentable() {
+            return getSourceSection() != null;
+        }
+
+        public WrapperNode createWrapper(ProbeNode probe) {
+            return new InstrumentationUpdateNodeWrapper(sourceSection, this, probe);
+        }
+
     }
 
     private static class MyRoot extends RootNode {
@@ -303,7 +313,7 @@ public class InstrumentationUpdateTest {
         @Override
         public Object execute(VirtualFrame frame) {
             if (child != null) {
-                child.execute();
+                child.execute(frame);
             }
             return "";
         }

@@ -46,8 +46,8 @@ public interface InstrumentableFactory<T extends Node> {
 
     /**
      * Returns a new, never adopted, unshared {@link WrapperNode wrapper} node implementation for a
-     * particular {@link Instrumentable} node of the guest language AST called its <em>delegate</em>
-     * . The returned wrapper implementation must extend the same type that is annotated with
+     * particular {@link Instrumentable} node of the guest language AST called its <em>delegate</em> .
+     * The returned wrapper implementation must extend the same type that is annotated with
      * {@link Instrumentable}.
      * </p>
      * <p>
@@ -56,15 +56,15 @@ public interface InstrumentableFactory<T extends Node> {
      * {@linkplain ExecutionEventListener event listeners} bound to this guest language program
      * location:
      * <ul>
-     * <li>{@linkplain ProbeNode#onEnter(com.oracle.truffle.api.frame.VirtualFrame) onEnter(Frame)}:
-     * an <em>execute</em> method on the delegate is ready to be called;</li>
+     * <li>{@linkplain ProbeNode#onEnter(com.oracle.truffle.api.frame.VirtualFrame) onEnter(Frame)}: an
+     * <em>execute</em> method on the delegate is ready to be called;</li>
      * <li>{@linkplain ProbeNode#onReturnValue(com.oracle.truffle.api.frame.VirtualFrame, Object)
      * onReturnValue(Frame,Object)}: an <em>execute</em> method on the delegate has just returned a
      * (possibly <code>null</code>) value;</li>
      * <li>
      * {@linkplain ProbeNode#onReturnExceptionalOrUnwind(com.oracle.truffle.api.frame.VirtualFrame, Throwable, boolean)
-     * onReturnExceptionalOrUnwind(Frame,Throwable,boolean)}: an <em>execute</em> method on the
-     * delegate has just thrown an exception.</li>
+     * onReturnExceptionalOrUnwind(Frame,Throwable,boolean)}: an <em>execute</em> method on the delegate
+     * has just thrown an exception.</li>
      * </ul>
      * </p>
      *
@@ -78,25 +78,28 @@ public interface InstrumentableFactory<T extends Node> {
 
     /**
      * Nodes that the instrumentation framework inserts into guest language ASTs (between
-     * {@link Instrumentable} guest language nodes and their parents) for the purpose of interposing
-     * on execution events and reporting them via the instrumentation framework.
+     * {@link Instrumentable} guest language nodes and their parents) for the purpose of interposing on
+     * execution events and reporting them via the instrumentation framework.
      *
      * @see #createWrapper(Node, ProbeNode)
      * @since 0.12
+     * @deprecated use {@link GenerateWrapper} and implement
+     *             {@link InstrumentableNode#createWrapper(ProbeNode)} instead.
      */
+    @Deprecated
     public interface WrapperNode {
 
         /**
-         * The {@link Instrumentable} guest language node, adopted as a child, whose execution
-         * events the wrapper reports to the instrumentation framework.
+         * The {@link Instrumentable} guest language node, adopted as a child, whose execution events the
+         * wrapper reports to the instrumentation framework.
          *
          * @since 0.12
          */
         Node getDelegateNode();
 
         /**
-         * A child of the wrapper, through which the wrapper reports execution events related to the
-         * guest language <em>delegate</em> node.
+         * A child of the wrapper, through which the wrapper reports execution events related to the guest
+         * language <em>delegate</em> node.
          *
          * @since 0.12
          */

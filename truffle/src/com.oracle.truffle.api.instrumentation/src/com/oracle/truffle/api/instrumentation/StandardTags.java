@@ -48,14 +48,13 @@ public final class StandardTags {
      * <p>
      * Use case descriptions:
      * <ul>
-     * <li><b>Debugger:</b> Marks program locations where ordinary stepping should halt. The
-     * debugger will halt just <em>before</em> a code location is executed that is marked with this
-     * tag.
+     * <li><b>Debugger:</b> Marks program locations where ordinary stepping should halt. The debugger
+     * will halt just <em>before</em> a code location is executed that is marked with this tag.
      * <p>
      * In most languages, this means statements are distinct from expressions and only one node
-     * representing the statement should be tagged. Subexpressions are typically not tagged so that
-     * for example a step-over operation will stop at the next independent statement to get the
-     * desired behavior.</li>
+     * representing the statement should be tagged. Subexpressions are typically not tagged so that for
+     * example a step-over operation will stop at the next independent statement to get the desired
+     * behavior.</li>
      * </ul>
      *
      * @since 0.12
@@ -72,9 +71,9 @@ public final class StandardTags {
      * <p>
      * Use case descriptions:
      * <ul>
-     * <li><b>Debugger:</b> Marks program locations where <em>returning</em> or <em>stepping
-     * out</em> from a method/procedure/closure call should halt. The debugger will halt at the code
-     * location that has just executed the call that returned.</li>
+     * <li><b>Debugger:</b> Marks program locations where <em>returning</em> or <em>stepping out</em>
+     * from a method/procedure/closure call should halt. The debugger will halt at the code location
+     * that has just executed the call that returned.</li>
      * </ul>
      *
      * @since 0.12
@@ -87,9 +86,8 @@ public final class StandardTags {
 
     /**
      * Marks program locations as root of a function, method or closure. The root prolog should be
-     * executed by this node. In particular, when the implementation copies
-     * {@link Frame#getArguments()} into {@link FrameSlot}s, it should do it here for the
-     * instrumentation to work correctly.
+     * executed by this node. In particular, when the implementation copies {@link Frame#getArguments()}
+     * into {@link FrameSlot}s, it should do it here for the instrumentation to work correctly.
      * <p>
      * Use case descriptions:
      * <ul>
@@ -101,8 +99,10 @@ public final class StandardTags {
     public static final class RootTag extends Tag {
 
         /**
-         * The root name associated with this tagged node. Delegates to {@link RootNode#getName()}
-         * by default.
+         * The root name associated with this tagged node. Delegates to {@link RootNode#getName()} by
+         * default.
+         *
+         * @since 0.32
          */
         public static final Attribute<String> NAME = createAttribute(RootTag.class, "name", String.class, new DefaultName(), null);
 
@@ -136,10 +136,11 @@ public final class StandardTags {
      * Use case descriptions:
      * <ul>
      * <li><b>Coverage:</b> To compute expression coverage.</li>
-     * <li><b>Debugger:</b> Fine grained debugging of expressions.</li>
+     * <li><b>Debugger:</b> Fine grained debugging of expressions. It is optional to implement the
+     * expression tag to support debuggers.</li>
      * </ul>
      *
-     * @since 0.30
+     * @since 0.32
      */
     public static final class ExpressionTag extends Tag {
 

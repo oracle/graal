@@ -29,7 +29,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -44,8 +43,9 @@ import com.oracle.truffle.api.source.SourceSection;
  * <p>
  * {@link Instrumentable} nodes must extend {@link Node}. The instrumentation framework will, when
  * needed during execution, {@link Node#replace(Node) replace} the instrumentable node with a
- * {@link WrapperNode} and delegate to the original node. After the replacement of an instrumentable
- * node with a wrapper we refer to the original node as an instrumented node.
+ * {@link com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode} and delegate to
+ * the original node. After the replacement of an instrumentable node with a wrapper we refer to the
+ * original node as an instrumented node.
  * </p>
  * <p>
  * Wrappers can be generated automatically using an annotation processor. For that a class literal
@@ -86,7 +86,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * }
  * </pre>
  *
- * @see WrapperNode
+ * @see com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode
  * @see ProbeNode
  * @since 0.12
  * @deprecated use {@link GenerateWrapper} and {@link InstrumentableNode} instead.
@@ -99,8 +99,8 @@ public @interface Instrumentable {
     /**
      * Assigns a wrapper factory to a {@link Node node} class annotated as {@link Instrumentable
      * instrumentable}. To use the generated wrapper factory use the is generated with the original
-     * class name and the "Wrapper" suffix. So if the class was called <code>StatementNode</code>
-     * then the generated factory class will be called <code>StatementNodeWraper</code>.
+     * class name and the "Wrapper" suffix. So if the class was called <code>StatementNode</code> then
+     * the generated factory class will be called <code>StatementNodeWraper</code>.
      *
      * <pre>
      * &#064;Instrumentable(factory = BaseNodeWrapper.class)
