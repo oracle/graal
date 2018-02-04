@@ -1236,11 +1236,6 @@ public final class ProbeNode extends Node {
         }
 
         @Override
-        protected Object innerOnUnwind(EventContext context, VirtualFrame frame, Object info) {
-            return null;
-        }
-
-        @Override
         @SuppressWarnings("hiding")
         protected void innerOnInputValue(EventContext context, VirtualFrame frame, EventBinding<?> binding, EventContext inputContext, int inputIndex, Object inputValue) {
         }

@@ -140,9 +140,6 @@ public class EventBinding<T> {
             return filterSourceSection;
         }
 
-        SourceSectionFilter getInputFilter() {
-            return inputFilter;
-        }
         boolean isInstrumentedFull(Set<Class<?>> providedTags, RootNode rootNode, Node node, SourceSection nodeSourceSection) {
             if (isInstrumentedLeaf(providedTags, node, nodeSourceSection)) {
                 if (rootNode == null) {
