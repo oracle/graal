@@ -46,6 +46,7 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -94,7 +95,7 @@ public final class ProbeNode extends Node {
      * A constant that performs reenter of the current node when returned from
      * {@link ExecutionEventListener#onUnwind(EventContext, VirtualFrame, Object)} or
      * {@link ExecutionEventNode#onUnwind(VirtualFrame, Object)}.
-     * 
+     *
      * @since 0.31
      */
     public static final Object UNWIND_ACTION_REENTER = new Object();
@@ -274,6 +275,7 @@ public final class ProbeNode extends Node {
         CompilerAsserts.neverPartOfCompilation();
         seen = (byte) (seen | 0b100);
     }
+
     void onInputValue(VirtualFrame frame, EventBinding<?> targetBinding, EventContext inputContext, int inputIndex, Object inputValue) {
         EventChainNode localChain = lazyUpdate(frame);
         if (localChain != null) {
@@ -729,9 +731,9 @@ public final class ProbeNode extends Node {
                     innerOnInputValue(context, frame, binding, inputContext, inputIndex, inputValue);
                 }
             } catch (Throwable t) {
-                if (!seenException) {
+                if (!isSeenException()) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    seenException = true;
+                    setSeenException();
                 }
                 if (binding.isLanguageBinding()) {
                     throw t;
@@ -1212,6 +1214,11 @@ public final class ProbeNode extends Node {
         EventChainNode find(EventBinding<?> b) {
             // cannot be found
             return getNext().find(b);
+        }
+
+        @Override
+        protected Object innerOnUnwind(EventContext context, VirtualFrame frame, Object info) {
+            return null;
         }
 
         @Override

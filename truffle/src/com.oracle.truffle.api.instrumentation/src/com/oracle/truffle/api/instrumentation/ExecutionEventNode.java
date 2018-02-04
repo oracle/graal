@@ -24,18 +24,11 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.ProbeNode.EventProviderChainNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode.EventProviderWithInputChainNode;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * An event node created by an {@link ExecutionEventNodeFactory} for a specific locations of a guest

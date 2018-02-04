@@ -24,11 +24,10 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
+import java.util.function.Function;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
-import java.util.function.Function;
-
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
