@@ -52,6 +52,7 @@ import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.PolyglotException;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -1948,6 +1949,11 @@ public class PolyglotEngine {
         @Override
         public Object getCurrentHostContext() {
             return null;
+        }
+
+        @Override
+        public PolyglotException wrapGuestException(String languageId, Throwable e) {
+            throw new UnsupportedOperationException("Not supported in legacy engine.");
         }
 
         @Override

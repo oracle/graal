@@ -35,6 +35,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CallTarget;
@@ -253,6 +254,8 @@ public abstract class Accessor {
 
         public abstract Object getCurrentHostContext();
 
+        public abstract PolyglotException wrapGuestException(String languageId, Throwable exception);
+
         public abstract Object legacyTckEnter(Object vm);
 
         public abstract void legacyTckLeave(Object vm, Object prev);
@@ -396,6 +399,8 @@ public abstract class Accessor {
         public abstract void notifyThreadStarted(Object engine, TruffleContext context, Thread thread);
 
         public abstract void notifyThreadFinished(Object engine, TruffleContext context, Thread thread);
+
+        public abstract org.graalvm.polyglot.SourceSection createSourceSection(Object instrumentEnv, org.graalvm.polyglot.Source source, com.oracle.truffle.api.source.SourceSection ss);
 
         public abstract void patchInstrumentationHandler(Object instrumentationHandler, DispatchOutputStream out, DispatchOutputStream err, InputStream in);
 
