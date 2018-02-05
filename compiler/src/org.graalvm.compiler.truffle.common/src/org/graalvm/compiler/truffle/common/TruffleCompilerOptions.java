@@ -256,6 +256,8 @@ public class TruffleCompilerOptions {
     @Option(help = "Print additional more verbose Truffle compilation statistics at the end of a run.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TruffleCompilationStatisticDetails = new OptionKey<>(false);
 
+    @Option(help = "Enable support for simple infopoints in truffle partial evaluations.", type = OptionType.Expert)
+    public static final OptionKey<Boolean> TruffleEnableInfopoints = new OptionKey<>(false);
 
     @Option(help = "Run the partial escape analysis iteratively in Truffle compilation.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TruffleIterativePartialEscape = new OptionKey<>(false);

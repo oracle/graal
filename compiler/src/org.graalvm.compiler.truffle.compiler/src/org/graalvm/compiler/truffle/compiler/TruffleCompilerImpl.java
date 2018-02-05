@@ -29,6 +29,7 @@ import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.R
 import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseExceptionProbability;
 import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckHints;
 import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckedInlining;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleEnableInfopoints;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExcludeAssertions;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInstrumentBoundaries;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInstrumentBranches;
@@ -136,7 +137,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
 
         ResolvedJavaType[] skippedExceptionTypes = getSkippedExceptionTypes(runtime);
 
-        boolean needSourcePositions = TruffleCompilerOptions.getValue(TruffleInstrumentBranches) || TruffleCompilerOptions.getValue(TruffleInstrumentBoundaries);
+        boolean needSourcePositions = TruffleCompilerOptions.getValue(TruffleEnableInfopoints) ||
+                        TruffleCompilerOptions.getValue(TruffleInstrumentBranches) || TruffleCompilerOptions.getValue(TruffleInstrumentBoundaries);
         GraphBuilderConfiguration baseConfig = GraphBuilderConfiguration.getDefault(new Plugins(plugins)).withNodeSourcePosition(needSourcePositions);
         this.config = baseConfig.withSkippedExceptionTypes(skippedExceptionTypes).withOmitAssertions(TruffleCompilerOptions.getValue(TruffleExcludeAssertions)).withBytecodeExceptionMode(
                         BytecodeExceptionMode.ExplicitOnly);
