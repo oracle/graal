@@ -27,7 +27,7 @@ import java.io.OutputStreamWriter;
 
 import com.oracle.shadowed.com.google.gson.Gson;
 
-class SubstrateServerMessage {
+public class SubstrateServerMessage {
     ServerCommand command;
     String payload;
 
@@ -35,8 +35,8 @@ class SubstrateServerMessage {
         /* Needed for GSON use in native-image */
     }
 
-    SubstrateServerMessage(String command, String payload) {
-        this.command = ServerCommand.valueOf(command);
+    SubstrateServerMessage(ServerCommand command, String payload) {
+        this.command = command;
         this.payload = payload;
     }
 

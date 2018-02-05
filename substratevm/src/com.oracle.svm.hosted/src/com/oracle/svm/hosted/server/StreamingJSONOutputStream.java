@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 import com.oracle.shadowed.com.google.gson.Gson;
+import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
 
 /**
  * Converts the data stream to streaming JSON packages containing the content as well as the command
@@ -36,7 +37,7 @@ import com.oracle.shadowed.com.google.gson.Gson;
  */
 public class StreamingJSONOutputStream extends OutputStream {
 
-    private final String command;
+    private final ServerCommand command;
     private OutputStream original;
     private final Gson gson = new Gson();
 
@@ -44,7 +45,7 @@ public class StreamingJSONOutputStream extends OutputStream {
         this.original = original;
     }
 
-    StreamingJSONOutputStream(String command, OutputStream original) {
+    StreamingJSONOutputStream(ServerCommand command, OutputStream original) {
         this.command = command;
         this.original = original;
     }
@@ -70,5 +71,4 @@ public class StreamingJSONOutputStream extends OutputStream {
     public void close() throws IOException {
         original.close();
     }
-
 }

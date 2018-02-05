@@ -68,6 +68,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageBuildTask;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
+import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
 
 /**
  * A server for SVM image building that keeps the classpath and JIT compiler code caches warm over
@@ -92,8 +93,8 @@ public final class NativeImageBuildServer {
     /*
      * This is done as System.err and System.out are replaced by reference during analysis.
      */
-    private final StreamingJSONOutputStream outJSONStream = new StreamingJSONOutputStream("o", null);
-    private final StreamingJSONOutputStream errorJSONStream = new StreamingJSONOutputStream("e", null);
+    private final StreamingJSONOutputStream outJSONStream = new StreamingJSONOutputStream(ServerCommand.WRITE_OUT, null);
+    private final StreamingJSONOutputStream errorJSONStream = new StreamingJSONOutputStream(ServerCommand.WRITE_ERR, null);
     private final PrintStream serverStdout = new PrintStream(outJSONStream, true);
     private final PrintStream serverStderr = new PrintStream(errorJSONStream, true);
 
@@ -286,7 +287,7 @@ public final class NativeImageBuildServer {
                 return false;
             case GET_VERSION:
                 log("Received 'version' request. Responding with " + System.getProperty(SUBSTRATEVM_VERSION_PROPERTY) + ".\n");
-                SubstrateServerMessage.send(new SubstrateServerMessage(serverCommand.command.toString(), System.getProperty(SUBSTRATEVM_VERSION_PROPERTY)), output);
+                SubstrateServerMessage.send(new SubstrateServerMessage(serverCommand.command, System.getProperty(SUBSTRATEVM_VERSION_PROPERTY)), output);
                 return Instant.now().isBefore(lastKeepAliveAction.plus(Duration.ofMinutes(TIMEOUT_MINUTES)));
             case BUILD_IMAGE:
                 if (activeBuildTasks.incrementAndGet() > 1) {
@@ -349,7 +350,7 @@ public final class NativeImageBuildServer {
 
     private static void sendExitStatus(OutputStreamWriter output, int exitStatus) {
         try {
-            SubstrateServerMessage.send(new SubstrateServerMessage("s", Integer.toString(exitStatus)), output);
+            SubstrateServerMessage.send(new SubstrateServerMessage(ServerCommand.SEND_STATUS, Integer.toString(exitStatus)), output);
         } catch (IOException e) {
             throw VMError.shouldNotReachHere(e);
         }
@@ -357,7 +358,7 @@ public final class NativeImageBuildServer {
 
     private static void sendError(OutputStreamWriter output, String message) {
         try {
-            SubstrateServerMessage.send(new SubstrateServerMessage("e", message), output);
+            SubstrateServerMessage.send(new SubstrateServerMessage(ServerCommand.WRITE_ERR, message), output);
         } catch (IOException e) {
             throw VMError.shouldNotReachHere(e);
         }
