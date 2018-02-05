@@ -42,7 +42,7 @@ public class JNIFeature implements Feature {
         @Option(help = "Enable Java Native Interface (JNI) support.")//
         public static final HostedOptionKey<Boolean> JNI = new HostedOptionKey<>(false);
 
-        @Option(help = "file:doc-files/JNIConfigurationFilesHelp.txt")//
+        @Option(help = "Files describing program elements to be made accessible via JNI (for syntax, see ReflectionConfigurationFiles)")//
         public static final HostedOptionKey<String> JNIConfigurationFiles = new HostedOptionKey<>("");
 
         @Option(help = "Resources describing program elements to be made accessible via JNI (see JNIConfigurationFiles).")//
