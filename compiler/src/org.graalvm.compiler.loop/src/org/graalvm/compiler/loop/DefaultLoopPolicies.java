@@ -97,6 +97,14 @@ public class DefaultLoopPolicies implements LoopPolicies {
         int maxNodes = (counted.isExactTripCount() && counted.isConstantExactTripCount()) ? Options.ExactFullUnrollMaxNodes.getValue(options) : Options.FullUnrollMaxNodes.getValue(options);
         maxNodes = Math.min(maxNodes, Math.max(0, MaximumDesiredSize.getValue(options) - loop.loopBegin().graph().getNodeCount()));
         int size = Math.max(1, loop.size() - 1 - loop.loopBegin().phis().count());
+        /* @formatter:off
+         * The check below should not throw ArithmeticException because:
+         * maxTrips is guaranteed to be >= 1 by the check above
+         * - maxTrips * size can not overfow because:
+         *   - maxTrips <= FullUnrollMaxIterations <= Integer.MAX_VALUE
+         *   - 1 <= size <= Integer.MAX_VALUE
+         * @formatter:on
+         */
         if (maxTrips.isLessOrEqualTo(Options.FullUnrollMaxIterations.getValue(options)) && maxTrips.minus(1).times(size).isLessOrEqualTo(maxNodes)) {
             // check whether we're allowed to unroll this loop
             return loop.canDuplicateLoop();
