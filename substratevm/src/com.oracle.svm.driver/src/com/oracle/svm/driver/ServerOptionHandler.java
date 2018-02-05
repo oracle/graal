@@ -59,14 +59,11 @@ class ServerOptionHandler extends NativeImage.OptionHandler<NativeImageServer> {
             if (optionTail.startsWith(oList)) {
                 optionTail = optionTail.substring(oList.length());
                 boolean listDetails = false;
+                machineWide = true;
                 String oDetails = "-details";
                 if (optionTail.startsWith(oDetails)) {
                     optionTail = optionTail.substring(oDetails.length());
                     listDetails = true;
-                }
-                if (optionTail.startsWith(oAll)) {
-                    optionTail = optionTail.substring(oAll.length());
-                    machineWide = true;
                 }
                 if (optionTail.isEmpty()) {
                     nativeImage.listServers(machineWide, listDetails);
@@ -75,10 +72,7 @@ class ServerOptionHandler extends NativeImage.OptionHandler<NativeImageServer> {
             } else if (optionTail.startsWith(oCleanup)) {
                 optionTail = optionTail.substring(oCleanup.length());
                 serverCleanup = true;
-                if (optionTail.startsWith(oAll)) {
-                    optionTail = optionTail.substring(oAll.length());
-                    machineWide = true;
-                }
+                machineWide = true;
             } else if (optionTail.startsWith(oShutdown)) {
                 optionTail = optionTail.substring(oShutdown.length());
                 serverShutdown = true;
