@@ -75,10 +75,10 @@ public final class SLInvokeNode extends SLExpressionNode {
         Object function = functionNode.executeGeneric(frame);
 
         /*
-         * The number of arguments is constant for one invoke node. During compilation, the loop is unrolled
-         * and the execute methods of all arguments are inlined. This is triggered by the ExplodeLoop
-         * annotation on the method. The compiler assertion below illustrates that the array length is
-         * really constant.
+         * The number of arguments is constant for one invoke node. During compilation, the loop is
+         * unrolled and the execute methods of all arguments are inlined. This is triggered by the
+         * ExplodeLoop annotation on the method. The compiler assertion below illustrates that the
+         * array length is really constant.
          */
         CompilerAsserts.compilationConstant(argumentNodes.length);
 

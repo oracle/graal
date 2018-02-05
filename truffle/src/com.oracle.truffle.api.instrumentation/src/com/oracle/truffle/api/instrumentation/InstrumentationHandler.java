@@ -80,9 +80,9 @@ final class InstrumentationHandler {
 
     /*
      * The contract is the following: "sources" and "sourcesList" can only be accessed while
-     * synchronized on "sources". both will only be lazily initialized from "loadedRoots" when the first
-     * sourceBindings is added, by calling lazyInitializeSourcesList(). "sourcesList" will be null as
-     * long as the sources haven't been initialized.
+     * synchronized on "sources". both will only be lazily initialized from "loadedRoots" when the
+     * first sourceBindings is added, by calling lazyInitializeSourcesList(). "sourcesList" will be
+     * null as long as the sources haven't been initialized.
      */
     private final Map<Source, Void> sources = Collections.synchronizedMap(new WeakHashMap<Source, Void>());
     /* Load order needs to be preserved for sources, thats why we store sources again in a list. */
@@ -1274,7 +1274,8 @@ final class InstrumentationHandler {
     }
 
     /**
-     * Provider of instrumentation services for {@linkplain TruffleLanguage language implementations}.
+     * Provider of instrumentation services for {@linkplain TruffleLanguage language
+     * implementations}.
      */
     final class EngineInstrumenter extends AbstractInstrumenter {
 
@@ -1319,7 +1320,8 @@ final class InstrumentationHandler {
     }
 
     /**
-     * Provider of instrumentation services for {@linkplain TruffleLanguage language implementations}.
+     * Provider of instrumentation services for {@linkplain TruffleLanguage language
+     * implementations}.
      */
     final class LanguageClientInstrumenter<T> extends AbstractInstrumenter {
 
@@ -1404,8 +1406,8 @@ final class InstrumentationHandler {
     }
 
     /**
-     * Shared implementation of instrumentation services for clients whose requirements and privileges
-     * may vary.
+     * Shared implementation of instrumentation services for clients whose requirements and
+     * privileges may vary.
      */
     abstract class AbstractInstrumenter extends Instrumenter {
 
@@ -1509,15 +1511,15 @@ final class InstrumentationHandler {
 
     /**
      * A list collection data structure that is optimized for fast non-blocking traversals. There is
-     * adds and no explicit removal. Removals are based on a side effect of the element, by returning
-     * <code>null</code> in {@link AbstractAsyncCollection#unwrap(Object)}. It is not possible to
-     * reliably query the {@link AbstractAsyncCollection#size()} of the collection, therefore it throws
-     * an {@link UnsupportedOperationException}.
+     * adds and no explicit removal. Removals are based on a side effect of the element, by
+     * returning <code>null</code> in {@link AbstractAsyncCollection#unwrap(Object)}. It is not
+     * possible to reliably query the {@link AbstractAsyncCollection#size()} of the collection,
+     * therefore it throws an {@link UnsupportedOperationException}.
      */
     private abstract static class AbstractAsyncCollection<T, R> extends AbstractCollection<R> {
         /*
-         * We use an atomic reference list as we don't want to see holes in the array when appending to it.
-         * This allows us to use null as a safe terminator for the array.
+         * We use an atomic reference list as we don't want to see holes in the array when appending
+         * to it. This allows us to use null as a safe terminator for the array.
          */
         private volatile AtomicReferenceArray<T> values;
 
@@ -1579,8 +1581,8 @@ final class InstrumentationHandler {
             }
 
             /*
-             * We ensure that the capacity after compaction is always twice as big as the number of live
-             * elements. This can make the array grow or shrink as needed.
+             * We ensure that the capacity after compaction is always twice as big as the number of
+             * live elements. This can make the array grow or shrink as needed.
              */
             AtomicReferenceArray<T> newValues = new AtomicReferenceArray<>(Math.max(liveElements * 2, 8));
             int index = 0;
@@ -1599,17 +1601,17 @@ final class InstrumentationHandler {
         }
 
         /**
-         * Returns an iterator which can be traversed without a lock. The iterator that is constructed is
-         * not sequentially consistent. In other words, the user of the iterator may observe values that
-         * were added after the iterator was created.
+         * Returns an iterator which can be traversed without a lock. The iterator that is
+         * constructed is not sequentially consistent. In other words, the user of the iterator may
+         * observe values that were added after the iterator was created.
          */
         @Override
         public Iterator<R> iterator() {
             return new Iterator<R>() {
 
                 /*
-                 * We need to capture the values field in the iterator to have a consistent view on the data while
-                 * iterating.
+                 * We need to capture the values field in the iterator to have a consistent view on
+                 * the data while iterating.
                  */
                 private final AtomicReferenceArray<T> values = AbstractAsyncCollection.this.values;
                 private int index;

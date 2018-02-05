@@ -99,8 +99,8 @@ public @interface Instrumentable {
     /**
      * Assigns a wrapper factory to a {@link Node node} class annotated as {@link Instrumentable
      * instrumentable}. To use the generated wrapper factory use the is generated with the original
-     * class name and the "Wrapper" suffix. So if the class was called <code>StatementNode</code> then
-     * the generated factory class will be called <code>StatementNodeWraper</code>.
+     * class name and the "Wrapper" suffix. So if the class was called <code>StatementNode</code>
+     * then the generated factory class will be called <code>StatementNodeWraper</code>.
      *
      * <pre>
      * &#064;Instrumentable(factory = BaseNodeWrapper.class)

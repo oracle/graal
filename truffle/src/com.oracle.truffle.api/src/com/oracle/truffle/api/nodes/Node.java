@@ -99,9 +99,9 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Returns a rough estimate for the cost of this {@link Node}. This estimate can be used by runtime
-     * systems or guest languages to implement heuristics based on Truffle ASTs. This method is intended
-     * to be overridden by subclasses. The default implementation returns the value of
+     * Returns a rough estimate for the cost of this {@link Node}. This estimate can be used by
+     * runtime systems or guest languages to implement heuristics based on Truffle ASTs. This method
+     * is intended to be overridden by subclasses. The default implementation returns the value of
      * {@link NodeInfo#cost()} of the {@link NodeInfo} annotation declared at the subclass. If no
      * {@link NodeInfo} annotation is declared the method returns {@link NodeCost#MONOMORPHIC} as a
      * default value.
@@ -117,18 +117,19 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Retrieves the segment of guest language source code that is represented by this Node. The default
-     * implementation of this method returns <code>null</code>. If your node represents a segment of the
-     * source code, override this method and return a <code>final</code> or {@link CompilationFinal}
-     * field in your node to the caller. Can be called on any thread and without a language context.
+     * Retrieves the segment of guest language source code that is represented by this Node. The
+     * default implementation of this method returns <code>null</code>. If your node represents a
+     * segment of the source code, override this method and return a <code>final</code> or
+     * {@link CompilationFinal} field in your node to the caller. Can be called on any thread and
+     * without a language context.
      *
      * To define node with <em>fixed</em> {@link SourceSection} that doesn't change after node
      * construction use:
      *
      * {@link com.oracle.truffle.api.nodes.NodeSnippets.NodeWithFixedSourceSection#section}
      *
-     * To create a node which can associate and change the {@link SourceSection} later at any point of
-     * time use:
+     * To create a node which can associate and change the {@link SourceSection} later at any point
+     * of time use:
      *
      * {@link com.oracle.truffle.api.nodes.NodeSnippets.MutableSourceSectionNode#section}
      *
@@ -140,9 +141,9 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Retrieves the segment of guest language source code that is represented by this Node, if present;
-     * otherwise retrieves the segment represented by the nearest AST ancestor that has this
-     * information. Can be called on any thread and without a language context.
+     * Retrieves the segment of guest language source code that is represented by this Node, if
+     * present; otherwise retrieves the segment represented by the nearest AST ancestor that has
+     * this information. Can be called on any thread and without a language context.
      *
      * @return an approximation of the source code represented by this Node
      * @since 0.8 or earlier
@@ -181,8 +182,8 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     /**
      * Inserts an new node into an AST that was already {@link #adoptChildren() adopted} by a
-     * {@link #getParent() parent}. The new child needs to be assigned to its {@link Child child} field
-     * after insert was called.
+     * {@link #getParent() parent}. The new child needs to be assigned to its {@link Child child}
+     * field after insert was called.
      *
      * @param newChild the new child whose parent should be updated
      * @return the new child
@@ -197,16 +198,16 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Notifies the framework about the insertion of one or more nodes during execution. Otherwise, the
-     * framework assumes that {@link com.oracle.truffle.api.instrumentation.Instrumentable
+     * Notifies the framework about the insertion of one or more nodes during execution. Otherwise,
+     * the framework assumes that {@link com.oracle.truffle.api.instrumentation.Instrumentable
      * instrumentable} nodes remain unchanged after their root node is first
-     * {@link RootNode#execute(com.oracle.truffle.api.frame.VirtualFrame) executed}. Insertions don't
-     * need to be notified if it is known that none of the inserted nodes are
+     * {@link RootNode#execute(com.oracle.truffle.api.frame.VirtualFrame) executed}. Insertions
+     * don't need to be notified if it is known that none of the inserted nodes are
      * {@link com.oracle.truffle.api.instrumentation.InstrumentableNode instrumentable}.
      * <p>
-     * The provided {@link Node} and its children must be {@link #adoptChildren() adopted} in the AST
-     * before invoking this method. The caller must ensure that this method is invoked only once for a
-     * given node and its children.
+     * The provided {@link Node} and its children must be {@link #adoptChildren() adopted} in the
+     * AST before invoking this method. The caller must ensure that this method is invoked only once
+     * for a given node and its children.
      * <p>
      * Example usage: {@link com.oracle.truffle.api.nodes.NodeSnippets#notifyInserted}
      *
@@ -285,8 +286,8 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Returns properties of this node interesting for debugging and can be overwritten by subclasses to
-     * add their own custom properties.
+     * Returns properties of this node interesting for debugging and can be overwritten by
+     * subclasses to add their own custom properties.
      *
      * @return the properties as a key/value hash map
      * @since 0.8 or earlier
@@ -397,8 +398,8 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Intended to be implemented by subclasses of {@link Node} to receive a notification when the node
-     * is rewritten. This method is invoked before the actual replace has happened.
+     * Intended to be implemented by subclasses of {@link Node} to receive a notification when the
+     * node is rewritten. This method is invoked before the actual replace has happened.
      *
      * @param newNode the replacement node
      * @param reason the reason the replace supplied
@@ -528,8 +529,8 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Returns a lock object that can be used to synchronize modifications to the AST. Only use it as
-     * part of a synchronized block, do not call {@link Object#wait()} or {@link Object#notify()}
+     * Returns a lock object that can be used to synchronize modifications to the AST. Only use it
+     * as part of a synchronized block, do not call {@link Object#wait()} or {@link Object#notify()}
      * manually.
      *
      * @since 0.17
@@ -545,8 +546,8 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Returns a lock object that can be used to synchronize modifications to the AST. Don't lock if you
-     * call into foreign code with potential recursions to avoid deadlocks. Use responsibly.
+     * Returns a lock object that can be used to synchronize modifications to the AST. Don't lock if
+     * you call into foreign code with potential recursions to avoid deadlocks. Use responsibly.
      *
      * @since 0.19
      */
@@ -583,12 +584,13 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Returns a string representing the language this node has been implemented for. If the language is
-     * unknown, returns "".
+     * Returns a string representing the language this node has been implemented for. If the
+     * language is unknown, returns "".
      *
      * @since 0.8 or earlier
-     * @deprecated in 0.25 use {@link #getRootNode() getRootNode()}. {@link RootNode#getLanguageInfo()
-     *             getLanguageInfo()}. {@link LanguageInfo#getName() getName()} instead
+     * @deprecated in 0.25 use {@link #getRootNode() getRootNode()}.
+     *             {@link RootNode#getLanguageInfo() getLanguageInfo()}.
+     *             {@link LanguageInfo#getName() getName()} instead
      */
     @Deprecated
     public String getLanguage() {

@@ -109,8 +109,8 @@ public final class ProbeNode extends Node {
     @Child private volatile ProbeNode.EventChainNode chain;
 
     /*
-     * We cache to ensure that the instrumented tags and source sections are always compilation final
-     * for listeners and factories.
+     * We cache to ensure that the instrumented tags and source sections are always compilation
+     * final for listeners and factories.
      */
     @CompilationFinal private volatile Assumption version;
 
@@ -156,8 +156,8 @@ public final class ProbeNode extends Node {
      * @param exception the exception that occurred during the execution
      * @param frame the current frame of the execution.
      * @since 0.12
-     * @deprecated Use {@link #onReturnExceptionalOrUnwind(VirtualFrame, Throwable, boolean)} instead
-     *             and adjust the wrapper node implementation accordingly.
+     * @deprecated Use {@link #onReturnExceptionalOrUnwind(VirtualFrame, Throwable, boolean)}
+     *             instead and adjust the wrapper node implementation accordingly.
      */
     @Deprecated
     public void onReturnExceptional(VirtualFrame frame, Throwable exception) {
@@ -184,18 +184,19 @@ public final class ProbeNode extends Node {
     }
 
     /**
-     * Should get invoked if the node did not complete successfully and handle a possible unwind. When a
-     * non-<code>null</code> value is returned, a change of the execution path was requested by an
-     * {@link EventContext#createUnwind(Object) unwind}.
+     * Should get invoked if the node did not complete successfully and handle a possible unwind.
+     * When a non-<code>null</code> value is returned, a change of the execution path was requested
+     * by an {@link EventContext#createUnwind(Object) unwind}.
      *
      * @param exception the exception that occurred during the execution
      * @param frame the current frame of the execution.
      * @param isReturnCalled <code>true</code> when {@link #onReturnValue(VirtualFrame, Object)} was
-     *            called already for this node's execution, <code>false</code> otherwise. This helps to
-     *            assure correct pairing of enter/return notifications.
-     * @return <code>null</code> to proceed to throw of the exception, {@link #UNWIND_ACTION_REENTER} to
-     *         reenter the current node, or an interop value to return that value early from the current
-     *         node (void nodes just return, ignoring the return value).
+     *            called already for this node's execution, <code>false</code> otherwise. This helps
+     *            to assure correct pairing of enter/return notifications.
+     * @return <code>null</code> to proceed to throw of the exception,
+     *         {@link #UNWIND_ACTION_REENTER} to reenter the current node, or an interop value to
+     *         return that value early from the current node (void nodes just return, ignoring the
+     *         return value).
      * @since 0.31
      */
     public Object onReturnExceptionalOrUnwind(VirtualFrame frame, Throwable exception, boolean isReturnCalled) {
@@ -478,8 +479,8 @@ public final class ProbeNode extends Node {
                 throw t;
             } else {
                 /*
-                 * Client Instruments are not allowed to disrupt program execution by throwing exceptions into the
-                 * AST.
+                 * Client Instruments are not allowed to disrupt program execution by throwing
+                 * exceptions into the AST.
                  */
                 exceptionEventForClientInstrument(binding, "ProbeNodeFactory.create", t);
                 return null;
@@ -489,8 +490,8 @@ public final class ProbeNode extends Node {
     }
 
     /**
-     * Handles exceptions from non-language instrumentation code that must not be allowed to alter guest
-     * language execution semantics. Normal response is to log and continue.
+     * Handles exceptions from non-language instrumentation code that must not be allowed to alter
+     * guest language execution semantics. Normal response is to log and continue.
      */
     @TruffleBoundary
     static void exceptionEventForClientInstrument(EventBinding.Source<?> b, String eventName, Throwable t) {
