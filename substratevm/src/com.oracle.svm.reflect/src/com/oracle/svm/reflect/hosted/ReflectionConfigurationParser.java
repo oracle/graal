@@ -29,10 +29,8 @@ import java.io.FileReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -145,7 +143,7 @@ public class ReflectionConfigurationParser {
                 if (methodDescriptor.parameterTypes != null) {
                     reflectionData.register(findMethod(imageClassLoader, clazz, methodDescriptor.name, methodDescriptor.parameterTypes));
                 } else {
-                    reflectionData.register(findMethod(clazz, methodDescriptor.name));
+                    reflectionData.register(findMethods(clazz, methodDescriptor.name));
                 }
                 index++;
             }
@@ -161,33 +159,24 @@ public class ReflectionConfigurationParser {
         }
     }
 
-    private Executable findMethod(Class<?> declaringClass, String methodName) {
-        Executable result = null;
+    private Executable[] findMethods(Class<?> declaringClass, String methodName) {
+        Executable[] methods;
         if (methodName.equals(CONSTRUCTOR_NAME)) {
-            for (Constructor<?> c : declaringClass.getDeclaredConstructors()) {
-                if (result != null) {
-                    throw error("two constructors found: " + result + ", " + c + ". Use property \'parameterTypes\' to disambiguate.");
-                }
-                result = c;
-            }
-            if (result == null) {
+            methods = declaringClass.getDeclaredConstructors();
+            if (methods.length == 0) {
                 throw error("no constructor found: " + declaringClass);
             }
         } else {
-            for (Method m : declaringClass.getDeclaredMethods()) {
-                if (m.getName().equals(methodName)) {
-                    if (result != null) {
-                        throw error("two methods with same name found: " + result + ", " + m + ". Use property \'parameterTypes\' to disambiguate.");
-                    }
-                    result = m;
-                }
-            }
-            if (result == null) {
+            methods = Arrays.stream(declaringClass.getDeclaredMethods())
+                            .filter(m -> methodName.equals(m.getName())).toArray(Executable[]::new);
+            if (methods.length == 0) {
                 throw error("method not found: " + declaringClass + ", method name " + methodName);
             }
         }
-        result.setAccessible(true);
-        return result;
+        for (Executable method : methods) {
+            method.setAccessible(true);
+        }
+        return methods;
     }
 
     private Executable findMethod(ImageClassLoader imageClassLoader, Class<?> declaringClass, String methodName, String[] parameterTypeNames) {
