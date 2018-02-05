@@ -22,7 +22,6 @@
  */
 package com.oracle.svm.core.graal.posix;
 
-import static com.oracle.svm.core.LibCHelper.heapBase;
 import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
@@ -55,11 +54,14 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.MustNotAllocate;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -144,17 +146,24 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native int tearDownIsolateForeignCall(@ConstantNodeParameter ForeignCallDescriptor descriptor);
 
+    public static final String HEAP_BASE = "__svm_heap_base";
+    private static final CGlobalData<PointerBase> heapBaseAccess = CGlobalDataFactory.forSymbol(HEAP_BASE);
+
+    @Uninterruptible(reason = "Called by an uninterruptible method.")
+    static PointerBase heapBase() {
+        return heapBaseAccess.get();
+    }
+
+    @Fold
+    static boolean hasHeapBase() {
+        return ImageSingletons.lookup(CompressEncoding.class).hasBase();
+    }
+
     @Uninterruptible(reason = "Called by an uninterruptible method.")
     private static void clearHeapBase() {
         if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
             writeCurrentVMHeapBase(WordFactory.nullPointer());
         }
-    }
-
-    @Fold
-    static boolean hasHeapBase() {
-        CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
-        return compressEncoding.hasBase();
     }
 
     @Uninterruptible(reason = "Called by an uninterruptible method.")

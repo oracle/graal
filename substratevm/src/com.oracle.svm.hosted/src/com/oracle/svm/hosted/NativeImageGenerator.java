@@ -425,7 +425,7 @@ public class NativeImageGenerator {
                     TargetDescription target = createTarget(platform);
                     OSInterface osInterface = createOSInterface(loader);
                     ObjectLayout objectLayout = new ObjectLayout(target, SubstrateAMD64Backend.getDeoptScatchSpace());
-                    CompressEncoding compressEncoding = new CompressEncoding(0, 0);
+                    CompressEncoding compressEncoding = new CompressEncoding(SubstrateOptions.UseHeapBaseRegister.getValue() ? 1 : 0, 0);
                     ImageSingletons.add(Platform.class, platform);
                     ImageSingletons.add(TargetDescription.class, target);
                     ImageSingletons.add(OSInterface.class, osInterface);
