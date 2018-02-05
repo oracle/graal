@@ -81,16 +81,4 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
     public boolean canDeoptimize() {
         return canDeopt;
     }
-
-    @Override
-    public boolean dataFlowEquals(FixedBinaryNode other) {
-        if (!super.dataFlowEquals(other)) {
-            return false;
-        }
-        if (!(other instanceof IntegerDivRemNode)) {
-            return false;
-        }
-        IntegerDivRemNode otherDivRem = (IntegerDivRemNode) other;
-        return this.getOp() == otherDivRem.getOp() && this.getType() == otherDivRem.getType() && this.canDeoptimize() == otherDivRem.canDeoptimize();
-    }
 }

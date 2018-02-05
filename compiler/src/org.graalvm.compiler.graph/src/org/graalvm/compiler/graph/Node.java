@@ -1195,6 +1195,15 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         return getNodeClass().dataEquals(this, other);
     }
 
+    /**
+     * Determines if this node is equal to the other node while ignoring differences in
+     * {@linkplain Successor control-flow} edges.
+     *
+     */
+    public boolean dataFlowEquals(Node other) {
+        return this == other || nodeClass == other.getNodeClass() && this.valueEquals(other) && nodeClass.equalInputs(this, other);
+    }
+
     public final void pushInputs(NodeStack stack) {
         getNodeClass().pushInputs(this, stack);
     }
