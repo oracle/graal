@@ -129,7 +129,7 @@ public final class RuntimeOptionParser {
      * @param optionPrefix prefix for the runtime option
      */
     private void parseOptionAtRuntime(String arg, String optionPrefix, EconomicMap<OptionKey<?>, Object> values) {
-        OptionParseResult parseResult = SubstrateOptionsParser.parseOption(sortedOptions, arg.substring(optionPrefix.length()), values);
+        OptionParseResult parseResult = SubstrateOptionsParser.parseOption(sortedOptions, arg.substring(optionPrefix.length()), values, optionPrefix);
         if (parseResult.shouldPrintFlags()) {
             SubstrateOptionsParser.printFlags(sortedOptions, null, RuntimeOptionValues.singleton(), "runtime", Log.logStream());
             System.exit(0);
