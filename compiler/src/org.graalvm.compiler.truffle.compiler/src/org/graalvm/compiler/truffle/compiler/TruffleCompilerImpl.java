@@ -456,11 +456,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
     protected abstract InstalledCode createInstalledCode(CompilableTruffleAST compilable);
 
     /**
-     * @see OptimizedAssumptionDependency#unreachabilityDeterminesValidity()
+     * @see OptimizedAssumptionDependency#reachabilityDeterminesValidity()
      *
      * @param installedCode
      */
-    protected boolean unreachabilityDeterminesValidity(InstalledCode installedCode) {
+    protected boolean reachabilityDeterminesValidity(InstalledCode installedCode) {
         return true;
     }
 
@@ -573,8 +573,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                         }
 
                         @Override
-                        public boolean unreachabilityDeterminesValidity() {
-                            return TruffleCompilerImpl.this.unreachabilityDeterminesValidity(installedCode);
+                        public boolean reachabilityDeterminesValidity() {
+                            return TruffleCompilerImpl.this.reachabilityDeterminesValidity(installedCode);
                         }
 
                         @Override

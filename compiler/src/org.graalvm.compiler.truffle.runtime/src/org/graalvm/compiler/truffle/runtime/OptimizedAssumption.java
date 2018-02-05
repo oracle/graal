@@ -64,11 +64,10 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
 
         @Override
         public synchronized void accept(OptimizedAssumptionDependency dep) {
-            if (dep.unreachabilityDeterminesValidity()) {
+            if (dep.reachabilityDeterminesValidity()) {
                 this.weakDependency = new WeakReference<>(dep);
             } else {
                 this.dependency = dep;
-                GraalTruffleRuntime.getRuntime();
             }
             this.notifyAll();
         }
@@ -108,7 +107,6 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
                 OptimizedAssumptionDependency dep = weakDependency.get();
                 return String.format("%x[%s]", hashCode(), dep);
             }
-            // A pending dependency is treated as valid
             return String.format("%x", hashCode());
         }
     }

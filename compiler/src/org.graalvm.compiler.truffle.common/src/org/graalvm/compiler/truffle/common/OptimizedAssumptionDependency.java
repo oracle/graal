@@ -46,14 +46,14 @@ public interface OptimizedAssumptionDependency {
     }
 
     /**
-     * Determines if the reachability of this corresponds with the validity of the referenced
+     * Determines if the reachability of this object corresponds with the validity of the referenced
      * machine code.
      *
      * @return {@code true} if the referenced machine code is guaranteed to be invalid when this
      *         object becomes unreachable, {@code false} if the reachability of this object says
      *         nothing about the validity of the referenced machine code
      */
-    default boolean unreachabilityDeterminesValidity() {
+    default boolean reachabilityDeterminesValidity() {
         return true;
     }
 

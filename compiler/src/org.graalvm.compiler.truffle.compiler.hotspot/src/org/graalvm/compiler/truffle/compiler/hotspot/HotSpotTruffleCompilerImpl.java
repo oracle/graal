@@ -256,7 +256,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
      * depend on.
      */
     @Override
-    protected boolean unreachabilityDeterminesValidity(InstalledCode installedCode) {
+    protected boolean reachabilityDeterminesValidity(InstalledCode installedCode) {
         if (installedCode instanceof HotSpotNmethod) {
             HotSpotNmethod nmethod = (HotSpotNmethod) installedCode;
             if (nmethod.isDefault()) {
