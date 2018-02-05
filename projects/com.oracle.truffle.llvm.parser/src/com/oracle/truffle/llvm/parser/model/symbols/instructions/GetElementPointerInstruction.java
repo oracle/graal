@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -44,13 +44,13 @@ public final class GetElementPointerInstruction extends ValueInstruction {
 
     private SymbolImpl base;
 
-    private final List<SymbolImpl> indices;
+    private final SymbolImpl[] indices;
 
     private final boolean isInbounds;
 
-    private GetElementPointerInstruction(Type type, boolean isInbounds) {
+    private GetElementPointerInstruction(Type type, boolean isInbounds, int numIndices) {
         super(type);
-        this.indices = new ArrayList<>();
+        this.indices = new SymbolImpl[numIndices];
         this.isInbounds = isInbounds;
     }
 
@@ -75,7 +75,7 @@ public final class GetElementPointerInstruction extends ValueInstruction {
     }
 
     public List<SymbolImpl> getIndices() {
-        return Collections.unmodifiableList(indices);
+        return Collections.unmodifiableList(Arrays.asList(indices));
     }
 
     public boolean isInbounds() {
@@ -87,18 +87,18 @@ public final class GetElementPointerInstruction extends ValueInstruction {
         if (base == original) {
             base = replacement;
         }
-        for (int i = 0; i < indices.size(); i++) {
-            if (indices.get(i) == original) {
-                indices.set(i, replacement);
+        for (int i = 0; i < indices.length; i++) {
+            if (indices[i] == original) {
+                indices[i] = replacement;
             }
         }
     }
 
     public static GetElementPointerInstruction fromSymbols(SymbolTable symbols, Type type, int pointer, List<Integer> indices, boolean isInbounds) {
-        final GetElementPointerInstruction inst = new GetElementPointerInstruction(type, isInbounds);
+        final GetElementPointerInstruction inst = new GetElementPointerInstruction(type, isInbounds, indices.size());
         inst.base = symbols.getForwardReferenced(pointer, inst);
-        for (int index : indices) {
-            inst.indices.add(symbols.getForwardReferenced(index, inst));
+        for (int i = 0; i < indices.size(); i++) {
+            inst.indices[i] = symbols.getForwardReferenced(indices.get(i), inst);
         }
         return inst;
     }
