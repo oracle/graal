@@ -1378,7 +1378,7 @@ public class MethodTypeFlowBuilder {
 
             } else if (n instanceof BasicObjectCloneNode) {
                 BasicObjectCloneNode node = (BasicObjectCloneNode) n;
-                BytecodeLocation cloneLabel = bb.analysisPolicy().createAllocationSite(bb, node.getBci(), methodFlow.getMethod());
+                BytecodeLocation cloneLabel = bb.analysisPolicy().createAllocationSite(bb, node.bci(), methodFlow.getMethod());
                 TypeFlowBuilder<?> inputBuilder = state.lookup(node.getObject());
 
                 TypeFlowBuilder<?> cloneBuilder = TypeFlowBuilder.create(bb, node, CloneTypeFlow.class, () -> {

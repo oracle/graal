@@ -97,6 +97,7 @@ import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -755,7 +756,12 @@ public class SnippetTemplate {
                     }
                 }
             }
-            snippetCopy.addDuplicates(snippetGraph.getNodes(), snippetGraph, snippetGraph.getNodeCount(), nodeReplacements);
+            try (InliningLog.UpdateScope updateScope = snippetCopy.getInliningLog().openDefaultUpdateScope()) {
+                UnmodifiableEconomicMap<Node, Node> duplicates = snippetCopy.addDuplicates(snippetGraph.getNodes(), snippetGraph, snippetGraph.getNodeCount(), nodeReplacements);
+                if (updateScope != null) {
+                    snippetCopy.getInliningLog().replaceLog(duplicates, snippetGraph.getInliningLog());
+                }
+            }
 
             debug.dump(DebugContext.INFO_LEVEL, snippetCopy, "Before specialization");
 
@@ -1396,7 +1402,18 @@ public class SnippetTemplate {
             StructuredGraph replaceeGraph = replacee.graph();
             EconomicMap<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
             replacements.put(entryPointNode, AbstractBeginNode.prevBegin(replacee));
-            UnmodifiableEconomicMap<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
+            UnmodifiableEconomicMap<Node, Node> duplicates;
+            try (InliningLog.UpdateScope scope = replaceeGraph.getInliningLog().openUpdateScope((oldNode, newNode) -> {
+                InliningLog log = replaceeGraph.getInliningLog();
+                if (oldNode == null) {
+                    log.trackNewCallsite(newNode);
+                }
+            })) {
+                duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
+                if (scope != null) {
+                    replaceeGraph.getInliningLog().addLog(duplicates, snippet.getInliningLog());
+                }
+            }
             debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After inlining snippet %s", snippet.method());
 
             // Re-wire the control flow graph around the replacee
@@ -1549,7 +1566,18 @@ public class SnippetTemplate {
             StructuredGraph replaceeGraph = replacee.graph();
             EconomicMap<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
             replacements.put(entryPointNode, tool.getCurrentGuardAnchor().asNode());
-            UnmodifiableEconomicMap<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
+            UnmodifiableEconomicMap<Node, Node> duplicates;
+            try (InliningLog.UpdateScope ignored = replaceeGraph.getInliningLog().openUpdateScope((oldNode, newNode) -> {
+                InliningLog log = replaceeGraph.getInliningLog();
+                if (oldNode == null) {
+                    log.trackNewCallsite(newNode);
+                }
+            })) {
+                duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
+                if (ignored != null) {
+                    replaceeGraph.getInliningLog().addLog(duplicates, snippet.getInliningLog());
+                }
+            }
             debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After inlining snippet %s", snippet.method());
 
             FixedWithNextNode lastFixedNode = tool.lastFixedNode();

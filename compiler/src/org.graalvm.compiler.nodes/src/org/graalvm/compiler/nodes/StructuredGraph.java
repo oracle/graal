@@ -39,6 +39,7 @@ import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.JavaMethodContext;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
@@ -343,7 +344,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.speculationLog = speculationLog;
         this.useProfilingInfo = useProfilingInfo;
         this.cancellable = cancellable;
-        this.inliningLog = new InliningLog();
+        this.inliningLog = new InliningLog(rootMethod, options);
         this.callerContext = context;
     }
 
@@ -457,6 +458,12 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return inliningLog;
     }
 
+    public void logInliningTree() {
+        if (GraalOptions.TraceInlining.getValue(getOptions())) {
+            TTY.println(getInliningLog().formatAsTree());
+        }
+    }
+
     /**
      * Creates a copy of this graph.
      *
@@ -471,6 +478,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return copy(newName, duplicationMapCallback, compilationId, debugForCopy);
     }
 
+    @SuppressWarnings("try")
     private StructuredGraph copy(String newName, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback, CompilationIdentifier newCompilationId, DebugContext debugForCopy) {
         AllowAssumptions allowAssumptions = AllowAssumptions.ifNonNull(assumptions);
         StructuredGraph copy = new StructuredGraph(newName,
@@ -491,7 +499,13 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         copy.isAfterExpandLogic = isAfterExpandLogic;
         EconomicMap<Node, Node> replacements = EconomicMap.create(Equivalence.IDENTITY);
         replacements.put(start, copy.start);
-        UnmodifiableEconomicMap<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), replacements);
+        UnmodifiableEconomicMap<Node, Node> duplicates;
+        try (InliningLog.UpdateScope scope = copy.getInliningLog().openDefaultUpdateScope()) {
+            duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), replacements);
+            if (scope != null) {
+                copy.getInliningLog().replaceLog(duplicates, this.getInliningLog());
+            }
+        }
         if (duplicationMapCallback != null) {
             duplicationMapCallback.accept(duplicates);
         }
@@ -951,6 +965,11 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     @Override
     protected void afterRegister(Node node) {
         assert hasValueProxies() || !(node instanceof ValueProxyNode);
+        if (GraalOptions.TraceInlining.getValue(getOptions())) {
+            if (node instanceof Invokable) {
+                ((Invokable) node).updateInliningLogAfterRegister(this);
+            }
+        }
     }
 
     public NodeSourcePosition getCallerContext() {
