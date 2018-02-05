@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.types;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
@@ -40,7 +41,7 @@ public final class StructureType extends AggregateType {
 
     private final String name;
     private final boolean isPacked;
-    private final Type[] types;
+    @CompilationFinal(dimensions = 1) private final Type[] types;
 
     public StructureType(String name, boolean isPacked, Type[] types) {
         this.name = name;
