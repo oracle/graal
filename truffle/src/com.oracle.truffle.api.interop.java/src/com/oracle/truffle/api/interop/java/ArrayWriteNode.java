@@ -61,7 +61,7 @@ abstract class ArrayWriteNode extends Node {
     @TruffleBoundary
     @Specialization(guards = {"isList(receiver)"})
     protected Object doListIntIndex(JavaObject receiver, int index, Object value) {
-        return ((List<Object>) receiver.obj).set(index, value);
+        return JavaInterop.toGuestValue(((List<Object>) receiver.obj).set(index, value), receiver.languageContext);
     }
 
     @TruffleBoundary
