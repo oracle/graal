@@ -179,7 +179,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
             parameterPlugin = new ConstantBindingParameterPlugin(args, providers.getMetaAccess(), snippetReflection);
         }
 
-        EncodedGraph encodedGraph = new EncodedGraph(snippetEncoding, startOffset, snippetObjects, snippetNodeClasses, null, null, trackNodeSourcePosition);
+        EncodedGraph encodedGraph = new EncodedGraph(snippetEncoding, startOffset, snippetObjects, snippetNodeClasses, null, null, null, false, trackNodeSourcePosition);
         try (DebugContext debug = openDebugContext("SVMSnippet_", method)) {
             StructuredGraph result = new StructuredGraph.Builder(options, debug).method(method).trackNodeSourcePosition(trackNodeSourcePosition).build();
             PEGraphDecoder graphDecoder = new PEGraphDecoder(ConfigurationValues.getTarget().arch, result, providers.getMetaAccess(), providers.getConstantReflection(),
