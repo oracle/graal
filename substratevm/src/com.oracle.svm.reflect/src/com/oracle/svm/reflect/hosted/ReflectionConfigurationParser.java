@@ -44,6 +44,8 @@ import com.oracle.shadowed.com.google.gson.GsonBuilder;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
 
+import jdk.vm.ci.meta.MetaUtil;
+
 public class ReflectionConfigurationParser {
 
     private static final String CONSTRUCTOR_NAME = "<init>";
@@ -191,7 +193,15 @@ public class ReflectionConfigurationParser {
     private Executable findMethod(ImageClassLoader imageClassLoader, Class<?> declaringClass, String methodName, String[] parameterTypeNames) {
         Class<?>[] parameterTypes = new Class<?>[parameterTypeNames.length];
         for (int i = 0; i < parameterTypes.length; i++) {
-            parameterTypes[i] = imageClassLoader.findClassByName(parameterTypeNames[i]);
+            String originalTypeName = parameterTypeNames[i];
+            String typeName = originalTypeName;
+            if (typeName.indexOf('[') != -1) { // accept "int[][]", "java.lang.String[]"
+                typeName = MetaUtil.internalNameToJava(MetaUtil.toInternalName(typeName), true, true);
+            }
+            parameterTypes[i] = imageClassLoader.findClassByName(typeName, false);
+            if (parameterTypes[i] == null) {
+                throw error("class not found: " + originalTypeName);
+            }
         }
         try {
             Executable result;

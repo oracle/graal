@@ -43,6 +43,8 @@ import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.jni.access.JNIAccessibleMethodDescriptor;
 import com.oracle.svm.jni.hosted.JNIFeature.Options;
 
+import jdk.vm.ci.meta.MetaUtil;
+
 /**
  * Parses a JNI configuration with classes, methods and fields and registers them wth
  * {@link JNIRuntimeAccess} so they are accessible via JNI at runtime.
@@ -128,10 +130,14 @@ final class JNIConfigurationParser {
             JsonArray array = parameterTypesElement.getAsJsonArray();
             Class<?>[] parameterTypes = new Class<?>[array.size()];
             for (int i = 0; i < array.size(); i++) {
-                String typeName = array.get(i).getAsString();
+                String originalTypeName = array.get(i).getAsString();
+                String typeName = originalTypeName;
+                if (typeName.indexOf('[') != -1) { // accept "int[][]", "java.lang.String[]"
+                    typeName = MetaUtil.internalNameToJava(MetaUtil.toInternalName(originalTypeName), true, true);
+                }
                 parameterTypes[i] = loader.findClassByName(typeName, false);
                 if (parameterTypes[i] == null) {
-                    throw new JsonParseException("Could not find type \"" + typeName + "\"");
+                    throw new JsonParseException("Could not find type \"" + originalTypeName + "\"");
                 }
             }
             try {
