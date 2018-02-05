@@ -94,7 +94,7 @@ public final class Debugger {
         this.env = env;
         this.msgNodes = new ObjectStructures.MessageNodes();
         SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(DebuggerTags.AlwaysHalt.class).build();
-        this.alwaysHaltBreakpoint = new Breakpoint(BreakpointLocation.ANY, filter, false);
+        this.alwaysHaltBreakpoint = new Breakpoint(BreakpointLocation.ANY, filter, SuspendAnchor.BEFORE, false);
         this.alwaysHaltBreakpoint.setEnabled(true);
     }
 

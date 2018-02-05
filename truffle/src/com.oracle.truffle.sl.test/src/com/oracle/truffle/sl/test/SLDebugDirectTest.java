@@ -66,6 +66,7 @@ import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -382,7 +383,7 @@ public class SLDebugDirectTest {
             Assert.assertEquals(line, suspendedSourceSection.getStartLine());
             Assert.assertEquals(code, suspendedSourceSection.getCharacters());
 
-            Assert.assertEquals(isBefore, suspendedEvent.isHaltedBefore());
+            Assert.assertEquals(isBefore, suspendedEvent.getSuspendAnchor() == SuspendAnchor.BEFORE);
             final DebugStackFrame frame = suspendedEvent.getTopStackFrame();
             assertEquals(name, frame.getName());
 

@@ -79,7 +79,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * </li>
  *
  * <li>Method {@link #getReturnValue()} describes a local result when the thread is suspended just
- * {@link #isHaltedBefore() after} a frame.</li>
+ * {@link SuspendAnchor#AFTER after} the code source section.</li>
  * </ul>
  * </p>
  * <h4>Next debugging action</h4>
@@ -224,10 +224,27 @@ public final class SuspendedEvent {
      * This method is thread-safe..
      *
      * @since 0.14
+     * @deprecated use {@link #getSuspendAnchor()} instead
      */
+    @Deprecated
     public boolean isHaltedBefore() {
         verifyValidState(true);
         return location == SteppingLocation.BEFORE_STATEMENT;
+    }
+
+    /**
+     * Returns where, within the guest language {@link #getSourceSection() source section}, the
+     * suspended position is.
+     *
+     * @since 0.32
+     */
+    public SuspendAnchor getSuspendAnchor() {
+        verifyValidState(true);
+        if (location == SteppingLocation.BEFORE_STATEMENT) {
+            return SuspendAnchor.BEFORE;
+        } else {
+            return SuspendAnchor.AFTER;
+        }
     }
 
     /**
@@ -242,8 +259,8 @@ public final class SuspendedEvent {
 
     /**
      * Returns the return value of the currently executed source location. Returns <code>null</code>
-     * if the execution is suspended {@link #isHaltedBefore() before} a guest language location. The
-     * returned value is <code>null</code> if an exception occurred during execution of the
+     * if the execution is suspended {@link SuspendAnchor#BEFORE before} a guest language location.
+     * The returned value is <code>null</code> if an exception occurred during execution of the
      * instrumented statement. The debug value remains valid event if the current execution was
      * suspend.
      * <p>
