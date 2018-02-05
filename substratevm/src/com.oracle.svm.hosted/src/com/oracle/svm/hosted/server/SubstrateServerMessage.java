@@ -47,12 +47,12 @@ class SubstrateServerMessage {
     }
 
     public enum ServerCommand {
-        version,  // command to get the current version of the server
-        stop,     // stop server command
-        build,    // build image command
-        abort,    // abort compilation
-        s,        // exit status (short name for efficiency)
-        e,        // standard error (short name for efficiency
-        o         // standard output (short name for efficiency)
+        GET_VERSION,
+        STOP_SERVER,
+        BUILD_IMAGE,
+        ABORT_BUILD,
+        SEND_STATUS,
+        WRITE_ERR,
+        WRITE_OUT
     }
 }
