@@ -51,7 +51,7 @@ class SubstrateServerMessage {
         stop,     // stop server command
         build,    // build image command
         abort,    // abort compilation
-        s,        // standard output (short name for efficiency)
+        s,        // exit status (short name for efficiency)
         e,        // standard error (short name for efficiency
         o         // standard output (short name for efficiency)
     }

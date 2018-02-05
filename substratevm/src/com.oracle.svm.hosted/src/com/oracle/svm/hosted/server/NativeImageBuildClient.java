@@ -103,6 +103,7 @@ public class NativeImageBuildClient {
                                 selectedConsumer = err;
                                 break;
                             case s:
+                                /* Exit with ServerCommand.s (exit status sent by server) */
                                 return Integer.valueOf(serverCommand.payload);
                             default:
                                 throw new RuntimeException("Invalid command sent by the image build server: " + serverCommand.command);
@@ -111,6 +112,8 @@ public class NativeImageBuildClient {
                             selectedConsumer.accept(serverCommand.payload);
                         }
                     }
+                    /* Report failure if communication does not end with ServerCommand.s */
+                    return EXIT_FAIL;
                 }
             }
         } catch (IOException e) {
