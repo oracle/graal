@@ -337,7 +337,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public org.graalvm.polyglot.SourceSection createSourceSection(Object vmObject, org.graalvm.polyglot.Source source, SourceSection sectionImpl) {
-            return ((VMObject) vmObject).getAPIAccess().newSourceSection(source, sectionImpl);
+            org.graalvm.polyglot.Source polyglotSource = source;
+            if (polyglotSource == null) {
+                com.oracle.truffle.api.source.Source sourceImpl = sectionImpl.getSource();
+                polyglotSource = ((VMObject) vmObject).getAPIAccess().newSource(sourceImpl.getLanguage(), sourceImpl);
+            }
+            return ((VMObject) vmObject).getAPIAccess().newSourceSection(polyglotSource, sectionImpl);
         }
 
         @Override
@@ -775,6 +780,17 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                 return Objects.toString(value);
             }
             return PolyglotValue.getValueInfo(context, value);
+        }
+
+        @Override
+        public PolyglotException wrapGuestException(String languageId, Throwable e) {
+            PolyglotContextImpl pc = PolyglotContextImpl.current();
+            if (pc == null) {
+                return null;
+            }
+            PolyglotLanguageContext context = pc.findLanguageContext(languageId, null, true);
+            context.ensureInitialized(null);
+            return (PolyglotException) PolyglotImpl.wrapGuestException(context, e);
         }
 
         @Override

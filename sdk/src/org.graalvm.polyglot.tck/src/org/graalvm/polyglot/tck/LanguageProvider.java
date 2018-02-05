@@ -25,7 +25,9 @@
 package org.graalvm.polyglot.tck;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.ServiceLoader;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -150,4 +152,22 @@ public interface LanguageProvider {
      * @since 0.30
      */
     Collection<? extends Source> createInvalidSyntaxScripts(Context context);
+
+    /**
+     * Creates a collection of inline code snippets.
+     * <p>
+     * This method is optional, it should be implemented if
+     * <code>TruffleLanguage.parse(InlineParsingRequest)</code> is implemented. It returns an empty
+     * list by default.
+     * <p>
+     * The JavaScript sample implementation creating inline code snippets:
+     * {@codesnippet LanguageProviderSnippets#JsSnippets#createInlineScripts}
+     *
+     * @param context the context for a guest language code literal evaluation
+     * @return A collection of inline code snippets.
+     * @since 0.32
+     */
+    default Collection<? extends InlineSnippet> createInlineScripts(Context context) {
+        return Collections.emptyList();
+    }
 }

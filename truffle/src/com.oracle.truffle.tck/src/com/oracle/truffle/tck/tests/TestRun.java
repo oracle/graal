@@ -31,11 +31,12 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.tck.Snippet;
 import org.graalvm.polyglot.tck.TypeDescriptor;
 
-public final class TestRun {
+public class TestRun {
 
     private final Entry<String, ? extends Snippet> snippet;
     private final List<Entry<String, ? extends Snippet>> arguments;
@@ -47,6 +48,10 @@ public final class TestRun {
         Objects.requireNonNull(arguments);
         this.snippet = snippet;
         this.arguments = arguments;
+    }
+
+    String getID() {
+        return snippet.getKey();
     }
 
     Snippet getSnippet() {
@@ -75,7 +80,7 @@ public final class TestRun {
         if (obj == this) {
             return true;
         }
-        if (obj == null || obj.getClass() != TestRun.class) {
+        if (obj == null || obj.getClass() != getClass()) {
             return false;
         }
         final TestRun otherRun = (TestRun) obj;
