@@ -333,7 +333,7 @@ final class NativeImageServer extends NativeImage {
                                 showWarning("Cannot acquire new server port despite removing " + victim);
                             }
                         } else {
-                            showWarning("Server limit reached and no server to remove found");
+                            showWarning("Native image server limit. Use options -server{-list,shutdown}-all to fix the problem.");
                         }
                     }
                     if (serverPort >= 0) {
