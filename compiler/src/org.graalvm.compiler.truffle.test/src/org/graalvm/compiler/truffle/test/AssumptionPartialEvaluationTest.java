@@ -22,13 +22,17 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.junit.Assert;
-import org.junit.Test;
+import java.lang.ref.WeakReference;
+
+import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
+import org.graalvm.compiler.truffle.runtime.OptimizedAssumption;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.AssumptionCutsBranchTestNode;
 import org.graalvm.compiler.truffle.test.nodes.ConstantWithAssumptionTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
+import org.junit.Assert;
+import org.junit.Test;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
@@ -65,8 +69,7 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
     }
 
     /**
-     * This tests whether a valid Assumption does successfully cut of the branch that is not
-     * executed.
+     * Tests whether a valid {@link Assumption} cuts off a non-executed branch.
      */
     @Test
     public void assumptionBranchCutoff() {
@@ -79,5 +82,68 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
             Assert.assertEquals(0, compilable.call(new Object[0]));
         }
         Assert.assertNull(result.getChildNode());
+    }
+
+    static class TestOptimizedAssumptionDependency implements OptimizedAssumptionDependency {
+        boolean valid = true;
+
+        @Override
+        public void invalidate() {
+            valid = false;
+        }
+
+        @Override
+        public boolean isValid() {
+            return valid;
+        }
+    }
+
+    @Test
+    public void testAssumptionDependencyManagement() {
+        OptimizedAssumption assumption = (OptimizedAssumption) Truffle.getRuntime().createAssumption();
+        Assert.assertEquals(0, assumption.countDependencies());
+
+        TestOptimizedAssumptionDependency[] deps = new TestOptimizedAssumptionDependency[100];
+        for (int i = 0; i < deps.length; i++) {
+            TestOptimizedAssumptionDependency dep = new TestOptimizedAssumptionDependency();
+            assumption.registerDependency().accept(dep);
+            deps[i] = dep;
+        }
+        Assert.assertEquals(deps.length, assumption.countDependencies());
+
+        int invalidated = 0;
+        for (int i = 0; i < deps.length; i++) {
+            if (i % 2 == 0) {
+                deps[i].invalidate();
+                invalidated++;
+            }
+        }
+        assumption.removeInvalidDependencies();
+        Assert.assertEquals(invalidated, assumption.countDependencies());
+
+        for (int i = 0; i < deps.length; i++) {
+            deps[i].invalidate();
+        }
+        assumption.removeInvalidDependencies();
+        Assert.assertEquals(0, assumption.countDependencies());
+
+        WeakReference<TestOptimizedAssumptionDependency> dep = new WeakReference<>(new TestOptimizedAssumptionDependency());
+        if (dep.get() != null) {
+            Assert.assertTrue(dep.get().reachabilityDeterminesValidity());
+            assumption.registerDependency().accept(dep.get());
+            Assert.assertEquals(1, assumption.countDependencies());
+            int attempts = 10;
+            while (dep.get() != null && attempts-- > 0) {
+                System.gc();
+            }
+            if (dep.get() == null) {
+                assumption.removeInvalidDependencies();
+                Assert.assertEquals(0, assumption.countDependencies());
+            } else {
+                // System.gc is not guaranteed to do anything
+                // so we can end up here
+            }
+        }
+
     }
 }
