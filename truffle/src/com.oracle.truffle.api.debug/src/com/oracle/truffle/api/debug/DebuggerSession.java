@@ -163,6 +163,7 @@ public final class DebuggerSession implements Closeable {
 
     enum SteppingLocation {
         AFTER_CALL,
+        AFTER_STATEMENT,
         BEFORE_STATEMENT
     }
 
@@ -850,29 +851,33 @@ public final class DebuggerSession implements Closeable {
 
     private List<DebuggerNode> collectDebuggerNodes(DebuggerNode source) {
         List<DebuggerNode> nodes = new ArrayList<>();
-        if (source.getSteppingLocation() == SteppingLocation.BEFORE_STATEMENT) {
-            EventContext context = source.getContext();
-
+        SuspendAnchor suspendAnchor = (source.getSteppingLocation() == SteppingLocation.BEFORE_STATEMENT) ? SuspendAnchor.BEFORE : SuspendAnchor.AFTER;
+        EventContext context = source.getContext();
+        synchronized (breakpoints) {
+            for (Breakpoint b : breakpoints) {
+                if (suspendAnchor == b.getSuspendAnchor()) {
+                    DebuggerNode node = b.lookupNode(context);
+                    if (node != null) {
+                        nodes.add(node);
+                    }
+                }
+            }
+        }
+        synchronized (debugger) {
+            for (Breakpoint b : debugger.getRawBreakpoints()) {
+                if (suspendAnchor == b.getSuspendAnchor()) {
+                    DebuggerNode node = b.lookupNode(context);
+                    if (node != null) {
+                        nodes.add(node);
+                    }
+                }
+            }
+        }
+        if (suspendAnchor == SuspendAnchor.BEFORE) {
             if (stepping.get()) {
                 EventBinding<? extends ExecutionEventNodeFactory> localStatementBinding = statementBinding;
                 if (localStatementBinding != null) {
                     DebuggerNode node = (DebuggerNode) context.lookupExecutionEventNode(localStatementBinding);
-                    if (node != null) {
-                        nodes.add(node);
-                    }
-                }
-            }
-            synchronized (breakpoints) {
-                for (Breakpoint b : breakpoints) {
-                    DebuggerNode node = b.lookupNode(context);
-                    if (node != null) {
-                        nodes.add(node);
-                    }
-                }
-            }
-            synchronized (debugger) {
-                for (Breakpoint b : debugger.getRawBreakpoints()) {
-                    DebuggerNode node = b.lookupNode(context);
                     if (node != null) {
                         nodes.add(node);
                     }
@@ -883,11 +888,17 @@ public final class DebuggerSession implements Closeable {
                 nodes.add(node);
             }
         } else {
-            assert source.getSteppingLocation() == SteppingLocation.AFTER_CALL;
-            // there is only one binding that can lead to a after event
+            assert source.getSteppingLocation() == SteppingLocation.AFTER_CALL ||
+                            source.getSteppingLocation() == SteppingLocation.AFTER_STATEMENT;
+            // there is only one binding that can lead to an after event
             if (stepping.get()) {
-                assert source.getContext().lookupExecutionEventNode(callBinding) == source;
-                nodes.add(source);
+                EventBinding<? extends ExecutionEventNodeFactory> localCallBinding = callBinding;
+                if (localCallBinding != null) {
+                    DebuggerNode node = (DebuggerNode) context.lookupExecutionEventNode(localCallBinding);
+                    if (node != null) {
+                        nodes.add(node);
+                    }
+                }
             }
         }
         return nodes;

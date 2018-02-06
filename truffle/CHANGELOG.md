@@ -2,6 +2,11 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 0.32
+
+* Added [SuspendAnchor](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/debug/SuspendAnchor.html) enum class that describes where, within a guest language source section, the suspend position is and [Breakpoint.Builder.suspendAnchor()](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/debug/Breakpoint.Builder.html#suspendAnchor-com.oracle.truffle.api.debug.SuspendAnchor-) to be able to break before or after the source section.
+* Deprecated `SuspendedEvent.isHaltedBefore()`, [SuspendedEvent.getSuspendAnchor()](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/debug/SuspendedEvent.html#getSuspendAnchor--) is to be used instead.
+
 ## Version 0.31
 
 * Removed deprecated `com.oracle.truffle.api.source.LineLocation` class.

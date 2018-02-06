@@ -40,6 +40,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.SourceSection;
@@ -53,6 +54,7 @@ public class BreakpointTest extends AbstractDebugTest {
         Breakpoint breakpoint = Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(1).build();
         assertEquals(0, breakpoint.getHitCount());
         assertEquals(0, breakpoint.getIgnoreCount());
+        assertEquals(SuspendAnchor.BEFORE, breakpoint.getSuspendAnchor());
         assertFalse(breakpoint.isDisposed());
         assertTrue(breakpoint.isEnabled());
         assertFalse(breakpoint.isResolved());
@@ -92,6 +94,7 @@ public class BreakpointTest extends AbstractDebugTest {
             startEval(testSource);
             expectSuspended((SuspendedEvent event) -> {
                 assertSame(breakpoint2, event.getBreakpoints().iterator().next());
+                assertSame(SuspendAnchor.BEFORE, event.getSuspendAnchor());
             });
             assertTrue(breakpoint2.isResolved());
             expectDone();
@@ -104,6 +107,40 @@ public class BreakpointTest extends AbstractDebugTest {
             assertTrue(breakpoint2.isResolved());
             assertTrue(breakpoint3.isResolved());
         }
+    }
+
+    @Test
+    public void testBreakpointAfter() {
+        Source testSource = testSource("ROOT(\n" +
+                        "STATEMENT,\n" +
+                        "STATEMENT(CONSTANT(10)))");
+        Breakpoint breakpoint2 = Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(2).suspendAnchor(SuspendAnchor.AFTER).build();
+        Breakpoint breakpoint3a = Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(3).suspendAnchor(SuspendAnchor.BEFORE).build();
+        Breakpoint breakpoint3b = Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(3).suspendAnchor(SuspendAnchor.AFTER).build();
+        assertEquals(SuspendAnchor.AFTER, breakpoint2.getSuspendAnchor());
+        try (DebuggerSession session = startSession()) {
+            session.install(breakpoint2);
+            session.install(breakpoint3a);
+            session.install(breakpoint3b);
+
+            startEval(testSource);
+            expectSuspended((SuspendedEvent event) -> {
+                assertSame(breakpoint2, event.getBreakpoints().iterator().next());
+                assertSame(SuspendAnchor.AFTER, event.getSuspendAnchor());
+                assertEquals("Null", event.getReturnValue().as(String.class));
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                assertSame(breakpoint3a, event.getBreakpoints().iterator().next());
+                assertSame(SuspendAnchor.BEFORE, event.getSuspendAnchor());
+                assertEquals("null", event.getReturnValue().as(String.class));
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                assertSame(breakpoint3b, event.getBreakpoints().iterator().next());
+                assertSame(SuspendAnchor.AFTER, event.getSuspendAnchor());
+                assertEquals("10", event.getReturnValue().as(String.class));
+            });
+        }
+        expectDone();
     }
 
     @Test

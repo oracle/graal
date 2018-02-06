@@ -177,7 +177,7 @@ public class SuspendedEventTest extends AbstractDebugTest {
                 run(() -> event.getSession());
                 run(() -> event.getSourceSection());
                 run(() -> event.getBreakpoints());
-                run(() -> event.isHaltedBefore());
+                run(() -> event.getSuspendAnchor());
                 run(() -> event.toString());
 
                 run(() -> {
