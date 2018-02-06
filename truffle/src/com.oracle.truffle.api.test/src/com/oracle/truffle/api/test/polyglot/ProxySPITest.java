@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
@@ -114,6 +115,7 @@ public class ProxySPITest {
             assertEmpty(Message.KEYS, proxyInner);
             assertUnsupported(Message.READ, proxyInner);
             assertUnsupported(Message.WRITE, proxyInner);
+            assertUnsupported(Message.REMOVE, proxyInner);
             assertUnsupported(Message.TO_NATIVE, proxyInner);
             assertUnsupported(Message.UNBOX, proxyInner);
             assertUnsupported(Message.createInvoke(0), proxyInner);
@@ -198,27 +200,27 @@ public class ProxySPITest {
     }
 
     @Test
+    public void testArrayElementRemove() throws Throwable {
+        Context context = Context.create();
+        final int size = 42;
+        ArrayList<Object> list = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+            list.add(i);
+        }
+        ProxyArray proxyOuter = ProxyArray.fromList(list);
+        eval(context, proxyOuter, (proxyInner) -> {
+            assertEquals(size, Message.GET_SIZE, proxyInner);
+            assertEquals(true, Message.REMOVE, proxyInner, 10);
+            assertEquals(size - 1, Message.GET_SIZE, proxyInner);
+            return null;
+        });
+    }
+
+    @Test
     public void testProxyObject() throws Throwable {
         Context context = Context.create();
-        ProxyObject proxyOuter = new ProxyObject() {
-            final Map<String, Value> values = new HashMap<>();
-
-            public void putMember(String key, Value value) {
-                values.put(key, value);
-            }
-
-            public boolean hasMember(String key) {
-                return values.containsKey(key);
-            }
-
-            public ProxyArray getMemberKeys() {
-                return ProxyArray.fromArray(values.keySet().toArray());
-            }
-
-            public Object getMember(String key) {
-                return values.get(key);
-            }
-        };
+        Map<String, Object> values = new HashMap<>();
+        ProxyObject proxyOuter = ProxyObject.fromMap(values);
         eval(context, proxyOuter, (proxyInner) -> {
             assertEquals(true, Message.HAS_KEYS, proxyInner);
             assertEmpty(Message.KEYS, proxyInner);
@@ -248,6 +250,9 @@ public class ProxySPITest {
             assertEquals(false, Message.HAS_SIZE, proxyInner);
             assertEquals(false, Message.IS_POINTER, proxyInner);
             assertEquals(0, Message.KEY_INFO, proxyInner);
+
+            assertEquals(true, Message.REMOVE, proxyInner, "a");
+            assertEmpty(Message.KEYS, proxyInner);
             return null;
         });
     }
@@ -482,6 +487,16 @@ public class ProxySPITest {
             throw new TestError();
         }
 
+        @Override
+        public boolean remove(long index) {
+            throw new TestError();
+        }
+
+        @Override
+        public boolean removeMember(String key) {
+            throw new TestError();
+        }
+
         public Object get(long index) {
             throw new TestError();
         }
@@ -508,6 +523,7 @@ public class ProxySPITest {
             assertHostError(Message.READ, proxyInner, 42);
             assertHostError(Message.WRITE, proxyInner, "", 42);
             assertHostError(Message.WRITE, proxyInner, 42, 42);
+            assertHostError(Message.REMOVE, proxyInner, 10);
             assertHostError(Message.UNBOX, proxyInner);
             assertHostError(Message.createInvoke(0), proxyInner, "");
             assertHostError(Message.createExecute(0), proxyInner);

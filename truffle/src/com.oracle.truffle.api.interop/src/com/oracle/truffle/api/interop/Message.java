@@ -154,6 +154,38 @@ public abstract class Message {
     public static final Message WRITE = Write.INSTANCE;
 
     /**
+     * Message to remove a field. The
+     * {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) target} created for this
+     * message accepts the object to modify as a
+     * {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame) receiver} and one
+     * {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame) argument} identifying a
+     * field to remove - e.g. either {@link String} or a {@link Number} - if removal of an array
+     * element at particular index is requested.
+     * <p>
+     * If the object does not support the {@link #REMOVE} message, an
+     * {@link UnsupportedMessageException} has to be thrown.
+     *
+     * If the object does not contain a property for a given identifier, an
+     * {@link UnknownIdentifierException} has to be thrown.
+     * <p>
+     * Use following style to construct field removal message:
+     *
+     * <pre>
+     * {@link ForeignAccess}.{@link ForeignAccess#sendRemove(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object) sendRemove}(
+     *   {@link Message#WRITE}.{@link Message#createNode()},  receiver, nameOfTheField);
+     * </pre>
+     *
+     * Where <code>receiver</code> is the {@link TruffleObject foreign object} to access and
+     * <code>nameOfTheField</code> is the name (or index) of its field.
+     * <p>
+     * To achieve good performance it is essential to cache/keep reference to the
+     * {@link Message#createNode() created node}.
+     *
+     * @since 0.32
+     */
+    public static final Message REMOVE = Remove.INSTANCE;
+
+    /**
      * Creates a non-object oriented execution message. In contrast to {@link #createInvoke(int)}
      * messages, which are more suitable for dealing with object oriented style of programming,
      * messages created by this method are more suitable for execution where one can explicitly
@@ -656,6 +688,9 @@ public abstract class Message {
         if (Message.WRITE == message) {
             return "WRITE"; // NOI18N
         }
+        if (Message.REMOVE == message) {
+            return "REMOVE"; // NOI18N
+        }
         if (Message.UNBOX == message) {
             return "UNBOX"; // NOI18N
         }
@@ -717,6 +752,8 @@ public abstract class Message {
                 return Message.READ;
             case "WRITE":
                 return Message.WRITE;
+            case "REMOVE":
+                return Message.REMOVE;
             case "UNBOX":
                 return Message.UNBOX;
             case "GET_SIZE":

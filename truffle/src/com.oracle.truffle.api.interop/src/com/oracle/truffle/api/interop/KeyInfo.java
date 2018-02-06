@@ -35,6 +35,7 @@ package com.oracle.truffle.api.interop;
  * <li>2. bit: Writability of the key ({@link Message#WRITE} is supported)</li>
  * <li>3. bit: Invocability of the key ({@link Message#createInvoke(int)} is supported)</li>
  * <li>4. bit: Internal attribute of the key (see an internal argument to {@link Message#KEYS})</li>
+ * <li>5. bit: Removability of the key ({@link Message#REMOVE} is supported)</li>
  * </ul>
  * <p>
  * When a readable or writable flag is <code>true</code>, it does not necessarily guarantee that
@@ -54,6 +55,7 @@ public final class KeyInfo {
     private static final int WRITABLE = 1 << 2;
     private static final int INVOCABLE = 1 << 3;
     private static final int INTERNAL = 1 << 4;
+    private static final int REMOVABLE = 1 << 5;
 
     private KeyInfo() {
     }
@@ -114,6 +116,15 @@ public final class KeyInfo {
     }
 
     /**
+     * Test if removable flag is on.
+     *
+     * @since 0.32
+     */
+    public static boolean isRemovable(int infoBits) {
+        return (infoBits & REMOVABLE) != 0;
+    }
+
+    /**
      * A builder of bit flags. An instance of this class can be reused for multiple key info bits
      * {@link #build() creation}.
      *
@@ -164,6 +175,16 @@ public final class KeyInfo {
          */
         public Builder setInternal(boolean readable) {
             setBit(4, readable);
+            return this;
+        }
+
+        /**
+         * Set removability flag.
+         *
+         * @since 0.32
+         */
+        public Builder setRemovable(boolean removable) {
+            setBit(5, removable);
             return this;
         }
 

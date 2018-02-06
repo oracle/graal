@@ -267,6 +267,37 @@ public final class ForeignAccess {
     }
 
     /**
+     * Sends a {@link Message#REMOVE REMOVE message} to the foreign receiver object by executing the
+     * <code> removeNode </code>.
+     *
+     * @param removeNode the node created by {@link Message#createNode()}
+     * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
+     *            method
+     * @param identifier name of the property to be removed
+     * @return <code>true</code> if the property was successfully removed, <code>false</code>
+     *         otherwise
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
+     *             {@link Message#createNode() message represented} by <code>readNode</code>
+     * @throws UnknownIdentifierException if the <code>receiver</code> does not allow removing a
+     *             property for the given <code>identifier</code>
+     * @since 0.32
+     */
+    public static boolean sendRemove(Node removeNode, TruffleObject receiver, Object identifier)
+                    throws UnknownIdentifierException, UnsupportedMessageException {
+        try {
+            return (boolean) ((InteropAccessNode) removeNode).execute(receiver, identifier);
+        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw e;
+        } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("Unexpected exception caught.", e);
+        }
+    }
+
+    /**
      * Sends an {@link Message#UNBOX UNBOX message} to the foreign receiver object by executing the
      * <code> unboxNode </code>.
      *
@@ -930,6 +961,17 @@ public final class ForeignAccess {
         }
 
         /**
+         * Handles {@link Message#REMOVE} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.32
+         */
+        default CallTarget accessRemove() {
+            return null;
+        }
+
+        /**
          * Handles {@link Message#createExecute(int)} messages.
          *
          * @param argumentsLength number of parameters the messages has been created for
@@ -1277,6 +1319,8 @@ public final class ForeignAccess {
                         return factory.accessUnbox();
                     case Write.HASH:
                         return factory.accessWrite();
+                    case Remove.HASH:
+                        return factory.accessRemove();
                     case Keys.HASH:
                         return factory.accessKeys();
                     case KeyInfoMsg.HASH:

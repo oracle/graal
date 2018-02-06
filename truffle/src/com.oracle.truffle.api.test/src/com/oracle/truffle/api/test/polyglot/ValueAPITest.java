@@ -235,6 +235,17 @@ public class ValueAPITest {
     }
 
     @Test
+    public void testListRemove() {
+        List<Object> list = new ArrayList<>(Arrays.asList("a", "b", 42, 43));
+        Value vlist = context.asValue(list);
+        assertEquals(4, vlist.getArraySize());
+        boolean success = vlist.removeArrayElement(1);
+        assertTrue(success);
+        assertEquals(3, list.size());
+        assertEquals(3, vlist.getArraySize());
+    }
+
+    @Test
     public void testComplexGenericCoercion() {
         TypeLiteral<List<Map<Integer, Map<String, Object[]>>>> literal = new TypeLiteral<List<Map<Integer, Map<String, Object[]>>>>() {
         };
@@ -305,12 +316,31 @@ public class ValueAPITest {
 
         Map<String, Object> map = new HashMap<>();
         map.put("foobar", "baz");
+        map.put("foobar2", "baz2");
         objectCoercionTest(ProxyObject.fromMap(map), Map.class,
                         (v) -> assertEquals("baz", v.get("foobar")));
+        objectCoercionTest(ProxyObject.fromMap(map), Map.class, (v) -> {
+            assertNull(v.remove("notAMember"));
+            assertEquals("baz", v.remove("foobar"));
+            assertFalse(v.remove("foobar2", "baz"));
+            assertFalse(v.remove("foobar", "baz2"));
+            assertTrue(v.remove("foobar2", "baz2"));
+            assertTrue(map.isEmpty());
+            map.put("foobar", "baz");
+            map.put("foobar2", "baz2");
+        });
 
         ProxyArray array = ProxyArray.fromArray(42, 42, 42);
         objectCoercionTest(array, List.class,
                         (v) -> assertEquals(42, v.get(2)));
+        List<Object> arrayList = new ArrayList<>();
+        ProxyArray list = ProxyArray.fromList(arrayList);
+        objectCoercionTest(list, List.class, (v) -> {
+            arrayList.addAll(Arrays.asList(41, 42));
+            assertEquals(42, v.remove(1));
+            assertTrue(v.remove((Object) 41));
+            assertFalse(v.remove((Object) 14));
+        });
 
         ArrayElements arrayElements = new ArrayElements();
         arrayElements.array.add(42);
@@ -902,12 +932,18 @@ public class ValueAPITest {
                         "Invalid array index 1 for array '[asdf]'(language: Java, type: java.lang.String[]).");
         assertFails(() -> v.setArrayElement(1L, null), IndexOutOfBoundsException.class,
                         "Invalid array index 1 for array '[asdf]'(language: Java, type: java.lang.String[]).");
+        assertFails(() -> v.removeArrayElement(0), UnsupportedOperationException.class,
+                        "Unsupported operation Value.removeArrayElement(long, Object) for '[asdf]'(language: Java, type: java.lang.String[]).");
+        assertFails(() -> v.removeMember("a"), UnsupportedOperationException.class,
+                        "Unsupported operation Value.removeMember(String, Object) for '[asdf]'(language: Java, type: java.lang.String[]).");
 
         List<Object> list = v.as(List.class);
         assertFails(() -> list.get(1), IndexOutOfBoundsException.class,
                         "Invalid index 1 for List<Object> '[asdf]'(language: Java, type: java.lang.String[]).");
         assertFails(() -> list.set(1, null), IndexOutOfBoundsException.class,
                         "Invalid index 1 for List<Object> '[asdf]'(language: Java, type: java.lang.String[]).");
+        assertFails(() -> list.remove(0), UnsupportedOperationException.class,
+                        "Unsupported operation remove for List<Object> '[asdf]'(language: Java, type: java.lang.String[]).");
 
         List<?> stringList = v.as(STRING_LIST);
         assertFails(() -> stringList.get(1), IndexOutOfBoundsException.class,
@@ -933,6 +969,12 @@ public class ValueAPITest {
                         "Unsupported operation Value.setArrayElement(long, Object) for ''(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasArrayElements().");
         assertFails(() -> notAnArray.getArraySize(), UnsupportedOperationException.class,
                         "Unsupported operation Value.getArraySize() for ''(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasArrayElements().");
+
+        Value rv = context.asValue(new ArrayList<>(Arrays.asList(new String[]{"a", "b", "c"})));
+        assertFails(() -> rv.removeArrayElement(3), IndexOutOfBoundsException.class,
+                        "Invalid array index 3 for array '[a, b, c]'(language: Java, type: java.util.ArrayList).");
+        assertFails(() -> rv.removeMember("a"), UnsupportedOperationException.class,
+                        "Unsupported operation Value.removeMember(String, Object) for '[a, b, c]'(language: Java, type: java.util.ArrayList).");
     }
 
     private static final TypeLiteral<Map<String, String>> STRING_MAP = new TypeLiteral<Map<String, String>>() {
@@ -957,6 +999,8 @@ public class ValueAPITest {
                         "Unsupported operation Value.getMember(String) for ''(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasMembers().");
         assertFails(() -> noMembers.putMember("", null), UnsupportedOperationException.class,
                         "Unsupported operation Value.putMember(String, Object) for ''(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasMembers().");
+        assertFails(() -> noMembers.removeMember(""), UnsupportedOperationException.class,
+                        "Unsupported operation Value.removeMember(String, Object) for ''(language: Java, type: java.lang.String).");
 
         assertEquals(0, noMembers.getMemberKeys().size());
         assertFalse(noMembers.hasMembers());
@@ -980,6 +1024,8 @@ public class ValueAPITest {
 
         assertFails(() -> v.getMember("notAMember"), IllegalArgumentException.class,
                         "Invalid member key 'notAMember' for object 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
+        assertFails(() -> v.removeMember("notAMember"), UnsupportedOperationException.class,
+                        "Unsupported operation Value.removeMember(String, Object) for 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
 
         @SuppressWarnings("unchecked")
         Map<Object, Object> map = v.as(Map.class);
@@ -1010,6 +1056,11 @@ public class ValueAPITest {
         assertFails(() -> map.put("notAMember", ""), IllegalArgumentException.class,
                         "Invalid or unmodifiable value for identifier 'notAMember' for Map<Object, Object> 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
 
+        Map<Object, Object> rmap = new HashMap<>();
+        rmap.put("value", 43);
+        Value rv = context.asValue(rmap);
+        assertFails(() -> rv.removeMember("notAMember"), IllegalArgumentException.class,
+                        "Invalid member key 'notAMember' for object '{value=43}'(language: Java, type: java.util.HashMap).");
     }
 
     @FunctionalInterface

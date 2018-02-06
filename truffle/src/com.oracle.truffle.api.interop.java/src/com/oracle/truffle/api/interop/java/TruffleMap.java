@@ -30,6 +30,7 @@ import static com.oracle.truffle.api.interop.ForeignAccess.sendHasSize;
 import static com.oracle.truffle.api.interop.ForeignAccess.sendKeyInfo;
 import static com.oracle.truffle.api.interop.ForeignAccess.sendKeys;
 import static com.oracle.truffle.api.interop.ForeignAccess.sendRead;
+import static com.oracle.truffle.api.interop.ForeignAccess.sendRemove;
 import static com.oracle.truffle.api.interop.ForeignAccess.sendWrite;
 
 import java.lang.reflect.Type;
@@ -40,6 +41,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -114,6 +116,12 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
         return (V) cache.put.call(languageContext, guestObject, key, value);
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public V remove(Object key) {
+        return (V) cache.remove.call(languageContext, guestObject, key);
+    }
+
     private final class LazyEntries extends AbstractSet<Entry<K, V>> {
 
         private final List<?> props;
@@ -140,7 +148,7 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
 
         @Override
         public int size() {
-            return keysSize + elemSize;
+            return ((props != null) ? props.size() : keysSize) + elemSize;
         }
 
         @Override
@@ -148,32 +156,60 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
             return containsKey(o);
         }
 
+        @Override
+        @SuppressWarnings("unchecked")
+        public boolean remove(Object o) {
+            if (o instanceof Entry) {
+                Entry<Object, Object> e = (Entry<Object, Object>) o;
+                return (boolean) cache.removeBoolean.call(languageContext, guestObject, e.getKey(), e.getValue());
+            } else {
+                return false;
+            }
+        }
+
         private final class LazyKeysIterator implements Iterator<Entry<K, V>> {
+            private final int size;
             private int index;
+            private int currentIndex = -1;
 
             LazyKeysIterator() {
+                size = (props != null ? props.size() : keysSize);
                 index = 0;
             }
 
             @Override
             public boolean hasNext() {
-                return index < keysSize;
+                return index < size;
             }
 
             @SuppressWarnings("unchecked")
             @Override
             public Entry<K, V> next() {
                 if (hasNext()) {
+                    currentIndex = index;
                     Object key = props.get(index++);
                     return new TruffleEntry((K) (key));
                 } else {
                     throw new NoSuchElementException();
                 }
             }
+
+            @Override
+            public void remove() {
+                if (currentIndex >= 0) {
+                    props.remove(currentIndex);
+                    currentIndex = -1;
+                    index--;
+                } else {
+                    throw new IllegalStateException("No current entry.");
+                }
+            }
+
         }
 
         private final class ElementsIterator implements Iterator<Entry<K, V>> {
             private int index;
+            private boolean hasCurrentEntry;
 
             ElementsIterator() {
                 index = 0;
@@ -195,16 +231,29 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
                         key = index;
                     }
                     index++;
+                    hasCurrentEntry = true;
                     return new TruffleEntry((K) cache.keyClass.cast(key));
                 } else {
                     throw new NoSuchElementException();
                 }
             }
+
+            @Override
+            public void remove() {
+                if (hasCurrentEntry) {
+                    cache.removeBoolean.call(languageContext, guestObject, cache.keyClass.cast(index - 1));
+                    hasCurrentEntry = false;
+                } else {
+                    throw new IllegalStateException("No current entry.");
+                }
+            }
+
         }
 
         private final class CombinedIterator implements Iterator<Map.Entry<K, V>> {
             private final Iterator<Map.Entry<K, V>> elemIter = new ElementsIterator();
             private final Iterator<Map.Entry<K, V>> keysIter = new LazyKeysIterator();
+            private boolean isElemCurrent;
 
             public boolean hasNext() {
                 return elemIter.hasNext() || keysIter.hasNext();
@@ -212,12 +261,24 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
 
             public Entry<K, V> next() {
                 if (elemIter.hasNext()) {
+                    isElemCurrent = true;
                     return elemIter.next();
                 } else if (keysIter.hasNext()) {
+                    isElemCurrent = false;
                     return keysIter.next();
                 }
                 throw new NoSuchElementException();
             }
+
+            @Override
+            public void remove() {
+                if (isElemCurrent) {
+                    elemIter.remove();
+                } else {
+                    keysIter.remove();
+                }
+            }
+
         }
     }
 
@@ -268,6 +329,8 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
         final CallTarget entrySet;
         final CallTarget get;
         final CallTarget put;
+        final CallTarget remove;
+        final CallTarget removeBoolean;
         final CallTarget containsKey;
         final CallTarget apply;
 
@@ -282,6 +345,8 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
             this.containsKey = initializeCall(new ContainsKey(this));
             this.entrySet = initializeCall(new EntrySet(this));
             this.put = initializeCall(new Put(this));
+            this.remove = initializeCall(new Remove(this));
+            this.removeBoolean = initializeCall(new RemoveBoolean(this));
             this.apply = initializeCall(new Apply(this));
         }
 
@@ -539,6 +604,114 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
                     throw JavaInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "put");
                 } else {
                     throw JavaInteropErrors.invalidMapIdentifier(languageContext, receiver, cache.keyClass, cache.valueType, key);
+                }
+            }
+
+        }
+
+        private static class Remove extends TruffleMapNode {
+
+            @Child private Node keyInfo = Message.KEY_INFO.createNode();
+            @Child private Node read = Message.READ.createNode();
+            @Child private Node remove = Message.REMOVE.createNode();
+            @Child private ToJavaNode toHost = ToJavaNode.create();
+
+            Remove(TruffleMapCache cache) {
+                super(cache);
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "remove";
+            }
+
+            @Override
+            protected Object executeImpl(Object languageContext, TruffleObject receiver, Object[] args, int offset) {
+                Object key = args[offset];
+                Object result = null;
+
+                if (isValidKey(receiver, key)) {
+                    int info = sendKeyInfo(keyInfo, receiver, key);
+                    if (KeyInfo.isReadable(info)) {
+                        try {
+                            result = toHost.execute(sendRead(read, receiver, key), cache.valueClass, cache.valueType, languageContext);
+                        } catch (UnknownIdentifierException e) {
+                        } catch (UnsupportedMessageException e) {
+                        }
+                    }
+                    try {
+                        boolean success = sendRemove(remove, receiver, key);
+                        if (!success) {
+                            return null;
+                        }
+                    } catch (UnknownIdentifierException e) {
+                        return null;
+                    } catch (UnsupportedMessageException e) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw JavaInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "remove");
+                    }
+                    return cache.valueClass.cast(result);
+                }
+                CompilerDirectives.transferToInterpreter();
+                if (cache.keyClass.isInstance(key) && (key instanceof Number || key instanceof String)) {
+                    throw JavaInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "remove");
+                } else {
+                    return null;
+                }
+            }
+
+        }
+
+        private static class RemoveBoolean extends TruffleMapNode {
+
+            @Child private Node keyInfo = Message.KEY_INFO.createNode();
+            @Child private Node read = Message.READ.createNode();
+            @Child private Node remove = Message.REMOVE.createNode();
+            @Child private ToJavaNode toHost = ToJavaNode.create();
+
+            RemoveBoolean(TruffleMapCache cache) {
+                super(cache);
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "remove";
+            }
+
+            @Override
+            protected Object executeImpl(Object languageContext, TruffleObject receiver, Object[] args, int offset) {
+                Object key = args[offset];
+
+                if (isValidKey(receiver, key)) {
+                    if (args.length > offset + 1) {
+                        Object value = args[offset + 1];
+                        Object result = null;
+                        int info = sendKeyInfo(keyInfo, receiver, key);
+                        if (KeyInfo.isReadable(info)) {
+                            try {
+                                result = toHost.execute(sendRead(read, receiver, key), cache.valueClass, cache.valueType, languageContext);
+                            } catch (UnknownIdentifierException e) {
+                            } catch (UnsupportedMessageException e) {
+                            }
+                        }
+                        if (!Objects.equals(value, result)) {
+                            return false;
+                        }
+                    }
+                    try {
+                        return sendRemove(remove, receiver, key);
+                    } catch (UnknownIdentifierException e) {
+                        return false;
+                    } catch (UnsupportedMessageException e) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw JavaInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "remove");
+                    }
+                }
+                CompilerDirectives.transferToInterpreter();
+                if (cache.keyClass.isInstance(key) && (key instanceof Number || key instanceof String)) {
+                    throw JavaInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "remove");
+                } else {
+                    return false;
                 }
             }
 
