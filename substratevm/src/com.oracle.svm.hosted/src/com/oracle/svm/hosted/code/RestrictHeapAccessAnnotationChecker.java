@@ -30,17 +30,29 @@ import java.util.Map;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
+import org.graalvm.compiler.nodes.java.AccessArrayNode;
+import org.graalvm.compiler.nodes.java.AccessFieldNode;
 import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.code.RestrictHeapAccessCallees.RestrictionInfo;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 public final class RestrictHeapAccessAnnotationChecker {
 
@@ -57,37 +69,60 @@ public final class RestrictHeapAccessAnnotationChecker {
 
     /** Entry point method. */
     public static void check(DebugContext debug, HostedUniverse universe, Collection<HostedMethod> methods) {
-        final AllocationWarningVisitor visitor = new AllocationWarningVisitor(universe);
+        final RestrictHeapAccessWarningVisitor visitor = new RestrictHeapAccessWarningVisitor(universe);
         for (HostedMethod method : methods) {
             visitor.visitMethod(debug, method);
         }
     }
 
-    /** Does this graph contain an allocation node? */
-    static boolean hasAllocation(StructuredGraph graph) {
-        if (graph == null) {
-            return false;
-        }
-        for (Node node : graph.getNodes()) {
-            if (isAllocationNode(node)) {
-                return true;
+    static Node checkViolatingNode(StructuredGraph graph, Access access) {
+        if (graph != null) {
+            for (Node node : graph.getNodes()) {
+                if (!isViolatingNode(node, access)) {
+                    return node;
+                }
             }
+        }
+        return null;
+    }
+
+    private static boolean isViolatingNode(Node node, Access access) {
+        assert access != Access.UNRESTRICTED : "does not require checks";
+        return !isAllocationNode(node) && (access != Access.NO_HEAP_ACCESS || !isHeapAccess(node));
+    }
+
+    private static boolean isAllocationNode(Node node) {
+        return (node instanceof AbstractNewObjectNode || node instanceof NewMultiArrayNode);
+    }
+
+    private static boolean isHeapAccess(Node node) {
+        if (node instanceof AccessFieldNode || node instanceof AccessArrayNode || node instanceof UnsafeAccessNode) {
+            return true;
+        } else if (node instanceof ConstantNode) {
+            Constant constant = ((ConstantNode) node).getValue();
+            if (constant instanceof JavaConstant) {
+                /*
+                 * Loading an object constant other than null is suspicious and can cause pointer
+                 * compression or uncompression which can be undesirable in some contexts, for
+                 * example when the heap is not set up.
+                 */
+                JavaConstant javaConstant = (JavaConstant) constant;
+                return javaConstant.getJavaKind() == JavaKind.Object && javaConstant.isNonNull();
+            }
+        } else if (node instanceof Invoke) {
+            /* Virtual invokes do type checks and vtable lookups that access the heap */
+            return ((Invoke) node).callTarget().invokeKind() == InvokeKind.Virtual;
         }
         return false;
     }
 
-    /** Is this node an allocation node? */
-    static boolean isAllocationNode(Node node) {
-        return ((node instanceof AbstractNewObjectNode) || (node instanceof NewMultiArrayNode));
-    }
-
-    /** A HostedMethod visitor that checks for allocation. */
-    static class AllocationWarningVisitor {
+    /** A HostedMethod visitor that checks for violations of heap access restrictions. */
+    static class RestrictHeapAccessWarningVisitor {
 
         private final HostedUniverse universe;
         private final RestrictHeapAccessCallees restrictHeapAccessCallees;
 
-        AllocationWarningVisitor(HostedUniverse universe) {
+        RestrictHeapAccessWarningVisitor(HostedUniverse universe) {
             this.universe = universe;
             this.restrictHeapAccessCallees = ImageSingletons.lookup(RestrictHeapAccessCallees.class);
         }
@@ -95,12 +130,13 @@ public final class RestrictHeapAccessAnnotationChecker {
         @SuppressWarnings("try")
         public void visitMethod(DebugContext debug, HostedMethod method) {
             /* If this is not a method that must not allocate, then everything is fine. */
-            if (!restrictHeapAccessCallees.mustNotAllocate(method)) {
+            RestrictionInfo info = restrictHeapAccessCallees.getRestrictionInfo(method);
+            if (info == null || info.getAccess() == Access.UNRESTRICTED) {
                 return;
             }
             /* Look through the graph for this method and see if it allocates. */
             final StructuredGraph graph = method.compilationInfo.getGraph();
-            if (RestrictHeapAccessAnnotationChecker.hasAllocation(graph)) {
+            if (RestrictHeapAccessAnnotationChecker.checkViolatingNode(graph, info.getAccess()) != null) {
                 try (DebugContext.Scope s = debug.scope("RestrictHeapAccessAnnotationChecker", graph, method, this)) {
                     postRestrictHeapAccessWarning(method.getWrapped(), restrictHeapAccessCallees.getCallerMap());
                 } catch (Throwable t) {
@@ -109,49 +145,52 @@ public final class RestrictHeapAccessAnnotationChecker {
             }
         }
 
-        private void postRestrictHeapAccessWarning(AnalysisMethod allocatingCallee, Map<AnalysisMethod, RestrictHeapAccessCallees.InvocationInfo> callerMap) {
+        private void postRestrictHeapAccessWarning(AnalysisMethod violatingCallee, Map<AnalysisMethod, RestrictionInfo> callerMap) {
             if (Options.PrintRestrictHeapAccessWarnings.getValue()) {
+                Access violatedAccess = callerMap.get(violatingCallee).getAccess();
                 String message = "@RestrictHeapAccess warning: ";
 
                 /* Walk from callee to caller building a list I can walk from caller to callee. */
-                final Deque<RestrictHeapAccessCallees.InvocationInfo> invocationList = new ArrayDeque<>();
-                walkInvocationPath(allocatingCallee, callerMap, (AnalysisMethod element) -> {
-                    final RestrictHeapAccessCallees.InvocationInfo invocationInfo = callerMap.get(element);
-                    if (!invocationInfo.isNullInstance()) {
-                        invocationList.addFirst(invocationInfo);
-                    }
-                });
-
-                /* Walk from caller to callee building a list to the nearest allocating method. */
-                final Deque<RestrictHeapAccessCallees.InvocationInfo> allocationList = new ArrayDeque<>();
-                for (RestrictHeapAccessCallees.InvocationInfo element : invocationList) {
+                final Deque<RestrictionInfo> callChain = new ArrayDeque<>();
+                AnalysisMethod current = violatingCallee;
+                while (current != null) {
+                    final RestrictionInfo info = callerMap.get(current);
+                    callChain.addFirst(info);
+                    current = info.getCaller();
+                }
+                /* Walk from caller to callee building a list to the nearest violating method. */
+                final Deque<RestrictionInfo> allocationList = new ArrayDeque<>();
+                for (RestrictionInfo element : callChain) {
                     allocationList.addLast(element);
-                    if (hasHostedAllocation(element.getCallee())) {
+                    if (checkHostedViolatingNode(element.getMethod(), element.getAccess()) != null) {
                         break;
                     }
                 }
-                if (allocationList.size() == 0) {
-                    final StackTraceElement allocationStackTraceElement = getAllocationStackTraceElement(allocatingCallee);
+                assert !allocationList.isEmpty();
+                if (allocationList.size() == 1) {
+                    final StackTraceElement allocationStackTraceElement = getViolatingStackTraceElement(violatingCallee, violatedAccess);
                     if (allocationStackTraceElement != null) {
-                        message += "Blacklisted method allocates directly: '" + allocationStackTraceElement.toString() + "'.";
+                        message += "Restricted method '" + allocationStackTraceElement.toString() + "' directly violates restriction " + violatedAccess + ".";
                     } else {
-                        message += "Blacklisted method allocates directly: '" + allocatingCallee.format("%H.%n(%p)") + "'";
+                        message += "Restricted method '" + violatingCallee.format("%H.%n(%p)") + "' directly violates restriction " + violatedAccess + ".";
                     }
                 } else {
-                    final AnalysisMethod first = allocationList.getFirst().getCaller();
-                    final AnalysisMethod last = allocationList.getLast().getCallee();
-                    message += "Blacklisted method: '" + first.format("%h.%n(%p)") + "' calls '" +
-                                    last.format("%h.%n(%p)") + "' that allocates.";
+                    final RestrictionInfo first = allocationList.getFirst();
+                    final RestrictionInfo last = allocationList.getLast();
+                    message += "Restricted method: '" + first.getMethod().format("%h.%n(%p)") + "' calls '" +
+                                    last.getMethod().format("%h.%n(%p)") + "' that violates restriction " + violatedAccess + ".";
                     if (Options.PrintRestrictHeapAccessPath.getValue()) {
                         message += "\n" + "  [Path:";
-                        for (RestrictHeapAccessCallees.InvocationInfo element : allocationList) {
-                            message += "\n" + "    " + element.getInvocationStackTraceElement().toString();
+                        for (RestrictionInfo element : allocationList) {
+                            if (element != first) { // first element has no caller
+                                message += "\n" + "    " + element.getInvocationStackTraceElement().toString();
+                            }
                         }
-                        final StackTraceElement allocationStackTraceElement = getAllocationStackTraceElement(last);
+                        final StackTraceElement allocationStackTraceElement = getViolatingStackTraceElement(last.getMethod(), last.getAccess());
                         if (allocationStackTraceElement != null) {
                             message += "\n" + "    " + allocationStackTraceElement.toString();
                         } else {
-                            message += "\n" + "    " + last.format("%H.%n(%p)");
+                            message += "\n" + "    " + last.getMethod().format("%H.%n(%p)");
                         }
                         message += "]";
                     }
@@ -160,60 +199,31 @@ public final class RestrictHeapAccessAnnotationChecker {
             }
         }
 
+        Node checkHostedViolatingNode(AnalysisMethod method, Access access) {
+            final HostedMethod hostedMethod = universe.optionalLookup(method);
+            if (hostedMethod != null) {
+                final StructuredGraph graph = hostedMethod.compilationInfo.getGraph();
+                return checkViolatingNode(graph, access);
+            }
+            return null;
+        }
+
         /**
-         * Walk up the invocation path and visit each callee.
+         * Look through the graph of the corresponding HostedMethod to see if it allocates.
          */
-        private static void walkInvocationPath(AnalysisMethod callee, Map<AnalysisMethod, RestrictHeapAccessCallees.InvocationInfo> callerMap, AnalysisMethodVisitor visitor) {
-            for (AnalysisMethod current = callee; current != null; current = callerMap.get(current).getCaller()) {
-                visitor.visitAnalysisMethod(current);
-            }
-        }
-
-        boolean hasHostedAllocation(AnalysisMethod method) {
-            boolean result = false;
+        private StackTraceElement getViolatingStackTraceElement(AnalysisMethod method, Access access) {
             final HostedMethod hostedMethod = universe.optionalLookup(method);
             if (hostedMethod != null) {
                 final StructuredGraph graph = hostedMethod.compilationInfo.getGraph();
-                if (graph != null) {
-                    for (Node node : graph.getNodes()) {
-                        if (RestrictHeapAccessAnnotationChecker.isAllocationNode(node)) {
-                            result = true;
-                            break;
-                        }
+                Node node = checkViolatingNode(graph, access);
+                if (node != null) {
+                    final NodeSourcePosition sourcePosition = node.getNodeSourcePosition();
+                    if (sourcePosition != null && sourcePosition.getBCI() != -1) {
+                        return method.asStackTraceElement(sourcePosition.getBCI());
                     }
                 }
             }
-            return result;
-        }
-
-        /** Look through the graph of the corresponding HostedMethod to see if it allocates. */
-        private StackTraceElement getAllocationStackTraceElement(AnalysisMethod method) {
-            StackTraceElement result = null;
-            final HostedMethod hostedMethod = universe.optionalLookup(method);
-            /* This level of paranoia about nulls is ugly, but necessary. */
-            if (hostedMethod != null) {
-                final StructuredGraph graph = hostedMethod.compilationInfo.getGraph();
-                if (graph != null) {
-                    for (Node node : graph.getNodes()) {
-                        if (RestrictHeapAccessAnnotationChecker.isAllocationNode(node)) {
-                            final NodeSourcePosition sourcePosition = node.getNodeSourcePosition();
-                            if (sourcePosition != null) {
-                                final int bci = sourcePosition.getBCI();
-                                if (bci != -1) {
-                                    result = method.asStackTraceElement(bci);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            return result;
-        }
-
-        @FunctionalInterface
-        interface AnalysisMethodVisitor {
-            void visitAnalysisMethod(AnalysisMethod method);
+            return null;
         }
     }
 }
