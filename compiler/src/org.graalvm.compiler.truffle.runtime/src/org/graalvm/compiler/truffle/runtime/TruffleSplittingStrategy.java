@@ -35,8 +35,10 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplitting;
@@ -307,8 +309,21 @@ final class TruffleSplittingStrategy {
         return reporter;
     }
 
+    static void newPolluteCall(Node node) {
+        if (TruffleCompilerOptions.getValue(TruffleTraceSplittingSummary)) {
+            final Map<Class<? extends Node>, Integer> pollutedNodes = getReporter().pollutedNodes;
+            final Class<? extends Node> aClass = node.getClass();
+            if (pollutedNodes.containsKey(aClass)) {
+                pollutedNodes.put(aClass, pollutedNodes.get(aClass) + 1);
+            } else {
+                pollutedNodes.put(aClass, 1);
+            }
+        }
+    }
+
     static class SplitStatisticsReporter extends Thread {
         final Set<GraalTVMCI.EngineData> engineDataSet = new HashSet<>();
+        final Map<Class<? extends Node>, Integer> pollutedNodes = new HashMap<>();
         int splitCount;
         int forcedSplitCount;
         int splitNodeCount;
@@ -318,6 +333,7 @@ final class TruffleSplittingStrategy {
         int wastedTargetCount;
 
         static final String D_FORMAT = "[truffle] %-40s: %10d";
+        static final String D_LONG_FORMAT = "[truffle] %-120s: %10d";
         static final String P_FORMAT = "[truffle] %-40s: %9.2f%%";
 
         @Override
@@ -335,6 +351,9 @@ final class TruffleSplittingStrategy {
             System.out.println(String.format(P_FORMAT, "Percent of split nodes wasted", (wastedNodeCount * 100.0) / (splitNodeCount)));
             System.out.println(String.format(D_FORMAT, "Targets wasted due to splitting", wastedTargetCount));
             System.out.println(String.format(D_FORMAT, "Total nodes executed", totalExecutedNodeCount));
+            for (Map.Entry<Class<? extends Node>, Integer> entry : pollutedNodes.entrySet()) {
+                System.out.println(String.format(D_LONG_FORMAT, entry.getKey(), entry.getValue()));
+            }
         }
     }
 }
