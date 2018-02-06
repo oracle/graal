@@ -119,43 +119,99 @@ public class InliningUtil extends ValueMergeUtil {
         printInlining(info.methodAt(0), info.invoke(), inliningDepth, success, msg, args);
     }
 
+    /**
+     * @see #printInlining
+     */
     private static void printInlining(final ResolvedJavaMethod method, final Invoke invoke, final int inliningDepth, final boolean success, final String msg, final Object... args) {
         if (HotSpotPrintInlining.getValue(invoke.asNode().getOptions())) {
             Util.printInlining(method, invoke.bci(), inliningDepth, success, msg, args);
         }
     }
 
-    public static void logInlinedMethod(InlineInfo info, int inliningDepth, boolean allowLogging, String msg, Object... args) {
-        logInliningDecision(info, inliningDepth, allowLogging, true, msg, args);
+    /**
+     * Trace a decision to inline a method.
+     *
+     * This prints a HotSpot-style inlining message to the console, and it also logs the decision to the logging stream.
+     *
+     * Phases that perform inlining should use this method to trace the inlining decisions,
+     * and use the {@link #traceNotInlinedMethod} methods only for debugging purposes.
+     */
+    public static void traceInlinedMethod(InlineInfo info, int inliningDepth, boolean allowLogging, String msg, Object... args) {
+        traceMethod(info, inliningDepth, allowLogging, true, msg, args);
     }
 
-    public static void logNotInlinedMethod(InlineInfo info, int inliningDepth, String msg, Object... args) {
-        logInliningDecision(info, inliningDepth, true, false, msg, args);
+    /**
+     * Trace a decision to inline a method.
+     *
+     * This prints a HotSpot-style inlining message to the console, and it also logs the decision to the logging stream.
+     *
+     * Phases that perform inlining should use this method to trace the inlining decisions,
+     * and use the {@link #traceNotInlinedMethod} methods only for debugging purposes.
+     */
+    public static void traceInlinedMethod(Invoke invoke, int inliningDepth, boolean allowLogging, ResolvedJavaMethod method, String msg, Object... args) {
+        traceMethod(invoke, inliningDepth, allowLogging, true, method, msg, args);
     }
 
-    public static void logInliningDecision(InlineInfo info, int inliningDepth, boolean allowLogging, boolean success, String msg, final Object... args) {
+    /**
+     * Trace a decision to not inline a method.
+     *
+     * This prints a HotSpot-style inlining message to the console, and it also logs the decision to the logging stream.
+     *
+     * Phases that perform inlining should use this method to trace the inlining decisions,
+     * and use the {@link #traceNotInlinedMethod} methods only for debugging purposes.
+     */
+    public static void traceNotInlinedMethod(InlineInfo info, int inliningDepth, String msg, Object... args) {
+        traceMethod(info, inliningDepth, true, false, msg, args);
+    }
+
+    /**
+     * Trace a decision about not inlining a method.
+     *
+     * This prints a HotSpot-style inlining message to the console, and it also logs the decision to the logging stream.
+     *
+     * Phases that perform inlining should use this method to trace the inlining decisions,
+     * and use the {@link #traceNotInlinedMethod} methods only for debugging purposes.
+     */
+    public static void traceNotInlinedMethod(Invoke invoke, int inliningDepth, ResolvedJavaMethod method, String msg, Object... args) {
+        traceMethod(invoke, inliningDepth, true, false, method, msg, args);
+    }
+
+    private static void traceMethod(Invoke invoke, int inliningDepth, boolean allowLogging, boolean success, ResolvedJavaMethod method, String msg, Object... args) {
+        if (allowLogging) {
+            DebugContext debug = invoke.asNode().getDebug();
+            printInlining(method, invoke, inliningDepth, success, msg, args);
+            if (shouldLogMethod(debug)) {
+                String methodString = methodName(method, invoke);
+                logMethod(debug, methodString, success, msg, args);
+            }
+        }
+    }
+
+    private static void traceMethod(InlineInfo info, int inliningDepth, boolean allowLogging, boolean success, String msg, final Object... args) {
         if (allowLogging) {
             printInlining(info, inliningDepth, success, msg, args);
             DebugContext debug = info.graph().getDebug();
-            if (shouldLogInliningDecision(debug)) {
-                logInliningDecision(debug, methodName(info), success, msg, args);
+            if (shouldLogMethod(debug)) {
+                logMethod(debug, methodName(info), success, msg, args);
             }
         }
     }
 
-    @SuppressWarnings("try")
+    /**
+     * Output a generic inlining decision to the logging stream (e.g. inlining termination condition).
+     *
+     * Used for debugging purposes.
+     */
     public static void logInliningDecision(DebugContext debug, final String msg, final Object... args) {
-        try (DebugContext.Scope s = debug.scope(inliningDecisionsScopeString)) {
-            // Can't use log here since we are varargs
-            if (debug.isLogEnabled()) {
-                debug.logv(msg, args);
-            }
-        }
+        logInlining(debug, msg, args);
     }
 
+    /**
+     * Output a decision about not inlining a method to the logging stream, for debugging purposes.
+     */
     public static void logNotInlinedMethod(Invoke invoke, String msg) {
         DebugContext debug = invoke.asNode().getDebug();
-        if (shouldLogInliningDecision(debug)) {
+        if (shouldLogMethod(debug)) {
             String methodString = invoke.toString();
             if (invoke.callTarget() == null) {
                 methodString += " callTarget=null";
@@ -165,33 +221,30 @@ public class InliningUtil extends ValueMergeUtil {
                     methodString += " " + targetName;
                 }
             }
-            logInliningDecision(debug, methodString, false, msg, new Object[0]);
+            logMethod(debug, methodString, false, msg, new Object[0]);
         }
     }
 
-    public static void logNotInlined(Invoke invoke, int inliningDepth, ResolvedJavaMethod method, String msg) {
-        logNotInlinedInvoke(invoke, inliningDepth, method, msg, new Object[0]);
-    }
-
-    public static void logNotInlinedInvoke(Invoke invoke, int inliningDepth, ResolvedJavaMethod method, String msg, Object... args) {
-        DebugContext debug = invoke.asNode().getDebug();
-        printInlining(method, invoke, inliningDepth, false, msg, args);
-        if (shouldLogInliningDecision(debug)) {
-            String methodString = methodName(method, invoke);
-            logInliningDecision(debug, methodString, false, msg, args);
-        }
-    }
-
-    private static void logInliningDecision(DebugContext debug, final String methodString, final boolean success, final String msg, final Object... args) {
+    private static void logMethod(DebugContext debug, final String methodString, final boolean success, final String msg, final Object... args) {
         String inliningMsg = "inlining " + methodString + ": " + msg;
         if (!success) {
             inliningMsg = "not " + inliningMsg;
         }
-        logInliningDecision(debug, inliningMsg, args);
+        logInlining(debug, inliningMsg, args);
     }
 
     @SuppressWarnings("try")
-    public static boolean shouldLogInliningDecision(DebugContext debug) {
+    private static void logInlining(DebugContext debug, final String msg, final Object... args) {
+        try (DebugContext.Scope s = debug.scope(inliningDecisionsScopeString)) {
+            // Can't use log here since we are varargs
+            if (debug.isLogEnabled()) {
+                debug.logv(msg, args);
+            }
+        }
+    }
+
+    @SuppressWarnings("try")
+    private static boolean shouldLogMethod(DebugContext debug) {
         try (DebugContext.Scope s = debug.scope(inliningDecisionsScopeString)) {
             return debug.isLogEnabled();
         }
