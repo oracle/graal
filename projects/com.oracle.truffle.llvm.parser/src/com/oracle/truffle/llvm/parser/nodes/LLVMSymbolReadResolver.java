@@ -263,13 +263,13 @@ public final class LLVMSymbolReadResolver {
 
             final LLVMArithmeticInstructionType arithmeticInstructionType = LLVMBitcodeTypeHelper.toArithmeticInstructionType(operation.getOperator());
             if (arithmeticInstructionType != null) {
-                resolvedNode = runtime.getNodeFactory().createArithmeticOperation(runtime, lhs, rhs, arithmeticInstructionType, baseType, new Flag[0]);
+                resolvedNode = runtime.getNodeFactory().createArithmeticOperation(runtime, lhs, rhs, arithmeticInstructionType, baseType, Flag.EMPTY_ARRAY);
                 return;
             }
 
             final LLVMLogicalInstructionKind logicalInstructionType = LLVMBitcodeTypeHelper.toLogicalInstructionType(operation.getOperator());
             if (logicalInstructionType != null) {
-                resolvedNode = runtime.getNodeFactory().createLogicalOperation(runtime, lhs, rhs, logicalInstructionType, baseType, new Flag[0]);
+                resolvedNode = runtime.getNodeFactory().createLogicalOperation(runtime, lhs, rhs, logicalInstructionType, baseType, Flag.EMPTY_ARRAY);
                 return;
             }
 

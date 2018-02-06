@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.memory;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -47,20 +46,19 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
 
     @Child private LLVMToNativeNode convert1 = LLVMToNativeNode.createToNativeWithTarget();
     @Child private LLVMToNativeNode convert2 = LLVMToNativeNode.createToNativeWithTarget();
+    private final LLVMMemory memory = getLLVMMemory();
 
     @Specialization
-    protected Object case1(VirtualFrame frame, Object target, Object source, int length,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return memmove(memory, convert1.executeWithTarget(frame, target), convert2.executeWithTarget(frame, source), length);
+    protected Object case1(VirtualFrame frame, Object target, Object source, int length) {
+        return memmove(convert1.executeWithTarget(frame, target), convert2.executeWithTarget(frame, source), length);
     }
 
     @Specialization
-    protected Object case2(VirtualFrame frame, Object target, Object source, long length,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return memmove(memory, convert1.executeWithTarget(frame, target), convert2.executeWithTarget(frame, source), length);
+    protected Object case2(VirtualFrame frame, Object target, Object source, long length) {
+        return memmove(convert1.executeWithTarget(frame, target), convert2.executeWithTarget(frame, source), length);
     }
 
-    private Object memmove(LLVMMemory memory, LLVMAddress target, LLVMAddress source, long length) {
+    private Object memmove(LLVMAddress target, LLVMAddress source, long length) {
         if (inJava) {
             if (length <= MAX_JAVA_LEN) {
                 long targetPointer = target.getVal();

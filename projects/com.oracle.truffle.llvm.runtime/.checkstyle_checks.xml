@@ -93,7 +93,7 @@
       <metadata name="net.sf.eclipsecs.core.lastEnabledSeverity" value="inherit"/>
     </module>
     <module name="StaticVariableName">
-      <property name="format" value="^[A-Za-z][a-zA-Z0-9]*$"/>
+      <property name="format" value="^[A-Za-z][a-zA-Z0-9_]*$"/>
     </module>
     <module name="EmptyForInitializerPad"/>
     <module name="EmptyForIteratorPad"/>
