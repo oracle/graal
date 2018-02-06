@@ -116,6 +116,11 @@ def suite_native_image_root(suite=None):
         suite = svm_suite()
     return join(svmbuild_dir(suite), 'native-image-root')
 
+def remove_existing_symlink(target_path):
+    if islink(target_path):
+        os.remove(target_path)
+    return target_path
+
 def relsymlink(target_path, dest_path):
     os.symlink(os.path.relpath(target_path, dirname(dest_path)), dest_path)
 
@@ -148,9 +153,7 @@ def native_image_extract(dists, subdir, native_image_root):
 
 def native_image_option_properties(option_kind, option_flag, native_image_root):
     target_dir = join(native_image_root, option_kind, option_flag)
-    target_path = join(target_dir, 'native-image.properties')
-    if islink(target_path):
-        os.remove(target_path)
+    target_path = remove_existing_symlink(join(target_dir, 'native-image.properties'))
 
     option_properties = None
     for svm_suite in svmSuites:
@@ -174,6 +177,12 @@ def native_image_path(native_image_root):
     native_image_name = 'native-image'
     native_image_dir = join(native_image_root, platform_subdir(), 'bin')
     return join(native_image_dir, native_image_name)
+
+def native_image_symlink_path(native_image_root, platform_specific=True):
+    symlink_path = join(svm_suite().dir, basename(native_image_path(native_image_root)))
+    if platform_specific:
+        symlink_path += '-' + platform_subdir()
+    return symlink_path
 
 def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution, librarySupportDistribution):
     if not allow_native_image_build:
@@ -247,11 +256,12 @@ def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution
     for clibrary_path in clibrary_paths():
         copy_tree(clibrary_path, join(native_image_root, join(svm_subdir, 'clibraries')))
 
-    # Finally create symlink to native-image in svm_suite().dir
-    native_image_symlink_path = join(svm_suite().dir, basename(native_image_path(native_image_root)))
-    if islink(native_image_symlink_path):
-        os.remove(native_image_symlink_path)
-    relsymlink(native_image_path(native_image_root), native_image_symlink_path)
+    # Create platform-specific symlink to native-image in svm_suite().dir
+    symlink_path = remove_existing_symlink(native_image_symlink_path(native_image_root))
+    relsymlink(native_image_path(native_image_root), symlink_path)
+    # Finally create default symlink to native-image in svm_suite().dir
+    symlink_path = remove_existing_symlink(native_image_symlink_path(native_image_root, platform_specific=False))
+    relsymlink(native_image_path(native_image_root), symlink_path)
 
 class BootstrapNativeImage(mx.Project):
     def __init__(self, suite, name, deps, workingSets, theLicense=None, **kwargs):
@@ -289,7 +299,9 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
             return
 
         # Only bootstrap if it doesn't already exist
-        if exists(self.subject.native_image_root):
+        symlink_path = native_image_symlink_path(self.subject.native_image_root)
+        if exists(symlink_path):
+            mx.log('Suppressed rebuilding native-image (delete ' + basename(symlink_path) + ' to allow rebuilding).')
             return
 
         bootstrap_native_image(
@@ -303,12 +315,11 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
         if forBuild:
             return
 
-        clean_dir = self.subject.native_image_root
-        if exists(clean_dir):
-            remove_tree(clean_dir)
-        symlink_path = join(self.subject.suite.dir, basename(native_image_path(clean_dir)))
-        if islink(symlink_path):
-            os.remove(symlink_path)
+        native_image_root = self.subject.native_image_root
+        if exists(native_image_root):
+            remove_tree(native_image_root)
+        remove_existing_symlink(native_image_symlink_path(native_image_root))
+        remove_existing_symlink(native_image_symlink_path(native_image_root, platform_specific=False))
 
     def needsBuild(self, newestInput):
         # Only bootstrap native-image for the most-specific svm_suite
@@ -316,7 +327,9 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
             return False, 'Skip bootstrapping'
 
         # Only bootstrap if it doesn't already exist
-        if exists(self.subject.native_image_root):
+        symlink_path = native_image_symlink_path(self.subject.native_image_root)
+        if exists(symlink_path):
+            mx.log('Suppressed rebuilding native-image (delete ' + basename(symlink_path) + ' to allow rebuilding).')
             return False, 'Already bootstrapped'
 
         witness = self.newestOutput()
@@ -387,7 +400,8 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None)
     language_dir = join('languages', language_flag)
 
     language_suite_depnames = language_entry[1]
-    language_deps = [dep for dep in language_suite.dists + language_suite.libs if dep.name in language_suite_depnames]
+    language_deps = language_suite.dists + language_suite.libs
+    language_deps = [dep for dep in language_deps if dep.name in language_suite_depnames]
     native_image_layout(language_deps, language_dir, native_image_root)
 
     language_suite_nativedistnames = language_entry[2]
@@ -395,9 +409,7 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None)
     native_image_extract(language_nativedists, language_dir, native_image_root)
 
     option_properties = join(language_suite.mxDir, 'native-image.properties')
-    target_path = join(native_image_root, language_dir, 'native-image.properties')
-    if islink(target_path):
-        os.remove(target_path)
+    target_path = remove_existing_symlink(join(native_image_root, language_dir, 'native-image.properties'))
     if exists(option_properties):
         mx.logv('Add symlink to ' + str(option_properties))
         relsymlink(option_properties, target_path)
@@ -436,13 +448,14 @@ def native_image_context(common_args=None, hosted_assertions=True):
         base_args += ['-verbose-server']
     if hosted_assertions:
         base_args += native_image_context.hosted_assertions
+    native_image_cmd = native_image_path(suite_native_image_root())
     def native_image_func(args):
-        mx.run([native_image_path(suite_native_image_root())] + base_args + common_args + args)
+        mx.run([native_image_cmd] + base_args + common_args + args)
     try:
-        native_image_func(['-server-wipe'])
+        mx.run([native_image_cmd, '-server-wipe'])
         yield native_image_func
     finally:
-        native_image_func(['-server-shutdown'])
+        mx.run([native_image_cmd, '-server-shutdown'])
 
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
 

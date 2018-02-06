@@ -1,12 +1,10 @@
    -no-server           do not use image-build server
 
-   -server{-list[-details],-cleanup,-shutdown}[-all] where
-      -list             lists current image-build servers
-      -cleanup          remove stale image-build servers entries
-      -shutdown         cleanly shutdown running image-build servers
-
-   Without using optional -all ending above actions are performed only
-   for the current login-session.
+   -server-list           lists current image-build servers
+   -server-list-details   same as -server-list with more details
+   -server-cleanup        remove stale image-build servers entries
+   -server-shutdown       shutdown image-build servers under current session ID
+   -server-shutdown-all   shutdown all image-build servers
 
    -server-session=<custom-session-name>
                        use custom session name instead of system provided
