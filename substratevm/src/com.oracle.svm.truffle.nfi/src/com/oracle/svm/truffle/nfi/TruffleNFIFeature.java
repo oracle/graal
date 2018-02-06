@@ -56,5 +56,6 @@ public final class TruffleNFIFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.add(TruffleNFISupport.class, new TruffleNFISupport());
+        access.registerObjectReplacer(new NativeObjectReplacer(access));
     }
 }

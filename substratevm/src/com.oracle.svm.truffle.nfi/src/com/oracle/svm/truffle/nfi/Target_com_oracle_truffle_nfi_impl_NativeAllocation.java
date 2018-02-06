@@ -48,9 +48,3 @@ final class Target_com_oracle_truffle_nfi_impl_NativeAllocation {
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
     static final AtomicReference<Thread> gcThread = new AtomicReference<>(null);
 }
-
-@TargetClass(className = "com.oracle.truffle.nfi.impl.NativeAllocation", innerClass = "FreeDestructor", onlyWith = TruffleNFIFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_nfi_impl_NativeAllocation_FreeDestructor {
-
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NativeReferenceField.class) long address;
-}

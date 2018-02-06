@@ -23,8 +23,6 @@
 package com.oracle.svm.truffle.nfi;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
 
 @TargetClass(className = "com.oracle.truffle.nfi.impl.NativePointer", onlyWith = TruffleNFIFeature.IsEnabled.class)
@@ -33,6 +31,4 @@ final class Target_com_oracle_truffle_nfi_impl_NativePointer {
     @Alias
     Target_com_oracle_truffle_nfi_impl_NativePointer(@SuppressWarnings("unused") long pointer) {
     }
-
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NativeReferenceField.class) long nativePointer;
 }
