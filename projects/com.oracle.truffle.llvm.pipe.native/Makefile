@@ -5,7 +5,7 @@ OBJECTS=capture.o
 default: bin/${LIBPIPE}
 
 OBJECTFILES=${OBJECTS:%.o=bin/%.o}
-CPPFLAGS+=-I${VPATH}/include -Isrc_gen -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${OS}
+CPPFLAGS+=-I${VPATH}/include -Isrc_gen "-I${JAVA_HOME}/include" "-I${JAVA_HOME}/include/${OS}"
 CFLAGS=-g -fPIC
 LDFLAGS=-g
 
