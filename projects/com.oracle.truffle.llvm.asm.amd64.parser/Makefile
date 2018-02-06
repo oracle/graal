@@ -22,4 +22,4 @@ clean:
 	rm -f ${TARGETS}
 
 ${TARGETS}: ${SOURCES}
-	${JAVA_HOME}/bin/java -jar ${COCO_JAR} -package ${PACKAGE_NAME} -o ${GENERATED_PACKAGE_PATH} ${ATG}
+	"${JAVA_HOME}/bin/java" -jar "${COCO_JAR}" -package ${PACKAGE_NAME} -o ${GENERATED_PACKAGE_PATH} ${ATG}

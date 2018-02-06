@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.133.0",
+  "mxversion" : "5.136.0",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -8,7 +8,7 @@ suite = {
       {
         "name" : "truffle",
         "subdir" : True,
-        "version" : "50cf09254ee5eff92ac347032c05831ca044db2a",
+        "version" : "953dc8cb98b465a0e35871d6653dd9df6d07cbcc",
         "urls" : [
           {"url" : "https://github.com/graalvm/graal", "kind" : "git"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -209,6 +209,7 @@ suite = {
     "com.oracle.truffle.llvm.pipe" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
+      "jniHeaders" : True,
       "javaProperties" : {
         "test.pipe.lib" : "<path:SULONG_TEST_NATIVE>/<lib:pipe>",
       },
@@ -228,6 +229,7 @@ suite = {
         "com.oracle.truffle.llvm.pipe",
       ],
       "buildEnv" : {
+        "CPPFLAGS" : "-I<jnigen:com.oracle.truffle.llvm.pipe>",
         "LIBPIPE" : "<lib:pipe>",
         "OS" : "<os>",
       },
