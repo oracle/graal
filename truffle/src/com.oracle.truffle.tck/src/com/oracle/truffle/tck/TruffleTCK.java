@@ -430,15 +430,16 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that returns an object supporting {@link Message#KEY_INFO} and having five
-     * properties named "ro", "wo", "rw", "invocable" and "intern". The "ro" property should be
-     * read-only (readable and not writable), the "wo" property should be write-only (writable and
-     * not readable), "rw" property readable and writable, "invocable" property should return an
-     * "invoked" String on {@link Message#createInvoke(int) invoke message} and the "intern"
-     * property should be internal. The object should support {@link Message#KEYS KEYS message} as
-     * well and it should provide the "intern" property iff it gets a boolean true as an argument.
-     * When the language does not support some attribute, it can skip the appropriate property (that
-     * should result in returning <code>0</code> as the key info of such skipped property).
+     * Name of a function that returns an object supporting {@link Message#KEY_INFO} and having six
+     * properties named "ro", "wo", "rw", "rm", "invocable" and "intern". The "ro" property should
+     * be read-only (readable and not writable), the "wo" property should be write-only (writable
+     * and not readable), "rw" property readable and writable, "rm" property should be removable,
+     * "invocable" property should return an "invoked" String on {@link Message#createInvoke(int)
+     * invoke message} and the "intern" property should be internal. The object should support
+     * {@link Message#KEYS KEYS message} as well and it should provide the "intern" property iff it
+     * gets a boolean true as an argument. When the language does not support some attribute, it can
+     * skip the appropriate property (that should result in returning <code>0</code> as the key info
+     * of such skipped property).
      *
      * @since 0.26
      */
@@ -2033,17 +2034,28 @@ public abstract class TruffleTCK {
         assertEquals("An unknown property", 0, object.unknown());
         int ro = object.ro();
         if (ro != 0) {
-            assertEquals("Read-only property", 0b00011, ro);
+            assertTrue(KeyInfo.isReadable(ro));
+            assertFalse(KeyInfo.isWritable(ro));
+            assertFalse(KeyInfo.isInternal(ro));
             numKeys++;
         }
         int wo = object.wo();
         if (wo != 0) {
-            assertEquals("Write-only property", 0b00101, wo);
+            assertFalse(KeyInfo.isReadable(wo));
+            assertTrue(KeyInfo.isWritable(wo));
+            assertFalse(KeyInfo.isInternal(wo));
             numKeys++;
         }
         int rw = object.rw();
         if (rw != 0) {
-            assertEquals("Read-only property", 0b00111, rw);
+            assertTrue(KeyInfo.isReadable(rw));
+            assertTrue(KeyInfo.isWritable(rw));
+            assertFalse(KeyInfo.isInternal(rw));
+            numKeys++;
+        }
+        int rm = object.rm();
+        if (rm != 0) {
+            assertTrue(KeyInfo.isRemovable(rm));
             numKeys++;
         }
         int invocable = object.invocable();
@@ -2067,6 +2079,9 @@ public abstract class TruffleTCK {
         }
         if (rw != 0) {
             assertTrue(map.containsKey("rw"));
+        }
+        if (rm != 0) {
+            assertTrue(map.containsKey("rm"));
         }
         if (invocable != 0) {
             assertTrue(map.containsKey("invocable"));
@@ -2092,6 +2107,9 @@ public abstract class TruffleTCK {
 
         @MethodMessage(message = "KEY_INFO")
         int rw();
+
+        @MethodMessage(message = "KEY_INFO")
+        int rm();
 
         @MethodMessage(message = "KEY_INFO")
         int invocable();

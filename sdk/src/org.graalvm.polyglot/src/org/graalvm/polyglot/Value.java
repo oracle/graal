@@ -93,6 +93,17 @@ public final class Value {
     }
 
     /**
+     * Removes an array element.
+     *
+     * @return <code>true</code> when the element was successfully removed, <code>false</code>
+     *         otherwise.
+     * @since 1.0
+     */
+    public boolean removeArrayElement(long index) {
+        return impl.removeArrayElement(receiver, index);
+    }
+
+    /**
      *
      *
      * @since 1.0
@@ -146,6 +157,17 @@ public final class Value {
      */
     public void putMember(String key, Object member) {
         impl.putMember(receiver, key, member);
+    }
+
+    /**
+     * Removes a member.
+     *
+     * @return <code>true</code> when the member was successfully removed, <code>false</code>
+     *         otherwise.
+     * @since 1.0
+     */
+    public boolean removeMember(String key) {
+        return impl.removeMember(receiver, key);
     }
 
     // executable

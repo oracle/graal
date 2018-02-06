@@ -58,6 +58,20 @@ public interface ProxyArray extends Proxy {
     void set(long index, Value value);
 
     /**
+     * Removes the element at the given index.
+     *
+     * @return <code>true</code> when the element was removed, <code>false</code> when the element
+     *         didn't exist.
+     * @throws ArrayIndexOutOfBoundsException if the index is out of bounds
+     * @throws UnsupportedOperationException if the operation is not supported
+     * @since 1.0
+     */
+    @SuppressWarnings("unused")
+    default boolean remove(long index) {
+        throw new UnsupportedOperationException("remove() not supported.");
+    }
+
+    /**
      * Returns the reported size of the array. The returned size of an array does not limit a guest
      * language to get and set values using arbitrary indices. The array size is typically used by
      * Graal languages to traverse the array.
@@ -105,14 +119,23 @@ public interface ProxyArray extends Proxy {
     static ProxyArray fromList(List<Object> values) {
         return new ProxyArray() {
 
+            @Override
             public Object get(long index) {
                 checkIndex(index);
                 return values.get((int) index);
             }
 
+            @Override
             public void set(long index, Value value) {
                 checkIndex(index);
                 values.set((int) index, value.isHostObject() ? value.asHostObject() : value);
+            }
+
+            @Override
+            public boolean remove(long index) {
+                checkIndex(index);
+                values.remove((int) index);
+                return true;
             }
 
             private void checkIndex(long index) {

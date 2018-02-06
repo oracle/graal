@@ -75,7 +75,7 @@ abstract class ArrayWriteNode extends Node {
     @TruffleBoundary
     @Specialization(guards = {"!receiver.isArray()", "!isList(receiver)"})
     protected static Object notArray(JavaObject receiver, Number index, Object value) {
-        throw UnsupportedMessageException.raise(Message.READ);
+        throw UnsupportedMessageException.raise(Message.WRITE);
     }
 
     private Object doArrayAccess(JavaObject receiver, int index, Object value) {

@@ -378,6 +378,28 @@ class JavaObjectMessageResolution {
         }
     }
 
+    @Resolve(message = "REMOVE")
+    abstract static class RemoveNode extends Node {
+        @Child private ArrayRemoveNode arrayRemove;
+        @Child private MapRemoveNode mapRemove;
+
+        public Object access(JavaObject receiver, Number index) {
+            if (arrayRemove == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                arrayRemove = insert(ArrayRemoveNode.create());
+            }
+            return arrayRemove.executeWithTarget(receiver, index);
+        }
+
+        public Object access(JavaObject receiver, String name) {
+            if (mapRemove == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                mapRemove = insert(MapRemoveNode.create());
+            }
+            return mapRemove.executeWithTarget(receiver, name);
+        }
+    }
+
     @Resolve(message = "HAS_KEYS")
     abstract static class HasKeysNode extends Node {
 

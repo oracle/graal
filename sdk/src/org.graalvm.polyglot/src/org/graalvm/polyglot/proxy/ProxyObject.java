@@ -90,6 +90,20 @@ public interface ProxyObject extends Proxy {
     void putMember(String key, Value value);
 
     /**
+     * Removes a member key and its value. If the removal of existing members is not supported then
+     * an {@link UnsupportedOperationException} is thrown.
+     *
+     * @return <code>true</code> when the member was removed, <code>false</code> when the member
+     *         didn't exist.
+     * @throws UnsupportedOperationException if the operation is unsupported
+     * @since 1.0
+     */
+    @SuppressWarnings("unused")
+    default boolean removeMember(String key) {
+        throw new UnsupportedOperationException("removeMember() not supported.");
+    }
+
+    /**
      * Creates a proxy backed by a {@link Map}. If the set values of the map are host values then
      * the they will be {@link Value#asHostObject() unboxed}.
      *
@@ -112,6 +126,16 @@ public interface ProxyObject extends Proxy {
 
             public Object getMember(String key) {
                 return values.get(key);
+            }
+
+            @Override
+            public boolean removeMember(String key) {
+                if (values.containsKey(key)) {
+                    values.remove(key);
+                    return true;
+                } else {
+                    return false;
+                }
             }
         };
     }
