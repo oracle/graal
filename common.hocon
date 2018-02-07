@@ -162,7 +162,7 @@ svm-capabilities-avx2 : {
 }
 
 svm-capabilities-manycores : {
-  capabilities : [linux, amd64, manycores]
+  capabilities : [linux, amd64, manycores, fast]
 }
 
 svm-common-darwin: ${svm-common} ${darwin-amd64} {
