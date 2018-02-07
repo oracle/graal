@@ -702,6 +702,11 @@ public abstract class Node implements NodeInterface, Cloneable {
                 root.instrumentationBits = (byte) bits;
             }
 
+            @Override
+            public Lock getLock(Node node) {
+                return node.getLock();
+            }
+
         }
     }
 

@@ -54,17 +54,49 @@ public final class EventContext {
 
     private final ProbeNode probeNode;
     private final SourceSection sourceSection;
+    private volatile Object nodeObject;
 
     EventContext(ProbeNode probeNode, SourceSection sourceSection) {
         this.sourceSection = sourceSection;
         this.probeNode = probeNode;
     }
 
+    boolean validEventContext() {
+        Node node = getInstrumentedNode();
+        if (node instanceof RootNode) {
+            throw new IllegalStateException("Instrumentable node must not be a root node.");
+        }
+        Object object = null;
+        if (node instanceof InstrumentableNode) {
+            object = ((InstrumentableNode) node).getNodeObject();
+        } else {
+            // legacy support
+            return true;
+        }
+        if (object != null) {
+            assert AccessorInstrumentHandler.interopAccess().isValidNodeObject(object);
+        }
+        return true;
+    }
+
     ProbeNode getProbeNode() {
         return probeNode;
     }
 
+    /**
+     * Returns <code>true</code> if the underlying instrumented AST is tagged with a particular tag.
+     * Note that the return value of {@link #hasTag(Class)} always returns the same value for a
+     * particular tag and {@link EventContext#}. The method can safely be used in compiled/partialyl
+     * evaluated code paths and will fold to a constant with a constant tag parameter.
+     *
+     * @param tag the tag to check to check, must not be <code>null</code>.
+     * @since 0.32
+     */
     public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == null) {
+            CompilerDirectives.transferToInterpreter();
+            throw new NullPointerException();
+        }
         Node node = getInstrumentedNode();
         if (node instanceof InstrumentableNode) {
             return ((InstrumentableNode) node).hasTag(tag);
@@ -74,12 +106,34 @@ public final class EventContext {
         }
     }
 
-    public <T> T getTagAttribute(Tag.Attribute<T> attribute) {
-        if (!hasTag(attribute.getTag())) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalArgumentException("Instrumented node is not tagged with " + attribute.getTag() + ".");
+    /**
+     * Returns a language provided object that represents the instrumented node properties. The
+     * return object has readable string key for each property. The
+     *
+     * This object might be passed into any language as it implements the interop contract. The
+     * return object is guaranteed to return <code>true</code> for the Message#HAS_KEYS message.
+     * Multiple calls to {@link #getNodeObject()} return the same node object instance.
+     *
+     * @see InstrumentableNode#getNodeObject()
+     * @since 0.32
+     */
+    public Object getNodeObject() {
+        Object object = this.nodeObject;
+        if (object == null) {
+            Node node = getInstrumentedNode();
+            if (node instanceof InstrumentableNode) {
+                object = ((InstrumentableNode) node).getNodeObject();
+            } else {
+                return null;
+            }
+            if (object == null) {
+                object = AccessorInstrumentHandler.interopAccess().createDefaultNodeObject(node);
+            } else {
+                assert AccessorInstrumentHandler.interopAccess().isValidNodeObject(object);
+            }
+            this.nodeObject = object;
         }
-        return attribute.getValue(getInstrumentedNode());
+        return object;
     }
 
     /**

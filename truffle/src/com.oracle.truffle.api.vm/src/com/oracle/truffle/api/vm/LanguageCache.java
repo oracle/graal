@@ -83,7 +83,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.internal = Boolean.valueOf(info.getProperty(prefix + "internal"));
 
         if (TruffleOptions.AOT) {
-            this.languageClass = loadLanguageClass();
+            this.languageClass = getLanguageClass();
             this.singletonLanguage = readSingleton(languageClass);
         } else {
             this.languageClass = null;
@@ -267,6 +267,20 @@ final class LanguageCache implements Comparable<LanguageCache> {
             throw new IllegalStateException("Cannot create instance of " + name + " language implementation. Public default constructor expected in " + className + ".", e);
         }
         return new LoadedLanguage(instance, singleton);
+    }
+
+    @SuppressWarnings("unchecked")
+    Class<? extends TruffleLanguage<?>> getLanguageClass() {
+        if (TruffleOptions.AOT) {
+            TruffleLanguage<?> instance = singletonLanguage;
+            if (instance != null) {
+                return (Class<? extends TruffleLanguage<?>>) instance.getClass();
+            } else {
+                return this.languageClass;
+            }
+        } else {
+            return loadLanguageClass();
+        }
     }
 
     @SuppressWarnings("unchecked")

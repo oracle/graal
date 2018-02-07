@@ -39,10 +39,12 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceArray;
+import java.util.concurrent.locks.Lock;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -602,10 +604,20 @@ final class InstrumentationHandler {
         return newBindings;
     }
 
-    @SuppressWarnings({"unchecked", "deprecation"})
     private void insertWrapper(Node instrumentableNode, SourceSection sourceSection) {
-        final Node node = instrumentableNode;
-        final Node parent = node.getParent();
+        Lock lock = AccessorInstrumentHandler.nodesAccess().getLock(instrumentableNode);
+        try {
+            lock.lock();
+            insertWrapperImpl(instrumentableNode, sourceSection);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @SuppressWarnings({"unchecked", "deprecation"})
+    private void insertWrapperImpl(Node originalNode, SourceSection sourceSection) {
+        Node node = originalNode;
+        Node parent = node.getParent();
         if (parent instanceof com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode) {
             // already wrapped, need to invalidate the wrapper something changed
             invalidateWrapperImpl((com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode) parent, node);
@@ -614,15 +626,14 @@ final class InstrumentationHandler {
         ProbeNode probe = new ProbeNode(InstrumentationHandler.this, sourceSection);
         com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode wrapper;
         try {
-
-            if (instrumentableNode instanceof InstrumentableNode) {
-                wrapper = ((InstrumentableNode) instrumentableNode).createWrapper(probe);
+            if (node instanceof InstrumentableNode) {
+                wrapper = ((InstrumentableNode) node).createWrapper(probe);
                 if (wrapper == null) {
-                    throw new IllegalStateException("No wrapper returned for " + instrumentableNode);
+                    throw new IllegalStateException("No wrapper returned for " + originalNode);
                 }
             } else {
                 Class<?> factory = null;
-                Class<?> currentClass = instrumentableNode.getClass();
+                Class<?> currentClass = originalNode.getClass();
                 while (currentClass != null) {
                     Instrumentable instrumentable = currentClass.getAnnotation(Instrumentable.class);
                     if (instrumentable != null) {
@@ -643,7 +654,7 @@ final class InstrumentationHandler {
                 if (TRACE) {
                     trace("Insert wrapper for %s, section %s%n", node, sourceSection);
                 }
-                wrapper = ((InstrumentableFactory<Node>) factory.newInstance()).createWrapper(instrumentableNode, probe);
+                wrapper = ((InstrumentableFactory<Node>) factory.newInstance()).createWrapper(originalNode, probe);
             }
 
         } catch (Exception e) {
@@ -669,7 +680,9 @@ final class InstrumentationHandler {
                             String.format("WrapperNode implementation %s cannot be safely replaced in parent node class %s.", wrapperNode.getClass().getName(), parent.getClass().getName()));
         }
 
-        node.replace(wrapperNode, "Insert instrumentation wrapper node.");
+        originalNode.replace(wrapperNode, "Insert instrumentation wrapper node.");
+
+        assert probe.getContext().validEventContext();
     }
 
     private <T extends ExecutionEventNodeFactory> EventBinding<T> attachFactory(AbstractInstrumenter instrumenter, SourceSectionFilter filter, SourceSectionFilter inputFilter, T factory) {
@@ -903,6 +916,7 @@ final class InstrumentationHandler {
         RootNode root;
         SourceSection rootSourceSection;
         Set<Class<?>> providedTags;
+        Set<?> materializeLimitedTags;
 
         /* cached root bits read from the root node. value is reliable. */
         int rootBits;
@@ -942,13 +956,15 @@ final class InstrumentationHandler {
         private Node savedParent;
         private SourceSection savedParentSourceSection;
 
-        public final boolean visit(Node node) {
+        public final boolean visit(Node originalNode) {
+            Node node = originalNode;
             SourceSection sourceSection = node.getSourceSection();
             boolean instrumentable = InstrumentationHandler.isInstrumentableNode(node, sourceSection);
             Node previousParent = null;
             SourceSection previousParentSourceSection = null;
             if (instrumentable) {
                 computeRootBits(sourceSection);
+                node = materializeSyntaxNodes(node, sourceSection);
                 visitInstrumentable(this.savedParent, this.savedParentSourceSection, node, sourceSection);
                 previousParent = this.savedParent;
                 previousParentSourceSection = this.savedParentSourceSection;
@@ -966,6 +982,31 @@ final class InstrumentationHandler {
             return true;
         }
 
+        @SuppressWarnings("unchecked")
+        private Node materializeSyntaxNodes(Node instrumentableNode, SourceSection sourceSection) {
+            if (instrumentableNode instanceof InstrumentableNode) {
+                InstrumentableNode currentNode = (InstrumentableNode) instrumentableNode;
+                assert currentNode.isInstrumentable();
+                Set<Class<? extends Tag>> materializeTags = (Set<Class<? extends Tag>>) (materializeLimitedTags == null ? providedTags : materializeLimitedTags);
+                InstrumentableNode materializedNode = currentNode.materializeSyntaxNodes(materializeTags);
+                if (currentNode != materializedNode) {
+                    if (!(materializedNode instanceof Node)) {
+                        throw new IllegalStateException("The returned materialized syntax node is not a Truffle Node.");
+                    }
+                    if (((Node) materializedNode).getParent() != null) {
+                        throw new IllegalStateException("The returned materialized syntax node is already adopted.");
+                    }
+                    SourceSection newSourceSection = ((Node) materializedNode).getSourceSection();
+                    if (!Objects.equals(sourceSection, newSourceSection)) {
+                        throw new IllegalStateException(String.format("The source section of the materialized syntax node must match the source section of the original node. %s != %s.", sourceSection,
+                                        newSourceSection));
+                    }
+                    return ((Node) currentNode).replace((Node) materializedNode);
+                }
+            }
+            return instrumentableNode;
+        }
+
         protected abstract void visitInstrumentable(Node parentInstrumentable, SourceSection parentSourceSection, Node instrumentableNode, SourceSection sourceSection);
 
     }
@@ -976,6 +1017,8 @@ final class InstrumentationHandler {
 
         AbstractBindingVisitor(EventBinding.Source<?> binding) {
             this.binding = binding;
+            Set<Class<?>> limitedTags = binding.getLimitedTags();
+            this.materializeLimitedTags = limitedTags != null ? Collections.unmodifiableSet(limitedTags) : null;
         }
 
         @Override
@@ -1024,6 +1067,21 @@ final class InstrumentationHandler {
         AbstractBindingsVisitor(Collection<EventBinding.Source<?>> bindings, boolean visitForEachBinding) {
             this.bindings = bindings;
             this.visitForEachBinding = visitForEachBinding;
+
+            Set<Class<?>> compoundTags = null; // null means all provided tags by the language
+            for (EventBinding.Source<?> sourceBinding : bindings) {
+                Set<Class<?>> limitedTags = sourceBinding.getLimitedTags();
+                if (limitedTags == null) {
+                    compoundTags = null;
+                    break;
+                } else {
+                    if (compoundTags == null) {
+                        compoundTags = new HashSet<>();
+                    }
+                    compoundTags.addAll(limitedTags);
+                }
+            }
+            this.materializeLimitedTags = compoundTags != null ? Collections.unmodifiableSet(compoundTags) : null;
         }
 
         @Override

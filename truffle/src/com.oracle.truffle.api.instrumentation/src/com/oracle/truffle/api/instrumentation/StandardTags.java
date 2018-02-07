@@ -24,12 +24,8 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
-import java.util.function.Function;
-
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Set of standard tags usable by language agnostic tools. Language should {@link ProvidedTags
@@ -57,9 +53,11 @@ public final class StandardTags {
      * for example a step-over operation will stop at the next independent statement to get the
      * desired behavior.</li>
      * </ul>
+     * The StatemenTag has uses the {@link Identifier identifier} <code>"STATEMENT"</code>.
      *
      * @since 0.12
      */
+    @Tag.Identifier("STATEMENT")
     public static final class StatementTag extends Tag {
         private StatementTag() {
             /* No instances */
@@ -72,13 +70,16 @@ public final class StandardTags {
      * <p>
      * Use case descriptions:
      * <ul>
-     * <li><b>Debugger:</b> Marks program locations where <em>returning</em> or
-     * <em>stepping out</em> from a method/procedure/closure call should halt. The debugger will
-     * halt at the code location that has just executed the call that returned.</li>
+     * <li><b>Debugger:</b> Marks program locations where <em>returning</em> or <em>stepping
+     * out</em> from a method/procedure/closure call should halt. The debugger will halt at the code
+     * location that has just executed the call that returned.</li>
      * </ul>
+     *
+     * The CallTag has uses the {@link Identifier identifier} <code>"CALL"</code>.
      *
      * @since 0.12
      */
+    @Tag.Identifier("CALL")
     public static final class CallTag extends Tag {
         private CallTag() {
             /* No instances */
@@ -96,32 +97,12 @@ public final class StandardTags {
      * <li><b>Profiler:</b> Marks every root that should be profiled.</li>
      * </ul>
      *
+     * The RootTag has uses the {@link Identifier identifier} <code>"ROOT"</code>.
+     *
      * @since 0.12
      */
+    @Tag.Identifier("ROOT")
     public static final class RootTag extends Tag {
-
-        /**
-         * The root name associated with this tagged node. Delegates to {@link RootNode#getName()}
-         * by default.
-         *
-         * @since 0.32
-         */
-        public static final Attribute<String> NAME = createAttribute(RootTag.class, "name", String.class, new DefaultName(), null);
-
-        private RootTag() {
-            /* No instances */
-        }
-
-        private static class DefaultName implements Function<Node, String> {
-
-            public String apply(Node node) {
-                RootNode root = node.getRootNode();
-                if (root != null) {
-                    return root.getName();
-                }
-                return null;
-            }
-        }
     }
 
     /**
@@ -142,8 +123,11 @@ public final class StandardTags {
      * expression tag to support debuggers.</li>
      * </ul>
      *
+     * The ExpressionTag has uses the {@link Identifier identifier} <code>"EXPRESSION"</code>.
+     *
      * @since 0.32
      */
+    @Tag.Identifier("EXPRESSION")
     public static final class ExpressionTag extends Tag {
 
         private ExpressionTag() {

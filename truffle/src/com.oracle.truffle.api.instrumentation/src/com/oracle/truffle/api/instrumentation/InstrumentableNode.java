@@ -1,5 +1,7 @@
 package com.oracle.truffle.api.instrumentation;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleRuntime;
@@ -40,6 +42,9 @@ import com.oracle.truffle.api.source.SourceSection;
  * language to tag all nodes as {@link StandardTags.StatementTag statements} that should be
  * considered as such. See {@link #hasTag(Class)} for further details on how to use implement tags.
  * <p>
+ *
+ * <h1>Language specific tags</h1>
+ *
  * <b>Example minimal implementation of an instrumentable node:</b>
  *
  * {@link com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.SimpleNode}
@@ -49,7 +54,6 @@ import com.oracle.truffle.api.source.SourceSection;
  * sections:</b>
  * {@link com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.RecommendedNode}
  * <p>
- *
  *
  * @see #isInstrumentable()
  * @see #hasTag(Class)
@@ -61,12 +65,18 @@ import com.oracle.truffle.api.source.SourceSection;
 public interface InstrumentableNode extends NodeInterface {
 
     /**
-     * Returns whether this node is instrumentable.
+     * Returns whether <code>true</code> if this node is instrumentable. Instrumentable nodes are
+     * points where instrumenters can attache execution events. The return values of instrumentable
+     * nodes must always be interop capable values.
      * <p>
      * The implementation of this method must ensure that its result is stable after the parent
      * {@link RootNode root node} was wrapped in a {@link CallTarget} using
      * {@link TruffleRuntime#createCallTarget(RootNode)}. The result is stable if the result of
      * calling this method remains always the same.
+     * <p>
+     * This method might be called in parallel from multiple threads. The method may be invoked
+     * without a {@link TruffleLanguage#getContextReference() language context} currently being
+     * active.
      *
      * @return
      */
@@ -102,7 +112,11 @@ public interface InstrumentableNode extends NodeInterface {
      * onReturnExceptional(Frame,Throwable)}: an <em>execute</em> method on the delegate has just
      * thrown an exception.</li>
      * </ul>
-     * </p>
+     * <p>
+     * This method is always invoked on an interpreter thread. If the language
+     * {@linkplain TruffleLanguage#isThreadAccessAllowed} allows it, then it might be invoked from
+     * multiple threads at the same time. The method is always invoked with a
+     * {@link TruffleLanguage#getContextReference() language context} currently being active.
      *
      * @param probe the {@link ProbeNode probe node} to be adopted and sent execution events by the
      *            wrapper
@@ -138,6 +152,10 @@ public interface InstrumentableNode extends NodeInterface {
      * {@link RootNode root node} was wrapped in a {@link CallTarget} using
      * {@link TruffleRuntime#createCallTarget(RootNode)}. The result is stable if the result of
      * calling this method for a particular tag remains always the same.
+     * <p>
+     * This method might be called in parallel from multiple threads. The method may be invoked
+     * without a {@link TruffleLanguage#getContextReference() language context} currently being
+     * active.
      *
      * @param tag the class {@link com.oracle.truffle.api.instrumentation.ProvidedTags provided} by
      *            the {@link TruffleLanguage language}
@@ -149,9 +167,70 @@ public interface InstrumentableNode extends NodeInterface {
         return false;
     }
 
-    @SuppressWarnings("unused")
-    default Object getTagAttribute(Tag.Attribute<?> attribute) {
+    /**
+     * Returns an interop capable object that contains all keys and values of attributes associated
+     * with this node. The returned object must return <code>true</code> in response to the
+     * Message.HAS_KEYS message. If <code>null</code> is returned then an empty tag object without
+     * any readable keys will be assumed. Multiple calls to {@link #getNodeObject()} for a
+     * particular node may return the same or objects with different identity. The returned object
+     * must not support any write operation. The returned object must not support execution,
+     * instantiation and must have a size.
+     * <p>
+     * For performance reasons it is not recommended to eagerly collect all properties of the node
+     * object when {@link #getNodeObject()} is invoked. Instead, the language should lazily compute
+     * them when they are read. If the node object contains dynamic properties, that change during
+     * the execution of the AST, then the node must return an updated value for each key when it is
+     * read repeatedly. In other words the node object must always represent the current state of
+     * this AST {@link Node node}. The implementer should not cache the node instance in the AST.
+     * The instrumentation framework will take care of caching node object instances when they are
+     * requested by tools.
+     * <p>
+     * <b>Compatibility:</b> In addition to the expected keys by the tag specification, the language
+     * implementation may provide any set of additional keys and values. Tools might depend on these
+     * language specific tags and might break if keys or values are changed without notice.
+     * <p>
+     * For the most memory efficient implementation the language might make the instrumentable
+     * {@link Node} a TruffleObject and return this instance.
+     * <p>
+     * This method might be called in parallel from multiple threads. The method may be invoked
+     * without a {@link TruffleLanguage#getContextReference() language context} currently being
+     * active.
+     *
+     * @return the node object as TruffleObject or <code>null</code> if no node object properties
+     *         are available for this instrumented node
+     * @since 0.32
+     */
+    default Object getNodeObject() {
         return null;
+    }
+
+    /**
+     * Removes optimizations performed in this AST node to restore the syntactic AST structure.
+     * Guest languages may decide to group multiple nodes together into a single node. This is
+     * useful to reduce the memory consumed by the AST representation and it can also improve the
+     * execution performance when interpreting the AST. Performing such optimizations often modify
+     * the syntactic AST structure, leading to invalid execution events reported to the
+     * instrumentation framework. Implementing this method allows the instrumented node to restore
+     * the syntactic AST structure when needed. It provides a list of tags that were requested by
+     * the execution event to allow the language to do the materialization only for instrumentable
+     * nodes that are tagged by any of these tags.
+     * <p>
+     * The AST lock is acquired while this method is invoked. Therefore it is not allowed to run
+     * guest language code while this method is invoked.
+     * <p>
+     * In the example below, we show how the <code>IncrementNode</code> with a
+     * <code>ConstantNode</code> child is optimized into a <code>ConstantIncrementNode</code> and
+     * how it can implement <code>materializeSyntaxNodes</code> to restore the syntactic structure
+     * of the AST:
+     * <p>
+     * {@link com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.ExpressionNode}
+     *
+     * @param materializedTags a set of tags that requested to be materialized
+     * @return
+     * @since 0.32
+     */
+    default InstrumentableNode materializeSyntaxNodes(Set<Class<? extends Tag>> materializedTags) {
+        return this;
     }
 
     /**
@@ -168,6 +247,10 @@ public interface InstrumentableNode extends NodeInterface {
         /**
          * The {@link InstrumentableNode instrumentable} guest language node, adopted as a child,
          * whose execution events the wrapper reports to the instrumentation framework.
+         * <p>
+         * This method might be called in parallel from multiple threads. The method may be invoked
+         * without a {@link TruffleLanguage#getContextReference() language context} currently being
+         * active.
          *
          * @since 0.32
          */
@@ -176,6 +259,10 @@ public interface InstrumentableNode extends NodeInterface {
         /**
          * A child of the wrapper, through which the wrapper reports execution events related to the
          * guest language <em>delegate</em> node.
+         * <p>
+         * This method might be called in parallel from multiple threads. The method may be invoked
+         * without a {@link TruffleLanguage#getContextReference() language context} currently being
+         * active.
          *
          * @since 0.32
          */
@@ -346,4 +433,88 @@ class InstrumentableNodeSnippets {
     }
     // END: com.oracle.truffle.api.nodes.NodeSnippets.StatementNode#isDebuggerHalt
 
+    @SuppressWarnings("unused")
+    class ExpressionNodeWrapper implements WrapperNode {
+        ExpressionNodeWrapper(Node node, ProbeNode probe) {
+        }
+
+        public Node getDelegateNode() {
+            return null;
+        }
+
+        public ProbeNode getProbeNode() {
+            return null;
+        }
+    }
+
+    // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.ExpressionNode
+    @GenerateWrapper
+    abstract class ExpressionNode extends Node implements InstrumentableNode {
+        abstract int execute(VirtualFrame frame);
+
+        public boolean isInstrumentable() {
+            return true;
+        }
+
+        public boolean hasTag(Class<? extends Tag> tag) {
+            return tag == StandardTags.ExpressionTag.class;
+        }
+
+        public WrapperNode createWrapper(ProbeNode probe) {
+            return new ExpressionNodeWrapper(this, probe);
+        }
+    }
+
+    class ConstantNode extends ExpressionNode {
+
+        private final int constant;
+
+        ConstantNode(int constant) {
+            this.constant = constant;
+        }
+
+        @Override
+        int execute(VirtualFrame frame) {
+            return constant;
+        }
+
+    }
+
+    // node with constant folded operation
+    class ConstantIncrementNode extends ExpressionNode {
+        final int constantIncremented;
+
+        ConstantIncrementNode(int constant) {
+            this.constantIncremented = constant + 1;
+        }
+
+        // desguar to restore syntactic structure of the AST
+        public InstrumentableNode materializeSyntaxNodes(Set<Class<? extends Tag>> tags) {
+            if (tags.contains(StandardTags.ExpressionTag.class)) {
+                return new IncrementNode(new ConstantNode(constantIncremented - 1));
+            }
+            return this;
+        }
+
+        @Override
+        int execute(VirtualFrame frame) {
+            return constantIncremented;
+        }
+
+    }
+
+    // node with full semantics of the node.
+    class IncrementNode extends ExpressionNode {
+        @Child ExpressionNode child;
+
+        IncrementNode(ExpressionNode child) {
+            this.child = child;
+        }
+
+        @Override
+        int execute(VirtualFrame frame) {
+            return child.execute(frame) + 1;
+        }
+    }
+    // END: com.oracle.truffle.api.nodes.NodeSnippets.ExpressionNode
 }

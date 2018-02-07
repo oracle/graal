@@ -151,7 +151,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
     public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT};
     public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "CONTEXT", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE", "ARGUMENT",
-                    "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME"};
+                    "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME", "MATERIALIZE_CHILD_EXPRESSION"};
 
     // used to test that no getSourceSection calls happen in certain situations
     private static int rootSourceSectionQueryCount;
@@ -411,6 +411,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                     return new InvalidateNode(childArray);
                 case "INNER_FRAME":
                     return new InnerFrameNode(childArray);
+                case "MATERIALIZE_CHILD_EXPRESSION":
+                    return new MaterializeChildExpressionNode(childArray);
                 default:
                     throw new AssertionError();
             }
@@ -514,7 +516,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         }
     }
 
-    static final class ExpressionNode extends InstrumentedNode {
+    static class ExpressionNode extends InstrumentedNode {
 
         ExpressionNode(BaseNode[] children) {
             super(children);
@@ -525,16 +527,18 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             StringBuilder b = new StringBuilder();
 
             b.append("(");
-            for (int i = 0; i < children.length; i++) {
-                BaseNode child = children[i];
-                Object value = Null.INSTANCE;
-                if (child != null) {
-                    value = child.execute(frame);
+            if (children != null) {
+                for (int i = 0; i < children.length; i++) {
+                    BaseNode child = children[i];
+                    Object value = Null.INSTANCE;
+                    if (child != null) {
+                        value = child.execute(frame);
+                    }
+                    if (i > 0) {
+                        b.append("+");
+                    }
+                    b.append(value);
                 }
-                if (i > 0) {
-                    b.append("+");
-                }
-                b.append(value);
             }
             b.append(")");
             return b.toString();
@@ -616,7 +620,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
     }
 
-    private static final class StatementNode extends InstrumentedNode {
+    private static class StatementNode extends InstrumentedNode {
 
         StatementNode(BaseNode[] children) {
             super(children);
@@ -891,6 +895,40 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             }
             return 1;
         }
+    }
+
+    static class MaterializeChildExpressionNode extends StatementNode {
+
+        MaterializeChildExpressionNode(BaseNode[] children) {
+            super(children);
+        }
+
+        public InstrumentableNode materializeSyntaxNodes(Set<Class<? extends Tag>> materializedTags) {
+            if (materializedTags.contains(StandardTags.ExpressionTag.class)) {
+                MaterializedChildExpressionNode materializedNode = new MaterializedChildExpressionNode(getSourceSection(), children);
+                materializedNode.setSourceSection(getSourceSection());
+                return materializedNode;
+            }
+            return this;
+        }
+    }
+
+    static class MaterializedChildExpressionNode extends StatementNode {
+
+        @Child private InstrumentedNode expressionNode;
+
+        MaterializedChildExpressionNode(SourceSection sourceSection, BaseNode[] children) {
+            super(children);
+            this.expressionNode = new ExpressionNode(null);
+            this.expressionNode.setSourceSection(sourceSection);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            expressionNode.execute(frame);
+            return super.execute(frame);
+        }
+
     }
 
     private static class InnerFrameNode extends InstrumentedNode {

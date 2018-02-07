@@ -105,6 +105,23 @@ public final class SourceSectionFilter {
         return b.toString();
     }
 
+    /**
+     * Returns which tags are required to be materialized in order for this filter to be correct.
+     * Returns <code>null</code> to indicate that all provided tags are required.
+     */
+    Set<Class<?>> getLimitedTags() {
+        Set<Class<?>> requiredTags = null;
+        for (EventFilterExpression expression : expressions) {
+            if (expression instanceof EventFilterExpression.TagIs) {
+                if (requiredTags == null) {
+                    requiredTags = new HashSet<>();
+                }
+                expression.collectReferencedTags(requiredTags);
+            }
+        }
+        return requiredTags;
+    }
+
     // implementation
     Set<Class<?>> getReferencedTags() {
         Set<Class<?>> usedTags = new HashSet<>();
@@ -1208,7 +1225,7 @@ public final class SourceSectionFilter {
 
     private static final class Not extends EventFilterExpression {
 
-        private final EventFilterExpression delegate;
+        final EventFilterExpression delegate;
 
         Not(EventFilterExpression delegate) {
             this.delegate = delegate;

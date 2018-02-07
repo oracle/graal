@@ -38,6 +38,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AccessorInstrumentHandler;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
@@ -145,9 +146,22 @@ public final class ProbeNode extends Node {
      */
     public void onReturnValue(VirtualFrame frame, Object result) {
         EventChainNode localChain = lazyUpdate(frame);
+        assert isNullOrInteropValue(result);
         if (localChain != null) {
             localChain.onReturnValue(context, frame, result);
         }
+    }
+
+    private boolean isNullOrInteropValue(Object result) {
+        if (!(context.getInstrumentedNode() instanceof InstrumentableNode)) {
+            // legacy support
+            return true;
+        }
+        if (result == null) {
+            return true;
+        }
+        AccessorInstrumentHandler.interopAccess().checkInteropType(result);
+        return true;
     }
 
     /**
@@ -241,6 +255,7 @@ public final class ProbeNode extends Node {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         setSeenReturn();
                     }
+                    assert isNullOrInteropValue(ret);
                     return ret;
                 }
                 throw unwind;

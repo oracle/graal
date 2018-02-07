@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -132,6 +133,30 @@ public class EventBinding<T> {
 
         SourceSectionFilter getInputFilter() {
             return inputFilter;
+        }
+
+        Set<Class<?>> getLimitedTags() {
+            Set<Class<?>> tags = filterSourceSection.getLimitedTags();
+            if (inputFilter != null) {
+                Set<Class<?>> inputTags = inputFilter.getLimitedTags();
+                if (tags == null) {
+                    return inputTags;
+                }
+                if (inputTags == null) {
+                    return tags;
+                }
+                if (inputTags.equals(tags)) {
+                    return tags;
+                } else {
+                    Set<Class<?>> compoundTags = new HashSet<>();
+                    compoundTags.addAll(tags);
+                    compoundTags.addAll(inputTags);
+                    return compoundTags;
+                }
+            } else {
+                return tags;
+            }
+
         }
 
         @Override
