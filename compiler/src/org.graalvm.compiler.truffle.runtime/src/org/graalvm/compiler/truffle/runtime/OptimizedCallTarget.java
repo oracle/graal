@@ -44,14 +44,19 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery;
+import org.graalvm.graphio.GraphOutput;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -67,8 +72,10 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreFatal;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsArePrinted;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleDumpPolymorphicEvents;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUsePollutionBasedSplittingStrategy;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
 
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold. That is,
@@ -676,21 +683,24 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return profilePolluted;
     }
 
-    void pollutionEvent() {
+    void pollutionEvent(Node source) {
         if (TruffleCompilerOptions.getValue(TruffleUsePollutionBasedSplittingStrategy)) {
-            this.polluteProfile(0, new ArrayList<>());
+            List<Node> toDump = new ArrayList<>();
+            pullOutParentChain(source, toDump);
+            this.polluteProfile(0, new ArrayList<>(), toDump);
         }
     }
 
-    private void polluteProfile(int depth, List<RootCallTarget> toPollute) {
+    private void polluteProfile(int depth, List<RootCallTarget> toPollute, List<Node> toDump) {
         // TODO: what if compiled?
         if (profilePolluted || knownCallNodes.size() == 0 || compilationProfile.getInterpreterCallCount() == 1 || toPollute.containsAll(Arrays.asList(this, this))) {
             return;
         }
         if (knownCallNodes.size() == 1) {
             toPollute.add(this);
-            final OptimizedCallTarget callTarget = (OptimizedCallTarget) knownCallNodes.iterator().next().getRootNode().getCallTarget();
-            callTarget.polluteProfile(depth, toPollute);
+            final OptimizedDirectCallNode callNode = knownCallNodes.iterator().next();
+            final OptimizedCallTarget callTarget = (OptimizedCallTarget) pullOutParentChain(callNode, toDump).getCallTarget();
+            callTarget.polluteProfile(depth + 1, toPollute, toDump);
         } else {
             for (OptimizedDirectCallNode node : knownCallNodes) {
                 node.setNeedsSplit(true);
@@ -699,7 +709,35 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             for (RootCallTarget target : toPollute) {
                 ((OptimizedCallTarget) target).profilePolluted = true;
             }
+            if (TruffleCompilerOptions.getValue(TruffleDumpPolymorphicEvents)) {
+                dumpPollutionEvent(toDump);
+            }
         }
     }
 
+    private void dumpPollutionEvent(List<Node> toDump) {
+        final DebugContext debugContext = DebugContext.create(getOptions(), Collections.emptyList());
+        try {
+            Collections.reverse(toDump);
+            TruffleSplittingStrategy.PollutionEvenGraph graph = new TruffleSplittingStrategy.PollutionEvenGraph(knownCallNodes, toDump);
+            final GraphOutput<TruffleSplittingStrategy.PollutionEvenGraph, ?> output = debugContext.buildOutput(GraphOutput.newBuilder(new TruffleSplittingStrategy.PollutionEventGraphStructure()));
+            output.beginGroup(graph, "Pollution Event: " + this, "Pollution Event", null, 0, null);
+            output.print(graph, null, 0, "Pollution Event");
+            output.endGroup();
+            output.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static RootNode pullOutParentChain(Node node, List<Node> toDump) {
+        Node rootNode = node;
+        while (rootNode.getParent() != null) {
+            toDump.add(rootNode);
+            rootNode = rootNode.getParent();
+        }
+        toDump.add(rootNode);
+        return (RootNode) rootNode;
+
+    }
 }

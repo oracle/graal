@@ -189,6 +189,9 @@ public class TruffleCompilerOptions {
     @Option(help = "Used for debugging the splitting implementation. Prints splitting summary directly to stdout on shutdown", type = OptionType.Expert)
     public static final OptionKey<Boolean> TruffleTraceSplittingSummary = new OptionKey<>(false);
 
+    @Option(help = "Dumps to IGV information on polymorphic events", type = OptionType.Expert)
+    public static final OptionKey<Boolean> TruffleDumpPolymorphicEvents = new OptionKey<>(false);
+
     @Option(help = "Enable asynchronous truffle compilation in background thread", type = OptionType.Expert)
     public static final OptionKey<Boolean> TruffleBackgroundCompilation = new OptionKey<>(true);
 

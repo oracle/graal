@@ -31,10 +31,14 @@ import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.graphio.GraphStructure;
 
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -75,7 +79,6 @@ final class TruffleSplittingStrategy {
     }
 
 
-
     private static void doSplit(OptimizedDirectCallNode call) {
         if (TruffleCompilerOptions.getValue(TruffleTraceSplittingSummary)) {
             calculateSplitWasteImpl(call.getCurrentCallTarget());
@@ -98,7 +101,7 @@ final class TruffleSplittingStrategy {
         if (callTarget.isValid()) {
             return false;
         }
-         return call.isNeedsSplit();
+        return call.isNeedsSplit();
     }
 
     static void forceSplitting(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
@@ -354,6 +357,157 @@ final class TruffleSplittingStrategy {
             for (Map.Entry<Class<? extends Node>, Integer> entry : pollutedNodes.entrySet()) {
                 System.out.println(String.format(D_LONG_FORMAT, entry.getKey(), entry.getValue()));
             }
+        }
+    }
+
+    static class PollutionEvenGraph {
+        int idCounter = 0;
+        final List<DumpNode> nodes = new ArrayList<>();
+
+        class DumpNode {
+
+            DumpNode(Node node) {
+                this.node = node;
+            }
+
+            final Node node;
+            final int id = idCounter++;
+            DumpEdge edge;
+        }
+
+        class DumpEdge {
+            DumpEdge(DumpNode node) {
+                this.node = node;
+            }
+
+            final DumpNode node;
+        }
+
+        enum DumpEdgeEnum {
+            CHILD
+        }
+
+        DumpNode makeNode(Node node) {
+            DumpNode n = new DumpNode(node);
+            nodes.add(n);
+            return n;
+        }
+
+        PollutionEvenGraph(List<OptimizedDirectCallNode> needsSplitCallNodes, List<Node> nodeChain) {
+            DumpNode last = null;
+            for (int i = 0; i < nodeChain.size(); i++) {
+                if (i == 0) {
+                    for (OptimizedDirectCallNode callNode : needsSplitCallNodes) {
+                        makeNode(callNode);
+                    }
+                    last = makeNode(nodeChain.get(i));
+                    for (DumpNode dumpNode : nodes) {
+                        dumpNode.edge = new DumpEdge(last);
+                    }
+                } else {
+                    DumpNode n = makeNode(nodeChain.get(i));
+                    last.edge = new DumpEdge(n);
+                    last = n;
+                }
+            }
+        }
+    }
+
+    static class PollutionEventGraphStructure implements GraphStructure<PollutionEvenGraph, PollutionEvenGraph.DumpNode, PollutionEvenGraph.DumpNode, PollutionEvenGraph.DumpEdge> {
+
+        @Override
+        public PollutionEvenGraph graph(PollutionEvenGraph currentGraph, Object obj) {
+            return (obj instanceof PollutionEvenGraph) ? (PollutionEvenGraph) obj : null;
+        }
+
+        @Override
+        public Iterable<? extends PollutionEvenGraph.DumpNode> nodes(PollutionEvenGraph graph) {
+            return graph.nodes;
+        }
+
+        @Override
+        public int nodesCount(PollutionEvenGraph graph) {
+            return graph.nodes.size();
+        }
+
+        @Override
+        public int nodeId(PollutionEvenGraph.DumpNode node) {
+            return node.id;
+        }
+
+        @Override
+        public boolean nodeHasPredecessor(PollutionEvenGraph.DumpNode node) {
+            return false;
+        }
+
+        @Override
+        public void nodeProperties(PollutionEvenGraph graph, PollutionEvenGraph.DumpNode node, Map<String, ? super Object> properties) {
+            properties.put("label", node.node.toString());
+            properties.put("ROOT?", node.node instanceof RootNode);
+            properties.put("LEAF?", node.edge == null);
+            properties.putAll(node.node.getDebugProperties());
+            properties.put("SourceSection", node.node.getSourceSection());
+        }
+
+        @Override
+        public PollutionEvenGraph.DumpNode node(Object obj) {
+            return (obj instanceof PollutionEvenGraph.DumpNode) ? (PollutionEvenGraph.DumpNode) obj : null;
+        }
+
+        @Override
+        public PollutionEvenGraph.DumpNode nodeClass(Object obj) {
+            return (obj instanceof PollutionEvenGraph.DumpNode) ? (PollutionEvenGraph.DumpNode) obj : null;
+
+        }
+
+        @Override
+        public PollutionEvenGraph.DumpNode classForNode(PollutionEvenGraph.DumpNode node) {
+            return node;
+        }
+
+        @Override
+        public String nameTemplate(PollutionEvenGraph.DumpNode nodeClass) {
+            return "{p#label}";
+        }
+
+        @Override
+        public Object nodeClassType(PollutionEvenGraph.DumpNode nodeClass) {
+            return nodeClass.getClass();
+        }
+
+        @Override
+        public PollutionEvenGraph.DumpEdge portInputs(PollutionEvenGraph.DumpNode nodeClass) {
+            return null;
+        }
+
+        @Override
+        public PollutionEvenGraph.DumpEdge portOutputs(PollutionEvenGraph.DumpNode nodeClass) {
+            return nodeClass.edge;
+        }
+
+        @Override
+        public int portSize(PollutionEvenGraph.DumpEdge port) {
+            return port == null ? 0 : 1;
+        }
+
+        @Override
+        public boolean edgeDirect(PollutionEvenGraph.DumpEdge port, int index) {
+            return port != null;
+        }
+
+        @Override
+        public String edgeName(PollutionEvenGraph.DumpEdge port, int index) {
+            return "";
+        }
+
+        @Override
+        public Object edgeType(PollutionEvenGraph.DumpEdge port, int index) {
+            return PollutionEvenGraph.DumpEdgeEnum.CHILD;
+        }
+
+        @Override
+        public Collection<? extends PollutionEvenGraph.DumpNode> edgeNodes(PollutionEvenGraph graph, PollutionEvenGraph.DumpNode node, PollutionEvenGraph.DumpEdge port, int index) {
+            return Collections.singleton(node.edge.node);
         }
     }
 }

@@ -156,9 +156,9 @@ final class GraalTVMCI extends TVMCI {
     }
 
     @Override
-    protected void pollute(Node node) {
-        TruffleSplittingStrategy.newPolluteCall(node);
-        final OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getRootNode().getCallTarget();
-        callTarget.pollutionEvent();
+    protected void pollute(Node source) {
+        TruffleSplittingStrategy.newPolluteCall(source);
+        final OptimizedCallTarget callTarget = (OptimizedCallTarget) source.getRootNode().getCallTarget();
+        callTarget.pollutionEvent(source);
     }
 }
