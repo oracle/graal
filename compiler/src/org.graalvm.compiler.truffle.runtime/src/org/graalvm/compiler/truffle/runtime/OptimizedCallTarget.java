@@ -684,7 +684,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private void polluteProfile(int depth, List<RootCallTarget> toPollute) {
         // TODO: what if compiled?
-        if (knownCallNodes.size() == 0 || compilationProfile.getInterpreterCallCount() == 1 || toPollute.containsAll(Arrays.asList(this, this))) {
+        if (profilePolluted || knownCallNodes.size() == 0 || compilationProfile.getInterpreterCallCount() == 1 || toPollute.containsAll(Arrays.asList(this, this))) {
             return;
         }
         if (knownCallNodes.size() == 1) {
