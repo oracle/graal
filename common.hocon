@@ -157,6 +157,10 @@ svm-common-linux: ${svm-common} ${linux-amd64} {
   timelimit: "55:00"
 }
 
+svm-capabilities-fast : {
+  capabilities : [linux, amd64, fast]
+}
+
 svm-capabilities-avx2 : {
   capabilities : [linux, amd64, avx2]
 }
