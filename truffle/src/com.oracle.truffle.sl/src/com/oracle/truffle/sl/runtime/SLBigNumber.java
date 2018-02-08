@@ -42,6 +42,7 @@ package com.oracle.truffle.sl.runtime;
 
 import java.math.BigInteger;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
@@ -49,7 +50,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
 @MessageResolution(receiverType = SLBigNumber.class)
-public final class SLBigNumber implements TruffleObject {
+public final class SLBigNumber implements TruffleObject, Comparable<SLBigNumber> {
 
     private final BigInteger value;
 
@@ -61,9 +62,34 @@ public final class SLBigNumber implements TruffleObject {
         return value;
     }
 
+    @TruffleBoundary
+    public int compareTo(SLBigNumber o) {
+        return value.compareTo(o.getValue());
+    }
+
     @Override
     public ForeignAccess getForeignAccess() {
         return SLBigNumberForeign.ACCESS;
+    }
+
+    @Override
+    @TruffleBoundary
+    public String toString() {
+        return value.toString();
+    }
+
+    @Override
+    @TruffleBoundary
+    public boolean equals(Object obj) {
+        if (obj instanceof SLBigNumber) {
+            return value.equals(((SLBigNumber) obj).getValue());
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return value.hashCode();
     }
 
     static boolean isInstance(TruffleObject obj) {

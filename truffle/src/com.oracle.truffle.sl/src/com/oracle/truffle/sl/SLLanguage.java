@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.sl;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -123,7 +122,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
  * <b>Types:</b>
  * <ul>
  * <li>Number: arbitrary precision integer numbers. The implementation uses the Java primitive type
- * {@code long} to represent numbers that fit into the 64 bit range, and {@link BigInteger} for
+ * {@code long} to represent numbers that fit into the 64 bit range, and {@link SLBigNumber} for
  * numbers that exceed the range. Using a primitive type such as {@code long} is crucial for
  * performance.
  * <li>Boolean: implemented as the Java primitive type {@code boolean}.

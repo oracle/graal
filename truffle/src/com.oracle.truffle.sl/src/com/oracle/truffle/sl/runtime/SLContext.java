@@ -43,7 +43,6 @@ package com.oracle.truffle.sl.runtime;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.math.BigInteger;
 import java.util.Collections;
 import java.util.List;
 
@@ -242,7 +241,7 @@ public final class SLContext {
      */
 
     public static Object fromForeignValue(Object a) {
-        if (a instanceof Long || a instanceof BigInteger || a instanceof String || a instanceof Boolean) {
+        if (a instanceof Long || a instanceof SLBigNumber || a instanceof String || a instanceof Boolean) {
             return a;
         } else if (a instanceof Character) {
             return String.valueOf(a);

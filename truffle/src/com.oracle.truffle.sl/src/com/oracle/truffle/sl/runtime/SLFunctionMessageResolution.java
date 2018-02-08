@@ -49,8 +49,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNodeGen;
-import com.oracle.truffle.sl.nodes.interop.SLTypeToForeignNode;
-import com.oracle.truffle.sl.nodes.interop.SLTypeToForeignNodeGen;
 
 /**
  * The class containing all message resolution implementations of {@link SLFunction}.
@@ -67,7 +65,6 @@ public class SLFunctionMessageResolution {
     public abstract static class SLForeignFunctionExecuteNode extends Node {
 
         @Child private SLDispatchNode dispatch = SLDispatchNodeGen.create();
-        @Child private SLTypeToForeignNode toForeign = SLTypeToForeignNodeGen.create();
 
         public Object access(SLFunction receiver, Object[] arguments) {
             Object[] arr = new Object[arguments.length];
@@ -77,7 +74,7 @@ public class SLFunctionMessageResolution {
                 arr[i] = fromForeignValue(arguments[i]);
             }
             Object result = dispatch.executeDispatch(receiver, arr);
-            return toForeign.executeConvert(result);
+            return result;
         }
     }
 
