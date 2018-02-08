@@ -84,4 +84,8 @@ public class HostedConfiguration {
     public StaticAnalysisResultsBuilder createStaticAnalysisResultsBuilder(BigBang bigbang, HostedUniverse universe) {
         return new StaticAnalysisResultsBuilder(bigbang, universe);
     }
+
+    public boolean isUsingAOTProfiles() {
+        return false;
+    }
 }

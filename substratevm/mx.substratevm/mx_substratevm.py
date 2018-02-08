@@ -593,10 +593,12 @@ def gate_sulong(native_image, tasks):
             sulong = truffle_language_ensure('llvm')
             sulong.extensions.runLLVMUnittests(functools.partial(native_junit, native_image, build_args=['--Language:llvm']))
 
-def js_image_test(binary, bench_location, name, warmup_iterations, iterations, timeout=None):
-    jsruncmd = [binary, join(bench_location, 'harness.js'), '--',
-                join(bench_location, name + '.js'), '--', '--warmup-iterations=' + str(warmup_iterations),
-                '--iterations=' + str(iterations)]
+
+def js_image_test(binary, bench_location, name, warmup_iterations, iterations, timeout=None, bin_args=None):
+    bin_args = bin_args if bin_args is not None else []
+    jsruncmd = [binary] + bin_args + [join(bench_location, 'harness.js'), '--', join(bench_location, name + '.js'),
+                                      '--', '--warmup-iterations=' + str(warmup_iterations),
+                                      '--iterations=' + str(iterations)]
     mx.log(' '.join(jsruncmd))
 
     passing = []
