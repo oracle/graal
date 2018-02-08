@@ -49,7 +49,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.RuntimeReflection;
 import com.oracle.svm.core.RuntimeReflection.RuntimeReflectionSupport;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -119,7 +119,7 @@ public class JNIAccessFeature implements Feature {
                     parser.parseAndRegister(file);
                 } catch (Exception e) {
                     throw UserError.abort("Could not parse JNI configuration file \"" + file + "\". Verify that the file exists and its contents match the expected schema (see " +
-                                    HostedOptionParser.HOSTED_OPTION_PREFIX + SubstrateOptionsParser.PRINT_FLAGS_OPTION_NAME + " for option " + Options.JNIConfigurationFiles.getName() + ").\n" +
+                                    HostedOptionParser.HOSTED_OPTION_PREFIX + SubstrateOptions.PrintFlags.getName() + " for option " + Options.JNIConfigurationFiles.getName() + ").\n" +
                                     e.toString());
                 }
             }
@@ -132,7 +132,7 @@ public class JNIAccessFeature implements Feature {
                     parser.parseAndRegister(reader);
                 } catch (Exception e) {
                     throw UserError.abort("Could not parse JNI configuration resource \"" + resource + "\". Verify that the resource exists and its contents match the expected schema (see " +
-                                    HostedOptionParser.HOSTED_OPTION_PREFIX + SubstrateOptionsParser.PRINT_FLAGS_OPTION_NAME + " for option " + Options.JNIConfigurationResources.getName() + ").\n" +
+                                    HostedOptionParser.HOSTED_OPTION_PREFIX + SubstrateOptions.PrintFlags.getName() + " for option " + Options.JNIConfigurationResources.getName() + ").\n" +
                                     e.toString());
                 }
             }
