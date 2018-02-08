@@ -47,7 +47,7 @@ import com.oracle.svm.core.util.AtomicUnsigned;
  * thread-safe, so no locking is necessary when calling them.
  *
  * Memory for aligned chunks is not immediately released to the OS. Up to
- * {@link HeapPolicy#getFreeSpaceSize()} chunks are saved in an unused chunk list. Memory for
+ * {@link HeapPolicy#getMinimumHeapSize()} chunks are saved in an unused chunk list. Memory for
  * unaligned chunks is released immediately.
  */
 class HeapChunkProvider {
@@ -151,24 +151,38 @@ class HeapChunkProvider {
         return result;
     }
 
-    /**
-     * Recycle an AlignedHeapChunk, either to the free list or back to the operating system.
-     */
+    /** Recycle an AlignedHeapChunk, either to the free list or back to the operating system. */
     void consumeAlignedChunk(AlignedHeader chunk) {
         log().string("[HeapChunkProvider.consumeAlignedChunk  chunk: ").hex(chunk).newline();
 
         /* Policy: Only keep a limited number of unused chunks. */
-        if (bytesInUnusedAlignedChunks.get().belowThan(HeapPolicy.getFreeSpaceSize())) {
-
+        if (keepAlignedChunk()) {
             cleanAlignedChunk(chunk);
             pushUnusedAlignedChunk(chunk);
-
         } else {
             log().string("  release memory to the OS").newline();
             ConfigurationValues.getOSInterface().freeVirtualMemoryAligned(chunk, HeapPolicy.getAlignedHeapChunkSize(), HeapPolicy.getAlignedHeapChunkAlignment());
         }
-
         log().string("  ]").newline();
+    }
+
+    /** Should I keep another aligned chunk on the free list? */
+    private boolean keepAlignedChunk() {
+        final Log trace = Log.noopLog().string("[HeapChunkProvider.keepAlignedChunk:");
+        final UnsignedWord minimumHeapSize = HeapPolicy.getMinimumHeapSize();
+        final UnsignedWord heapChunkBytes = HeapImpl.getHeapImpl().getUsedChunkBytes();
+        final UnsignedWord unusedChunkBytes = bytesInUnusedAlignedChunks.get();
+        final UnsignedWord bytesInUse = heapChunkBytes.add(unusedChunkBytes);
+        /* If I am under the minimum heap size, then I can keep this chunk. */
+        final boolean result = bytesInUse.belowThan(minimumHeapSize);
+        trace
+                        .string("  minimumHeapSize: ").unsigned(minimumHeapSize)
+                        .string("  heapChunkBytes: ").unsigned(heapChunkBytes)
+                        .string("  unusedBytes: ").unsigned(unusedChunkBytes)
+                        .string("  bytesInUse: ").unsigned(bytesInUse)
+                        .string("  returns: ").bool(result)
+                        .string(" ]").newline();
+        return result;
     }
 
     /** Clean a chunk before putting it on a free list. */

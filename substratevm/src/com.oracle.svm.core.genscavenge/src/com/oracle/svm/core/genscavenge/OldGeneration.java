@@ -228,10 +228,10 @@ public class OldGeneration extends Generation {
      * Pinned allocator collection methods.
      */
 
-    protected void promotePinnedAllocatorChunks(boolean incremental) {
+    protected void promotePinnedAllocatorChunks(boolean completeCollection) {
         final Log trace = Log.noopLog();
         trace.string("[OldGeneration.promotePinnedAllocatorChunks:");
-        trace.string("  incremental: ").bool(incremental);
+        trace.string("  completeCollection: ").bool(completeCollection);
         /*
          * First, walk the list of PinnedAllocators distributing their chunks marking all the chunks
          * that should be pinned.
@@ -241,13 +241,13 @@ public class OldGeneration extends Generation {
          * Then, walk pinned from space and distribute chunks to pinned toSpace or unpinned
          * fromSpace as appropriate.
          */
-        distributePinnedChunks(incremental);
+        distributePinnedChunks(completeCollection);
         trace.string("]").newline();
     }
 
-    private void distributePinnedChunks(boolean incremental) {
-        final Log trace = Log.noopLog().string("[OldGeneration.distributePinnedChunks:").string("  incremental: ").bool(incremental);
-        final Space unpinnedSpace = (incremental ? getToSpace() : getFromSpace());
+    private void distributePinnedChunks(boolean completeCollection) {
+        final Log trace = Log.noopLog().string("[OldGeneration.distributePinnedChunks:").string("  completeCollection: ").bool(completeCollection);
+        final Space unpinnedSpace = (completeCollection ? getFromSpace() : getToSpace());
         trace.string("  unpinnedSpace: ").string(unpinnedSpace.getName());
         distributePinnedAlignedChunks(getPinnedToSpace(), unpinnedSpace);
         distributePinnedUnalignedChunks(getPinnedToSpace(), unpinnedSpace);

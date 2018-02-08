@@ -44,7 +44,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -65,7 +64,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.StackTraceBuilder;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.thread.ParkEvent.WaitResult;
@@ -75,11 +74,6 @@ import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
 public abstract class JavaThreads {
-
-    public static class Options {
-        @Option(help = "How large should the default thread stack be? (0 implies platform default size).")//
-        static final RuntimeOptionKey<Integer> DefaultThreadStackSize = new RuntimeOptionKey<>(1024 * 1024);
-    }
 
     @Fold
     public static JavaThreads singleton() {
@@ -605,8 +599,8 @@ final class Target_java_lang_Thread {
             /* If the user set a thread stack size at thread creation, then use that. */
             chosenStackSize = stackSize;
         } else {
-            /* If the user set a default thread stack size on the command line, then use that. */
-            final int defaultThreadStackSize = JavaThreads.Options.DefaultThreadStackSize.getValue();
+            /* If the user set a thread stack size on the command line, then use that. */
+            final int defaultThreadStackSize = (int) XOptions.getXss().getValue();
             if (defaultThreadStackSize != 0L) {
                 chosenStackSize = defaultThreadStackSize;
             }

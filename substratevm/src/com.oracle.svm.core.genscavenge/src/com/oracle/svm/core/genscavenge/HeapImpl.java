@@ -378,19 +378,40 @@ public class HeapImpl extends Heap {
      * excludes chunks that are unused.
      */
     UnsignedWord getUsedChunkBytes() {
-        final Space.Accounting young = getYoungGeneration().getSpace().getAccounting();
-        final UnsignedWord youngBytes = young.getAlignedChunkBytes().add(young.getUnalignedChunkBytes());
+        final UnsignedWord youngBytes = getYoungUsedChunkBytes();
         final UnsignedWord oldBytes = getOldUsedChunkBytes();
-        final UnsignedWord result = youngBytes.add(oldBytes);
-        return result;
+        return youngBytes.add(oldBytes);
+    }
+
+    UnsignedWord getYoungUsedChunkBytes() {
+        final Space.Accounting young = getYoungGeneration().getSpace().getAccounting();
+        return young.getAlignedChunkBytes().add(young.getUnalignedChunkBytes());
     }
 
     UnsignedWord getOldUsedChunkBytes() {
+        final Log trace = Log.noopLog().string("[HeapImpl.getOldUsedChunkBytes:");
         final Space.Accounting from = getOldGeneration().getFromSpace().getAccounting();
         final UnsignedWord fromBytes = from.getAlignedChunkBytes().add(from.getUnalignedChunkBytes());
-        final Space.Accounting pinned = getOldGeneration().getPinnedFromSpace().getAccounting();
-        final UnsignedWord pinnedBytes = pinned.getAlignedChunkBytes().add(pinned.getUnalignedChunkBytes());
-        return fromBytes.add(pinnedBytes);
+        final Space.Accounting to = getOldGeneration().getToSpace().getAccounting();
+        final UnsignedWord toBytes = to.getAlignedChunkBytes().add(to.getUnalignedChunkBytes());
+        final Space.Accounting pinnedFrom = getOldGeneration().getPinnedFromSpace().getAccounting();
+        final UnsignedWord pinnedFromBytes = pinnedFrom.getAlignedChunkBytes().add(pinnedFrom.getUnalignedChunkBytes());
+        final Space.Accounting pinnedTo = getOldGeneration().getPinnedFromSpace().getAccounting();
+        final UnsignedWord pinnedToBytes = pinnedTo.getAlignedChunkBytes().add(pinnedTo.getUnalignedChunkBytes());
+        final UnsignedWord result = fromBytes.add(toBytes).add(pinnedFromBytes).add(pinnedToBytes);
+        if (trace.isEnabled()) {
+            trace
+                            .string("  fromAligned: ").unsigned(from.getAlignedChunkBytes())
+                            .string("  fromUnaligned: ").signed(from.getUnalignedChunkBytes())
+                            .string("  toAligned: ").unsigned(to.getAlignedChunkBytes())
+                            .string("  toUnaligned: ").signed(to.getUnalignedChunkBytes())
+                            .string("  pinnedFromAligned: ").unsigned(pinnedFrom.getAlignedChunkBytes())
+                            .string("  pinnedFromUnaligned: ").signed(pinnedFrom.getUnalignedChunkBytes())
+                            .string("  pinnedToAligned: ").unsigned(pinnedTo.getAlignedChunkBytes())
+                            .string("  pinnedToUnaligned: ").signed(pinnedTo.getUnalignedChunkBytes())
+                            .string("  returns: ").unsigned(result).string(" ]").newline();
+        }
+        return result;
     }
 
     /** Return the size, in bytes, of the actual used memory, not the committed memory. */
@@ -530,12 +551,6 @@ public class HeapImpl extends Heap {
     public UnsignedWord freeMemory() {
         /*
          * Report "chunk bytes" rather than the slower but more accurate "object bytes".
-         *
-         * Note that this will not count chunks that are currently in thread-local allocation
-         * chunks, which would require a VMOperation to count them.
-         *
-         * Note that more memory can be allocated than `totalMemory()` reports, as long as the
-         * objects are unreachable when a collection happens.
          */
         return maxMemory().subtract(HeapPolicy.getBytesAllocatedSinceLastCollection()).subtract(getOldUsedChunkBytes());
     }
@@ -557,7 +572,7 @@ public class HeapImpl extends Heap {
          * This only reports the memory that will be used for heap-allocated objects. For example,
          * it does not include memory in the chunk free list, or memory in the image heap.
          */
-        return HeapPolicy.getYoungGenerationSize().add(HeapPolicy.getOldGenerationSize());
+        return HeapPolicy.getMaximumHeapSize();
     }
 }
 

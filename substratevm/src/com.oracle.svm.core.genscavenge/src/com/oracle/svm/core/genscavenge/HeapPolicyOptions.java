@@ -23,33 +23,17 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.genscavenge.HeapPolicy.AlwaysCollectCompletely;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 
 public class HeapPolicyOptions {
+
     /* Memory configuration */
 
-    @Option(help = "How big is the young generation?") //
-    public static final RuntimeOptionKey<Long> YoungGenerationSize = new RuntimeOptionKey<>(256L * 1024L * 1024L);
-
-    /** The YoungGenerationSize option as an Unsigned. */
-    public static UnsignedWord getYoungGenerationSize() {
-        return WordFactory.unsigned(YoungGenerationSize.getValue());
-    }
-
-    @Option(help = "How big is the old generation?") //
-    public static final RuntimeOptionKey<Long> OldGenerationSize = new RuntimeOptionKey<>(512L * 1024L * 1024L);
-
-    @Option(help = "Old generation size as percent of physical memory, has priority over OldGenerationSize unless set to a negative value") //
-    public static final RuntimeOptionKey<Integer> OldGenerationSizePercent = new RuntimeOptionKey<>(-1);
-
-    /* For good performance, this should be somewhat larger than the young generation size. */
-    @Option(help = "How many bytes should be kept as free space?  0 implies (YoungGenerationSize + OldGenerationSize).") //
-    static final RuntimeOptionKey<Long> FreeSpaceSize = new RuntimeOptionKey<>(0L);
+    @Option(help = "The maximum heap size as percent of physical memory") //
+    public static final RuntimeOptionKey<Integer> MaximumHeapSizePercent = new RuntimeOptionKey<>(80);
 
     @Option(help = "The size of an aligned chunk.") //
     public static final HostedOptionKey<Long> AlignedHeapChunkSize = new HostedOptionKey<>(1L * 1024L * 1024L);
@@ -82,4 +66,13 @@ public class HeapPolicyOptions {
 
     @Option(help = "Defines the upper bound for the number of remaining bytes in the young generation that cause a collection when `System.gc` is called.") //
     public static final RuntimeOptionKey<Long> UserRequestedGCThreshold = new RuntimeOptionKey<>(16L * 1024L * 1024L);
+
+    /* Options that are no longer used. TODO: Remove uses in user scripts. */
+
+    @Option(help = "Replaced by '-Xmn'.") //
+    public static final RuntimeOptionKey<Long> YoungGenerationSize = new RuntimeOptionKey<>(0L);
+
+    @Option(help = "Replaced by '-Xmx' - '-Xmn'.") //
+    public static final RuntimeOptionKey<Long> OldGenerationSize = new RuntimeOptionKey<>(0L);
+
 }

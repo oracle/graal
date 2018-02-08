@@ -226,11 +226,11 @@ public final class ThreadLocalAllocation {
         Object result;
         if (size.aboveOrEqual(HeapPolicy.getLargeArrayThreshold())) {
             /*
-             * Check if the array is really too big. This is an optimistic check because the old
-             * generation probably has other objects in it already, so the next collection will fail
-             * if this object is allocated and survives.
+             * Check if the array is really too big. This is an optimistic check because the heap
+             * probably has other objects in it, so the next collection will throw an
+             * OutOfMemoryError if this object is allocated and survives.
              */
-            if (size.aboveOrEqual(HeapPolicy.getOldGenerationSize())) {
+            if (size.aboveOrEqual(HeapPolicy.getMaximumHeapSize())) {
                 throw arrayAllocationTooLarge;
             }
             /* Large arrays go into their own unaligned chunk. */
