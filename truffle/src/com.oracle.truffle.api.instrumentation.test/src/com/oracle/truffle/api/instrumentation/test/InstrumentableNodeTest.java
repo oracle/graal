@@ -195,7 +195,7 @@ public class InstrumentableNodeTest extends InstrumentationEventTest {
         });
     }
 
-    private static final void assertProperties(Object receiver, Object... properties) {
+    private static void assertProperties(Object receiver, Object... properties) {
         try {
             assertTrue(receiver instanceof TruffleObject);
             TruffleObject obj = (TruffleObject) receiver;

@@ -1125,7 +1125,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
     static final class InternalNode extends InstrumentedNode {
 
-        public InternalNode(BaseNode[] children) {
+        InternalNode(BaseNode[] children) {
             super(children);
         }
 

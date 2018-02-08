@@ -535,7 +535,7 @@ final class InstrumentationHandler {
         // for input filters to be updated correctly we need to
         // start traversing with the parent instrumentable node.
         Node parentInstrumentable = tree;
-        while (parentInstrumentable.getParent() != null) {
+        while (parentInstrumentable != null && parentInstrumentable.getParent() != null) {
             parentInstrumentable = parentInstrumentable.getParent();
             if (InstrumentationHandler.isInstrumentableNode(parentInstrumentable, parentInstrumentable.getSourceSection())) {
                 break;
