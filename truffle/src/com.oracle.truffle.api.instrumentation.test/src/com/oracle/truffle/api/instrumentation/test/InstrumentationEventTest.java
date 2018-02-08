@@ -26,6 +26,7 @@ package com.oracle.truffle.api.instrumentation.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -34,6 +35,7 @@ import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -61,21 +63,41 @@ public class InstrumentationEventTest {
 
             public ExecutionEventNode create(EventContext c) {
                 return new ExecutionEventNode() {
+                    {
+                        for (int i = 0; i < getInputCount(); i++) {
+                            Assert.assertNotNull(getInputContext(i));
+                        }
+                    }
+
                     @Override
                     protected void onInputValue(VirtualFrame frame, EventContext inputContext, int inputIndex, Object inputValue) {
                         saveInputValue(frame, inputIndex, inputValue);
-                        events.add(new Event(EventKind.INPUT_VALUE, c, frame, null, null, inputIndex, inputValue));
+
+                        assertTrue(inputIndex < getInputCount());
+                        assertSame(inputContext, getInputContext(inputIndex));
+
+                        events.add(new Event(EventKind.INPUT_VALUE, c, frame, null, null, inputIndex, inputValue, createInputContexts()));
                     }
 
                     @Override
                     public void onEnter(VirtualFrame frame) {
-                        events.add(new Event(EventKind.ENTER, c, frame, null, null, -1, null));
+                        events.add(new Event(EventKind.ENTER, c, frame, null, null, -1, null, createInputContexts()));
                     }
 
                     @Override
                     protected void onReturnValue(VirtualFrame frame, Object result) {
-                        events.add(new Event(EventKind.RETURN_VALUE, c, frame, getSavedInputValues(frame), result, -1, null));
+                        events.add(new Event(EventKind.RETURN_VALUE, c, frame, getSavedInputValues(frame), result, -1, null, createInputContexts()));
                     }
+
+                    private EventContext[] createInputContexts() {
+                        EventContext[] inputContexts = new EventContext[getInputCount()];
+                        for (int i = 0; i < getInputCount(); i++) {
+                            Assert.assertNotNull(getInputContext(i));
+                            inputContexts[i] = getInputContext(i);
+                        }
+                        return inputContexts;
+                    }
+
                 };
             }
         };
@@ -137,8 +159,9 @@ public class InstrumentationEventTest {
         public final Object[] inputs;
         public final int inputValueIndex;
         public final Object inputValue;
+        public final EventContext[] inputContexts;
 
-        Event(EventKind kind, EventContext context, VirtualFrame frame, Object[] inputs, Object result, int index, Object inputValue) {
+        Event(EventKind kind, EventContext context, VirtualFrame frame, Object[] inputs, Object result, int index, Object inputValue, EventContext[] inputContexts) {
             this.kind = kind;
             this.context = context;
             this.frame = frame;
@@ -146,6 +169,7 @@ public class InstrumentationEventTest {
             this.inputs = inputs;
             this.inputValue = inputValue;
             this.inputValueIndex = index;
+            this.inputContexts = inputContexts;
         }
 
         @Override

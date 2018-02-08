@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProbeNode.EventProviderWithInputChainNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -60,10 +61,23 @@ public abstract class ExecutionEventNode extends Node {
     }
 
     /**
-     * Invoked immediately after each return value event of child nodes that match the
+     * Invoked immediately after each return value event of instrumented input child node that match
+     * the
      * {@link Instrumenter#attachExecutionEventFactory(SourceSectionFilter, SourceSectionFilter, ExecutionEventNodeFactory)
-     * input filter}. Input values can be {@link #saveInputValue(VirtualFrame, int, Object) saved}
-     * to make them {@link #getSavedInputValues(VirtualFrame)} accessible in
+     * input filter}. Whether, when and how often input child value events are triggered depends on
+     * the semantics of the instrumented node. For example, if the instrumented node represents
+     * binary arithmetic then two input value events will be triggered for index <code>0</code> and
+     * <code>1</code>. For short-circuited child values not all input child nodes may be executed
+     * therefore they might not trigger events for {@link #getInputCount() all inputs}. For
+     * instrumented loop nodes input value events with the same <code>index</code> may be triggered
+     * many times.
+     * <p>
+     * The total number of input nodes that may produce input events can be accessed using
+     * {@link #getInputCount()}. Other input contexts than the currently input context can be
+     * accessed using {@link #getInputContext(int)}.
+     * <p>
+     * Input values can be {@link #saveInputValue(VirtualFrame, int, Object) saved} to make them
+     * {@link #getSavedInputValues(VirtualFrame)} accessible in
      * {@link #onReturnValue(VirtualFrame, Object) onReturn} or
      * {@link #onReturnExceptional(VirtualFrame, Throwable) onReturnExceptional} events.
      *
@@ -73,7 +87,7 @@ public abstract class ExecutionEventNode extends Node {
      * @param inputValue the return value of the input child
      * @see #saveInputValue(VirtualFrame, int, Object)
      * @see #getSavedInputValues(VirtualFrame)
-     * @since 0.30
+     * @since 0.32
      */
     protected void onInputValue(VirtualFrame frame, EventContext inputContext, int inputIndex, Object inputValue) {
         // do nothing by default
@@ -139,6 +153,48 @@ public abstract class ExecutionEventNode extends Node {
     }
 
     /**
+     * Returns the event context of an input by index. The returned input context matches the input
+     * context provided in {@link #onInputValue(VirtualFrame, EventContext, int, Object)}. The total
+     * number of instrumented input nodes can be accessed using {@link #getInputCount()}. This
+     * method returns a constant event context for a constant input index, when called in partially
+     * evaluated code paths.
+     *
+     * @param index the context index
+     * @throws IndexOutOfBoundsException if the index is out of bounds.
+     * @see #onInputValue(VirtualFrame, EventContext, int, Object)
+     * @see #getInputCount()
+     * @since 0.32
+     */
+    protected final EventContext getInputContext(int index) {
+        if (index < 0 || index >= getInputCount()) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IndexOutOfBoundsException(String.valueOf(index));
+        }
+        EventProviderWithInputChainNode node = getChainNode();
+        if (node == null) {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("should not be reachable as input count should be 0");
+        }
+        return node.getInputContext(index);
+    }
+
+    /**
+     * Returns the total number of instrumented input nodes that may produce
+     * {@link #onInputValue(VirtualFrame, EventContext, int, Object) input events} when executed.
+     *
+     * @see #onInputValue(VirtualFrame, EventContext, int, Object)
+     * @since 0.32
+     */
+    protected final int getInputCount() {
+        EventProviderWithInputChainNode node = getChainNode();
+        if (node == null) {
+            return 0;
+        } else {
+            return node.getInputCount();
+        }
+    }
+
+    /**
      * Saves an input value reported by
      * {@link #onInputValue(VirtualFrame, EventContext, int, Object)} for use in later events. Saved
      * input values can be restored using {@link #getSavedInputValues(VirtualFrame)} in
@@ -153,7 +209,7 @@ public abstract class ExecutionEventNode extends Node {
      * @param inputValue the input value
      * @throws IllegalArgumentException for invalid input indexes for non-existing input nodes.
      * @see #onInputValue(VirtualFrame, EventContext, int, Object)
-     * @since 0.30
+     * @since 0.32
      */
     protected final void saveInputValue(VirtualFrame frame, int inputIndex, Object inputValue) {
         EventProviderWithInputChainNode node = getChainNode();
@@ -170,7 +226,7 @@ public abstract class ExecutionEventNode extends Node {
      * @param frame the frame to read the input values from.
      * @see #saveInputValue(VirtualFrame, int, Object)
      * @see #onInputValue(VirtualFrame, EventContext, int, Object)
-     * @since 0.30
+     * @since 0.32
      */
     protected final Object[] getSavedInputValues(VirtualFrame frame) {
         EventProviderWithInputChainNode node = getChainNode();

@@ -442,6 +442,13 @@ public final class ProbeNode extends Node {
         return next;
     }
 
+    static EventContext[] findChildContexts(EventBinding.Source<?> binding, RootNode rootNode, Set<Class<?>> providedTags, Node instrumentedNode, SourceSection instrumentedNodeSourceSection,
+                    int inputCount) {
+        InputChildContextLookup visitor = new InputChildContextLookup(binding, rootNode, providedTags, instrumentedNode, instrumentedNodeSourceSection, inputCount);
+        NodeUtil.forEachChild(instrumentedNode, visitor);
+        return visitor.foundContexts;
+    }
+
     private static int indexOfChild(EventBinding.Source<?> binding, RootNode rootNode, Set<Class<?>> providedTags, Node instrumentedNode, SourceSection instrumentedNodeSourceSection,
                     Node lookupChild) {
         InputChildIndexLookup visitor = new InputChildIndexLookup(binding, rootNode, providedTags, instrumentedNode, instrumentedNodeSourceSection, lookupChild);
@@ -576,13 +583,41 @@ public final class ProbeNode extends Node {
         return r1; // The first one wins
     }
 
-    private static class InputChildIndexLookup implements NodeVisitor {
+    private static class InputChildContextLookup extends InstrumentableChildVisitor {
 
-        private final EventBinding.Source<?> binding;
-        private final Set<Class<?>> providedTags;
-        private final RootNode rootNode;
-        private final Node instrumentedNode;
-        private final SourceSection instrumentedNodeSourceSection;
+        EventContext[] foundContexts;
+        int index;
+
+        InputChildContextLookup(EventBinding.Source<?> binding, RootNode rootNode, Set<Class<?>> providedTags, Node instrumentedNode, SourceSection instrumentedNodeSourceSection, int childrenCount) {
+            super(binding, rootNode, providedTags, instrumentedNode, instrumentedNodeSourceSection);
+            this.foundContexts = new EventContext[childrenCount];
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        protected boolean visitChild(Node child) {
+            Node parent = child.getParent();
+            if (parent instanceof com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode) {
+                ProbeNode probe = ((com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode) parent).getProbeNode();
+                if (index < foundContexts.length) {
+                    foundContexts[index] = probe.context;
+                } else {
+                    assert false;
+                    foundContexts = null;
+                    return false;
+                }
+            } else {
+                // not yet materialized
+                assert false;
+                foundContexts = null;
+                return false;
+            }
+            index++;
+            return true;
+        }
+    }
+
+    private static class InputChildIndexLookup extends InstrumentableChildVisitor {
 
         private final Node lookupNode;
 
@@ -590,32 +625,55 @@ public final class ProbeNode extends Node {
         int index;
 
         InputChildIndexLookup(EventBinding.Source<?> binding, RootNode rootNode, Set<Class<?>> providedTags, Node instrumentedNode, SourceSection instrumentedNodeSourceSection, Node lookupNode) {
+            super(binding, rootNode, providedTags, instrumentedNode, instrumentedNodeSourceSection);
+            this.lookupNode = lookupNode;
+        }
+
+        @Override
+        protected boolean visitChild(Node child) {
+            if (found) {
+                return false;
+            }
+            if (lookupNode == child) {
+                found = true;
+                return false;
+            }
+            index++;
+            return true;
+        }
+    }
+
+    private abstract static class InstrumentableChildVisitor implements NodeVisitor {
+
+        private final EventBinding.Source<?> binding;
+        private final Set<Class<?>> providedTags;
+        private final RootNode rootNode;
+        private final Node instrumentedNode;
+        private final SourceSection instrumentedNodeSourceSection;
+
+        InstrumentableChildVisitor(EventBinding.Source<?> binding, RootNode rootNode, Set<Class<?>> providedTags, Node instrumentedNode, SourceSection instrumentedNodeSourceSection) {
             this.binding = binding;
             this.providedTags = providedTags;
             this.rootNode = rootNode;
             this.instrumentedNode = instrumentedNode;
             this.instrumentedNodeSourceSection = instrumentedNodeSourceSection;
-            this.lookupNode = lookupNode;
         }
 
-        public boolean visit(Node node) {
-            if (found) {
-                return false;
-            }
-            if (lookupNode == node) {
-                found = true;
-                return false;
-            }
+        public final boolean visit(Node node) {
             SourceSection sourceSection = node.getSourceSection();
             if (InstrumentationHandler.isInstrumentableNode(node, sourceSection)) {
                 if (binding.isChildInstrumentedFull(providedTags, rootNode, instrumentedNode, instrumentedNodeSourceSection, node, sourceSection)) {
-                    index++;
+                    if (!visitChild(node)) {
+                        return false;
+                    }
                 }
                 return true;
             }
             NodeUtil.forEachChild(node, this);
             return true;
         }
+
+        protected abstract boolean visitChild(Node child);
     }
 
     abstract static class EventChainNode extends Node {
@@ -1008,15 +1066,36 @@ public final class ProbeNode extends Node {
         private volatile FrameDescriptor sourceFrameDescriptor;
         final int inputBaseIndex;
         final int inputCount;
+        @CompilationFinal(dimensions = 1) volatile EventContext[] inputContexts;
 
         EventProviderWithInputChainNode(EventBinding.Source<?> binding, ExecutionEventNode eventNode, int inputBaseIndex, int inputCount) {
             super(binding, eventNode);
             this.inputBaseIndex = inputBaseIndex;
             this.inputCount = inputCount;
-
         }
 
-        protected final void saveInputValue(VirtualFrame frame, int inputIndex, Object value) {
+        final int getInputCount() {
+            return inputCount;
+        }
+
+        final EventContext getInputContext(int index) {
+            EventContext[] contexts = inputContexts;
+            if (contexts == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                ProbeNode probe = findProbe();
+                EventContext thisContext = probe.context;
+                RootNode rootNode = getRootNode();
+                Set<Class<?>> providedTags = probe.handler.getProvidedTags(rootNode);
+                inputContexts = contexts = findChildContexts(getBinding(), rootNode, providedTags, thisContext.getInstrumentedNode(), thisContext.getInstrumentedSourceSection(), inputCount);
+            }
+            if (contexts == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new IllegalStateException("Input event context not yet available. They are only available during event notifications.");
+            }
+            return contexts[index];
+        }
+
+        final void saveInputValue(VirtualFrame frame, int inputIndex, Object value) {
             verifyIndex(inputIndex);
             if (inputSlots == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1179,6 +1258,7 @@ public final class ProbeNode extends Node {
                 return binding == other.binding && index == other.index;
             }
         }
+
     }
 
     static class EventProviderChainNode extends ProbeNode.EventChainNode {
