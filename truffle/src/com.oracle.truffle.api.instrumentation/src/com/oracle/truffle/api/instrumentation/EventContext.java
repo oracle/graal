@@ -77,6 +77,19 @@ public final class EventContext {
         if (object != null) {
             assert AccessorInstrumentHandler.interopAccess().isValidNodeObject(object);
         }
+        boolean foundStandardTag = false;
+        for (Class<? extends Tag> clazz : StandardTags.ALL_TAGS) {
+            if (hasTag(clazz)) {
+                foundStandardTag = true;
+            }
+        }
+        if (foundStandardTag) {
+            RootNode root = probeNode.getRootNode();
+            if (root.getSourceSection() != null) {
+                assert sourceSection != null : "All nodes tagged with a standard tag and with a root node that has a source section must also have a source section.";
+            }
+        }
+
         return true;
     }
 
@@ -86,9 +99,8 @@ public final class EventContext {
 
     /**
      * Returns <code>true</code> if the underlying instrumented AST is tagged with a particular tag.
-     * Note that the return value of {@link #hasTag(Class)} always returns the same value for a
-     * particular tag and {@link EventContext#}. The method can safely be used in compiled/partialyl
-     * evaluated code paths and will fold to a constant with a constant tag parameter.
+     * The return value of {@link #hasTag(Class)} always returns the same value for a particular tag
+     * and {@link EventContext#}. The method may be used on compiled code paths.
      *
      * @param tag the tag to check to check, must not be <code>null</code>.
      * @since 0.32
@@ -138,7 +150,8 @@ public final class EventContext {
 
     /**
      * Returns the {@link SourceSection} that is being instrumented. The returned source section is
-     * final for each {@link EventContext} instance.
+     * final for each {@link EventContext} instance. The returned source section may be null if the
+     * node does not provide sources section.
      *
      * <p>
      * <b>Performance note:</b> this is method may be invoked in compiled code and is guaranteed to

@@ -26,6 +26,7 @@ package com.oracle.truffle.api.instrumentation;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Set of standard tags usable by language agnostic tools. Language should {@link ProvidedTags
@@ -38,6 +39,8 @@ public final class StandardTags {
     private StandardTags() {
         /* No instances */
     }
+
+    @SuppressWarnings("unchecked") static final Class<? extends Tag>[] ALL_TAGS = new Class[]{StatementTag.class, CallTag.class, RootTag.class, ExpressionTag.class};
 
     /**
      * Marks program locations that represent a statement of a language.
@@ -53,7 +56,9 @@ public final class StandardTags {
      * for example a step-over operation will stop at the next independent statement to get the
      * desired behavior.</li>
      * </ul>
-     * The StatemenTag has uses the {@link Identifier identifier} <code>"STATEMENT"</code>.
+     * The StatemenTag has uses the {@link Identifier identifier} <code>"STATEMENT"</code>. A node
+     * tagged with {@link RootTag} must provide a {@link Node#getSourceSection() source section}, if
+     * its root node provides a source section.
      *
      * @since 0.12
      */
@@ -75,7 +80,9 @@ public final class StandardTags {
      * location that has just executed the call that returned.</li>
      * </ul>
      *
-     * The CallTag has uses the {@link Identifier identifier} <code>"CALL"</code>.
+     * The CallTag has uses the {@link Identifier identifier} <code>"CALL"</code>. A node tagged
+     * with {@link RootTag} must provide a {@link Node#getSourceSection() source section}, if its
+     * root node provides a source section.
      *
      * @since 0.12
      */
@@ -97,7 +104,9 @@ public final class StandardTags {
      * <li><b>Profiler:</b> Marks every root that should be profiled.</li>
      * </ul>
      *
-     * The RootTag has uses the {@link Identifier identifier} <code>"ROOT"</code>.
+     * The RootTag has uses the {@link Identifier identifier} <code>"ROOT"</code>. A node tagged
+     * with {@link RootTag} must provide a {@link Node#getSourceSection() source section}, if its
+     * root node provides a source section.
      *
      * @since 0.12
      */
@@ -123,7 +132,9 @@ public final class StandardTags {
      * expression tag to support debuggers.</li>
      * </ul>
      *
-     * The ExpressionTag has uses the {@link Identifier identifier} <code>"EXPRESSION"</code>.
+     * The ExpressionTag has uses the {@link Identifier identifier} <code>"EXPRESSION"</code>. A
+     * node tagged with {@link RootTag} must provide a {@link Node#getSourceSection() source
+     * section}, if its root node provides a source section.
      *
      * @since 0.32
      */
