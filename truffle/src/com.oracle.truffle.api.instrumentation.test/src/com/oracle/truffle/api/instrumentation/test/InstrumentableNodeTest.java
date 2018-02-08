@@ -27,6 +27,7 @@ package com.oracle.truffle.api.instrumentation.test;
 import static com.oracle.truffle.api.instrumentation.test.InstrumentationEventTest.EventKind.ENTER;
 import static com.oracle.truffle.api.instrumentation.test.InstrumentationEventTest.EventKind.INPUT_VALUE;
 import static com.oracle.truffle.api.instrumentation.test.InstrumentationEventTest.EventKind.RETURN_VALUE;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.graalvm.polyglot.Source;
@@ -34,9 +35,16 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.ConstantTag;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.ExpressionNode;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.MaterializeChildExpressionNode;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.MaterializedChildExpressionNode;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 
 public class InstrumentableNodeTest extends InstrumentationEventTest {
 
@@ -165,6 +173,49 @@ public class InstrumentableNodeTest extends InstrumentationEventTest {
         assertOn(RETURN_VALUE, (e) -> {
             assertTrue(e.context.getInstrumentedNode() instanceof ExpressionNode);
         });
+    }
+
+    @Test
+    public void testGetNodeObject() {
+        SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class, ConstantTag.class).build();
+        instrumenter.attachExecutionEventFactory(filter, null, factory);
+        execute("EXPRESSION(CONSTANT(42))");
+        assertOn(ENTER, (e) -> {
+            assertProperties(e.context.getNodeObject(), "simpleName", "ExpressionNode");
+        });
+        assertOn(ENTER, (e) -> {
+            assertProperties(e.context.getNodeObject(), "simpleName", "ConstantNode", "constant", 42);
+        });
+        assertOn(RETURN_VALUE, (e) -> {
+            assertProperties(e.context.getNodeObject(), "simpleName", "ConstantNode", "constant", 42);
+        });
+        assertOn(RETURN_VALUE, (e) -> {
+            assertProperties(e.context.getNodeObject(), "simpleName", "ExpressionNode");
+        });
+    }
+
+    private static final void assertProperties(Object receiver, Object... properties) {
+        try {
+            assertTrue(receiver instanceof TruffleObject);
+            TruffleObject obj = (TruffleObject) receiver;
+
+            Node hasKeysNode = Message.HAS_KEYS.createNode();
+            Node keysNode = Message.KEYS.createNode();
+            assertTrue(ForeignAccess.sendHasKeys(hasKeysNode, obj));
+            TruffleObject keys = ForeignAccess.sendKeys(keysNode, obj);
+
+            for (int i = 0; i < properties.length; i = i + 2) {
+                String expectedKey = (String) properties[i];
+                Object expectedValue = properties[i + 1];
+                Node readNode = Message.READ.createNode();
+                Object key = ForeignAccess.sendRead(readNode, keys, i / 2);
+                assertEquals(expectedKey, key);
+                assertEquals(expectedValue, ForeignAccess.sendRead(readNode, obj, key));
+            }
+        } catch (InteropException e) {
+            throw e.raise();
+        }
+
     }
 
 }

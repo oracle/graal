@@ -30,6 +30,7 @@ import java.util.Objects;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AccessorInstrumentHandler;
@@ -54,7 +55,7 @@ public final class EventContext {
 
     private final ProbeNode probeNode;
     private final SourceSection sourceSection;
-    private volatile Object nodeObject;
+    @CompilationFinal private volatile Object nodeObject;
 
     EventContext(ProbeNode probeNode, SourceSection sourceSection) {
         this.sourceSection = sourceSection;
@@ -108,11 +109,9 @@ public final class EventContext {
 
     /**
      * Returns a language provided object that represents the instrumented node properties. The
-     * return object has readable string key for each property. The
-     *
-     * This object might be passed into any language as it implements the interop contract. The
-     * return object is guaranteed to return <code>true</code> for the Message#HAS_KEYS message.
-     * Multiple calls to {@link #getNodeObject()} return the same node object instance.
+     * returned is alwasy a valid interop object. The returned object is never <code>null</code> and
+     * always returns <code>true</code> for the HAS_KEYS message. Multiple calls to
+     * {@link #getNodeObject()} return the same node object instance.
      *
      * @see InstrumentableNode#getNodeObject()
      * @since 0.32
@@ -120,6 +119,7 @@ public final class EventContext {
     public Object getNodeObject() {
         Object object = this.nodeObject;
         if (object == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             Node node = getInstrumentedNode();
             if (node instanceof InstrumentableNode) {
                 object = ((InstrumentableNode) node).getNodeObject();
