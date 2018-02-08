@@ -1,22 +1,22 @@
-Files containing JSON arrays describing program elements to be made available for reflection.
+One or several (comma-separated) paths to JSON files that specify which program elements should be made available via reflection.
 The JSON object schema is:
 
-    Class {
+    {
       String name; // fully qualified class name
-      boolean allDeclaredMethods; // Class.getDeclaredMethods() will be available
-      boolean allPublicMethods; // Class.getMethods() will be available
-      boolean allDeclaredFields; // Class.getDeclaredFields() will be available
-      boolean allPublicFields; // Class.getFields() will be available
-      {   
+      boolean allDeclaredMethods; // include all declared methods, see Class.getDeclaredMethods()
+      boolean allPublicMethods;   // include all public methods, see Class.getMethods()
+      boolean allDeclaredFields;  // include all declared fields, see Class.getDeclaredFields()
+      boolean allPublicFields;    // include all public fields, see Class.getFields()
+      {
         String name; // method name
-        String[] parameterTypes; // method sig (only required if name is ambiguous)
+        String[] parameterTypes; // parameter types (optional, use if ambiguous)
       }[] methods;
-      {   
+      {
         String name; // field name
       }[] fields;
-    }
+    }[];
 
-For example:
+Example:
 
 	[
 	  {
@@ -25,15 +25,22 @@ For example:
 	    "allPublicMethods" : "true"
 	  },
 	  {
-	    "name" : "java.util.HashMap",
+	    "name" : "java.lang.String",
 	    "fields" : [
-	      { "name" : "loadFactor" },
-	      { "name" : "threshold" }
+	      { "name" : "value" },
+	      { "name" : "hash" }
 	    ],
 	    "methods" : [
-	      { "name" : "keySet" },
-	      { "name" : "<init>", "parameterTypes" : ["int"] },
+	      { "name" : "<init>", "parameterTypes" : [] },
+	      { "name" : "<init>", "parameterTypes" : ["char[]"] },
+	      { "name" : "charAt" },
+	      { "name" : "format", "parameterTypes" : ["java.lang.String", "java.lang.Object[]"] },
 	    ]
-	  }
+	  },
+      {
+        "name" : "java.lang.String$CaseInsensitiveComparator",
+        "methods" : [
+          { "name" : "compare" }
+        ]
+      }
 	]
-

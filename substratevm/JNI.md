@@ -13,26 +13,9 @@ JNI supports looking up classes by their names, and looking up methods and field
 
     -H:JNIConfigurationFiles=/path/to/jniconfig
 
-where `jniconfig` is a JSON file in the following format (use `-H:+PrintFlags` for more details):
+where `jniconfig` is a JSON configuration file. The syntax is the same as for reflection configuration files, which are described in the [documentation on reflection](REFLECTION.md).
 
-    [
-      {
-        "name" : "java.lang.String",
-        "methods" : [
-          { "name" : "substring", "parameterTypes" : ["int", "int"] }
-        ],
-        "fields" : [
-          { "name" : "value" },
-          { "name" : "hash" }
-        ]
-      },
-      {
-        "name" : "java.lang.String$CaseInsensitiveComparator",
-        "methods" : [ { "name" : "compare" } ]
-      }
-    ]
-
-The image build generates JNI reflection metadata for all classes, methods and fields referenced in that file. More than one JNI configuration can be used by specifying multiple paths for `JNIConfigurationFiles` and separating them with `,`.
+The image build generates JNI reflection metadata for all classes, methods and fields referenced in the configuration file. More than one JNI configuration can be used by specifying multiple paths for `JNIConfigurationFiles` and separating them with `,`. Also, `-H:JNIConfigurationResources` can be specified to load one or several configuration files from the image build's class path, such as from a JAR file.
 
 Alternatively, a custom `Feature` implementation can register program elements before and during the analysis phase of the native image build using the `JNIRuntimeAccess` class. For example:
 
@@ -41,9 +24,13 @@ Alternatively, a custom `Feature` implementation can register program elements b
       public void beforeAnalysis(BeforeAnalysisAccess access) {
         try {
           JNIRuntimeAccess.register(String.class);
-          JNIRuntimeAccess.register(String.class.getDeclaredMethod("substring", int.class, int.class));
           JNIRuntimeAccess.register(String.class.getDeclaredField("value"));
           JNIRuntimeAccess.register(String.class.getDeclaredField("hash"));
+          JNIRuntimeAccess.register(String.class.getDeclaredConstructor(char[].class));
+          JNIRuntimeAccess.register(String.class.getDeclaredMethod("charAt", int.class));
+          JNIRuntimeAccess.register(String.class.getDeclaredMethod("format", String.class, Object[].class));
+          JNIRuntimeAccess.register(String.CaseInsensitiveComparator.class);
+          JNIRuntimeAccess.register(String.CaseInsensitiveComparator.class.getDeclaredMethod("compare", String.class, String.class));
         } catch (NoSuchMethodException | NoSuchFieldException e) { ... }
       }
     }
