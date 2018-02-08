@@ -74,6 +74,7 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleDumpPolymorphicEvents;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingMaxPollutionDepth;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUsePollutionBasedSplittingStrategy;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
 
@@ -693,7 +694,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private void polluteProfile(int depth, List<RootCallTarget> toPollute, List<Node> toDump) {
         // TODO: what if compiled?
-        if (profilePolluted || knownCallNodes.size() == 0 || compilationProfile.getInterpreterCallCount() == 1 || toPollute.containsAll(Arrays.asList(this, this))) {
+        if (depth > TruffleCompilerOptions.getValue(TruffleSplittingMaxPollutionDepth) || profilePolluted || knownCallNodes.size() == 0 ||
+                        compilationProfile.getInterpreterCallCount() == 1 || toPollute.containsAll(Arrays.asList(this, this))) {
             return;
         }
         if (knownCallNodes.size() == 1) {

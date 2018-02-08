@@ -180,6 +180,9 @@ public class TruffleCompilerOptions {
     @Option(help = "Disable call target splitting if number of nodes created by splitting exceeds this limit", type = OptionType.Debug)
     public static final OptionKey<Integer> TruffleSplittingMaxNumberOfSplitNodes = new OptionKey<>(500_000);
 
+    @Option(help = "Do not propagate pollution higher than this many callers", type = OptionType.Debug)
+    public static final OptionKey<Integer> TruffleSplittingMaxPollutionDepth = new OptionKey<>(5);
+
     @Option(help = "Use the splitting strategy that relies on language implamentations marking nodes for splitting", type = OptionType.Expert)
     public static final OptionKey<Boolean> TruffleUsePollutionBasedSplittingStrategy= new OptionKey<>(false);
 
