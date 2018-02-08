@@ -108,7 +108,7 @@ public class SourceSectionFilterTest {
         }
 
         public boolean isInstrumentable() {
-            return false;
+            return sourceSection != null;
         }
 
         public boolean hasTag(Class<? extends Tag> tag) {
@@ -616,10 +616,6 @@ public class SourceSectionFilterTest {
         Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().sourceSectionEquals(sampleSource1.createSection(2, 6), sampleSource1.createSection(2, 7)).build(),
                                         null, createNode(sampleSource1.createUnavailableSection())));
-
-        Assert.assertFalse(
-                        isInstrumented(SourceSectionFilter.newBuilder().sourceSectionEquals(sampleSource1.createSection(2, 6), sampleSource1.createSection(2, 7)).build(),
-                                        root1, null));
 
         Assert.assertNotNull(SourceSectionFilter.newBuilder().sourceSectionEquals(sampleSource1.createSection(1, 6)).build().toString());
     }

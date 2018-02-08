@@ -150,9 +150,7 @@ public final class SourceSectionFilter {
     }
 
     boolean isInstrumentedNode(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
-        if (sourceSection == null) {
-            return false;
-        }
+        assert InstrumentationHandler.isInstrumentableNode(instrumentedNode, sourceSection);
         for (EventFilterExpression exp : expressions) {
             if (!exp.isIncluded(providedTags, instrumentedNode, sourceSection)) {
                 return false;
@@ -655,6 +653,9 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
+                if (sourceSection == null) {
+                    return false;
+                }
                 return isSourceIncluded(sourceSection.getSource());
             }
 
@@ -744,6 +745,9 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
+                if (sourceSection == null) {
+                    return false;
+                }
                 return isSourceIncluded(sourceSection.getSource());
             }
 
@@ -797,6 +801,9 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
+                if (sourceSection == null) {
+                    return false;
+                }
                 return isSourceIncluded(sourceSection.getSource());
             }
 
@@ -882,6 +889,9 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection s) {
+                if (s == null) {
+                    return false;
+                }
                 for (SourceSection compareSection : sourceSections) {
                     if (s.equals(compareSection)) {
                         return true;
@@ -967,7 +977,6 @@ public final class SourceSectionFilter {
                 if (rootSection == null) {
                     return false;
                 }
-
                 for (SourceSection compareSection : sourceSections) {
                     if (rootSection.equals(compareSection)) {
                         return true;
@@ -1013,7 +1022,7 @@ public final class SourceSectionFilter {
             }
 
             private static boolean isIndexIn(SourceSection sourceSection, IndexRange[] ranges) {
-                if (!sourceSection.isAvailable()) {
+                if (sourceSection == null || !sourceSection.isAvailable()) {
                     return false;
                 }
                 int otherStart = sourceSection.getCharIndex();
@@ -1061,7 +1070,7 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
-                if (!sourceSection.isAvailable()) {
+                if (sourceSection == null || !sourceSection.isAvailable()) {
                     return false;
                 }
                 int otherStart = sourceSection.getStartLine();
@@ -1108,6 +1117,9 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
+                if (sourceSection == null || !sourceSection.isAvailable()) {
+                    return false;
+                }
                 int otherStart = sourceSection.getStartLine();
                 int otherEnd;
                 if (sourceSection.getSource() == null) {
@@ -1162,7 +1174,7 @@ public final class SourceSectionFilter {
             }
 
             static boolean isLineIn(SourceSection sourceSection, IndexRange[] ranges) {
-                if (!sourceSection.isAvailable()) {
+                if (sourceSection == null || !sourceSection.isAvailable()) {
                     return false;
                 }
                 int otherStart = sourceSection.getStartLine();

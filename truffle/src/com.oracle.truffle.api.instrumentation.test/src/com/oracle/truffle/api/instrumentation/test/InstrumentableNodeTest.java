@@ -218,4 +218,36 @@ public class InstrumentableNodeTest extends InstrumentationEventTest {
 
     }
 
+    @Test
+    public void testNoSourceSectionWithFilter() {
+        SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class).lineIn(1, 1).build();
+        instrumenter.attachExecutionEventFactory(filter, null, factory);
+        execute("EXPRESSION_NO_SOURCE_SECTION(EXPRESSION())");
+        assertOn(ENTER, (e) -> {
+            assertProperties(e.context.getNodeObject(), "simpleName", "ExpressionNode");
+        });
+        assertOn(RETURN_VALUE, (e) -> {
+            assertProperties(e.context.getNodeObject(), "simpleName", "ExpressionNode");
+        });
+    }
+
+    @Test
+    public void testNoSourceSectionNoFilter() {
+        SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class).build();
+        instrumenter.attachExecutionEventFactory(filter, null, factory);
+        execute("EXPRESSION_NO_SOURCE_SECTION(EXPRESSION())");
+        assertOn(ENTER, (e) -> {
+            assertProperties(e.context.getNodeObject(), "simpleName", "ExpressionNoSourceSectionNode");
+        });
+        assertOn(ENTER, (e) -> {
+            assertProperties(e.context.getNodeObject(), "simpleName", "ExpressionNode");
+        });
+        assertOn(RETURN_VALUE, (e) -> {
+            assertProperties(e.context.getNodeObject(), "simpleName", "ExpressionNode");
+        });
+        assertOn(RETURN_VALUE, (e) -> {
+            assertProperties(e.context.getNodeObject(), "simpleName", "ExpressionNoSourceSectionNode");
+        });
+    }
+
 }

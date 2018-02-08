@@ -183,10 +183,12 @@ public class EventBinding<T> {
                         Node current, SourceSection currentSourceSection) {
             if (inputFilter == null) {
                 return false;
-            }
-            if (rootNode == null) {
+            } else if (rootNode == null) {
+                return false;
+            } else if (!InstrumentationHandler.isInstrumentableNode(parent, parentSourceSection)) {
                 return false;
             }
+
             if (isInstrumentedLeaf(providedTags, parent, parentSourceSection) && inputFilter.isInstrumentedNode(providedTags, current, currentSourceSection)) {
                 return isInstrumentedRoot(providedTags, rootNode, rootNode.getSourceSection(), 0);
             }
@@ -201,8 +203,9 @@ public class EventBinding<T> {
                         Node current, SourceSection currentSourceSection) {
             if (inputFilter == null) {
                 return false;
-            }
-            if (rootNode == null) {
+            } else if (rootNode == null) {
+                return false;
+            } else if (!InstrumentationHandler.isInstrumentableNode(parent, parentSourceSection)) {
                 return false;
             }
             if (isInstrumentedLeaf(providedTags, parent, parentSourceSection) && inputFilter.isInstrumentedNode(providedTags, current, currentSourceSection)) {
