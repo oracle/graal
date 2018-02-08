@@ -161,7 +161,11 @@ def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, inc
 _graal_variants = [
     ('tracera', ['-Dgraal.TraceRA=true'], 11),
     ('tracera-bu', ['-Dgraal.TraceRA=true', '-Dgraal.TraceRAPolicy=BottomUpOnly'], 10),
-    ('g1gc', ['-XX:+UseG1GC'], 12)
+    ('g1gc', ['-XX:+UseG1GC'], 12),
+    ('no-comp-oops', ['-XX:-UseCompressedOops'], 0),
+    ('no-splitting', ['-Dgraal.TruffleSplitting=false'], 0),
+    ('limit-truffle-inlining', ['-Dgraal.TruffleMaximumRecursiveInlining=2'], 0),
+    ('no-splitting-limit-truffle-inlining', ['-Dgraal.TruffleSplitting=false', '-Dgraal.TruffleMaximumRecursiveInlining=2'], 0),
 ]
 build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=core', '-Djvmci.Compiler=graal'], _graal_variants, suite=_suite, priority=15)
 
