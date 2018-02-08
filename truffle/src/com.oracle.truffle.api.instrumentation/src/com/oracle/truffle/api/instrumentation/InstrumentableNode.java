@@ -24,16 +24,16 @@ import com.oracle.truffle.api.source.SourceSection;
  * interface are only allowed to be invoked if {@link #isInstrumentable()} returns <code>true</code>
  * .
  * <p>
- * Every instrumentable node is required to return a wrapper for this instrumentable node in
+ * Every instrumentable node is required to create a wrapper for this instrumentable node in
  * {@link #createWrapper(ProbeNode)}. The instrumentation framework will, when needed during
  * execution, {@link Node#replace(Node) replace} the instrumentable node with a {@link WrapperNode
  * wrapper} and delegate to the original node. After the replacement of an instrumentable node with
- * a wrapper we refer to the original node as an instrumented node. Wrappers can be generated
- * automatically using an annotation processor by annotating the class with @{@link GenerateWrapper}
- * . If an instrumentable node subclass has additional declared execute methods then a new wrapper
- * must be generated or implemented. Otherwise the {@link Node#replace(Node) replacement} of the
- * instrumentable node with the wrapper will fail if the subtype is used in a node {@link Child
- * child}.
+ * a wrapper we refer to the original node as an instrumented node.
+ * <p>
+ * Wrappers can be generated automatically using an annotation processor by annotating the class
+ * with @{@link GenerateWrapper}. If an instrumentable node subclass has additional declared methods
+ * than its instrumentable base class that are used by other nodes, then a new wrapper should be
+ * generated or implemented for the subclass, otherwise the replacement of the wrapper will fail.
  * <p>
  * Instrumentable nodes may return <code>true</code> to indicate that they were tagged by {@link Tag
  * tag}. Tags are used by guest languages to indicate that a {@link Node node} is a member of a
@@ -42,9 +42,6 @@ import com.oracle.truffle.api.source.SourceSection;
  * language to tag all nodes as {@link StandardTags.StatementTag statements} that should be
  * considered as such. See {@link #hasTag(Class)} for further details on how to use implement tags.
  * <p>
- *
- * <h1>Language specific tags</h1>
- *
  * <b>Example minimal implementation of an instrumentable node:</b>
  *
  * {@link com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.SimpleNode}
@@ -55,30 +52,30 @@ import com.oracle.truffle.api.source.SourceSection;
  * {@link com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.RecommendedNode}
  * <p>
  *
- * @see #isInstrumentable()
- * @see #hasTag(Class)
- * @see #createWrapper(ProbeNode)
- * @see GenerateWrapper
+ * @see #isInstrumentable() to decide whether node is instrumentable.
+ * @see #hasTag(Class) Implement hasTag to decide whether an instrumentable node is tagged with a
+ *      tag.
+ * @see GenerateWrapper Use an annotation processor to generate the wrapper class.
  * @see Instrumenter#attachExecutionEventListener(SourceSectionFilter, ExecutionEventListener)
  * @since 0.32
  */
 public interface InstrumentableNode extends NodeInterface {
 
     /**
-     * Returns whether <code>true</code> if this node is instrumentable. Instrumentable nodes are
-     * points where instrumenters can attache execution events. The return values of instrumentable
-     * nodes must always be interop capable values.
+     * Returns <code>true</code> if this node is instrumentable. Instrumentable nodes are points
+     * where instrumenters can attache execution events. The return values of instrumentable nodes
+     * must always be interop capable values.
      * <p>
      * The implementation of this method must ensure that its result is stable after the parent
      * {@link RootNode root node} was wrapped in a {@link CallTarget} using
      * {@link TruffleRuntime#createCallTarget(RootNode)}. The result is stable if the result of
      * calling this method remains always the same.
      * <p>
-     * This method might be called in parallel from multiple threads. The method may be invoked
-     * without a {@link TruffleLanguage#getContextReference() language context} currently being
-     * active.
+     * This method might be called in parallel from multiple threads even if the language is single
+     * threaded. The method may be invoked without a {@link TruffleLanguage#getContextReference()
+     * language context} currently being active.
      *
-     * @return
+     * @since 0.32
      */
     boolean isInstrumentable();
 
@@ -107,15 +104,12 @@ public interface InstrumentableNode extends NodeInterface {
      * <li>{@linkplain ProbeNode#onReturnValue(com.oracle.truffle.api.frame.VirtualFrame, Object)
      * onReturnValue(Frame,Object)}: an <em>execute</em> method on the delegate has just returned a
      * (possibly <code>null</code>) value;</li>
-     * <li>
-     * {@linkplain ProbeNode#onReturnExceptional(com.oracle.truffle.api.frame.VirtualFrame, Throwable)
-     * onReturnExceptional(Frame,Throwable)}: an <em>execute</em> method on the delegate has just
-     * thrown an exception.</li>
+     * <li>{@linkplain ProbeNode#onReturnExceptionalOrUnwind(VirtualFrame, Throwable, boolean)
+     * onReturnExceptionalOrUnwind(Frame,Throwable, boolean)}: an <em>execute</em> method on the
+     * delegate has just thrown an exception.</li>
      * </ul>
      * <p>
-     * This method is always invoked on an interpreter thread. If the language
-     * {@linkplain TruffleLanguage#isThreadAccessAllowed} allows it, then it might be invoked from
-     * multiple threads at the same time. The method is always invoked with a
+     * This method is always invoked on an interpreter thread. The method is always invoked with a
      * {@link TruffleLanguage#getContextReference() language context} currently being active.
      *
      * @param probe the {@link ProbeNode probe node} to be adopted and sent execution events by the
@@ -131,9 +125,8 @@ public interface InstrumentableNode extends NodeInterface {
      * also be marked as {@link ProvidedTags provided} by the language.
      * <p>
      * Tags are used by guest languages to indicate that a {@link Node node} is a member of a
-     * certain category of nodes. For example a debugger
-     * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument instrument} might require a
-     * guest language to tag all nodes as halt locations that should be considered as such.
+     * certain category of nodes. For example a debugger {@link TruffleInstrument instrument} might
+     * require a guest language to tag all nodes as statements that should be considered as such.
      * <p>
      * The node implementor may decide how to implement tagging for nodes. The simplest way to
      * implement tagging using Java types is by overriding the {@link #hasTag(Class)} method. This
@@ -145,7 +138,7 @@ public interface InstrumentableNode extends NodeInterface {
      * Often it is impossible to just rely on the node's Java type to implement tagging. This
      * example shows how to use local state to implement tagging for a node.
      *
-     * {@link com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.StatementNode#isDebuggerHalt}
+     * {@link com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode}
      *
      * <p>
      * The implementation of hasTag method must ensure that its result is stable after the parent
@@ -153,9 +146,9 @@ public interface InstrumentableNode extends NodeInterface {
      * {@link TruffleRuntime#createCallTarget(RootNode)}. The result is stable if the result of
      * calling this method for a particular tag remains always the same.
      * <p>
-     * This method might be called in parallel from multiple threads. The method may be invoked
-     * without a {@link TruffleLanguage#getContextReference() language context} currently being
-     * active.
+     * This method might be called in parallel from multiple threads even if the language is single
+     * threaded. The method may be invoked without a {@link TruffleLanguage#getContextReference()
+     * language context} currently being active.
      *
      * @param tag the class {@link com.oracle.truffle.api.instrumentation.ProvidedTags provided} by
      *            the {@link TruffleLanguage language}
@@ -170,11 +163,11 @@ public interface InstrumentableNode extends NodeInterface {
     /**
      * Returns an interop capable object that contains all keys and values of attributes associated
      * with this node. The returned object must return <code>true</code> in response to the
-     * Message.HAS_KEYS message. If <code>null</code> is returned then an empty tag object without
-     * any readable keys will be assumed. Multiple calls to {@link #getNodeObject()} for a
-     * particular node may return the same or objects with different identity. The returned object
-     * must not support any write operation. The returned object must not support execution,
-     * instantiation and must have a size.
+     * {@link com.oracle.truffle.api.interop.Message.HAS_KEYS has keys} message. If
+     * <code>null</code> is returned then an empty tag object without any readable keys will be
+     * assumed. Multiple calls to {@link #getNodeObject()} for a particular node may return the same
+     * or objects with different identity. The returned object must not support any write operation.
+     * The returned object must not support execution, instantiation and must have a size.
      * <p>
      * For performance reasons it is not recommended to eagerly collect all properties of the node
      * object when {@link #getNodeObject()} is invoked. Instead, the language should lazily compute
@@ -189,12 +182,12 @@ public interface InstrumentableNode extends NodeInterface {
      * implementation may provide any set of additional keys and values. Tools might depend on these
      * language specific tags and might break if keys or values are changed without notice.
      * <p>
-     * For the most memory efficient implementation the language might make the instrumentable
-     * {@link Node} a TruffleObject and return this instance.
+     * For a memory efficient implementation the language might make the instrumentable {@link Node}
+     * a TruffleObject and return this instance.
      * <p>
-     * This method might be called in parallel from multiple threads. The method may be invoked
-     * without a {@link TruffleLanguage#getContextReference() language context} currently being
-     * active.
+     * This method might be called in parallel from multiple threads even if the language is single
+     * threaded. The method may be invoked without a {@link TruffleLanguage#getContextReference()
+     * language context} currently being active.
      *
      * @return the node object as TruffleObject or <code>null</code> if no node object properties
      *         are available for this instrumented node
@@ -216,7 +209,10 @@ public interface InstrumentableNode extends NodeInterface {
      * nodes that are tagged by any of these tags.
      * <p>
      * The AST lock is acquired while this method is invoked. Therefore it is not allowed to run
-     * guest language code while this method is invoked.
+     * guest language code while this method is invoked. This method might be called in parallel
+     * from multiple threads even if the language is single threaded. The method may be invoked
+     * without a {@link TruffleLanguage#getContextReference() language context} currently being
+     * active.
      * <p>
      * In the example below, we show how the <code>IncrementNode</code> with a
      * <code>ConstantNode</code> child is optimized into a <code>ConstantIncrementNode</code> and
@@ -226,7 +222,6 @@ public interface InstrumentableNode extends NodeInterface {
      * {@link com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.ExpressionNode}
      *
      * @param materializedTags a set of tags that requested to be materialized
-     * @return
      * @since 0.32
      */
     default InstrumentableNode materializeSyntaxNodes(Set<Class<? extends Tag>> materializedTags) {
@@ -406,7 +401,7 @@ class InstrumentableNodeSnippets {
         }
     }
 
-    // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.StatementNode#isDebuggerHalt
+    // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode
     @GenerateWrapper
     class HaltNode extends Node implements InstrumentableNode {
         private boolean isDebuggerHalt;
@@ -431,7 +426,7 @@ class InstrumentableNodeSnippets {
         }
 
     }
-    // END: com.oracle.truffle.api.nodes.NodeSnippets.StatementNode#isDebuggerHalt
+    // END: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode
 
     @SuppressWarnings("unused")
     class ExpressionNodeWrapper implements WrapperNode {
