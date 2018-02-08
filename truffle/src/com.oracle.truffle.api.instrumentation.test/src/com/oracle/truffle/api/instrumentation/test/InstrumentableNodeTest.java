@@ -36,6 +36,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.BlockTag;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.ConstantTag;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.ExpressionNode;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.MaterializeChildExpressionNode;
@@ -220,33 +221,33 @@ public class InstrumentableNodeTest extends InstrumentationEventTest {
 
     @Test
     public void testNoSourceSectionWithFilter() {
-        SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class).lineIn(1, 1).build();
+        SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(BlockTag.class).lineIn(1, 1).build();
         instrumenter.attachExecutionEventFactory(filter, null, factory);
-        execute("EXPRESSION_NO_SOURCE_SECTION(EXPRESSION())");
+        execute("BLOCK_NO_SOURCE_SECTION(BLOCK())");
         assertOn(ENTER, (e) -> {
-            assertProperties(e.context.getNodeObject(), "simpleName", "ExpressionNode");
+            assertProperties(e.context.getNodeObject(), "simpleName", "BlockNode");
         });
         assertOn(RETURN_VALUE, (e) -> {
-            assertProperties(e.context.getNodeObject(), "simpleName", "ExpressionNode");
+            assertProperties(e.context.getNodeObject(), "simpleName", "BlockNode");
         });
     }
 
     @Test
     public void testNoSourceSectionNoFilter() {
-        SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class).build();
+        SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(BlockTag.class).build();
         instrumenter.attachExecutionEventFactory(filter, null, factory);
-        execute("EXPRESSION_NO_SOURCE_SECTION(EXPRESSION())");
+        execute("BLOCK_NO_SOURCE_SECTION(BLOCK())");
         assertOn(ENTER, (e) -> {
-            assertProperties(e.context.getNodeObject(), "simpleName", "ExpressionNoSourceSectionNode");
+            assertProperties(e.context.getNodeObject(), "simpleName", "BlockNoSourceSectionNode");
         });
         assertOn(ENTER, (e) -> {
-            assertProperties(e.context.getNodeObject(), "simpleName", "ExpressionNode");
+            assertProperties(e.context.getNodeObject(), "simpleName", "BlockNode");
         });
         assertOn(RETURN_VALUE, (e) -> {
-            assertProperties(e.context.getNodeObject(), "simpleName", "ExpressionNode");
+            assertProperties(e.context.getNodeObject(), "simpleName", "BlockNode");
         });
         assertOn(RETURN_VALUE, (e) -> {
-            assertProperties(e.context.getNodeObject(), "simpleName", "ExpressionNoSourceSectionNode");
+            assertProperties(e.context.getNodeObject(), "simpleName", "BlockNoSourceSectionNode");
         });
     }
 

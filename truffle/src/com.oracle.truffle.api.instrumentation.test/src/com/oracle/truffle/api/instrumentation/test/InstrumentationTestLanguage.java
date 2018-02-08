@@ -157,7 +157,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
     public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT, CONSTANT};
     public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "CONTEXT", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE", "ARGUMENT",
-                    "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME", "MATERIALIZE_CHILD_EXPRESSION", "EXPRESSION_NO_SOURCE_SECTION"};
+                    "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME", "MATERIALIZE_CHILD_EXPRESSION", "BLOCK_NO_SOURCE_SECTION"};
 
     // used to test that no getSourceSection calls happen in certain situations
     private static int rootSourceSectionQueryCount;
@@ -391,10 +391,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                     return new LoopNode(parseIdent(idents[0]), childArray);
                 case "BLOCK":
                     return new BlockNode(childArray);
+                case "BLOCK_NO_SOURCE_SECTION":
+                    return new BlockNoSourceSectionNode(childArray);
                 case "EXPRESSION":
                     return new ExpressionNode(childArray);
-                case "EXPRESSION_NO_SOURCE_SECTION":
-                    return new ExpressionNoSourceSectionNode(childArray);
                 case "ROOT":
                     return new FunctionRootNode(childArray);
                 case "STATEMENT":
@@ -554,9 +554,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
     }
 
-    static class ExpressionNoSourceSectionNode extends ExpressionNode {
+    static class BlockNoSourceSectionNode extends BlockNode {
 
-        ExpressionNoSourceSectionNode(BaseNode[] children) {
+        BlockNoSourceSectionNode(BaseNode[] children) {
             super(children);
         }
 
@@ -644,7 +644,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
     }
 
-    static final class BlockNode extends InstrumentedNode {
+    static class BlockNode extends InstrumentedNode {
 
         BlockNode(BaseNode[] children) {
             super(children);
