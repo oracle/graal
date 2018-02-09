@@ -22,6 +22,7 @@
  */
 package com.oracle.svm.hosted.option;
 
+import static com.oracle.svm.core.option.SubstrateOptionsParser.BooleanOptionFormat.PLUS_MINUS;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.lang.reflect.Modifier;
@@ -99,8 +100,8 @@ public class HostedOptionParser implements HostedOptionProvider {
         List<String> remainingArgs = new ArrayList<>();
         Set<String> errors = new HashSet<>();
         for (String arg : args) {
-            boolean isImageBuildOption = SubstrateOptionsParser.parseHostedOption(HOSTED_OPTION_PREFIX, allHostedOptions, hostedValues, errors, arg, System.out) ||
-                            SubstrateOptionsParser.parseHostedOption(RUNTIME_OPTION_PREFIX, allRuntimeOptions, runtimeValues, errors, arg, System.out);
+            boolean isImageBuildOption = SubstrateOptionsParser.parseHostedOption(HOSTED_OPTION_PREFIX, allHostedOptions, hostedValues, PLUS_MINUS, errors, arg, System.out) ||
+                            SubstrateOptionsParser.parseHostedOption(RUNTIME_OPTION_PREFIX, allRuntimeOptions, runtimeValues, PLUS_MINUS, errors, arg, System.out);
             if (!isImageBuildOption) {
                 remainingArgs.add(arg);
             }

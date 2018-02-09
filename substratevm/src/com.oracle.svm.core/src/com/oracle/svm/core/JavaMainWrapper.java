@@ -22,6 +22,11 @@
  */
 package com.oracle.svm.core;
 
+import static com.oracle.svm.core.option.RuntimeOptionParser.DEFAULT_OPTION_PREFIX;
+import static com.oracle.svm.core.option.RuntimeOptionParser.GRAAL_OPTION_PREFIX;
+import static com.oracle.svm.core.option.SubstrateOptionsParser.BooleanOptionFormat.NAME_VALUE;
+import static com.oracle.svm.core.option.SubstrateOptionsParser.BooleanOptionFormat.PLUS_MINUS;
+
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -147,8 +152,8 @@ public class JavaMainWrapper {
         AMD64CPUFeatureAccess.verifyHostSupportsArchitecture(imageArchitecture);
         String[] args = SubstrateUtil.getArgs(paramArgc, paramArgv);
         if (SubstrateOptions.ParseRuntimeOptions.getValue()) {
-            args = RuntimeOptionParser.singleton().parse(args, RuntimeOptionParser.DEFAULT_OPTION_PREFIX);
-            args = RuntimeOptionParser.singleton().parse(args, "-Dgraal.");
+            args = RuntimeOptionParser.singleton().parse(args, DEFAULT_OPTION_PREFIX, PLUS_MINUS);
+            args = RuntimeOptionParser.singleton().parse(args, GRAAL_OPTION_PREFIX, NAME_VALUE);
             args = XOptions.singleton().parse(args);
             args = RuntimePropertyParser.parse(args);
         }

@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.option.SubstrateOptionsParser.BooleanOptionFormat;
 import com.oracle.svm.core.option.SubstrateOptionsParser.OptionParseResult;
 
 /**
@@ -54,6 +55,11 @@ public final class RuntimeOptionParser {
      * The suggested prefix for all VM options available in an application based on Substrate VM.
      */
     public static final String DEFAULT_OPTION_PREFIX = "-XX:";
+
+    /**
+     * The prefix for Graal style options available in an application based on Substrate VM.
+     */
+    public static final String GRAAL_OPTION_PREFIX = "-Dgraal.";
 
     /**
      * All reachable options.
@@ -94,15 +100,24 @@ public final class RuntimeOptionParser {
 
     /**
      * Parses all known options that start with the given prefix, and returns the arguments
-     * excluding the parsed options.
+     * excluding the parsed options. Boolean options are expected to be in
+     * {@link BooleanOptionFormat#PLUS_MINUS} format.
      */
     public String[] parse(String[] args, String optionPrefix) {
+        return parse(args, optionPrefix, BooleanOptionFormat.PLUS_MINUS);
+    }
+
+    /**
+     * Parses all known options that start with the given prefix, and returns the arguments
+     * excluding the parsed options.
+     */
+    public String[] parse(String[] args, String optionPrefix, BooleanOptionFormat booleanOptionFormat) {
         int newIdx = 0;
         EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
         for (int oldIdx = 0; oldIdx < args.length; oldIdx++) {
             String arg = args[oldIdx];
             if (arg.startsWith(optionPrefix)) {
-                parseOptionAtRuntime(arg, optionPrefix, values);
+                parseOptionAtRuntime(arg, optionPrefix, booleanOptionFormat, values);
             } else {
                 assert newIdx <= oldIdx;
                 args[newIdx] = arg;
@@ -128,8 +143,8 @@ public final class RuntimeOptionParser {
      * @param arg argument to be parsed
      * @param optionPrefix prefix for the runtime option
      */
-    private void parseOptionAtRuntime(String arg, String optionPrefix, EconomicMap<OptionKey<?>, Object> values) {
-        OptionParseResult parseResult = SubstrateOptionsParser.parseOption(sortedOptions, arg.substring(optionPrefix.length()), values, optionPrefix);
+    private void parseOptionAtRuntime(String arg, String optionPrefix, BooleanOptionFormat booleanOptionFormat, EconomicMap<OptionKey<?>, Object> values) {
+        OptionParseResult parseResult = SubstrateOptionsParser.parseOption(sortedOptions, arg.substring(optionPrefix.length()), values, optionPrefix, booleanOptionFormat);
         if (parseResult.shouldPrintFlags()) {
             SubstrateOptionsParser.printFlags(sortedOptions, optionPrefix, Log.logStream());
             System.exit(0);
