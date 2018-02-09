@@ -211,7 +211,9 @@ public abstract class AbstractPolyglotImpl {
     public abstract static class AbstractContextImpl {
 
         protected AbstractContextImpl(AbstractPolyglotImpl impl) {
-            Objects.requireNonNull(impl);
+            if (!getClass().getName().equals("com.oracle.truffle.api.vm.PolyglotContextImpl")) {
+                throw new AssertionError("Only one implementation of AbstractContextImpl allowed.");
+            }
         }
 
         public abstract Value lookup(String language, String key);

@@ -1091,17 +1091,17 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Returns the current language context for the current {@link Thread thread}. If a root node is
-     * accessible then {@link RootNode#getCurrentContext(Class)} should be used instead. An
-     * {@link IllegalStateException} is thrown if the language is not yet initialized or not
-     * executing on this thread. This is a short-cut for {@link #getCurrentLanguage(Class)
-     * getCurrent(languageClass)}.{@link #getContextReference() getContextReference()}.
-     * {@link ContextReference#get() get()}. If invoked on the fast-path then
+     * Returns the current language context entered on the current thread. If a
+     * {@link TruffleLanguage language} instance is available, a
+     * {@link TruffleLanguage#getContextReference() context reference} should be used instead for
+     * performance reasons. An {@link IllegalStateException} is thrown if the language is not yet
+     * initialized or not executing on this thread. If invoked on the fast-path then
      * <code>languageClass</code> must be a compilation final value.
      *
      * @param <C> the context type
      * @param <T> the language type
      * @param languageClass the exact language class needs to be provided for the lookup.
+     * @see TruffleLanguage#getContextReference()
      * @since 0.27
      */
     protected static <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
@@ -1661,10 +1661,15 @@ public abstract class TruffleLanguage<C> {
         }
 
         private boolean isInitialized() {
-            if (initializedUnchangedAssumption.isValid()) {
-                return initialized;
+            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                boolean localInitialized = initialized;
+                if (initializedUnchangedAssumption.isValid()) {
+                    return localInitialized;
+                } else {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    return initialized;
+                }
             } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 return initialized;
             }
         }
@@ -1684,14 +1689,18 @@ public abstract class TruffleLanguage<C> {
         }
 
         private Object getLanguageContext() {
-            if (contextUnchangedAssumption.isValid()) {
-                return context;
+            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                Object languageContext = this.context;
+                if (contextUnchangedAssumption.isValid()) {
+                    return languageContext;
+                } else {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    return context;
+                }
             } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                return context;
+                return this.context;
             }
         }
-
     }
 
     /**
@@ -1726,7 +1735,7 @@ public abstract class TruffleLanguage<C> {
          */
         @SuppressWarnings("unchecked")
         public C get() {
-            return (C) AccessAPI.engineAccess().contextReferenceGet(languageShared);
+            return (C) AccessAPI.engineAccess().getCurrentContext(languageShared);
         }
 
     }

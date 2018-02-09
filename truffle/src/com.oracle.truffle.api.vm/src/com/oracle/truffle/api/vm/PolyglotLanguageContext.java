@@ -74,7 +74,7 @@ final class PolyglotLanguageContext implements VMObject {
     volatile boolean creating; // true when context is currently being created.
     volatile boolean initialized;
     volatile boolean finalized;
-    volatile Env env;
+    @CompilationFinal volatile Env env;
     private final Node keyInfoNode = Message.KEY_INFO.createNode();
     private final Node readNode = Message.READ.createNode();
     final Thread.UncaughtExceptionHandler uncaughtExceptionHandler = new PolyglotUncaughtExceptionHandler();
@@ -230,11 +230,12 @@ final class PolyglotLanguageContext implements VMObject {
                     try {
                         initializeCaches();
                         try {
-                            env = LANGUAGE.createEnv(this, language.info,
+                            Env createdEnv = env = LANGUAGE.createEnv(this, language.info,
                                             context.out,
                                             context.err,
                                             context.in, config, getOptionValues(), applicationArguments);
-                            LANGUAGE.createEnvContext(env);
+                            LANGUAGE.createEnvContext(createdEnv);
+                            language.requireProfile().notifyContextCreate(createdEnv);
                         } finally {
                             creating = false;
                         }
