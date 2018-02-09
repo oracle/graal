@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.128.4",
+  "mxversion" : "5.141.0",
   "name" : "sdk",
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
