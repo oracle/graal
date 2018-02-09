@@ -1010,6 +1010,9 @@ public abstract class Launcher {
         }
 
         private void setGraalStyleRuntimeOption(String arg) {
+            if (arg.startsWith("+") || arg.startsWith("-")) {
+                throw abort("Dgraal option must use <name>=<value> format, not +/- prefix");
+            }
             int eqIdx = arg.indexOf('=');
             String key;
             String value;
@@ -1022,7 +1025,7 @@ public abstract class Launcher {
             }
             OptionDescriptor descriptor = RuntimeOptions.getOptions().get(key);
             if (descriptor == null) {
-                throw abort("Unknown native option: " + key);
+                throw unknownOption(key);
             }
             try {
                 RuntimeOptions.set(key, descriptor.getKey().getType().convert(value));
@@ -1057,7 +1060,7 @@ public abstract class Launcher {
                 }
                 OptionDescriptor descriptor = RuntimeOptions.getOptions().get(key);
                 if (descriptor == null) {
-                    throw abort("Unknown native option: " + key + ". Use --native.help to list available options.");
+                    throw unknownOption(key);
                 }
                 if (!isBooleanOption(descriptor)) {
                     throw abort("Invalid argument: " + key + " is not a boolean option, set it with --native.XX:" + key + "=<value>.");
@@ -1067,7 +1070,7 @@ public abstract class Launcher {
                 key = arg.substring(0, eqIdx);
                 OptionDescriptor descriptor = RuntimeOptions.getOptions().get(key);
                 if (descriptor == null) {
-                    throw abort("Unknown native option: " + key + ". Use --native.help to list available options.");
+                    throw unknownOption(key);
                 }
                 if (isBooleanOption(descriptor)) {
                     throw abort("Boolean option '" + key + "' must be set with +/- prefix, not <name>=<value> format.");
@@ -1085,6 +1088,10 @@ public abstract class Launcher {
 
         private boolean isBooleanOption(OptionDescriptor descriptor) {
             return descriptor.getKey().getType().equals(OptionType.defaultType(Boolean.class));
+        }
+
+        private AbortException unknownOption(String key) {
+            throw abort("Unknown native option: " + key + ". Use --native.help to list available options.");
         }
 
         private void printJvmHelp() {
