@@ -132,10 +132,10 @@ public class SubstrateOptionsParser {
         Class<?> optionType = desc.getType();
 
         if (value == null) {
+            if (optionType == Boolean.class) {
+                return OptionParseResult.error("Boolean option '" + optionName + "' must have +/- prefix");
+            }
             if (valueString == null) {
-                if (optionType == Boolean.class) {
-                    return OptionParseResult.error("Boolean option '" + optionName + "' must have +/- prefix");
-                }
                 return OptionParseResult.error("Missing value for option '" + optionName + "'");
             }
 
