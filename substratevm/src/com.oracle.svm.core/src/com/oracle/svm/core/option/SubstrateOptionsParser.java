@@ -88,28 +88,27 @@ public class SubstrateOptionsParser {
         String valueString = null;
 
         char first = option.charAt(0);
-        int index = option.indexOf('=');
+        int eqIndex = option.indexOf('=');
         if (first == '+' || first == '-') {
             optionName = option.substring(1);
             value = (first == '+');
-            if (index != -1) {
-                optionName = option.substring(1, index);
+            if (eqIndex != -1) {
                 return OptionParseResult.error("Cannot mix +/- with <name>=<value> format: '" + option + "'");
             }
         } else {
-            if (index == -1) {
+            if (eqIndex == -1) {
                 optionName = option;
                 valueString = null;
             } else {
-                optionName = option.substring(0, index);
-                valueString = option.substring(index + 1);
+                optionName = option.substring(0, eqIndex);
+                valueString = option.substring(eqIndex + 1);
             }
         }
 
         OptionDescriptor desc = options.get(optionName);
         if (desc == null && value != null) {
-            if (index != -1) {
-                optionName = option.substring(1, index);
+            if (eqIndex != -1) {
+                optionName = option.substring(1, eqIndex);
                 desc = options.get(optionName);
             }
         }

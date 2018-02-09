@@ -1051,16 +1051,16 @@ public abstract class Launcher {
             String key;
             Object value;
             if (arg.startsWith("+") || arg.startsWith("-")) {
+                key = arg.substring(1);
                 if (eqIdx >= 0) {
                     throw abort("Invalid argument: '--native." + arg + "': Use either +/- or =, but not both");
                 }
-                key = arg.substring(1);
                 OptionDescriptor descriptor = RuntimeOptions.getOptions().get(key);
                 if (descriptor == null) {
                     throw abort("Unknown native option: " + key + ". Use --native.help to list available options.");
                 }
                 if (!isBooleanOption(descriptor)) {
-                    throw abort("Invalid argument: " + key + " is not a boolean option, set it with --native.XX:" + key + "=...");
+                    throw abort("Invalid argument: " + key + " is not a boolean option, set it with --native.XX:" + key + "=<value>.");
                 }
                 value = arg.startsWith("+");
             } else if (eqIdx > 0) {
@@ -1069,13 +1069,16 @@ public abstract class Launcher {
                 if (descriptor == null) {
                     throw abort("Unknown native option: " + key + ". Use --native.help to list available options.");
                 }
+                if (isBooleanOption(descriptor)) {
+                    throw abort("Boolean option '" + key + "' must be set with +/- prefix, not <name>=<value> format.");
+                }
                 try {
                     value = descriptor.getKey().getType().convert(arg.substring(eqIdx + 1));
                 } catch (IllegalArgumentException iae) {
                     throw abort("Invalid argument: '--native." + arg + "': " + iae.getMessage());
                 }
             } else {
-                throw abort("Invalid argument: '--native." + arg + "': prefix boolean options with + or -, suffix other options with =<value>");
+                throw abort("Invalid argument: '--native." + arg + "'. Prefix boolean options with + or -, suffix other options with <name>=<value>");
             }
             RuntimeOptions.set(key, value);
         }
