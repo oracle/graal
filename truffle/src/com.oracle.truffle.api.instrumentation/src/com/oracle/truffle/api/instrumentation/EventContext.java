@@ -100,7 +100,7 @@ public final class EventContext {
     /**
      * Returns <code>true</code> if the underlying instrumented AST is tagged with a particular tag.
      * The return value of {@link #hasTag(Class)} always returns the same value for a particular tag
-     * and {@link EventContext#}. The method may be used on compiled code paths.
+     * and {@link EventContext}. The method may be used on compiled code paths.
      *
      * @param tag the tag to check to check, must not be <code>null</code>.
      * @since 0.32

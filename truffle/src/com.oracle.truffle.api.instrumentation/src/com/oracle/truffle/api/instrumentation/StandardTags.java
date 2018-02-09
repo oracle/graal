@@ -56,9 +56,9 @@ public final class StandardTags {
      * for example a step-over operation will stop at the next independent statement to get the
      * desired behavior.</li>
      * </ul>
-     * The StatemenTag has uses the {@link Identifier identifier} <code>"STATEMENT"</code>. A node
-     * tagged with {@link RootTag} must provide a {@link Node#getSourceSection() source section}, if
-     * its root node provides a source section.
+     * The StatemenTag has uses the {@link Tag.Identifier identifier} <code>"STATEMENT"</code>. A
+     * node tagged with {@link RootTag} must provide a {@link Node#getSourceSection() source
+     * section}, if its root node provides a source section.
      *
      * @since 0.12
      */
@@ -80,7 +80,7 @@ public final class StandardTags {
      * location that has just executed the call that returned.</li>
      * </ul>
      *
-     * The CallTag has uses the {@link Identifier identifier} <code>"CALL"</code>. A node tagged
+     * The CallTag has uses the {@link Tag.Identifier identifier} <code>"CALL"</code>. A node tagged
      * with {@link RootTag} must provide a {@link Node#getSourceSection() source section}, if its
      * root node provides a source section.
      *
@@ -104,7 +104,7 @@ public final class StandardTags {
      * <li><b>Profiler:</b> Marks every root that should be profiled.</li>
      * </ul>
      *
-     * The RootTag has uses the {@link Identifier identifier} <code>"ROOT"</code>. A node tagged
+     * The RootTag has uses the {@link Tag.Identifier identifier} <code>"ROOT"</code>. A node tagged
      * with {@link RootTag} must provide a {@link Node#getSourceSection() source section}, if its
      * root node provides a source section.
      *
@@ -112,6 +112,9 @@ public final class StandardTags {
      */
     @Tag.Identifier("ROOT")
     public static final class RootTag extends Tag {
+        private RootTag() {
+            /* No instances */
+        }
     }
 
     /**
@@ -132,7 +135,7 @@ public final class StandardTags {
      * expression tag to support debuggers.</li>
      * </ul>
      *
-     * The ExpressionTag has uses the {@link Identifier identifier} <code>"EXPRESSION"</code>. A
+     * The ExpressionTag has uses the {@link Tag.Identifier identifier} <code>"EXPRESSION"</code>. A
      * node tagged with {@link RootTag} must provide a {@link Node#getSourceSection() source
      * section}, if its root node provides a source section.
      *
