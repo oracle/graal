@@ -215,9 +215,10 @@ public class GenerateWrapperTest {
     }
 
     @GenerateWrapper
+    @SuppressWarnings("unused")
     public abstract static class DelegateAbstractMethod extends Node implements InstrumentableNode {
 
-        public void execute(@SuppressWarnings("unused") VirtualFrame frame) {
+        public void execute(VirtualFrame frame) {
         }
 
         public WrapperNode createWrapper(ProbeNode probe) {

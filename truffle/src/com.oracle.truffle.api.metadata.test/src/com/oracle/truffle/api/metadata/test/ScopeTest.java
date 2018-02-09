@@ -24,15 +24,17 @@
  */
 package com.oracle.truffle.api.metadata.test;
 
-import java.util.Iterator;
-import java.util.Map;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import java.util.Iterator;
+import java.util.Map;
+
+import org.graalvm.polyglot.Source;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -42,10 +44,13 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
-import com.oracle.truffle.api.instrumentation.Instrumentable;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -53,7 +58,6 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-import org.graalvm.polyglot.Source;
 
 /**
  * Test of {@link Scope}.
@@ -219,10 +223,18 @@ public class ScopeTest extends AbstractInstrumentationTest {
 
         }
 
-        @Instrumentable(factory = CustomScopeNodeWrapper.class)
-        public static class CustomScopeNode extends Node {
+        @GenerateWrapper
+        public static class CustomScopeNode extends Node implements InstrumentableNode {
 
             public CustomScopeNode() {
+            }
+
+            public boolean isInstrumentable() {
+                return true;
+            }
+
+            public WrapperNode createWrapper(ProbeNode probe) {
+                return new CustomScopeNodeWrapper(this, probe);
             }
 
             @SuppressWarnings("all")
@@ -236,7 +248,7 @@ public class ScopeTest extends AbstractInstrumentationTest {
             }
 
             @Override
-            protected boolean isTaggedWith(Class<?> tag) {
+            public boolean hasTag(Class<? extends Tag> tag) {
                 return StandardTags.StatementTag.class.equals(tag);
             }
         }

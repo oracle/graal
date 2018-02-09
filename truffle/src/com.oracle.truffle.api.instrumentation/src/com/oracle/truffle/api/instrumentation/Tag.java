@@ -111,11 +111,11 @@ public abstract class Tag {
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(value = TYPE)
-    protected @interface Identifier {
+    public @interface Identifier {
 
         /**
          * Returns the identifier value as string.
-         * 
+         *
          * @since 0.32
          */
         String value();

@@ -55,8 +55,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
-import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.SourceSection;
@@ -273,6 +273,14 @@ public final class InstrumentableProcessor extends AbstractProcessor {
             return null;
         }
         CodeTypeElement factory = generateFactory(context, e, wrapper);
+
+        // add @SuppressWarnings("deprecation")
+        DeclaredType suppressWarnings = context.getDeclaredType(SuppressWarnings.class);
+        CodeAnnotationMirror suppressWarningsAnnotation = new CodeAnnotationMirror(suppressWarnings);
+        suppressWarningsAnnotation.setElementValue(ElementUtils.findExecutableElement(suppressWarnings, "value"),
+                        new CodeAnnotationValue(Arrays.asList(new CodeAnnotationValue("deprecation"))));
+        factory.getAnnotationMirrors().add(suppressWarningsAnnotation);
+
         wrapper.getModifiers().add(Modifier.STATIC);
         factory.add(wrapper);
         assertNoErrorExpected(e);
