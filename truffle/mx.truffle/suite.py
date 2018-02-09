@@ -10,9 +10,9 @@ suite = {
     "organizationUrl" : "http://openjdk.java.net/projects/graal",
   },
   "scm" : {
-    "url" : "https://github.com/graalvm/graal/tree/master/truffle",
-    "read" : "https://github.com/graalvm/graal.git",
-    "write" : "git@github.com:graalvm/graal.git",
+    "url" : "https://github.com/oracle/graal/tree/master/truffle",
+    "read" : "https://github.com/oracle/graal.git",
+    "write" : "git@github.com:oracle/graal.git",
   },
   "repositories" : {
     "lafo-snapshots" : {
