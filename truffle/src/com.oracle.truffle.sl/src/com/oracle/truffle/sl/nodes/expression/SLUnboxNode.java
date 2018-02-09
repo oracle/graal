@@ -52,6 +52,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNode;
+import com.oracle.truffle.sl.runtime.SLBigNumber;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
 
@@ -60,6 +61,11 @@ public abstract class SLUnboxNode extends SLExpressionNode {
 
     @Specialization
     protected long unboxLong(long value) {
+        return value;
+    }
+
+    @Specialization
+    protected SLBigNumber unboxBigNumber(SLBigNumber value) {
         return value;
     }
 
