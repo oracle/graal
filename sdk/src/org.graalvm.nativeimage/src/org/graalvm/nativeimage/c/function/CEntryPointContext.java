@@ -39,6 +39,11 @@ public final class CEntryPointContext {
      */
     public static native IsolateThread getCurrentIsolateThread();
 
+    /**
+     * @return whether the current thread is attached to the specified isolate.
+     */
+    public static native boolean isCurrentThreadAttachedTo(Isolate isolate);
+
     private CEntryPointContext() {
     }
 }

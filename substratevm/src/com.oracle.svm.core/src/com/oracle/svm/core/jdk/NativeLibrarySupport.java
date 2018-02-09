@@ -33,6 +33,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
@@ -50,6 +52,12 @@ class NativeLibrarySupportFeature implements Feature {
 public final class NativeLibrarySupport {
     // Essentially a revised implementation of the relevant methods in OpenJDK's ClassLoader
 
+    public interface LibraryInitializer {
+        boolean isBuiltinLibrary(String name);
+
+        void initialize(NativeLibrary lib);
+    }
+
     static void initialize() {
         ImageSingletons.add(NativeLibrarySupport.class, new NativeLibrarySupport());
     }
@@ -66,7 +74,15 @@ public final class NativeLibrarySupport {
 
     private String[] paths;
 
+    private LibraryInitializer libraryInitializer;
+
     private NativeLibrarySupport() {
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    public void registerLibraryInitializer(LibraryInitializer initializer) {
+        assert this.libraryInitializer == null;
+        this.libraryInitializer = initializer;
     }
 
     public void loadLibrary(String name, boolean isAbsolute) {
@@ -76,65 +92,67 @@ public final class NativeLibrarySupport {
         }
 
         if (isAbsolute) {
-            if (loadLibrary0(new File(name))) {
+            if (loadLibrary0(new File(name), false)) {
                 return;
             }
             throw new UnsatisfiedLinkError("Can't load library: " + name);
         }
-
+        // Test if this is a built-in library
+        if (loadLibrary0(new File(name), true)) {
+            return;
+        }
         String libname = System.mapLibraryName(name);
         for (String path : paths) {
             File libpath = new File(path, libname);
-            if (loadLibrary0(libpath)) {
+            if (loadLibrary0(libpath, false)) {
                 return;
             }
             File altpath = Target_java_lang_ClassLoaderHelper.mapAlternativeName(libpath);
-            if (altpath != null && loadLibrary0(libpath)) {
+            if (altpath != null && loadLibrary0(libpath, false)) {
                 return;
             }
         }
         throw new UnsatisfiedLinkError("no " + name + " in java.library.path");
     }
 
-    private boolean loadLibrary0(File file) {
-        File canonical;
+    private boolean loadLibrary0(File file, boolean asBuiltin) {
+        if (asBuiltin && (libraryInitializer == null || !libraryInitializer.isBuiltinLibrary(file.getName()))) {
+            return false;
+        }
+
+        String canonical;
         try {
-            canonical = file.getCanonicalFile();
+            canonical = asBuiltin ? file.getName() : file.getCanonicalPath();
         } catch (IOException e) {
             return false;
         }
 
         lock.lock();
         try {
-            for (NativeLibrary lib : loadedLibraries) {
-                if (lib.getCanonicalPath().equals(canonical)) {
+            for (NativeLibrary loaded : loadedLibraries) {
+                if (canonical.equals(loaded.getCanonicalIdentifier())) {
                     return true;
                 }
             }
             // Libraries can load libraries during initialization, avoid recursion with a stack
-            for (NativeLibrary lib : currentLoadContext) {
-                if (lib.getCanonicalPath().equals(canonical)) {
-                    return true; // already being loaded
+            for (NativeLibrary loading : currentLoadContext) {
+                if (canonical.equals(loading.getCanonicalIdentifier())) {
+                    return true;
                 }
             }
-
-            NativeLibrary lib = PlatformNativeLibrarySupport.singleton().create(canonical);
+            NativeLibrary lib = PlatformNativeLibrarySupport.singleton().createLibrary(canonical, asBuiltin);
             currentLoadContext.push(lib);
             try {
                 lib.load();
+                if (libraryInitializer != null) {
+                    libraryInitializer.initialize(lib);
+                }
             } finally {
                 NativeLibrary top = currentLoadContext.pop();
                 assert top == lib;
             }
-            if (lib.isLoaded()) {
-                // TODO: for JNI, check if there is a JNI_OnLoad(), call it, rethrow any exceptions,
-                // remember the returned JNI version; in case of an error, unload library again.
-
-                loadedLibraries.add(lib);
-                return true;
-            }
-            return false;
-
+            loadedLibraries.add(lib);
+            return true;
         } finally {
             lock.unlock();
         }

@@ -22,8 +22,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.io.File;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.PointerBase;
 
@@ -34,15 +32,16 @@ public interface PlatformNativeLibrarySupport {
     }
 
     interface NativeLibrary {
+        String getCanonicalIdentifier();
 
-        File getCanonicalPath();
-
-        boolean isLoaded();
+        boolean isBuiltin();
 
         void load() throws UnsatisfiedLinkError;
 
         PointerBase findSymbol(String name);
     }
 
-    NativeLibrary create(File canonicalPath);
+    NativeLibrary createLibrary(String canonical, boolean builtIn);
+
+    PointerBase findBuiltinSymbol(String name);
 }

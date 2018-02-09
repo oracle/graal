@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,34 +23,26 @@
 package com.oracle.svm.jni.nativeapi;
 
 import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.struct.CField;
-import org.graalvm.nativeimage.c.struct.CStruct;
-import org.graalvm.word.PointerBase;
+import org.graalvm.nativeimage.c.constant.CConstant;
 
 @CContext(JNIHeaderDirectives.class)
-@CStruct(value = "JavaVMInitArgs")
-public interface JNIJavaVMInitArgs extends PointerBase {
-    @CField("version")
-    int getVersion();
+public class JNIVersion {
+    // Checkstyle: stop
 
-    @CField("version")
-    void setVersion(int version);
+    @CConstant
+    public static native int JNI_VERSION_1_1();
 
-    @CField("nOptions")
-    int getNOptions();
+    @CConstant
+    public static native int JNI_VERSION_1_2();
 
-    @CField("nOptions")
-    void setNOptions(int count);
+    @CConstant
+    public static native int JNI_VERSION_1_4();
 
-    @CField("options")
-    JNIJavaVMOption getOptions();
+    @CConstant
+    public static native int JNI_VERSION_1_6();
 
-    @CField("options")
-    void setOptions(JNIJavaVMOption options);
+    @CConstant
+    public static native int JNI_VERSION_1_8();
 
-    @CField("ignoreUnrecognized")
-    boolean getIgnoreUnrecognized();
-
-    @CField("ignoreUnrecognized")
-    void setIgnoreUnrecognized(boolean ignoreUnrecognized);
+    // Checkstyle: resume
 }

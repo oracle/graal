@@ -22,21 +22,22 @@
  */
 package com.oracle.svm.core.c.function;
 
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.WordBase;
+
+import com.oracle.svm.core.annotate.Uninterruptible;
 
 /**
  * Advanced entry and leave actions for entry point methods annotated with {@link CEntryPoint}.
- * These are an alternative to automatically entering and leaving a context passed as a parameter
- * and also enable creating an isolate or attaching a thread on demand.
- *
- * A method that is annotated with {@link CEntryPoint} may explicitly call one of the enter* methods
- * (such as {@link #enterCreateIsolate(CEntryPointCreateIsolateParameters)} as the first statement
- * to set up its execution context. A method can additionally choose to call one of the leave*
- * methods before each return. If no leave* methods are called, the leave action defaults to
- * {@link CEntryPointActions#leave()}.
+ * These methods are an alternative to automatically entering and leaving a context that is passed
+ * as a parameter, and they also enable creating an isolate or attaching a method on demand. The
+ * methods of this class must be called from the {@link CEntryPointOptions#prologue() prologue} or
+ * {@link CEntryPointOptions#epilogue() epilogue} code of the entry point, or, if the entry point
+ * method is annotated with {@link Uninterruptible}, from that method itself.
  */
 public final class CEntryPointActions {
     private CEntryPointActions() {
@@ -131,4 +132,13 @@ public final class CEntryPointActions {
      */
     public static native int leaveTearDownIsolate();
 
+    /**
+     * Fail in a fatal manner, such as by terminating the executing process. This method is intended
+     * for situations in which recovery is not possible, or in which reporting an error in any other
+     * way is not possible. This method does not return.
+     * 
+     * @param code An integer hinting at the cause (should be non-zero by convention).
+     * @param message A message describing the cause (may be {@link Word#nullPointer() null}).
+     */
+    public static native void failFatally(int code, CCharPointer message);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,32 +25,18 @@ package com.oracle.svm.jni.nativeapi;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 
 @CContext(JNIHeaderDirectives.class)
-@CStruct(value = "JavaVMInitArgs")
-public interface JNIJavaVMInitArgs extends PointerBase {
+@CStruct(value = "JavaVMAttachArgs")
+public interface JNIJavaVMAttachArgs extends PointerBase {
     @CField("version")
     int getVersion();
 
-    @CField("version")
-    void setVersion(int version);
+    @CField("name")
+    CCharPointer getName();
 
-    @CField("nOptions")
-    int getNOptions();
-
-    @CField("nOptions")
-    void setNOptions(int count);
-
-    @CField("options")
-    JNIJavaVMOption getOptions();
-
-    @CField("options")
-    void setOptions(JNIJavaVMOption options);
-
-    @CField("ignoreUnrecognized")
-    boolean getIgnoreUnrecognized();
-
-    @CField("ignoreUnrecognized")
-    void setIgnoreUnrecognized(boolean ignoreUnrecognized);
+    @CField("group")
+    JNIObjectHandle getGroup();
 }
