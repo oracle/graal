@@ -91,6 +91,9 @@ final class TruffleSplittingStrategy {
     }
 
     private static boolean pollutionBasedShouldSplit(OptimizedDirectCallNode call, GraalTVMCI.EngineData engineData) {
+        if (!call.isNeedsSplit()) {
+            return false;
+        }
         if (!canSplit(call) || engineData.splitCount + call.getCallTarget().getUninitializedNodeCount() >= engineData.splitLimit) {
             return false;
         }
@@ -101,7 +104,7 @@ final class TruffleSplittingStrategy {
         if (callTarget.isValid()) {
             return false;
         }
-        return call.isNeedsSplit();
+        return true;
     }
 
     static void forceSplitting(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
