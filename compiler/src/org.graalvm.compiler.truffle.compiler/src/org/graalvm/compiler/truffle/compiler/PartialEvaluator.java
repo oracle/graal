@@ -376,6 +376,9 @@ public abstract class PartialEvaluator {
     protected PEGraphDecoder createGraphDecoder(StructuredGraph graph, final HighTierContext tierContext, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins,
                     InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePluginList, ResolvedJavaMethod callInlined) {
         final GraphBuilderConfiguration newConfig = configForParsing.copy();
+        if (newConfig.trackNodeSourcePosition()) {
+            graph.setTrackNodeSourcePosition();
+        }
         InvocationPlugins parsingInvocationPlugins = newConfig.getPlugins().getInvocationPlugins();
 
         Plugins plugins = newConfig.getPlugins();
@@ -409,7 +412,7 @@ public abstract class PartialEvaluator {
         }
 
         PEGraphDecoder decoder = createGraphDecoder(graph, tierContext, loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins, callInlinedMethod);
-        decoder.decode(graph.method());
+        decoder.decode(graph.method(), graph.trackNodeSourcePosition());
 
         if (TruffleCompilerOptions.getValue(PrintTruffleExpansionHistogram)) {
             histogramPlugin.print(compilable);
@@ -457,7 +460,7 @@ public abstract class PartialEvaluator {
         new ConvertDeoptimizeToGuardPhase().apply(graph, tierContext);
 
         for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.TYPE)) {
-            StructuredGraph inlineGraph = providers.getReplacements().getSubstitution(methodCallTargetNode.targetMethod(), methodCallTargetNode.invoke().bci());
+            StructuredGraph inlineGraph = providers.getReplacements().getSubstitution(methodCallTargetNode.targetMethod(), methodCallTargetNode.invoke().bci(), graph.trackNodeSourcePosition());
             if (inlineGraph != null) {
                 InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, true, methodCallTargetNode.targetMethod());
             }

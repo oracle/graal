@@ -33,11 +33,7 @@ import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 
 import com.oracle.svm.core.heap.PinnedAllocator;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.ByteArrayReader;
-
-import jdk.vm.ci.meta.JavaConstant;
 
 public class DeoptimizationSourcePositionEncoder {
 
@@ -87,7 +83,6 @@ public class DeoptimizationSourcePositionEncoder {
 
         addObjectConstants(sourcePosition.getCaller(), processedPositions);
         objectConstants.addObject(sourcePosition.getMethod());
-        objectConstants.addObject(unwrapReceiver(sourcePosition));
         processedPositions.add(sourcePosition);
     }
 
@@ -125,20 +120,11 @@ public class DeoptimizationSourcePositionEncoder {
         }
 
         encodingBuffer.putUV(callerRelativeOffset);
-        encodingBuffer.putUV(sourcePosition.getBCI());
+        encodingBuffer.putSV(sourcePosition.getBCI());
         encodingBuffer.putUV(objectConstants.getIndex(sourcePosition.getMethod()));
-        encodingBuffer.putUV(objectConstants.getIndex(unwrapReceiver(sourcePosition)));
 
         sourcePositionStartOffsets.put(sourcePosition, startAbsoluteOffset);
         return startAbsoluteOffset;
-    }
-
-    private static Object unwrapReceiver(NodeSourcePosition sourcePosition) {
-        JavaConstant receiver = sourcePosition.getReceiver();
-        if (receiver == null) {
-            return null;
-        }
-        return KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(receiver), Object.class);
     }
 
     private Object[] newObjectArray(int length) {
@@ -171,7 +157,6 @@ public class DeoptimizationSourcePositionEncoder {
 
         assert originalPosition.getBCI() == decodedSourcePosition.getBCI();
         assert originalPosition.getMethod().equals(decodedSourcePosition.getMethod());
-        assert unwrapReceiver(originalPosition) == unwrapReceiver(decodedSourcePosition);
         verifySourcePosition(originalPosition.getCaller(), decodedSourcePosition.getCaller());
     }
 }

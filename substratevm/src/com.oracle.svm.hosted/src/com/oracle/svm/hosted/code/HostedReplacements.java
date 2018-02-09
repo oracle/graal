@@ -72,9 +72,9 @@ public class HostedReplacements extends SubstrateReplacements {
     }
 
     @Override
-    public void registerSnippet(ResolvedJavaMethod m) {
+    public void registerSnippet(ResolvedJavaMethod m, boolean trackNodeSourcePosition) {
         /* We must have the snippet already available in the analysis replacements. */
-        assert aReplacements.getSnippet(((HostedMethod) m).wrapped, null, null) != null;
+        assert aReplacements.getSnippet(((HostedMethod) m).wrapped, null, null, trackNodeSourcePosition) != null;
     }
 
     @Override

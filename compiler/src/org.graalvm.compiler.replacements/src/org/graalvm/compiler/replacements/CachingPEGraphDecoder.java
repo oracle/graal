@@ -80,10 +80,11 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     }
 
     @SuppressWarnings("try")
-    private EncodedGraph createGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
-        StructuredGraph graphToEncode = new StructuredGraph.Builder(options, debug, allowAssumptions).useProfilingInfo(false).method(method).build();
+    private EncodedGraph createGraph(ResolvedJavaMethod method, ResolvedJavaMethod originalMethod, BytecodeProvider intrinsicBytecodeProvider) {
+        StructuredGraph graphToEncode = new StructuredGraph.Builder(options, debug, allowAssumptions).useProfilingInfo(false).trackNodeSourcePosition(
+                        graphBuilderConfig.trackNodeSourcePosition()).method(method).build();
         try (DebugContext.Scope scope = debug.scope("createGraph", graphToEncode)) {
-            IntrinsicContext initialIntrinsicContext = intrinsicBytecodeProvider != null ? new IntrinsicContext(method, method, intrinsicBytecodeProvider, INLINE_AFTER_PARSING) : null;
+            IntrinsicContext initialIntrinsicContext = intrinsicBytecodeProvider != null ? new IntrinsicContext(originalMethod, method, intrinsicBytecodeProvider, INLINE_AFTER_PARSING) : null;
             GraphBuilderPhase.Instance graphBuilderPhaseInstance = createGraphBuilderPhaseInstance(initialIntrinsicContext);
             graphBuilderPhaseInstance.apply(graphToEncode);
 
@@ -106,10 +107,10 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     }
 
     @Override
-    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
+    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, ResolvedJavaMethod originalMethod, BytecodeProvider intrinsicBytecodeProvider, boolean trackNodeSourcePosition) {
         EncodedGraph result = graphCache.get(method);
         if (result == null && method.hasBytecodes()) {
-            result = createGraph(method, intrinsicBytecodeProvider);
+            result = createGraph(method, originalMethod, intrinsicBytecodeProvider);
         }
         return result;
     }

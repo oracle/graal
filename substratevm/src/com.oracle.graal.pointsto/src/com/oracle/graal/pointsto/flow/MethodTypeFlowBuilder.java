@@ -1443,7 +1443,12 @@ public class MethodTypeFlowBuilder {
         NodeSourcePosition position = node.getNodeSourcePosition();
         // If the 'position' has a 'caller' then it is inlined, case in which the BCI is
         // probably not unique.
-        return position != null && position.getCaller() == null ? position.getBCI() : new Object();
+        if (position != null && position.getCaller() == null) {
+            if (position.getBCI() >= 0) {
+                return position.getBCI();
+            }
+        }
+        return new Object();
     }
 
     protected void processNewInstance(NewInstanceNode node, TypeFlowsOfNodes state) {

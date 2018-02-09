@@ -469,6 +469,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.nodeinfo",
         "org.graalvm.compiler.core.common",
+        "org.graalvm.compiler.bytecode",
       ],
       "javaCompliance" : "1.8",
       "annotationProcessors" : [
@@ -781,7 +782,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.api.replacements",
-        "org.graalvm.compiler.bytecode",
         "org.graalvm.compiler.lir",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",

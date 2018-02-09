@@ -258,11 +258,6 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime implements 
     }
 
     @Override
-    protected boolean platformEnableInfopoints() {
-        return getCodeCache().shouldDebugNonSafepoints();
-    }
-
-    @Override
     protected CallMethods getCallMethods() {
         if (callMethods == null) {
             lookupCallMethods(getMetaAccess());

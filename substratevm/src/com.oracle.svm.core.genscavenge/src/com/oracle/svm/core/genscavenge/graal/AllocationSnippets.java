@@ -589,7 +589,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
             args.addConst("encoding", type.getHub().getLayoutEncoding());
             args.addConst("fillContents", node.fillContents());
             addCounterArgs(args, node, type);
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
     }
@@ -607,7 +607,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
             args.add("hub", node.getInstanceType());
             args.addConst("fillContents", node.fillContents());
             addCounterArgs(args, node, null);
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
@@ -651,7 +651,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
             args.addConst("layoutEncoding", type.getHub().getLayoutEncoding());
             args.addConst("fillContents", node.fillContents());
             addCounterArgs(args, node, type);
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
@@ -669,7 +669,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
             args.add("length", node.length());
             args.addConst("fillContents", node.fillContents());
             addCounterArgs(args, node, null);
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
@@ -689,7 +689,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
             args.addConst("encoding", type.getHub().getLayoutEncoding());
             args.addConst("fillContents", node.fillContents());
             addCounterArgs(args, node, type);
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
@@ -710,7 +710,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
             args.addConst("layoutEncoding", type.getHub().getLayoutEncoding());
             args.addConst("fillContents", node.fillContents());
             addCounterArgs(args, node, type);
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
@@ -727,7 +727,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
             args.add("memory", node.getMemory());
             args.add("hub", node.getHub());
             args.add("rememberedSet", node.getRememberedSet());
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
@@ -746,7 +746,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
             args.add("length", node.getLength());
             args.add("rememberedSet", node.getRememberedSet());
             args.add("unaligned", node.getUnaligned());
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
@@ -771,7 +771,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
             args.addConst("rank", rank);
             args.addVarargs("dimensions", int.class, StampFactory.forKind(JavaKind.Int), dims);
             addCounterArgs(args, node, type);
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
@@ -792,7 +792,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
             args.add("newLength", node.getNewLength());
 
             addCounterArgs(args, node, null);
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
@@ -809,7 +809,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
             Arguments args = new Arguments(doClone, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("thisObj", node.getObject());
             AllocationSnippets.addCounterArgs(args, node, null);
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 

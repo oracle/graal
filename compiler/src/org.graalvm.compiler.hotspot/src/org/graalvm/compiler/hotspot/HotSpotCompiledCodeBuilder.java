@@ -37,9 +37,9 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.code.CompilationResult.CodeComment;
 import org.graalvm.compiler.code.CompilationResult.JumpTable;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.code.SourceMapping;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -55,7 +55,6 @@ import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotCompiledCode;
 import jdk.vm.ci.hotspot.HotSpotCompiledCode.Comment;
 import jdk.vm.ci.hotspot.HotSpotCompiledNmethod;
-import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -210,15 +209,18 @@ public class HotSpotCompiledCodeBuilder {
         sites.addAll(target.getDataPatches());
         sites.addAll(target.getMarks());
 
-        /*
-         * Translate the source mapping into appropriate info points. In HotSpot only one position
-         * can really be represented and recording the end PC seems to give the best results and
-         * corresponds with what C1 and C2 do.
-         */
         if (codeCache.shouldDebugNonSafepoints()) {
+            /*
+             * Translate the source mapping into appropriate info points. In HotSpot only one
+             * position can really be represented and recording the end PC seems to give the best
+             * results and corresponds with what C1 and C2 do. HotSpot doesn't like to see these
+             * unless -XX:+DebugNonSafepoints is enabled, so don't emit them in that case.
+             */
             for (SourceMapping source : target.getSourceMappings()) {
-                sites.add(new Infopoint(source.getEndOffset(), new DebugInfo(source.getSourcePosition()), InfopointReason.BYTECODE_POSITION));
-                assert verifySourcePositionReceivers(source.getSourcePosition());
+                NodeSourcePosition sourcePosition = source.getSourcePosition();
+                assert sourcePosition.verify();
+                sourcePosition = sourcePosition.trim();
+                sites.add(new Infopoint(source.getEndOffset(), new DebugInfo(sourcePosition), InfopointReason.BYTECODE_POSITION));
             }
         }
 
@@ -244,19 +246,5 @@ public class HotSpotCompiledCodeBuilder {
             sites = copy;
         }
         return sites.toArray(new Site[sites.size()]);
-    }
-
-    /**
-     * Verifies that the captured receiver type agrees with the declared type of the method.
-     */
-    private static boolean verifySourcePositionReceivers(NodeSourcePosition start) {
-        NodeSourcePosition pos = start;
-        while (pos != null) {
-            if (pos.getReceiver() != null) {
-                assert ((HotSpotObjectConstant) pos.getReceiver()).asObject(pos.getMethod().getDeclaringClass()) != null;
-            }
-            pos = pos.getCaller();
-        }
-        return true;
     }
 }

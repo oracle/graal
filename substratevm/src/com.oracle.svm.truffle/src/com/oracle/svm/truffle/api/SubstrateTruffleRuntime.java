@@ -261,11 +261,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    protected boolean platformEnableInfopoints() {
-        return false;
-    }
-
-    @Override
     protected StackIntrospection getStackIntrospection() {
         return SubstrateStackIntrospection.SINGLETON;
     }

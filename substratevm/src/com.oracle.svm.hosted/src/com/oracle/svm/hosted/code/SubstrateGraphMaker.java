@@ -58,8 +58,8 @@ public class SubstrateGraphMaker extends GraphMaker {
     }
 
     @Override
-    protected StructuredGraph buildInitialGraph(DebugContext debug, BytecodeProvider bytecodeProvider, ResolvedJavaMethod methodToParse, Object[] args) {
-        StructuredGraph graph = super.buildInitialGraph(debug, bytecodeProvider, methodToParse, args);
+    protected StructuredGraph buildInitialGraph(DebugContext debug, BytecodeProvider bytecodeProvider, ResolvedJavaMethod methodToParse, Object[] args, boolean trackNodeSourcePosition) {
+        StructuredGraph graph = super.buildInitialGraph(debug, bytecodeProvider, methodToParse, args, trackNodeSourcePosition);
         graph.setGuardsStage(GuardsStage.FIXED_DEOPTS);
         return graph;
     }

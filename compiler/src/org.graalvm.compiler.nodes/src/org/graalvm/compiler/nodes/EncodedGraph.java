@@ -42,6 +42,7 @@ public class EncodedGraph {
     private final NodeClass<?>[] types;
     private final Assumptions assumptions;
     private final List<ResolvedJavaMethod> inlinedMethods;
+    private final boolean trackNodeSourcePosition;
 
     /**
      * The "table of contents" of the encoded graph, i.e., the mapping from orderId numbers to the
@@ -49,13 +50,14 @@ public class EncodedGraph {
      */
     protected int[] nodeStartOffsets;
 
-    public EncodedGraph(byte[] encoding, int startOffset, Object[] objects, NodeClass<?>[] types, Assumptions assumptions, List<ResolvedJavaMethod> inlinedMethods) {
+    public EncodedGraph(byte[] encoding, int startOffset, Object[] objects, NodeClass<?>[] types, Assumptions assumptions, List<ResolvedJavaMethod> inlinedMethods, boolean trackNodeSourcePosition) {
         this.encoding = encoding;
         this.startOffset = startOffset;
         this.objects = objects;
         this.types = types;
         this.assumptions = assumptions;
         this.inlinedMethods = inlinedMethods;
+        this.trackNodeSourcePosition = trackNodeSourcePosition;
     }
 
     public byte[] getEncoding() {
@@ -80,5 +82,9 @@ public class EncodedGraph {
 
     public List<ResolvedJavaMethod> getInlinedMethods() {
         return inlinedMethods;
+    }
+
+    public boolean trackNodeSourcePosition() {
+        return trackNodeSourcePosition;
     }
 }

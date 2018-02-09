@@ -876,13 +876,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public void bypassedCompiledCode() {
     }
 
-    @Override
-    public final boolean enableInfopoints() {
-        return platformEnableInfopoints();
-    }
-
-    protected abstract boolean platformEnableInfopoints();
-
     protected CallMethods getCallMethods() {
         return callMethods;
     }
