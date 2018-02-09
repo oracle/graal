@@ -702,7 +702,7 @@ final class InstrumentationHandler {
     }
 
     private <T extends OutputStream> EventBinding<T> attachOutputConsumer(AbstractInstrumenter instrumenter, T stream, boolean errorOutput) {
-        return addOutputBinding(new EventBinding.Source<>(instrumenter, null, null, stream, false), errorOutput);
+        return addOutputBinding(new EventBinding<>(instrumenter, stream), errorOutput);
     }
 
     private <T extends AllocationListener> EventBinding<T> attachAllocationListener(AbstractInstrumenter instrumenter, AllocationEventFilter filter, T listener) {
