@@ -99,8 +99,8 @@ public class HostedOptionParser implements HostedOptionProvider {
         List<String> remainingArgs = new ArrayList<>();
         Set<String> errors = new HashSet<>();
         for (String arg : args) {
-            boolean isImageBuildOption = SubstrateOptionsParser.parseHostedOption(HOSTED_OPTION_PREFIX, "SVM hosted", allHostedOptions, hostedValues, errors, arg, System.out) ||
-                            SubstrateOptionsParser.parseHostedOption(RUNTIME_OPTION_PREFIX, "SVM runtime", allRuntimeOptions, runtimeValues, errors, arg, System.out);
+            boolean isImageBuildOption = SubstrateOptionsParser.parseHostedOption(HOSTED_OPTION_PREFIX, allHostedOptions, hostedValues, errors, arg, System.out) ||
+                            SubstrateOptionsParser.parseHostedOption(RUNTIME_OPTION_PREFIX, allRuntimeOptions, runtimeValues, errors, arg, System.out);
             if (!isImageBuildOption) {
                 remainingArgs.add(arg);
             }

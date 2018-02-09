@@ -738,32 +738,43 @@ public abstract class Launcher {
         printOption(option, description, 2);
     }
 
-    private static void printOption(String option, String description, int indentation) {
-        StringBuilder indent = new StringBuilder(indentation);
-        for (int i = 0; i < indentation; i++) {
-            indent.append(' ');
-        }
-        String desc = description != null ? description : "";
-        desc = wrap(desc);
-        String[] descLines = desc.split(System.lineSeparator());
-        if (option.length() >= 45 && description != null) {
-            System.out.println(String.format("%s%s%n%s%-45s%s", indent, option, indent, "", descLines[0]));
-        } else {
-            System.out.println(String.format("%s%-45s%s", indent, option, descLines[0]));
-        }
-        for (int i = 1; i < descLines.length; i++) {
-            System.out.println(String.format("%s%-45s%s", indent, "", descLines[i]));
-        }
+    private static String spaces(int length) {
+        return new String(new char[length]).replace('\0', ' ');
     }
 
     private static String wrap(String s) {
         final int width = 120;
         StringBuilder sb = new StringBuilder(s);
-        int i = 0;
-        while (i + width < sb.length() && (i = sb.lastIndexOf(" ", i + width)) != -1) {
-            sb.replace(i, i + 1, System.lineSeparator());
+        int cursor = 0;
+        while (cursor + width < sb.length()) {
+            int i = sb.lastIndexOf(" ", cursor + width);
+            if (i == -1 || i < cursor) {
+                i = sb.indexOf(" ", cursor + width);
+            }
+            if (i != -1) {
+                sb.replace(i, i + 1, System.lineSeparator());
+                cursor = i;
+            } else {
+                break;
+            }
         }
         return sb.toString();
+    }
+
+    private static void printOption(String option, String description, int indentation) {
+        String indent = spaces(indentation);
+        String desc = wrap(description != null ? description : "");
+        String nl = System.lineSeparator();
+        String[] descLines = desc.split(nl);
+        int optionWidth = 45;
+        if (option.length() >= optionWidth && description != null) {
+            System.out.println(indent + option + nl + indent + spaces(optionWidth) + descLines[0]);
+        } else {
+            System.out.println(indent + option + spaces(optionWidth - option.length()) + descLines[0]);
+        }
+        for (int i = 1; i < descLines.length; i++) {
+            System.out.println(indent + spaces(optionWidth) + descLines[i]);
+        }
     }
 
     private static void printOption(PrintableOption option) {
