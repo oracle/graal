@@ -526,6 +526,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
             root = makeCallTreeNode(target);
             inlined.nodes.add(root);
             root.properties.put("label", target.toString());
+            root.properties.putAll(((OptimizedCallTarget) target).getDebugProperties(null));
             build(target, root, inlining, this);
         }
 
@@ -560,7 +561,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
                         } else {
                             callTreeNode.properties.put("inlined", "false");
                             if (decision != null) {
-                                callTreeNode.properties.putAll(decision.getProfile().getDebugProperties());
+                                callTreeNode.properties.putAll(decision.getTarget().getDebugProperties(decision));
                             }
                             graph.notInlined.nodes.add(callTreeNode);
                         }
