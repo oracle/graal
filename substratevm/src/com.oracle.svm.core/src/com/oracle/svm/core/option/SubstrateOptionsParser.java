@@ -35,6 +35,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
 
@@ -43,8 +44,6 @@ import com.oracle.svm.core.util.VMError;
  * {@link OptionDescriptor}s.
  */
 public class SubstrateOptionsParser {
-
-    public static final String PRINT_FLAGS_OPTION_NAME = "PrintFlags";
 
     static final class OptionParseResult {
         private final boolean printFlags;
@@ -80,7 +79,7 @@ public class SubstrateOptionsParser {
         }
     }
 
-    static OptionParseResult parseOption(SortedMap<String, OptionDescriptor> options, String option, EconomicMap<OptionKey<?>, Object> valuesMap) {
+    static OptionParseResult parseOption(SortedMap<String, OptionDescriptor> options, String option, EconomicMap<OptionKey<?>, Object> valuesMap, String optionPrefix) {
         if (option.length() == 0) {
             return OptionParseResult.error("Option name must be specified");
         }
@@ -90,11 +89,15 @@ public class SubstrateOptionsParser {
         String valueString = null;
 
         char first = option.charAt(0);
+        int index = option.indexOf('=');
         if (first == '+' || first == '-') {
             optionName = option.substring(1);
             value = (first == '+');
+            if (index != -1) {
+                optionName = option.substring(1, index);
+                return OptionParseResult.error("Cannot mix +/- with <name>=<value> format: '" + option + "'");
+            }
         } else {
-            int index = option.indexOf('=');
             if (index == -1) {
                 optionName = option;
                 valueString = null;
@@ -104,13 +107,8 @@ public class SubstrateOptionsParser {
             }
         }
 
-        if (optionName.equals(PRINT_FLAGS_OPTION_NAME)) {
-            return OptionParseResult.printFlags();
-        }
-
         OptionDescriptor desc = options.get(optionName);
         if (desc == null && value != null) {
-            int index = option.indexOf('=');
             if (index != -1) {
                 optionName = option.substring(1, index);
                 desc = options.get(optionName);
@@ -127,6 +125,7 @@ public class SubstrateOptionsParser {
                     msg.append(' ').append(match.getName());
                 }
             }
+            msg.append(". Use " + optionPrefix + '+' + SubstrateOptions.PrintFlags.getName() + " to list available options.");
             return OptionParseResult.error(msg.toString());
         }
 
@@ -134,6 +133,9 @@ public class SubstrateOptionsParser {
 
         if (value == null) {
             if (valueString == null) {
+                if (optionType == Boolean.class) {
+                    return OptionParseResult.error("Boolean option '" + optionName + "' must have +/- prefix");
+                }
                 return OptionParseResult.error("Missing value for option '" + optionName + "'");
             }
 
@@ -151,18 +153,18 @@ public class SubstrateOptionsParser {
                 } else if (optionType == Double.class) {
                     value = Double.parseDouble(valueString);
                 } else if (optionType == Boolean.class) {
-                    if (valueString.equalsIgnoreCase("true")) {
+                    if (valueString.equals("true")) {
                         value = true;
-                    } else if (valueString.equalsIgnoreCase("false")) {
+                    } else if (valueString.equals("false")) {
                         value = false;
                     } else {
-                        return OptionParseResult.error("Wrong value for option '" + optionName + "': '" + valueString + "' is not a valid boolean value ('true' or 'false')");
+                        return OptionParseResult.error("Boolean option '" + optionName + "' must have +/- prefix");
                     }
                 } else {
                     throw VMError.shouldNotReachHere("Unsupported option value class: " + optionType.getSimpleName());
                 }
             } catch (NumberFormatException ex) {
-                return OptionParseResult.error("Wrong value for option '" + optionName + "': '" + valueString + "' is not a valid number");
+                return OptionParseResult.error("Invalid value for option '" + optionName + "': '" + valueString + "' is not a valid number");
             }
         } else {
             if (optionType != Boolean.class) {
@@ -171,6 +173,11 @@ public class SubstrateOptionsParser {
         }
 
         desc.getOptionKey().update(valuesMap, value);
+
+        if (SubstrateOptions.PrintFlags.getName().equals(optionName) && (Boolean) value) {
+            return OptionParseResult.printFlags();
+        }
+
         return OptionParseResult.correct();
     }
 
@@ -192,7 +199,7 @@ public class SubstrateOptionsParser {
             return false;
         }
 
-        OptionParseResult optionParseResult = SubstrateOptionsParser.parseOption(options, arg.substring(optionPrefix.length()), valuesMap);
+        OptionParseResult optionParseResult = SubstrateOptionsParser.parseOption(options, arg.substring(optionPrefix.length()), valuesMap, optionPrefix);
         if (optionParseResult.shouldPrintFlags()) {
             SubstrateOptionsParser.printFlags(options, valuesMap, null, optionTypePrefix, out);
             throw new InterruptImageBuilding();

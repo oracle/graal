@@ -32,9 +32,9 @@ import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.RuntimeReflection.RuntimeReflectionSupport;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.config.ReflectionConfigurationParser;
@@ -100,7 +100,7 @@ public final class ReflectionFeature implements Feature {
                     parser.parseAndRegister(file);
                 } catch (Exception e) {
                     throw UserError.abort("Could not parse reflection configuration file \"" + file + "\". Verify that the file exists and its contents match the expected schema (see " +
-                                    HostedOptionParser.HOSTED_OPTION_PREFIX + SubstrateOptionsParser.PRINT_FLAGS_OPTION_NAME + " for option " + Options.ReflectionConfigurationFiles.getName() +
+                                    HostedOptionParser.HOSTED_OPTION_PREFIX + SubstrateOptions.PrintFlags.getName() + " for option " + Options.ReflectionConfigurationFiles.getName() +
                                     ").\n" + e.toString());
                 }
             }
@@ -113,7 +113,7 @@ public final class ReflectionFeature implements Feature {
                     parser.parseAndRegister(reader);
                 } catch (Exception e) {
                     throw UserError.abort("Could not parse reflection configuration resource \"" + resource + "\". Verify that the resource exists and its contents match the expected schema (see " +
-                                    HostedOptionParser.HOSTED_OPTION_PREFIX + SubstrateOptionsParser.PRINT_FLAGS_OPTION_NAME + " for option " + Options.ReflectionConfigurationResources.getName() +
+                                    HostedOptionParser.HOSTED_OPTION_PREFIX + SubstrateOptions.PrintFlags.getName() + " for option " + Options.ReflectionConfigurationResources.getName() +
                                     ").\n" + e.toString());
                 }
             }

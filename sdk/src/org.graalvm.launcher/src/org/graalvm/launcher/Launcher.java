@@ -1046,7 +1046,7 @@ public abstract class Launcher {
                 key = arg.substring(1);
                 OptionDescriptor descriptor = RuntimeOptions.getOptions().get(key);
                 if (descriptor == null) {
-                    throw abort("Unknown native option: " + key);
+                    throw abort("Unknown native option: " + key + ". Use --native.help to list available options.");
                 }
                 if (!isBooleanOption(descriptor)) {
                     throw abort("Invalid argument: " + key + " is not a boolean option, set it with --native.XX:" + key + "=...");
@@ -1056,7 +1056,7 @@ public abstract class Launcher {
                 key = arg.substring(0, eqIdx);
                 OptionDescriptor descriptor = RuntimeOptions.getOptions().get(key);
                 if (descriptor == null) {
-                    throw abort("Unknown native option: " + key);
+                    throw abort("Unknown native option: " + key + ". Use --native.help to list available options.");
                 }
                 try {
                     value = descriptor.getKey().getType().convert(arg.substring(eqIdx + 1));

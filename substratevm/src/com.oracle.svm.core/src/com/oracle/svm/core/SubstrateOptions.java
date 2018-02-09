@@ -41,6 +41,9 @@ public class SubstrateOptions {
 
     private static ValueUpdateHandler optimizeValueUpdateHandler;
 
+    @Option(help = "Show available options.")//
+    public static final OptionKey<Boolean> PrintFlags = new OptionKey<>(false);
+
     @Option(help = "Control native-image code optimizations: 0 - no optimizations, 1 - basic optimizations.")//
     public static final HostedOptionKey<Integer> Optimize = new HostedOptionKey<Integer>(1) {
         @Override
