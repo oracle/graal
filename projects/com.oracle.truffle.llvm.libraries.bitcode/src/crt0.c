@@ -69,6 +69,10 @@ void __sulong_byte_arrays_to_native(char **dest, void **java_byte_arrays) {
   }
 }
 
+void __sulong_init_libc(char **envp, char *pn) {
+  // nothing to do
+}
+
 void __sulong_init_context(void **argv_java_byte_arrays, void **envp_java_byte_arrays) {
   int argc = truffle_get_size(argv_java_byte_arrays);
   int envc = truffle_get_size(envp_java_byte_arrays);
@@ -93,6 +97,8 @@ void __sulong_init_context(void **argv_java_byte_arrays, void **envp_java_byte_a
   aux[1].a_un.a_val = (uint64_t) "x86_64";
   aux[2].a_type = AT_NULL;
   aux[2].a_un.a_val = 0;
+
+  __sulong_init_libc(envp, argv[0]);
 }
 
 void __sulong_update_application_path(char *application_path, char **argv, Elf64_auxv_t * auxv) {
@@ -161,7 +167,7 @@ int _start(int type, char *application_path_java_byte_array) {
 }
 
 #ifdef __linux__
-__attribute__((weak)) unsigned long getauxval(unsigned long type) {
+unsigned long getauxval(unsigned long type) {
   Elf64_auxv_t *auxv;
   for (auxv = __auxv; auxv->a_type != AT_NULL; auxv++) {
     if (auxv->a_type == type) {

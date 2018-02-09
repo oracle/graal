@@ -36,7 +36,7 @@
 void __sulong_print_stacktrace();
 int __sulong_should_print_stacktrace_on_abort();
 
-__attribute__((weak)) void abort() {
+void abort() {
   int64_t result;
   if (__sulong_should_print_stacktrace_on_abort()) {
     fprintf(stderr, "abort()\n\n");

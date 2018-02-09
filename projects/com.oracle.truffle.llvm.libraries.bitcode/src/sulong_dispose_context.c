@@ -30,5 +30,5 @@
 
 #include <stdlib.h>
 
-__attribute__((weak)) void __sulong_dispose_context() { exit(0); }
+void __sulong_dispose_context() { exit(0); }
 

@@ -65,7 +65,7 @@ void __clear_exit_handlers() {
   head.next = NULL;
 }
 
-__attribute__((weak)) int __cxa_atexit(void (*func)(void *), void *arg, void *dso) {
+int __cxa_atexit(void (*func)(void *), void *arg, void *dso) {
   struct entry *entry = entry = (struct entry *)malloc(sizeof(struct entry));
   entry->func = func;
   entry->arg = arg;
@@ -79,11 +79,11 @@ static void caller(void *arg) {
   func();
 }
 
-__attribute__((weak)) int atexit(void (*func)(void)) { return __cxa_atexit(caller, func, NULL); }
+int atexit(void (*func)(void)) { return __cxa_atexit(caller, func, NULL); }
 
 void __sulong_destructor_functions();
 
-__attribute__((weak)) void exit(int status) {
+void exit(int status) {
   int64_t result;
   __sulong_funcs_on_exit();
   __sulong_destructor_functions();
@@ -93,7 +93,7 @@ __attribute__((weak)) void exit(int status) {
   }
 }
 
-__attribute__((weak)) void _exit(int status) {
+void _exit(int status) {
   int64_t result;
   __SYSCALL_1(result, SYS_exit_group, status);
   for (;;) { // this should never be executed
@@ -101,4 +101,4 @@ __attribute__((weak)) void _exit(int status) {
   }
 }
 
-__attribute__((weak)) void _Exit(int status) { _exit(status); }
+void _Exit(int status) { _exit(status); }

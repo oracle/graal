@@ -101,9 +101,10 @@ public final class LLVMContext {
     private final Map<Thread, Object> tls = new HashMap<>();
     private final Map<Thread, LLVMAddress> clearChildTid = new HashMap<>();
 
-    private final LLVMAddress defaultSignal;
-    private final LLVMAddress ignoreSignal;
-    private final LLVMAddress errorSignal;
+    // signals
+    private final LLVMAddress sigDfl;
+    private final LLVMAddress sigIgn;
+    private final LLVMAddress sigErr;
 
     private boolean initialized;
     private boolean cleanupNecessary;
@@ -184,9 +185,9 @@ public final class LLVMContext {
         this.globalStack = new LLVMGlobalsStack();
         this.nativeCallStatistics = SulongEngineOption.isTrue(env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new HashMap<>() : null;
         this.threadingStack = new LLVMThreadingStack(Thread.currentThread(), env.getOptions().get(SulongEngineOption.STACK_SIZE_KB));
-        this.defaultSignal = LLVMAddress.fromLong(0);
-        this.ignoreSignal = LLVMAddress.fromLong(1);
-        this.errorSignal = LLVMAddress.fromLong(-1);
+        this.sigDfl = LLVMAddress.fromLong(0);
+        this.sigIgn = LLVMAddress.fromLong(1);
+        this.sigErr = LLVMAddress.fromLong(-1);
         this.toNative = new IdentityHashMap<>();
         this.toManaged = new HashMap<>();
         this.handlesLock = new Object();
@@ -440,15 +441,15 @@ public final class LLVMContext {
     }
 
     public LLVMAddress getSigDfl() {
-        return defaultSignal;
+        return sigDfl;
     }
 
     public LLVMAddress getSigIgn() {
-        return ignoreSignal;
+        return sigIgn;
     }
 
     public LLVMAddress getSigErr() {
-        return errorSignal;
+        return sigErr;
     }
 
     @TruffleBoundary
@@ -517,8 +518,6 @@ public final class LLVMContext {
 
     public LLVMThreadingStack getThreadingStack() {
         return threadingStack;
-    }
-
     }
 
     public void registerDestructorFunction(RootCallTarget destructorFunction) {
