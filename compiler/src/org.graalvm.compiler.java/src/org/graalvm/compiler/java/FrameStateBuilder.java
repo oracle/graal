@@ -73,7 +73,6 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -110,8 +109,6 @@ public final class FrameStateBuilder implements SideEffectsState {
      * than one when the current block contains no side-effects but merging predecessor blocks do.
      */
     private List<StateSplit> sideEffects;
-
-    private JavaConstant constantReceiver;
 
     /**
      * Creates a new frame state builder for the given method and the given target graph.
@@ -163,7 +160,6 @@ public final class FrameStateBuilder implements SideEffectsState {
             locals[javaIndex] = arguments[index];
             javaIndex = 1;
             index = 1;
-            constantReceiver = locals[0].asJavaConstant();
         }
         Signature sig = getMethod().getSignature();
         int max = sig.getParameterCount(false);
@@ -354,11 +350,11 @@ public final class FrameStateBuilder implements SideEffectsState {
 
     public NodeSourcePosition createBytecodePosition(int bci) {
         BytecodeParser parent = parser.getParent();
-        NodeSourcePosition position = create(constantReceiver, bci, parent);
+        NodeSourcePosition position = create(bci, parent);
         return position;
     }
 
-    private NodeSourcePosition create(JavaConstant receiver, int bci, BytecodeParser parent) {
+    private NodeSourcePosition create(int bci, BytecodeParser parent) {
         if (outerSourcePosition == null && parent != null) {
             outerSourcePosition = parent.getFrameStateBuilder().createBytecodePosition(parent.bci());
         }
@@ -368,7 +364,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
             throw shouldNotReachHere();
         }
-        return new NodeSourcePosition(receiver, outerSourcePosition, code.getMethod(), bci);
+        return new NodeSourcePosition(outerSourcePosition, code.getMethod(), bci);
     }
 
     public FrameStateBuilder copy() {

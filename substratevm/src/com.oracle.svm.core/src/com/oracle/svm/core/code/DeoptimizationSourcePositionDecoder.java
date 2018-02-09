@@ -25,10 +25,8 @@ package com.oracle.svm.core.code;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.ByteArrayReader;
 
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class DeoptimizationSourcePositionDecoder {
@@ -67,17 +65,12 @@ public class DeoptimizationSourcePositionDecoder {
         long callerRelativeOffset = readBuffer.getUV();
         int bci = readBuffer.getSVInt();
         ResolvedJavaMethod method = (ResolvedJavaMethod) deoptimizationObjectConstants[readBuffer.getUVInt()];
-        Object receiver = deoptimizationObjectConstants[readBuffer.getUVInt()];
 
         NodeSourcePosition caller = null;
         if (callerRelativeOffset != NO_CALLER) {
             caller = decodeSourcePosition(startOffset - callerRelativeOffset, deoptimizationObjectConstants, readBuffer);
         }
 
-        return new NodeSourcePosition(wrapReceiver(receiver), caller, method, bci);
-    }
-
-    private static JavaConstant wrapReceiver(Object receiver) {
-        return receiver == null ? null : SubstrateObjectConstant.forObject(receiver);
+        return new NodeSourcePosition(caller, method, bci);
     }
 }

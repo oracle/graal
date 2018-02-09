@@ -34,17 +34,15 @@ import org.graalvm.compiler.bytecode.Bytecodes;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class NodeSourcePosition extends BytecodePosition {
 
-    /**
-     * The receiver of the method this frame refers to.
-     */
-    private final JavaConstant receiver;
+    private static final boolean STRICT_SOURCE_POSITION = Boolean.getBoolean("debug.graal.SourcePositionStrictChecks");
+    private static final boolean SOURCE_POSITION_BYTECODES = Boolean.getBoolean("debug.graal.SourcePositionDisassemble");
+
     private final int hashCode;
     private final Marker marker;
 
@@ -60,7 +58,7 @@ public class NodeSourcePosition extends BytecodePosition {
             caller = caller.trim();
         }
         if (caller != getCaller()) {
-            return new NodeSourcePosition(receiver, caller, getMethod(), getBCI());
+            return new NodeSourcePosition(caller, getMethod(), getBCI());
         }
         return this;
     }
@@ -71,28 +69,26 @@ public class NodeSourcePosition extends BytecodePosition {
         Substitution
     }
 
-    public NodeSourcePosition(JavaConstant receiver, NodeSourcePosition caller, ResolvedJavaMethod method, int bci) {
-        this(receiver, caller, method, bci, None);
+    public NodeSourcePosition(NodeSourcePosition caller, ResolvedJavaMethod method, int bci) {
+        this(caller, method, bci, None);
     }
 
-    public NodeSourcePosition(JavaConstant receiver, NodeSourcePosition caller, ResolvedJavaMethod method, int bci, Marker marker) {
+    public NodeSourcePosition(NodeSourcePosition caller, ResolvedJavaMethod method, int bci, Marker marker) {
         super(caller, method, bci);
         if (caller == null) {
             this.hashCode = 31 * bci + method.hashCode();
         } else {
             this.hashCode = caller.hashCode * 7 + 31 * bci + method.hashCode();
         }
-        this.receiver = receiver;
         this.marker = marker;
-        assert receiver == null || marker != None || BytecodeFrame.isPlaceholderBci(bci) || method.getDeclaringClass().isInstance(receiver) : this;
     }
 
     public static NodeSourcePosition placeholder(ResolvedJavaMethod method) {
-        return new NodeSourcePosition(null, null, method, BytecodeFrame.INVALID_FRAMESTATE_BCI, Placeholder);
+        return new NodeSourcePosition(null, method, BytecodeFrame.INVALID_FRAMESTATE_BCI, Placeholder);
     }
 
     public static NodeSourcePosition placeholder(ResolvedJavaMethod method, int bci) {
-        return new NodeSourcePosition(null, null, method, bci, Placeholder);
+        return new NodeSourcePosition(null, method, bci, Placeholder);
     }
 
     public boolean isPlaceholder() {
@@ -100,11 +96,11 @@ public class NodeSourcePosition extends BytecodePosition {
     }
 
     public static NodeSourcePosition substitution(ResolvedJavaMethod method) {
-        return new NodeSourcePosition(null, null, method, BytecodeFrame.INVALID_FRAMESTATE_BCI, Substitution);
+        return new NodeSourcePosition(null, method, BytecodeFrame.INVALID_FRAMESTATE_BCI, Substitution);
     }
 
     public static NodeSourcePosition substitution(NodeSourcePosition caller, ResolvedJavaMethod method, int bci) {
-        return new NodeSourcePosition(null, caller, method, bci, Substitution);
+        return new NodeSourcePosition(caller, method, bci, Substitution);
     }
 
     public boolean isSubstitution() {
@@ -121,8 +117,7 @@ public class NodeSourcePosition extends BytecodePosition {
             if (hashCode != that.hashCode) {
                 return false;
             }
-            if (this.getBCI() == that.getBCI() && Objects.equals(this.getMethod(), that.getMethod()) && Objects.equals(this.getCaller(), that.getCaller()) &&
-                            Objects.equals(this.receiver, that.receiver)) {
+            if (this.getBCI() == that.getBCI() && Objects.equals(this.getMethod(), that.getMethod()) && Objects.equals(this.getCaller(), that.getCaller())) {
                 return true;
             }
         }
@@ -132,10 +127,6 @@ public class NodeSourcePosition extends BytecodePosition {
     @Override
     public int hashCode() {
         return hashCode;
-    }
-
-    public JavaConstant getReceiver() {
-        return receiver;
     }
 
     public int depth() {
@@ -153,26 +144,21 @@ public class NodeSourcePosition extends BytecodePosition {
         return (NodeSourcePosition) super.getCaller();
     }
 
-    public NodeSourcePosition addCaller(JavaConstant newCallerReceiver, NodeSourcePosition link, boolean isSubstitution) {
+    public NodeSourcePosition addCaller(NodeSourcePosition link, boolean isSubstitution) {
         if (getCaller() == null) {
             if (isPlaceholder()) {
-                return new NodeSourcePosition(newCallerReceiver, link, getMethod(), 0);
+                return new NodeSourcePosition(link, getMethod(), 0);
             }
-            assert newCallerReceiver == null || receiver == null : "replacing receiver";
             assert link == null || isSubstitution || verifyCaller(this, link) : link;
 
-            return new NodeSourcePosition(newCallerReceiver, link, getMethod(), getBCI());
+            return new NodeSourcePosition(link, getMethod(), getBCI());
         } else {
-            return new NodeSourcePosition(receiver, getCaller().addCaller(newCallerReceiver, link, isSubstitution), getMethod(), getBCI());
+            return new NodeSourcePosition(getCaller().addCaller(link, isSubstitution), getMethod(), getBCI());
         }
     }
 
-    public NodeSourcePosition addCaller(JavaConstant newCallerReceiver, NodeSourcePosition link) {
-        return addCaller(newCallerReceiver, link, false);
-    }
-
     public NodeSourcePosition addCaller(NodeSourcePosition link) {
-        return addCaller(null, link);
+        return addCaller(link, false);
     }
 
     @Override
@@ -191,13 +177,12 @@ public class NodeSourcePosition extends BytecodePosition {
 
     private static void format(StringBuilder sb, NodeSourcePosition pos) {
         MetaUtil.appendLocation(sb.append("at "), pos.getMethod(), pos.getBCI());
-        if (pos.receiver != null) {
-            sb.append(" receiver=" + pos.receiver);
-        }
-        String disassembly = BytecodeDisassembler.disassembleOne(pos.getMethod(), pos.getBCI());
-        if (disassembly != null && disassembly.length() > 0) {
-            sb.append(" // ");
-            sb.append(disassembly);
+        if (SOURCE_POSITION_BYTECODES) {
+            String disassembly = BytecodeDisassembler.disassembleOne(pos.getMethod(), pos.getBCI());
+            if (disassembly != null && disassembly.length() > 0) {
+                sb.append(" // ");
+                sb.append(disassembly);
+            }
         }
     }
 
@@ -219,6 +204,9 @@ public class NodeSourcePosition extends BytecodePosition {
     }
 
     private static boolean verifyCaller(NodeSourcePosition current, NodeSourcePosition caller) {
+        if (!STRICT_SOURCE_POSITION) {
+            return true;
+        }
         if (BytecodeFrame.isPlaceholderBci(caller.getBCI())) {
             return true;
         }

@@ -111,7 +111,6 @@ import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -187,11 +186,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     assert position == null : "should only happen when tracking is disabled";
                     return null;
                 }
-                JavaConstant constantReceiver = caller.invokeData == null ? null : caller.invokeData.constantReceiver;
-                if (constantReceiver != null) {
-                    invokePosition = new NodeSourcePosition(constantReceiver, invokePosition.getCaller(), invokePosition.getMethod(), invokePosition.getBCI());
-                }
-
                 callerBytecodePosition = invokePosition;
             }
             if (position != null) {
@@ -547,6 +541,12 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             MethodCallTargetNode methodCall = (MethodCallTargetNode) callTarget;
             if (methodCall.invokeKind().hasReceiver()) {
                 invokeData.constantReceiver = methodCall.arguments().get(0).asJavaConstant();
+                NodeSourcePosition invokePosition = invokeData.invoke.asNode().getNodeSourcePosition();
+                if (invokeData.constantReceiver != null && invokePosition != null) {
+                    // new NodeSourcePosition(invokeData.constantReceiver,
+                    // invokePosition.getCaller(), invokePosition.getMethod(),
+                    // invokePosition.getBCI());
+                }
             }
             LoopScope inlineLoopScope = trySimplifyInvoke(methodScope, loopScope, invokeData, (MethodCallTargetNode) callTarget);
             if (inlineLoopScope != null) {

@@ -3049,7 +3049,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
     private DebugCloseable openNodeContext(ResolvedJavaMethod targetMethod, int bci) {
         if (graph.trackNodeSourcePosition()) {
-            return graph.withNodeSourcePosition(new NodeSourcePosition(null, createBytecodePosition(), targetMethod, bci));
+            return graph.withNodeSourcePosition(new NodeSourcePosition(createBytecodePosition(), targetMethod, bci));
         }
         return null;
     }

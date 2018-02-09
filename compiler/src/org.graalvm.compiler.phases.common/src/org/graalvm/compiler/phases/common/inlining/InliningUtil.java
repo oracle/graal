@@ -105,7 +105,6 @@ import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -613,14 +612,12 @@ public class InliningUtil extends ValueMergeUtil {
                         isSubstitution : String.format("trackNodeSourcePosition mismatch %s %s != %s %s", invokeGraph, invokeGraph.trackNodeSourcePosition(), inlineGraph,
                                         inlineGraph.trackNodeSourcePosition());
         if (invokeGraph.trackNodeSourcePosition() && invoke.stateAfter() != null) {
-            final JavaConstant constantReceiver = invoke.getInvokeKind().hasReceiver() && !isSubstitution ? invoke.getReceiver().asJavaConstant() : null;
             final NodeSourcePosition invokePos = invoke.asNode().getNodeSourcePosition();
-            updateSourcePosition(invokeGraph, duplicates, mark, constantReceiver, invokePos, isSubstitution);
+            updateSourcePosition(invokeGraph, duplicates, mark, invokePos, isSubstitution);
         }
     }
 
-    public static void updateSourcePosition(StructuredGraph invokeGraph, UnmodifiableEconomicMap<Node, Node> duplicates, Mark mark, JavaConstant constantReceiver, NodeSourcePosition invokePos,
-                    boolean isSubstitution) {
+    public static void updateSourcePosition(StructuredGraph invokeGraph, UnmodifiableEconomicMap<Node, Node> duplicates, Mark mark, NodeSourcePosition invokePos, boolean isSubstitution) {
         /*
          * Not every duplicate node is newly created, so only update the position of the newly
          * created nodes.
@@ -637,7 +634,7 @@ public class InliningUtil extends ValueMergeUtil {
             if (pos != null) {
                 NodeSourcePosition callerPos = posMap.get(pos);
                 if (callerPos == null) {
-                    callerPos = pos.addCaller(constantReceiver, invokePos, isSubstitution);
+                    callerPos = pos.addCaller(invokePos, isSubstitution);
                     posMap.put(pos, callerPos);
                 }
                 cursor.getValue().setNodeSourcePosition(callerPos);

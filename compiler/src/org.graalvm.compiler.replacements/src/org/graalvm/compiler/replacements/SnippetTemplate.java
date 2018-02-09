@@ -1409,19 +1409,7 @@ public class SnippetTemplate {
             StructuredGraph replaceeGraph = replacee.graph();
             EconomicMap<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
             replacements.put(entryPointNode, AbstractBeginNode.prevBegin(replacee));
-            UnmodifiableEconomicMap<Node, Node> duplicates;
-            try (InliningLog.UpdateScope scope = replaceeGraph.getInliningLog().openUpdateScope((oldNode, newNode) -> {
-                InliningLog log = replaceeGraph.getInliningLog();
-                if (oldNode == null) {
-                    log.trackNewCallsite(newNode);
-                }
-            })) {
-                duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
-                if (scope != null) {
-                    replaceeGraph.getInliningLog().addLog(duplicates, snippet.getInliningLog());
-                }
-            }
-            debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After inlining snippet %s", snippet.method());
+            UnmodifiableEconomicMap<Node, Node> duplicates = inlineSnippet(replacee, debug, replaceeGraph, replacements);
 
             // Re-wire the control flow graph around the replacee
             FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
@@ -1516,13 +1504,23 @@ public class SnippetTemplate {
 
     private UnmodifiableEconomicMap<Node, Node> inlineSnippet(Node replacee, DebugContext debug, StructuredGraph replaceeGraph, EconomicMap<Node, Node> replacements) {
         Mark mark = replaceeGraph.getMark();
-        UnmodifiableEconomicMap<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
-        NodeSourcePosition position = replacee.getNodeSourcePosition();
-        if (position != null) {
-            InliningUtil.updateSourcePosition(replaceeGraph, duplicates, mark, null, position, true);
+        try (InliningLog.UpdateScope scope = replaceeGraph.getInliningLog().openUpdateScope((oldNode, newNode) -> {
+            InliningLog log = replaceeGraph.getInliningLog();
+            if (oldNode == null) {
+                log.trackNewCallsite(newNode);
+            }
+        })) {
+            UnmodifiableEconomicMap<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
+            if (scope != null) {
+                replaceeGraph.getInliningLog().addLog(duplicates, snippet.getInliningLog());
+            }
+            NodeSourcePosition position = replacee.getNodeSourcePosition();
+            if (position != null) {
+                InliningUtil.updateSourcePosition(replaceeGraph, duplicates, mark, position, true);
+            }
+            debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After inlining snippet %s", snippet.method());
+            return duplicates;
         }
-        debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After inlining snippet %s", snippet.method());
-        return duplicates;
     }
 
     private void propagateStamp(Node node) {
