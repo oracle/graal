@@ -66,9 +66,17 @@ import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
 final class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
 
-    @CompilationFinal private static ContextThreadLocal CURRENT = new ContextThreadLocal();
-    private static final Assumption SINGLE_CONTEXT = Truffle.getRuntime().createAssumption("Single Context");
-    @CompilationFinal private static volatile PolyglotContextImpl singleContext;
+    /**
+     * This class isolates static state to optimize when only a single context is used. This
+     * simplifies resetting state in AOT mode during native image generation.
+     */
+    static final class SingleContextState {
+        private final ContextThreadLocal contextThreadLocal = new ContextThreadLocal();
+        private final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("Single Context");
+        @CompilationFinal private volatile PolyglotContextImpl singleContext;
+    }
+
+    private static final SingleContextState SINGLE_CONTEXT_STATE = new SingleContextState();
 
     private final Assumption singleThreaded = Truffle.getRuntime().createAssumption("Single threaded");
     private final Assumption singleThreadedConstant = Truffle.getRuntime().createAssumption("Single threaded constant thread");
@@ -160,14 +168,14 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
      * Marks a context used globally. Potentially invalidating the global single context assumption.
      */
     static void initializeStaticContext(PolyglotContextImpl context) {
-        if (SINGLE_CONTEXT.isValid()) {
-            synchronized (PolyglotContextImpl.class) {
-                if (SINGLE_CONTEXT.isValid()) {
-                    if (singleContext != null) {
-                        SINGLE_CONTEXT.invalidate();
-                        singleContext = null;
+        if (SINGLE_CONTEXT_STATE.singleContextAssumption.isValid()) {
+            synchronized (SINGLE_CONTEXT_STATE) {
+                if (SINGLE_CONTEXT_STATE.singleContextAssumption.isValid()) {
+                    if (SINGLE_CONTEXT_STATE.singleContext != null) {
+                        SINGLE_CONTEXT_STATE.singleContextAssumption.invalidate();
+                        SINGLE_CONTEXT_STATE.singleContext = null;
                     } else {
-                        singleContext = context;
+                        SINGLE_CONTEXT_STATE.singleContext = context;
                     }
                 }
             }
@@ -179,11 +187,11 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
      * just one usable.
      */
     static void disposeStaticContext(PolyglotContextImpl context) {
-        if (SINGLE_CONTEXT.isValid()) {
-            synchronized (PolyglotContextImpl.class) {
-                if (SINGLE_CONTEXT.isValid()) {
-                    assert singleContext == context;
-                    singleContext = null;
+        if (SINGLE_CONTEXT_STATE.singleContextAssumption.isValid()) {
+            synchronized (SINGLE_CONTEXT_STATE) {
+                if (SINGLE_CONTEXT_STATE.singleContextAssumption.isValid()) {
+                    assert SINGLE_CONTEXT_STATE.singleContext == context;
+                    SINGLE_CONTEXT_STATE.singleContext = null;
                 }
             }
         }
@@ -254,15 +262,15 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
     }
 
     static PolyglotContextImpl current() {
-        if (SINGLE_CONTEXT.isValid()) {
-            if (CURRENT.isSet()) {
-                return singleContext;
+        if (SINGLE_CONTEXT_STATE.singleContextAssumption.isValid()) {
+            if (SINGLE_CONTEXT_STATE.contextThreadLocal.isSet()) {
+                return SINGLE_CONTEXT_STATE.singleContext;
             } else {
                 CompilerDirectives.transferToInterpreter();
                 return null;
             }
         } else {
-            return (PolyglotContextImpl) CURRENT.get();
+            return (PolyglotContextImpl) SINGLE_CONTEXT_STATE.contextThreadLocal.get();
         }
     }
 
@@ -297,9 +305,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
     }
 
     boolean needsEnter() {
-        if (SINGLE_CONTEXT.isValid()) {
+        if (SINGLE_CONTEXT_STATE.singleContextAssumption.isValid()) {
             // if its a single context we know which one to enter
-            return !CURRENT.isSet();
+            return !SINGLE_CONTEXT_STATE.contextThreadLocal.isSet();
         } else {
             return current() != this;
         }
@@ -314,7 +322,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         PolyglotThreadInfo info = getCachedThreadInfo();
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.thread == Thread.currentThread())) {
             // fast-path -> same thread
-            context = CURRENT.setReturnParent(this);
+            context = SINGLE_CONTEXT_STATE.contextThreadLocal.setReturnParent(this);
             info.enter();
         } else {
             // slow path -> changed thread
@@ -338,7 +346,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
             }
             leaveThreadChanged();
         }
-        CURRENT.set(prev);
+        SINGLE_CONTEXT_STATE.contextThreadLocal.set(prev);
     }
 
     @TruffleBoundary
@@ -375,7 +383,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
             }
 
             // enter the thread info already
-            prev = (PolyglotContextImpl) CURRENT.setReturnParent(this);
+            prev = (PolyglotContextImpl) SINGLE_CONTEXT_STATE.contextThreadLocal.setReturnParent(this);
             threadInfo.enter();
 
             if (transitionToMultiThreading) {
@@ -1154,7 +1162,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         context.currentThreadInfo = PolyglotThreadInfo.NULL;
         context.constantCurrentThreadInfo = PolyglotThreadInfo.NULL;
         disposeStaticContext(context);
-        CURRENT = new ContextThreadLocal();
         return context;
     }
 
