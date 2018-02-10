@@ -1579,11 +1579,11 @@ class LoopDetector implements Runnable {
          * we exit the loop. During graph decoding, we create a FrameState for every exploded loop
          * iteration. We need to do a forward marking until we hit the next such point. This puts
          * some nodes into the loop that are actually not part of the loop.
-         * 
+         *
          * In some cases, we did not create a FrameState during graph decoding: when there was no
          * LoopExit in the original loop that we exploded. This happens for code paths that lead
          * immediately to a DeoptimizeNode.
-         * 
+         *
          * Both cases mimic the behavior of the BytecodeParser, which also puts more nodes than
          * necessary into a loop because it computes loop information based on bytecodes, before the
          * actual parsing.
