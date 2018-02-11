@@ -25,14 +25,13 @@ package com.oracle.svm.core.option;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedMap;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -45,6 +44,9 @@ import com.oracle.svm.core.util.VMError;
  */
 public class SubstrateOptionsParser {
 
+    /**
+     * The result of {@link SubstrateOptionsParser#parseOption}.
+     */
     static final class OptionParseResult {
         private final boolean printFlags;
         private final String error;
@@ -79,7 +81,26 @@ public class SubstrateOptionsParser {
         }
     }
 
-    static OptionParseResult parseOption(SortedMap<String, OptionDescriptor> options, String option, EconomicMap<OptionKey<?>, Object> valuesMap, String optionPrefix) {
+    /**
+     * Constants denoting supported boolean option formats.
+     */
+    public enum BooleanOptionFormat {
+        NAME_VALUE("<name>=<value>"),
+        PLUS_MINUS("+/-<name>");
+        BooleanOptionFormat(String help) {
+            this.help = help;
+        }
+
+        private final String help;
+
+        @Override
+        public String toString() {
+            return help;
+        }
+    }
+
+    static OptionParseResult parseOption(SortedMap<String, OptionDescriptor> options, String option, EconomicMap<OptionKey<?>, Object> valuesMap, String optionPrefix,
+                    BooleanOptionFormat booleanOptionFormat) {
         if (option.length() == 0) {
             return OptionParseResult.error("Option name must be specified");
         }
@@ -89,28 +110,30 @@ public class SubstrateOptionsParser {
         String valueString = null;
 
         char first = option.charAt(0);
-        int index = option.indexOf('=');
+        int eqIndex = option.indexOf('=');
         if (first == '+' || first == '-') {
-            optionName = option.substring(1);
-            value = (first == '+');
-            if (index != -1) {
-                optionName = option.substring(1, index);
-                return OptionParseResult.error("Cannot mix +/- with <name>=<value> format: '" + option + "'");
+            if (eqIndex != -1) {
+                return OptionParseResult.error("Cannot mix +/- with <name>=<value> format: '" + optionPrefix + option + "'");
             }
+            optionName = option.substring(1, eqIndex == -1 ? option.length() : eqIndex);
+            if (booleanOptionFormat == BooleanOptionFormat.NAME_VALUE) {
+                return OptionParseResult.error("Option '" + optionName + "' must use <name>=<value> format, not +/- prefix");
+            }
+            value = (first == '+');
         } else {
-            if (index == -1) {
+            if (eqIndex == -1) {
                 optionName = option;
                 valueString = null;
             } else {
-                optionName = option.substring(0, index);
-                valueString = option.substring(index + 1);
+                optionName = option.substring(0, eqIndex);
+                valueString = option.substring(eqIndex + 1);
             }
         }
 
         OptionDescriptor desc = options.get(optionName);
         if (desc == null && value != null) {
-            if (index != -1) {
-                optionName = option.substring(1, index);
+            if (eqIndex != -1) {
+                optionName = option.substring(1, eqIndex);
                 desc = options.get(optionName);
             }
         }
@@ -132,10 +155,10 @@ public class SubstrateOptionsParser {
         Class<?> optionType = desc.getType();
 
         if (value == null) {
+            if (optionType == Boolean.class && booleanOptionFormat == BooleanOptionFormat.PLUS_MINUS) {
+                return OptionParseResult.error("Boolean option '" + optionName + "' must have +/- prefix");
+            }
             if (valueString == null) {
-                if (optionType == Boolean.class) {
-                    return OptionParseResult.error("Boolean option '" + optionName + "' must have +/- prefix");
-                }
                 return OptionParseResult.error("Missing value for option '" + optionName + "'");
             }
 
@@ -158,7 +181,7 @@ public class SubstrateOptionsParser {
                     } else if (valueString.equals("false")) {
                         value = false;
                     } else {
-                        return OptionParseResult.error("Boolean option '" + optionName + "' must have +/- prefix");
+                        return OptionParseResult.error("Boolean option '" + optionName + "' must have value 'true' or 'false'");
                     }
                 } else {
                     throw VMError.shouldNotReachHere("Unsupported option value class: " + optionType.getSimpleName());
@@ -185,23 +208,23 @@ public class SubstrateOptionsParser {
      * Parses a option at image build time. When the PrintFlags option is found prints all options
      * and interrupts compilation.
      *
-     * @param optionPrefix Prefix used before option name
-     * @param optionTypePrefix Prefix used for options when printing all possible options
+     * @param optionPrefix prefix used before option name
      * @param options all possible options
      * @param valuesMap all current option values
+     * @param booleanOptionFormat help expected for boolean options
      * @param errors a set that contains all error messages
      * @param arg the argument currently processed
-     * @return true if option matches the option process
+     * @return true if {@code arg.startsWith(optionPrefix)}
      */
-    public static boolean parseHostedOption(String optionPrefix, String optionTypePrefix, SortedMap<String, OptionDescriptor> options, EconomicMap<OptionKey<?>, Object> valuesMap,
+    public static boolean parseHostedOption(String optionPrefix, SortedMap<String, OptionDescriptor> options, EconomicMap<OptionKey<?>, Object> valuesMap, BooleanOptionFormat booleanOptionFormat,
                     Set<String> errors, String arg, PrintStream out) {
         if (!arg.startsWith(optionPrefix)) {
             return false;
         }
 
-        OptionParseResult optionParseResult = SubstrateOptionsParser.parseOption(options, arg.substring(optionPrefix.length()), valuesMap, optionPrefix);
+        OptionParseResult optionParseResult = SubstrateOptionsParser.parseOption(options, arg.substring(optionPrefix.length()), valuesMap, optionPrefix, booleanOptionFormat);
         if (optionParseResult.shouldPrintFlags()) {
-            SubstrateOptionsParser.printFlags(options, valuesMap, null, optionTypePrefix, out);
+            SubstrateOptionsParser.printFlags(options, optionPrefix, out);
             throw new InterruptImageBuilding();
         }
         if (!optionParseResult.isValid()) {
@@ -210,84 +233,72 @@ public class SubstrateOptionsParser {
         return true;
     }
 
-    /**
-     * Wraps some given text to one or more lines of a given maximum width.
-     *
-     * @param text text to wrap
-     * @param width maximum width of an output line, exception for words in {@code text} longer than
-     *            this value
-     * @return {@code text} broken into lines
-     */
-    private static List<String> wrap(String text, int width) {
-        List<String> lines = new ArrayList<>();
-        if (text.length() > width) {
-            String[] chunks = text.split("\\s+");
-            StringBuilder line = new StringBuilder();
-            for (String chunk : chunks) {
-                if (line.length() + chunk.length() > width) {
-                    lines.add(line.toString());
-                    line.setLength(0);
-                }
-                if (line.length() != 0) {
-                    line.append(' ');
-                }
-                String[] embeddedLines = chunk.split("%n", -2);
-                if (embeddedLines.length == 1) {
-                    line.append(chunk);
-                } else {
-                    for (int i = 0; i < embeddedLines.length; i++) {
-                        line.append(embeddedLines[i]);
-                        if (i < embeddedLines.length - 1) {
-                            lines.add(line.toString());
-                            line.setLength(0);
-                        }
-                    }
-                }
-            }
-            if (line.length() != 0) {
-                lines.add(line.toString());
-            }
-        } else {
-            lines.add(text);
-        }
-        return lines;
+    private static String spaces(int length) {
+        return new String(new char[length]).replace('\0', ' ');
     }
 
-    static void printFlags(SortedMap<String, OptionDescriptor> sortedOptions, EconomicMap<OptionKey<?>, Object> valuesMap, RuntimeOptionValues existingOptionValues, String prefix, PrintStream out) {
-        OptionValues optionValues = existingOptionValues != null ? existingOptionValues : new OptionValues(valuesMap);
-
-        out.println("[List of " + prefix + " options]");
-        for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
-            e.getKey();
-            OptionDescriptor desc = e.getValue();
-            Object value = desc.getOptionKey().getValue(optionValues);
-            List<String> helpLines = wrap(desc.getHelp(), 70);
-            helpLines.addAll(desc.getExtraHelp());
-
-            StringBuilder sb = new StringBuilder();
-            sb.append(desc.getType().getSimpleName());
-            do {
-                sb.append(' ');
-            } while (sb.length() < 9);
-            sb.append(e.getKey());
-            do {
-                sb.append(' ');
-            } while (sb.length() < 9 + 40);
-            sb.append(" = ");
-            sb.append(value);
-            do {
-                sb.append(' ');
-            } while (sb.length() < 9 + 40 + 14);
-            int helpStart = sb.length();
-            sb.append(helpLines.get(0));
-            for (int i = 1; i < helpLines.size(); i++) {
-                sb.append('\n');
-                for (int j = 0; j < helpStart; ++j) {
-                    sb.append(' ');
-                }
-                sb.append(helpLines.get(i));
+    private static String wrap(String s) {
+        final int width = 120;
+        StringBuilder sb = new StringBuilder(s);
+        int cursor = 0;
+        while (cursor + width < sb.length()) {
+            int i = sb.lastIndexOf(" ", cursor + width);
+            if (i == -1 || i < cursor) {
+                i = sb.indexOf(" ", cursor + width);
             }
-            out.println(sb.toString());
+            if (i != -1) {
+                sb.replace(i, i + 1, System.lineSeparator());
+                cursor = i;
+            } else {
+                break;
+            }
+        }
+        return sb.toString();
+    }
+
+    private static void printOption(PrintStream out, String option, String description, int indentation) {
+        String indent = spaces(indentation);
+        String desc = wrap(description != null ? description : "");
+        String nl = System.lineSeparator();
+        String[] descLines = desc.split(nl);
+        int optionWidth = 45;
+        if (option.length() >= optionWidth && description != null) {
+            out.println(indent + option + nl + indent + spaces(optionWidth) + descLines[0]);
+        } else {
+            out.println(indent + option + spaces(optionWidth - option.length()) + descLines[0]);
+        }
+        for (int i = 1; i < descLines.length; i++) {
+            out.println(indent + spaces(optionWidth) + descLines[i]);
+        }
+    }
+
+    static void printFlags(SortedMap<String, OptionDescriptor> sortedOptions, String prefix, PrintStream out) {
+        for (Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
+            entry.getKey();
+            OptionDescriptor descriptor = entry.getValue();
+            String helpMsg = descriptor.getHelp();
+            int helpLen = helpMsg.length();
+            if (helpLen > 0 && helpMsg.charAt(helpLen - 1) != '.') {
+                helpMsg += '.';
+            }
+            if (descriptor.getType() == Boolean.class) {
+                Boolean val = (Boolean) descriptor.getOptionKey().getDefaultValue();
+                if (helpLen != 0) {
+                    helpMsg += ' ';
+                }
+                if (val == null || !((boolean) val)) {
+                    helpMsg += "Default: - (disabled).";
+                } else {
+                    helpMsg += "Default: + (enabled).";
+                }
+                printOption(out, prefix + "\u00b1" + entry.getKey(), helpMsg, 2);
+            } else {
+                Object def = descriptor.getOptionKey().getDefaultValue();
+                if (def instanceof String) {
+                    def = '"' + String.valueOf(def) + '"';
+                }
+                printOption(out, prefix + entry.getKey() + "=" + def, helpMsg, 2);
+            }
         }
     }
 

@@ -54,8 +54,10 @@ public class NativeImageOptions {
     public static final HostedOptionKey<String> Kind = new HostedOptionKey<>(AbstractBootImage.NativeImageKind.EXECUTABLE.name());
 
     @Option(help = "Comma separated list of CPU features that will be used for image generation on the AMD64 platform. " +
-                    "Features SSE and SSE2 are enabled by default. Other features are: " +
-                    "CX8,CMOV,FXSR,HT,MMX,AMD_3DNOW_PREFETCH,SSE3,SSSE3,SSE4A,SSE4_1,SSE4_2,POPCNT,LZCNT,TSC,TSCINV,AVX,AVX2,AES,ERMS,CLMUL,BMI1,BMI2,RTM,ADX,AVX512F,AVX512DQ,AVX512PF,AVX512ER,AVX512CD,AVX512BW", type = User)//
+                    "Features SSE and SSE2 are enabled by default. Other available features are: " +
+                    "CX8, CMOV, FXSR, HT, MMX, AMD_3DNOW_PREFETCH, SSE3, SSSE3, SSE4A, SSE4_1, " +
+                    "SSE4_2, POPCNT, LZCNT, TSC, TSCINV, AVX, AVX2, AES, ERMS, CLMUL, BMI1, " +
+                    "BMI2, RTM, ADX, AVX512F, AVX512DQ, AVX512PF, AVX512ER, AVX512CD, AVX512BW", type = User)//
     public static final HostedOptionKey<String> CPUFeatures = new HostedOptionKey<>("");
 
     @Option(help = "Overrides CPUFeatures and uses the native architecture, i.e., the architecture of a machine that builds an image. NativeArchitecture takes precedence over CPUFeatures", type = User)//

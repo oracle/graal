@@ -27,7 +27,6 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionKey;
 
 public interface HostedOptionProvider {
@@ -47,11 +46,7 @@ class HostedOptionProviderHelper {
     static void addArguments(List<String> result, String prefix, EconomicMap<OptionKey<?>, Object> values) {
         MapCursor<OptionKey<?>, Object> cursor = values.getEntries();
         while (cursor.advance()) {
-            OptionKey<?> key = cursor.getKey();
-            OptionDescriptor descriptor = key.getDescriptor();
-            String name = descriptor.getName();
-            Object value = cursor.getValue();
-            result.add(prefix + name + "=" + value);
+            result.add(prefix + cursor.getKey().getName() + "=" + cursor.getValue());
         }
     }
 }
