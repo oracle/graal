@@ -152,8 +152,8 @@ public class JavaMainWrapper {
         AMD64CPUFeatureAccess.verifyHostSupportsArchitecture(imageArchitecture);
         String[] args = SubstrateUtil.getArgs(paramArgc, paramArgv);
         if (SubstrateOptions.ParseRuntimeOptions.getValue()) {
-            args = RuntimeOptionParser.singleton().parse(args, DEFAULT_OPTION_PREFIX, PLUS_MINUS);
-            args = RuntimeOptionParser.singleton().parse(args, GRAAL_OPTION_PREFIX, NAME_VALUE);
+            args = RuntimeOptionParser.singleton().parse(args, DEFAULT_OPTION_PREFIX, PLUS_MINUS, true);
+            args = RuntimeOptionParser.singleton().parse(args, GRAAL_OPTION_PREFIX, NAME_VALUE, true);
             args = XOptions.singleton().parse(args);
             args = RuntimePropertyParser.parse(args);
         }

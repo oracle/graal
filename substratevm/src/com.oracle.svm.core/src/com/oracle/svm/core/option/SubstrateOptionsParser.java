@@ -44,6 +44,9 @@ import com.oracle.svm.core.util.VMError;
  */
 public class SubstrateOptionsParser {
 
+    /**
+     * The result of {@link SubstrateOptionsParser#parseOption}.
+     */
     static final class OptionParseResult {
         private final boolean printFlags;
         private final String error;
@@ -84,7 +87,7 @@ public class SubstrateOptionsParser {
     public enum BooleanOptionFormat {
         NAME_VALUE("<name>=<value>"),
         PLUS_MINUS("+/-<name>");
-        private BooleanOptionFormat(String help) {
+        BooleanOptionFormat(String help) {
             this.help = help;
         }
 
@@ -96,12 +99,6 @@ public class SubstrateOptionsParser {
         }
     }
 
-    /**
-     * @param optionPrefix prefix used before option name. If the prefix is equal to
-     *            {@link RuntimeOptionParser#GRAAL_OPTION_PREFIX}, then boolean options are required
-     *            to be specified as {@code <name>=true} or {@code <name>=false}. Otherwise, boolean
-     *            options are required to be specified as {@code +<name>} or {@code -<name>}.
-     */
     static OptionParseResult parseOption(SortedMap<String, OptionDescriptor> options, String option, EconomicMap<OptionKey<?>, Object> valuesMap, String optionPrefix,
                     BooleanOptionFormat booleanOptionFormat) {
         if (option.length() == 0) {
@@ -115,14 +112,14 @@ public class SubstrateOptionsParser {
         char first = option.charAt(0);
         int eqIndex = option.indexOf('=');
         if (first == '+' || first == '-') {
-            if (booleanOptionFormat == BooleanOptionFormat.NAME_VALUE) {
-                return OptionParseResult.error(optionPrefix + " option must use <name>=<value> format, not +/- prefix");
-            }
-            optionName = option.substring(1);
-            value = (first == '+');
             if (eqIndex != -1) {
-                return OptionParseResult.error("Cannot mix +/- with <name>=<value> format: '" + option + "'");
+                return OptionParseResult.error("Cannot mix +/- with <name>=<value> format: '" + optionPrefix + option + "'");
             }
+            optionName = option.substring(1, eqIndex == -1 ? option.length() : eqIndex);
+            if (booleanOptionFormat == BooleanOptionFormat.NAME_VALUE) {
+                return OptionParseResult.error("Option '" + optionName + "' must use <name>=<value> format, not +/- prefix");
+            }
+            value = (first == '+');
         } else {
             if (eqIndex == -1) {
                 optionName = option;
@@ -159,7 +156,7 @@ public class SubstrateOptionsParser {
 
         if (value == null) {
             if (optionType == Boolean.class && booleanOptionFormat == BooleanOptionFormat.PLUS_MINUS) {
-                return OptionParseResult.error(optionPrefix + " boolean option '" + optionName + "' must have +/- prefix");
+                return OptionParseResult.error("Boolean option '" + optionName + "' must have +/- prefix");
             }
             if (valueString == null) {
                 return OptionParseResult.error("Missing value for option '" + optionName + "'");
