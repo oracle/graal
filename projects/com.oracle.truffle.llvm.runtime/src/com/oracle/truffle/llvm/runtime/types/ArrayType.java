@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime.types;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -39,21 +38,21 @@ import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class ArrayType extends AggregateType {
 
-    @CompilationFinal private Assumption assumption;
+    @CompilationFinal private Assumption elementTypeAssumption;
     @CompilationFinal private Type elementType;
     private final int length;
 
     public ArrayType(Type type, int length) {
-        this.assumption = Truffle.getRuntime().createAssumption();
+        this.elementTypeAssumption = Truffle.getRuntime().createAssumption();
         this.elementType = type;
         this.length = length;
     }
 
     public void setElementType(Type elementType) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.assumption.invalidate();
-        this.assumption = Truffle.getRuntime().createAssumption();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        this.elementTypeAssumption.invalidate();
         this.elementType = elementType;
+        this.elementTypeAssumption = Truffle.getRuntime().createAssumption();
     }
 
     @Override
@@ -67,7 +66,7 @@ public final class ArrayType extends AggregateType {
     }
 
     public Type getElementType() {
-        if (!assumption.isValid()) {
+        if (!elementTypeAssumption.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
         }
         return elementType;

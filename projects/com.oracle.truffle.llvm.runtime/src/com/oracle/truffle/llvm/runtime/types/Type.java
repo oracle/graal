@@ -41,7 +41,7 @@ import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public abstract class Type {
 
-    @CompilationFinal private Assumption assumption = Truffle.getRuntime().createAssumption();
+    @CompilationFinal private Assumption sourceTypeAssumption = Truffle.getRuntime().createAssumption();
     @CompilationFinal private LLVMSourceType sourceType = null;
 
     public static final Type[] EMPTY_ARRAY = {};
@@ -64,7 +64,7 @@ public abstract class Type {
 
     public LLVMSourceType getSourceType() {
         try {
-            assumption.check();
+            sourceTypeAssumption.check();
         } catch (InvalidAssumptionException ex) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
         }
@@ -72,11 +72,11 @@ public abstract class Type {
     }
 
     public void setSourceType(LLVMSourceType sourceType) {
-        if (!this.assumption.isValid() || this.sourceType != sourceType) {
+        if (!this.sourceTypeAssumption.isValid() || this.sourceType != sourceType) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.sourceTypeAssumption.invalidate();
             this.sourceType = sourceType;
-            this.assumption.invalidate();
-            this.assumption = Truffle.getRuntime().createAssumption();
+            this.sourceTypeAssumption = Truffle.getRuntime().createAssumption();
         }
     }
 
