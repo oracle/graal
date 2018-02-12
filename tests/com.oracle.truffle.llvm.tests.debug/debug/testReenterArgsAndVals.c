@@ -1,12 +1,12 @@
 #include <stdio.h>
 
 int fnc(int n, int m) {
-  printf("");
+  printf(" ");
   int x = n + m;
   n = m - n;
   m = m / 2;
   x = x + n * m;
-  printf("");
+  printf(" ");
   return x;
 }
 

@@ -43,19 +43,26 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.oracle.truffle.llvm.test.debug.StopRequest.Scope;
 import static org.junit.Assert.assertEquals;
 
-public class LLVMDebugTest {
+@RunWith(Parameterized.class)
+public final class LLVMDebugTest {
 
     private static final String LANG_NAME = LLVMLanguage.NAME;
 
@@ -70,6 +77,28 @@ public class LLVMDebugTest {
     private static final String BC_O1 = "O1.bc";
     private static final String BC_MEM2REG = "O0_MEM2REG.bc";
 
+    public LLVMDebugTest(String testName, String configuration) {
+        this.testName = testName;
+        this.configuration = configuration;
+    }
+
+    @Parameters(name = "{0} - {1}")
+    public static Collection<Object[]> getConfigurations() {
+        final Map<String, String[]> configs = new HashMap<>();
+        configs.put("testPrimitives", new String[]{BC_O0, BC_MEM2REG});
+        configs.put("testStructures", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testUnions", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testDecorators", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testClasses", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testScopes", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testControlFlow", new String[]{BC_O0, BC_MEM2REG});
+        configs.put("testReenterArgsAndVals", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        return configs.entrySet().stream().flatMap(e -> Stream.of(e.getValue()).map(v -> new Object[]{e.getKey(), v})).collect(Collectors.toSet());
+    }
+
+    private final String testName;
+    private final String configuration;
+
     private DebuggerTester tester;
 
     @Before
@@ -80,74 +109,6 @@ public class LLVMDebugTest {
     @After
     public void dispose() {
         tester.close();
-    }
-
-    @Test
-    @Ignore
-    public void testReenterArgumentsAndValues() throws Throwable {
-        // Test that after a re-enter, arguments are kept and variables are cleared.
-        final Source source = loadTestSource("testReenterArgsAndVals");
-        final Source bitcode = loadTestBitcode("testReenterArgsAndVals");
-
-        try (DebuggerSession session = tester.startSession()) {
-            session.install(Breakpoint.newBuilder(source.getURI()).lineIs(6).build());
-            tester.startEval(bitcode);
-
-            expectSuspended((SuspendedEvent event) -> {
-                DebugStackFrame frame = event.getTopStackFrame();
-                assertEquals(6, frame.getSourceSection().getStartLine());
-                // checkArgs(frame, "n", "11", "m", "20");
-                // checkStack(frame, "fnc", "n", "11", "m", "20");
-                event.prepareStepOver(5);
-            });
-            expectSuspended((SuspendedEvent event) -> {
-                DebugStackFrame frame = event.getTopStackFrame();
-                assertEquals(10, frame.getSourceSection().getStartLine());
-                // checkArgs(frame, "n", "11", "m", "20");
-                // checkStack(frame, "fnc", "n", "9", "m", "10.0", "x", "50.0");
-                event.prepareUnwindFrame(frame);
-            });
-            expectSuspended((SuspendedEvent event) -> {
-                DebugStackFrame frame = event.getTopStackFrame();
-                assertEquals(3, frame.getSourceSection().getStartLine());
-                // checkArgs(frame);
-                // checkStack(frame, "main");
-            });
-            expectSuspended((SuspendedEvent event) -> {
-                DebugStackFrame frame = event.getTopStackFrame();
-                assertEquals(6, frame.getSourceSection().getStartLine());
-                // checkArgs(frame, "n", "11", "m", "20");
-                // checkStack(frame, "fnc", "n", "11", "m", "20");
-            });
-            assertEquals("121", tester.expectDone());
-        }
-    }
-
-    private static Source loadTestSource(String name) {
-        File file = new File(TestOptions.PROJECT_ROOT, "../tests/com.oracle.truffle.llvm.tests.debug/debug/" + name + ".c");
-        Source source;
-        try {
-            file = file.getCanonicalFile();
-            source = Source.newBuilder("llvm", file).build();
-        } catch (IOException ex) {
-            throw new AssertionError(ex);
-        }
-        return source;
-    }
-
-    private static Source loadTestBitcode(String name) {
-        File file = new File(TestOptions.TEST_SUITE_PATH, "debug/" + name + "/O0_MEM2REG.bc");
-        Source source;
-        try {
-            source = Source.newBuilder("llvm", file).build();
-        } catch (IOException ex) {
-            throw new AssertionError(ex);
-        }
-        return source;
-    }
-
-    private void expectSuspended(SuspendedCallback callback) {
-        tester.expectSuspended(callback);
     }
 
     private static Source loadSource(File file) {
@@ -302,7 +263,7 @@ public class LLVMDebugTest {
         return Breakpoint.newBuilder(source.getURI()).lineIs(line).build();
     }
 
-    private void checkLocals(Source source, Source bitcode, Trace trace) {
+    private void runTest(Source source, Source bitcode, Trace trace) {
         try (DebuggerSession session = tester.startSession()) {
             trace.requestedBreakpoints().forEach(line -> session.install(buildBreakPoint(source, line)));
             if (trace.suspendOnEntry()) {
@@ -323,120 +284,11 @@ public class LLVMDebugTest {
         }
     }
 
-    private void runTest(String testName, String fileName) {
+    @Test
+    public void test() throws Throwable {
         final Source source = loadOriginalSource(testName);
-        final Source bitcode = loadBitcodeSource(testName, fileName);
         final Trace trace = readTrace(testName);
-        checkLocals(source, bitcode, trace);
+        final Source bitcode = loadBitcodeSource(testName, configuration);
+        runTest(source, bitcode, trace);
     }
-
-    private static final String TEST_PRIMITIVES = "testPrimitives";
-
-    @Test
-    public void testPrimitiveValuesUnoptimized() throws Throwable {
-        runTest(TEST_PRIMITIVES, BC_O0);
-    }
-
-    @Test
-    public void testPrimitiveValuesOptimized() throws Throwable {
-        runTest(TEST_PRIMITIVES, BC_MEM2REG);
-    }
-
-    private static final String TEST_STRUCTURES = "testStructures";
-
-    @Test
-    public void testStructuresO0() throws Throwable {
-        runTest(TEST_STRUCTURES, BC_O0);
-    }
-
-    @Test
-    public void testStructuresMem2Reg() throws Throwable {
-        runTest(TEST_STRUCTURES, BC_MEM2REG);
-    }
-
-    @Test
-    public void testStructuresO1() throws Throwable {
-        runTest(TEST_STRUCTURES, BC_O1);
-    }
-
-    private static final String TEST_UNIONS = "testUnions";
-
-    @Test
-    public void testUnionsO0() throws Throwable {
-        runTest(TEST_UNIONS, BC_O0);
-    }
-
-    @Test
-    public void testUnionsMem2Reg() throws Throwable {
-        runTest(TEST_UNIONS, BC_MEM2REG);
-    }
-
-    @Test
-    public void testUnionsO1() throws Throwable {
-        runTest(TEST_UNIONS, BC_O1);
-    }
-
-    private static final String TEST_DECORATORS = "testDecorators";
-
-    @Test
-    public void testDecoratorsO0() throws Throwable {
-        runTest(TEST_DECORATORS, BC_O0);
-    }
-
-    @Test
-    public void testDecoratorsMem2Reg() throws Throwable {
-        runTest(TEST_DECORATORS, BC_MEM2REG);
-    }
-
-    @Test
-    public void testDecoratorsO1() throws Throwable {
-        runTest(TEST_DECORATORS, BC_O1);
-    }
-
-    private static final String TEST_Classes = "testClasses";
-
-    @Test
-    public void testClassesO0() throws Throwable {
-        runTest(TEST_Classes, BC_O0);
-    }
-
-    @Test
-    public void testClassesMem2Reg() throws Throwable {
-        runTest(TEST_Classes, BC_MEM2REG);
-    }
-
-    @Test
-    public void testClassesO1() throws Throwable {
-        runTest(TEST_Classes, BC_O1);
-    }
-
-    private static final String TEST_SCOPES = "testScopes";
-
-    @Test
-    public void testScopesO0() throws Throwable {
-        runTest(TEST_SCOPES, BC_O0);
-    }
-
-    @Test
-    public void testScopesMem2Reg() throws Throwable {
-        runTest(TEST_SCOPES, BC_MEM2REG);
-    }
-
-    @Test
-    public void testScopesO1() throws Throwable {
-        runTest(TEST_SCOPES, BC_O1);
-    }
-
-    private static final String TEST_CONTROLFLOW = "testControlFlow";
-
-    @Test
-    public void testControlFlow() throws Throwable {
-        runTest(TEST_CONTROLFLOW, BC_O0);
-    }
-
-    @Test
-    public void testReenterArgsAndVals() {
-        runTest("testReenterArgsAndVals", BC_O0);
-    }
-
 }
