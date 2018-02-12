@@ -54,15 +54,18 @@ import com.oracle.truffle.api.test.ReflectionUtils;
 public class SplittingStrategyTest {
 
     private static TruffleCompilerOptions.TruffleOptionsOverrideScope doNotCompileScope;
+    private static TruffleCompilerOptions.TruffleOptionsOverrideScope growthLimitScope;
 
     @BeforeClass
     public static void before() {
         doNotCompileScope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleCompileOnly, "DisableCompilationsForThisTest");
+        growthLimitScope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleSplittingGrowthLimit, 2.0);
     }
 
     @AfterClass
     public static void after() {
         doNotCompileScope.close();
+        growthLimitScope.close();
     }
 
     private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
@@ -364,7 +367,7 @@ public class SplittingStrategyTest {
     @Test
     @SuppressWarnings("try")
     public void testGrowingLimitForTargetsOutsideEngine() {
-        final int expectedGrowingSplits = 2 * TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleSplittingLimitGrowth);
+        final int expectedGrowingSplits = (int) (2 * TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleSplittingGrowthLimit));
         final OptimizedCallTarget inner = (OptimizedCallTarget) runtime.createCallTarget(new DummyRootNode());
         final OptimizedCallTarget outer = (OptimizedCallTarget) runtime.createCallTarget(new CallsInnerAndSwapsCallNode(inner));
         // Use up the entire budget
@@ -392,6 +395,8 @@ public class SplittingStrategyTest {
     @TruffleLanguage.Registration(id = "SplitTestLanguage", name = "SplitTestLanguage", mimeType = "application/x-split-test-lang", version = "0.1")
     public static class SplitTestLanguage extends TruffleLanguage<TruffleLanguage.Env> {
 
+        private final RootCallTarget callTarget = runtime.createCallTarget(new CallsInnerAndSwapsCallNode(runtime.createCallTarget(new DummyRootNode())));;
+
         @Override
         protected Env createContext(Env env) {
             return env;
@@ -410,7 +415,7 @@ public class SplittingStrategyTest {
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             if (request.getSource().getCharacters().equals("exec")) {
-                return runtime.createCallTarget(new CallsInnerAndSwapsCallNode(runtime.createCallTarget(new DummyRootNode())));
+                return callTarget;
             } else if (request.getSource().getCharacters().toString().startsWith("new")) {
                 return runtime.createCallTarget(new DummyRootNode());
             } else {
@@ -449,13 +454,13 @@ public class SplittingStrategyTest {
         for (int i = 0; i < 10; i++) {
             c.eval("SplitTestLanguage", "exec");
         }
-        Assert.assertEquals("Split count not correct after one new target", baseSplitCount + TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleSplittingLimitGrowth), listener.splitCount);
+        Assert.assertEquals("Split count not correct after one new target",(int) (baseSplitCount + TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleSplittingGrowthLimit)), listener.splitCount);
 
         c.eval("SplitTestLanguage", "new2");
         for (int i = 0; i < 10; i++) {
             c.eval("SplitTestLanguage", "exec");
         }
-        Assert.assertEquals("Split count not correct after one new target", baseSplitCount + 2 * TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleSplittingLimitGrowth),
+        Assert.assertEquals("Split count not correct after one new target", (int)(baseSplitCount + 2 * TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleSplittingGrowthLimit)),
                         listener.splitCount);
     }
 
