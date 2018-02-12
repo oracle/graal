@@ -31,8 +31,6 @@ import java.nio.file.Paths;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -50,7 +48,6 @@ import sun.misc.Signal;
 import sun.misc.SignalHandler;
 //Checkstyle: resume
 
-@Platforms(Platform.LINUX.class)
 @AutomaticFeature
 public class VMInspection implements Feature {
 
