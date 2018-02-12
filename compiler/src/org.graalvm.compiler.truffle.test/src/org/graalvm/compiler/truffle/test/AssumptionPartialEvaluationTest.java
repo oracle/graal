@@ -103,6 +103,9 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
         OptimizedAssumption assumption = (OptimizedAssumption) Truffle.getRuntime().createAssumption();
         Assert.assertEquals(0, assumption.countDependencies());
 
+        OptimizedAssumptionDependency failedCodeInstall = null;
+        assumption.registerDependency().accept(failedCodeInstall);
+
         TestOptimizedAssumptionDependency[] deps = new TestOptimizedAssumptionDependency[100];
         for (int i = 0; i < deps.length; i++) {
             TestOptimizedAssumptionDependency dep = new TestOptimizedAssumptionDependency();

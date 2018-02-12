@@ -64,7 +64,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
 
         @Override
         public synchronized void accept(OptimizedAssumptionDependency dep) {
-            if (dep.reachabilityDeterminesValidity()) {
+            if (dep == null || dep.reachabilityDeterminesValidity()) {
                 this.weakDependency = new WeakReference<>(dep);
             } else {
                 this.dependency = dep;
