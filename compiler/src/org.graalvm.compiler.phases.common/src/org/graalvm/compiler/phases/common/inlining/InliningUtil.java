@@ -131,10 +131,11 @@ public class InliningUtil extends ValueMergeUtil {
     /**
      * Trace a decision to inline a method.
      *
-     * This prints a HotSpot-style inlining message to the console, and it also logs the decision to the logging stream.
+     * This prints a HotSpot-style inlining message to the console, and it also logs the decision to
+     * the logging stream.
      *
-     * Phases that perform inlining should use this method to trace the inlining decisions,
-     * and use the {@link #traceNotInlinedMethod} methods only for debugging purposes.
+     * Phases that perform inlining should use this method to trace the inlining decisions, and use
+     * the {@link #traceNotInlinedMethod} methods only for debugging purposes.
      */
     public static void traceInlinedMethod(InlineInfo info, int inliningDepth, boolean allowLogging, String msg, Object... args) {
         traceMethod(info, inliningDepth, allowLogging, true, msg, args);
@@ -143,10 +144,11 @@ public class InliningUtil extends ValueMergeUtil {
     /**
      * Trace a decision to inline a method.
      *
-     * This prints a HotSpot-style inlining message to the console, and it also logs the decision to the logging stream.
+     * This prints a HotSpot-style inlining message to the console, and it also logs the decision to
+     * the logging stream.
      *
-     * Phases that perform inlining should use this method to trace the inlining decisions,
-     * and use the {@link #traceNotInlinedMethod} methods only for debugging purposes.
+     * Phases that perform inlining should use this method to trace the inlining decisions, and use
+     * the {@link #traceNotInlinedMethod} methods only for debugging purposes.
      */
     public static void traceInlinedMethod(Invoke invoke, int inliningDepth, boolean allowLogging, ResolvedJavaMethod method, String msg, Object... args) {
         traceMethod(invoke, inliningDepth, allowLogging, true, method, msg, args);
@@ -155,10 +157,11 @@ public class InliningUtil extends ValueMergeUtil {
     /**
      * Trace a decision to not inline a method.
      *
-     * This prints a HotSpot-style inlining message to the console, and it also logs the decision to the logging stream.
+     * This prints a HotSpot-style inlining message to the console, and it also logs the decision to
+     * the logging stream.
      *
-     * Phases that perform inlining should use this method to trace the inlining decisions,
-     * and use the {@link #traceNotInlinedMethod} methods only for debugging purposes.
+     * Phases that perform inlining should use this method to trace the inlining decisions, and use
+     * the {@link #traceNotInlinedMethod} methods only for debugging purposes.
      */
     public static void traceNotInlinedMethod(InlineInfo info, int inliningDepth, String msg, Object... args) {
         traceMethod(info, inliningDepth, true, false, msg, args);
@@ -167,10 +170,11 @@ public class InliningUtil extends ValueMergeUtil {
     /**
      * Trace a decision about not inlining a method.
      *
-     * This prints a HotSpot-style inlining message to the console, and it also logs the decision to the logging stream.
+     * This prints a HotSpot-style inlining message to the console, and it also logs the decision to
+     * the logging stream.
      *
-     * Phases that perform inlining should use this method to trace the inlining decisions,
-     * and use the {@link #traceNotInlinedMethod} methods only for debugging purposes.
+     * Phases that perform inlining should use this method to trace the inlining decisions, and use
+     * the {@link #traceNotInlinedMethod} methods only for debugging purposes.
      */
     public static void traceNotInlinedMethod(Invoke invoke, int inliningDepth, ResolvedJavaMethod method, String msg, Object... args) {
         traceMethod(invoke, inliningDepth, true, false, method, msg, args);
@@ -198,7 +202,8 @@ public class InliningUtil extends ValueMergeUtil {
     }
 
     /**
-     * Output a generic inlining decision to the logging stream (e.g. inlining termination condition).
+     * Output a generic inlining decision to the logging stream (e.g. inlining termination
+     * condition).
      *
      * Used for debugging purposes.
      */
