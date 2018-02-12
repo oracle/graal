@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.136.0",
+  "mxversion" : "5.141.0",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -95,6 +95,7 @@ suite = {
         "LIBSULONGTEST" : "<lib:sulongtest>",
       },
       "license" : "BSD-new",
+      "testProject" : True,
     },
 
     "com.oracle.truffle.llvm.types.test" : {
@@ -216,6 +217,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "1.8",
       "license" : "BSD-new",
+      "testProject" : True,
     },
 
     "com.oracle.truffle.llvm.pipe.native" : {
@@ -235,6 +237,7 @@ suite = {
       },
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "license" : "BSD-new",
+      "testProject" : True,
     },
     "com.oracle.truffle.llvm.libraries.bitcode" : {
       "subDir" : "projects",
@@ -281,6 +284,7 @@ suite = {
         "CFLAGS" : "<clangImplicitArgs> -g",
         "CPPFLAGS" : "-I<sulong_include> -g",
       },
+      "testProject" : True,
     },
     "com.oracle.truffle.llvm.tests.interop" : {
       "subDir" : "tests",
@@ -290,6 +294,7 @@ suite = {
       "buildEnv" : {
         "CPPFLAGS" : "-I<sulong_include>",
       },
+      "testProject" : True,
     },
     "com.oracle.truffle.llvm.tests.nfi" : {
       "subDir" : "tests",
@@ -299,6 +304,7 @@ suite = {
       "buildEnv" : {
         "CPPFLAGS" : "-I<sulong_include>",
       },
+      "testProject" : True,
     },
     "com.oracle.truffle.llvm.tests.sulong" : {
       "subDir" : "tests",
@@ -308,6 +314,7 @@ suite = {
         "LDFLAGS" : "-lm",
         "OS" : "<os>",
       },
+      "testProject" : True,
     },
     "com.oracle.truffle.llvm.tests.sulongcpp" : {
       "subDir" : "tests",
@@ -316,6 +323,7 @@ suite = {
       "buildEnv" : {
         "OS" : "<os>",
       },
+      "testProject" : True,
     },
     "com.oracle.truffle.llvm.tests.libc" : {
       "subDir" : "tests",
@@ -325,6 +333,7 @@ suite = {
         "LDFLAGS" : "-lm",
         "OS" : "<os>",
       },
+      "testProject" : True,
     },
   },
 
@@ -388,6 +397,7 @@ suite = {
         "com.oracle.truffle.llvm.test.native",
       ],
       "license" : "BSD-new",
+      "testDistribution" : True,
     },
 
     "SULONG_TEST_SUITES" : {
@@ -404,6 +414,7 @@ suite = {
         "com.oracle.truffle.llvm.tests.libc",
       ],
       "license" : "BSD-new",
+      "testDistribution" : True,
     },
     "SULONG_DOC": {
         "native": True, # Not Java
