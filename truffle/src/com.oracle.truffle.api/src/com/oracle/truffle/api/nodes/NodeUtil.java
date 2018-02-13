@@ -213,33 +213,6 @@ public final class NodeUtil {
         return replaceChild(parent, oldChild, newChild, false);
     }
 
-    /**
-     * Unlike {@link Node#adoptChildren()} this method traverses the entire tree and updates all
-     * parents (even if the parent is already correct). This means that if the number of nodes in
-     * the tree is not needed, {@link Node#adoptChildren()} should be used.
-     *
-     * @param currentNode The node from which to start the adoption and counting
-     * @return The number of nodes in the tree rooted in currentNode
-     * @since 0.32
-     */
-    public static int adoptAllChildrenAndCount(Node currentNode) {
-        int[] count = new int[1];
-        adoptChildrenAndCountHelper(currentNode, count);
-        return count[0];
-    }
-
-    private static void adoptChildrenAndCountHelper(Node parent, int[] count) {
-        forEachChild(parent, new NodeVisitor() {
-            @Override
-            public boolean visit(Node node) {
-                node.setParent(parent);
-                count[0]++;
-                adoptChildrenAndCountHelper(node, count);
-                return true;
-            }
-        });
-    }
-
     /*
      * Fast version of child adoption.
      */
@@ -274,6 +247,39 @@ public final class NodeUtil {
             }
         }
 
+    }
+
+    /*
+     * Slow version of child adoption.
+     */
+    static int adoptChildrenAndCountHelper(Node currentNode) {
+        int count = 0;
+        NodeClass clazz = currentNode.getNodeClass();
+        for (Object field : clazz.getNodeFields()) {
+            if (clazz.isChildField(field)) {
+                Object child = clazz.getFieldObject(field, currentNode);
+                if (child != null) {
+                    Node node = (Node) child;
+                    count += currentNode.adoptAndCountHelper(node);
+                }
+            } else if (clazz.isChildrenField(field)) {
+                Object arrayObject = clazz.getFieldObject(field, currentNode);
+                if (arrayObject == null) {
+                    continue;
+                }
+                Object[] array = (Object[]) arrayObject;
+                for (int i = 0; i < array.length; i++) {
+                    Object child = array[i];
+                    if (child != null) {
+                        Node node = (Node) child;
+                        count += currentNode.adoptAndCountHelper(node);
+                    }
+                }
+            } else if (clazz.nodeFieldsOrderedByKind()) {
+                break;
+            }
+        }
+        return count;
     }
 
     static boolean replaceChild(Node parent, Node oldChild, Node newChild, boolean adopt) {

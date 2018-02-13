@@ -123,6 +123,11 @@ final class GraalTVMCI extends TVMCI {
     }
 
     @Override
+    protected int adoptChildrenAndCount(RootNode root) {
+        return super.adoptChildrenAndCount(root);
+    }
+
+    @Override
     public boolean isCloneUninitializedSupported(RootNode root) {
         return super.isCloneUninitializedSupported(root);
     }

@@ -113,7 +113,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.sourceCallTarget = sourceCallTarget;
         this.speculationLog = sourceCallTarget != null ? sourceCallTarget.getSpeculationLog() : null;
         this.rootNode = rootNode;
-        uninitializedNodeCount = NodeUtil.adoptAllChildrenAndCount(this.rootNode);
+        uninitializedNodeCount = runtime().getTvmci().adoptChildrenAndCount(this.rootNode);
     }
 
     public Assumption getNodeRewritingAssumption() {
