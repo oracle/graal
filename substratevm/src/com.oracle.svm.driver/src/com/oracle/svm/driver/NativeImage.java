@@ -410,7 +410,10 @@ class NativeImage {
             showError(leftoverArgs.stream().collect(Collectors.joining(", ", "Unhandled leftover args: [", "]")));
         }
 
-        buildImage(imageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderArgs, imageClasspath);
+        LinkedHashSet<Path> finalImageClasspath = new LinkedHashSet<>(imageBuilderBootClasspath);
+        finalImageClasspath.addAll(imageBuilderClasspath);
+        finalImageClasspath.addAll(imageClasspath);
+        buildImage(imageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderArgs, finalImageClasspath);
     }
 
     protected void buildImage(LinkedHashSet<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
@@ -424,9 +427,7 @@ class NativeImage {
         command.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(":"))));
         command.addAll(javaArgs);
         command.add("com.oracle.svm.hosted.NativeImageGeneratorRunner");
-        LinkedHashSet<Path> fullimagecp = new LinkedHashSet<>(cp);
-        fullimagecp.addAll(imagecp);
-        command.addAll(Arrays.asList("-imagecp", fullimagecp.stream().map(Path::toString).collect(Collectors.joining(":"))));
+        command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(Path::toString).collect(Collectors.joining(":"))));
         command.addAll(imageArgs);
 
         showVerboseMessage(verbose, "Executing [");
