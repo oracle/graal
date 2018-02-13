@@ -10,9 +10,9 @@ suite = {
     "organizationUrl" : "http://openjdk.java.net/projects/graal",
   },
   "scm" : {
-    "url" : "https://github.com/graalvm/graal/tree/master/truffle",
-    "read" : "https://github.com/graalvm/graal.git",
-    "write" : "git@github.com:graalvm/graal.git",
+    "url" : "https://github.com/oracle/graal/tree/master/truffle",
+    "read" : "https://github.com/oracle/graal.git",
+    "write" : "git@github.com:oracle/graal.git",
   },
   "repositories" : {
     "lafo-snapshots" : {
@@ -156,7 +156,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "1.8",
       "findbugsIgnoresGenerated" : True,
-      "isTestProject" : True,
+      "testProject" : True,
       "annotationProcessors" : ["mx:JMH_1_18", "TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Test",
       "jacoco" : "exclude",

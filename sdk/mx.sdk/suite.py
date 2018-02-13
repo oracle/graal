@@ -1,18 +1,18 @@
 suite = {
-  "mxversion" : "5.128.4",
+  "mxversion" : "5.141.0",
   "name" : "sdk",
   "sourceinprojectwhitelist" : [],
-  "url" : "https://github.com/graalvm/graal",
+  "url" : "https://github.com/oracle/graal",
   "developer" : {
     "name" : "Graal developers",
     "email" : "graal-dev@openjdk.java.net",
     "organization" : "Graal",
-    "organizationUrl" : "https://github.com/graalvm/graal",
+    "organizationUrl" : "https://github.com/oracle/graal",
   },
   "scm" : {
-    "url" : "https://github.com/graalvm/graal",
-    "read" : "https://github.com/graalvm/graal.git",
-    "write" : "git@github.com:graalvm/graal.git",
+    "url" : "https://github.com/oracle/graal",
+    "read" : "https://github.com/oracle/graal.git",
+    "write" : "git@github.com:oracle/graal.git",
   },
   "repositories" : {
     "lafo-snapshots" : {
