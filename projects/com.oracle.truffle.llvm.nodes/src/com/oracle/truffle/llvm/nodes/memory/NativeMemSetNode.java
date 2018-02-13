@@ -33,7 +33,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleManagedMalloc.ManagedMallocObject;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
@@ -80,4 +82,22 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
     private static void nativeMemSet(LLVMMemory memory, LLVMAddress address, byte value, long length) {
         memory.memset(address, length, value);
     }
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"isManagedMallocObject(object)", "value == 0"})
+    protected Object memset(LLVMTruffleObject object, byte value, long length) {
+        assert length % ADDRESS_SIZE_IN_BYTES == 0;
+
+        final ManagedMallocObject obj = (ManagedMallocObject) object.getObject();
+        int arrayOffset = (int) (object.getOffset() / ADDRESS_SIZE_IN_BYTES);
+        for (int i = 0; i < length / ADDRESS_SIZE_IN_BYTES; i++) {
+            obj.set(arrayOffset + i, LLVMAddress.nullPointer());
+        }
+        return null;
+    }
+
+    protected boolean isManagedMallocObject(LLVMTruffleObject object) {
+        return object.getObject() instanceof ManagedMallocObject;
+    }
+
 }
