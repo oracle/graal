@@ -299,14 +299,12 @@ public final class NativeImageBuildServer {
                 } else {
                     log("Starting compilation for request:\n%s\n", serverCommand.payload);
                     final ArrayList<String> arguments = new ArrayList<>(Arrays.asList(serverCommand.payload.split("\\s+?")));
-                    final Properties compilationProperties = parseProperties(arguments);
                     errorJSONStream.setOriginal(socket.getOutputStream());
                     outJSONStream.setOriginal(socket.getOutputStream());
                     int exitStatus = 0;
                     boolean success = false;
                     try {
                         exitStatus = withJVMContext(
-                                        compilationProperties,
                                         serverStdout,
                                         serverStderr,
                                         () -> executeCompilation(arguments));
@@ -335,17 +333,6 @@ public final class NativeImageBuildServer {
                 sendExitStatus(output, 1);
                 return true;
         }
-    }
-
-    private static Properties parseProperties(ArrayList<String> arguments) {
-        Properties props = new Properties(System.getProperties());
-        new ArrayList<>(arguments).stream().filter(v -> v.startsWith("-D")).forEach(arg -> {
-            arguments.remove(arg);
-            String value = arg.substring("-D".length());
-            int eq = value.indexOf('=');
-            props.setProperty(value.substring(0, eq), value.substring(eq + 1));
-        });
-        return props;
     }
 
     private static void sendExitStatus(OutputStreamWriter output, int exitStatus) {
@@ -377,11 +364,10 @@ public final class NativeImageBuildServer {
         }
     }
 
-    private static int withJVMContext(Properties properties, PrintStream out, PrintStream err, Supplier<Integer> body) {
-        Properties previousProperties = System.getProperties();
+    private static int withJVMContext(PrintStream out, PrintStream err, Supplier<Integer> body) {
+        Properties previousProperties = (Properties) System.getProperties().clone();
         PrintStream previousOut = System.out;
         PrintStream previousErr = System.err;
-        System.setProperties(properties);
         System.setOut(out);
         System.setErr(err);
         ResourceBundle.clearCache();
