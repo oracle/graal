@@ -1968,7 +1968,7 @@ public class PolyglotEngine {
 
         @Override
         public <T> T getOrCreateRuntimeData(Object sourceVM, Supplier<T> constructor) {
-            throw new UnsupportedOperationException("Not supported in legacy engine.");
+            return null;
         }
 
         @Override
