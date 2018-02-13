@@ -36,7 +36,10 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVM80BitFloatStoreNode;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVM80BitFloatStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -77,5 +80,27 @@ public abstract class LLVM80BitFloatArrayLiteralNode extends LLVMExpressionNode 
             }
         }
         return addr;
+    }
+
+    @Specialization
+    @ExplodeLoop
+    protected LLVMTruffleObject foreignWrite(VirtualFrame frame, LLVMTruffleObject addr,
+                    @Cached("create80BitFloatStore()") LLVM80BitFloatStoreNode write) {
+        LLVMTruffleObject currentPtr = addr;
+        for (int i = 0; i < values.length; i++) {
+            try {
+                LLVM80BitFloat currentValue = values[i].executeLLVM80BitFloat(frame);
+                write.executeWithTarget(frame, addr, currentValue);
+                currentPtr = currentPtr.increment(stride, currentPtr.getType());
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
+        }
+        return addr;
+    }
+
+    protected LLVM80BitFloatStoreNode create80BitFloatStore() {
+        return LLVM80BitFloatStoreNodeGen.create();
     }
 }

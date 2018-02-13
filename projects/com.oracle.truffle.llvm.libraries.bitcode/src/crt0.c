@@ -101,7 +101,7 @@ void __sulong_init_context(void **argv_java_byte_arrays, void **envp_java_byte_a
   __sulong_init_libc(envp, argv[0]);
 }
 
-void __sulong_update_application_path(char *application_path, char **argv, Elf64_auxv_t * auxv) {
+void __sulong_update_application_path(char *application_path, char **argv, Elf64_auxv_t *auxv) {
   argv[0] = application_path;
   auxv[0].a_un.a_val = (uint64_t)application_path;
 }
