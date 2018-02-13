@@ -169,7 +169,7 @@ def native_image_option_properties(option_kind, option_flag, native_image_root):
 flag_suitename_map = {
     'js' : ('graal-js', ['GRAALJS', 'GRAALJS_LAUNCHER', 'ICU4J'], ['ICU4J-DIST'], 'js'),
     'ruby' : ('truffleruby', ['TRUFFLERUBY', 'TRUFFLERUBY-LAUNCHER'], ['TRUFFLERUBY-ZIP']),
-    'sulong' : ('sulong', ['SULONG'], ['SULONG_LIBS', 'SULONG_DOC']),
+    'llvm' : ('sulong', ['SULONG'], ['SULONG_LIBS', 'SULONG_DOC']), # in the GraalVM release, this is called llvm
     'python': ('graalpython', ['GRAALPYTHON', 'GRAALPYTHON-LAUNCHER', 'GRAALPYTHON-ENV'], ['GRAALPYTHON-ZIP'])
 }
 
